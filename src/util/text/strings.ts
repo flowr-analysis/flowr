@@ -1,4 +1,5 @@
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Check if the given string starts and ends with the given letter
@@ -8,10 +9,39 @@ export function startAndEndsWith(str: string, letter: string): boolean {
 }
 
 /**
+ * Whether every character of `needle` appears in `hay` in order (a subsequence / fuzzy match).
+ */
+export function isSubsequence(needle: string, hay: string): boolean {
+	if(needle.length === 0) {
+		return true;
+	}
+	let i = 0;
+	for(const c of hay) {
+		if(c === needle[i] && ++i === needle.length) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * The `candidates` that start with `needle`, or -- if none do -- those that contain it as a
+ * {@link isSubsequence|subsequence} (case-insensitive). `needle` itself is never returned.
+ */
+export function matchByPrefixOrSubsequence(candidates: readonly string[], needle: string): string[] {
+	const prefixed = candidates.filter(c => c.startsWith(needle) && c !== needle);
+	if(prefixed.length > 0) {
+		return prefixed;
+	}
+	const lower = needle.toLowerCase();
+	return candidates.filter(c => c !== needle && isSubsequence(lower, c.toLowerCase()));
+}
+
+/**
  * Removes all whitespace in the given string
  */
 export function withoutWhitespace(output: string): string {
-	return output.replace(/\s/g,'');
+	return output.replace(/\s/g, '');
 }
 
 /**
@@ -53,15 +83,40 @@ export function joinWithLast(strs: readonly string[], { join = ', ', last = ', a
 	return strs.slice(0, -1).join(join) + last + strs[strs.length - 1];
 }
 
+const UrlPattern = /^(https?|ftps?|s3|gs):\/\//i;
+
+/** Check if the given string looks like a remote URL (http/https/ftp/ftps/s3/gs). */
+export function isUrl(p: string): boolean {
+	return UrlPattern.test(p);
+}
+
+/**
+ * If `s` is a `file://` URI, return the local filesystem path it refers to.
+ * Returns `undefined` for any other string.
+ */
+export function fileUrlToPath(s: string): string | undefined {
+	if(!s.startsWith('file://')) {
+		return undefined;
+	}
+	try {
+		return fileURLToPath(s);
+	} catch{
+		return undefined;
+	}
+}
+
 /**
  * Check if the given path is an absolute path.
  */
 export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
-	return regex?.test(p) || p.startsWith('/') || p.startsWith('\\') ||
-		/[a-zA-Z]:[\\/]/.test(p) || // Windows absolute path
-		path.normalize(p + '/') === path.normalize(path.resolve(p) + '/');
+	if(regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || /[a-zA-Z]:[\\/]/.test(p)) {
+		return true;   // the second is a UNC path, the third a Windows one
+	}
+	/* where there is no file system there is nothing to resolve against, and a browser is such a place:
+	   without the check the stub answers every question with itself, and every path would look absolute */
+	const normalized = path.normalize(p + '/');
+	return typeof normalized === 'string' && normalized === path.normalize(path.resolve(p) + '/');
 }
-
 
 const CorrespondingClose = {
 	'(': ')',
@@ -85,3 +140,12 @@ export function dropRawStringSurround(value: string): string {
 	return value;
 }
 
+/**
+ * The `prefix.suffix` readings of a dotted R name, longest prefix first, which is the order S3 dispatch
+ * resolves them in (`as.data.frame.matrix` reads as `as.data.frame` before `as.data`).
+ */
+export function* dottedSplits(name: string): Generator<readonly [prefix: string, suffix: string]> {
+	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+		yield [name.slice(0, dot), name.slice(dot + 1)];
+	}
+}

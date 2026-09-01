@@ -16,7 +16,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.criterion('1@[').last().build(),   upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 		{ query: Q.criterion('1@<-').first().build(), expectedType: new RAtomicVectorType(new RTypeVariable(new RDoubleType(), new RTypeIntersection())) },
 	);
-	
+
 	assertInferredTypes(
 		'v <- c(1, 2, 3); y <- 1; v[2] <- y; v',
 		undefined,
@@ -24,7 +24,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),         expectedType: new RDoubleType() },
 		{ query: Q.criterion('1@[').last().build(), expectedType: new RDoubleType() },
 	);
-	
+
 	const elementType1 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[2] <- y; l',
@@ -33,7 +33,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),         upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 		{ query: Q.criterion('1@[').last().build(), upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 	);
-	
+
 	assertInferredTypes(
 		'v <- c(1, 2, 3); v[] <- y; v',
 		undefined,
@@ -41,7 +41,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),         upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 		{ query: Q.criterion('1@[').last().build(), upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 	);
-	
+
 	const elementType2 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[] <- y; l',
@@ -50,7 +50,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),         upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 		{ query: Q.criterion('1@[').last().build(), upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 	);
-	
+
 	assertInferredTypes(
 		'v <- c(1, 2, 3); v[[2]] <- y; v',
 		undefined,
@@ -58,7 +58,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),          upperBound: new RTypeIntersection() },
 		{ query: Q.criterion('1@[[').last().build(), expectedType: new RTypeVariable() },
 	);
-	
+
 	const elementType3 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[[2]] <- y; l',
@@ -67,7 +67,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),          upperBound: new RTypeIntersection() },
 		{ query: Q.criterion('1@[[').last().build(), expectedType: new RTypeVariable() },
 	);
-	
+
 	const elementType4 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, x = 2, 3); l$x <- y; l',
@@ -76,7 +76,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),         upperBound: new RTypeIntersection() },
 		{ query: Q.criterion('1@$').last().build(), expectedType: new RTypeVariable() },
 	);
-	
+
 	const elementType5 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l$a <- y; l',
@@ -85,7 +85,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),         upperBound: new RTypeIntersection() },
 		{ query: Q.criterion('1@$').last().build(), expectedType: new RTypeVariable() },
 	);
-	
+
 	const elementType6 = new RTypeVariable(new RTypeUnion(new RDoubleType(), new RNullType()), new RTypeIntersection());
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const elementType6_0 = new RTypeVariable(new RLogicalType(), new RTypeIntersection());
@@ -108,14 +108,14 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),          expectedType: new RTypeVariable() },
 		{ query: Q.criterion('1@[[').last().build(), expectedType: new RTypeVariable() },
 	);
-	
+
 	assertInferredTypes(
 		'v <- 1; v[[1]] <- 1i; v',
 		undefined,
 		{ query: Q.var('v').last().build(),          expectedType: new RTypeVariable(new RDoubleType(), new RAtomicVectorType(new RTypeIntersection())) },
 		{ query: Q.criterion('1@[[').last().build(), expectedType: new RComplexType() },
 	);
-	
+
 	assertInferredTypes(
 		'v <- NULL; v[1] <- y; v',
 		undefined,
@@ -123,7 +123,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('y').last().build(),         upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 		{ query: Q.criterion('1@[').last().build(), upperBound: new RTypeUnion(new RNullType(), new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 	);
-	
+
 	assertInferredTypes(
 		'o@"name" <- y; o',
 		undefined,

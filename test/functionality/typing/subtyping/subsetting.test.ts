@@ -12,7 +12,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('v').last().build(),                    expectedType: new RAtomicVectorType(new RTypeVariable(new RDoubleType(), new RTypeIntersection())) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RAtomicVectorType(new RTypeUnion()) },
 	);
-	
+
 	const elementType1 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[2]',
@@ -20,14 +20,14 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType1, new Map([[0, elementType1], [1, elementType1], [2, elementType1]])) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RListType(new RTypeUnion()) },
 	);
-	
+
 	assertInferredTypes(
 		'v <- c(1, 2, 3); v[]',
 		undefined,
 		{ query: Q.var('v').last().build(),                    expectedType: new RAtomicVectorType(new RTypeVariable(new RDoubleType(), new RTypeIntersection())) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RAtomicVectorType(new RDoubleType()) },
 	);
-	
+
 	const elementType2 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[]',
@@ -35,14 +35,14 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType2, new Map([[0, elementType2], [1, elementType2], [2, elementType2]])) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RListType(new RDoubleType(), new Map([[0, new RDoubleType()], [1, new RDoubleType()], [2, new RDoubleType()]])) },
 	);
-	
+
 	assertInferredTypes(
 		'v <- c(1, 2, 3); v[[2]]',
 		undefined,
 		{ query: Q.var('v').last().build(),                    expectedType: new RAtomicVectorType(new RTypeVariable(new RDoubleType(), new RTypeIntersection())) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RDoubleType() },
 	);
-	
+
 	const elementType3 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[[2]]',
@@ -50,7 +50,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType1, new Map([[0, elementType3], [1, elementType3], [2, elementType3]])) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RDoubleType() },
 	);
-	
+
 	const elementType4 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, x = 2, 3); l$x',
@@ -58,7 +58,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType4, new Map<number | string, DataType>([[0, elementType4], [1, elementType4], [2, elementType4], ['x', elementType4]])) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RDoubleType() },
 	);
-	
+
 	const elementType5 = new RTypeVariable(new RDoubleType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l$a',
@@ -66,7 +66,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType5, new Map<number | string, DataType>([[0, elementType5], [1, elementType5], [2, elementType5], ['a', new RTypeVariable()]])) },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RTypeUnion() },
 	);
-	
+
 	const elementType6 = new RTypeVariable(new RTypeUnion(new RDoubleType(), new RNullType()), new RTypeIntersection());
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const elementType6_0 = new RTypeVariable(new RLogicalType(), new RTypeIntersection());
@@ -94,7 +94,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('v').last().build(),                    expectedType: new RNullType() },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RNullType() },
 	);
-	
+
 	assertInferredTypes(
 		'o <- new("Object", name = "Flo"); o@name; o',
 		undefined,

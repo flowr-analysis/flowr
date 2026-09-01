@@ -1,5 +1,6 @@
-import type { Base, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
+import { RType } from '../type';
 import type { RExpressionList } from './r-expression-list';
 
 /**
@@ -7,9 +8,24 @@ import type { RExpressionList } from './r-expression-list';
  * if(<condition>) <then> [else <otherwise>]
  * ```
  */
-export interface RIfThenElse<Info = NoInfo> extends Base<Info>, Location {
+export interface RIfThenElse<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.IfThenElse;
 	condition:     RNode<Info>;
 	then:          RExpressionList<Info>;
 	otherwise?:    RExpressionList<Info>;
 }
+
+/**
+ * Helper for working with {@link RIfThenElse} AST nodes.
+ */
+export const RIfThenElse = {
+	...RNode,
+	name: 'RIfThenElse',
+	/**
+	 * Type guard for {@link RIfThenElse} nodes.
+	 * @lintIgnore node-is node-is-optional
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RIfThenElse<Info> {
+		return node?.type === RType.IfThenElse;
+	}
+} as const;

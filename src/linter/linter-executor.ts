@@ -1,39 +1,39 @@
-import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
-import { LintingRules } from './linter-rules';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataflowInformation } from '../dataflow/info';
+import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
 import type { LintingResults, LintingRule } from './linter-format';
 import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
 import { deepMergeObject } from '../util/objects';
-import type { FlowrConfigOptions } from '../config';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
-export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): LintingResults<Name> {
+/**
+ * Executes a specific linting rule on the given analysis provider input.
+ */
+export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig, lintingRuleConfig);
 
-		const ruleSearch = rule.createSearch(fullConfig, input);
+		const ruleSearch = rule.createSearch(fullConfig);
 
 		const searchStart = Date.now();
-		const searchResult = runSearch(ruleSearch, input);
+		const searchResult = await runSearch(ruleSearch, input);
 		const searchTime = Date.now() - searchStart;
 
 		const processStart = Date.now();
-		const result = rule.processSearchResult(searchResult, fullConfig, input);
+		const result = await rule.processSearchResult(searchResult, fullConfig, input);
 		const processTime = Date.now() - processStart;
+
 		return {
 			...result,
 			'.meta': {
-				...result['.meta'],
+				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
 				searchTimeMs:  searchTime,
 				processTimeMs: processTime
 			}
 		};
 	} catch(e) {
-		const msg = typeof e === 'string' ? e : e instanceof Error ? e.message : JSON.stringify(e);
 		return {
-			error: msg
+			error: e
 		};
 	}
 }

@@ -1,5 +1,4 @@
-import type { IPipelineStep, PipelineStepName } from '../pipeline-step';
-import { PipelineStepStage } from '../pipeline-step';
+import { type IPipelineStep, type PipelineStepName, PipelineStepStage } from '../pipeline-step';
 import { InvalidPipelineError } from './invalid-pipeline-error';
 import type { Pipeline } from './pipeline';
 import { jsonReplacer } from '../../../util/json';
@@ -34,7 +33,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 	initializeSteps(perRequestSteps, perRequestStepMap, initsPerRequest, visited);
 
 	const sortedPerRequest = topologicalSort(initsPerRequest, perRequestStepMap, visited);
-	const sorted = [...sortedPerFile, ...sortedPerRequest];
+	const sorted = sortedPerFile.concat(sortedPerRequest);
 	validateStepOutput(sorted, perRequestStepMap, steps);
 
 	return {
@@ -44,7 +43,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 	};
 }
 
-function validateStepOutput(sorted: PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, steps: readonly IPipelineStep[]) {
+function validateStepOutput(sorted: readonly PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, steps: readonly IPipelineStep[]) {
 	if(sorted.length !== stepMap.size) {
 		// check if any of the dependencies in the map are invalid
 		checkForInvalidDependency(steps, stepMap);
@@ -101,7 +100,7 @@ function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<Pipeli
 	let changed = true;
 	while(changed) {
 		changed = false;
-		for(const elem of [...decoratorsOfLastOthers]) {
+		for(const elem of decoratorsOfLastOthers) {
 			const step = stepMap.get(elem) as IPipelineStep;
 			if(allDependenciesAreVisited(step, visited)) {
 				decoratorsOfLastOthers.delete(elem);

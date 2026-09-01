@@ -1,0 +1,10 @@
+```{r}
+x <- "the cake is"
+```
+
+```{r child='child.Rmd'}
+```
+
+```{r}
+print(x)
+```

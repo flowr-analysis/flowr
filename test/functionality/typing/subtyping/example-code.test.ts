@@ -8,17 +8,17 @@ import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe('Infer types for longer code snippets', async() => {
 	const knownTypes: Map<string, Set<UnresolvedDataType>> = new Map();
-	
+
 	await loadTurcotteTypes(knownTypes);
 
 	// const signatures = knownTypes.get('sum')?.values().toArray() ?? [];
 	// console.dir(signatures, { depth: null, colors: true });
 	// knownTypes.set('print', new Set([printTypes[1]]));
-	
+
 	await loadTracedTypes(knownTypes);
-	
+
 	const functionType = new RFunctionType(new Map<number | string, DataType>([[0, new RTypeVariable(new RStringType(), new RTypeIntersection())], [1, new RTypeVariable(new RDoubleType(), new RTypeIntersection())], ['price', new RTypeVariable()], ['quantity', new RTypeVariable()]]), new RTypeVariable());
-	
+
 	assertInferredTypes(
 		'cost <- function(price, quantity) sum(price * quantity); cost("5.50€", 2)',
 		knownTypes,

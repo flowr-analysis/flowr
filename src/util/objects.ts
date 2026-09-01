@@ -1,5 +1,9 @@
 import type { DeepPartial, DeepReadonly, DeepRequired } from 'ts-essentials';
+import { guard } from './assert';
 import { jsonReplacer } from './json';
+import { expensiveTrace } from './log';
+import type { ILogObj, Logger } from 'tslog';
+import { FlowrFilter } from '../search/flowr-search-filters';
 
 /**
  * checks if `item` is an object (it may be an array, ...)
@@ -8,22 +12,29 @@ export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
 
-export type MergeableRecord = Record<string, unknown>
-export type MergeableArray = unknown[]
-export type Mergeable = MergeableRecord | MergeableArray
+/**
+ * checks if `item` is a record with keys, i.e. an object that is neither `null` nor an array
+ * @see {@link isObjectOrArray} to allow arrays as well
+ */
+export function isPlainObject(item: unknown): item is Record<string, unknown> {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
+}
+
+export type MergeableRecord = Record<string, unknown>;
+export type MergeableArray = unknown[];
+export type Mergeable = MergeableRecord | MergeableArray;
 type OrReadonly<T> = T | Readonly<T> | DeepReadonly<T>;
 
 /**
  * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
- *
  * @see {@link deepMergeObjectInPlace} to merge into an existing object
  */
-export function deepMergeObject<T extends Mergeable>(base: Required<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): Required<T>
-export function deepMergeObject<T extends Mergeable>(base: DeepRequired<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): DeepRequired<T>
-export function deepMergeObject<T extends Mergeable>(base: OrReadonly<T>, addon?: DeepPartial<T> | Partial<T>): T
-export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
-export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined
+export function deepMergeObject<T extends Mergeable>(base: Required<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): Required<T>;
+export function deepMergeObject<T extends Mergeable>(base: DeepRequired<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): DeepRequired<T>;
+export function deepMergeObject<T extends Mergeable>(base: OrReadonly<T>, addon?: DeepPartial<T> | Partial<T>): T;
+export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable;
+export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined;
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
 	if(!base) {
 		return addon;
@@ -34,22 +45,34 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 		throw new Error('illegal types for deepMergeObject!');
 	}
 
-	assertSameType(base, addon);
+	return deepMergeObjectCore(base, addon, false);
+}
 
-	const result: MergeableRecord = { ...base };
+/**
+ * The merge logic shared by {@link deepMergeObject} and {@link deepMergeObjectInPlace}, `inPlace` decides whether
+ * `base` is written to and returned, or left untouched in favor of a new object/array.
+ */
+function deepMergeObjectCore(base: Mergeable, addon: Mergeable, inPlace: boolean): Mergeable {
+	assertSameType(base, addon);
 
 	const baseIsArray = Array.isArray(base);
 	const addonIsArray = Array.isArray(addon);
 
 	if(!baseIsArray && !addonIsArray) {
+		const result: MergeableRecord = inPlace ? base : { ...base };
 		deepMergeObjectWithResult(addon, base, result);
+		return result;
 	} else if(baseIsArray && addonIsArray) {
-		return [...base, ...addon];
+		if(inPlace) {
+			for(const item of addon) {
+				base.push(item);
+			}
+			return base;
+		}
+		return base.concat(addon);
 	} else {
 		throw new Error('cannot merge object with array!');
 	}
-
-	return result;
 }
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
@@ -76,11 +99,10 @@ function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord
  * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Modifies the `base` object in place and also returns it.
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
- *
  * @see {@link deepMergeObject} to create a new merged object
  */
-export function deepMergeObjectInPlace<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T
-export function deepMergeObjectInPlace<T extends Mergeable>(base: T | undefined, addon?: DeepPartial<T> | Partial<T>): T | undefined
+export function deepMergeObjectInPlace<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T;
+export function deepMergeObjectInPlace<T extends Mergeable>(base: T | undefined, addon?: DeepPartial<T> | Partial<T>): T | undefined;
 export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
 	if(!base) {
 		return addon;
@@ -91,20 +113,7 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 		throw new Error('illegal types for deepMergeObjectInPlace!');
 	}
 
-	assertSameType(base, addon);
-
-	const baseIsArray = Array.isArray(base);
-	const addonIsArray = Array.isArray(addon);
-
-	if(!baseIsArray && !addonIsArray) {
-		deepMergeObjectWithResult(addon, base, base);
-	} else if(baseIsArray && addonIsArray) {
-		(base).push(...addon);
-	} else {
-		throw new Error('cannot merge object with array!');
-	}
-
-	return base;
+	return deepMergeObjectCore(base, addon, true);
 }
 
 function assertSameType(base: unknown, addon: unknown): void {
@@ -116,11 +125,11 @@ function assertSameType(base: unknown, addon: unknown): void {
 type Defined<T> = Exclude<T, undefined>;
 type DefinedRecord<T> = {
 	[K in keyof T as T[K] extends undefined ? never : K]: Defined<T[K]>;
-}
+};
 
-export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T>
-export function compactRecord(record: undefined): undefined
-export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined
+export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T>;
+export function compactRecord(record: undefined): undefined;
+export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined;
 /** from a record take only the keys that are not undefined */
 export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined {
 	if(record === undefined) {
@@ -133,4 +142,186 @@ export function compactRecord<T extends Record<string, unknown>>(record: T | und
 		}
 	}
 	return result as DefinedRecord<T>;
+}
+
+type Primitive =
+	| string
+	| number
+	| boolean
+	| bigint
+	| symbol
+	| null
+	| undefined
+	| Date
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+	| Function;
+
+/**
+ * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
+ * `never` whenever the path names nothing.
+ */
+export type ValueAtPath<T, Path extends string> =
+	Path extends `${infer Key}.${infer Rest}`
+		? Key extends keyof T ? ValueAtPath<NonNullable<T[Key]>, Rest> : never
+		: Path extends keyof T ? T[Path] : never;
+
+/**
+ * Every path into `T`, as a union of string literals, so that an editor can complete them.
+ *
+ * The paths are built from the leaves up rather than by carrying a prefix down: a prefix that grows with the
+ * recursion costs enough instantiations that TypeScript gives up and hands back `any`, which type-checks
+ * everything and completes nothing. `Depth` bounds it whatever the shape of `T`.
+ */
+type OneLess = [never, 0, 1, 2, 3, 4, 5, 6, 7];
+
+export type AutocompletablePaths<T, Depth extends number = 6> =
+	[Depth] extends [never]
+		? never
+		: T extends Primitive | readonly unknown[]
+			? never
+			: {
+				[K in keyof T & string]:
+				| K
+				| (NonNullable<T[K]> extends Primitive | readonly unknown[]
+					? never
+					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
+			}[keyof T & string];
+
+/**
+ * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
+ */
+export function deepClonePreserveUnclonable<T>(obj: T): T {
+	if(typeof obj !== 'object' || obj === null) {
+		return obj;
+	} else if(Array.isArray(obj)) {
+		return obj.map(deepClonePreserveUnclonable) as unknown as T;
+	} else if(obj instanceof Date) {
+		return new Date(obj.getTime()) as unknown as T;
+	} else if(obj instanceof Map) {
+		return new Map(obj.entries().map(([k, v]) => [deepClonePreserveUnclonable(k), deepClonePreserveUnclonable(v)])) as unknown as T;
+	} else if(obj instanceof Set) {
+		return new Set(obj.values().map(deepClonePreserveUnclonable)) as unknown as T;
+	} else {
+		const result: Record<string, unknown> = {};
+		for(const key of Object.keys(obj)) {
+			result[key] = deepClonePreserveUnclonable((obj as Record<string, unknown>)[key]);
+		}
+		return result as T;
+	}
+}
+
+/**
+ * Compares the two passed objects deeply using the loose comparison system designed for the {@link FlowrFilter.MatchesEnrichment}. For this system in use, see {@link FlowrFilter.MatchesEnrichment} in use.
+ * @param obj        - The real object which we want to test against.
+ * @param expected   - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
+ * @param arrayMatch - For array entries, the expected value in {@link test} is compared against each array entry in the real value. This property determines whether every element in the array has to match, or only some. If unset, this defaults to `some`.
+ * @param logger     - The logger to use for trace debugging.
+ */
+export function looselyCompareObjects(obj: Record<string, unknown>, expected: Record<string, unknown>, arrayMatch?: 'some' | 'every', logger?: Logger<ILogObj>): boolean {
+	expensiveTrace(logger, () => `Comparing ${JSON.stringify(obj)} against ${JSON.stringify(expected)}`);
+
+	for(const [expectedKey, expectedValue] of Object.entries(expected)) {
+		const realValue = obj[expectedKey];
+		if(!realValue) {
+			expensiveTrace(logger, () => `Real value ${JSON.stringify(realValue)} does not exist for expected key ${expectedKey}`);
+			return false;
+		}
+
+		if(Array.isArray(realValue)) {
+			const match = typeof expectedValue === 'object' ? expectedValue instanceof RegExp ?
+				// if we expect a regular expression but an array is supplied, test each value
+				(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
+				// if we expect an object that is not a regular expression, match against our expected structure
+				(value: unknown) => looselyCompareObjects(value as Record<string, unknown>, expectedValue as Record<string, unknown>, arrayMatch, logger) :
+				// in any other case (primitives!), match against the exact value
+				(value: unknown) => expectedValue === value;
+			if(!(arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
+				expensiveTrace(logger, () => `Array ${JSON.stringify(realValue)} does not match expected value ${JSON.stringify(expectedValue)} (array match ${arrayMatch})`);
+				return false;
+			}
+		} else if(typeof realValue === 'object') {
+			// for objects, we recursively match
+			if(!looselyCompareObjects(realValue as Record<string, unknown>, expectedValue as Record<string, unknown>, arrayMatch, logger)) {
+				expensiveTrace(logger, () => `Object ${JSON.stringify(realValue)} does not match expected object ${JSON.stringify(expectedValue)}`);
+				return false;
+			}
+		} else if(expectedValue instanceof RegExp) {
+			// for anything else, we match with our regular expression or string
+			// (arrays and objects are handled above, so only primitives reach this point)
+			const realPrimitive: Primitive = realValue as Primitive;
+			if(!expectedValue.test(typeof realPrimitive === 'string' ? realPrimitive : String(realPrimitive))) {
+				expensiveTrace(logger, () => `Value ${JSON.stringify(realValue)} does not match expected regular expression ${expectedValue}`);
+				return false;
+			}
+		} else if(typeof expectedValue !== 'object') {
+			if(expectedValue !== realValue) {
+				expensiveTrace(logger, () => `Value ${JSON.stringify(realValue)} does not match expected string ${JSON.stringify(expectedValue)}`);
+				return false;
+			}
+		}
+	}
+
+	expensiveTrace(logger, () => `Object ${JSON.stringify(obj)} matches ${JSON.stringify(expected)}`);
+	return true;
+}
+
+/** Segments that would let a dotted path reach into the prototype chain. */
+const magicPathSegments = new Set(['__proto__', 'prototype', 'constructor']);
+
+/**
+ * Splits a dot-separated path into its segments, turning integral segments into numbers
+ * so that `a.0.b` indexes an array rather than an object with the key `'0'`.
+ */
+function pathSegments(path: string): (string | number)[] {
+	return path.split('.').map(segment => {
+		guard(!magicPathSegments.has(segment), () => `refusing to walk the magic property '${segment}' in path '${path}'`);
+		const asInt = parseInt(segment);
+		return String(asInt) === segment ? asInt : segment;
+	});
+}
+
+/**
+ * Reads the value at the given dot-separated `path` of `obj` (e.g. `solver.sigdb.additionalPaths`),
+ * or `undefined` if any segment along the way is missing.
+ * @see {@link setOnPath} for the counterpart that writes such a path
+ */
+export function getOnPath(obj: unknown, path: string): unknown {
+	let at: unknown = obj;
+	for(const segment of pathSegments(path)) {
+		if(at === null || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, segment)) {
+			return undefined;
+		}
+		at = (at as Record<string | number, unknown>)[segment];
+	}
+	return at;
+}
+
+/**
+ * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
+ * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * @see {@link getOnPath} for the counterpart that reads such a path
+ */
+export function setOnPath(obj: object, path: string, value: unknown): void {
+	const segments = pathSegments(path);
+	let at = obj as Record<string | number, unknown>;
+	for(let i = 0; i < segments.length - 1; i++) {
+		const segment = segments[i];
+		if(at[segment] === undefined) {
+			at[segment] = typeof segments[i + 1] === 'number' ? [] : {};
+		}
+		at = at[segment] as Record<string | number, unknown>;
+	}
+	at[segments[segments.length - 1]] = value;
+}
+
+/**
+ * The members of an enum as name-value pairs.
+ * A numeric enum maps its values back to their names as well, which this leaves out.
+ * @example
+ * ```ts
+ * enumMembers(CfgVertexType) // [['Statement', 1], ['Expression', 2], ['Block', 3]]
+ * ```
+ */
+export function enumMembers<T extends object>(enumObject: T): [name: string, value: T[keyof T]][] {
+	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
 }

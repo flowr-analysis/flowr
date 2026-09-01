@@ -3,23 +3,73 @@
 /* v8 ignore next */
 import { flowrVersion } from './version';
 
+/**
+ * Verifies, that the given code path is never reached.
+ * @example
+ * ```ts
+ * type Shape = Circle | Square;
+ * function area(s: Shape): number {
+ *   switch(s.type) {
+ *     case 'circle': return Math.PI * s.radius ** 2;
+ *     case 'square': return s.sideLength ** 2;
+ *     default:       return assertUnreachable(s); // ensures that all cases are covered
+ *   }
+ * }
+ * ```
+ */
 export function assertUnreachable(x: never): never {
 	throw new Error(`Unexpected object: ${JSON.stringify(x)}`);
 }
 
-export function isNotUndefined<T>(x: T | undefined): x is T {
+/**
+ * Verifies that the given value is not undefined.
+ * This especially helps with a `.filter`
+ * @see {@link isUndefined}
+ * @see {@link isNotNull}
+ * @example
+ * ```ts
+ * const values: (number | undefined)[] = [1, 2, undefined, 4];
+ * const definedValues: number[] = values.filter(isNotUndefined);
+ * // definedValues is now of type number[]
+ * ```
+ */
+export function isNotUndefined<T>(this: void, x: T | undefined): x is T {
 	return x !== undefined;
 }
 
-export function isUndefined<T>(x: T | undefined): x is undefined {
+/**
+ * Verifies that the given value is undefined.
+ * This especially helps with a `.filter`
+ * @see {@link isNotUndefined}
+ * @see {@link isNotNull}
+ * @example
+ * ```ts
+ * const values: (number | undefined)[] = [1, 2, undefined, 4];
+ * const undefinedValues: undefined[] = values.filter(isUndefined);
+ * // undefinedValues is now of type undefined[]
+ * ```
+ */
+export function isUndefined<T>(this: void, x: T | undefined): x is undefined {
 	return x === undefined;
 }
 
-export function isNotNull<T>(x: T | null): x is T {
+/**
+ * Verifies that the given value is not null.
+ * This especially helps with a `.filter`
+ * @see {@link isUndefined}
+ * @see {@link isNotUndefined}
+ * @example
+ * ```ts
+ * const values: (number | null)[] = [1, 2, null, 4];
+ * const nonNullValues: number[] = values.filter(isNotNull);
+ * // nonNullValues is now of type number[]
+ * ```
+ */
+export function isNotNull<T>(this: void, x: T | null): x is T {
 	return x !== null;
 }
 
-function prepareStack(stack: string | undefined): string {
+function prepareStack(this: void, stack: string | undefined): string {
 	if(!stack) {
 		return 'No stack trace available';
 	}
@@ -36,7 +86,10 @@ function prepareStack(stack: string | undefined): string {
 	return lines.map(l => l.replaceAll(/\(\/.*(src|test)/g, '(<>/$1')).join('\n');
 }
 
-function getGuardIssueUrl(message: string): string {
+/**
+ * Generates a GitHub issue URL for reporting guard errors
+ */
+export function getGuardIssueUrl(message: string): string {
 	const body = encodeURIComponent(`<!-- Please describe your issue in more detail below! -->
 
 
@@ -48,7 +101,7 @@ node version: ${process.version}
 node arch: ${process.arch}
 node platform: ${process.platform}
 message: \`${message}\`
-stack trace:\n\`\`\`\n${prepareStack(new Error().stack)}\n\`\`\`
+stack trace:\n\`\`\`\n${prepareStack(new Error('stack capture for the issue report').stack)}\n\`\`\`
 
 ---
 	`).replaceAll('(', '%28').replaceAll(')', '%29').replaceAll('-', '%2D');
@@ -62,11 +115,11 @@ class GuardError extends Error {
 	}
 }
 
-export type GuardMessage = string | (() => string)
+export type GuardMessage = string | (() => string);
 
 /**
  * @param assertion - will be asserted
- * @param message - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
+ * @param message   - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
  * @throws GuardError - if the assertion fails
  */
 export function guard(assertion: unknown | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {

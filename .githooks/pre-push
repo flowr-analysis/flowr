@@ -8,7 +8,8 @@ set -eu
 
 reset() {
   echo "Cleaning up and return control"
-  rm -r "$flowrtmpdir"
+  # the symlinked node_modules must not be followed when removing the throwaway clone
+  rm -rf "$flowrtmpdir"
   cd "$curdir"
 }
 
@@ -27,7 +28,8 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "Cloning copy..." # cloning obeys gitignore
   git clone . "$flowrtmpdir"
   echo "Keep installed packages..."
-  cp -r node_modules/ "$flowrtmpdir/node_modules"
+  # a symlink keeps the push fast, the clone only needs to run the installed tools
+  ln -s "$(pwd)/node_modules" "$flowrtmpdir/node_modules" 2>/dev/null || cp -r node_modules/ "$flowrtmpdir/node_modules"
   cd "$flowrtmpdir"
 
   git reset --hard
@@ -35,12 +37,39 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 # check if the latest commit starts with "[release"
-if git log -1 --pretty=%B | grep -q "\[release"; then
+# no `grep -q` anywhere in a pipeline: it stops at the first hit and the write side dies of a broken pipe
+if git log -1 --pretty=%B | grep -- "\[release" > /dev/null; then
   echo "Latest commit is a release commit, doing full checkup..."
   $NPM_CMD run checkup
 else
   echo "Linting project (local mode)..."
-  $NPM_CMD run lint-local
+  $NPM_CMD run lint-local -- --fix
+  if [ -n "$(git status --porcelain)" ]; then
+    if $unclean; then
+      # we linted a disposable clone, so copy fixes back before it gets removed by the reset trap;
+      # skip files you already have uncommitted changes for, to avoid clobbering your edits
+      # -z keeps every path whole and unquoted, which "status --porcelain" does not do for a path
+      # with a space in it; the newlines are only there so grep and read can work line by line
+      dirtyFiles="$({ git -C "$curdir" diff --name-only -z HEAD; git -C "$curdir" ls-files -o --exclude-standard -z; } | tr '\0' '\n')"
+      # read line by line, a plain "for f in $(...)" splits paths that contain spaces
+      git diff --name-only -z | tr '\0' '\n' | while IFS= read -r f; do
+        if printf '%s\n' "$dirtyFiles" | grep -xF -- "$f" > /dev/null; then
+          echo "  - skipping $f (you have uncommitted changes to it, fix it manually)"
+        else
+          mkdir -p "$(dirname "$curdir/$f")"
+          cp -f "$f" "$curdir/$f"
+          echo "  - copied lint fix for $f back to your working tree"
+        fi
+      done
+    fi
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║  lint --fix changed files --- please review, stage, and      ║"
+    echo "║  recommit before pushing.                                    ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo ""
+    exit 1
+  fi
 fi
 
 

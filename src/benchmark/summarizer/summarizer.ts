@@ -8,8 +8,7 @@ import { processRunMeasurement, processSummarizedRunMeasurement } from './first-
 import { processNextUltimateSummary, summarizeAllUltimateStats } from './second-phase/process';
 import { writeGraphOutput } from './second-phase/graph';
 import path from 'path';
-import type { CommonSummarizerConfiguration } from '../../util/summarizer';
-import { Summarizer } from '../../util/summarizer';
+import { type CommonSummarizerConfiguration, Summarizer } from '../../util/summarizer';
 import { getAllFiles, readLineByLine, readLineByLineSync } from '../../util/files';
 import { jsonReplacer } from '../../util/json';
 import { ultimateStats2String } from '../stats/print';
@@ -49,7 +48,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		let fileNum = 0;
 		const outputPathsPerRun = new DefaultMap<number, string[]>(() => []);
 		// recursively find all files in all the input path subdirectories
-		for await (const file of getAllFiles(this.config.inputPath)){
+		for await (const file of getAllFiles(this.config.inputPath)) {
 			const outputDir = path.join(this.config.intermediateOutputPath, path.relative(this.config.inputPath, file));
 			fs.mkdirSync(outputDir, { recursive: true });
 			const textOutputPath = path.join(outputDir, 'summary.log');
@@ -72,7 +71,6 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.log('Done summarizing');
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- just to obey the structure
 	public async summarizePhase(): Promise<UltimateSlicerStats> {
 		this.log(`Summarizing all summaries from ${this.summaryFile()}...`);
 
@@ -87,7 +85,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		console.log(ultimateStats2String(ultimate));
 
 		if(this.config.graphOutputPath) {
-			writeGraphOutput(ultimate, this.config.graphOutputPath);
+			await writeGraphOutput(ultimate, this.config.graphOutputPath);
 		}
 		return ultimate;
 	}

@@ -1,28 +1,33 @@
-import { withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { describe } from 'vitest';
 import { assertCfg } from '../../_helper/controlflow/assert-control-flow-graph';
 import { ControlFlowGraph } from '../../../../src/control-flow/control-flow-graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { canReach } from '../../../../src/control-flow/simple-visitor';
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+
+assumeLoadedPackages('foreach', 'rlang');
 
 interface CfgDeadCodeArgs {
 	readonly reachableFromStart:   readonly NodeId[];
 	readonly unreachableFromStart: readonly NodeId[];
+	readonly ids?:                 readonly SupportedFlowrCapabilityId[];
 }
 
 describe('Control Flow Graph', withTreeSitter(parser => {
-	function assertDeadCode(code: string, { reachableFromStart, unreachableFromStart }: CfgDeadCodeArgs): void {
+	function assertDeadCode(code: string, { reachableFromStart, unreachableFromStart, ids }: CfgDeadCodeArgs): void {
 		assertCfg(parser, code, {
 			graph: new ControlFlowGraph()
 		}, {
 			expectIsSubgraph:     true,
 			simplificationPasses: ['analyze-dead-code'],
 			/** we break unreachable edges for this test, the whole point is for not all of them being reachable */
-			excludeProperties:    ['entry-reaches-all', 'exit-reaches-all'],
+			excludeProperties:    ['entry-reaches-all', 'exit-reaches-all', 'single-entry-and-exit'],
+			testIds:              ids,
 			additionalAsserts:    (cfg, ast) => {
 				for(const [n, i] of [...reachableFromStart.map(n => [n, false] as const), ...unreachableFromStart.map(n => [n, true] as const)]) {
-					const resolved = tryResolveSliceCriterionToId(n, ast.idMap) ?? n;
+					const resolved = SlicingCriterion.tryParse(n, ast.idMap) ?? n;
 					if(i === canReach(cfg.graph, cfg.entryPoints, resolved)) {
 						throw new Error(`Expected node ${n} (${resolved}) to be ${i ? 'unreachable' : 'reachable'} from the start (${JSON.stringify(cfg.entryPoints)}), but it is not.`);
 					}
@@ -85,7 +90,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		])('code after return', ({ prefix, loop }) => {
 			const verbs = loop ? ['return(1)', 'break', 'next', 'stop(1)', 'stopifnot(FALSE)'] : ['return(1)', 'stop(1)', 'stopifnot(FALSE)'];
 			for(const verb of verbs) {
-				assertDeadCode(`${prefix}{ foo; ${verb}; 2 }`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
+				assertDeadCode(`function() { ${prefix}{ foo; ${verb}; 2 } }`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
 			}
 		});
 
@@ -103,11 +108,49 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			for(const outer of outers) {
 				for(const inner1 of inners) {
 					for(const inner2 of inners) {
-						assertDeadCode(`${outer} { 1; if(u) ${inner1} else ${inner2}; 2 }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
-						assertDeadCode(`${outer} { 1; if(TRUE) ${inner1} else ${inner2}; 2 }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
+						// we add a function wrapper for return
+						assertDeadCode(`function() { ${outer} { 1; if(u) ${inner1} else ${inner2}; 2 } }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
+						assertDeadCode(`function() { ${outer} { 1; if(TRUE) ${inner1} else ${inner2}; 2 } }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
 					}
 				}
 			}
+		});
+	});
+	describe('Exception Handling', () => {
+		describe('Simple [stop] instructions', () => {
+			assertDeadCode('x <- 1\nstop()\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nstop(TRUE)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nstop(FALSE)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nstop(msg)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nabort()\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+		});
+
+		describe('required-argument idiom', () => {
+			assertDeadCode('f <- function(y = stop("y is required")) {\n  x <- 1\n  x\n}', {
+				reachableFromStart: ['2@1', '3@x'], unreachableFromStart: [], ids: ['exceptions-and-errors']
+			});
+		});
+	});
+
+	describe('foreach loop bodies', () => {
+		/*
+		 * The dataflow analysis forces the arguments of an unknown infix operator, so the `return` escapes the
+		 * `%dopar%` and everything behind it is dead to it. The control flow is a view on that graph and says
+		 * the same; teaching the analysis that a foreach body is evaluated elsewhere is what would bring the
+		 * code after the loop back.
+		 */
+		assertDeadCode('f <- function(x) {\n  foreach(i = 1:3) %dopar% {\n    return(i)\n  }\n  after <- 1\n  after\n}', {
+			reachableFromStart: [], unreachableFromStart: ['5@after', '6@after']
+		});
+	});
+
+	describe('next and break in loops', () => {
+		assertDeadCode(`for(i in v) {
+    next
+}
+print("dead")`, {
+			reachableFromStart:   ['1@i', '2@next', '4@print'],
+			unreachableFromStart: []
 		});
 	});
 }));

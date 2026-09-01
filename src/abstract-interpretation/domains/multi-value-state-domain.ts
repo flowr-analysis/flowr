@@ -1,0 +1,86 @@
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Bottom } from './lattice';
+import { type AbstractProduct, type PartialProduct, type ProductReduction, PartialProductDomain } from './partial-product-domain';
+import { type StateDomainLift, StateAbstractDomain } from './state-abstract-domain';
+
+/**
+ * A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.
+ * @template Product - Type of the abstract product of the multi-value domain combining multiple abstract values
+ * @see {@link NodeId} for the node IDs of the AST nodes
+ */
+export class MultiValueStateDomain<Product extends PartialProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
+	extends StateAbstractDomain<MultiValueDomain<Product>, Value> {
+
+	constructor(value: Value, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
+		super(value, new MultiValueDomain(domain, domain, reductions));
+	}
+
+	public create(value: StateDomainLift<MultiValueDomain<Product>>): this {
+		return new MultiValueStateDomain(value, this.domain.domain, this.domain.reductions) as this;
+	}
+
+	public getValue<Key extends keyof Product>(node: NodeId, property: Key): Product[Key] | undefined {
+		if(this.value === Bottom) {
+			return this.domain.value[property]?.bottom() as Product[Key];
+		}
+		return this.get(node)?.value[property];
+	}
+
+	public hasValue(node: NodeId, property: keyof Product): boolean {
+		return this.value !== Bottom && this.get(node)?.value[property] !== undefined;
+	}
+
+	public setValue<Key extends keyof Product>(node: NodeId, property: Key, value: Product[Key]): void {
+		if(this.value === Bottom) {
+			return;
+		}
+		const oldValue = this.get(node);
+		const newValue = { ...oldValue?.value ?? {}, [property]: value };
+		this.set(node, this.domain.create(newValue as Product));
+	}
+
+	public removeValue<Key extends keyof Product>(node: NodeId, property: Key): void {
+		if(this.value === Bottom) {
+			return;
+		}
+		const oldValue = this.get(node);
+
+		if(oldValue !== undefined) {
+			const { [property]: _value, ...newValue } = oldValue.value;
+			this.set(node, this.domain.create(newValue as Product));
+		}
+	}
+
+	public entries(): readonly [NodeId, MultiValueDomain<Product>][];
+	public entries<Key extends keyof Product>(property: Key): readonly [NodeId, Product[Key]][];
+	public entries<Key extends keyof Product>(property?: Key): readonly [NodeId, MultiValueDomain<Product>][] | readonly [NodeId, Product[Key]][] {
+		if(property === undefined) {
+			return super.entries();
+		} else if(this.value === Bottom) {
+			return [];
+		}
+		return super.entries().map(([id, domain]) => [id, domain.value[property]]);
+	}
+}
+
+/**
+ * A multi-value abstract domain as a (partial) product domain that combines multiple abstract domains.
+ * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
+ * @template Product - Type of the abstract product of the multi-value domain combining multiple abstract values
+ * @see {@link MultiValueStateDomain} for a state abstract domain of a multi-value domain
+ */
+export class MultiValueDomain<Product extends PartialProduct>
+	extends PartialProductDomain<Product> {
+
+	constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
+		super(value, domain, reductions);
+	}
+
+	public create(value: Product): this {
+		return new MultiValueDomain(value, this.domain, this.reductions) as this;
+	}
+
+	public static top<Product extends AbstractProduct>(domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []): MultiValueDomain<Product> {
+		return new MultiValueDomain({} as Product, domain, reductions);
+	}
+}

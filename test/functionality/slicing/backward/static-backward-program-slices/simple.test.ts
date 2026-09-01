@@ -1,37 +1,47 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { describe } from 'vitest';
-import { amendConfig, defaultConfigOptions } from '../../../../../src/config';
 
-describe.sequential('Simple', withShell(shell => {
-	for(const withPointer of [true, false]) {
-		describe(`Constant assignments (${withPointer ? 'with' : 'without'} pointer tracking)`, () => {
-			const config = amendConfig(defaultConfigOptions, c => {
-				c.solver.pointerTracking = withPointer;
-				return c;
-			});
+assumeLoadedPackages('data.table');
 
-			for(const i of [1, 2, 3]) {
-				assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
-					shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`, config
-				);
-			}
-			assertSliced(label('slice constant assignment with print', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell,'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)', config
+describe('Simple', { concurrent: false }, withShell(shell => {
+	describe('Constant assignments', () => {
+
+		for(const i of [1, 2, 3]) {
+			assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+				shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
 			);
-			assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx', config
-			);
-			assertSliced(label('using setnames', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['3@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nx', config
-			);
-			assertSliced(label('using setnames but wanting another', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell,'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['4@print'], 'y <- 3\nprint(y)', config
-			);
-		});
-	}
+		}
+		assertSliced(label('slice constant assignment with print', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)'
+		);
+		assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx'
+		);
+		// the ids the slice consists of: R's own `<-` and `print` are no nodes of the program and must not appear
+		assertSliced(label('slice contains no built-in ids', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- 2\nprint(x)', ['2@print'], ['1@x', '1:6', '1@<-', '2@x', '2@print']
+		);
+		assertSliced(label('using setnames', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['3@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nx'
+		);
+		assertSliced(label('using setnames but wanting another', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['4@print'], 'y <- 3\nprint(y)'
+		);
+	});
+	describe('Nested assignments', () => {
+		/* the value of a left assignment is its rhs, so an unselected target may be dropped */
+		assertSliced(label('drop the unused outer target', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+			shell, 'a <- b <- 4\nb', ['2@b'], 'b <- 4\nb',
+			{ expectedOutput: '[1] 4', expectedSliceOutput: '[1] 4' }
+		);
+		assertSliced(label('keep both targets', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+			shell, 'a <- b <- 4\na', ['2@a'], 'a <- b <- 4\na',
+			{ expectedOutput: '[1] 4', expectedSliceOutput: '[1] 4' }
+		);
+	});
 	describe('Assignments with the assign function', () => {
 		assertSliced(label('assign to string', []),
 			shell, 'x <- "a"\nassign(x, 3)\nprint(a)', ['3@a'], 'x <- "a"\nassign(x, 3)\na'
@@ -41,6 +51,25 @@ describe.sequential('Simple', withShell(shell => {
 		);
 		assertSliced(label('assign to other string', []),
 			shell, 'x <- "b"\nassign(x, 3)\nprint(a)', ['3@a'], 'a'
+		);
+	});
+	describe('Model formulae', () => {
+		/* the lhs of a formula is never evaluated, but it is part of the formula object and must not be dropped */
+		assertSliced(label('compound rhs keeps the lhs', ['name-normal', 'numbers', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- y ~ x + 1\nn <- length(f)\nn', ['3@n'], 'f <- y ~ x + 1\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSliced(label('simple formula', ['name-normal', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- y ~ x\nn <- length(f)\nn', ['3@n'], 'f <- y ~ x\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSliced(label('call in the lhs of a formula', ['name-normal', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- log(y) ~ x\nn <- length(f)\nn', ['3@n'], 'f <- log(y) ~ x\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSliced(label('one-sided formula', ['name-normal', 'numbers', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- ~ x + 1\nn <- length(f)\nn', ['3@n'], 'f <- ~ x + 1\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' }
 		);
 	});
 	describe('Constant conditionals', () => {
@@ -101,6 +130,13 @@ x`, {
 			'rownames(y=x) <- c("w")\nx',
 			['2@x'],
 			'rownames(y=x) <- c("w")\nx'
+		);
+	});
+	describe('Slicing on field with ǹamespace',  () => {
+		assertSliced(label('with namespace', ['namespaces']), shell,
+			'x <- 2\nbase::print(x)',
+			['2@base::print'],
+			'x <- 2\nbase::print(x)'
 		);
 	});
 	describe('Access', () => {
@@ -178,7 +214,7 @@ cat("Product:", product, "\\n")
 `;
 
 		assertSliced(label('Sum lhs in for', capabilities),
-			shell, code, ['8:3'],
+			shell, code, ['8@[1]sum'],
 			`sum <- 0
 w <- 7
 N <- 10
@@ -188,7 +224,7 @@ for(i in 1:(N-1)) sum <- sum + i + w`, {
 		);
 
 		assertSliced(label('Sum rhs in for', capabilities),
-			shell, code, ['8:10'],
+			shell, code, ['8@[2]sum'],
 			`sum <- 0
 w <- 7
 N <- 10
@@ -196,14 +232,14 @@ for(i in 1:(N-1)) sum <- sum + i + w`
 		);
 
 		assertSliced(label('Product lhs in for', capabilities),
-			shell, code, ['9:3'],
+			shell, code, ['9@[1]product'],
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`
 		);
 
 		assertSliced(label('Product rhs in for', capabilities),
-			shell, code, ['9:14'],
+			shell, code, ['9@[2]product'],
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`
@@ -229,6 +265,18 @@ product`
 		assertSliced(label('Top by name', capabilities),
 			shell, code, ['2@sum'],
 			'sum <- 0'
+		);
+	});
+
+	describe('With extend', () => {
+		assertSliced(label('No extend'),
+			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
+			'x <- 2\nx'
+		);
+		assertSliced(label('Enable extend'),
+			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
+			'x <- 2\nprint(x + 3)',
+			{ extendSlice: true }
 		);
 	});
 }));

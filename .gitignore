@@ -1,3 +1,7 @@
+.vscode
+.zed
+
+*.0x/
 *.heapsnapshot
 # docs can be generated from the sources and should not be commited
 doc/
@@ -11,6 +15,7 @@ tmp*log*
 temp*log*
 # benchmark results
 benchmark-*.json
+*.bench.json
 
 ### VisualStudioCode template
 .vscode/*
@@ -696,3 +701,20 @@ test-results.xml
 /test_perf/*/*
 /test_perf/*.json
 .vscode/settings.json
+
+# sigdb bundles in src/data/sigdb/: NONE of the `.br` shards are versioned (they churn and brotli never deltas).
+# Only `sigdb.remote.json` is committed use :signature download
+src/data/sigdb/base.*
+src/data/sigdb/current.*
+src/data/sigdb/full.*
+src/data/sigdb/history.*
+dist/src/data/sigdb/
+
+# decompressed sigdb archives (the reader materializes these into a hash-keyed cache); never commit them anywhere
+*.sigs.ndjson
+*.sigs.ndjson.idx
+
+# the generated signature browser (a few MB); the doc job publishes it to the orphan gh-pages branch
+wiki/sigdb/
+# the playground bundle, built by the doc job onto gh-pages
+wiki/playground/

@@ -1,4 +1,3 @@
-import { extractCfg } from '../../control-flow/extract-cfg';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexValue } from '../../dataflow/graph/vertex';
@@ -14,28 +13,40 @@ import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-
 import { guard } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FunctionArgument } from '../../dataflow/graph/graph';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { CfgEdgeType, CfgVertexType } from '../../control-flow/control-flow-graph';
+import { CfgVertex, CfgVertexType, extractCfg } from '../../control-flow/control-flow-graph';
+import { simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
-import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import { resolve, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeVariable } from './types';
-import { defaultConfigOptions } from '../../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
-export function inferDataTypesWithUnification<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
+/**
+ * Infers a data type for every node of `ast` by unifying types along the control flow, decorating the result
+ * onto the ast (which is mutated and returned).
+ * @param ast          - The normalized ast to type.
+ * @param dataflowInfo - The dataflow of that ast, which the control flow and the origins come from.
+ * @param ctx          - The analyzer context the control flow simplification runs against.
+ */
+export function inferDataTypesWithUnification<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation, ctx: ReadOnlyFlowrAnalyzerContext): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
-	const controlFlowInfo = extractCfg(astWithTypeVars, defaultConfigOptions, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
+	const controlFlowInfo = simplifyControlFlowInformation(
+		extractCfg(dataflowInfo),
+		{ ast: astWithTypeVars, dfg: dataflowInfo.graph, ctx },
+		['unique-cf-sets', 'analyze-dead-code']
+	);
 	const config = {
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,
 		dataflowInfo:         dataflowInfo,
 		dfg:                  dataflowInfo.graph,
 		defaultVisitingOrder: 'forward' as const,
-		flowrConfig:          defaultConfigOptions
+		ctx
 	};
 	const visitor = new TypeInferringCfgGuidedVisitor(config);
 	visitor.start();
@@ -112,7 +123,7 @@ class TypeInferringCfgGuidedVisitor<
 			this.onVisitNode(origin.id);
 		}
 		const node = this.getNormalizedAst(vertex.id);
-		if(node?.type === RType.Argument) {
+		if(RArgument.is(node)) {
 			if(node.value !== undefined) {
 				this.onVisitNode(node.value.info.id);
 			}
@@ -145,17 +156,17 @@ class TypeInferringCfgGuidedVisitor<
 
 	override onVariableUse(data: { vertex: DataflowGraphVertexUse }): void {
 		const isArgumentOfGetCall = this.config.dfg.ingoingEdges(data.vertex.id)?.entries().some(([source, edge]) => {
-			return edgeIncludesType(edge.types, EdgeType.Argument) &&
+			return DfEdge.includesType(edge, EdgeType.Argument) &&
 				(this.config.dfg.getVertex(source)?.origin as string[] | undefined)?.includes('builtin:get');
 		}) ?? false;
 		if(isArgumentOfGetCall) {
 			// If the variable use occurs through a `get` call, it is already handled by the `onGetCall` method
 			return;
 		}
-		
+
 		const node = this.getNormalizedAst(data.vertex.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
-		if(node.type === RType.Argument) {
+		if(RArgument.is(node)) {
 			if(node.value !== undefined) {
 				node.info.typeVariable.unify(node.value.info.typeVariable);
 			}
@@ -174,12 +185,12 @@ class TypeInferringCfgGuidedVisitor<
 		if(data.target === undefined || data.source === undefined) {
 			return; // Malformed assignment
 		}
-		
+
 		const variableNode = this.getNormalizedAst(data.target);
 		const valueNode = this.getNormalizedAst(data.source);
 		const assignmentNode = this.getNormalizedAst(data.call.id);
 		guard(variableNode !== undefined && valueNode !== undefined && assignmentNode !== undefined, 'Expected AST nodes to be defined');
-		
+
 		variableNode.info.typeVariable.unify(valueNode.info.typeVariable);
 		assignmentNode.info.typeVariable.unify(variableNode.info.typeVariable);
 	}
@@ -187,10 +198,10 @@ class TypeInferringCfgGuidedVisitor<
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
 		const outgoing = this.config.dataflowInfo.graph.outgoingEdges(data.call.id);
 		const callTargets = outgoing?.entries()
-			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
+			.filter(([_target, edge]) => DfEdge.includesType(edge, EdgeType.Calls))
 			.map(([target, _edge]) => target)
 			.toArray();
-		
+
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 
@@ -226,7 +237,7 @@ class TypeInferringCfgGuidedVisitor<
 	override onGetCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		guard(data.call.args.length == 1, 'Expected exactly one argument for get call');
 		const varName = data.call.args.at(0);
-		
+
 		guard(varName !== undefined && varName !== EmptyArgument, 'Expected argument of get call to be defined');
 		const varNameNode = this.getNormalizedAst(varName.nodeId);
 
@@ -254,7 +265,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
 		const variableNode = this.getNormalizedAst(data.variable.nodeId);
 		const vectorNode = this.getNormalizedAst(data.vector.nodeId);
-		
+
 		guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
 		variableNode.info.typeVariable.unify(vectorNode.info.typeVariable);
 
@@ -264,7 +275,7 @@ class TypeInferringCfgGuidedVisitor<
 	override onWhileLoopCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, body: FunctionArgument }) {
 		guard(data.condition !== EmptyArgument, 'Expected condition argument to be defined');
 		const conditionNode = this.getNormalizedAst(data.condition.nodeId);
-		
+
 		guard(conditionNode !== undefined, 'Expected condition node to be defined');
 		conditionNode.info.typeVariable.unify(new RLogicalType());
 
@@ -279,41 +290,43 @@ class TypeInferringCfgGuidedVisitor<
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 
+		/* the loop's own vertex is only reached when a path out of the loop exists */
 		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
-		guard(cfgVertex !== undefined && cfgVertex.type === CfgVertexType.Statement, 'Expected statement vertex for loop');
-		const isFinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoingEdges(id)?.size ?? 0), 0) > 0;
+		guard(cfgVertex === undefined || CfgVertex.getType(cfgVertex) === CfgVertexType.Statement, 'Expected statement vertex for loop');
+		const isFinite = cfgVertex !== undefined && (this.config.controlFlow.graph.ingoingEdges(data.call.id)?.size ?? 0) > 0;
 
 		if(isFinite) {
 			node.info.typeVariable.unify(new RNullType());
 		}
 	}
 
-	override onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {
+	override onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, yes: NodeId | undefined, no: NodeId | undefined }) {
 		guard(data.condition !== undefined, 'Expected condition argument to be defined');
 		const conditionNode = this.getNormalizedAst(data.condition);
-		
+
 		guard(conditionNode !== undefined, 'Expected condition node to be defined');
 		conditionNode.info.typeVariable.unify(new RLogicalType());
-		
+
 		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
-		guard(cfgVertex !== undefined && (cfgVertex.type === CfgVertexType.Statement || cfgVertex.type === CfgVertexType.Expression),
+		const cfgVertexType = cfgVertex === undefined ? undefined : CfgVertex.getType(cfgVertex);
+		guard(cfgVertexType === CfgVertexType.Statement || cfgVertexType === CfgVertexType.Expression,
 			'Expected statement or expression vertex for if-then-else');
-		const cfgEndVertexId = cfgVertex.end?.at(0);
-		guard(cfgEndVertexId !== undefined && cfgVertex.end?.length === 1, 'Expected exactly one end vertex for if-then-else');
-		
-		const isThenBranchReachable = this.config.controlFlow.graph.outgoingEdges(data.then ?? cfgEndVertexId)?.values().some((edge) => {
-			return edge.label === CfgEdgeType.Cd && edge.when === RTrue;
-		}) ?? false;
-		const isElseBranchReachable = this.config.controlFlow.graph.outgoingEdges(data.else ?? cfgEndVertexId)?.values().some((edge) =>{
-			return edge.label === CfgEdgeType.Cd && edge.when === RFalse;
-		}) ?? false;
+		const graph = this.config.controlFlow.graph;
+		/* the dead code analysis cuts the edge into a branch that is never taken; an absent branch is taken when something other than its sibling joins at the if */
+		const isBranchReachable = (entry: NodeId | undefined, other: NodeId | undefined) =>
+			entry !== undefined
+				? (graph.ingoingEdges(entry)?.size ?? 0) > 0
+				: graph.ingoingEdges(data.call.id)?.keys().some(id => id !== other) ?? false;
+
+		const isThenBranchReachable = isBranchReachable(data.yes, data.no);
+		const isElseBranchReachable = isBranchReachable(data.no, data.yes);
 
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
-		
+
 		if(isThenBranchReachable) {
-			if(data.then !== undefined) {	
-				const thenNode = this.getNormalizedAst(data.then);
+			if(data.yes !== undefined) {
+				const thenNode = this.getNormalizedAst(data.yes);
 				guard(thenNode !== undefined, 'Expected then node to be defined');
 				node.info.typeVariable.unify(thenNode.info.typeVariable);
 			} else {
@@ -322,8 +335,8 @@ class TypeInferringCfgGuidedVisitor<
 			}
 		}
 		if(isElseBranchReachable) {
-			if(data.else !== undefined) {
-				const elseNode = this.getNormalizedAst(data.else);
+			if(data.no !== undefined) {
+				const elseNode = this.getNormalizedAst(data.no);
 				guard(elseNode !== undefined, 'Expected else node to be defined');
 				node.info.typeVariable.unify(elseNode.info.typeVariable);
 			} else {
@@ -332,7 +345,7 @@ class TypeInferringCfgGuidedVisitor<
 			}
 		}
 	}
-	
+
 	override onQuoteCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		guard(data.call.args.length === 1, 'Expected exactly one argument for quote call');
 		const arg = data.call.args.at(0);
@@ -346,10 +359,10 @@ class TypeInferringCfgGuidedVisitor<
 	override onEvalFunctionCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		guard(data.call.args.length === 1, 'Expected exactly one argument for eval call');
 		const arg = data.call.args.at(0);
-		
+
 		guard(arg !== undefined && arg !== EmptyArgument, 'Expected argument of eval call to be defined');
 		const argNode = this.getNormalizedAst(arg.nodeId);
-		
+
 		guard(argNode !== undefined, 'Expected argument node to be defined');
 		argNode.info.typeVariable.unify(new RLanguageType());
 	}
@@ -373,7 +386,7 @@ class TypeInferringCfgGuidedVisitor<
 	override onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
-		
+
 		const args = data.call.args.filter((arg) => arg !== EmptyArgument);
 		if(args.length === 0) {
 			node.info.typeVariable.unify(new RNullType());
@@ -388,7 +401,7 @@ class TypeInferringCfgGuidedVisitor<
 
 	override onFunctionDefinition(data: { vertex: DataflowGraphVertexFunctionDefinition }): void {
 		const node = this.getNormalizedAst(data.vertex.id);
-		guard(node !== undefined && node.type === RType.FunctionDefinition, 'Expected AST node to be a function definition');
+		guard(RFunctionDefinition.is(node), 'Expected AST node to be a function definition');
 
 		const functionType = new UnresolvedRFunctionType();
 		node.info.typeVariable.unify(functionType);
@@ -405,7 +418,7 @@ class TypeInferringCfgGuidedVisitor<
 				functionType.getParameterType(index).unify(param.info.typeVariable);
 			}
 			functionType.getParameterType(param.name.lexeme).unify(param.info.typeVariable);
-			
+
 			if(param.defaultValue !== undefined) {
 				param.info.typeVariable.unify(param.defaultValue.info.typeVariable);
 			}
@@ -434,7 +447,7 @@ class TypeInferringCfgGuidedVisitor<
 
 		const outgoing = this.config.dataflowInfo.graph.outgoingEdges(data.call.id);
 		const evalCandidates = outgoing?.entries()
-			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Returns))
+			.filter(([_target, edge]) => DfEdge.includesType(edge, EdgeType.Returns))
 			.map(([target, _edge]) => target)
 			.toArray();
 
@@ -460,7 +473,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
 		const firstArgType = firstArgNode.info.typeVariable;
 		const firstArgBoundType = firstArgType.find();
-		
+
 		switch(data.call.name) {
 			case '[':
 				// If the access call is a `[` operation, we can assume that the it returns a subset

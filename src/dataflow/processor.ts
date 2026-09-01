@@ -1,66 +1,77 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import type { ControlDependency, DataflowInformation } from './info';
+import type { ControlDependency } from './info';
+import { DataflowInformation } from './info';
+import { activeDataflowBudget } from '../gas';
 import type {
 	NormalizedAst,
 	ParentInformation,
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { IEnvironment, REnvironmentInformation } from './environments/environment';
-import type { RParseRequest } from '../r-bridge/retriever';
+import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
-import type { FlowrConfigOptions } from '../config';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface DataflowProcessorInformation<OtherInfo> {
-	readonly parser:              Parser<KnownParserType>
-    /**
-     * Initial and frozen ast-information
-     */
-	readonly completeAst:         NormalizedAst<OtherInfo>
+	readonly parser:               Parser<KnownParserType>
 	/**
-     * Correctly contains pushed local scopes introduced by `function` scopes.
-     * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
-     */
-	readonly environment:         REnvironmentInformation
-	/**
-     * Other processors to be called by the given functions
-     */
-	readonly processors:          DataflowProcessors<OtherInfo>
-	/**
-	 * The {@link RParseRequests} that is currently being parsed
+	 * Initial and frozen ast-information
 	 */
-	readonly currentRequest:      RParseRequest
+	readonly completeAst:          NormalizedAst<OtherInfo>
 	/**
-	 * The chain of {@link RParseRequests} that lead to the {@link currentRequest}.
-	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
+	 * Correctly contains pushed local scopes introduced by `function` scopes.
+	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
 	 */
-	readonly referenceChain:      RParseRequest[]
+	readonly environment:          REnvironmentInformation
+	/**
+	 * Other processors to be called by the given functions
+	 */
+	readonly processors:           DataflowProcessors<OtherInfo>
+	/**
+	 * The chain of file paths that lead to this inclusion.
+	 * The most recent (last) entry is expected to always be the current one.
+	 */
+	readonly referenceChain:       (string | undefined)[]
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
-	readonly controlDependencies: ControlDependency[] | undefined
+	readonly cds:                  ControlDependency[] | undefined
 	/**
-	 * The built-in environment
+	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
-	readonly builtInEnvironment:  IEnvironment;
+	readonly ctx:                  FlowrAnalyzerContext
 	/**
-	 * The flowr configuration used for environment seeding, and precision control
+	 * If set, the function call with this id is known to resolve to built-ins only,
+	 * so its vertex needs no environment snapshot (it would be discarded by markAsOnlyBuiltIn anyway).
 	 */
-	readonly flowrConfig:			      FlowrConfigOptions
+	readonly builtInNoEnv?:        NodeId
+	/**
+	 * Escape hatch for hot recursive paths.
+	 * When set and its `rootId` matches the function call currently being processed by {@link processAllArguments},
+	 * its `info` is used as the already-processed first argument instead of processing that argument again.
+	 */
+	readonly precomputedFirstArg?: { readonly rootId: NodeId, readonly info: DataflowInformation }
+	/**
+	 * Companion to {@link precomputedFirstArg}: when set and its `nodeId` matches the node
+	 * {@link processFunctionArgument} is about to process as an argument's value, its `info` is used instead of
+	 * processing (and recursing into) that node again. This allows to separate arg wrappers from their content!
+	 */
+	readonly precomputedValue?:    { readonly nodeId: NodeId, readonly info: DataflowInformation }
 }
 
-export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation
+export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;
 
-type NodeWithKey<OtherInfo, Key> = RNode<OtherInfo & ParentInformation> & { type: Key }
+type NodeWithKey<OtherInfo, Key> = RNode<OtherInfo & ParentInformation> & { type: Key };
 
 /**
  * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
  */
 export type DataflowProcessors<OtherInfo> = {
 	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, key>>
-}
+};
 
 /**
  * Originally, dataflow processor was written as a two-way fold, but this produced problems when trying to resolve function calls
@@ -71,7 +82,6 @@ export type DataflowProcessors<OtherInfo> = {
  * <p>
  * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you cannot narrow down
  * in type or context.
- *
  * @param current - The current node to start processing from
  * @param data    - The initial (/current) information to be passed down
  */
@@ -79,6 +89,10 @@ export function processDataflowFor<OtherInfo>(
 	current: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	/* a used-up budget prunes the subtree: the fold stops here, and what was built so far stays the result */
+	if(activeDataflowBudget !== undefined && activeDataflowBudget.step()) {
+		return DataflowInformation.initialize(current.info.id, data);
+	}
 	return (
 		data.processors[current.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof current>
 	)(current, data);

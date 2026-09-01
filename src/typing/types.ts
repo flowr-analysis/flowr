@@ -141,7 +141,7 @@ export class RTypeVariable {
 	readonly tag = DataTypeTag.Variable;
 	readonly lowerBound: DataType;
 	readonly upperBound: DataType;
-	
+
 	constructor(lowerBound: DataType = new RTypeUnion(), upperBound: DataType = new RTypeIntersection()) {
 		guard(lowerBound !== this, 'Lower bound cannot be the type variable itself');
 		this.lowerBound = lowerBound;
@@ -166,8 +166,12 @@ export type AtomicVectorBaseType
 	| RDoubleType
 	| RComplexType
 	| RStringType
-	| RRawType
+	| RRawType;
 
+/**
+ * Whether `type` may be the element type of an atomic vector.
+ * @param type - The type to check.
+ */
 export function isAtomicVectorBaseType(type: DataType): type is AtomicVectorBaseType {
 	return type.tag === DataTypeTag.Logical
 		|| type.tag === DataTypeTag.Integer
@@ -189,7 +193,7 @@ export type SimpleType
  * by the type inferencer for R objects.
  * It should be used whenever you either not care what kind of
  * type you are dealing with or if you want to handle all possible types.
-*/
+ */
 export type DataType
 	= SimpleType
 	| RAtomicVectorType
@@ -202,4 +206,4 @@ export type DataType
 
 export type DataTypeInfo = {
 	inferredType: DataType;
-}
+};

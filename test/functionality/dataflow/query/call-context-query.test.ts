@@ -5,11 +5,14 @@ import type {
 } from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import type { QueryResultsWithoutMeta } from '../../../../src/queries/query';
+import { executeQueries, type QueryResultsWithoutMeta } from '../../../../src/queries/query';
 import { CallTargets } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { describe } from 'vitest';
-import { builtInId } from '../../../../src/dataflow/environments/built-in';
+import { afterAll, describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { cleanupSigTmpDirs, expFn, sigTmpDir, sigdbAnalyzer, ver, writeAndOpen } from '../../_helper/sigdb';
+import { SigDbBuilder } from '../../../../src/project/sigdb/build';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -52,6 +55,36 @@ describe('Call Context Query', withTreeSitter(parser => {
 	testQuery('Quoted Call', 'quote(print())', [q(/print/)], baseResult({}));
 	testQuery('Do call', 'do.call("print")', [q(/print/)], r([{ id: 1, name: 'print' }]));
 
+	describe('Namespace filter', () => {
+		testQuery('keeps only bar::foo', 'bar::foo()\nbaz::foo()', [q(/foo/, { callTargetNamespace: 'bar' })],
+			r([{ id: 1, name: Identifier.make('foo', 'bar') }]));
+		testQuery('no match for a different package', 'baz::foo()', [q(/foo/, { callTargetNamespace: 'bar' })], baseResult({}));
+
+		describe('bare callee, resolved through the signature database', () => {
+			afterAll(cleanupSigTmpDirs);
+
+			test('a bare mutate() resolves to dplyr via the sigdb export index', async() => {
+				const b = new SigDbBuilder();
+				b.addPackage('dplyr', { latest: '1.1.0', downloads: 10 });
+				b.addVersion('dplyr', '1.1.0', ver([expFn('mutate')]));
+				const db = await writeAndOpen(sigTmpDir('call-context-sigdb-'), b.build({ date: '2026-05-23', generated: 0 }));
+
+				const analyzer = await sigdbAnalyzer(parser, db);
+				analyzer.addRequest('mutate(x)');
+
+				const hit = await executeQueries({ analyzer }, [q(/mutate/, { callNameExact: true, callTargetNamespace: 'dplyr' })]);
+				expect(hit['call-context'].kinds).toEqual({
+					'test-kind': { subkinds: { 'test-subkind': [{ id: 3, name: 'mutate' }] } }
+				});
+
+				// the sigdb knows `mutate`, but not as an export of `tidyr`
+				const miss = await executeQueries({ analyzer }, [q(/mutate/, { callNameExact: true, callTargetNamespace: 'tidyr' })]);
+				expect(miss['call-context'].kinds).toEqual({});
+
+				db.close();
+			});
+		});
+	});
 	describe('Local Targets', () => {
 		testQuery('Happy Foo(t)', 'foo <- function(){}\nfoo()', [q(/foo/)], r([{ id: 7, name: 'foo' }]));
 		testQuery('Happy Foo(t) (only local)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyLocal })], r([{ id: 7, calls: [4], name: 'foo' }]));
@@ -78,9 +111,9 @@ describe('Call Context Query', withTreeSitter(parser => {
 		const code = 'if(x) { print <- function() {} }\nprint()';
 		testQuery('May be local or global', code, [q(/print/)], r([{ id: 12, name: 'print' }]));
 		testQuery('May be local or global (only local)', code, [q(/print/, { callTargets: CallTargets.OnlyLocal })], baseResult({}));
-		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [builtInId('print'), 7, 'built-in'], name: 'print' }]));
+		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [NodeId.toBuiltIn('print'), 7, 'built-in'], name: 'print' }]));
 		testQuery('May be local or global (only global)', code, [q(/print/, { callTargets: CallTargets.OnlyGlobal })], baseResult({}));
-		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [builtInId('print'), 7, 'built-in'], name: 'print' }]));
+		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [NodeId.toBuiltIn('print'), 7, 'built-in'], name: 'print' }]));
 	});
 	describe('Linked Calls', () => {
 		testQuery('Link to Plot', 'plot(x)\nplot(x)\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 11, linkedIds: [7], name: 'points' }]));
@@ -91,7 +124,7 @@ describe('Call Context Query', withTreeSitter(parser => {
 	});
 	describe('Aliases', () => {
 		testQuery('Alias without inclusion', 'foo <- print\nfoo()', [q(/print/)], baseResult({}));
-		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ aliasRoots: [builtInId('print')], id: 4, name: 'print' }]));
+		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ aliasRoots: [NodeId.toBuiltIn('print')], id: 4, name: 'print' }]));
 		testQuery('Alias with inclusion', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 4, aliasRoots: [1], name: 'foo' }]));
 		testQuery('Alias with inclusion and explicit', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true }), q(/foo/)], r([{ id: 4, aliasRoots: [1], name: 'foo' }, { id: 4, name: 'foo' }]));
 		testQuery('String alias with inclusion', 'foo <- get("print")\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [2], name: 'foo' }]));
@@ -123,7 +156,7 @@ describe('Call Context Query', withTreeSitter(parser => {
 		}));
 	});
 	describe('Exact Names', () => {
-		testQuery('Contained Match (expl undefined)', 'foo()', [q(/o/, { })], r([{ id: 1, name: 'foo' }]));
+		testQuery('Contained Match (expl undefined)', 'foo()', [q(/o/, {})], r([{ id: 1, name: 'foo' }]));
 		testQuery('Contained Match (expl. false)', 'foo()', [q(/o/, { callNameExact: false })], r([{ id: 1, name: 'foo' }]));
 		testQuery('No Contained Match', 'foo()', [q(/o/, { callNameExact: true })], baseResult({}));
 	});

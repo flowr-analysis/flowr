@@ -1,41 +1,64 @@
+import type { ControlDependency } from '../info';
+
 /**
  * An edge consist of only of the type (source and target are encoded with the Dataflow Graph).
  * Multiple edges are encoded by joining the respective type bits.
+ * @see {@link EdgeType} for the basis.
+ * @see {@link DfEdge} for helper functions.
  */
-export interface DataflowGraphEdge {
+export interface DfEdge {
 	types: EdgeTypeBits
 }
 
 /**
+ * A {@link EdgeType.ControlEdge} additionally carries what decides whether its target runs.
+ * This is the very {@link ControlDependency} the vertices behind the edge carry in their `cds`, so the two
+ * never say different things about the same branch.
+ */
+export interface DFControlFlowEdge extends DfEdge {
+	types: EdgeType.ControlEdge,
+	cd:    ControlDependency
+}
+
+/**
  * Represents the relationship between the source and the target vertex in the dataflow graph.
- * The actual value is represented as a bitmask so use {@link edgeTypesToNames} to get something more human-readable.
- * Similarly, you can access {@link EdgeTypeName} to access the name counterpart.
+ * The actual value is represented as a bitmask, so please refer to {@link DfEdge} for helpful functions.
  */
 export enum EdgeType {
 	/** The edge determines that source reads target */
-	Reads = 1,
+	Reads = 1 << 0,
 	/** The edge determines that source is defined by target */
-	DefinedBy = 2,
+	DefinedBy = 1 << 1,
 	/** The edge determines that the source calls the target */
-	Calls = 4,
+	Calls = 1 << 2,
 	/** The source returns target on call */
-	Returns = 8,
+	Returns = 1 << 3,
 	/**
 	 * The edge determines that source (probably argument) defines the target (probably parameter).
 	 * This may also link a function call to definitions it causes to be active (as part of the closure) of the called function definition.
 	 */
-	DefinesOnCall = 16,
+	DefinesOnCall = 1 << 4,
 	/**
 	 * Usually the inverse of `defines-on-call` (in the context of arguments and parameters).
 	 * This may also link an open read (within a function) to the definition that is active at the call site.
 	 */
-	DefinedByOnCall = 32,
+	DefinedByOnCall = 1 << 5,
 	/** Formal used as argument to a function call */
-	Argument = 64,
+	Argument = 1 << 6,
 	/** The edge determines that the source is a side effect that happens when the target is called */
-	SideEffectOnCall = 128,
+	SideEffectOnCall = 1 << 7,
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
-	NonStandardEvaluation = 256
+	NonStandardEvaluation = 1 << 8,
+	/**
+	 * The edge points the way execution goes: the target is evaluated after the source.
+	 * @see {@link ControlFlowGraph} - the view these edges carry
+	 */
+	FlowEdge = 1 << 12,
+	/**
+	 * Like {@link EdgeType.FlowEdge}, pointing the way execution goes, but only taken when the condition the
+	 * edge names evaluates to the value it names (e.g. one branch of an if-else).
+	 */
+	ControlEdge = 1 << 13,
 }
 
 /**
@@ -46,54 +69,150 @@ export const enum EdgeTypeName {
 	DefinedBy             = 'defined-by',
 	Calls                 = 'calls',
 	Returns               = 'returns',
-	DefinesOnCall         = 'defines-on-call',
-	DefinedByOnCall       = 'defined-by-on-call',
-	Argument              = 'argument',
+	DefinesOnCall         = 'def-on-call',
+	DefinedByOnCall       = 'def-by-on-call',
+	Argument              = 'arg',
 	SideEffectOnCall      = 'side-effect-on-call',
-	NonStandardEvaluation = 'non-standard-evaluation'
+	NonStandardEvaluation = 'non-standard-evaluation',
+	FlowEdge              = 'flows-to',
+	ControlEdge           = 'branches-to'
 }
 
-export type EdgeTypeBits = number
-
-const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
-	[EdgeType.Reads,                 EdgeTypeName.Reads                ],
-	[EdgeType.DefinedBy,             EdgeTypeName.DefinedBy            ],
-	[EdgeType.Calls,                 EdgeTypeName.Calls                ],
-	[EdgeType.Returns,               EdgeTypeName.Returns              ],
-	[EdgeType.DefinesOnCall,         EdgeTypeName.DefinesOnCall        ],
-	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall      ],
-	[EdgeType.Argument,              EdgeTypeName.Argument             ],
-	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
-	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation]
-]);
+export type EdgeTypeBits = number;
 
 /**
- * Only use this function to retrieve a human-readable name if you know that it is a single bitmask.
- * Otherwise, use {@link edgeTypesToNames} which handles these cases.
+ * The edge types that carry the control flow of the program, all of them pointing the way execution goes.
+ * The {@link ControlFlowGraph} is a view on them.
+ * @see {@link EdgeType.FlowEdge}, {@link EdgeType.ControlEdge}
  */
-export function edgeTypeToName(type: EdgeType): string {
-	return edgeTypeToHumanReadableName.get(type) as string;
-}
+export const ControlFlowEdgeTypes: EdgeTypeBits = EdgeType.FlowEdge | EdgeType.ControlEdge;
 
-export function splitEdgeTypes(types: EdgeTypeBits): EdgeType[] {
-	const split = [];
-	for(const bit of edgeTypeToHumanReadableName.keys()) {
-		if((types & bit) !== 0) {
-			split.push(bit);
-		}
-	}
-	return split;
-}
+const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
+	[EdgeType.Reads,                 EdgeTypeName.Reads],
+	[EdgeType.DefinedBy,             EdgeTypeName.DefinedBy],
+	[EdgeType.Calls,                 EdgeTypeName.Calls],
+	[EdgeType.Returns,               EdgeTypeName.Returns],
+	[EdgeType.DefinesOnCall,         EdgeTypeName.DefinesOnCall],
+	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall],
+	[EdgeType.Argument,              EdgeTypeName.Argument],
+	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall],
+	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation],
+	[EdgeType.FlowEdge,              EdgeTypeName.FlowEdge],
+	[EdgeType.ControlEdge,           EdgeTypeName.ControlEdge]
+]);
 
-export function edgeTypesToNames(bits: EdgeTypeBits): Set<EdgeTypeName> {
-	const types = new Set<EdgeTypeName>();
-	for(const [bit, name] of edgeTypeToHumanReadableName.entries()) {
-		if((bits & bit) !== 0) {
-			types.add(name);
+type DfEdgeLike = { types: number };
+
+/**
+ * Helper Functions to work with {@link DfEdge} and {@link EdgeType}.
+ */
+export const DfEdge = {
+	name: 'DfEdge',
+	/**
+	 * Takes joint edge types and returns their human-readable names.
+	 */
+	typesToNames(this: void, { types }: DfEdgeLike): Set<EdgeTypeName> {
+		const rTypes = new Set<EdgeTypeName>();
+		for(const [bit, name] of edgeTypeToHumanReadableName.entries()) {
+			if((types & bit) !== 0) {
+				rTypes.add(name);
+			}
 		}
-	}
-	return types;
-}
+		return rTypes;
+	},
+	/**
+	 * Takes joint edge types and splits them into their individual components.
+	 * @example
+	 * ```ts
+	 * DfEdge.splitTypes({ types: EdgeType.Reads | EdgeType.DefinedBy });
+	 * // returns [EdgeType.Reads, EdgeType.DefinedBy]
+	 * ```
+	 */
+	splitTypes(this: void, { types }: DfEdgeLike): EdgeType[] {
+		const split = [];
+		for(const bit of edgeTypeToHumanReadableName.keys()) {
+			if((types & bit) !== 0) {
+				split.push(bit);
+			}
+		}
+		return split;
+	},
+	/**
+	 * Only use this function to retrieve a human-readable name if you know that it is a single bitmask.
+	 * Otherwise, use {@link DfEdge#typesToNames} which handles these cases.
+	 */
+	typeToName(this: void, type: EdgeType): string {
+		return edgeTypeToHumanReadableName.get(type) as string;
+	},
+	/**
+	 * Check if the given-edge type has any of the given types.
+	 * As types are bitmasks, you can combine multiple types with a bitwise OR (`|`).
+	 * @example
+	 *
+	 * ```ts
+	 * edgeIncludesType({ types: EdgeType.Reads }, EdgeType.Reads | EdgeType.DefinedBy) // true
+	 *```
+	 *
+	 * Counterpart of {@link DfEdge#doesNotIncludeType}.
+	 */
+	includesType(this: void, { types }: DfEdgeLike, typesToInclude: EdgeType): boolean {
+		return (typesToInclude & types) !== 0;
+	},
+	/**
+	 * Check if the given-edge type does not include the given type.
+	 * As types are bitmasks, you can combine multiple types with a bitwise OR (`|`).
+	 * Counterpart of {@link DfEdge#includesType}.
+	 */
+	doesNotIncludeType(this: void, { types }: DfEdgeLike, any: EdgeType): boolean {
+		return (any & types) === 0;
+	},
+	/**
+	 * Whether the edge carries any type at all.
+	 * Counterpart of {@link DfEdge#hasNoType}.
+	 * @example
+	 *
+	 * ```ts
+	 * DfEdge.hasAnyType({ types: EdgeType.Reads }) // true
+	 * DfEdge.hasAnyType({ types: 0 })              // false
+	 * ```
+	 */
+	hasAnyType(this: void, { types }: DfEdgeLike): boolean {
+		return types !== 0;
+	},
+	/**
+	 * Whether the edge carries no type at all. Such an edge states nothing and has to be removed, not kept.
+	 * Counterpart of {@link DfEdge#hasAnyType}.
+	 */
+	hasNoType(this: void, { types }: DfEdgeLike): boolean {
+		return types === 0;
+	},
+	/**
+	 * Check whether the edge carries the given types and nothing else.
+	 * Strict counterpart of {@link DfEdge#includesType}, which already holds if one of the bits is set.
+	 * @example
+	 *
+	 * ```ts
+	 * DfEdge.isOnlyType({ types: EdgeType.Reads | EdgeType.Calls }, EdgeType.Reads)                  // false
+	 * DfEdge.isOnlyType({ types: EdgeType.Reads | EdgeType.Calls }, EdgeType.Reads | EdgeType.Calls) // true
+	 * ```
+	 */
+	isOnlyType(this: void, { types }: DfEdgeLike, only: EdgeType): boolean {
+		return types === only;
+	},
+	/**
+	 * Whether the edge carries nothing but control flow, i.e. it exists only because the
+	 * {@link ControlFlowGraph} is a view on the dataflow graph.
+	 * @see {@link ControlFlowEdgeTypes}
+	 */
+	isOnlyControlFlow(this: void, { types }: DfEdgeLike): boolean {
+		return (types & ~ControlFlowEdgeTypes) === 0;
+	},
+	/** The same edge without the given types, e.g. to look at the dataflow part of an edge on its own. */
+	without(this: void, { types }: DfEdgeLike, drop: EdgeTypeBits): DfEdge {
+		return { types: types & ~drop };
+	},
+} as const;
+
 
 export const enum TraverseEdge {
 	/** Do not traverse this edge */
@@ -106,41 +225,22 @@ export const enum TraverseEdge {
 	Always = 3
 }
 
-/**
- * Check if the given-edge type has any of the given types.
- * @example
- *
- * ```typescript
- * edgeIncludesType(EdgeType.Reads, EdgeType.Reads | EdgeType.DefinedBy) // true
- *```
- *
- * Counterpart of {@link edgeDoesNotIncludeType}.
- */
-export function edgeIncludesType(type: EdgeTypeBits, typesToInclude: EdgeTypeBits): boolean {
-	return (typesToInclude & type) !== 0;
-}
-
-/**
- * Check if the given-edge type does not include the given type.
- * Counterpart of {@link edgeIncludesType}.
- */
-export function edgeDoesNotIncludeType(type: EdgeTypeBits, types: EdgeTypeBits): boolean {
-	return (types & type) === 0;
-}
-
 
 const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls;
 
 const definedByOnCallTypes = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall;
 
-export function shouldTraverseEdge(types: EdgeTypeBits): TraverseEdge {
-	if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
+/**
+ * Determines whether an edge should be traversed during dataflow analysis.
+ */
+export function shouldTraverseEdge(e: DfEdge): TraverseEdge {
+	if(DfEdge.includesType(e, EdgeType.NonStandardEvaluation)) {
 		return TraverseEdge.Never;
-	} else if(edgeIncludesType(types, alwaysTraverseEdgeTypes)) {
+	} else if(DfEdge.includesType(e, alwaysTraverseEdgeTypes)) {
 		return TraverseEdge.Always;
-	} else if(edgeIncludesType(types, definedByOnCallTypes)) {
+	} else if(DfEdge.includesType(e, definedByOnCallTypes)) {
 		return TraverseEdge.OnlyIfBoth;
-	} else if(edgeIncludesType(types, EdgeType.SideEffectOnCall)) {
+	} else if(DfEdge.includesType(e, EdgeType.SideEffectOnCall)) {
 		return TraverseEdge.SideEffect;
 	}
 	return TraverseEdge.Never;

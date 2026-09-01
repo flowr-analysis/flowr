@@ -2,31 +2,35 @@ import { DataTypeTag } from './types';
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum RBaseType {
-    NILSXP     = 'NULL',
+	NILSXP     = 'NULL',
 	LGLSXP     = 'logical',
-    INTSXP     = 'integer',
-    REALSXP    = 'double',
+	INTSXP     = 'integer',
+	REALSXP    = 'double',
 	CPLXSXP    = 'complex',
-    STRSXP     = 'character',
-    VECSXP     = 'list',
-    RAWSXP     = 'raw',
-    CLOSXP     = 'closure',
-    SPECIALSXP = 'special',
-    BUILTINSXP = 'builtin',
-    ENVSXP     = 'environment',
-    // S4SXP      = 'S4',
-    SYMSXP     = 'symbol',
-    LANGSXP    = 'language',
-    // LISTSXP    = 'pairlist',
-    EXPRSXP    = 'expression',
-    // EXTPTRSXP  = 'externalptr',
-    // WEAKREFSXP = 'weakref',
-    // BCODESXP   = 'bytecode',
-    // PROMSXP    = 'promise',
-    // DOTSXP     = '...',
-    // ANYSXP     = 'any',
+	STRSXP     = 'character',
+	VECSXP     = 'list',
+	RAWSXP     = 'raw',
+	CLOSXP     = 'closure',
+	SPECIALSXP = 'special',
+	BUILTINSXP = 'builtin',
+	ENVSXP     = 'environment',
+	// S4SXP      = 'S4',
+	SYMSXP     = 'symbol',
+	LANGSXP    = 'language',
+	// LISTSXP    = 'pairlist',
+	EXPRSXP    = 'expression',
+	// EXTPTRSXP  = 'externalptr',
+	// WEAKREFSXP = 'weakref',
+	// BCODESXP   = 'bytecode',
+	// PROMSXP    = 'promise',
+	// DOTSXP     = '...',
+	// ANYSXP     = 'any',
 }
 
+/**
+ * The {@link DataTypeTag} standing for the given R base type.
+ * @param baseType - The base type to translate.
+ */
 export function baseTypeToDataTypeTag(baseType: RBaseType): DataTypeTag {
 	switch(baseType) {
 		case RBaseType.NILSXP:     return DataTypeTag.Null;

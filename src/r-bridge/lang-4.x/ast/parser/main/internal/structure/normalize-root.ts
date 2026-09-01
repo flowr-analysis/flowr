@@ -2,21 +2,24 @@ import type { NormalizerData } from '../../normalizer-data';
 import { assureTokenType } from '../../normalize-meta';
 import { normalizeExpressions } from './normalize-expressions';
 import { log } from '../../../../../../../util/log';
-import { partition } from '../../../../../../../util/collections/arrays';
+import { partitionArray } from '../../../../../../../util/collections/arrays';
 import { RawRType, RType } from '../../../../model/type';
-import type { RExpressionList } from '../../../../model/nodes/r-expression-list';
 import type { RNode } from '../../../../model/model';
-import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import type { JsonEntry } from '../../../json/format';
+import type { RProject } from '../../../../model/nodes/r-project';
+import { RComment } from '../../../../model/nodes/r-comment';
 
 
 /**
- * Takes the parse dta as object and produces an undecorated, normalized AST.
+ * Takes the parse data as object and produces an undecorated, normalized AST.
+ * @see {@link normalize} - for a version that also decorates the AST
  */
 export function normalizeRootObjToAst(
 	data: NormalizerData,
-	obj: JsonEntry
-): RExpressionList {
+	obj: JsonEntry,
+	filePath?: string
+): RProject {
 	const exprContent = obj.token;
 	assureTokenType(exprContent, RawRType.ExpressionList);
 
@@ -29,17 +32,25 @@ export function normalizeRootObjToAst(
 		log.debug('no children found, assume empty input');
 	}
 
-	const [delimiters, nodes] = partition(parsedChildren, x => x.type === RType.Delimiter || x.type === RType.Comment);
+	const [delimiters, nodes] = partitionArray(parsedChildren, x => RDelimiter.is(x) || RComment.is(x));
 
 	return {
-		type:     RType.ExpressionList,
-		children: nodes as RNode[],
-		grouping: undefined,
-		lexeme:   undefined,
-		info:     {
-			fullRange:        data.currentRange,
-			additionalTokens: delimiters,
-			fullLexeme:       data.currentLexeme
-		}
+		type:  RType.Project,
+		files: [
+			{
+				filePath,
+				root: {
+					type:     RType.ExpressionList,
+					children: nodes as RNode[],
+					grouping: undefined,
+					lexeme:   undefined,
+					info:     {
+						fullRange:  data.currentRange,
+						adToks:     delimiters,
+						fullLexeme: data.currentLexeme
+					}
+				}
+			}
+		]
 	};
 }

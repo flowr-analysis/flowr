@@ -1,4 +1,4 @@
-import type { ReplCommand, ReplOutput } from '../../cli/repl/commands/repl-main';
+import type { ReplBaseCommand, ReplOutput } from '../../cli/repl/commands/repl-main';
 import { getReplCommands } from '../../cli/repl/commands/repl-commands';
 import { getReplCommand } from './doc-cli-option';
 import { textWithTooltip } from '../../util/html-hover-over';
@@ -9,9 +9,9 @@ import { rawPrompt } from '../../cli/repl/prompt';
 import { codeBlock } from './doc-code';
 import { versionReplString } from '../../cli/repl/print-version';
 import type { KnownParser } from '../../r-bridge/parser';
-import { defaultConfigOptions } from '../../config';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
-function printHelpForScript(script: [string, ReplCommand], starredVersion?: ReplCommand): string {
+function printHelpForScript(script: [string, ReplBaseCommand], starredVersion?: ReplBaseCommand): string {
 	let base = `| **${getReplCommand(script[0], false, starredVersion !== undefined)}** | ${script[1].description}`;
 	if(starredVersion) {
 		base += ` (star: ${starredVersion.description})`;
@@ -25,6 +25,10 @@ function printHelpForScript(script: [string, ReplCommand], starredVersion?: Repl
 	}) |`;
 }
 
+
+/**
+ * Every REPL command as a markdown table, the way the wiki's interface page lists them.
+ */
 export function printReplHelpAsMarkdownTable(): string {
 	const scriptHelp = [];
 	const cmds = getReplCommands();
@@ -64,22 +68,38 @@ export interface DocumentReplCommand {
 	description: string;
 }
 
+function dropAnsiEscapeCodesAndCodeTags(input: string): string {
+	// eslint-disable-next-line no-control-regex
+	return input.replace(/\x1B\[[0-9;]*[mK]/g, '')
+		.replace(/<\/?code>/g, '')
+		.replace(/\**([^*]+)\**/g, '$1')
+		.replace(/_([^_]+)_/g, '$1')
+	;
+}
+
+/**
+ * Creates a documented REPL session for the given commands.
+ * This is intended for documentation purposes.
+ */
 export async function documentReplSession(parser: KnownParser, commands: readonly DocumentReplCommand[], options?: DocumentReplSessionOptions): Promise<string> {
 	const collect: Collect[] = [];
-
 
 	for(const command of commands) {
 		const entry: Collect = { command, lines: [] };
 		const collectingOutput: ReplOutput = {
-			formatter: voidFormatter,
+			formatter:      voidFormatter,
+			allowClipboard: false,
 			stdout(msg: string) {
-				entry.lines.push(msg);
+				entry.lines.push(dropAnsiEscapeCodesAndCodeTags(msg));
 			},
 			stderr(msg: string) {
-				entry.lines.push(msg);
+				entry.lines.push(dropAnsiEscapeCodesAndCodeTags(msg));
 			}
 		};
-		await replProcessAnswer(defaultConfigOptions, collectingOutput, command.command, parser, options?.allowRSessionAccess ?? false);
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setParser(parser)
+			.build();
+		await replProcessAnswer(analyzer, collectingOutput, command.command, options?.allowRSessionAccess ?? false);
 		collect.push(entry);
 	}
 
@@ -108,6 +128,5 @@ ${command.description}
 `;
 		cache = '';
 	}
-
 	return result;
 }

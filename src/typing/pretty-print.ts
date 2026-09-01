@@ -21,12 +21,12 @@ export function prettyPrintDataType(type: DataType, shorten = true): string {
 		case DataTypeTag.S4:
 			return shorten && tag.startsWith('R') && tag.endsWith('Type') ? tag.slice(1, -4).toLowerCase() : tag.toLowerCase();
 		case DataTypeTag.Function:
-			return `(${[...type.parameterTypes.entries()].map(([k, v]) => 
+			return `(${[...type.parameterTypes.entries()].map(([k, v]) =>
 				`${k}: ${prettyPrintDataType(v, shorten)}`
 			).join(', ')}) ${shorten ? '→' : '->'} ${prettyPrintDataType(type.returnType, shorten)}`;
 		case DataTypeTag.List: {
 			const elementType = prettyPrintDataType(type.elementType, shorten);
-			const indexedElementTypes = `${[...type.indexedElementTypes.entries()].map(([k, v]) => 
+			const indexedElementTypes = `${[...type.indexedElementTypes.entries()].map(([k, v]) =>
 				`${k}: ${prettyPrintDataType(v, shorten)}`
 			).join(', ')}`;
 			return `list[${shorten || indexedElementTypes === '' ? elementType : indexedElementTypes}]`;

@@ -1,5 +1,4 @@
-import type { RShellExecutionOptions } from './shell';
-import { getDefaultRShellOptions } from './shell';
+import { type RShellExecutionOptions, getDefaultRShellOptions } from './shell';
 import { deepMergeObject } from '../util/objects';
 import { spawnSync } from 'child_process';
 import type { SemVer } from 'semver';
@@ -7,7 +6,7 @@ import semver from 'semver/preload';
 import { expensiveTrace, log } from '../util/log';
 import { initCommand } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import type { SyncParser } from './parser';
+import type { BaseRShellInformation, SyncParser } from './parser';
 import { retrieveParseDataFromRCode, type RParseRequest } from './retriever';
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
@@ -24,6 +23,7 @@ const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
  */
 export class RShellExecutor implements SyncParser<string> {
 	public readonly name = 'r-shell';
+	public readonly incremental = false;
 	public readonly options:        Readonly<RShellExecutionOptions>;
 	private readonly prerequisites: string[];
 
@@ -36,19 +36,25 @@ export class RShellExecutor implements SyncParser<string> {
 	 * Adds commands that should be executed for every {@link RShellExecutor#run|run}.
 	 */
 	public addPrerequisites(commands: string | string[]): this {
-		this.prerequisites.push(...(typeof commands == 'string' ? [commands] : commands));
+		this.prerequisites.push(...(typeof commands === 'string' ? [commands] : commands));
 		return this;
 	}
 
 	/**
 	 * @returns the version of the R interpreter available to this executor.
-	 *
 	 * @see {@link RShellExecutor#usedRVersion}
 	 * @see {@link RShell#rVersion}
 	 * @see {@link RShell#usedRVersion}
 	 */
 	public rVersion(): Promise<string | 'unknown' | 'none'> {
 		return Promise.resolve(this.usedRVersion()?.format() ?? 'unknown');
+	}
+
+	public information(): BaseRShellInformation {
+		return {
+			name:     'r-shell',
+			rVersion: () => Promise.resolve(this.rVersion())
+		};
 	}
 
 	/**

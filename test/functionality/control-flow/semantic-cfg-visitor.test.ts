@@ -1,43 +1,53 @@
 import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { SemanticCfgGuidedVisitor } from '../../../src/control-flow/semantic-cfg-guided-visitor';
-import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { defaultConfigOptions } from '../../../src/config';
 import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { FlowrConfig } from '../../../src/config';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
-	const config = defaultConfigOptions;
+	const config = FlowrConfig.default();
 
-	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(code: string, visitor: (o: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>, controlFlow: ControlFlowInformation) => V, assert: (obj: V) => void) {
+	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(
+		code: string,
+		visitor: (
+			o: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>,
+			controlFlow: ControlFlowInformation,
+			ctx: ReadOnlyFlowrAnalyzerContext
+		) => V,
+		assert: (obj: V) => void
+	) {
 		it(code, async() => {
-			const data = await createDataflowPipeline(ts, { request: requestFromInput(code) }, config).allRemainingSteps();
-			const cfg = extractCfg(data.normalize, config, data.dataflow.graph);
-			const v = visitor(data, cfg);
+			const context = contextFromInput(code, config);
+			const data = await createDataflowPipeline(ts, { context }).allRemainingSteps();
+			const cfg = extractCfg(data.dataflow);
+			const v = visitor(data, cfg, context);
 			v.start();
 			try {
 				assert(v);
 			} catch(error) {
-				console.error('dfg: ', graphToMermaidUrl(data.dataflow.graph));
+				console.error('dfg: ', Dataflow.visualize.mermaid.url(data.dataflow.graph));
 				console.error('cfg: ', cfgToMermaidUrl(cfg, data.normalize));
 				throw error;
 			}
 		});
 	}
 
-	testSemanticVisitor('1 + 2 + 3', ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+	testSemanticVisitor('1 + 2 + 3', ({ dataflow, normalize }, controlFlow, ctx) => new class extends SemanticCfgGuidedVisitor {
 		private collect: number[] = [];
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, flowrConfig: config });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, ctx });
 		}
 
 		protected onNumberConstant(d: { vertex: DataflowGraphVertexValue; node: RNumber }) {
@@ -53,11 +63,11 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 	});
 
 
-	testSemanticVisitor('NULL', ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+	testSemanticVisitor('NULL', ({ dataflow, normalize }, controlFlow, ctx) => new class extends SemanticCfgGuidedVisitor {
 		private foundNull = false;
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, flowrConfig: config });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, ctx });
 		}
 
 		protected onNullConstant() {
@@ -73,7 +83,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 
 	describe('Symbol constants', () => {
 		describe.each(['l <- list(1, 2, 3); l$a', 'library(foo)'])('For: %s', code => {
-			testSemanticVisitor(code, ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+			testSemanticVisitor(code, ({ dataflow, normalize }, controlFlow, ctx) => new class extends SemanticCfgGuidedVisitor {
 				private triggered = false;
 
 				constructor() {
@@ -82,7 +92,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 						controlFlow,
 						dfg:                  dataflow.graph,
 						normalizedAst:        normalize,
-						flowrConfig:          config
+						ctx:                  ctx
 					});
 				}
 
@@ -99,11 +109,11 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		});
 	});
 
-	testSemanticVisitor('v <- c(1,2,3)\nv[]', ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+	testSemanticVisitor('v <- c(1,2,3)\nv[]', ({ dataflow, normalize }, controlFlow, ctx) => new class extends SemanticCfgGuidedVisitor {
 		private found = false;
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, flowrConfig: config });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, ctx });
 		}
 
 		protected onAccessCall() {
@@ -117,11 +127,11 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		assert.isTrue(o.foundAccess());
 	});
 
-	testSemanticVisitor('v <- c(1,2,3)', ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+	testSemanticVisitor('v <- c(1,2,3)', ({ dataflow, normalize }, controlFlow, ctx) => new class extends SemanticCfgGuidedVisitor {
 		private lexemes: string[] = [];
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', defaultVisitingType: 'exit', controlFlow, dfg: dataflow.graph, flowrConfig: config, normalizedAst: normalize });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, ctx, normalizedAst: normalize });
 		}
 
 		protected onNumberConstant(data: { vertex: DataflowGraphVertexValue, node: RNumber }) {
@@ -129,11 +139,11 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		}
 
 		protected onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
-			this.lexemes.push(data.call.name);
+			this.lexemes.push(Identifier.toString(data.call.name));
 		}
 
 		protected onAssignmentCall(data: { call: DataflowGraphVertexFunctionCall }) {
-			this.lexemes.push(data.call.name);
+			this.lexemes.push(Identifier.toString(data.call.name));
 		}
 
 		public getLexemes(): string[] {

@@ -4,12 +4,11 @@ import { guard } from '../util/assert';
 import { jsonReplacer } from '../util/json';
 import { processCommandLineArgs } from './common/script';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
-import type { SamplingStrategy } from '../benchmark/slicer';
-import { BenchmarkSlicer } from '../benchmark/slicer';
+import { type SamplingStrategy, BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-import { amendConfig, getConfig } from '../config';
+import { FlowrConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
 	verbose:                     boolean
@@ -21,15 +20,17 @@ export interface SingleBenchmarkCliOptions {
 	output?:                     string
 	parser:                      KnownParserName
 	'dataframe-shape-inference': boolean
-	'enable-pointer-tracking':   boolean
 	'max-slices':                number
-	'cfg':                       boolean
+	cfg:                         boolean
+	cg:                          boolean
+	'no-extra-phases':           boolean
+	calibrate:                   boolean
 	threshold?:                  number
 	'sampling-strategy':         string
 	seed?:                       string
 }
 
-const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
+const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [], {
 	subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
 	examples: [
 		'{italic example-file.R} --output {italic output.json}',
@@ -53,7 +54,7 @@ async function benchmark() {
 	guard((options['file-id'] === undefined) === (options['run-num'] === undefined), 'When giving a file-id or run-num, both have to be given');
 
 	// prefix for printing to console, includes file id and run number if present
-	const prefix = `[${options.input }${options['file-id'] !== undefined ? ` (file ${options['file-id']}, run ${options['run-num']})` : ''}]`;
+	const prefix = `[${options.input}${options['file-id'] === undefined ? '' : ` (file ${options['file-id']}, run ${options['run-num']})`}]`;
 	console.log(`${prefix} Appending output to ${options.output}`);
 	const directory = path.parse(options.output).dir;
 	// ensure the directory exists if the path contains one
@@ -61,11 +62,7 @@ async function benchmark() {
 		fs.mkdirSync(directory, { recursive: true });
 	}
 
-	// Enable pointer analysis if requested, otherwise disable it
-	const config = amendConfig(getConfig(), c => {
-		c.solver.pointerTracking = options['enable-pointer-tracking'];
-		return c;
-	});
+	const config = FlowrConfig.fromFile();
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);
@@ -91,7 +88,7 @@ async function benchmark() {
 		} else if(options.slice === 'no') {
 			console.log(`${prefix} Skipping Slicing due to --slice=${options.slice}`);
 		} else {
-			const limit = parseInt(options.slice);
+			const limit = Number.parseInt(options.slice);
 			console.log(`${prefix} Slicing up to ${limit} possible slices`);
 			const count = await slicer.sliceForAll(
 				DefaultAllVariablesFilter,
@@ -107,10 +104,24 @@ async function benchmark() {
 			slicer.extractCFG();
 		}
 
+		if(options['cg']) {
+			slicer.extractCG();
+		}
+
 		if(options['dataframe-shape-inference']) {
 			console.log(`${prefix} Performing shape inference for data frames`);
-			slicer.inferDataFrameShapes();
-			console.log(`${prefix} Completed data frame shape inference`);
+			// the inference is not what the benchmark is about, so a failure costs its numbers and nothing else
+			try {
+				slicer.inferDataFrameShapes();
+				console.log(`${prefix} Completed data frame shape inference`);
+			} catch(e: unknown) {
+				console.log(`${prefix} Skipping data frame shape inference: ${e instanceof Error ? e.message : String(e)}`);
+			}
+		}
+
+		console.log(`${prefix} Measuring the additional phases (dependencies query, linter${options.calibrate ? ', calibration' : ''})`);
+		if(!options['no-extra-phases']) {
+			await slicer.measureAdditionalPhases(options.calibrate);
 		}
 
 		const { stats } = slicer.finish();

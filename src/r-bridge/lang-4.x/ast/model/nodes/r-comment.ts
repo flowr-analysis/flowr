@@ -1,5 +1,6 @@
 import type { Leaf, Location, NoInfo } from '../model';
-import type { RType } from '../type';
+import { RNode } from '../model';
+import { RType } from '../type';
 
 /**
  * ```r
@@ -8,5 +9,19 @@ import type { RType } from '../type';
  */
 export interface RComment<Info = NoInfo> extends Location, Leaf<Info> {
 	readonly type: RType.Comment;
-	content:       string;
 }
+
+/**
+ * Helper for working with {@link RComment} AST nodes.
+ */
+export const RComment = {
+	...RNode,
+	name: 'RComment',
+	/**
+	 * Type guard for {@link RComment} nodes.
+	 * @lintIgnore node-is node-is-optional
+	 */
+	is<Info = NoInfo>(this: void, node: unknown): node is RComment<Info> {
+		return typeof node === 'object' && node !== null && (node as RComment<Info>).type === RType.Comment;
+	}
+} as const;

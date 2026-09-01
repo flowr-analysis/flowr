@@ -2,21 +2,28 @@ import type { DatatypeQuery, DatatypeQueryResult } from './datatype-query-format
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { SlicingCriterion as SlicingCriterionHelper } from '../../../slicing/criterion/parse';
 import { inferDataTypesWithUnification } from '../../../typing/unification/infer';
 import { inferDataTypes } from '../../../typing/subtyping/infer';
-import type { UnresolvedDataType } from '../../../typing/subtyping/types';
+import type { KnownTypes } from '../../../typing/adapter/known-types';
 import { loadTracedTypes, loadTurcotteTypes } from '../../../typing/adapter/load-type-signatures';
 import fs from 'fs';
 import { superBigJsonStringify } from '../../../util/json';
 
-export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): Promise<DatatypeQueryResult> {
+/**
+ * Infers the data types of the requested nodes, see {@link inferDataTypes} and {@link inferDataTypesWithUnification}.
+ */
+export async function executeDatatypeQuery({ analyzer }: BasicQueryData, queries: readonly DatatypeQuery[]): Promise<DatatypeQueryResult> {
 	const start = Date.now();
+
+	const ast = await analyzer.normalize();
+	const dataflow = await analyzer.dataflow();
+	const ctx = analyzer.inspectContext();
 
 	const result: DatatypeQueryResult['inferredTypes'] = {};
 	for(const query of queries) {
-		const knownTypes = new Map<string, Set<UnresolvedDataType>>();
+		const knownTypes: KnownTypes = new Map();
 		if(query.useTurcotteTypes ?? true) {
 			await loadTurcotteTypes(knownTypes);
 		}
@@ -25,20 +32,21 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 		}
 
 		const typedAst = query.useSubtyping ?? true
-			? inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, knownTypes)
-			: inferDataTypesWithUnification(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
-		for(const criterion of query.criteria ?? typedAst.idMap.keys().map(id => `$${id}` as SingleSlicingCriterion)) {
+			? inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, ctx, knownTypes)
+			: inferDataTypesWithUnification(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, ctx);
+		for(const criterion of query.criteria ?? typedAst.idMap.keys().map(id => `$${id}` as SlicingCriterion)) {
 			if(result[criterion] !== undefined) {
 				log.warn('Duplicate criterion in datatype query:', criterion);
 				continue;
 			}
-			
-			const node = criterion !== undefined ? typedAst.idMap.get(slicingCriterionToId(criterion, typedAst.idMap)) : typedAst.ast;
+
+			const id = SlicingCriterionHelper.tryParse(criterion, typedAst.idMap);
+			const node = id !== undefined ? typedAst.idMap.get(id) : undefined;
 			if(node === undefined) {
 				log.warn('Criterion not found in normalized AST:', criterion);
 				continue;
 			}
-			
+
 			result[criterion] = node.info.inferredType;
 		}
 	}

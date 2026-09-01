@@ -5,7 +5,6 @@ import * as Joi from 'joi';
  * Request the execution of the given expression as a REPL statement.
  * We strongly recommend that you make use of a unique {@link IdMessageBase#id}
  * in case the message responses happen in parallel.
- *
  * @see ExecuteIntermediateResponseMessage
  * @see ExecuteEndMessage
  */

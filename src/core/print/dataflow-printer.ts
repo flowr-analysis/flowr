@@ -2,7 +2,6 @@ import { jsonReplacer } from '../../util/json';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { QuadSerializationConfiguration } from '../../util/quads';
 import { df2quads } from '../../dataflow/graph/quads';
-import { graphToMermaid, graphToMermaidUrl } from '../../util/mermaid/dfg';
 
 
 function mayObjectJson(d: unknown): string {
@@ -51,14 +50,13 @@ export function dataflowGraphToJson(df: DataflowInformation): string {
 	return objectJson(df);
 }
 
-export function dataflowGraphToMermaid(df: DataflowInformation): string {
-	return graphToMermaid({ graph: df.graph }).string;
-}
-
-export function dataflowGraphToMermaidUrl(df: DataflowInformation): string {
-	return graphToMermaidUrl(df.graph);
-}
-
+/**
+ * Transforms the dataflow graph into a quad serialization.
+ * @see {@link df2quads}
+ * @see {@link DataflowMermaid.url}
+ * @see {@link DataflowMermaid.convert}
+ * @see {@link dataflowGraphToJson}
+ */
 export function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): string {
 	return df2quads(df.graph, config);
 }

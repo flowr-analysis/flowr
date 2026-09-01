@@ -2,14 +2,8 @@
 /* this is a test-only utility */
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { wrap, wrapControlDependencies } from './printer';
-import type {
-	IEnvironment,
-	REnvironmentInformation
-} from '../../../../src/dataflow/environments/environment';
-
-
-import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
-import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
+import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
 export class EnvironmentBuilderPrinter {
 	private readonly env:   REnvironmentInformation;
@@ -81,13 +75,17 @@ export class EnvironmentBuilderPrinter {
 					this.getControlDependencyArgument(def)
 				]);
 				break;
+			case ReferenceType.S3MethodPrefix:
+			case ReferenceType.S7MethodPrefix:
+				// unsupported
+				break;
 			default:
 				assertUnreachable(type);
 		}
 	}
 
 	private getControlDependencyArgument(def: IdentifierDefinition) {
-		return def.controlDependencies ? wrapControlDependencies(def.controlDependencies) : undefined;
+		return def.cds ? wrapControlDependencies(def.cds) : undefined;
 	}
 
 	private push() {

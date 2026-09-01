@@ -8,22 +8,30 @@ import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
 import { ReferenceType } from '../../environments/identifier';
 
+
+/**
+ * Process a symbol node in the AST for dataflow analysis.
+ * If the symbol is `NULL` or `NA`, it is processed as a value.
+ * Otherwise, it is treated as an unknown reference.
+ */
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {
 		return processValue(symbol, data);
 	}
+	const sid = symbol.info.id;
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependencies: data.controlDependencies, type: ReferenceType.Unknown } ],
+		unknownReferences: [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }],
 		in:                [],
 		out:               [],
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
 			tag: VertexType.Use,
-			id:  symbol.info.id,
-			cds: data.controlDependencies
-		}),
-		entryPoint: symbol.info.id,
-		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+			id:  sid,
+			cds: data.cds
+		}, data.ctx.env.cleanEnv),
+		entryPoint: sid,
+		exitPoints: [{ nodeId: sid, type: ExitPointType.Default, cds: data.cds }],
+		hooks:      []
 	};
 }

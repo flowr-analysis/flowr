@@ -1,65 +1,81 @@
-import type { OutputFormatter } from '../util/text/ansi';
-import { markdownFormatter, bold, italic } from '../util/text/ansi';
-import type { Queries, Query, QueryResult, QueryResults, SupportedQueryTypes } from './query';
-import { SupportedQueries } from './query';
-import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type OutputFormatter, bold, italic, markdownFormatter } from '../util/text/ansi';
+import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes, SupportedQueries } from './query';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { textWithTooltip } from '../util/html-hover-over';
 import type { CallContextQuerySubKindResult } from './catalog/call-context-query/call-context-query-format';
 import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/text/time';
-import { isBuiltIn } from '../dataflow/environments/built-in';
+import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
-function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
-	const id = isObj ? nodeId.id : nodeId;
-	const info = isObj ? nodeId.info : undefined;
-	if(isBuiltIn(id)) {
+	const id = isObj ? nodeId?.id : nodeId;
+	const info = isObj ? nodeId?.info : undefined;
+	if(NodeId.isBuiltIn(id)) {
 		return italic(id, formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}
-	const node = processed.normalize.idMap.get(id);
+	const node = idMap.get(id);
 	if(node === undefined) {
 		return `UNKNOWN: ${id} (info: ${JSON.stringify(info)})`;
 	}
-	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
+	return `${italic('`' + (RNode.lexeme(node) ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
 }
 
-function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {
 	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results) {
-		const node = processed.normalize.idMap.get(id);
+	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results.slice(0, 20)) {
+		const node = idMap.get(id);
 		if(node === undefined) {
 			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
 			continue;
 		}
-		let line = nodeString(id, formatter, processed);
+		let line = nodeString(id, formatter, idMap);
 		if(calls.length > 0) {
-			line += ` with ${calls.length} call${calls.length > 1 ? 's' : ''} (${calls.map(c => nodeString(c, formatter, processed)).join(', ')})`;
+			line += ` with ${calls.length} call${calls.length > 1 ? 's' : ''} (${calls.map(c => nodeString(c, formatter, idMap)).join(', ')})`;
 		}
 		if(linkedIds.length > 0) {
-			line += ` with ${linkedIds.length} link${linkedIds.length > 1 ? 's' : ''} (${linkedIds.map(c => nodeString(c, formatter, processed)).join(', ')})`;
+			line += ` with ${linkedIds.length} link${linkedIds.length > 1 ? 's' : ''} (${linkedIds.map(c => nodeString(c, formatter, idMap)).join(', ')})`;
 		}
 		if(aliasRoots.length > 0) {
-			line += ` with ${aliasRoots.length} alias root${aliasRoots.length > 1 ? 's' : ''} (${aliasRoots.map(c => nodeString(c, formatter, processed)).join(', ')})`;
+			line += ` with ${aliasRoots.length} alias root${aliasRoots.length > 1 ? 's' : ''} (${aliasRoots.map(c => nodeString(c, formatter, idMap)).join(', ')})`;
 		}
 		result.push(line);
+	}
+	if(results.length > 20) {
+		result.push(` ... and ${results.length - 20} more hits`);
 	}
 	return result.join(', ');
 }
 
-export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+/**
+ * Converts call context query results to an ASCII representation
+ */
+export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], idMap: AstIdMap<ParentInformation>): string {
 	/* traverse over 'kinds' and within them 'subkinds' */
 	const result: string[] = [];
 	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
-		result.push(`   ╰ ${bold(kind, formatter)}`);
+		const amountOfHits = Object.values(subkinds).reduce((acc, cur) => acc + cur.length, 0);
+		result.push(`   ╰ ${bold(kind, formatter)} (${amountOfHits} hit${amountOfHits === 1 ? '' : 's'}):`);
 		for(const [subkind, values] of Object.entries(subkinds)) {
-			result.push(`     ╰ ${bold(subkind, formatter)}: ${asciiCallContextSubHit(formatter, values, processed)}`);
+			const amountOfSubHits = values.length;
+			result.push(`     ╰ ${bold(subkind, formatter)} (${amountOfSubHits} hit${amountOfSubHits === 1 ? '' : 's'}): ${asciiCallContextSubHit(formatter, values, idMap)}`);
 		}
 	}
 	return result.join('\n');
 }
 
+/**
+ * Summarizes a list of node IDs, shortening the output if it is too long
+ * @example
+ * ```ts
+ * summarizeIdsIfTooLong(markdownFormatter, ['id1', 'id2', 'id3']);
+ * // returns 'id1, id2, id3'
+ * summarizeIdsIfTooLong(markdownFormatter, [<array of many ids>]);
+ * // returns 'id1, id2, id3, ... (see JSON)' with a tooltip containing the full JSON array
+ * ```
+ */
 export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly NodeId[]) {
 	const naive = ids.join(', ');
 	if(naive.length <= 20) {
@@ -76,7 +92,13 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
-export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatter: OutputFormatter, totalInMs: number, results: Awaited<QueryResults<S>>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queries: Queries<S>): string {
+/**
+ * Generates an ASCII summary of the given query results
+ */
+export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
+	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,
+	analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>
+): Promise<string> {
 	const result: string[] = [];
 
 	for(const [query, queryResults] of Object.entries(results)) {
@@ -84,9 +106,15 @@ export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatt
 			continue;
 		}
 
+		if(queryResults === undefined || (typeof queryResults === 'object' && queryResults !== null && 'error' in queryResults)) {
+			const message = (queryResults as { error?: string } | undefined)?.error ?? 'unknown error';
+			result.push(`Query: ${bold(query, formatter)} ${bold('failed', formatter)}: ${message}`);
+			continue;
+		}
+
 		const queryType = SupportedQueries[query as SupportedQueryTypes];
 		const relevantQueries = queries.filter(q => q.type === query as SupportedQueryTypes) as Query[];
-		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result, relevantQueries)) {
+		if(await queryType.asciiSummarizer(formatter, analyzer, queryResults as BaseQueryResult, result, relevantQueries)) {
 			continue;
 		}
 
@@ -104,6 +132,8 @@ export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatt
 		result.push(`  - Took ${printAsMs(timing, 0)}`);
 	}
 
-	result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
+	if(analyzer.flowrConfig.repl.queryStats !== false) {
+		result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
+	}
 	return formatter.format(result.join('\n'));
 }

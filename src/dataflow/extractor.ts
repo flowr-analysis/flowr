@@ -1,32 +1,40 @@
 import type { DataflowInformation } from './info';
-import type { DataflowProcessorInformation, DataflowProcessors } from './processor';
-import { processDataflowFor } from './processor';
+import { FunctionSemantics } from './fn/function-semantics';
+import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';
 import { processFunctionParameter } from './internal/process/functions/process-parameter';
 import { processFunctionArgument } from './internal/process/functions/process-argument';
-import { processAsNamedCall } from './internal/process/process-named-call';
+import { processAsNamedCall, processChainedCall } from './internal/process/process-named-call';
 import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
-import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
-import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
-import type { DataflowGraph } from './graph/graph';
-import { extractCfgQuick } from '../control-flow/extract-cfg';
+import { attachProject } from './internal/process/functions/call/built-in/built-in-library';
+import { type DataflowGraph, UnknownSideEffect } from './graph/graph';
+import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { EdgeType } from './graph/edge';
-import {
-	identifyLinkToLastCallRelation
-} from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { identifyLinkToLastCallRelationSync } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
-import type { ControlFlowGraph } from '../control-flow/control-flow-graph';
-import type { FlowrConfigOptions } from '../config';
-import { getBuiltInDefinitions } from './environments/built-in-config';
+import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
+import type { REnvironmentInformation } from './environments/environment';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { FlowrFile } from '../project/context/flowr-file';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+import { VertexType } from './graph/vertex';
+import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
+import { Identifier } from './environments/identifier';
+import { SourceRange } from '../util/range';
+import { dataflowLogger } from './logger';
+import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
+import { DefaultTransitiveSideEffectRounds } from '../config';
+import { Dataflow } from './graph/df-helper';
+import { uniqueArray } from '../util/collections/arrays';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -40,8 +48,8 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.LineDirective]:      processUninterestingLeaf,
 	[RType.Symbol]:             processSymbol,
 	[RType.Access]:             (n, d) => processAsNamedCall(n, d, n.operator, [n.accessed, ...n.access]),
-	[RType.BinaryOp]:           (n, d) => processAsNamedCall(n, d, n.operator, [n.lhs, n.rhs]),
-	[RType.Pipe]:               (n, d) => processAsNamedCall(n, d, n.lexeme, [n.lhs, n.rhs]),
+	[RType.BinaryOp]:           processChainedCall,
+	[RType.Pipe]:               processChainedCall,
 	[RType.UnaryOp]:            (n, d) => processAsNamedCall(n, d, n.operator, [n.operand]),
 	[RType.ForLoop]:            (n, d) => processAsNamedCall(n, d, n.lexeme, [n.variable, n.vector, n.body]),
 	[RType.WhileLoop]:          (n, d) => processAsNamedCall(n, d, n.lexeme, [n.condition, n.body]),
@@ -56,26 +64,55 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.ExpressionList]:     ({ grouping, info, children, location }, d) => {
 		const groupStart = grouping?.[0];
 		return processNamedCall({
-			type:      RType.Symbol,
-			info:      info,
-			content:   groupStart?.content ?? '{',
-			lexeme:    groupStart?.lexeme ?? '{',
-			location:  location ?? rangeFrom(-1, -1, -1, -1),
-			namespace: groupStart?.content ? undefined : 'base'
+			type:     RType.Symbol,
+			info:     info,
+			content:  groupStart?.content ?? '{',
+			lexeme:   groupStart?.lexeme ?? '{',
+			location: location ?? SourceRange.invalid(),
+			ns:       groupStart?.content ? undefined : 'base'
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}
 };
 
-
-function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
-	let cfg: ControlFlowGraph | undefined = undefined;
+function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
+	const gasLevel = ctx.gas.checkGas(GasFeatureKey.SideEffectLinking);
+	if(gasLevel >= GasLevel.Critical) {
+		dataflowLogger.warn('Skipping side-effect link resolution due to resource pressure (gas: critical). See ' + GasWikiRef);
+		return undefined;
+	} else if(gasLevel >= GasLevel.Problematic) {
+		dataflowLogger.warn('Approaching resource limits during side-effect link resolution (gas: problematic). See ' + GasWikiRef);
+	}
+	let cf: ControlFlowGraph | undefined = undefined;
+	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;
+	let allCallNames: string[] = [];
+	const killedRegexes = new Set<string>();
+	const handled = new Set<NodeId>();
 	for(const s of graph.unknownSideEffects) {
-		if(typeof s !== 'object') {
+		if(!UnknownSideEffect.isLinked(s)) {
 			continue;
 		}
-		cfg ??= extractCfgQuick(ast).graph;
+		if(cf === undefined) {
+			/* the control flow is already in the graph, so this only projects it into the shape the walk expects */
+			cf = new ControlFlowGraph(graph);
+			if(graph.unknownSideEffects.size > 20) {
+				knownCalls = new Map(graph.verticesOfType(VertexType.FunctionCall) as MapIterator<[NodeId, Required<DataflowGraphVertexFunctionCall>]>);
+				allCallNames = uniqueArray(knownCalls.values().map(c => Identifier.toString(c.name)));
+			}
+		} else if(handled.has(s.id)) {
+			continue;
+		}
+		handled.add(s.id);
+		const regexKey = s.linkTo.callName.source + '//' + s.linkTo.callName.flags;
+		if(killedRegexes.has(regexKey)) {
+			// we already know we will not find it!
+			continue;
+		} else if(allCallNames.length > 0 && !allCallNames.some(name => s.linkTo.callName.test(name))) {
+			// we know no call matches the regex
+			killedRegexes.add(regexKey);
+			continue;
+		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo);
+		const potentials = identifyLinkToLastCallRelationSync(s.id, cf, graph, s.linkTo as LinkToLastCall<RegExp>, knownCalls);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}
@@ -83,6 +120,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			graph.unknownSideEffects.delete(s);
 		}
 	}
+
 }
 
 /**
@@ -92,51 +130,86 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
  * For the actual, canonical fold entry point, see {@link processDataflowFor}.
  */
 export function produceDataFlowGraph<OtherInfo>(
-	parser: Parser<KnownParserType>,
-	request: RParseRequests,
-	completeAst:     NormalizedAst<OtherInfo & ParentInformation>,
-	config: FlowrConfigOptions,
+	parser:      Parser<KnownParserType>,
+	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
+	ctx:         FlowrAnalyzerContext,
+	budget:      DataflowBudgetTracker | undefined = ctx.gas.budget(GasFeatureKey.Dataflow)
 ): DataflowInformation {
-	let firstRequest: RParseRequest;
+	return withDataflowBudget(budget, () => {
+		const df = extractDataFlowGraph(parser, completeAst, ctx);
+		const cut = budget?.exhausted;
+		if(cut !== undefined) {
+			dataflowLogger.warn(`Dataflow analysis was cut short after ${cut.reached} ${cut.dimension} (budget ${cut.limit}); the graph is partial.`);
+			(df as { cutShort?: typeof cut }).cutShort = cut;
+		}
+		return df;
+	});
+}
 
-	const multifile = Array.isArray(request);
-	if(multifile) {
-		firstRequest = request[0] as RParseRequest;
-	} else {
-		firstRequest = request as RParseRequest;
-	}
+/** The extraction itself, always run inside the {@link withDataflowBudget} scope {@link produceDataFlowGraph} opens. */
+function extractDataFlowGraph<OtherInfo>(
+	parser:      Parser<KnownParserType>,
+	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
+	ctx:         FlowrAnalyzerContext
+): DataflowInformation {
 
-	const builtInsConfig = config.semantics.environment.overwriteBuiltIns;
-	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
-	const env = initializeCleanEnvironments(builtIns.builtInMemory);
+	// we freeze the files here to avoid endless modifications during processing
+	const files = completeAst.ast.files.slice();
+
+	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+
+	const env = ctx.env.makeCleanEnv();
+	env.current.n = ctx.meta.getNamespace();
+	const environment = attachProject(env, ctx);
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:         env,
-		builtInEnvironment:  env.current.parent,
-		processors,
-		currentRequest:      firstRequest,
-		controlDependencies: undefined,
-		referenceChain:      [firstRequest],
-		flowrConfig:         config
+		environment,
+		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
+		cds:            undefined,
+		referenceChain: [files[0].filePath],
+		ctx
 	};
-	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
-
-
-	df.graph.sourced.unshift(firstRequest.request === 'file' ? firstRequest.content : '<inline>');
-
-	if(multifile) {
-		for(let i = 1; i < request.length; i++) {
-			/* source requests register automatically */
-			df = standaloneSourceFile(request[i] as RParseRequest, dfData, `root-${i}`, df);
+	let df: DataflowInformation;
+	try {
+		df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+	} catch(e) {
+		if(e instanceof RangeError) {
+			throw new Error(`Dataflow analysis exceeded the call stack for '${files[0].filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
 		}
+		throw e;
 	}
 
-	// finally, resolve linkages
-	updateNestedFunctionCalls(df.graph, df.environment);
+	for(let i = 1; i < files.length; i++) {
+		/* source requests register automatically */
+		df = standaloneSourceFile(i, files[i], dfData, df);
+	}
 
+	// resolve linkages and propagate transitive side effects across calls to a fixpoint
+	updateNestedFunctionCalls(df.graph, df.environment, ctx);
+	const escapedNames = new Set<string>();
+	const rounds = ctx.config.solver.transitiveSideEffectRounds ?? DefaultTransitiveSideEffectRounds;
+	for(let round = 0; round < rounds; round++) {
+		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx);
+		(df as { environment: REnvironmentInformation }).environment = environment;
+		for(const n of roundNames) {
+			escapedNames.add(n);
+		}
+		if(!grew) {
+			break;
+		}
+		updateNestedFunctionCalls(df.graph, df.environment, ctx);
+	}
+	// resolve top-level reads that now see the escaped `<<-` definitions folded in above
+	if(escapedNames.size > 0) {
+		reResolveOpenReferences(df.graph, df.environment, [...df.in, ...df.unknownReferences], escapedNames);
+	}
+	// link on-demand-materialized package exports back to their `library()` loaders
+	linkMaterializedExportsToLoaders(df.graph, df.environment);
+	FunctionSemantics.call.quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
-	resolveLinkToSideEffects(completeAst, df.graph);
+	resolveLinkToSideEffects(df.graph, ctx);
+
 	return df;
 }

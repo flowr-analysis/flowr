@@ -1,4 +1,3 @@
-import type { RShell } from '../../../r-bridge/shell';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { EdgeType } from '../../../dataflow/graph/edge';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -11,7 +10,6 @@ export interface SubExplanationParameters {
 }
 
 export interface ExplanationParameters {
-	readonly shell:            RShell,
 	readonly name:             string,
 	readonly type:             VertexType | EdgeType,
 	readonly description:      string,
@@ -19,10 +17,18 @@ export interface ExplanationParameters {
 	readonly expectedSubgraph: DataflowGraph
 }
 
+
+/**
+ * Every {@link VertexType} as a name/value pair, for the wiki pages that list them.
+ */
 export function getAllVertices(): [string, VertexType][] {
-	return Object.entries(VertexType) as [string, VertexType][];
+	return Object.entries(VertexType);
 }
 
+
+/**
+ * Every {@link EdgeType} as a name/value pair, the reverse lookups of the bit-flag enum dropped.
+ */
 export function getAllEdges(): [string, EdgeType][] {
 	return Object.entries(EdgeType).filter(([, v]) => Number.isInteger(v)) as [string, EdgeType][];
 }

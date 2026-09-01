@@ -1,20 +1,47 @@
-import type { DataflowProcessorInformation } from '../../../../processor';
-import { processDataflowFor } from '../../../../processor';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
+import { FunctionSemantics } from '../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../info';
+import { ControlFlow } from '../../../control-flow';
+import { ExitPointType } from '../../../../info';
 import { processAllArguments } from './common';
-import { linkArgumentsOnCall } from '../../../linker';
 import type { RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EdgeType } from '../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { DataflowGraph } from '../../../../graph/graph';
+import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { VertexType } from '../../../../graph/vertex';
-import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RAccess } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
-export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
-export const UnnamedFunctionCallOrigin = 'unnamed';
+export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 
+/**
+ * Whether a `$`/`[[` access callee resolved a field to a stored function: a resolved dispatch (`dispatch$foo()`)
+ * carries a `Returns` edge from the access node to the field target (in addition to the base `Returns` to `accessedId`),
+ * while an opaque object (`g$greet()` on an untracked `g`) only carries the base `Returns`.
+ */
+function accessResolvesToField(graph: DataflowGraph, accessId: NodeId, accessedId: NodeId): boolean {
+	const outgoing = graph.outgoingEdges(accessId);
+	if(outgoing === undefined) {
+		return false;
+	}
+	const base = NodeId.normalize(accessedId);
+	for(const [target, edge] of outgoing) {
+		if(NodeId.normalize(target) !== base && DfEdge.includesType(edge, EdgeType.Returns)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Processes an unnamed function call.
+ * For example `(function(x) { x + 1 })(5)`
+ */
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);
 
@@ -23,15 +50,16 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const calledRootId = functionCall.calledFunction.info.id;
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`;
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`);
-	// we know that it calls the toplevel:
-	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Calls | EdgeType.Reads);
+	// we know that it reads the toplevel:
+	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Reads);
 	// keep the defined function
 	finalGraph.mergeWith(calledFunction.graph);
 
 	const {
 		finalEnv,
 		callArgs,
-		remainingReadInArgs
+		remainingReadInArgs,
+		processedArguments
 	} = processAllArguments({
 		functionName: calledFunction,
 		args:         functionCall.arguments,
@@ -48,19 +76,33 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		name:        functionCallName,
 		/* can never be a direct built-in-call */
 		onlyBuiltin: false,
-		cds:         data.controlDependencies,
+		cds:         data.cds,
 		args:        callArgs, // same reference
-		origin:      [UnnamedFunctionCallOrigin]
-	});
+		origin:      [BuiltInProcName.Unnamed]
+	}, data.ctx.env.cleanEnv);
+
+	const cfgEntry = ControlFlow.inSequence(finalGraph, [calledFunction, ...processedArguments], functionRootId);
+	/* a jump within an argument is caught here, just like for a named call */
+	for(const argument of processedArguments) {
+		for(const exit of argument?.exitPoints ?? []) {
+			if(exit.type !== ExitPointType.Default) {
+				finalGraph.addEdge(exit.nodeId, functionRootId, EdgeType.FlowEdge);
+			}
+		}
+	}
 
 	let inIds = remainingReadInArgs;
-	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
+	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
 
-	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
-		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
+	// if we just call a nested fdef
+	if(RFunctionDefinition.is(functionCall.calledFunction)) {
+		FunctionSemantics.call.match.onCallAndLink(callArgs, functionCall.calledFunction.parameters, finalGraph);
+	} else if(RAccess.is(functionCall.calledFunction) && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
+		// `obj$method()` whose callee did not resolve to a stored function: reached-but-unknown rather than dropped
+		handleUnknownSideEffect(finalGraph, data.environment, functionRootId);
 	}
-	// push the called function to the ids:
 
+	// push the called function to the ids:
 	inIds = inIds.concat(calledFunction.in, calledFunction.unknownReferences);
 
 	return {
@@ -71,6 +113,9 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		graph:             finalGraph,
 		environment:       finalEnv,
 		entryPoint:        functionCall.info.id,
-		exitPoints:        calledFunction.exitPoints
+		cfgEntry:          cfgEntry === functionRootId ? undefined : cfgEntry,
+		cfgExit:           functionRootId,
+		exitPoints:        calledFunction.exitPoints,
+		hooks:             calledFunction.hooks,
 	};
 }

@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowR &middot; program analysis for R</title>
+<meta name="description" content="flowR is a sophisticated static program analyzer for the R language: slicing, dependency and query analysis, shape inference, and linting, without needing to run your code.">
+<link rel="icon" href="wiki/img/flowR-mark-red.svg" type="image/svg+xml">
+<script>
+	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
+	try {
+		const theme = localStorage.getItem('flowr-theme');
+		if(theme) { document.documentElement.dataset.theme = theme; }
+	} catch(e) { /* private mode keeps the system theme */ }
+	/* every flowR page reads the same key, so a change on one of them follows you to the others */
+	addEventListener('storage', e => {
+		if(e.key === 'flowr-theme') {
+			if(e.newValue) {
+				document.documentElement.dataset.theme = e.newValue;
+			} else {
+				delete document.documentElement.dataset.theme;
+			}
+		}
+	});
+</script>
+<style>
+:root {
+	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
+	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff;
+	--shadow: 0 1px 2px rgba(16,20,30,.06), 0 6px 18px rgba(16,20,30,.06);
+	color-scheme: light;
+}
+:root[data-theme="dark"] {
+	--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
+	--border: #2f343d; --accent: #56b4e9; --accent-fg: #10131a;
+	--shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35); color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
+		--border: #2f343d; --accent: #56b4e9; --accent-fg: #10131a;
+		--shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35); color-scheme: dark;
+	}
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0; padding: 0 1rem 3rem; color: var(--fg); -webkit-text-size-adjust: 100%;
+	font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	background: radial-gradient(64rem 24rem at 50% -10rem, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%) var(--bg) no-repeat;
+}
+/* a few soft balls behind everything, in the colours the feature cards use, drifting slowly enough
+   that one only notices them when looking for them */
+body::before, body::after {
+	content: ""; position: fixed; inset: -10%; z-index: -1; pointer-events: none;
+	will-change: transform;
+}
+body::before {
+	background:
+		radial-gradient(15rem 15rem at 13% 23%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 62%),
+		radial-gradient(13rem 13rem at 46% 54%, color-mix(in srgb, #c2707c 7%, transparent), transparent 62%),
+		radial-gradient(10rem 10rem at 62% 12%, color-mix(in srgb, #e2bcc0 11%, transparent), transparent 62%),
+		radial-gradient(9rem 9rem at 8% 63%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 62%);
+	animation: drift-a 210s ease-in-out infinite;
+}
+body::after {
+	background:
+		radial-gradient(12rem 12rem at 87% 36%, color-mix(in srgb, #e2bcc0 12%, transparent), transparent 62%),
+		radial-gradient(11rem 11rem at 73% 89%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
+		radial-gradient(9rem 9rem at 32% 94%, color-mix(in srgb, #c2707c 7%, transparent), transparent 62%),
+		radial-gradient(8rem 8rem at 94% 68%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 62%);
+	animation: drift-b 260s ease-in-out infinite;
+}
+@keyframes drift-a {
+	0%, 100% { transform: translate3d(0, 0, 0); }
+	50% { transform: translate3d(1.2%, -1.4%, 0); }
+}
+@keyframes drift-b {
+	0%, 100% { transform: translate3d(0, 0, 0); }
+	50% { transform: translate3d(-1.1%, 1.3%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+	body::before, body::after { animation: none; }
+}
+main { max-width: 62rem; margin: 0 auto; }
+a {
+	color: var(--accent); text-decoration: underline;
+	text-decoration-thickness: from-font; text-underline-offset: .16em;
+	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+	transition: color .12s, text-decoration-color .12s, opacity .12s;
+}
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
+@media (prefers-reduced-motion: reduce) { a { transition: none; } }
+.prose a, .cases a { font-weight: 400; text-decoration: none; color: color-mix(in srgb, var(--accent) 85%, var(--fg)); }
+.prose a:hover, .cases a:hover { text-decoration: underline; color: var(--accent); }
+h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); }
+h3 { margin: 2rem 0 .8rem; font-size: 1.05rem; letter-spacing: -.01em; }
+h2 { margin: 3rem 0 1rem; font-size: clamp(1.2rem, 4vw, 1.5rem); }
+h1, h2 { line-height: 1.2; letter-spacing: -.02em; }
+code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.card {
+	background: var(--panel); border: 1px solid var(--border); border-radius: .8rem; box-shadow: var(--shadow);
+	transition: border-color .12s, background .12s;
+}
+
+.bar {
+	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
+	padding: .8rem 0 .6rem; border-bottom: 1px solid var(--border);
+}
+.bar nav { overflow-x: auto; scrollbar-width: none; }
+.bar nav::-webkit-scrollbar { display: none; }
+.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
+.bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }
+.bar .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+.bar .version { margin-left: .55rem; font-size: .82rem; font-weight: 400; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar .version:hover { color: var(--fg); }
+.mark { color: var(--accent); flex: none; }
+.bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; }
+.bar nav a {
+	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
+	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
+}
+.bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
+.bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
+/* a phone has no room for one row: the links wrap under the name instead of scrolling out of sight */
+@media (max-width: 46rem) {
+	.bar { flex-wrap: wrap; }
+	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
+	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
+	.bar .controls { margin-left: auto; }
+}
+/* the four names no longer fit on one line: two by two reads better than three and a stray */
+@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
+/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
+   page colours; only the backdrop reacts to the pointer */
+.bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
+.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
+.bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+:root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .bar .controls .gh, :root:not([data-theme="light"]) .bar .controls .gh:hover { color: #fff; }
+}
+.bar .controls .gh svg { display: block; }
+#theme {
+	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; flex: none;
+	font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
+	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+}
+#theme:hover { border-color: var(--accent); color: var(--accent); }
+#theme svg { display: block; }
+#theme .sun { display: none; }
+:root[data-theme="dark"] #theme .sun { display: block; }
+:root[data-theme="dark"] #theme .moon { display: none; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) #theme .sun { display: block; }
+	:root:not([data-theme="light"]) #theme .moon { display: none; }
+}
+
+header { text-align: center; padding: 2.6rem 0 1.6rem; }
+header h1 { margin: 0 0 1.3rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
+header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 3.25vw, 1.18rem); color: var(--muted); }
+#meta { min-height: 1.6em; margin: 0 0 1.6rem; color: var(--muted); font-size: .9rem; }
+#meta b { color: var(--fg); }
+#meta a { color: inherit; text-decoration: none; }
+#meta a:hover { color: var(--accent); }
+.cta { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin: 0; }
+.cta a {
+	padding: .7rem 1.2rem; border-radius: .6rem; font-weight: 600;
+	border: 1px solid var(--border); background: var(--panel); color: var(--fg); text-decoration: none;
+	box-shadow: var(--shadow); transition: border-color .12s;
+}
+.cta a:hover { border-color: var(--accent); }
+.cta a.primary { border-color: transparent; color: var(--accent-fg); background: var(--accent); }
+
+.demo { overflow: hidden; }
+.tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: .2rem; padding: .4rem .4rem 0; background: var(--sunk); border-bottom: 1px solid var(--border); }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button {
+	/* .4rem strip padding + .6rem here puts the label on the same 1rem line as the code and the file name below */
+	white-space: nowrap; font: inherit; font-size: .9rem; font-weight: 600; padding: .6rem .6rem; cursor: pointer;
+	border: 0; border-bottom: 2px solid transparent; border-radius: .4rem .4rem 0 0;
+	background: none; color: var(--muted); transition: color .12s, border-color .12s, background .12s;
+}
+.tabs button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 5%, transparent); }
+.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.demo v { position: relative; cursor: pointer; border-radius: .2rem; transition: background .15s, color .15s; }
+.demo [data-panel="values"] v { cursor: help; }
+
+.demo v:hover, .demo v.pinned { background: color-mix(in srgb, var(--slice, var(--accent)) 22%, transparent); outline: 1px solid color-mix(in srgb, var(--slice, var(--accent)) 35%, transparent); }
+.demo bad { text-decoration: underline wavy #d55e00; text-underline-offset: .22em; cursor: help; }
+:root[data-theme="dark"] .demo bad { text-decoration-color: #e69f00; }
+
+/* the tooltip lives outside every scroll box, which is the only way it never gets clipped */
+#tip {
+	position: fixed; z-index: 30; padding: .25rem .55rem; border-radius: .4rem; pointer-events: none;
+	max-width: min(28rem, 90vw); opacity: 0; translate: 0 .3rem; transition: opacity .12s, translate .12s;
+	background: var(--fg); color: var(--bg); font: .74rem/1.45 system-ui, sans-serif;
+}
+#tip[data-show] { opacity: 1; translate: 0 0; }
+/* an inferred value reads as the comment R would have written next to that line; floated rather than
+   flexed, because a flex line would put a gap between every token of the code */
+.demo .line[data-note] { display: flow-root; }
+.demo .line[data-note]::after {
+	content: attr(data-note); float: right; margin-left: 2.5rem; text-indent: 0; color: var(--muted); opacity: .85;
+}
+.demo .line.dep { box-shadow: inset .18rem 0 0 var(--kind); --kind: var(--accent); }
+/* a run of lines doing the same thing reads as one block: square edges inside it, round at its ends */
+.demo .line.dep.first { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.demo .line.dep.mid { border-radius: 0; }
+.demo .line.dep.last { border-top-left-radius: 0; border-top-right-radius: 0; }
+.demo .line.dep.run { background: color-mix(in srgb, var(--kind) 10%, transparent); }
+.demo .line.dep[data-kind]::after {
+	content: attr(data-kind); float: right; margin-left: 2rem; text-indent: 0;
+	padding: 0 .5rem; border-radius: 1rem; font: 600 .68rem/1.7 system-ui, sans-serif; letter-spacing: .04em;
+	color: var(--kind); border: 1px solid color-mix(in srgb, var(--kind) 45%, transparent);
+	background: color-mix(in srgb, var(--kind) 12%, transparent);
+}
+
+.demo .line.visualize { --kind: #cc79a7; }
+.demo .line.library { --kind: #7b3294; }
+.demo .line.source  { --kind: #0072b2; }
+.demo .line.read    { --kind: #0f766e; }
+.demo .line.write   { --kind: #d55e00; }
+:root[data-theme="dark"] .demo .line.library { --kind: #c58af9; }
+:root[data-theme="dark"] .demo .line.visualize { --kind: #f0a6d0; }
+:root[data-theme="dark"] .demo .line.read    { --kind: #2dd4bf; }
+:root[data-theme="dark"] .demo .line.write   { --kind: #e69f00; }
+.demo .line.jump { animation: jump 1.2s ease-out; }
+@keyframes jump {
+	0%, 60% { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+	100% { background: transparent; }
+}
+.demo .code[data-slice] .line { opacity: .25; filter: saturate(.3); }
+.demo .code[data-slice] .line.keep { opacity: 1; filter: none; background: color-mix(in srgb, var(--slice) 14%, transparent); }
+/* neighbouring kept lines are one block, so the rounding only sits at the ends of a run */
+.demo .line.keep + .line.keep { border-top-left-radius: 0; border-top-right-radius: 0; }
+.demo .line.keep:has(+ .line.keep) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.demo .code { --slice: var(--accent); }
+.demo .code[data-way=">"] { --slice: #0f766e; }
+:root[data-theme="dark"] .demo .code[data-way=">"] { --slice: #2dd4bf; }
+.demo .line { transition: opacity .2s ease, background .2s ease, filter .2s ease; }
+.demo k { color: #b07d00; } .demo f { color: var(--fg); font-weight: 600; } .demo str { color: #0f766e; } .demo o { color: var(--muted); }
+:root[data-theme="dark"] .demo k { color: #e0b341; } :root[data-theme="dark"] .demo str { color: #2dd4bf; }
+.demo .code { padding: .8rem 1rem; overflow-x: auto; font-size: clamp(.75rem, 3vw, .9rem); }
+/* the frame around a sample: a title bar, then numbered lines */
+.demo .chrome {
+	padding: .2rem 1rem; border-bottom: 1px solid var(--border); background: var(--sunk);
+	font-size: .72rem; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.demo .code:not(.out) { counter-reset: line; }
+.demo .code:not(.out) .line { padding-left: 3rem; text-indent: -3rem; }
+.demo .code:not(.out) .line::before {
+	counter-increment: line; content: counter(line);
+	display: inline-block; width: 2.2rem; margin-right: .8rem; text-indent: 0;
+	text-align: right; color: color-mix(in srgb, var(--muted) 65%, transparent); user-select: none;
+}
+.demo .out { padding: .8rem 1rem; }
+.demo .line { display: block; white-space: pre; padding: .05rem .4rem; border-radius: .25rem; }
+.demo .out { background: var(--sunk); color: var(--fg); transition: opacity .15s; }
+.demo .out .line { display: grid; grid-template-columns: 9.5rem 1fr; gap: 0 .8rem; padding: .05rem .4rem; white-space: normal; font-size: .92em; }
+.demo .out .line + .line { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.demo .out b { color: var(--muted); font-weight: 600; font-size: .82em; letter-spacing: .03em; align-self: center; }
+@media (max-width: 32rem) { .demo .out .line { grid-template-columns: 1fr; gap: 0; } }
+.demo .line.lit, .demo .out .line.lit { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.demo .out .line[data-line] { cursor: default; }
+/* what the tab is about on the left, what flowR made of it on the right */
+.demo .demobody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 22rem); min-height: 18.2rem; }
+.demo .explain {
+	grid-column: 2; grid-row: 1;
+	padding: 1rem 1.1rem; border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+	background: color-mix(in srgb, var(--sunk) 45%, transparent);
+}
+.demo .panels { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; min-width: 0; }
+.demo .panels > section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.demo .panels > section[hidden] { display: none; }
+.demo .panels > section > .code { flex: 1 1 auto; }
+.demo .lede { margin: 0; color: var(--fg); font-size: .95rem; }
+.demo .more { margin: .6rem 0 0; color: var(--muted); font-size: .88rem; }
+@media (max-width: 46rem) {
+	.demo .demobody { grid-template-columns: 1fr; min-height: 0; }
+	.demo .explain { grid-column: 1; grid-row: 2; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+}
+.demo .picking .out .line { opacity: .35; }
+.demo .picking .out .line.lit { opacity: 1; }
+.demo .note {
+	margin: 0; padding: .85rem 1.25rem; border-top: 1px solid var(--border);
+	background: var(--sunk); color: var(--muted); font-size: .9rem;
+}
+.demo .note a { margin-right: .6rem; }
+.demo .ways {
+	display: inline-flex; gap: .1rem; flex: none; padding: .12rem;
+	border-radius: 999px; border: 1px solid var(--border); background: var(--panel);
+}
+.demo .way {
+	display: inline-flex; align-items: center; gap: .25rem; cursor: pointer;
+	font: inherit; font-size: .72rem; font-weight: 600; letter-spacing: .01em; padding: .2rem .55rem;
+	border: 0; border-radius: 999px; background: none; color: var(--muted);
+	transition: color .15s, background .15s, box-shadow .15s;
+}
+.demo .way:hover { color: var(--fg); }
+.demo .way[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.demo .way[data-way=">"][aria-pressed="true"] { color: #0f766e; background: color-mix(in srgb, #0f766e 14%, transparent); }
+:root[data-theme="dark"] .demo .way[data-way=">"][aria-pressed="true"] { color: #2dd4bf; background: color-mix(in srgb, #2dd4bf 18%, transparent); }
+.demo .way svg { opacity: .8; }
+.demo .ask { display: flex; gap: .5rem; padding: 1rem; }
+.demo .ask input {
+	flex: 1 1 auto; min-width: 0; font: inherit; font-size: .9rem;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	padding: .55rem .8rem; border-radius: .5rem; border: 1px solid var(--border);
+	background: var(--panel); color: var(--fg);
+}
+.demo .ask input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.demo .ask button {
+	font: inherit; font-weight: 600; font-size: .9rem; padding: .55rem 1.1rem; cursor: pointer;
+	border-radius: .5rem; border: 1px solid transparent; background: var(--accent); color: var(--accent-fg);
+}
+.demo .ask button:hover { filter: brightness(1.08); }
+.demo .note code { color: var(--fg); background: var(--panel); border: 1px solid var(--border); border-radius: .3rem; padding: .1rem .4rem; font-size: .85em; }
+.cases { display: grid; gap: .5rem; }
+.cases details {
+	border: 1px solid var(--border); border-radius: .8rem; background: var(--panel); box-shadow: var(--shadow);
+	transition: border-color .12s;
+}
+.cases details:hover { border-color: var(--accent); }
+.cases summary {
+	cursor: pointer; padding: .9rem 1.2rem; font-size: 1.05rem; font-weight: 600; color: var(--fg);
+	list-style: none; display: flex; align-items: center; gap: .6rem;
+}
+.cases summary::-webkit-details-marker { display: none; }
+.cases .tags { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
+.cases .tag {
+	padding: .1rem .6rem; border-radius: 1rem; font-size: .7rem; font-weight: 600;
+	letter-spacing: .03em; color: var(--muted); background: var(--sunk); border: 1px solid var(--border);
+}
+.cases summary::before {
+	content: "+"; flex: none; width: 1.1rem; color: var(--muted); font-weight: 400; font-size: 1.1rem;
+}
+.cases details[open] summary::before { content: "\2212"; }
+.cases p { margin: 0 1.2rem 1rem 2.9rem; color: var(--muted); font-size: .95rem; }
+.cases p + p { margin-top: -.5rem; }
+.cases .links { display: flex; flex-wrap: wrap; gap: .2rem 1rem; font-size: .9rem; }
+.cases code { background: var(--sunk); border: 1px solid var(--border); border-radius: .3rem; padding: 0 .3rem; font-size: .92em; }
+/* the measurements read as a sentence, each with the trend of its last releases */
+.timings { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin: 0 0 1rem; }
+.timing { display: inline-flex; align-items: center; gap: .45rem; font-size: .95rem; color: var(--muted); }
+.timing::before { content: "\2022"; color: color-mix(in srgb, var(--accent) 70%, transparent); font-weight: 700; }
+.timing b { color: var(--fg); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9rem; }
+.spark { color: var(--accent); opacity: .8; }
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+/* one wash per card, in the colour of what the feature is about */
+.grid.washed > * {
+	--tint: var(--accent);
+	background: radial-gradient(14rem 8rem at 100% 0%, color-mix(in srgb, var(--tint) 12%, transparent), transparent 70%), var(--panel);
+}
+.grid.washed > .understand { --tint: var(--accent); }
+.grid.washed > .check { --tint: #7b3294; }
+.grid.washed > .build { --tint: #0f766e; }
+.grid > * { padding: 1.1rem; text-decoration: none; color: inherit; }
+.grid > *:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+.grid.washed > *:hover {
+	border-color: color-mix(in srgb, var(--tint) 55%, var(--border));
+	background: radial-gradient(16rem 9rem at 100% 0%, color-mix(in srgb, var(--tint) 24%, transparent), transparent 72%), var(--panel);
+}
+.grid.washed strong, .grid.washed strong a { color: var(--tint); }
+.grid strong, .grid strong a { display: block; margin-bottom: .3rem; color: var(--accent); text-decoration: none; }
+/* one icon per feature, in the colour of the card it heads */
+.grid.washed strong { display: flex; align-items: center; gap: .45rem; }
+.grid.washed .icon { flex: none; color: var(--tint); opacity: .9; }
+.grid span { color: var(--muted); font-size: .95rem; }
+
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; max-width: 44rem; margin: .9rem auto 0; }
+.chips a {
+	padding: .45rem .9rem; border-radius: 2rem; text-decoration: none; font-size: .9rem;
+	border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+	transition: border-color .12s, color .12s;
+}
+.chips a:hover { border-color: var(--accent); color: var(--accent); }
+.reads { display: grid; gap: 0; border: 1px solid var(--border); border-radius: .8rem; overflow: hidden; background: var(--panel); box-shadow: var(--shadow); }
+.reads a { display: grid; grid-template-columns: 17rem 1fr; gap: 1rem; padding: .85rem 1.1rem; text-decoration: none; color: var(--muted); transition: background .12s, padding .12s; }
+.reads a + a { border-top: 1px solid var(--border); }
+.reads a b { color: var(--fg); }
+.reads a:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); padding-left: 1.6rem; }
+.reads a:hover b { color: var(--accent); }
+@media (max-width: 32rem) { .reads a { grid-template-columns: 1fr; gap: .1rem; } }
+
+.path { counter-reset: step; list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .6rem; }
+.path li { counter-increment: step; display: grid; grid-template-columns: 2rem 1fr; align-items: baseline; gap: .2rem .8rem; }
+.path li::before {
+	content: counter(step); grid-row: span 2; display: grid; place-items: center; width: 2rem; height: 2rem;
+	border-radius: 50%; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent);
+	font-size: .85rem; font-weight: 700;
+}
+.path li a { font-weight: 600; text-decoration: none; }
+.path li a:hover { text-decoration: underline; }
+.path li span { color: var(--muted); font-size: .95rem; }
+.path li em {
+	grid-column: 2; display: grid; grid-template-rows: 0fr; font-style: normal;
+	color: var(--muted); font-size: .88rem; opacity: 0;
+	transition: grid-template-rows .32s cubic-bezier(.22, .61, .36, 1), opacity .24s ease .04s, margin-top .32s ease;
+}
+.path li em > span { overflow: hidden; }
+.path li:hover em, .path li:focus-within em { grid-template-rows: 1fr; opacity: 1; margin-top: .3rem; }
+@media (prefers-reduced-motion: reduce) { .path li em { transition: none; } }
+.path li em code { background: var(--sunk); border: 1px solid var(--border); border-radius: .3rem; padding: 0 .3rem; font-size: .92em; }
+/* the platforms flowR ships for, introduced rather than dropped in */
+.available { margin: 2.2rem 0 .5rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+/* which way a slice runs: a question next to the explanation instead of a switch under the code */
+.demo .direction { margin-top: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.demo .direction[hidden] { display: none; }
+.demo .direction .label { font-size: .85rem; color: var(--fg); }
+.demo .direction .hint { flex-basis: 100%; color: var(--muted); font-size: .8rem; }
+.demo .direction .kept {
+	flex-basis: 100%; min-height: 1.6em; font-size: .82rem; color: var(--fg);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+/* every line in the dependency view reserves the rail, so the left edge stays straight */
+.demo section[data-panel="deps"] .line:not(.dep) { box-shadow: inset .18rem 0 0 transparent; }
+/* the contributing path, folded away until someone is looking for it */
+details.unfold > summary {
+	cursor: pointer; padding: .7rem 1rem; border: 1px solid var(--border); border-radius: .6rem;
+	background: var(--panel); color: var(--fg); font-size: .95rem;
+}
+details.unfold[open] > summary { margin-bottom: 1rem; }
+/* the links that lead off the page */
+footer { margin: 3.5rem 0 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+footer .ends { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+footer .ends > div { display: flex; flex-direction: column; gap: .3rem; }
+footer b { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+footer a { color: var(--fg); text-decoration: none; font-size: .9rem; }
+footer a:hover { color: var(--accent); text-decoration: underline; }
+.updated { margin: .6rem 0 1.5rem; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.prose { max-width: 58rem; color: var(--muted); }
+.prose.small { font-size: .88rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="bar">
+	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h2>
+	<nav>
+		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
+		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
+		<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+		<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+	</nav>
+	<span class="controls">
+		<a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+		<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
+		<svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+		<svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
+	</button>
+	</span>
+</div>
+
+<header>
+	<h1>Program Analysis for R</h1>
+	<p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
+		find quality issues, improve reproducibility, and check the validity of your analyses.</p>
+	<p id="meta"><b><!--VERSION-LABEL--></b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
+	<p class="cta">
+		<a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
+		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
+		<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">★ Star on GitHub</a>
+	</p>
+	<p class="available">Available for</p>
+	<p class="chips">
+		<a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr" target="_blank" rel="noopener">VS Code</a>
+		<a href="https://open-vsx.org/extension/code-inspect/vscode-flowr" target="_blank" rel="noopener">Positron</a>
+		<a href="https://github.com/flowr-analysis/rstudio-addin-flowr" target="_blank" rel="noopener">RStudio</a>
+		<a href="https://github.com/flowr-analysis/flowr-r-adapter" target="_blank" rel="noopener">R package</a>
+		<a href="https://hub.docker.com/r/eagleoutice/flowr" target="_blank" rel="noopener">Docker</a>
+		<a href="https://www.npmjs.com/package/@eagleoutice/flowr" target="_blank" rel="noopener">npm</a>
+	</p>
+</header>
+
+<h2>Try It Out</h2>
+<p class="prose">
+	These run on the samples below. For your own code, open the
+	<a href="wiki/playground/" target="_blank" rel="noopener">playground</a>, which runs flowR in your browser.
+</p>
+<!-- Everything in here was computed by `npm run gen:landing`, which runs flowR over these samples.
+     Point at a name to see its slice; the tabs show what the other queries answered. -->
+<div class="demo card">
+	<div class="tabs" role="tablist">
+		<button role="tab" aria-selected="true" data-tab="slice">Slicing</button>
+		<button role="tab" aria-selected="false" data-tab="deps">Dependencies</button>
+		<button role="tab" aria-selected="false" data-tab="lint">Linting</button>
+		<button role="tab" aria-selected="false" data-tab="values">Values</button>
+		<button role="tab" aria-selected="false" data-tab="origin">Jump to definition</button>
+		<button role="tab" aria-selected="false" data-tab="signature">Signatures</button>
+	</div>
+	<div class="demobody">
+	<div class="explain">
+		<p class="lede" id="lede">Point at any name below, or at an access like survey$age, and flowR keeps only the lines that matter.</p>
+		<p class="more" id="lede-more">It keeps just the lines the value depends on (including called functions).</p>
+		<div class="direction" id="direction">
+			<span class="label">Which way?</span>
+			<div class="ways" role="group" aria-label="Which direction to slice in">
+				<button type="button" class="way" data-way="" aria-pressed="true">
+					<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M10 2 4 8l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					origin
+				</button>
+				<button type="button" class="way" data-way=">" aria-pressed="false">
+					impact
+					<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+				</button>
+			</div>
+			<span class="hint">origin: what the value is built from.<br>impact: what it goes on to affect.</span>
+			<span class="kept" id="slice-hint"></span>
+		</div>
+	</div>
+	<div class="panels">
+
+	<section data-panel="slice">
+		<div class="chrome"><span class="file">survey.R</span></div>
+		<div class="code" id="slice">
+<!--SLICE-->
+		</div>
+	</section>
+
+	<section data-panel="deps" hidden>
+		<div class="chrome"><span class="file">project.R</span></div>
+		<div class="code">
+<!--DEPSOURCE-->
+		</div>
+	</section>
+
+	<section data-panel="lint" hidden>
+		<div class="chrome"><span class="file">messy.R</span></div>
+		<div class="code">
+<!--LINTSOURCE-->
+		</div>
+	</section>
+
+	<section data-panel="values" hidden>
+		<div class="chrome"><span class="file">shapes.R</span></div>
+		<div class="code">
+<!--VALUESOURCE-->
+		</div>
+	</section>
+
+	<section data-panel="origin" hidden>
+		<div class="chrome"><span class="file">aliases.R</span></div>
+		<div class="code">
+<!--ORIGINSOURCE-->
+		</div>
+		<div class="code out">
+<!--ORIGIN-->
+		</div>
+	</section>
+
+	<section data-panel="signature" hidden>
+		<form class="ask" id="sig-form" action="wiki/sigdb/" method="get" target="_blank">
+			<input id="sig-q" name="q" type="search" spellcheck="false" autocomplete="off"
+				placeholder="dplyr::filter" aria-label="Search the signature database">
+			<button type="submit">Search</button>
+		</form>
+		<div class="code out">
+<!--SIGNATURE-->
+		</div>
+		<p class="note"><a href="wiki/sigdb/" target="_blank" rel="noopener">Search every name flowR knows</a></p>
+	</section>
+	</div>
+	</div>
+</div>
+
+<p class="prose">
+	On real-world R scripts, flowR (measured for <!--BENCHRELEASE-->) needs on average:
+</p>
+<div class="timings">
+<!--TIMES-->
+</div>
+<p class="prose">
+	<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">View the full stats on the benchmark page</a>.
+</p>
+
+<h2>Features</h2>
+<div class="grid washed">
+	<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies">
+		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7M4 12h7M4 19h7" /><circle cx="18" cy="5" r="2.2"/><circle cx="18" cy="12" r="2.2"/><circle cx="18" cy="19" r="2.2"/></svg>Dependency analysis</strong>
+		<span>Which packages a project needs, and every file it reads, writes, sources, or plots to.</span>
+	</a>
+	<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion">
+		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h9M4 18h16"/><path d="M17 10.5 20.5 12 17 13.5"/></svg>Program slicing</strong>
+		<span>Backward, for the code that can affect one variable, and forward, for the code it goes on to affect.</span>
+	</a>
+	<a class="card check" href="https://github.com/flowr-analysis/flowr/wiki/Linter">
+		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3.5 19h17z"/><path d="M12 10v4M12 16.6v.2"/></svg>Linting</strong>
+		<span>Unused definitions, absolute paths, dead code, unseeded randomness: findings that need the dataflow, not a regex.</span>
+	</a>
+	<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value">
+		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M11 7h6M17 7v10h-4"/><circle cx="11" cy="17" r="2.4"/></svg>Value and origin resolution</strong>
+		<span>What a name can hold, which definition it reads, and which function a call really reaches.</span>
+	</a>
+	<a class="card build" href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database">
+		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6"/><path d="M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/></svg>Signature Database</strong>
+		<span>Signatures and documentation for every CRAN package, shipped with flowR and resolved without a network.</span>
+	</a>
+	<a class="card build" href="https://github.com/flowr-analysis/flowr/wiki/Analyzer">
+		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4.5 12 9 17M15 7l4.5 5-4.5 5"/></svg>Programming API</strong>
+		<span>The <code>FlowrAnalyzer</code> API provides you with a simple interface to use flowR programmatically.</span>
+	</a>
+</div>
+
+<h2>Use Cases</h2>
+<div class="cases">
+	<details open>
+		<summary>Inherited code<span class="tags"><span class="tag">comprehension</span><span class="tag">maintenance</span></span></summary>
+		<p>Someone left you a script that produces one number you need. Slice to that name and flowR drops
+			every line that cannot affect it, which is usually most of them. The result still runs.</p>
+		<p class="links">
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice" target="_blank" rel="noopener">Static slice query</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Interface#slicing" target="_blank" rel="noopener">Slicing from the REPL</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dice" target="_blank" rel="noopener">Dicing between two points</a>
+		</p>
+	</details>
+	<details open>
+		<summary>Reproducing a project<span class="tags"><span class="tag">reproducibility</span></span></summary>
+		<p>Before running anything, ask what it will touch: the packages it loads, the files it reads and
+			writes, the plots it draws, and the scripts it sources. No execution, so nothing is overwritten.</p>
+		<p class="links">
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies" target="_blank" rel="noopener">Dependencies query</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Project" target="_blank" rel="noopener">Project query</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">Signature Database</a>
+		</p>
+	</details>
+	<details>
+		<summary>Silent mistakes<span class="tags"><span class="tag">code quality</span><span class="tag">correctness</span></span></summary>
+		<p>The script runs, produces a number, and the number is wrong. flowR reads the code the way it will
+			actually execute, so it can point at the parts that will not do what you meant: a path that only
+			exists on your machine, a sample drawn without a seed so nobody can repeat it, a result computed
+			and then never used, a column read after it was dropped, a credential left in the source.</p>
+		<p>It reports these before you run anything, and the same analysis answers what a script writes,
+			which packages it needs, and what a variable can hold at any point.</p>
+		<p class="links">
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Linter" target="_blank" rel="noopener">What it checks for</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Everything you can ask</a>
+		</p>
+	</details>
+	<details>
+		<summary>Where a name comes from<span class="tags"><span class="tag">comprehension</span></span></summary>
+		<p>A variable is reassigned four times and passed through two functions. flowR answers which
+			definition a use actually reads, and which function a call actually reaches, across files.</p>
+		<p class="links">
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Origin" target="_blank" rel="noopener">Origin query</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value" target="_blank" rel="noopener">Resolve value</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph" target="_blank" rel="noopener">The dataflow graph</a>
+		</p>
+	</details>
+	<details>
+		<summary>Data that changes shape<span class="tags"><span class="tag">comprehension</span><span class="tag">correctness</span></span></summary>
+		<p>A pipeline filters, joins and selects until a column is gone. The shape inference reports the
+			rows and columns a data frame can have at every step, without the data.</p>
+		<p class="links">
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation" target="_blank" rel="noopener">Abstract interpretation</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Absint" target="_blank" rel="noopener">Absint query</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dataframe-Access-Validation" target="_blank" rel="noopener">Data frame access</a>
+		</p>
+	</details>
+	<details>
+		<summary>Tooling of your own<span class="tags"><span class="tag">extensibility</span></span></summary>
+		<p>Every answer on this page is a query. Ask them over the server, the REPL or the
+			<code>FlowrAnalyzer</code> API, and build the editor support your own workflow needs.</p>
+		<p class="links">
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server" target="_blank" rel="noopener">Server protocol</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
+		</p>
+	</details>
+</div>
+
+<h2>Ask for Something</h2>
+<div class="reads">
+	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=generic-feature-request.md" target="_blank" rel="noopener">
+		<b>Request a feature</b><span>a question flowR cannot answer yet, or an R idiom it misreads</span></a>
+	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=bug-report.yaml" target="_blank" rel="noopener">
+		<b>Report a bug</b><span>a wrong answer, with the smallest script that shows it</span></a>
+	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml" target="_blank" rel="noopener">
+		<b>Ask a question</b><span>how to phrase a query, or whether something is possible at all</span></a>
+	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=linting-rule.yaml" target="_blank" rel="noopener">
+		<b>Suggest a linting rule</b><span>a mistake you keep seeing in R code</span></a>
+	<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">
+		<b>Report a vulnerability</b><span>privately, through the security policy</span></a>
+</div>
+
+<h2>What flowR Computes</h2>
+<p class="prose">
+	Simplified views of a program: a <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph" target="_blank" rel="noopener">dataflow
+	graph</a>, a <a href="https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph" target="_blank" rel="noopener">control flow graph</a>, a
+	<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context" target="_blank" rel="noopener">call graph</a>, a
+	<a href="https://github.com/flowr-analysis/flowr/wiki/Normalized-AST" target="_blank" rel="noopener">normalized syntax tree</a>, and
+	<a href="https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation" target="_blank" rel="noopener">abstract values</a> over them.
+	Ask with the <a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">query API</a>, look around with the
+	<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">search API</a>, and start with the
+	<a href="https://github.com/flowr-analysis/flowr/wiki/Overview#using-flowr-as-a-library" target="_blank" rel="noopener"><code>FlowrAnalyzerBuilder</code></a>.
+</p>
+
+<h2>Contributing</h2>
+<details class="unfold">
+<summary>Expand to see the details</summary>
+<ol class="path">
+	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Onboarding" target="_blank" rel="noopener">Get it running</a>
+		<span>five minutes, and no R needed</span>
+		<em><span>Clone it, run <code>npm ci</code>, then <code>npm run flowr</code>. That is the whole setup, and you do not need R installed: the tree-sitter parser is the default. See <a href="https://github.com/flowr-analysis/flowr/wiki/Setup#-developing-for-flowr" target="_blank" rel="noopener">Developing for flowR</a> for more details.</span></em></li>
+	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Create-Linting-Rules" target="_blank" rel="noopener">Write a linting rule</a>
+		<span>the friendliest first change</span>
+		<em><span>This is where most people start, and it is genuinely small: one file with a name, some config, and a function over the graph. The wiki builds a complete rule with you, tests and all.</span></em></li>
+	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Add a query</a>
+		<span>ask something flowR cannot answer yet</span>
+		<em><span>If you keep asking flowR the same thing by hand, turn it into a query. Everything on this page is one, and yours lands in the REPL, the server and the API at the same time.</span></em></li>
+	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">Propose a plugin</a>
+		<span>teach the analyzer something new</span>
+		<em><span>Plugins decide how versions, sources and configuration are resolved around an analysis. Tell us what you are missing in an issue first, and we will work out the shape with you.</span></em></li>
+	<li><a href="https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md" target="_blank" rel="noopener">Open a pull request</a>
+		<span>what we look at, and what we do not mind</span>
+		<em><span>Conventional commits, <code>npm run checkup</code> passing, and a sentence about what you changed. Small pull requests get read first, and drafts are welcome if you are unsure.</span></em></li>
+</ol>
+</details>
+
+
+<footer>
+	<div class="ends">
+		<div>
+			<b>Learn</b>
+			<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Setup</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
+			<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
+		</div>
+		<div>
+			<b>Project</b>
+			<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">Source on GitHub</a>
+			<a href="https://github.com/flowr-analysis/flowr/releases" target="_blank" rel="noopener">Releases</a>
+			<a href="doc/" target="_blank" rel="noopener">API docs</a>
+			<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">Security policy</a>
+			<a href="https://doi.org/10.1145/3763087" target="_blank" rel="noopener">Cite flowR</a>
+		</div>
+		<div>
+			<b>Pages</b>
+			<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
+			<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
+			<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+		</div>
+	</div>
+</footer>
+
+<p class="prose small">
+	Maintained at Ulm University by <a href="https://eagleoutice.github.io/portfolio/" target="_blank" rel="noopener">Florian Sihler</a>,
+	<a href="https://www.uni-ulm.de/in/sp/team/oliver-gerstl/" target="_blank" rel="noopener">Oliver Gerstl</a>
+	and <a href="https://github.com/flowr-analysis/flowr/graphs/contributors" target="_blank" rel="noopener">everyone else who pitched in</a>,
+	free software under the <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPLv3 License</a>.
+	Funded by the German Research Foundation (DFG), grant
+	<a href="https://gepris.dfg.de/gepris/projekt/504226141" target="_blank" rel="noopener">504226141</a>, with a gift from
+	<a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
+</p>
+
+<p class="updated">Last updated <!--UPDATED--></p>
+
+</main>
+<div id="tip" role="tooltip" aria-hidden="true"></div>
+<script>
+	const tip = document.getElementById('tip');
+	const tipFor = target => {
+		if(!target) {
+			return tip.removeAttribute('data-show');
+		}
+		const slice = target.closest('[data-panel="slice"]');
+		tip.textContent = target.dataset.tip
+			?? (slice ? `${slice.querySelector('.code').dataset.way ? 'impact of' : 'slice for'} ${target.dataset.label}` : '');
+		if(!tip.textContent) {
+			return tip.removeAttribute('data-show');
+		}
+		tip.setAttribute('data-show', '');
+		const at = target.getBoundingClientRect(), box = tip.getBoundingClientRect();
+		const left = Math.min(Math.max(8, at.left + at.width / 2 - box.width / 2), innerWidth - box.width - 8);
+		const above = at.top - box.height - 8;
+		tip.style.left = `${left}px`;
+		tip.style.top = `${above > 8 ? above : at.bottom + 8}px`;
+	};
+	for(const demo of document.querySelectorAll('.demo')) {
+		demo.addEventListener('mouseover', event => tipFor(event.target.closest('v, bad, [data-tip]')));
+		demo.addEventListener('mouseleave', () => tipFor(null));
+	}
+	addEventListener('scroll', () => tipFor(null), { passive: true });
+
+	const tabs = [...document.querySelectorAll('.tabs button')];
+	const ledes = {
+		slice:     ['Point at any name, or at an access like survey$age, and flowR reduces the script to the part that computes it.',
+			'It keeps just the lines the value depends on (including called functions).'],
+		impact:    ['Point at any name to keep the part of the script its value goes on to affect.',
+			'The other direction: marks every line impacted by the value (including called functions).'],
+		deps:      ['What this script needs, and every file it reads or writes, without running it.',
+			'flowR follows the calls rather than the text, so a path assembled in a variable still shows up, and so does a library() call behind a condition.'],
+		lint:      ['With the dataflow in hand, flowR checks things a text-based linter has no way to see.',
+			'Every finding knows where its value came from, so an unused definition is one that nothing reads, not one that merely looks unused.'],
+		values:    ['What flowR infers for each name, from data frame shapes to concrete values.',
+			'We track the shape through filters and joins, so you learn how many columns a frame holds at a given line, and what they are called.'],
+		origin:    ['Which definition a name really reads, and which function a call really reaches.',
+			'Aliases, reassignments and shadowed names included, which is what makes jump-to-definition work in the editor.'],
+		signature: ['Ask what flowR knows about any R function, resolved from its own database.',
+			'Parameters, properties, and where the definition lives, for every package on CRAN, without a network.']
+	};
+	const lede = document.getElementById('lede');
+	const more = document.getElementById('lede-more');
+	const say = which => {
+		const [lead, rest] = ledes[which] ?? ['', ''];
+		lede.textContent = lead;
+		more.textContent = rest;
+	};
+	say('slice');
+	for(const tab of tabs) {
+		tab.addEventListener('click', () => {
+			tabs.forEach(other => {
+				other.setAttribute('aria-selected', String(other === tab));
+				document.querySelector(`[data-panel="${other.dataset.tab}"]`).hidden = other !== tab;
+			});
+			say(tab.dataset.tab);
+			document.getElementById('direction').hidden = tab.dataset.tab !== 'slice';
+		});
+	}
+
+	const code = document.getElementById('slice');
+	const hint = document.getElementById('slice-hint');
+	let pinned, way = '';
+	const sliceFor = name => {
+		code.dataset.way = way;
+		code.toggleAttribute('data-slice', Boolean(name));
+		for(const line of code.querySelectorAll('.line')) {
+			line.classList.toggle('keep', (line.dataset.keep ?? '').split(' ').includes(name + way));
+		}
+		for(const v of code.querySelectorAll('v')) {
+			v.classList.toggle('pinned', v.dataset.name === pinned);
+		}
+		const kept = code.querySelectorAll('.line.keep').length;
+		hint.textContent = name ? `${name} · ${kept}/${code.querySelectorAll('.line').length} lines` : '';
+		say(way ? 'impact' : 'slice');
+	};
+	const nameAt = event => event.target.closest('v')?.dataset.name;
+	code.addEventListener('click', event => {
+		const name = nameAt(event);
+		if(name) {
+			sliceFor(pinned = pinned === name ? undefined : name);
+		}
+	});
+	for(const button of document.querySelectorAll('.way')) {
+		button.addEventListener('click', () => {
+			way = button.dataset.way;
+			document.querySelectorAll('.way').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
+			sliceFor(pinned);
+		});
+	}
+	code.addEventListener('mouseover', event => sliceFor(nameAt(event) ?? pinned));
+	code.addEventListener('mouseleave', () => sliceFor(pinned));
+
+	for(const panel of document.querySelectorAll('[data-panel="origin"]')) {
+		const rows = [...panel.querySelectorAll('[data-for]')];
+		let held;
+		const light = at => {
+			panel.classList.toggle('picking', Boolean(at));
+			rows.forEach(row => row.classList.toggle('lit', row.dataset.for === at));
+			panel.querySelectorAll('v').forEach(v => v.classList.toggle('pinned', v.dataset.name === held));
+			const targets = rows.filter(row => row.dataset.for === at).map(row => row.dataset.target);
+			/* only the source block, never the answers: `.out` is a `.code` too, and would lose its own mark */
+			panel.querySelectorAll('.code:not(.out) .line').forEach(line => line.classList.toggle('lit', targets.includes(line.dataset.line)));
+		};
+		panel.addEventListener('mouseover', event => light(event.target.closest('v')?.dataset.name ?? held));
+		panel.addEventListener('mouseleave', () => light(held));
+		panel.addEventListener('click', event => {
+			const at = event.target.closest('v')?.dataset.name;
+			if(!at) {
+				return;
+			}
+			light(held = held === at ? undefined : at);
+			const target = rows.find(row => row.dataset.for === at && row.dataset.target)?.dataset.target;
+			const line = target && panel.querySelector(`.line[data-line="${target}"]`);
+			if(line) {
+				line.classList.remove('jump');
+				void line.offsetWidth;   // restart the animation even on a repeated click
+				line.classList.add('jump');
+			}
+		});
+	}
+
+	for(const panel of document.querySelectorAll('[data-panel="deps"]')) {
+		const marks = [...panel.querySelectorAll('[data-run]')];
+		panel.addEventListener('mouseover', event => {
+			const at = event.target.closest('[data-run]')?.dataset.run;
+			marks.forEach(m => m.classList.toggle('run', Boolean(at) && m.dataset.run === at));
+		});
+		panel.addEventListener('mouseleave', () => marks.forEach(m => m.classList.remove('run')));
+	}
+
+
+	document.getElementById('theme').addEventListener('click', () => {
+		const next = getComputedStyle(document.body).colorScheme === 'dark' ? 'light' : 'dark';
+		document.documentElement.dataset.theme = next;
+		try {
+			localStorage.setItem('flowr-theme', next);
+		} catch(e) { /* private mode simply does not remember it */ }
+	});
+
+	const get = url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status));
+	Promise.all([
+		get('https://api.github.com/repos/flowr-analysis/flowr/releases/latest'),
+		get('https://api.github.com/repos/flowr-analysis/flowr')
+	]).then(([release, repo]) => document.getElementById('meta').innerHTML = [
+		`<b>${release.tag_name}</b>`,
+		`released ${new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`,
+		`★ ${repo.stargazers_count}`,
+		`<a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">${repo.license?.spdx_id ?? 'GPL-3.0'}</a>`
+	].join(' &middot; ')).catch(() => { /* the page reads fine without it */ });
+</script>
+<!--VERSION-SCRIPT-->
+</body>
+</html>

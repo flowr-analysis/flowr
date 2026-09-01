@@ -13,6 +13,9 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ');
 }
 
+/**
+ * Formats the given nanoseconds into a human-readable string.
+ */
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
 		return '??';
@@ -25,7 +28,7 @@ export function formatNanoseconds(nanoseconds: bigint | number): string {
 	const wholeMillis = wholeNanos / BigInt(1e+6);
 	const millis = wholeMillis % BigInt(1000);
 	const wholeSeconds = wholeMillis / BigInt(1000);
-	if(wholeSeconds > 0){
+	if(wholeSeconds > 0) {
 		const nanoString = nanos > 0 ? `:${nanos}` : '';
 		return pad(`${wholeSeconds}.${String(millis).padStart(3, '0')}${nanoString} s`);
 	} else {
@@ -84,11 +87,11 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
 const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
 
 // based on https://stackoverflow.com/a/39906526
-function convertNumberToNiceBytes(x: number){
+function convertNumberToNiceBytes(x: number) {
 	let n = Math.abs(x);
 	let l = 0;
-	while(n >= 1024 && ++l){
-		n = n/1024;
+	while(n >= 1024 && ++l) {
+		n = n / 1024;
 	}
 	return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l]);
 }
@@ -117,6 +120,12 @@ Total common time per R token:        ${formatNanoseconds(stats.totalCommonTimeP
 Control flow extraction:              ${print(stats.commonMeasurements, 'extract control flow graph')}
 Control flow extraction per token:    ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
 Control flow extraction per R token:  ${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
+	}
+	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
+		result += `
+Call graph extraction:                ${print(stats.commonMeasurements, 'extract call graph')}
+Call graph extraction per token:      ${formatNanoseconds(stats.callGraphTimePerToken.normalized)}
+Call graph extraction per R token:    ${formatNanoseconds(stats.callGraphTimePerToken.raw)}`;
 	}
 	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `
@@ -172,11 +181,9 @@ Input:
 Dataflow:
   Number of nodes:               ${pad(stats.dataflow.numberOfNodes)}
   Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
+  Number of control flow edges:  ${pad(stats.dataflow.numberOfControlFlowEdges)}
   Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
-  Number of stored Vtx indices:  ${pad(stats.dataflow.storedVertexIndices)}
-  Number of stored Env indices:  ${pad(stats.dataflow.storedEnvIndices)}
-  Number of overwritten indices: ${pad(stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
 
 	if(stats.dataFrameShape !== undefined) {
@@ -192,21 +199,26 @@ Dataframe shape inference:
   Number of total top:            ${pad(stats.dataFrameShape.numberOfTotalTop)}
   Inferred column names per node: ${pad(stats.dataFrameShape.inferredColNames.mean)}
   Number of column names values:  ${pad(stats.dataFrameShape.numberOfColNamesValues)}
-  Number of column names Top:     ${pad(stats.dataFrameShape.numberOfColNamesTop)}
+  Number of column names infinite:${pad(stats.dataFrameShape.numberOfColNamesInfinite)}
+  Number of column names top:     ${pad(stats.dataFrameShape.numberOfColNamesTop)}
   Inferred column count per node: ${pad(stats.dataFrameShape.inferredColCount.mean)}
   Number of column count values:  ${pad(stats.dataFrameShape.numberOfColCountValues)}
-  Number of column count Top:     ${pad(stats.dataFrameShape.numberOfColCountTop)}
   Number of column count infinite:${pad(stats.dataFrameShape.numberOfColCountInfinite)}
+  Number of column count top:     ${pad(stats.dataFrameShape.numberOfColCountTop)}
   Inferred row count per node:    ${pad(stats.dataFrameShape.inferredRowCount.mean)}
   Number of row count values:     ${pad(stats.dataFrameShape.numberOfRowCountValues)}
-  Number of row count Top:        ${pad(stats.dataFrameShape.numberOfRowCountTop)}
   Number of row count infinite:   ${pad(stats.dataFrameShape.numberOfRowCountInfinite)}
+  Number of row count top:        ${pad(stats.dataFrameShape.numberOfRowCountTop)}
   Size of data frame shape info:  ${convertNumberToNiceBytes(stats.dataFrameShape.sizeOfInfo)}`;
 	}
 
 	return result;
 }
 
+
+/**
+ * Converts reduction stats to a human-readable string.
+ */
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
@@ -228,11 +240,39 @@ Control flow extraction:              ${formatSummarizedTimeMeasure(stats.common
 Control flow extraction per token:    ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
 Control flow extraction per R token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
 	}
+	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
+		result += `
+Call graph extraction:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract call graph'))}
+Call graph extraction per token:      ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.normalized)}
+Call graph extraction per R token:    ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.raw)}`;
+	}
 	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `
 Dataframe shape inference:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('infer data frame shapes'))}
 Dataframe shape inference per token:  ${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.normalized)}
 Dataframe shape inference per R token:${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.raw)}`;
+	}
+
+	result += `
+
+Per 100 lines of input:
+  AST retrieval:                      ${formatSummarizedTimeMeasure(stats.retrieveTimePer100Lines)}
+  AST normalization:                  ${formatSummarizedTimeMeasure(stats.normalizeTimePer100Lines)}
+  Dataflow creation:                  ${formatSummarizedTimeMeasure(stats.dataflowTimePer100Lines)}
+  Control flow extraction:            ${formatSummarizedTimeMeasure(stats.controlFlowTimePer100Lines)}
+  Total common:                       ${formatSummarizedTimeMeasure(stats.totalCommonTimePer100Lines)}
+  Slice creation:                     ${formatSummarizedTimeMeasure(stats.sliceTimePer100Lines)}
+  Reconstruction:                     ${formatSummarizedTimeMeasure(stats.reconstructTimePer100Lines)}
+  Total per slice:                    ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePer100Lines)}`;
+
+	if(stats.additionalMeasurements !== undefined && stats.additionalMeasurements.size > 0) {
+		result += `
+
+Additional phases (not part of the total):`;
+		for(const [name, measure] of stats.additionalMeasurements) {
+			result += `
+  ${name.padEnd(34, ' ')}${formatSummarizedTimeMeasure(measure)}`;
+		}
 	}
 
 	// Used Slice Criteria Sizes: ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
@@ -275,11 +315,9 @@ Input:
 Dataflow:
   Number of nodes:               ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
   Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
+  Number of control flow edges:  ${formatSummarizedMeasure(stats.dataflow.numberOfControlFlowEdges)}
   Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
-  Number of stored Vtx indices:  ${formatSummarizedMeasure(stats.dataflow.storedVertexIndices)}
-  Number of stored Env indices:  ${formatSummarizedMeasure(stats.dataflow.storedEnvIndices)}
-  Number of overwritten indices: ${formatSummarizedMeasure (stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;
 
 	if(stats.dataFrameShape !== undefined) {
@@ -291,21 +329,24 @@ Dataframe shape inference:
   Number of abstract value nodes: ${formatSummarizedMeasure(stats.dataFrameShape.numberOfValueNodes)}
   Number of entries per node:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfEntriesPerNode)}
   Number of operations:           ${formatSummarizedMeasure(stats.dataFrameShape.numberOfOperations)}
+  Number of total exact:          ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalExact)}
   Number of total values:         ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalValues)}
   Number of total top:            ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalTop)}
   Inferred column names per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColNames)}
+  Number of column names exact:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesExact)}
   Number of column names values:  ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesValues)}
+  Number of column names infinite:${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesInfinite)}
   Number of column names top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesTop)}
   Inferred column count per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColCount)}
   Number of column count exact:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountExact)}
   Number of column count values:  ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountValues)}
-  Number of column count top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountTop)}
   Number of column count infinite:${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountInfinite)}
+  Number of column count top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountTop)}
   Inferred row count per node:    ${formatSummarizedMeasure(stats.dataFrameShape.inferredRowCount)}
   Number of row count exact:      ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountExact)}
   Number of row count values:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountValues)}
-  Number of row count top:        ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountTop)}
   Number of row count infinite:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountInfinite)}
+  Number of row count top:        ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountTop)}
   Size of data frame shape info:  ${formatSummarizedMeasure(stats.dataFrameShape.sizeOfInfo, convertNumberToNiceBytes)}`;
 	}
 

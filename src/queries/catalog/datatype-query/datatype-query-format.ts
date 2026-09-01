@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -13,7 +13,7 @@ import { prettyPrintDataType } from '../../../typing/pretty-print';
  */
 export interface DatatypeQuery extends BaseQueryFormat {
 	readonly type:              'datatype';
-	readonly criteria?:         SingleSlicingCriterion[];
+	readonly criteria?:         SlicingCriterion[];
 	readonly useSubtyping?:     boolean;
 	readonly useTurcotteTypes?: boolean;
 	readonly useTracedTypes?:   boolean;
@@ -22,12 +22,13 @@ export interface DatatypeQuery extends BaseQueryFormat {
 
 export interface DatatypeQueryResult extends BaseQueryResult {
 	/** Maps each criterion to the inferred data type, duplicates are ignored. */
-	readonly inferredTypes: Record<SingleSlicingCriterion, DataType>;
+	readonly inferredTypes: Record<SlicingCriterion, DataType>;
 }
 
 export const DatatypeQueryDefinition = {
+	title:           'Datatype Query',
 	executor:        executeDatatypeQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'datatype'>['datatype'];
 		result.push(`Query: ${bold('datatype', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [criterion, inferredType] of Object.entries(out.inferredTypes)) {

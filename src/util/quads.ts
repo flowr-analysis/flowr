@@ -4,58 +4,73 @@
  * <p>
  * At the time of writing this module I am unaware of any sophisticated rdf library for typescript which allows to serialize objects
  * directly as rdf quads. Therefore, this module provides a simple serialization mechanism based on the popular n3.js library.
- *
  * @module
  */
 
-import type { NamedNode, Quad } from 'n3';
-import { DataFactory, Writer } from 'n3';
-const namedNode = (v: string) => DataFactory.namedNode(v);
-const quad = (s: RDF.Quad_Subject, p: RDF.Quad_Predicate, o: RDF.Quad_Object, g?: RDF.Quad_Graph) => DataFactory.quad(s, p, o, g);
-import type { MergeableRecord } from './objects';
-import { deepMergeObject, isObjectOrArray } from './objects';
+/* type-only, `n3` is optional: quad export is a side feature, so the package is resolved at call time */
+import type { NamedNode, Quad, Writer } from 'n3';
+
+/**
+ * The `n3` module, or a clear error if the optional dependency is missing.
+ * Install it to serialize quads (`npm i n3`), everything else works without it.
+ */
+function n3(): typeof import('n3') {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- optional dependency, resolved only when quads are requested
+		return require('n3') as typeof import('n3');
+	} catch{
+		throw new Error('quad serialization needs the optional `n3` dependency, install it with `npm i n3`');
+	}
+}
+
+const namedNode = (v: string) => n3().DataFactory.namedNode(v);
+const quad = (s: RDF.Quad_Subject, p: RDF.Quad_Predicate, o: RDF.Quad_Object, g?: RDF.Quad_Graph) => n3().DataFactory.quad(s, p, o, g);
+import { type MergeableRecord, deepMergeObject, isObjectOrArray } from './objects';
 import { guard } from './assert';
 import { DefaultMap } from './collections/defaultmap';
-const literal = (v: string, n?: string | RDF.NamedNode) => DataFactory.literal(v, n);
+const literal = (v: string, n?: string | RDF.NamedNode) => n3().DataFactory.literal(v, n);
 import { log } from './log';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type * as RDF from '@rdfjs/types';
 
 const domain = 'https://uni-ulm.de/r-ast/';
 
-type RecordForQuad = Record<string, unknown>
-type DataForQuad = Record<string, unknown> | ArrayLike<unknown>
-type ContextForQuad = string
+type RecordForQuad = Record<string, unknown>;
+type DataForQuad = Record<string, unknown> | ArrayLike<unknown>;
+type ContextForQuad = string;
 
 /**
  * Predicate that allows you to ignore given elements based on their key/value
- *
  * @returns true if the given key/value should be ignored, false otherwise
  */
-export type QuadIgnoreIf = (key: string, value: unknown) => boolean
+export type QuadIgnoreIf = (key: string, value: unknown) => boolean;
 
 /**
  * Deterministically retrieve a unique id for a given object.
- * @param obj - The object to retrieve the id for
+ * @param obj     - The object to retrieve the id for
  * @param context - to provide unique ids even for different contexts, we add the context to the id.
  */
-export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string
+export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string;
 
 /**
  * Either a constant string or a supplier depending on the object in question
  */
-export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => ContextForQuad)
+export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => ContextForQuad);
 
 /**
  * A deterministic counting id generator for quads.
  */
 export function defaultQuadIdGenerator(): QuadIdRetriever {
 	let counter = 0;
-	const idMap = new DefaultMap<unknown, number>( () => counter++ );
+	const idMap = new DefaultMap<unknown, number>(() => counter++);
 	return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`;
 }
 
 const ignoredKeysArray = ['complexNumber', 'markedAsInt', 'info'];
+
+/**
+ * A default ignore function that ignores undefined values and some common keys.
+ */
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
 	return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key);
 }
@@ -65,22 +80,22 @@ export function defaultQuadIgnoreIf(): QuadIgnoreIf {
  */
 export interface QuadSerializationConfiguration extends MergeableRecord {
 	/**
-   * Ignore certain keys or values when serializing to quads.
-   * @see defaultQuadIgnoreIf
-   */
+	 * Ignore certain keys or values when serializing to quads.
+	 * @see defaultQuadIgnoreIf
+	 */
 	ignore?: QuadIgnoreIf
 	/**
-   * Retrieve a unique id for a given object.
-   * @see defaultQuadIdGenerator
-   */
+	 * Retrieve a unique id for a given object.
+	 * @see defaultQuadIdGenerator
+	 */
 	getId?:  QuadIdRetriever
 	/**
-   * The context of the serialized quads, probably the file-name (constant) or whatever is desired.
-   */
+	 * The context of the serialized quads, probably the file-name (constant) or whatever is desired.
+	 */
 	context: QuadContextRetriever
 	/**
-   * The basic domain name to use for the quads.
-   */
+	 * The basic domain name to use for the quads.
+	 */
 	domain?: string
 }
 
@@ -96,16 +111,14 @@ function retrieveContext(context: QuadContextRetriever, obj: DataForQuad): strin
 }
 
 
-const writer = new Writer( { format: 'N-Quads' });
+let cachedWriter: Writer | undefined;
+const writer = (): Writer => cachedWriter ??= new (n3().Writer)({ format: 'N-Quads' });
 
 /**
  * Serializes the given object or array to rdf quads.
- *
  * @param obj    - The object to serialize (must be a Record and no array etc.)
  * @param config - Further configuration options
- *
- * @returns the serialized quads
- *
+ * @returns      the serialized quads
  * @see graph2quads
  */
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
@@ -116,18 +129,18 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 	store = new Set();
 	const quads: Quad[] = [];
 	serializeObject(obj, quads, useConfig);
-	return writer.quadsToString(quads);
+	return writer().quadsToString(quads);
 }
 
 export type VertexInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {
 	id: NodeId
-}
+};
 
 export type EdgeInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {
 	from: NodeId,
 	type: NodeId | NodeId[],
 	to:   NodeId
-}
+};
 
 export interface GraphInformationForQuad<AdditionalVertexInformation extends MergeableRecord, AdditionalEdgeInformation extends MergeableRecord> extends MergeableRecord {
 	rootIds:     NodeId[],
@@ -139,7 +152,6 @@ export interface GraphInformationForQuad<AdditionalVertexInformation extends Mer
 /**
  * Serializes the given directed graph to rdf quads.
  * This is a mere (type-)convenience wrapper for {@link serialize2quads}.
- *
  * @see serialize2quads
  */
 export function graph2quads<AdditionalVertexInformation extends MergeableRecord, AdditionalEdgeInformation extends MergeableRecord>(
@@ -236,15 +248,21 @@ function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quad
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
-	if(config.ignore(key, value)) {
-		return;
-	}
-	if(guardCycle(value)) {
+	if(config.ignore(key, value) || guardCycle(value)) {
 		return;
 	}
 	if(isObjectOrArray(value)) {
 		if(Array.isArray(value)) {
 			processArrayEntries(key, value, obj, quads, config);
+		} else if(value instanceof Map) {
+			for(const [mapKey, mapValue] of value.entries()) {
+				processObjectEntry('key-' + String(mapKey), mapValue, obj, quads, config);
+			}
+		} else if(value instanceof Set) {
+			let i = 0;
+			for(const setValue of value.values()) {
+				processObjectEntry('idx-' + String(i++), setValue, obj, quads, config);
+			}
 		} else {
 			processObjectEntries(key, value, obj, quads, config);
 		}
@@ -258,10 +276,10 @@ let store = new Set();
 function guardCycle(obj: unknown) {
 	// @ts-expect-error we do not care about the type here
 	if(isObjectOrArray(obj) && 'id' in obj) {
-		if(store.has(obj.id)) {
+		if(store.has(obj)) {
 			return true;
 		}
-		store.add(obj.id);
+		store.add(obj);
 	}
 	return false;
 }
@@ -280,7 +298,7 @@ function serializeObject(obj: DataForQuad | undefined | null, quads: Quad[], con
 	} else if(obj instanceof Set) {
 		let i = 0;
 		for(const value of obj.values()) {
-			processObjectEntry('idx-'+String(i++), value, obj, quads, config);
+			processObjectEntry('idx-' + String(i++), value, obj, quads, config);
 		}
 	} else {
 		for(const [key, value] of Object.entries(obj)) {

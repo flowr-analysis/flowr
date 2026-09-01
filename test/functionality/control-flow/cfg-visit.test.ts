@@ -1,13 +1,13 @@
 import { assert, describe, it } from 'vitest';
-import type { BasicCfgGuidedVisitorConfiguration } from '../../../src/control-flow/basic-cfg-guided-visitor';
-import { BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
+import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import { extractCfg, CfgVertex  } from '../../../src/control-flow/control-flow-graph';
 import { withTreeSitter } from '../_helper/shell';
 import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
-import { defaultConfigOptions } from '../../../src/config';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
+import { FlowrConfig } from '../../../src/config';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	function assertOrderBasic(
@@ -20,7 +20,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	): void {
 		describe(label, () => {
 			it.each(['forward', 'backward'] as const)('%s', async(dir) => {
-				const config = defaultConfigOptions;
+				const config = FlowrConfig.default();
 				const order: NodeId[] = [];
 				class TestVisitor extends BasicCfgGuidedVisitor {
 					override onVisitNode(node: NodeId): void {
@@ -29,12 +29,13 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					}
 				}
 
+				const context = contextFromInput(code, config);
 				const result = await createDataflowPipeline(parser, {
-					request: requestFromInput(code)
-				}, config).allRemainingSteps();
-				let cfg = extractCfg(result.normalize, config, result.dataflow?.graph);
+					context
+				}).allRemainingSteps();
+				let cfg = extractCfg(result.dataflow);
 				if(useBasicBlocks) {
-					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, config }, ['to-basic-blocks', 'remove-dead-code']);
+					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, ctx: context }, ['to-basic-blocks', 'remove-dead-code']);
 				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {
@@ -49,12 +50,29 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		});
 	}
 
-	assertOrderBasic('simple assignment', 'a <- 1', [3, 2, 0, 1, '2-exit', '3-exit']);
-	assertOrderBasic('simple assignment (basic blocks)', 'a <- 1', ['bb-3-exit', 3, 2, 0, 1, '2-exit', '3-exit'], ['bb-3-exit', '3-exit', '2-exit', 1, 0, 2, 3], true);
-	assertOrderBasic('sequence', 'a;b', [2, 0, 1, '2-exit']);
+	it('walking the control flow does not copy it out of the dataflow graph', async() => {
+		const context = contextFromInput('x <- 1\nif(u) { y <- 2 } else { y <- 3 }\nprint(y)', FlowrConfig.default());
+		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
+		const cfg = extractCfg(result.dataflow);
+		const projection = cfg.graph as unknown as { projected: boolean };
+
+		visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* just walk it */ });
+		assert.isFalse(projection.projected, 'a traversal is answered by the dataflow graph itself');
+
+		cfg.graph.vertices(true);
+		assert.isTrue(projection.projected, 'asking for every vertex at once is what projects the graph');
+	});
+
+	assertOrderBasic('simple assignment', 'a <- 1', [1, 0, 2]);
+	assertOrderBasic('simple assignment (basic blocks)', 'a <- 1',
+		[CfgVertex.toBasicBlockId(1), 1, 0, 2],
+		[CfgVertex.toBasicBlockId(1), 2, 0, 1],
+		true
+	);
+	assertOrderBasic('sequence', 'a;b', [0, 1]);
 	assertOrderBasic('while-loop', 'while(TRUE) a + b',
-		[6, 5, 0, '5-exit', '6-exit', 4, 3, 1, 2, '3-exit', '4-exit'],
-		['6-exit', '5-exit', 0, 5, '4-exit', '3-exit', 2, 1, 3, 4, 6]
+		[0, 1, 2, 3, 5],
+		[5, 0, 3, 2, 1]
 	);
 
 }));

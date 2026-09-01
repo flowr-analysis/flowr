@@ -1,214 +1,168 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AbstractDomain, ConcreteDomain } from './abstract-domain';
-import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
-import { Top } from './lattice';
+import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
+import { Bottom } from './lattice';
+import type { StateDomain } from './state-domain';
 
-/** The type of the abstract state for a abstract domain mapping AST node IDs to abstract values of an abstract domain */
-export type AbstractState<Domain extends AbstractDomain<unknown, unknown, unknown, unknown>> = Map<NodeId, Domain>;
-
-/** The type of the concrete state for the concrete domain of an abstract domain mapping AST node IDs to a concrete value in the concrete domain */
-export type ConcreteState<Domain extends AbstractDomain<unknown, unknown, unknown, unknown>> = ReadonlyMap<NodeId, ConcreteDomain<Domain>>;
+/** The type of the actual values of the state abstract domain as map of keys to domain values */
+export type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
+/** The type of the Top element of the state abstract domain as (empty) map of keys to domain values */
+export type StateDomainTop = ReadonlyMap<NodeId, never>;
+/** The type of the Bottom element of the state abstract domain as {@link Bottom} symbol */
+export type StateDomainBottom = typeof Bottom;
+/** The type of the abstract values of the state abstract domain that are Top, Bottom, or actual values */
+export type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain> | StateDomainBottom;
 
 /**
- * A state abstract domain as mapping of AST node IDs of a program to abstract values of an abstract domain.
- * The Bottom element is defined as empty mapping and the Top element is defined as mapping every existing mapped AST node ID to Top.
- * @template Domain - Type of the abstract domain to map the AST node IDs to
+ * A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain.
+ * The Bottom element is defined as {@link Bottom} symbol and the Top element as empty mapping.
+ * @template Domain - Type of the value abstract domain to map the AST node IDs to
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
-export class StateAbstractDomain<Domain extends AbstractDomain<unknown, unknown, unknown, unknown>>
-implements AbstractDomain<ConcreteState<Domain>, AbstractState<Domain>, AbstractState<Domain>, AbstractState<Domain>> {
-	private _value: AbstractState<Domain>;
+export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends StateDomainLift<Domain> = StateDomainLift<Domain>>
+	extends AbstractDomain<StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value>
+	implements StateDomain<Domain> {
 
-	constructor(value: AbstractState<Domain>) {
-		this._value = new Map(value);
-	}
+	public readonly domain: Domain;
 
-	public get value(): AbstractState<Domain> {
-		return this._value;
-	}
-
-	public bottom(): StateAbstractDomain<Domain> {
-		return new StateAbstractDomain(new Map<NodeId, Domain>());
-	}
-
-	public top(): StateAbstractDomain<Domain> {
-		const result = new StateAbstractDomain(this.value);
-
-		for(const [key, value] of result.value) {
-			result._value.set(key, value.top() as Domain);
+	constructor(value: Value, domain: Domain) {
+		if(value === Bottom || value.values().some(entry => entry.isBottom())) {
+			super(Bottom as Value);
+		} else {
+			super(new Map(value) as ReadonlyMap<NodeId, Domain> as Value);
 		}
-		return result;
+		this.domain = domain;
 	}
 
-	public equals(other: StateAbstractDomain<Domain>): boolean {
-		if(this.value === other.value) {
-			return true;
-		} else if(this.value.size !== other.value.size) {
+	public create(value: StateDomainLift<Domain>): this {
+		return new StateAbstractDomain(value, this.domain) as this;
+	}
+
+	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainTop>>(this: new (value: StateDomainTop, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+		return new this(new Map<NodeId, never>(), domain);
+	}
+
+	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainBottom>>(this: new (value: StateDomainBottom, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+		return new this(Bottom, domain);
+	}
+
+	public get(node: NodeId): Domain | undefined {
+		return this.value === Bottom ? this.domain.bottom() : this.value.get(node);
+	}
+
+	public has(node: NodeId): boolean {
+		return this.value !== Bottom && this.value.has(node);
+	}
+
+	public set(node: NodeId, value: Domain): void {
+		if(this.value !== Bottom) {
+			(this._value as Map<NodeId, Domain>).set(node, value);
+		}
+	}
+
+	public remove(node: NodeId): void {
+		if(this.value !== Bottom) {
+			(this._value as Map<NodeId, Domain>).delete(node);
+		}
+	}
+
+	public entries(): readonly [NodeId, Domain][] {
+		return this.isValue() ? this.value.entries().toArray() : [];
+	}
+
+	public top(): this & StateAbstractDomain<Domain, StateDomainTop> {
+		return this.create(new Map<NodeId, never>()) as this & StateAbstractDomain<Domain, StateDomainTop>;
+	}
+
+	public bottom(): this & StateAbstractDomain<Domain, StateDomainBottom> {
+		return this.create(Bottom) as this & StateAbstractDomain<Domain, StateDomainBottom>;
+	}
+
+	/** Checks the map sizes with `sizeOk`, then compares every entry of `this` against `other` pointwise with `cmp` (used by equals and leq). */
+	private compareValues(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, sizeOk: (thisSize: number, otherSize: number) => boolean, cmp: (a: Domain, b: Domain) => boolean): boolean {
+		if(!sizeOk(this.value.size, other.value.size)) {
 			return false;
 		}
-		for(const [nodeId, value] of this.value) {
-			const otherValue = other.value.get(nodeId);
+		for(const [key, currValue] of this.value.entries()) {
+			const otherValue = other.get(key);
 
-			if(otherValue === undefined || !value.equals(otherValue)) {
+			if(otherValue === undefined || !cmp(currValue, otherValue)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	public leq(other: StateAbstractDomain<Domain>): boolean {
-		if(this.value === other.value) {
-			return true;
-		}
-		for(const [nodeId, value] of this.value) {
-			const otherValue = other.value.get(nodeId);
-
-			if(otherValue === undefined || !value.leq(otherValue)) {
-				return false;
-			}
-		}
-		return true;
+	protected equalsValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
+		return this.compareValues(other, (a, b) => a === b, (a, b) => a.equals(b));
 	}
 
-	public join(...values: StateAbstractDomain<Domain>[]): StateAbstractDomain<Domain> {
-		const result = new StateAbstractDomain(this.value);
-
-		for(const other of values) {
-			for(const [nodeId, value] of other.value) {
-				const currValue = result.value.get(nodeId);
-
-				if(currValue === undefined) {
-					result.value.set(nodeId, value);
-				} else {
-					result.value.set(nodeId, currValue.join(value) as Domain);
-				}
-			}
-		}
-		return result;
+	protected leqValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
+		return this.compareValues(other, (a, b) => a <= b, (a, b) => a.leq(b));
 	}
 
-	public meet(...values: StateAbstractDomain<Domain>[]): StateAbstractDomain<Domain> {
-		const result = new StateAbstractDomain(this.value);
+	/** Merges every entry of `other` into a copy of `this`, applying `op` pointwise where both sides have a value for a key (used by join and widen). */
+	private unionCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
+		const result = new Map(this.value);
 
-		for(const other of values) {
-			for(const [nodeId] of result.value) {
-				if(!other.value.has(nodeId)) {
-					result.value.delete(nodeId);
-				}
-			}
-			for(const [nodeId, value] of other.value) {
-				const currValue = result.value.get(nodeId);
-
-				if(currValue !== undefined) {
-					result.value.set(nodeId, currValue.meet(value) as Domain);
-				}
-			}
-		}
-		return result;
-	}
-
-	public widen(other: StateAbstractDomain<Domain>): StateAbstractDomain<Domain> {
-		const result = new StateAbstractDomain(this.value);
-
-		for(const [nodeId, value] of other.value) {
-			const currValue = result.value.get(nodeId);
+		for(const [key, otherValue] of other.value.entries()) {
+			const currValue = result.get(key);
 
 			if(currValue === undefined) {
-				result.value.set(nodeId, value);
+				result.set(key, otherValue);
 			} else {
-				result.value.set(nodeId, currValue.widen(value) as Domain);
+				result.set(key, op(currValue, otherValue));
 			}
 		}
-		return result;
+		return this.create(result);
 	}
 
-	public narrow(other: StateAbstractDomain<Domain>): StateAbstractDomain<Domain> {
-		const result = new StateAbstractDomain(this.value);
-
-		for(const [nodeId] of this.value) {
-			if(!other.value.has(nodeId)) {
-				result.value.delete(nodeId);
-			}
-		}
-		for(const [nodeId, value] of other.value) {
-			const currValue = result.value.get(nodeId);
-
-			if(currValue !== undefined) {
-				result.value.set(nodeId, currValue.narrow(value) as Domain);
-			}
-		}
-		return result;
+	protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+		return this.unionCombine(other, (a, b) => a.join(b));
 	}
 
-	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ConcreteState<Domain>> | typeof Top {
-		if(this.value.values().some(value => value.isBottom())) {
-			return new Set();
-		}
-		let states = new Set<ConcreteState<Domain>>([new Map()]);
-
-		for(const [nodeId, value] of this.value) {
-			const concreteValues = value.concretize(limit);
-
-			if(concreteValues === Top) {
-				return Top;
-			}
-			const newStates = new Set<ConcreteState<Domain>>();
-
-			for(const state of states) {
-				for(const concrete of concreteValues) {
-					if(newStates.size > limit) {
-						return Top;
-					}
-					const map = new Map(state);
-					map.set(nodeId, concrete as ConcreteDomain<Domain>);
-					newStates.add(map);
-				}
-			}
-			states = newStates;
-		}
-		return states;
+	protected widenValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+		return this.unionCombine(other, (a, b) => a.widen(b));
 	}
 
-	public abstract(concrete: ReadonlySet<ConcreteState<Domain>> | typeof Top): StateAbstractDomain<Domain> {
-		const entry = [...this.value.values()][0];
-
-		if(concrete === Top || entry === undefined) {
-			return new StateAbstractDomain(new Map<NodeId, Domain>());
-		}
-		const mappings = new Map<NodeId, Set<ConcreteDomain<Domain>>>();
-
-		for(const state of concrete) {
-			for(const [nodeId, value] of state) {
-				const mapping = mappings.get(nodeId);
-
-				if(mapping === undefined) {
-					mappings.set(nodeId, new Set([value]));
-				} else {
-					mapping.add(value);
-				}
-			}
-		}
+	/** Combines only the entries shared between `this` and `other`, applying `op` pointwise (used by meet and narrow). */
+	private intersectCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
 		const result = new Map<NodeId, Domain>();
 
-		for(const [nodeId, values] of mappings) {
-			result.set(nodeId, entry.abstract(values) as Domain);
+		for(const [key, currValue] of this.value.entries()) {
+			const otherValue = other.value.get(key);
+
+			if(otherValue !== undefined) {
+				result.set(key, op(currValue, otherValue));
+			}
 		}
-		return new StateAbstractDomain(result);
+		return this.create(result);
 	}
 
-	public toString(): string {
+	protected meetValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+		return this.intersectCombine(other, (a, b) => a.meet(b));
+	}
+
+	protected narrowValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+		return this.intersectCombine(other, (a, b) => a.narrow(b));
+	}
+
+	protected jsonify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): unknown {
+		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, value.toJSON()]));
+	}
+
+	protected stringify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): string {
 		return '(' + this.value.entries().toArray().map(([key, value]) => `${key} -> ${value.toString()}`).join(', ') + ')';
 	}
 
-	public isTop(): this is StateAbstractDomain<Domain> {
-		return this.value.values().every(value => value.isTop());
+	public isTop(): this is this & StateAbstractDomain<Domain, StateDomainTop> {
+		return this.value !== Bottom && this.value.size === 0;
 	}
 
-	public isBottom(): this is StateAbstractDomain<Domain> {
-		return this.value.size === 0;
+	public isBottom(): this is this & StateAbstractDomain<Domain, StateDomainBottom> {
+		return this.value === Bottom;
 	}
 
-	public isValue(): this is StateAbstractDomain<Domain> {
-		return true;
+	public isValue(): this is this & StateAbstractDomain<Domain, StateDomainValue<Domain>> {
+		return this.value !== Bottom;
 	}
 }

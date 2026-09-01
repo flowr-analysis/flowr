@@ -16,56 +16,68 @@ name: Check for Broken Links and Publish Wiki
     # every monday at night
     - cron: '0 1 * * 1'
 
+env:
+  PUBLISH: ${{ github.event_name == 'workflow_dispatch'
+    || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 65
+    if: ${{ !(github.event_name == 'push' && startsWith(github.event.head_commit.message, '[release:'))
+      && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    outputs:
+      publish: ${{ steps.gate.outputs.publish }}
     steps:
-      - name: "🛒 Checkout Repository (Release Perm. with lfs)"
-        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
-        uses: actions/checkout@v4
+      - name: "🚦 Publish Gate"
+        id: gate
+        run: echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
         with:
             submodules: true
-            lfs:        true
+            lfs:        ${{ env.PUBLISH == 'true' }}
             token:      ${{ secrets.RELEASE_TOKEN }}
             fetch-tags: true
             fetch-depth: 0
-
-      - name: "🛒 Checkout Repository (Read Perm.)"
-        if: ${{ !((github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))) || failure() }}
-        uses: actions/checkout@v4
-        with:
-            submodules: true
-            lfs:        false
-            token:      ${{ secrets.RELEASE_TOKEN }}
-            fetch-tags: false
-            fetch-depth: 0
+            ref:        ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-          use-public-rspm: true
 
       - name: "📦 Install R Packages"
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          cache: 'true'
+          cache-version: '1'
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
       - name: "🛒 Checkout LFS"
-        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        if: ${{ success() && env.PUBLISH == 'true' }}
         # just as a time-proven safety measure
         run: git lfs checkout
 
@@ -74,61 +86,76 @@ jobs:
         run: |
           rm -rf "coverage/"
           rm -f "/tmp/flowr-label-summary.json"
-          bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+          bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
+
+      - name: "💾 Cache the Signature Database Bundles"
+        uses: actions/cache@v4
+        with:
+          # only the bundles, the shards unpacked next to them are re-derived on demand
+          path: ~/.cache/flowr/sigdb/bundles
+          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
+
+      - name: "⬇️ Sync the Signature Database"
+        # without it every sigdb-backed page says "No signature database is loaded" instead of showing a result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run sync:sigdb
+
+      # the release workflow produces the data but does not commit it, so it lands in the same commit as the pages
+      - name: "⬇️ Get the Benchmark Data from the Release Run"
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: benchmark-data
+          path: wiki/stats/benchmark/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "🛠️ Update the Generated Pages"
         run: |
-          npm ci
+          # npm ci is done by the full test run before
           CHANGED_ANY=false
           CHANGED_FILES=()
-          function update_page {
-            # test if the file exists
-            if [ -f "$1.md" ]; then
-                cp "$1.md" "$1-Old.md"
-            else
-                touch "$1-Old.md"
-            fi
-            npm run $2 --silent > "$1.md"
-            # test if the file changed, but ignore the first line which contains the time stamp
-            # we additionally used sed to remove any measurement stamp for the comparison as they of course change
-            # additionally, we remove any part "timing": <number>.
-            tail -n +2 "$1.md" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp[%A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g; s/"format":"compact".+//g' > "$1.md.tmp"
-            tail -n +2 "$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp[%A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g; s/"format":"compact".+//g' > "$1-Old.md.tmp"
           
-            if ! diff -q "$1.md.tmp" "$1-Old.md.tmp"; then
-                echo "$1 changed!"
-                echo "CHANGED=true" >> $GITHUB_ENV
-                CHANGED_ANY=true
-                git add -f "$1.md"
-                CHANGED_FILES+=("$1")
-            else
-                echo "$1 did not change!"
-            fi
-            # delete the old file again
-            rm "$1-Old.md"
-          }
+          # Generate all wiki pages
+          npm run wiki
+          # the landing page is generated too, from real flowR output; the signature browser is megabytes,
+          # so the documentation job builds that one straight onto gh-pages instead
+          FLOWR_LANDING_ONLY=1 npm run gen:landing
+          # the signature browser is gitignored on purpose (megabytes); only the page and its samples are committed
+          for LANDING in index.html wiki/landing/index.html; do
+              if [ -n "$(git status --porcelain -- "$LANDING")" ]; then CHANGED_FILES+=("$LANDING"); fi
+          done
+          # read in everything from /tmp/flowr-wiki-changed-files.txt and add to CHANGED_FILES
+          if [ -f /tmp/flowr-wiki-changed-files.txt ]; then
+                while IFS= read -r line; do
+                    CHANGED_FILES+=("$line")
+                done < /tmp/flowr-wiki-changed-files.txt
+          fi
+          if [ ${#CHANGED_FILES[@]} -gt 0 ]; then
+              echo "The following Wiki pages were changed:"
+              for file in "${CHANGED_FILES[@]}"; do
+                  echo "- $file"
+                  git add -f "$file"
+              done
+              CHANGED_ANY=true
+              echo "CHANGED=true" >> $GITHUB_ENV
+          else
+              echo "No Wiki pages were changed!"
+          fi
 
-          echo "====== Updating Wiki Pages ======"
-          update_page wiki/"Capabilities" capabilities-markdown
-          update_page wiki/"Dataflow Graph" wiki:df-graph
-          update_page wiki/"Query API" wiki:query-api
-          update_page wiki/"Search API" wiki:search-api
-          update_page wiki/"Engines" wiki:engines
-          update_page wiki/"Interface" wiki:interface
-          update_page wiki/"Normalized AST" wiki:normalized-ast
-          update_page wiki/"Control Flow Graph" wiki:cfg
-          update_page wiki/"Linting and Testing" wiki:linting-and-testing
-          update_page wiki/"Core" wiki:core
-          update_page wiki/"Onboarding" wiki:onboarding
-          update_page wiki/"FAQ" wiki:faq
-          update_page wiki/"Linter" wiki:linter
-          
-          git add wiki/lint-*.md
-          echo "====== Updating Issue Templates ======"
-          update_page .github/ISSUE_TEMPLATE/linting-rule.yaml gen:linter-issue
-          echo "====== Updating Main Readme ======"
-          update_page README gen:readme
-          
+          echo "====== Benchmark Data (if any) ======"
+          if [ -n "$(git status --porcelain -- wiki/stats/benchmark/)" ]; then
+              echo "New benchmark data!"
+              git add -f wiki/stats/benchmark/
+              CHANGED_ANY=true
+              echo "CHANGED=true" >> $GITHUB_ENV
+              CHANGED_FILES+=("benchmark-data")
+          else
+              echo "No new benchmark data!"
+          fi
+
           echo "====== Producing Update (if necessary) ======"
           # check for an update in the versions! (including the updated name information)
           LIMIT_TO_LAST=8
@@ -163,17 +190,16 @@ jobs:
           fi
 
       - name: "⬆️ Push changed Wiki pages"
-        if: ${{ env.CHANGED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
-        uses: ad-m/github-push-action@master
-        with:
-          branch: main
-          github_token: ${{ secrets.RELEASE_TOKEN }}
-          force: true
+        if: ${{ success() && env.CHANGED == 'true' && env.PUBLISH == 'true' }}
+        run: |
+          git fetch origin main
+          git rebase --autostash origin/main
+          git push origin HEAD:main
 
       - name: "⬆️ Publish the Wiki"
-        uses: Andrew-Chen-Wang/github-wiki-action@v4
+        uses: Andrew-Chen-Wang/github-wiki-action@v4.4.0
         # We do not need to republish if nothing changes. Furthermore, do not publish on PR as this should be done by the push on main!
-        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        if: ${{ success() && env.PUBLISH == 'true' }}
         with:
           path: "wiki/"
           strategy: 'init'
@@ -182,16 +208,94 @@ jobs:
             **/*.md.tmp
             **/*-Old.*
 
-      - name: "🔎 Check the README for broken links"
-        uses: becheran/mlc@v1
+      - name: "🔎 Check the Wiki pages for broken external links"
+        uses: becheran/mlc@v1.2.0
+        # thousands of links against a rate-limiting host can stall for hours; the step is allowed to
+        # fail, so hitting the limit only ends the check, it never ends the run
+        timeout-minutes: 20
         continue-on-error: true
-        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        if: ${{ success() && env.PUBLISH == 'true' }}
         with:
-          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
+          args: >-
+            --throttle 25 --ignore-path "wiki/stats"
+            --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*"
+            --ignore-links "http*://hub.docker.com/r/*,http*://*npmjs.com/*,http*://doi.org/*,http*://*linkedin.com/*,http*://*r-bloggers.com/*,http*://*gnu.org/*,http*://linux.die.net/*,http*://mermaid.js.org/*"
+            wiki/
 
-      - name: "🔎 Check the Wiki pages for broken links"
-        uses: becheran/mlc@v1
+      - name: "🔎 Check the README for broken external links"
+        uses: becheran/mlc@v1.2.0
+        timeout-minutes: 5
         continue-on-error: true
-        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        if: ${{ success() && env.PUBLISH == 'true' }}
         with:
-          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" wiki/
+          args: >-
+            --throttle 25 --files "./README.md"
+            --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*"
+            --ignore-links "http*://hub.docker.com/r/*,http*://*npmjs.com/*,http*://doi.org/*,http*://*linkedin.com/*,http*://*r-bloggers.com/*,http*://*gnu.org/*,http*://linux.die.net/*,http*://mermaid.js.org/*"
+
+  deploy-doc:
+    name: "🚀 Build and Deploy Documentation"
+    needs: [ build ]
+    if: ${{ needs.build.outputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+            token:      ${{ secrets.DOCUMENTATION_TOKEN }}
+            submodules: true
+            lfs: true
+            ref: main
+            # the version marker compares HEAD against the release tag, which a shallow clone without tags cannot do
+            fetch-tags: true
+            fetch-depth: 0
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+          cache: npm
+
+      - name: "⬇️ Setup R"
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "📦 Install R Packages"
+        uses: r-lib/actions/setup-r-dependencies@v2
+        timeout-minutes: 20
+        with:
+          cache: 'true'
+          cache-version: '1'
+          extra-packages: |
+            any::dplyr
+            any::readr
+
+      - name: "📦 Install Node Dependencies"
+        # the sync below runs through ts-node, so the dependencies have to be there before it
+        run: npm ci
+
+      - name: "💾 Cache the Signature Database Bundles"
+        uses: actions/cache@v4
+        with:
+          # only the bundles, the shards unpacked next to them are re-derived on demand
+          path: ~/.cache/flowr/sigdb/bundles
+          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
+
+      - name: "⬇️ Sync the Signature Database"
+        # the signature browser is built from it; without the shards it is skipped and the page 404s
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run sync:sigdb
+
+      - name: "🛠️ Build the documentation"
+        run: bash .github/workflows/scripts/run-flowr-command.sh doc
+
+      - name: "⬆️ Push New Documentation"
+        run: git push --force origin HEAD:gh-pages

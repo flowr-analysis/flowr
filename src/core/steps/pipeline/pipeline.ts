@@ -21,10 +21,9 @@ export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
 
 /**
  * Returns the types of all step names in the given pipeline.
- *
  * @see Pipeline for details
  */
-export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
+export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name'];
 /**
  * Returns the steps included in the given pipeline.
  * @example
@@ -35,7 +34,7 @@ export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
  * // Steps is now just step1 | step2 | ...
  * ```
  */
-export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
+export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never;
 
 /**
  * Meta-information attached to every step result
@@ -52,27 +51,20 @@ export interface PipelinePerStepMetaInformation {
 
 /**
  * Returns the step with the given name from the given pipeline.
- *
  * @example
  * ```ts
  * type Foo = PipelineStepWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
  * // Foo is now only the "parse" step from the DEFAULT_DATAFLOW_PIPELINE
  * ```
  */
-export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
+export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never;
 /**
  * Returns the processor function of the step with the given name from the given pipeline.
  * @see {@link PipelineStepWithName}
  */
-export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor']
-/**
- * Returns the printer function of the step with the given name from the given pipeline.
- * @see {@link PipelineStepWithName}
- */
-export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer']
+export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor'];
 /**
  * Returns the output type of the step with the given name from the given pipeline.
- *
  * @example
  * ```ts
  * type Foo = PipelineStepOutputWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
@@ -80,22 +72,20 @@ export type PipelineStepPrintersWithName<P extends Pipeline, Name extends Pipeli
  * @see {@link PipelineStepWithName}
  * ```
  */
-export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation
+export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation;
 /**
  * Returns a union type that represents the required inputs to be passed to the given pipeline.
- *
+ * @see {@link PipelineOutput}
  * @example
  * ```ts
  * type Foo = PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>
  * // Foo contains ParseRequiredInput & NormalizeRequiredInput
  * ```
- * 
+ *
  * In short, this can be useful whenever you want to describe _all_ inputs a complete
  * pipeline needs to run through (i.e., the union of all inputs required by the individual steps).
- *
- * @see {@link PipelineOutput}
  */
-export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
+export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>;
 
 /**
  * Only gets the union of 'requiredInput' of those PipelineSteps which have a 'execute' field of type 'OncePerRequest'.
@@ -103,7 +93,7 @@ export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep
  */
 export type PipelinePerRequestInput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepWithName<P, K>['executed'] extends PipelineStepStage.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
-}[PipelineStepNames<P>]
+}[PipelineStepNames<P>];
 
 
 /**
@@ -120,7 +110,7 @@ export type PipelinePerRequestInput<P extends Pipeline> = {
  */
 export type PipelineOutput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepOutputWithName<P, K>
-}
+};
 
 /**
  * Creates a {@link Pipeline|pipeline} from a given collection of {@link IPipelineStep|steps}.
@@ -134,11 +124,9 @@ export type PipelineOutput<P extends Pipeline> = {
  * 4) the target of a {@link IPipelineStepOrder#decorates|step's decoration} exists
  * 5) if a {@link IPipelineStepOrder#decorates|decoration} applies, all of its {@link IPipelineStepOrder#dependencies|dependencies} are already in the pipeline
  * 6) in the resulting {@link Pipeline|pipeline}, there is a strict cut between {@link IPipelineStep|steps} that are executed
- * 		{@link PipelineStepStage#OncePerFile|once per file} and {@link PipelineStepStage#OncePerRequest|once per request}.
- *
+ * {@link PipelineStepStage#OncePerFile|once per file} and {@link PipelineStepStage#OncePerRequest|once per request}.
  * @returns The function will try to order your collection steps so that all the constraints hold.
  * If it succeeds it will return the resulting {@link Pipeline|pipeline}, otherwise it will throw an {@link InvalidPipelineError}.
- *
  * @throws InvalidPipelineError If any of the constraints listed above are not satisfied.
  */
 export function createPipeline<T extends readonly IPipelineStep[]>(...steps: T): Pipeline<T[number]> {

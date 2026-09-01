@@ -1,9 +1,11 @@
 import type { RShell } from '../../r-bridge/shell';
-import type { Queries, QueryResults, SupportedQueryTypes } from '../../queries/query';
-import { executeQueries } from '../../queries/query';
-import { PipelineExecutor } from '../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../r-bridge/retriever';
+import type { Queries, SupportedQuery, SupportedQueryTypes } from '../../queries/query';
+import { queryWikiPage, SupportedQueries } from '../../queries/query';
+import { SupportedVirtualQueries } from '../../queries/virtual-query/virtual-queries';
+import { autoGenHeader } from './doc-auto-gen';
+import { section } from './doc-structure';
+import { guard } from '../../util/assert';
+import path from 'path';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
@@ -13,31 +15,47 @@ import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
-import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
+import { FlowrInlineTextFile } from '../../project/context/flowr-file';
 import { getReplCommand } from './doc-cli-option';
-import { cloneConfig, defaultConfigOptions } from '../../config';
+import type { SlicingCriteria } from '../../slicing/criterion/parse';
+import type { GeneralDocContext } from '../wiki-mk/doc-context';
+import type { KnownParser } from '../../r-bridge/parser';
 
-export interface ShowQueryOptions<Base extends SupportedQueryTypes> {
+const QueryDocFile = 'src/documentation/wiki-query.ts';
+
+export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
-	readonly addOutput?:      (result: QueryResults<Base>, pipeline: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => string;
+	readonly shorthand?:      string;
+	readonly ctx?:            GeneralDocContext;
+	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls */
+	readonly files?:          readonly { readonly name: string, readonly content: string }[];
+	/** hook to configure the analyzer, e.g. to pin a version so the generated output does not follow the generating machine */
+	readonly prepare?:        (builder: FlowrAnalyzerBuilder) => void;
 }
 
+/**
+ * Visualizes a query and its results in markdown format.
+ */
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery, addOutput = () => '' }: ShowQueryOptions<Base> = {}): Promise<string> {
+>(
+	parser: KnownParser, code: string,
+	queries: Queries<Base, VirtualArguments>,
+	{ showCode, collapseResult, collapseQuery, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
+): Promise<string> {
 	const now = performance.now();
-	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
-		request: requestFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
-	const results = await Promise.resolve(executeQueries({
-		dataflow: analysis.dataflow,
-		ast:      analysis.normalize,
-		config:   cloneConfig(defaultConfigOptions)
-	}, queries));
+	const builder = new FlowrAnalyzerBuilder().setParser(parser);
+	prepare?.(builder);
+	const analyzer = await builder.build();
+	for(const file of files ?? []) {
+		analyzer.addFile(new FlowrInlineTextFile(file.name, file.content));
+	}
+	analyzer.addRequest(code);
+	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
 
 	const metaInfo = `
@@ -47,11 +65,11 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);
 	return `
 
-${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
+${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g, '$1 ').replace(/\s{2,}([\]}])/g, ' $1') : str)}
 
 ${(function() {
-	if(queries.length === 1 && Object.keys(queries[0]).length === 1) {
-		return `(This query can be shortened to \`@${queries[0].type}\` when used within the REPL command ${getReplCommand('query')}).`;
+	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {
+		return `(This can be shortened to \`@${queries[0].type}${shorthand ? ' ' + shorthand : ''}\` when used with the REPL command ${getReplCommand('query')}).`;
 	} else {
 		return '';
 	}
@@ -62,15 +80,15 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results, analysis, queries)
+	await asciiSummaryOfQueryResult(markdownFormatter, duration, results, analyzer, queries)
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-${metaInfo}	
+${metaInfo}
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to get those.
+Please consult the ${ctx ? ctx.linkPage('wiki/Interface', 'Interface') : `[Interface](${FlowrWikiBaseRef}/Interface)`} wiki page for more information on how to get those.
 
 ${jsonWithLimit(results)}
 
@@ -80,7 +98,7 @@ ${
 	showCode ? `
 <details> <summary style="color:gray">Original Code</summary>
 
-${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
+${await printDfGraphForCode(parser, code, { switchCodeAndGraph: true })}
 
 </details>
 	` : ''
@@ -88,19 +106,19 @@ ${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
 
 ${collapseResult ? '</details>' : ''}
 
-${addOutput(results, analysis)}
-
 	`;
 
 }
 
 export interface QueryDocumentation {
-	readonly name:             string;
+	/** only for virtual queries, active ones carry their {@link SupportedQuery.title} */
+	readonly name?:            string;
 	readonly type:             'virtual' | 'active';
 	readonly shortDescription: string;
 	readonly functionName:     string;
+	/** Path to the file implementing the query function, the wiki generation will fail if this isn't found */
 	readonly functionFile:     string;
-	readonly buildExplanation: (shell: RShell) => Promise<string>;
+	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }
 
 export const RegisteredQueries = {
@@ -108,6 +126,10 @@ export const RegisteredQueries = {
 	'virtual': new Map<string, QueryDocumentation>()
 };
 
+
+/**
+ * Registers a new documentation for a query.
+ */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
 	const map = RegisteredQueries[doc.type];
 	if(map.has(query)) {
@@ -116,49 +138,96 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 	map.set(query, doc);
 }
 
-function linkify(name: string) {
-	return name.toLowerCase().replace(/ /g, '-');
+/**
+ * Creates a REPL shorthand for the given slicing criteria and R code (`f` requests a forward slice,
+ * `i` inlines resolvable `source()` calls into the reconstruction; the flags may be combined as `fi`).
+ */
+export function sliceQueryShorthand(criteria: SlicingCriteria, code: string, forward?: boolean, inline?: boolean) {
+	return `(${(criteria.join(';'))})${forward ? 'f' : ''}${inline ? 'i' : ''} "${code}"`;
 }
 
-export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQueryTypes) {
-	const query = RegisteredQueries.active.get(id) ?? RegisteredQueries.virtual.get(id);
-	if(!query) {
-		throw new Error(`Query ${id} not found`);
-	}
-	return `[${query.name}](#${linkify(query.name)})`;
+/** The display name of a query, from its definition or, for a virtual query, its documentation. */
+export function getQueryTitle(id: string): string {
+	const title = (SupportedQueries[id as SupportedQueryTypes] as SupportedQuery | undefined)?.title
+		?? RegisteredQueries.virtual.get(id)?.name;
+	guard(title !== undefined, () => `Query ${id} is not documented!`);
+	return title;
 }
 
+/** Mirrors the `[Linting Rule] ...` pages, see `getPageNameForLintingRule`. */
+export function getPageNameForQuery(id: string): string {
+	return queryWikiPage(getQueryTitle(id));
+}
+
+function queryPageUrl(id: string): string {
+	return `${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForQuery(id).replaceAll(' ', '-'))}`;
+}
+
+/** `linkText` defaults to the query's title. */
+export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQueryTypes, linkText?: string) {
+	return `[${linkText ?? getQueryTitle(id)}](${queryPageUrl(id)})`;
+}
+
+
+/**
+ * The table of contents for one kind of query, its entries sorted by the title they are shown under.
+ * @param type - whether to list the active or the virtual queries
+ */
 export function tocForQueryType(type: 'active' | 'virtual') {
-	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
+	const queries = [...RegisteredQueries[type].keys()].sort((a, b) => getQueryTitle(a).localeCompare(getQueryTitle(b)));
 	const result: string[] = [];
-	for(const [id, { name, shortDescription }] of queries) {
-		result.push(`1. [${name}](#${linkify(name)}) (\`${id}\`):\\\n    ${shortDescription}`);
+	for(const id of queries) {
+		result.push(`1. ${linkToQueryOfName(id as SupportedQueryTypes)} (\`${id}\`):\\\n    ${RegisteredQueries[type].get(id)?.shortDescription}`);
 	}
 	return result.join('\n');
 }
 
-async function explainQuery(shell: RShell, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+async function explainQuery(shell: RShell, ctx: GeneralDocContext, id: string, { shortDescription, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+	const name = getQueryTitle(id);
+	const syntax = (SupportedQueries[id as SupportedQueryTypes] as SupportedQuery | undefined)?.syntax;
 	return `
-### ${name}
+${autoGenHeader({ filename: QueryDocFile, purpose: 'query API' })}
+${section(name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Query-API">overview</a>]</sup>`, 2, name)}
 
-${await buildExplanation(shell)}
+${shortDescription}\\
+_This query is requested with the type \`${id}\`._${syntax ? `\\\nRun in the REPL: \`:query ${syntax}\`` : ''}
 
-<details> 
+${await buildExplanation(shell, ctx)}
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
 
-</details>	
+</details>
 
-`;
+`.trim();
 }
 
-export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
-	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
-	const result: string[] = [];
-	for(const [,doc] of queries) {
-		result.push(await explainQuery(shell, doc));
+
+/** Keyed by the file path each page is written to. */
+export async function queryPages(shell: RShell, ctx: GeneralDocContext, type: 'active' | 'virtual'): Promise<Record<string, string>> {
+	const result: Record<string, string> = {};
+	for(const [id, doc] of RegisteredQueries[type].entries()) {
+		result[path.join('wiki', `${getPageNameForQuery(id)}.md`)] = await explainQuery(shell, ctx, id, doc);
 	}
-	return result.join(`\n${'-'.repeat(5)}\n\n`);
+	return result;
+}
+
+/** Without this, a new query would silently end up without a wiki page. */
+export function assertAllQueriesDocumented(): void {
+	const undocumented = [
+		...Object.keys(SupportedQueries).filter(q => !RegisteredQueries.active.has(q)),
+		...Object.keys(SupportedVirtualQueries).filter(q => !RegisteredQueries.virtual.has(q))
+	];
+	guard(undocumented.length === 0, () =>
+		`The quer${undocumented.length === 1 ? 'y' : 'ies'} ${undocumented.map(q => `'${q}'`).join(', ')} ${undocumented.length === 1 ? 'has' : 'have'} no documentation! `
+		+ `Please add a 'registerQueryDocumentation' entry in ${QueryDocFile}.`);
+	const stale = [
+		...[...RegisteredQueries.active.keys()].filter(q => !(q in SupportedQueries)),
+		...[...RegisteredQueries.virtual.keys()].filter(q => !(q in SupportedVirtualQueries))
+	];
+	guard(stale.length === 0, () =>
+		`The documentation of ${stale.map(q => `'${q}'`).join(', ')} refers to (a) query type(s) that no longer exist(s).`);
 }

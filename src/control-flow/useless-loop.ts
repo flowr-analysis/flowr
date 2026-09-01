@@ -1,62 +1,58 @@
-import type { FlowrConfigOptions } from '../config';
-import type { BuiltInMappingName } from '../dataflow/environments/built-in';
-import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
-import { valueSetGuard } from '../dataflow/eval/values/general';
+import { NodeValue } from '../dataflow/eval/resolve/node-value';
+import { Resolve } from '../dataflow/environments/resolve-helper';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { VertexType } from '../dataflow/graph/vertex';
-import type { ControlDependency } from '../dataflow/info';
-import { happensInEveryBranch } from '../dataflow/info';
+import { DfgVertex } from '../dataflow/graph/vertex';
+import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
+import { NodeVisitor } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ControlFlowInformation } from './control-flow-graph';
-import type { SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration, type OnCall } from './semantic-cfg-guided-visitor';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 
-export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
+export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop]);
 
 /**
  * Checks whether a loop only loops once
- * 
- * 
- * 
  * @param loop        - nodeid of the loop to analyse
  * @param dataflow    - dataflow graph
  * @param controlflow - control flow graph
  * @param ast         - normalized ast
- * @param config      - current flowr config
- * @returns true if the given loop only iterates once
+ * @param ctx         - current flowr analyzer context
+ * @returns           true if the given loop only iterates once
  */
-export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, config: FlowrConfigOptions): boolean | undefined {
+export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {
 	const vertex = dataflow.getVertex(loop);
 	if(!vertex) {
 		return undefined;
 	}
 
-	guard(vertex.tag === VertexType.FunctionCall, 'invalid vertex type for onlyLoopsOnce');
-	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0] as BuiltInMappingName), 'onlyLoopsOnce can only be called with loops');
+	guard(DfgVertex.isFunctionCall(vertex), 'invalid vertex type for onlyLoopsOnce');
+	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element
-	if(vertex.origin[0] === 'builtin:for-loop') {
+	if(vertex.origin[0] === BuiltInProcName.ForLoop) {
 		if(vertex.args.length < 2) {
 			return undefined;
-		}	
+		}
 
 		const vectorOfLoop = vertex.args[1];
 		if(vectorOfLoop === EmptyArgument) {
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, { graph: dataflow, idMap: dataflow.idMap, resolve: config.solver.variables }));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
+		const vector = NodeValue.soleOf(vectorOfLoop.nodeId, Resolve.info(dataflow, ctx), 'vector');
+		if(vector === undefined || !isValue(vector.elements)) {
 			return undefined;
 		}
 
-		if(values.elements[0].elements.length === 1) {
+		if(vector.elements.length === 1) {
 			return true;
 		}
 	}
@@ -66,7 +62,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		controlFlow:          controlflow,
 		normalizedAst:        ast,
 		dfg:                  dataflow,
-		flowrConfig:          config,
+		ctx:                  ctx,
 		defaultVisitingOrder: 'forward'
 	});
 
@@ -74,7 +70,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
-	
+
 	private loopCds: ControlDependency[] | undefined = undefined;
 	private encounteredLoopBreaker = false;
 	private onlyLoopyOnce = false;
@@ -86,46 +82,31 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		this.loopToCheck = loop;
 	}
 
-	private getBoolArgValue(data: { call: DataflowGraphVertexFunctionCall }): boolean | undefined {
-		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
-			return undefined;
-		}
-
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
-			return undefined;
-		}
-
-		return Boolean(values.elements[0].value);
-	}
-
 	protected startVisitor(_: readonly NodeId[]): void {
 		const g = this.config.controlFlow.graph;
-		const ingoing = (i: NodeId) => g.ingoingEdges(i);
+		const loopNode = this.getNormalizedAst(this.loopToCheck);
+		guard(loopNode !== undefined, "Can't find the loop to check");
+		const withinLoop: NodeId[] = [];
+		new NodeVisitor<ParentInformation>(node => {
+			if(RFunctionDefinition.is(node)) {
+				/* a jump within a nested closure leaves that closure, not the loop around it */
+				return true;
+			}
+			withinLoop.push(node.info.id);
+		}).visit(loopNode);
 
-		const exits = new Set<NodeId>(g.getVertex(this.loopToCheck)?.end as NodeId[] ?? []);
-		guard(exits.size !== 0, "Can't find end of loop");
-
-		const stack: NodeId[] = [this.loopToCheck];
-		while(stack.length > 0) {
-			const current = stack.shift() as NodeId;
-
-			if(!this.visitNode(current)) {
+		/*
+		 * Everything the loop is made of is inspected rather than followed through the graph: a loop that always
+		 * jumps out never reaches its own vertex, so a walk from there would not find what breaks it.
+		 */
+		for(const current of withinLoop) {
+			if(!g.hasVertex(current) || !this.visitNode(current)) {
 				continue;
 			}
-
-
-			if(!exits.has(current)) {
-				const next = ingoing(current) ?? [];
-				for(const [to] of next) {
-					stack.unshift(to);
-				}
-			}
-
-			this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds);
+			this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 		}
 
-		this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds);
+		this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 	}
 
 	private app(cds: ControlDependency[] | undefined): void {
@@ -142,20 +123,27 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		for(const origin of data.call.origin) {
-			if(origin === 'builtin:stop' || origin === 'builtin:return' || origin === 'builtin:break') {
-				this.encounteredLoopBreaker = true;
-				this.app(data.call.cds);
-				return;
-			} else if(origin === 'builtin:stopifnot') {
-				const arg = this.getBoolArgValue(data);
-				if(arg === false) {
-					this.encounteredLoopBreaker = true;
-					this.app(data.call.cds);
-					return;
-				}
-			}
+	protected onBreakCall(data: OnCall): void {
+		this.encounteredLoopBreaker = true;
+		this.app(data.call.cds);
+	}
+
+	protected onReturnCall(data: OnCall): void {
+		this.encounteredLoopBreaker = true;
+		this.app(data.call.cds);
+	}
+
+	protected onStopCall(data: OnCall): void {
+		this.encounteredLoopBreaker = true;
+		this.app(data.call.cds);
+	}
+
+	protected onStopIfNotCall(data: OnCall): void {
+		const arg = this.getBoolArgValue(data);
+		if(arg === false) {
+			this.encounteredLoopBreaker = true;
+			this.app(data.call.cds);
+			return;
 		}
 	}
 

@@ -1,30 +1,35 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import type { IPipelineStep } from '../../pipeline-step';
-import { PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../slicing/criterion/parse';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrConfigOptions } from '../../../../config';
 import { staticSlice } from '../../../../slicing/static/static-slicer';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
+import { SliceDirection } from '../../../../util/slice-direction';
 
 export interface SliceRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
-	readonly criterion:  SlicingCriteria,
+	readonly criterion:       SlicingCriteria,
 	/** How many re-visits of the same node are ok? */
-	readonly threshold?: number
+	readonly threshold?:      number
 	/** The direction to slice in. Defaults to backward slicing if unset. */
-	readonly direction?: SliceDirection
+	readonly direction?:      SliceDirection
+	/** The context of the analysis */
+	readonly context?:        ReadOnlyFlowrAnalyzerContext
+	/**
+	 * If set (and slicing backward), continue the slice past a function-definition boundary, also including
+	 * the definition's binding and call sites. Defaults to `false`.
+	 */
+	readonly includeCallees?: boolean
 }
 
-export enum SliceDirection {
-	Backward = 'backward',
-	Forward = 'forward'
-}
-
-function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>, _config: FlowrConfigOptions) {
+function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
 	const direction = input.direction ?? SliceDirection.Backward;
-	return staticSlice((results.dataflow as DataflowInformation), results.normalize as NormalizedAst, input.criterion as SlicingCriteria, direction, input.threshold);
+	const threshold = input.threshold ?? input.context?.config.solver.slicer?.threshold;
+	const n = results.normalize as NormalizedAst;
+	return staticSlice({ ctx: input.context as ReadOnlyFlowrAnalyzerContext, info: results.dataflow as DataflowInformation, ast: n, ids: SlicingCriterion.convertAll(input.criterion as SlicingCriteria, n.idMap), direction, threshold, includeCallees: input.includeCallees });
 }
 
 export const STATIC_SLICE = {
@@ -36,6 +41,6 @@ export const STATIC_SLICE = {
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
-	dependencies:  [ 'dataflow' ],
+	dependencies:  ['dataflow'],
 	requiredInput: undefined as unknown as SliceRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'slice', typeof processor>>;

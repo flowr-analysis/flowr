@@ -1,19 +1,16 @@
 import * as tmp from 'tmp';
 import type { Reduction, SliceSizeCollection, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken } from '../data';
-
 import fs from 'fs';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { log } from '../../../util/log';
 import { withoutWhitespace } from '../../../util/text/strings';
-import type { SummarizedMeasurement } from '../../../util/summarizer';
-import { summarizeMeasurement } from '../../../util/summarizer';
+import { countAstComments } from '../../stats/count-comments';
+import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
 import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDfShape, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { RShell } from '../../../r-bridge/shell';
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { arraySum } from '../../../util/collections/arrays';
 import type { RShellEngineConfig } from '../../../config';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
@@ -29,7 +26,6 @@ const tempfile = (() => {
 		return _tempfile;
 	};
 })();
-
 
 function safeDivPercentage(a: number, b: number): number | undefined {
 	if(isNaN(a) || isNaN(b)) {
@@ -73,7 +69,9 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
+ * @lintIgnore use-instead
  * @see Slicer
+ * The re-parse below measures the raw parser on the sliced output, the analyzer's pipeline would measure something else.
  */
 export async function summarizeSlicerStats(
 	stats: SlicerStats,
@@ -88,6 +86,10 @@ export async function summarizeSlicerStats(
 	const sliceTimes: TimePerToken<number>[] = [];
 	const reconstructTimes: TimePerToken<number>[] = [];
 	const totalTimes: TimePerToken<number>[] = [];
+	const sliceTimesPer100Lines: number[] = [];
+	const reconstructTimesPer100Lines: number[] = [];
+	const totalTimesPer100Lines: number[] = [];
+	const per100Lines = 100 / stats.input.numberOfLines;
 	const reductions: Reduction<number | undefined>[] = [];
 	const reductionsNoFluff: Reduction<number | undefined>[] = [];
 
@@ -116,40 +118,35 @@ export async function summarizeSlicerStats(
 		}
 		sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length);
 		timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0;
+		const sliceTime = Number(perSliceStat.measurements.get('static slicing'));
+		const reconstructTime = Number(perSliceStat.measurements.get('reconstruct code'));
+		sliceTimesPer100Lines.push(sliceTime * per100Lines);
+		reconstructTimesPer100Lines.push(reconstructTime * per100Lines);
+		totalTimesPer100Lines.push((sliceTime + reconstructTime) * per100Lines);
 		const { code: output, linesWithAutoSelected } = perSliceStat.reconstructedCode;
 		sliceSize.linesWithAutoSelected.push(linesWithAutoSelected);
-		const split = output.split('\n');
+		const split = (output as string).split('\n');
 		const lines = split.length;
 		const nonEmptyLines = split.filter(l => l.trim().length > 0).length;
 		sliceSize.lines.push(lines);
 		sliceSize.nonEmptyLines.push(nonEmptyLines);
 		sliceSize.characters.push(output.length);
-		const nonWhitespace = withoutWhitespace(output).length;
+		const nonWhitespace = withoutWhitespace(output as string).length;
 		sliceSize.nonWhitespaceCharacters.push(nonWhitespace);
 		// reparse the output to get the number of tokens
 		try {
 			// there seem to be encoding issues, therefore, we dump to a temp file
-			fs.writeFileSync(tempfile().name, output);
+			fs.writeFileSync(tempfile().name, output as string);
 			const reParsed = await retrieveNormalizedAstFromRCode(
 				{ request: 'file', content: tempfile().name },
 				reParseShellSession
 			);
-			let numberOfNormalizedTokens = 0;
-			let numberOfNormalizedTokensNoComments = 0;
-			let commentChars = 0;
-			let commentCharsNoWhitespace = 0;
-			visitAst(reParsed.ast, t => {
-				numberOfNormalizedTokens++;
-				const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
-				if(comments && comments.length > 0) {
-					const content = comments.map(c => c.lexeme ?? '').join('');
-					commentChars += content.length;
-					commentCharsNoWhitespace += withoutWhitespace(content).length;
-				} else {
-					numberOfNormalizedTokensNoComments++;
-				}
-				return false;
-			});
+			const {
+				nodes:            numberOfNormalizedTokens,
+				nodesNoComments:  numberOfNormalizedTokensNoComments,
+				commentChars,
+				commentCharsNoWhitespace
+			} = countAstComments(reParsed.ast);
 			sliceSize.normalizedTokens.push(numberOfNormalizedTokens);
 			sliceSize.normalizedTokensNoComments.push(numberOfNormalizedTokensNoComments);
 			sliceSize.charactersNoComments.push(output.length - commentChars);
@@ -160,7 +157,7 @@ export async function summarizeSlicerStats(
 			const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(reParseShellSession, true);
 			sliceSize.tokensNoComments.push(numberOfRTokensNoComments);
 
-			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
+			const perSlice: { [k in keyof SliceSizeCollection]: number } = {
 				lines:                             lines,
 				nonEmptyLines:                     nonEmptyLines,
 				characters:                        output.length,
@@ -177,8 +174,6 @@ export async function summarizeSlicerStats(
 			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, false));
 			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true));
 
-			const sliceTime = Number(perSliceStat.measurements.get('static slicing'));
-			const reconstructTime = Number(perSliceStat.measurements.get('reconstruct code'));
 			sliceTimes.push({
 				raw:        sliceTime / numberOfRTokens,
 				normalized: sliceTime / numberOfNormalizedTokens
@@ -188,12 +183,12 @@ export async function summarizeSlicerStats(
 				normalized: reconstructTime / numberOfNormalizedTokens
 			});
 			totalTimes.push({
-				raw:        (sliceTime + reconstructTime ) / numberOfRTokens,
+				raw:        (sliceTime + reconstructTime) / numberOfRTokens,
 				normalized: (sliceTime + reconstructTime) / numberOfNormalizedTokens
 			});
 		} catch{
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`); //, e
-			console.error(`      Code: ${output}\n`);
+			console.error(`      Code: ${output as string}\n`);
 			failedOutputs++;
 		}
 
@@ -211,17 +206,20 @@ export async function summarizeSlicerStats(
 	return {
 		...stats,
 		perSliceMeasurements: {
-			numberOfSlices:            stats.perSliceMeasurements.size,
-			sliceCriteriaSizes:        summarizeMeasurement(sizeOfSliceCriteria),
-			measurements:              summarized,
-			failedToRepParse:          failedOutputs,
+			numberOfSlices:               stats.perSliceMeasurements.size,
+			sliceCriteriaSizes:           summarizeMeasurement(sizeOfSliceCriteria),
+			measurements:                 summarized,
+			failedToRepParse:             failedOutputs,
 			timesHitThreshold,
-			reduction:                 summarizeReductions(reductions),
-			reductionNoFluff:          summarizeReductions(reductionsNoFluff),
-			sliceTimePerToken:         summarizeTimePerToken(sliceTimes),
-			reconstructTimePerToken:   summarizeTimePerToken(reconstructTimes),
-			totalPerSliceTimePerToken: summarizeTimePerToken(totalTimes),
-			sliceSize:                 {
+			reduction:                    summarizeReductions(reductions),
+			reductionNoFluff:             summarizeReductions(reductionsNoFluff),
+			sliceTimePerToken:            summarizeTimePerToken(sliceTimes),
+			reconstructTimePerToken:      summarizeTimePerToken(reconstructTimes),
+			totalPerSliceTimePerToken:    summarizeTimePerToken(totalTimes),
+			sliceTimePer100Lines:         summarizeMeasurement(sliceTimesPer100Lines),
+			reconstructTimePer100Lines:   summarizeMeasurement(reconstructTimesPer100Lines),
+			totalPerSliceTimePer100Lines: summarizeMeasurement(totalTimesPer100Lines),
+			sliceSize:                    {
 				lines:                             summarizeMeasurement(sliceSize.lines),
 				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),
 				characters:                        summarizeMeasurement(sliceSize.characters),
@@ -252,27 +250,32 @@ function summarizeDfShapeStats({ perNodeStats, ...stats }: SlicerStatsDfShape): 
 		...stats,
 		numberOfEntriesPerNode:   summarizeMeasurement(nodeStats.map(s => s.numberOfEntries)),
 		numberOfOperations:       arraySum(nodeStats.map(s => s.mappedOperations?.length).filter(isNotUndefined)),
+		numberOfTotalConstraints: nodeStats.filter(s => s.inferredColNames !== undefined && s.inferredColCount !== undefined && s.inferredRowCount !== undefined).length,
+		numberOfTotalExact:       nodeStats.filter(s => s.approxRangeColNames === 0 && s.approxRangeColCount === 0 && s.approxRangeRowCount === 0).length,
 		numberOfTotalValues:      nodeStats.filter(s => isValue(s.inferredColNames) && isValue(s.inferredColCount) && isValue(s.inferredRowCount)).length,
+		numberOfTotalBottom:      nodeStats.filter(s => isBottom(s.inferredColCount) && isBottom(s.inferredColCount) && isBottom(s.inferredRowCount)).length,
 		numberOfTotalTop:         nodeStats.filter(s => isTop(s.inferredColNames) && isTop(s.inferredColCount) && isTop(s.inferredRowCount)).length,
-		numberOfTotalBottom:      nodeStats.filter(s => s.inferredColNames === 0 && isBottom(s.inferredColCount) && isBottom(s.inferredRowCount)).length,
 		inferredColNames:         summarizeMeasurement(nodeStats.map(s => s.inferredColNames).filter(isValue)),
+		approxRangeColNames:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColNames).filter(isNotUndefined).filter(isFinite)),
+		numberOfColNamesExact:    nodeStats.map(s => s.approxRangeColNames).filter(range => range === 0).length,
 		numberOfColNamesValues:   nodeStats.map(s => s.inferredColNames).filter(isValue).length,
+		numberOfColNamesBottom:   nodeStats.map(s => s.inferredColNames).filter(isBottom).length,
+		numberOfColNamesInfinite: nodeStats.map(s => s.inferredColNames).filter(isInfinite).length,
 		numberOfColNamesTop:      nodeStats.map(s => s.inferredColNames).filter(isTop).length,
-		numberOfColNamesBottom:   nodeStats.map(s => s.inferredColNames).filter(number => number === 0).length,
 		inferredColCount:         summarizeMeasurement(nodeStats.map(s => s.inferredColCount).filter(isValue)),
+		approxRangeColCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColCount).filter(isNotUndefined).filter(isFinite)),
 		numberOfColCountExact:    nodeStats.map(s => s.approxRangeColCount).filter(range => range === 0).length,
 		numberOfColCountValues:   nodeStats.map(s => s.inferredColCount).filter(isValue).length,
-		numberOfColCountTop:      nodeStats.map(s => s.inferredColCount).filter(isTop).length,
-		numberOfColCountInfinite: nodeStats.map(s => s.inferredColCount).filter(isInfinite).length,
 		numberOfColCountBottom:   nodeStats.map(s => s.inferredColCount).filter(isBottom).length,
-		approxRangeColCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColCount).filter(isNotUndefined).filter(isFinite)),
+		numberOfColCountInfinite: nodeStats.map(s => s.inferredColCount).filter(isInfinite).length,
+		numberOfColCountTop:      nodeStats.map(s => s.inferredColCount).filter(isTop).length,
 		inferredRowCount:         summarizeMeasurement(nodeStats.map(s => s.inferredRowCount).filter(isValue)),
+		approxRangeRowCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeRowCount).filter(isNotUndefined).filter(isFinite)),
 		numberOfRowCountExact:    nodeStats.map(s => s.approxRangeRowCount).filter(range => range === 0).length,
 		numberOfRowCountValues:   nodeStats.map(s => s.inferredRowCount).filter(isValue).length,
-		numberOfRowCountTop:      nodeStats.map(s => s.inferredRowCount).filter(isTop).length,
-		numberOfRowCountInfinite: nodeStats.map(s => s.inferredRowCount).filter(isInfinite).length,
 		numberOfRowCountBottom:   nodeStats.map(s => s.inferredRowCount).filter(isBottom).length,
-		approxRangeRowCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeRowCount).filter(isNotUndefined).filter(isFinite)),
+		numberOfRowCountInfinite: nodeStats.map(s => s.inferredRowCount).filter(isInfinite).length,
+		numberOfRowCountTop:      nodeStats.map(s => s.inferredRowCount).filter(isTop).length,
 		perOperationNumber:       summarizePerOperationStats(nodeStats),
 	};
 }
@@ -289,6 +292,9 @@ function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): Summarize
 	return perOperationNumber;
 }
 
+/**
+ * Summarizes the given measurements by calculating the min, max, median, mean, standard deviation, and total.
+ */
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
 	data = data.filter(isNotUndefined);
 	const min = Math.min(...data.map(d => d.min).filter(isNotUndefined));
@@ -303,6 +309,9 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std, total };
 }
 
+/**
+ * Summarizes the given reductions of summarized measurements.
+ */
 export function summarizeSummarizedReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
 	return {
 		numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
@@ -327,6 +336,9 @@ function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduc
 	};
 }
 
+/**
+ * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
+ */
 export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerToken {
 	return {
 		raw:        summarizeSummarizedMeasurement(times.map(t => t.raw)),
@@ -334,6 +346,9 @@ export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerT
 	};
 }
 
+/**
+ * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
+ */
 export function summarizeTimePerToken(times: TimePerToken<number>[]): TimePerToken {
 	return {
 		raw:        summarizeMeasurement(times.map(t => t.raw)),

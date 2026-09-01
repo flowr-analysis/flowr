@@ -1,4 +1,4 @@
-import { type RShell } from './shell';
+import type { RShell } from './shell';
 import { startAndEndsWith } from '../util/text/strings';
 import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
@@ -6,9 +6,9 @@ import { RShellExecutor } from './shell-executor';
 import { normalize } from './lang-4.x/ast/parser/json/parser';
 import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst, deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
+import { log } from '../util/log';
 import fs from 'fs';
 import path from 'path';
 
@@ -17,12 +17,17 @@ export const fileProtocol = 'file://';
 export interface RParseRequestFromFile {
 	readonly request: 'file';
 	/**
-	 * The path to the file (an absolute path is probably best here).
+	 * The path to the file represented in the {@link FlowrAnalyzerFilesContext}.
 	 * See {@link RParseRequests} for multiple files.
 	 */
 	readonly content: string;
 }
 
+/**
+ * A request to parse R code given as text.
+ * This option is mostly useful for quick tests or injects, as usually files are controlled by the {@link RParseRequestFromFile} request
+ * referring to a file in the {@link FlowrAnalyzerFilesContext}.
+ */
 export interface RParseRequestFromText {
 	readonly request: 'text'
 	/**
@@ -43,22 +48,32 @@ export interface RParseRequestProvider {
 	createRequest(path: string):                      RParseRequest
 }
 
-export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
+export type RParseRequest = RParseRequestFromFile | RParseRequestFromText;
 /**
  * Several requests that can be passed along to {@link retrieveParseDataFromRCode}.
  */
-export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
+export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>;
 
-export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
-export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
-export function requestFromInput(input: string): RParseRequestFromText
-export function requestFromInput(input: readonly string[] | string): RParseRequests
+/**
+ * Type guard for {@link RParseRequest}
+ */
+export function isParseRequest(request: unknown): request is RParseRequest {
+	if(typeof request !== 'object' || request === null) {
+		return false;
+	}
+	return 'request' in request;
+}
 
+export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile;
+export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[];
+export function requestFromInput(input: string): RParseRequestFromText;
+export function requestFromInput(input: readonly string[] | string): RParseRequests;
 /**
  * Creates a {@link RParseRequests} from a given input.
  * If your input starts with {@link fileProtocol}, it is assumed to be a file path and will be processed as such.
  * Giving an array, you can mix file paths and text content (again using the {@link fileProtocol}).
  *
+ * To obtain a {@link FlowrAnalyzerContext} from such an input, use {@link contextFromInput}.
  */
 export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[]): RParseRequests  {
 	if(Array.isArray(input)) {
@@ -66,13 +81,25 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	}
 	const content = input as string;
 	const file = content.startsWith(fileProtocol);
-	return {
-		request: file ? 'file' : 'text',
-		content: file ? content.slice(7) : content
-	};
+
+	if(file) {
+		return {
+			request: 'file',
+			content: content.slice(fileProtocol.length),
+		};
+	} else {
+		return {
+			request: 'text',
+			content
+		};
+	}
 }
 
-
+/**
+ * Creates a {@link RParseRequestProvider} that reads from the file system.
+ * Uses `fs.existsSync` to check for file existence.
+ * @see {@link requestProviderFromText} for a provider that reads from a text map.
+ */
 export function requestProviderFromFile(): RParseRequestProvider {
 	return {
 		exists(p: string, ignoreCase: boolean): string | undefined {
@@ -82,11 +109,15 @@ export function requestProviderFromFile(): RParseRequestProvider {
 				}
 				// walk the directory and find the first match
 				const dir = path.dirname(p);
+				if(!fs.existsSync(dir)) {
+					return undefined;
+				}
 				const file = path.basename(p);
 				const files = fs.readdirSync(dir);
 				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
 				return found ? path.join(dir, found) : undefined;
-			} catch{
+			} catch(e) {
+				log.warn(`Could not resolve '${p}': ${e instanceof Error ? e.message : String(e)}`);
 				return undefined;
 			}
 		},
@@ -99,7 +130,11 @@ export function requestProviderFromFile(): RParseRequestProvider {
 	};
 }
 
-export function requestProviderFromText(text: Readonly<{[path: string]: string}>): RParseRequestProvider {
+/**
+ * Creates a {@link RParseRequestProvider} that reads from the given text map.
+ * @see {@link requestProviderFromFile} for a provider that reads from the file system.
+ */
+export function requestProviderFromText(text: Readonly<{ [path: string]: string }>): RParseRequestProvider {
 	return {
 		exists(path: string, ignoreCase: boolean): string | undefined {
 			if(ignoreCase) {
@@ -116,14 +151,17 @@ export function requestProviderFromText(text: Readonly<{[path: string]: string}>
 	};
 }
 
+/**
+ * Checks whether the given {@link RParseRequest} is empty (has no content).
+ */
 export function isEmptyRequest(request: RParseRequest): boolean {
 	return request.content.trim().length === 0;
 }
 
 
-export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell): Promise<string>
-export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShellExecutor): string
-export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell | RShellExecutor): AsyncOrSync<string>
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell): Promise<string>;
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShellExecutor): string;
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell | RShellExecutor): AsyncOrSync<string>;
 /**
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
@@ -135,10 +173,14 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	if(isEmptyRequest(request)) {
 		return Promise.resolve('');
 	}
+
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
+	/* R's `parse(text=)` (unlike reading a file) rejects a carriage return as an "invalid token", so normalize
+	 * CRLF/CR line endings to LF for text requests to match R's own file handling and stay robust to Windows sources. */
+	const content = request.request === 'text' ? request.content.replace(/\r\n?/g, '\n') : request.content;
 	/* call the function with the request */
-	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
-		request.content
+	const command = `flowr_get_ast(${request.request}=${JSON.stringify(
+		content
 	)}${suffix})`;
 
 	if(shell instanceof RShellExecutor) {
@@ -153,10 +195,14 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 /**
  * Uses {@link retrieveParseDataFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows further querying the last result with {@link retrieveNumberOfRTokensOfLastParse}.
+ * This function is outdated and should only be used for legacy reasons.
+ * @useInstead {@link FlowrAnalyzer}
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);
-	return normalize({ parsed: data }, deterministicCountingIdGenerator(0), request.request === 'file' ? request.content : undefined);
+	return normalize({
+		files: [{ parsed: data, filePath: request.request === 'file' ? request.content : undefined }]
+	}, deterministicCountingIdGenerator(0));
 }
 
 /**

@@ -1,11 +1,11 @@
-import type {
-	LocationMapQuery,
-	LocationMapQueryResult
-} from './location-map-query-format';
+import type { LocationMapQuery, LocationMapQueryResult } from './location-map-query-format';
+import { LocationMapSpan } from './location-map-query-format';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import type { SourceRange } from '../../../util/range';
 import type { BasicQueryData } from '../../base-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { isNotUndefined } from '../../../util/assert';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 
 const fileIdRegex = /^(?<file>.*(\.[rR]))-/;
 
@@ -23,33 +23,48 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 			return fuzzyFindFile(parent, idMap);
 		}
 	}
-	return '<inline>';
+	return '@inline';
 }
 
-export function executeLocationMapQuery({ ast, dataflow: { graph } }: BasicQueryData, queries: readonly LocationMapQuery[]): LocationMapQueryResult {
+/** The range reported for a node under the requested {@link LocationMapSpan}, falling back to its own location. */
+function rangeOf(node: RNodeWithParent, idMap: AstIdMap, span: LocationMapSpan): SourceRange {
+	if(span === LocationMapSpan.Token) {
+		return node.location as SourceRange;
+	}
+	const of = span === LocationMapSpan.Statement ? RNode.topLevelStatement(node, idMap) : node;
+	return RNode.span(of) ?? node.location as SourceRange;
+}
+
+/**
+ * Executes a location map query
+ * @see {@link LocationMapQuery}
+ */
+export async function executeLocationMapQuery({ analyzer }: BasicQueryData, queries: readonly LocationMapQuery[]): Promise<LocationMapQueryResult> {
+	const ast = await analyzer.normalize();
 	const start = Date.now();
-	const criteriaOfInterest = new Set(queries
-		.flatMap(q => q.ids ?? [])
-		.map(c => tryResolveSliceCriterionToId(c, ast.idMap))
-		.filter(isNotUndefined))
-	;
+	const requested = queries.flatMap(q => q.ids ?? []);
+	const criteriaOfInterest = new Set(requested.map(c => SlicingCriterion.tryParse(c, ast.idMap)).filter(isNotUndefined));
 	const locationMap: LocationMapQueryResult['map'] = {
 		files: {},
 		ids:   {}
 	};
 	let count = 0;
 	const inverseMap = new Map<string, number>();
-	for(const file of graph.sourced) {
+	await analyzer.dataflow(); // ensure all files are considered
+	for(const file of analyzer.inspectContext().files.consideredFilesList()) {
 		locationMap.files[count] = file;
 		inverseMap.set(file, count);
 		count++;
 	}
+
+	const span = queries.find(q => q.span !== undefined)?.span ?? LocationMapSpan.Token;
 	for(const [id, node] of ast.idMap.entries()) {
-		if(node.location && (criteriaOfInterest.size === 0 || criteriaOfInterest.has(id))) {
+		/* asking for ids none of which resolve yields nothing, not everything */
+		if(node.location && (requested.length === 0 || criteriaOfInterest.has(id))) {
 			const file = fuzzyFindFile(node, ast.idMap);
 			locationMap.ids[id] = [
 				inverseMap.get(file) ?? -1,
-				node.location
+				rangeOf(node, ast.idMap, span)
 			];
 		}
 	}

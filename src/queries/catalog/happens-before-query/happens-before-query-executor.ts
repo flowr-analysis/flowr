@@ -1,28 +1,30 @@
 import type { BasicQueryData } from '../../base-query-format';
-import type {
-	HappensBeforeQuery,
-	HappensBeforeQueryResult
-} from './happens-before-query-format';
+import type { HappensBeforeQuery, HappensBeforeQueryResult } from './happens-before-query-format';
+import { HappensBeforeKey } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
-import { extractCfgQuick } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
-import { slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 
-export function executeHappensBefore({ ast }: BasicQueryData, queries: readonly HappensBeforeQuery[]): HappensBeforeQueryResult {
+/**
+ * Execute happens-before queries on the given analyzer.
+ * This checks, whether for two given slicing criteria `a` and `b`, `a` happens before `b` in the control flow graph.
+ */
+export async function executeHappensBefore({ analyzer }: BasicQueryData, queries: readonly HappensBeforeQuery[]): Promise<HappensBeforeQueryResult> {
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};
-	const cfg = extractCfgQuick(ast);
+	const ast = await analyzer.normalize();
+	const cfg = await analyzer.controlflow(undefined);
 	for(const query of queries) {
 		const { a, b } = query;
-		const fingerprint = `${a}<${b}`;
+		const fingerprint = HappensBeforeKey.of(a, b);
 		if(fingerprint in results) {
 			log.warn('Duplicate happens-before query', query, 'ignoring');
 		}
 
 		try {
-			const resolvedA = slicingCriterionToId(a, ast.idMap);
-			const resolvedB = slicingCriterionToId(b, ast.idMap);
+			const resolvedA = SlicingCriterion.parse(a, ast.idMap);
+			const resolvedB = SlicingCriterion.parse(b, ast.idMap);
 
 			results[fingerprint] = happensBefore(cfg.graph, resolvedA, resolvedB);
 		} catch(e) {

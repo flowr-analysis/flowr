@@ -1,10 +1,13 @@
-import type { TestLabel } from './_helper/label';
-import { printMissingLabelSummary } from './_helper/label';
+import { type TestLabel, printMissingLabelSummary } from './_helper/label';
 import fs from 'fs';
 import { DefaultMap } from '../../src/util/collections/defaultmap';
 import { GlobalSummaryFile } from './summary-def';
 import { jsonReplacer } from '../../src/util/json';
 
+
+/**
+ * Runs once before the whole suite: prepares what every test file assumes to be there.
+ */
 export function setup() {
 	try {
 		fs.unlinkSync(GlobalSummaryFile);

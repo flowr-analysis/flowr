@@ -5,7 +5,6 @@ import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-
 import { summarizeIdsIfTooLong } from '../../query-print';
 
 export interface IdMapQuery extends BaseQueryFormat {
@@ -17,11 +16,12 @@ export interface IdMapQueryResult extends BaseQueryResult {
 }
 
 export const IdMapQueryDefinition = {
+	title:           'Id-Map Query',
 	executor:        executeIdMapQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'id-map'>['id-map'];
 		result.push(`Query: ${bold('id-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...out.idMap.keys()])}}`);
+		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, Array.from(out.idMap.keys()))}}`);
 		return true;
 	},
 	schema: Joi.object({

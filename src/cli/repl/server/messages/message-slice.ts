@@ -2,8 +2,11 @@ import type { IdMessageBase, MessageDefinition } from './all-messages';
 import * as Joi from 'joi';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
-import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
-import { SliceDirection } from '../../../../core/steps/all/static-slicing/00-slice';
+import type {
+	DEFAULT_DATAFLOW_PIPELINE,
+	DEFAULT_SLICING_PIPELINE
+} from '../../../../core/steps/pipeline/default-pipelines';
+import { SliceDirection } from '../../../../util/slice-direction';
 
 /**
  * Can only be sent after you have sent the {@link FileAnalysisRequestMessage}.
@@ -19,7 +22,7 @@ export interface SliceRequestMessage extends IdMessageBase {
 	/** The direction to slice in. Defaults to backward slicing if unset. */
 	direction?:       SliceDirection,
 	/**
-	 * Should the magic comments (force-including lines within the slice) be ignord?
+	 * Should the magic comments (force-including lines within the slice) be ignored?
 	 */
 	noMagicComments?: boolean
 }
@@ -37,7 +40,7 @@ export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 
 
 /**
- * Similar to {@link FileAnalysisResponseMessage} this only contains the results of
+ * Similar to {@link FileAnalysisResponseMessageJson} this only contains the results of
  * the slice steps.
  */
 export interface SliceResponseMessage extends IdMessageBase {

@@ -1,90 +1,112 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import type { ForceArguments } from '../common';
 import { patchFunctionCall, processAllArguments } from '../common';
+import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import {
-	EmptyArgument,
-	type RFunctionArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { dataflowLogger } from '../../../../../logger';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type {
-	ContainerIndices,
-	ContainerIndicesCollection,
-	ContainerLeafIndex,
-	IndexIdentifier
-} from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
-import { getReferenceOfArgument } from '../../../../../graph/graph';
+	PotentiallyEmptyRArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import type { BuiltInMappingName } from '../../../../../environments/built-in';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
+import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
+import { toUnnamedArgument } from '../argument/make-argument';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { FunctionArgument } from '../../../../../graph/graph';
+import { SourceRange } from '../../../../../../util/range';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { DfgVertex } from '../../../../../graph/vertex';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-
+/**
+ * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
+ * These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`.
+ */
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/** The last one has to be the value */
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, activeIndices?: ContainerIndicesCollection, assignRootId?: NodeId } & ForceArguments
+	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId }
 ): DataflowInformation {
 	if(args.length < 2) {
-		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`);
+		dataflowLogger.warn(`Replacement ${Identifier.getName(name.content)} has less than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
-	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
-	
-	let indices: ContainerIndicesCollection = config.activeIndices;
-	if(data.flowrConfig.solver.pointerTracking) {
-		indices ??= constructAccessedIndices<OtherInfo>(name.content, args);
+	expensiveTrace(dataflowLogger, () => `Replacement ${Identifier.getName(name.content)} with ${JSON.stringify(args)}, processing`);
+
+	let targetArg = args[0];
+	if(config.constructName === 's7' && targetArg !== EmptyArgument) {
+		let tarName = targetArg.lexeme;
+		if(args.length > 2 && args[1] !== EmptyArgument) {
+			tarName += S7DispatchSeparator + args[1].lexeme;
+		}
+		const uArg = unpackArg(targetArg) ?? targetArg;
+		targetArg = toUnnamedArgument({
+			content:  tarName,
+			type:     RType.Symbol,
+			info:     uArg.info,
+			lexeme:   tarName,
+			location: uArg.location ?? targetArg.location ?? name.location ?? SourceRange.invalid()
+		} satisfies RSymbol<ParentInformation>, data.completeAst.idMap);
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	let res = BuiltInProcessorMapper['builtin:assignment'](
+	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
 		name,
-		[args[0], args[args.length - 1]],
+		[targetArg, args.at(-1) as PotentiallyEmptyRArgument<OtherInfo & ParentInformation>],
 		rootId,
 		data,
 		{
-			superAssignment:   config.assignmentOperator === '<<-',
-			makeMaybe:         indices !== undefined ? false : config.makeMaybe,
-			indicesCollection: indices,
-			canBeReplacement:  true
+			superAssignment:  config.assignmentOperator === '<<-',
+			makeMaybe:        config.makeMaybe,
+			canBeReplacement: true
 		}
 	);
 
 	const createdVert = res.graph.getVertex(rootId);
-	if(createdVert?.tag === VertexType.FunctionCall) {
-		createdVert.origin = ['builtin:replacement'];
+	if(DfgVertex.isFunctionCall(createdVert)) {
+		createdVert.origin = [BuiltInProcName.Replacement];
+	}
+	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
+	if(DfgVertex.isVariableDefinition(targetVert)) {
+		(targetVert as { par: boolean }).par = true;
 	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
-	const { callArgs } = processAllArguments({
-		functionName:   initializeCleanDataflowInformation(rootId, data),
+	const { callArgs, processedArguments: indexArguments } = processAllArguments({
+		functionName:   DataflowInformation.initialize(rootId, data),
 		args:           convertedArgs,
 		data,
 		functionRootId: rootId,
 		finalGraph:     res.graph,
-		forceArgs:      config.forceArgs,
 	});
+
+	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));
+	const targetNode = unpackArg(args[0]);
+	if(targetNode !== undefined && targetNode.info.id !== rootId) {
+		/*
+		 * `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced
+		 * (see the arguments of the call vertices), so the target is what this call continues from.
+		 */
+		res.graph.addEdge(targetNode.info.id, rootId, EdgeType.FlowEdge);
+	}
+	res = { ...res, cfgEntry: cfgEntry ?? res.cfgEntry, cfgExit: rootId };
 
 	patchFunctionCall({
 		nextGraph: res.graph,
@@ -92,15 +114,15 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId }),
-		origin: 'builtin:replacement' satisfies BuiltInMappingName,
+			args.map(a => RArgument.isEmpty(a) ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
+		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
-	const firstArg = unpackArgument(args[0]);
-	
+	const firstArg = unpackNonameArg(args[0]);
+
 	handleReplacementOperator({
-		operator: name.content, 
+		operator: name.content,
 		target:   firstArg?.lexeme,
 		env:      res.environment,
 		id:       rootId
@@ -116,95 +138,28 @@ export function processReplacementFunction<OtherInfo>(
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */
 	for(const arg of callArgs) {
-		const ref = getReferenceOfArgument(arg);
+		const ref = FunctionArgument.getReference(arg);
 		if(ref !== undefined) {
 			res.graph.addEdge(rootId, ref, EdgeType.Reads);
 		}
 	}
 
-
-	const fa = unpackArgument(args[0]);
-	if(!data.flowrConfig.solver.pointerTracking && fa) {
+	if(RSymbol.is(firstArg)) {
 		res = {
 			...res,
-			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]
+			in: [...res.in, { name: firstArg.content, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]
 		};
+	} else if(firstArg !== undefined && RAccess.is(firstArg)) {
+		/* a nested target (e.g. `a$b$c <- 5`) is no variable read, it is read through its own accessor */
+		res.graph.addEdge(firstArg.info.id, NodeId.toBuiltIn(firstArg.operator), EdgeType.Reads);
 	}
 
+	// dispatches actually as S3:
+	const fns = res.in.filter(i => i.nodeId === rootId);
+	for(const fn of fns) {
+		(fn as { type: ReferenceType }).type = ReferenceType.S3MethodPrefix;
+	}
+	// link the built-in replacement op
+	res.graph.addEdge(rootId, NodeId.toBuiltIn(Identifier.getName(name.content)), EdgeType.Calls | EdgeType.Reads);
 	return res;
-}
-
-/**
- * Constructs accessed indices of replacement function recursively.
- * 
- * Example:
- * ```r
- * a$b <- 1
- * # results in index with lexeme b as identifier
- * 
- * a[[1]]$b
- * # results in index with index 1 as identifier with a sub-index with lexeme b as identifier
- * ```
- * 
- * @param operation - Operation of replacement function e.g. '$\<-', '[\<-', '[[\<-' 
- * @param args      - Arguments of the replacement function
- * @returns Accessed indices construct
- */
-function constructAccessedIndices<OtherInfo>(
-	operation: string,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
-): ContainerIndicesCollection {
-	const { accessedArg, accessArg } = getAccessOperands(args);
-
-	if(accessedArg === undefined || accessArg?.value === undefined || !isSupportedOperation(operation, accessArg.value)) {
-		return undefined;
-	}
-
-	const constructIdentifier = getIdentifierBuilder(operation);
-
-	const leafIndex: ContainerLeafIndex = {
-		identifier: constructIdentifier(accessArg),
-		nodeId:     accessedArg.info.parent ?? ''
-	};
-	const accessIndices: ContainerIndices = {
-		indices:     [leafIndex],
-		isContainer: false
-	};
-
-	// Check for nested access
-	let indicesCollection: ContainerIndicesCollection = undefined;
-	if(accessedArg.value?.type === RType.Access) {
-		indicesCollection = constructNestedAccess(accessedArg.value, accessIndices, constructIdentifier);
-	} else {
-		// use access node as reference to get complete line in slice
-		indicesCollection = [accessIndices];
-	}
-
-	return indicesCollection;
-}
-
-function isSupportedOperation<OtherInfo>(operation: string, value: RNode<OtherInfo & ParentInformation>) {
-	const isNameBasedAccess = (operation === '$<-' || operation === '@<-') && value.type === RType.Symbol;
-	const isNumericalIndexBasedAccess = (operation === '[[<-' || operation === '[<-') && value.type === RType.Number;
-	return isNameBasedAccess || isNumericalIndexBasedAccess;
-}
-
-function getIdentifierBuilder<OtherInfo>(
-	operation: string,
-): (arg: RArgument<OtherInfo & ParentInformation>) => IndexIdentifier  {
-	if(operation === '$<-' || operation == '@<-') {
-		return (arg) => {
-			return {
-				index:  undefined,
-				lexeme: arg.lexeme,
-			};
-		};
-	}
-
-	// [[<- and [<-
-	return (arg) => {
-		return {
-			index: Number(arg.lexeme),
-		};
-	};
 }

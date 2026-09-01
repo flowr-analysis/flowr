@@ -19,8 +19,9 @@ export interface NormalizedAstQueryResult extends BaseQueryResult {
 }
 
 export const NormalizedAstQueryDefinition = {
+	title:           'Normalized AST Query',
 	executor:        executeNormalizedAstQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
 		result.push(`Query: ${bold('normalized-ast', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);

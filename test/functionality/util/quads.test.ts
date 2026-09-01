@@ -3,19 +3,18 @@ import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { assert, describe, test } from 'vitest';
-import { defaultConfigOptions } from '../../../src/config';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
-describe.sequential('Quads', withShell(shell => {
+describe('Quads', { concurrent: false }, withShell(shell => {
 	const context = 'test';
 	const domain = 'https://uni-ulm.de/r-ast/';
 
 	const compareQuadsCfg = async(code: string, expected: string) => {
 		const ast = await retrieveNormalizedAst(shell, code);
 		const decorated = decorateAst(ast.ast, {}).ast;
-		const serialized = serialize2quads(decorated, { context, domain, getId: defaultQuadIdGenerator() });
+		const serialized = serialize2quads(decorated.files[0].root, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());
 	};
 
@@ -38,9 +37,9 @@ describe.sequential('Quads', withShell(shell => {
 
 	const compareQuadsDfg = async(code: string, expected: string) => {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			request: requestFromInput(code),
+			context: contextFromInput(code),
 			parser:  shell
-		}, defaultConfigOptions).allRemainingSteps();
+		}).allRemainingSteps();
 
 		const serialized = dataflowGraphToQuads(info.dataflow, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());
@@ -57,7 +56,7 @@ describe.sequential('Quads', withShell(shell => {
 <${idPrefix}1> <${domain}tag> "use" <${context}> .
 <${idPrefix}1> <${domain}id> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}0> <${domain}vertices> <${idPrefix}2> <${context}> .
-<${idPrefix}2> <${domain}tag> "function-call" <${context}> .
+<${idPrefix}2> <${domain}tag> "fcall" <${context}> .
 <${idPrefix}2> <${domain}id> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}2> <${domain}environment> <${idPrefix}3> <${context}> .
 <${idPrefix}3> <${domain}current> <${idPrefix}4> <${context}> .
@@ -69,10 +68,15 @@ describe.sequential('Quads', withShell(shell => {
 <${idPrefix}5> <${domain}type> "32"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}2> <${domain}origin> "function" <${context}> .
 <${idPrefix}0> <${domain}edges> <${idPrefix}6> <${context}> .
+<${idPrefix}6> <${domain}next> <${idPrefix}7> <${context}> .
 <${idPrefix}6> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}type> "reads" <${context}> .
-<${idPrefix}6> <${domain}type> "argument" <${context}> .
+<${idPrefix}6> <${domain}type> "arg" <${context}> .
+<${idPrefix}0> <${domain}edges> <${idPrefix}7> <${context}> .
+<${idPrefix}7> <${domain}from> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}7> <${domain}to> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}7> <${domain}type> "flows-to" <${context}> .
     `);
 	});
 }));

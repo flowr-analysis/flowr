@@ -1,6 +1,6 @@
 /**
- * This module has one goal (and is to be rewritten soon to achieve that goal,
- * as the file itself is way too long). See {@link reconstructToCode}.
+ * This module has one goal (and is to be rewritten soon to achieve that goal, as the file itself is way too long).
+ * See {@link reconstructToCode}.
  * @module
  */
 
@@ -12,48 +12,108 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
-import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
+import { type StatefulFoldFunctions, foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AutoSelectPredicate } from './auto-select/auto-select-defaults';
-import { doNotAutoSelect } from './auto-select/auto-select-defaults';
+import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-select-defaults';
+import { Identifier } from '../dataflow/environments/identifier';
+import type { InlineWarning } from './inline/source-inline-map';
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
 
-type Selection = ReadonlySet<NodeId>
+/**
+ * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
+ * precedes each with a banner comment naming it.
+ * @see {@link Selection#inlineFull}
+ */
+export type InlineFull = boolean | 'banner';
+
+interface Selection {
+	/** The set of node ids to be reconstructed. */
+	nodes:             ReadonlySet<NodeId>
+	/** @see {@link ReconstructRequiredInput#reconstructFiles} */
+	reconstructFiles?: 'all' | number[]
+	/**
+	 * If set, selected `source()` calls are replaced by the (spliced) reconstruction of the sourced file, producing a
+	 *  single self-contained reconstruction. Requires {@link Selection#sourceMap}; overrides {@link Selection#reconstructFiles}.
+	 */
+	inlineSources?:    boolean
+	/**
+	 * If set, every file is reconstructed into a single self-contained text, in flowR's loading order; files sourced
+	 *  explicitly are spliced into their `source()` call instead of repeated at the top level (`'banner'` names each).
+	 */
+	inlineFull?:       InlineFull
+	/**
+	 * Maps a `source()` call node id to the index of the sourced file in `ast.ast.files`.
+	 * Only used together with {@link Selection#inlineSources} or {@link Selection#inlineFull}. Build it via {@link buildSourceInlineMap}.
+	 */
+	sourceMap?:        ReadonlyMap<NodeId, number>
+}
+
 interface PrettyPrintLine {
 	line:   string
 	indent: number
 }
 
-function plain(text: string): [PrettyPrintLine] {
-	return [{ line: text, indent: 0 }];
+function plain(text: string | Identifier): [PrettyPrintLine] {
+	return [{ line: Array.isArray(text) ? Identifier.toString(text) : text, indent: 0 }];
 }
 
-type Code = PrettyPrintLine[]
+type Code = PrettyPrintLine[];
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' });
 
-function getLexeme(n: RNodeWithParent) {
-	return n.info.fullLexeme ?? n.lexeme ?? '';
+function getLexeme(n: RNodeWithParent): string {
+	const lexeme = RNode.lexeme(n);
+	if(lexeme !== undefined) {
+		return lexeme;
+	}
+	// only expression lists may lack a lexeme of their own, so we synthesize equivalent source from their children
+	return RExpressionList.is(n) ? synthesizeExpressionListLexeme(n) : '';
+}
+
+/** rebuilds the source of a lexeme-less expression list (e.g., a `(` or `{` wrapper) so that it still parses */
+function synthesizeExpressionListLexeme(n: RExpressionList<ParentInformation>): string {
+	const inner = n.children
+		.filter(c => !RComment.is(c))
+		.map(c => getLexeme(c))
+		.filter(c => c.length > 0)
+		.join('; ');
+	const start = RExpressionList.groupStart(n);
+	const end = RExpressionList.groupEnd(n);
+	if(start === undefined || end === undefined) {
+		return inner;
+	}
+	return `${Identifier.toString(start.content)}${inner}${Identifier.toString(end.content)}`;
+}
+
+function codeToText(code: Code): string {
+	return code.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
+}
+
+/** the arguments synthesized for infix operands have no `fullLexeme`, so resolve through the value */
+function getArgumentLexeme(n: RArgument<ParentInformation> | typeof EmptyArgument | undefined): string {
+	if(n === undefined || RArgument.isEmpty(n)) {
+		return '';
+	}
+	return n.info.fullLexeme ?? (n.value !== undefined ? getLexeme(n.value) : getLexeme(n));
 }
 
 function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {
-	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf, configuration.fullAst);
-	return selectionHasLeaf ? foldToConst(leaf) : [];
+	return isSelected(configuration, leaf) ? foldToConst(leaf) : [];
 }
 
 function foldToConst(n: RNodeWithParent): Code {
@@ -82,8 +142,8 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		if(g && fst.length > 0) {
 			const start = g[0].content;
 			const end = g[1].content;
-			fst[0].line = `${start}${start === '{' ? ' ' : ''}${fst[0].line}`;
-			fst[fst.length - 1].line = `${fst[fst.length - 1].line}${end === '}' ? ' ' : ''}${end}`;
+			fst[0].line = `${Identifier.toString(start)}${start === '{' ? ' ' : ''}${fst[0].line}`;
+			fst[fst.length - 1].line = `${fst[fst.length - 1].line}${end === '}' ? ' ' : ''}${Identifier.toString(end)}`;
 		}
 		return fst;
 	} else {
@@ -108,15 +168,20 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
 	];
 }
 
-
 function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
-	if(configuration.selection.has(leaf.info.id)) {
-		return foldToConst(leaf);
-	} else if(operand.length === 0) {
+	if(!configuration.selection.has(leaf.info.id) && operand.length === 0) {
 		return [];
-	} else {
-		return foldToConst(leaf);
 	}
+	return foldToConst(leaf);
+}
+
+/** whether the value of `n` is the value of its rhs alone, i.e. the lhs may be dropped without changing the result */
+function evaluatesToRhs(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>): boolean {
+	if(RPipe.is(n)) {
+		return false;
+	}
+	const info = RBinaryOp.getOperatorInfo(n);
+	return info?.usedAs === 'assignment' && info.stringUsedInRAst !== RawRType.RightAssign;
 }
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {
@@ -126,7 +191,11 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		} else {
 			return [];
 		}
-	} else if(lhs.length === 0) { // if we have no lhs, only return rhs
+	} else if(lhs.length === 0) {
+		// dropping the lhs is only sound if the operator evaluates to its rhs, otherwise we have to keep the operation
+		if(isSelected(config, n) && !evaluatesToRhs(n)) {
+			return plain(getLexeme(n));
+		}
 		return rhs;
 	} else if(rhs.length === 0) {
 		if(isSelected(config, n)) {
@@ -136,7 +205,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		}
 	}
 
-	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs);
+	return reconstructRawBinaryOperator(lhs, RPipe.is(n) ? '|>' : n.operator, rhs);
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, config: ReconstructionConfiguration): Code {
@@ -187,10 +256,8 @@ function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty:
 	}
 }
 
-
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
-	const sel = isSelected(configuration, loop);
-	if(!sel) {
+	if(!isSelected(configuration, loop)) {
 		return body;
 	}
 	return reconstructBodyWithHeader({ line: 'repeat', indent: 0 }, body, '{}');
@@ -240,10 +307,8 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	}
 }
 
-
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
-	const sel = isSelected(configuration, loop);
-	if(!sel && condition.length === 0) {
+	if(!isSelected(configuration, loop) && condition.length === 0) {
 		return body;
 	} else if(body.length === 0 && condition.length === 0) {
 		return [];
@@ -267,7 +332,6 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 }
 
 function reconstructParameters(parameters: readonly RParameter<ParentInformation>[]): string[] {
-	// const baseParameters = parameters.flatMap(p => plain(getLexeme(p)))
 	return parameters.map(p => {
 		if(p.defaultValue !== undefined) {
 			return `${getLexeme(p.name)}=${getLexeme(p.defaultValue)}`;
@@ -299,7 +363,6 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 	}
 }
 
-
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, parameter)) {
 		return plain(getLexeme(parameter));
@@ -313,6 +376,21 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 	}
 }
 
+/** whether any ancestor of `n` is part of the reconstruction and hence may consume the value of `n` */
+function hasSelectedAncestor(n: RNodeWithParent, config: ReconstructionConfiguration): boolean {
+	const { idMap } = config.fullAst;
+	let parentId = n.info.parent;
+	while(parentId !== undefined) {
+		const parent = idMap.get(parentId);
+		if(parent === undefined) {
+			return false;
+		} else if(isSelected(config, parent)) {
+			return true;
+		}
+		parentId = parent.info.parent;
+	}
+	return false;
+}
 
 function reconstructFunctionDefinition(
 	definition: RFunctionDefinition<ParentInformation>,
@@ -326,7 +404,7 @@ function reconstructFunctionDefinition(
 		const selected = isSelected(config, definition);
 		if(empty && selected) { // give function stub
 			return plain(`${definition.lexeme}(${reconstructParameters(definition.parameters).join(', ')}) { }`);
-		} else if(!selected) { // do not require function
+		} else if(!selected && !hasSelectedAncestor(definition, config)) { // do not require function
 			return body;
 		}
 	}
@@ -354,18 +432,57 @@ function reconstructSpecialInfixFunctionCall(args: readonly (Code | typeof Empty
 	if((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
 		return [];
 	}
-	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still have to keep both now, but reconstruct manually :/
 	if(lhs !== EmptyArgument && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
+		const lhsText = codeToText(lhs);
 		if(rhs !== EmptyArgument && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
-			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`);
+			return plain(`${lhsText} ${Identifier.toString(call.functionName.content)} ${codeToText(rhs)}`);
 		} else {
 			return plain(lhsText);
 		}
 	}
-	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`);
+	// only the operands' lexemes are left to go by; a `{` block has none, so keep the call as it was written
+	const lhsLexeme = getArgumentLexeme(call.arguments[0]);
+	const rhsLexeme = getArgumentLexeme(call.arguments[1]);
+	if(lhsLexeme.length === 0 || rhsLexeme.length === 0) {
+		return plain(getLexeme(call));
+	}
+	return plain(`${lhsLexeme} ${Identifier.toString(call.functionName.content)} ${rhsLexeme}`);
+}
+
+/**
+ * If `inlineSources` is active and this is a selected, resolvable `source()` call, returns the reconstruction to
+ *  splice in its place (or the literal call at a cycle edge); `undefined` means reconstruct as usual.
+ */
+function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: ReconstructionConfiguration): Code | undefined {
+	const id = call.info.id;
+	const targetFile = config.sourceMap?.get(id);
+	if(targetFile !== undefined) {
+		const visited = config.visited ?? new Set<number>([config.currentFile ?? 0]);
+		const path = config.fullAst.ast.files[targetFile]?.filePath;
+		if(visited.has(targetFile)) {
+			// cyclic source() - keep the literal call and mark the cycle edge
+			config.warnings?.push({ kind: 'cycle', callId: id, path });
+			reconstructLogger.warn(`cyclic source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
+			const literal = plain(getLexeme(call));
+			literal.push({ line: `# [flowR] cyclic source() not inlined: ${path ?? '<unknown>'}`, indent: 0 });
+			return literal;
+		}
+		const childConfig: ReconstructionConfiguration = {
+			...config,
+			visited:     visited.union(new Set([config.currentFile ?? 0, targetFile])),
+			currentFile: targetFile
+		};
+		return stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
+	}
+	// a selected source() that we could not link to a file (dynamic/missing path): keep it verbatim
+	if(call.named && call.functionName.lexeme === 'source') {
+		const arg = call.arguments[0];
+		const path = arg !== undefined && arg !== EmptyArgument && RString.is(arg.value) ? arg.value.content.str : undefined;
+		config.warnings?.push({ kind: 'unresolved', callId: id, path });
+		reconstructLogger.warn(`unresolved source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
+	}
+	return undefined;
 }
 
 function reconstructFunctionCall(
@@ -375,6 +492,12 @@ function reconstructFunctionCall(
 	configuration: ReconstructionConfiguration
 ): Code {
 	const selected = isSelected(configuration, call);
+	if(configuration.inlineSources && selected) {
+		const inlined = tryInlineSourceCall(call, configuration);
+		if(inlined !== undefined) {
+			return inlined;
+		}
+	}
 	if(!selected) {
 		const f = args.filter(a => a !== EmptyArgument && a.length !== 0) as Code[];
 		if(f.length === 0) {
@@ -390,8 +513,7 @@ function reconstructFunctionCall(
 	if(call.named && selected) {
 		return plain(getLexeme(call));
 	}
-	const filteredArgs = args.filter(a => a !== undefined && a.length > 0);
-	if(functionName.length === 0 && filteredArgs.length === 0) {
+	if(functionName.length === 0 && args.every(a => a === undefined || a.length === 0)) {
 		return [];
 	}
 
@@ -411,20 +533,25 @@ function reconstructFunctionCall(
 	}
 }
 
-/**
- * Options to use with {@link reconstructToCode}.
- */
+/** Options to use with {@link reconstructToCode}. */
 interface ReconstructionConfiguration<Info = ParentInformation> extends MergeableRecord {
-	selection:    Selection
-	fullAst:      NormalizedAst<Info>
+	selection:      ReadonlySet<NodeId>
+	fullAst:        NormalizedAst<Info>
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
-	autoSelectIf: AutoSelectPredicate
+	autoSelectIf:   AutoSelectPredicate
+	/** @see {@link Selection#inlineSources} */
+	inlineSources?: boolean
+	/** @see {@link Selection#sourceMap} */
+	sourceMap?:     ReadonlyMap<NodeId, number>
+	/** the set of file indices currently being inlined on the active path (used to break cyclic `source()` inlining) */
+	visited?:       ReadonlySet<number>
+	/** the index of the file that is currently being reconstructed (0 = main file) */
+	currentFile?:   number
+	/** collects the warnings raised while inlining `source()` calls (shared by reference across the recursion) */
+	warnings?:      InlineWarning[]
 }
 
-/**
- * The fold functions used to reconstruct the ast in {@link reconstructToCode}.
- */
-// escalates with undefined if all are undefined
+/** The fold functions used to reconstruct the ast in {@link reconstructToCode}. */
 const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, ReconstructionConfiguration, Code> = {
 	// we just pass down the state information so everyone has them
 	down:         (_n, c) => c,
@@ -457,43 +584,57 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
 	}
 };
 
-
-
 function getIndentString(indent: number): string {
 	return ' '.repeat(indent * 4);
 }
 
-function prettyPrintCodeToString(code: Code, lf ='\n'): string {
+function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	return code.map(({ line, indent }) => `${getIndentString(indent)}${line}`).join(lf);
 }
 
 export interface ReconstructionResult {
-	code:                  string
+	/** Returns the reconstructed code as string or array of code reconstructions (corresponding to the desired file indices in the {@link Selection}) */
+	code:                  string | string[]
 	/** number of lines that contain nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
 	linesWithAutoSelected: number
+	/** warnings raised while inlining `source()` calls (only set when {@link Selection#inlineSources} is active) */
+	inlineWarnings?:       InlineWarning[]
+	/**
+	 * The reconstructed files, in loading order, each with the path it came from (absent for inline code); `code` holds the same parts joined into one string.
+	 * Not set by the inlinings, whose whole purpose is to produce one self-contained text.
+	 */
+	files?:                readonly { path: string | undefined, code: string }[]
 }
 
-function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesWithAutoSelected: number): ReconstructionResult  {
+/** Removes a redundant outer `{ }` block (de-indenting its content) if present. */
+function stripOuterExpressionList(result: Code): Code {
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
-		// remove outer block
-		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), linesWithAutoSelected };
-	} else {
-		return { code: prettyPrintCodeToString(result), linesWithAutoSelected };
+		return indentBy(result.slice(1, result.length - 1), -1);
 	}
+	return result;
 }
 
+function removeOuterExpressionListIfApplicable(result: Code): string  {
+	return prettyPrintCodeToString(stripOuterExpressionList(result));
+}
+
+/** Folds a single file of the project into {@link Code}, reused by the top-level reconstruction and the `source()` inlining recursion. */
+function reconstructFileCode(ast: NormalizedAst, fileIndex: number, config: ReconstructionConfiguration): Code {
+	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
+		reconstructLogger.trace(`reconstructing file index ${fileIndex} with root id ${ast.ast.files[fileIndex].root.info.id}`);
+	}
+	return foldAstStateful(ast.ast.files[fileIndex].root, config, reconstructAstFolds);
+}
+
+export function reconstructToCode(ast: NormalizedAst, selection: Selection & ({ inlineSources: true } | { inlineFull: true } | { reconstructFiles?: [number] | undefined }), autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
+export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf?: AutoSelectPredicate): ReconstructionResult;
 /**
- * Reconstructs parts of a normalized R ast into R code on an expression basis.
- *
- * @param ast          - The {@link NormalizedAst|normalized ast} to be used as a basis for reconstruction
- * @param selection    - The selection of nodes to be reconstructed (probably the {@link NodeId|NodeIds} identified by the slicer)
- * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
- *
- * @returns The number of lines for which `autoSelectIf` triggered, as well as the reconstructed code itself.
+ * Reconstructs parts of a normalized R ast into R code on an expression basis; `selection` gives the node ids to reconstruct (probably identified by the slicer), `autoSelectIf` can force additional ones.
+ * @returns the reconstructed code, plus the number of lines for which `autoSelectIf` triggered.
  */
 export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = doNotAutoSelect): ReconstructionResult {
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
-		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`);
+		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection.nodes])} for files: ${JSON.stringify(selection.reconstructFiles)}`);
 	}
 
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
@@ -501,21 +642,63 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
 		const result = autoSelectIf(node, ast);
 		if(result && node.location) {
-			for(let i = node.location[0]; i <= node.location[2]; i++){
+			for(let i = node.location[0]; i <= node.location[2]; i++) {
 				linesWithAutoSelected.add(i);
 			}
 		}
 		return result;
 	};
 
-	// fold of the normalized ast
-	const result = foldAstStateful(
-		ast.ast,
-		{ selection, autoSelectIf: autoSelectIfWrapper, fullAst: ast },
-		reconstructAstFolds
+	// both inlinings splice every resolvable `source()` in place, overriding `reconstructFiles`: `inlineSources`
+	// emits the main file alone, `inlineFull` every file flowR loads, minus the ones already spliced into a call.
+	if(selection.inlineFull || selection.inlineSources) {
+		const warnings: InlineWarning[] = [];
+		const sourceMap = selection.sourceMap ?? new Map<NodeId, number>();
+		const splicedIn = new Set<number>(sourceMap.values());
+		const indices = selection.inlineFull ? ast.ast.files.map((_, i) => i).filter(i => !splicedIn.has(i)) : [0];
+		const parts: string[] = [];
+		for(const i of indices) {
+			const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
+				selection:     selection.nodes,
+				autoSelectIf:  autoSelectIfWrapper,
+				fullAst:       ast,
+				inlineSources: true,
+				sourceMap,
+				visited:       new Set<number>([i]),
+				currentFile:   i,
+				warnings
+			}));
+			if(code.length > 0) {
+				parts.push(selection.inlineFull === 'banner' ? `# ---- ${ast.ast.files[i].filePath ?? '<inline>'} ----\n${code}` : code);
+			}
+		}
+		return {
+			code:                  parts.join('\n'),
+			linesWithAutoSelected: linesWithAutoSelected.size,
+			inlineWarnings:        warnings
+		};
+	}
+
+	const indices = selection.reconstructFiles === 'all' ? ast.ast.files.map((_, i) => i) : (selection.reconstructFiles ?? [0]);
+	guard(
+		indices.every(i => i >= 0 && i < ast.ast.files.length),
+		`reconstructToCode: reconstructFiles contains invalid file indices: ${JSON.stringify(indices)} for ast with ${ast.ast.files.length} files`
 	);
 
-	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(result)}`);
+	const results: string[] = [];
+	for(const i of indices) {
+		results.push(
+			removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
+				selection: selection.nodes, autoSelectIf: autoSelectIfWrapper, fullAst: ast, currentFile: i
+			}))
+		);
+	}
 
-	return removeOuterExpressionListIfApplicable(result, linesWithAutoSelected.size);
+	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(results)}`);
+
+	return {
+		code:                  indices.length === 1 ? results[0] : results,
+		files:                 indices.map((i, k) => ({ path: ast.ast.files[i].filePath, code: results[k] })),
+		linesWithAutoSelected: linesWithAutoSelected.size
+	};
 }

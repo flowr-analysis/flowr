@@ -8,6 +8,18 @@ import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 import { NAMING_CONVENTION } from './rules/naming-convention';
 import { DATA_FRAME_ACCESS_VALIDATION } from './rules/dataframe-access-validation';
 import { USELESS_LOOP } from './rules/useless-loop';
+import { NETWORK_FUNCTIONS } from './rules/network-functions';
+import { STOP_WITH_CALL_ARG } from './rules/stop-with-call-arg';
+import { ROXYGEN_ARGS } from './rules/roxygen-arguments';
+import { PROBLEMATIC_INPUTS } from './rules/problematic-inputs';
+import { SOFTWARE_HAS_LICENSE } from './rules/software-has-license';
+import { SOFTWARE_HAS_TESTS } from './rules/software-has-tests';
+import { NO_LEAKED_CREDENTIALS } from './rules/no-leaked-credentials';
+import { UNDEFINED_SYMBOL } from './rules/undefined-symbol';
+import { UNUSED_IMPORT } from './rules/unused-import';
+import { SYNTACTICALLY_VALID } from './rules/syntactically-valid';
+import { UNCLOSED_CONNECTION } from './rules/unclosed-connection';
+import { UNESCAPED_ARGUMENTS } from './rules/unescaped-arguments';
 
 /**
  * The registry of currently supported linting rules.
@@ -20,16 +32,28 @@ export const LintingRules = {
 	'absolute-file-paths':         ABSOLUTE_PATH,
 	'unused-definitions':          UNUSED_DEFINITION,
 	'naming-convention':           NAMING_CONVENTION,
+	'network-functions':           NETWORK_FUNCTIONS,
 	'dataframe-access-validation': DATA_FRAME_ACCESS_VALIDATION,
 	'dead-code':                   DEAD_CODE,
-	'useless-loop':                USELESS_LOOP
+	'useless-loop':                USELESS_LOOP,
+	'problematic-inputs':          PROBLEMATIC_INPUTS,
+	'stop-call':                   STOP_WITH_CALL_ARG,
+	'roxygen-arguments':           ROXYGEN_ARGS,
+	'software-has-license':        SOFTWARE_HAS_LICENSE,
+	'software-has-tests':          SOFTWARE_HAS_TESTS,
+	'no-leaked-credentials':       NO_LEAKED_CREDENTIALS,
+	'undefined-symbol':            UNDEFINED_SYMBOL,
+	'unused-import':               UNUSED_IMPORT,
+	'syntactically-valid':         SYNTACTICALLY_VALID,
+	'unclosed-connection':         UNCLOSED_CONNECTION,
+	'unescaped-arguments':         UNESCAPED_ARGUMENTS
 } as const;
 
-export type LintingRuleNames = keyof typeof LintingRules
+export type LintingRuleNames = keyof typeof LintingRules;
 
 export type LintingRuleMetadata<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer _Result, infer Metadata, infer _Config, infer _Info, infer _Elements> ? Metadata : never
+	typeof LintingRules[Name] extends LintingRule<infer _Result, infer Metadata, infer _Config, infer _Info, infer _Elements> ? Metadata : never;
 export type LintingRuleResult<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer Result, infer _Metadata, infer _Config, infer _Info, infer _Elements> ? Result : never
+	typeof LintingRules[Name] extends LintingRule<infer Result, infer _Metadata, infer _Config, infer _Info, infer _Elements> ? Result : never;
 export type LintingRuleConfig<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never
+	typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never;

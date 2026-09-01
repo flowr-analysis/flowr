@@ -19,7 +19,7 @@ describe('Infer types for builtin functions', () => {
 		{ query: Q.criterion('1@quote').build(), expectedType: new RLanguageType() },
 		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);
-	
+
 	assertInferredType('list(1, 2, 3)', new RListType(new RDoubleType()));
 
 	assertInferredTypes(

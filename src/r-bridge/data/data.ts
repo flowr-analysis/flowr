@@ -102,10 +102,48 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							description: '_Handling [function factories](https://adv-r.hadley.nz/function-factories.html) and friends._ Currently, we do not have enough tests to be sure.'
 						},
 						{
-							name:        'Dynamic Environment Resolution',
-							id:          'dynamic-environment-resolution',
-							supported:   'not',
-							description: '_For example, using `new.env` and friends_'
+							name:         'Dynamic Environment Resolution',
+							id:           'dynamic-environment-resolution',
+							supported:    'partially',
+							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), `attach`, `with`/`within`, and env-variable aliasing (`alias <- e`). Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
+							capabilities: [
+								{
+									name:        'Environment in Conditionals',
+									id:          'environment-in-conditionals',
+									supported:   'partially',
+									description: '_Tracking environment assignments and reads across if-then-else branches. flowR propagates envState through branch merging, but cross-branch name resolution inside the env is not guaranteed._'
+								},
+								{
+									name:        'Environment in Loops',
+									id:          'environment-in-loops',
+									supported:   'partially',
+									description: '_Tracking environment assignments inside loop constructs (for, while, repeat). The env variable is correctly attributed in each iteration body, but dynamic key generation (e.g., `paste0`) prevents static name resolution._'
+								},
+								{
+									name:        'Environment Parent',
+									id:          'environment-parent',
+									supported:   'partially',
+									description: '_Specifying a parent for a newly-created environment (`new.env(parent = e)`, `new.env(parent = emptyenv())`). Tracked-env-variable parents and `emptyenv()`/`NULL` are resolved statically; dynamic or unknown parents fall back to the default (`parent.frame()`)._'
+								},
+								{
+									name:        'Environment Alias',
+									id:          'environment-alias',
+									supported:   'partially',
+									description: '_Aliasing a tracked environment variable (`alias <- e`). The `envState` snapshot at assignment time is propagated, so assigns made BEFORE the alias are visible through it. Assigns made AFTER the alias to the original variable are not reflected._'
+								},
+								{
+									name:        'With / Within',
+									id:          'environment-with',
+									supported:   'partially',
+									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
+								},
+								{
+									name:        'Dynamic Variable Removal',
+									id:          'dynamic-variable-removal',
+									supported:   'partially',
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
+								}
+							]
 						},
 						{
 							name:        'Environment Sharing',
@@ -122,13 +160,13 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Search Path',
 							id:          'search-path',
-							supported:   'not',
-							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there."
+							supported:   'partially',
+							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Attached packages and `attach`ed environments are placed below `.GlobalEnv` (so global bindings shadow package exports, matching R), attaching inside/through function calls propagates to the caller, and re-attaching is a no-op. Not yet handled: dynamic `search`/`fn_env` manipulation."
 						},
 						{
 							name:        'Namespaces',
 							id:          'namespaces',
-							supported:   'not',
+							supported:   'partially',
 							description: "_Handling R's namespaces as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#namespaces)_"
 						},
 						{
@@ -140,14 +178,26 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Accessing Internal Names',
 							id:          'accessing-internal-names',
-							supported:   'not',
+							supported:   'partially',
 							description: '_Similar to `::` but for internal names._'
 						},
 						{
 							name:        'Library Loading',
 							id:          'library-loading',
-							supported:   'not',
+							supported:   'partially',
 							description: '_Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_'
+						},
+						{
+							name:        'Dynamic Scope Changes',
+							id:          'dynamic-scope-changes',
+							supported:   'partially',
+							description: '_Manually changing scopes like [`local`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/eval)_'
+						},
+						{
+							name:        'Anonymous Bindings',
+							id:          'anonymous-bindings',
+							supported:   'fully',
+							description: '_Support for [`Recall`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Recall)_'
 						}
 					]
 				}
@@ -218,6 +268,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							]
 						},
 						{
+							name:        'Recursion',
+							id:          'recursion',
+							supported:   'fully',
+							description: '_Recognize and resolve recursive calls like `f(3)` inside the definition of `f`, ..._'
+						},
+						{
 							name:        'Anonymous Calls',
 							id:          'call-anonymous',
 							supported:   'fully',
@@ -240,6 +296,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							id:          'functions-with-global-side-effects',
 							supported:   'partially',
 							description: '_Support functions like `setwd` which have an impact on the subsequent program._'
+						},
+						{
+							name:        'Working Directory',
+							id:          'working-directory',
+							supported:   'partially',
+							description: '_Track the effective working directory across `setwd` (control-flow- and location-sensitive) to resolve relative file paths. Interprocedural, sourced, and loop cases are treated as unbounded rather than guessed._'
 						},
 						{
 							name:         'Index Access',
@@ -446,9 +508,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									description: '_Handle `return(3)`, ... in function definitions_'
 								},
 								{
-									name:        'exceptions',
-									id:          'exceptions',
-									supported:   'not',
+									name:        'Exceptions and Errors',
+									id:          'exceptions-and-errors',
+									supported:   'partially',
 									description: '_Handle `try`, `stop`, ..._'
 								}
 							]
@@ -489,7 +551,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 											name:        'Promises',
 											id:          'formals-promises',
 											supported:   'partially',
-											description: '_Handle `function(x = y) { y <- 3; x }`, `function(x = { x <- 3; x}) { x * x }`, ..._ We _try_ to identify promises correctly but this is really rudimentary.'
+											description: '_Handle `function(x = y) { y <- 3; x }`, `function(x = { x <- 3; x}) { x * x }`, ..._ A default argument resolves in the function\'s own environment and an argument passed in resolves in the caller\'s, both as R does it. We do not model _when_ a promise is forced: a `delayedAssign`ed expression is linked to every binding it may be forced against, which never misses the one that feeds it but may name others as well. What forcing _does_ is not modelled either, so the writes a promise performs when it is forced (`delayedAssign("x", { x <- 99; 2 })`, where reading `x` yields `2` and leaves `x` at `99`) do not reach the reads that follow.'
 										}
 									]
 								},
@@ -519,9 +581,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								},
 								{
 									name:        'Pipe and Pipe-Bind',
-									id:          'built-in-pipe-and-pipe-bind',
+									id:          'pipe-and-pipe-bind',
 									supported:   'partially',
-									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._ We have not enough tests and do not support pipe-bind.'
+									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._; Similarly support the other pipe binds'
 								},
 								{
 									name:        'Sequencing',
@@ -567,13 +629,19 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 											name:        'Quoting',
 											id:          'built-in-quoting',
 											supported:   'partially',
-											description: '_Handle `quote`, `substitute`, `bquote`, ..._ We partially ignore some of them but most likely not all.'
+											description: '_Handle `quote`, `substitute`, `bquote`, ..._ A quoted argument is marked as [non-standard evaluation](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#non-standard-evaluation) as a whole, so nothing within it counts as read. We model the escapes back to standard evaluation that a quoting function offers: rlang\'s `!!`/`!!!` (in `expr`, `quo`, `enquo`, ... and in data-masking arguments) and `bquote`\'s `.()`. Base `quote`/`substitute` have no such escape, and `substitute` does not reach the caller\'s expression when used on a function argument.'
 										},
 										{
 											name:        'Evaluation',
 											id:          'built-in-evaluation',
-											supported:   'not',
-											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ We do not handle them at all.'
+											supported:   'partially',
+											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ `eval` of a string we can resolve is analyzed as if it were written in its place. A language object reaches the `eval` that forces it even across assignments, branches, loop iterations, and function calls, and its names resolve in the scope evaluating it, as R does. `eval(expr, envir)` runs elsewhere, so we mark the call as an unknown side effect instead of guessing. `evalq` quotes its first argument and we do not follow it into the given environment.'
+										},
+										{
+											name:        'String Templates',
+											id:          'string-templates',
+											supported:   'partially',
+											description: '_Handle `glue::glue("{x}")`, `cli::cli_alert_info("{.val {x}}")`, `stringr::str_glue`/`str_interp`, ..._ The `{...}` of a template carries R code that runs where the call is, so we analyze it as if it were written there: it reads, it writes, and its side effects land in the calling scope. Doubled delimiters escape, `.open`/`.close` are honored when they are literal, and cli markup (`{.cls ...}`) contributes only the interpolations nested in it. A template aimed at another scope (`.envir`, `.con`, `glue_data`) is marked as an unknown side effect instead.'
 										},
 										{
 											name:        'Parsing',
@@ -638,6 +706,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 			id:           'non-standard-evaluations-semantics',
 			capabilities: [
 				{
+					name:        'Data Masking',
+					id:          'data-masking',
+					supported:   'partially',
+					description: '_Handle `subset(d, col > 1)`, dplyr verbs, `ggplot2::aes`, data.table `:=`, ..._ In a masked argument, a name the caller binds is read as that variable and any other name is taken to come from the data. Which names a data frame actually offers is unknown to us, so a column shadowing a variable of the same name still resolves to the variable. rlang\'s `!!`/`!!!` and its `:=` name-value pair are recognised; `[` on a `data.table` does not mask its `j`/`by` yet.'
+				},
+				{
 					name:        'Recycling',
 					id:          'recycling',
 					supported:   'not',
@@ -652,8 +726,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 				{
 					name:        'Hooks',
 					id:          'hooks',
-					supported:   'not',
-					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We do not support hooks.'
+					supported:   'partially',
+					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We support `on.exit` and rlang\'s [`on_load`/`run_on_load`/`on_package_load`](https://rlang.r-lib.org/reference/on_load.html), whose expressions we analyze where they are registered. `setHook` and the other user hooks are not modelled.'
 				},
 				{
 					name:        'Precedence',
@@ -719,7 +793,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							url:  [
 								{ name: AdvancedR('S3'), href: 'https://adv-r.hadley.nz/s3.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
@@ -728,7 +802,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							url:  [
 								{ name: AdvancedR('S4'), href: 'https://adv-r.hadley.nz/s4.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
@@ -737,18 +811,38 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							url:  [
 								{ name: AdvancedR('R6'), href: 'https://adv-r.hadley.nz/r6.html' }
 							],
-							supported:   'not',
-							description: '_Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We do not support typing currently and do not handle objects of these classes "as units."'
+							supported:   'partially',
+							description: '_Handle R6 classes and methods as one unit. We do not support typing, inheritance, private/active bindings, or handling objects fully "as units."'
 						},
 						{
 							name: 'R7/S7',
-							id:   'r7-s7',
+							id:   'oop-r7-s7',
 							url:  [
 								{ name: 'R7', href: 'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/' },
 								{ name: 'S7', href: 'https://cran.r-project.org/web/packages/S7/index.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name:         'Class-Based Dependency Attribution',
+							id:           'oop-class-dependency-attribution',
+							supported:    'partially',
+							description:  '_Attribute the use of a class to the package that owns it (registers a method for it and exports a same-named constructor), so a class use implies a dependency for library detection and version guessing (backed by the signature database\'s class-ownership map)._',
+							capabilities: [
+								{
+									name:        'S3 class ownership',
+									id:          'class-owner-s3',
+									supported:   'partially',
+									description: '_The signature database records which package owns each S3 class. A class use is attributed to the owning package -- both from a project\'s NAMESPACE `S3method(generic, class)` registrations (e.g. `S3method("as.irts","zoo")` marks `zoo` used) and from class-name string literals in plain code (`inherits(x, "zoo")`, `methods::is`, `new`, `structure(..., class=)`), marking the owner used and bounding its version below by the same-named constructor\'s export history. Class names that come from a variable or a `c(...)` vector, and method-definition names like `print.zoo`, are not yet resolved._'
+								},
+								{
+									name:        'S4 class ownership',
+									id:          'class-owner-s4',
+									supported:   'partially',
+									description: '_A project\'s `importClassesFrom`/`importMethodsFrom` NAMESPACE directives are tracked, so the source package is attached and marked used like a plain `importFrom`. S4 class ownership itself (`exportClasses`, `setClass`) is not yet recorded in the signature database, so a bare S4 class use is not attributed to its owning package._'
+								}
+							]
 						}
 					]
 				}
@@ -811,13 +905,37 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 					id:          'system-calls',
 					supported:   'not',
 					description: '_Handle [`system`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/system), `system.*`, ..._ We do not support system calls but treat them as unknown function calls.'
+				},
+				{
+					name:        'R-Markdown files',
+					id:          'file:rmd',
+					supported:   'fully',
+					description: 'Support R-Markdown files as R sources.'
+				},
+				{
+					name:        'Jupyter Notebook',
+					id:          'file:ipynb',
+					supported:   'partially',
+					description: 'Support Jupyter Notebooks as R sources.'
+				},
+				{
+					name:        'Quarto',
+					id:          'file:qmd',
+					supported:   'partially',
+					description: 'Support Quarto files as R sources.'
+				},
+				{
+					name:        'Sweave',
+					id:          'file:rnw',
+					supported:   'partially',
+					description: 'Support for Sweave files as R sources.'
 				}
 			]
 		},
 		{
 			name:        'Pre-Processors/external Tooling',
 			id:          'pre-processors-external-tooling',
-			supported:   'not',
+			supported:   'fully',
 			description: '_Handle pre-processors like `knitr`, `rmarkdown`, `roxygen2` ..._ We do not support pre-processors for the time being (being unable to handle things like `@importFrom`)'
 		}
 	]

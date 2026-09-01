@@ -8,7 +8,8 @@ describe('Infer types for loops', () => {
 	describe.each([
 		{ input: 'while(FALSE) { print("Testing is fun!") }',                         expectedType: new RNullType() },
 		{ input: 'while(TRUE) { next }',                                              expectedType: new RTypeVariable() },
-		{ input: 'while(1 < 2) { print("Hi Flo!") }',                                 expectedType: new RNullType() },
+		/* the condition folds to `TRUE`, so the loop never leaves and unifies with nothing */
+		{ input: 'while(1 < 2) { print("Hi Flo!") }',                                 expectedType: new RTypeVariable() },
 		{ input: 'while(TRUE) { break }',                                             expectedType: new RNullType() },
 		{ input: 'for(i in NULL) { print("I would like to write a test for that") }', expectedType: new RNullType() },
 		{ input: 'for(i in 1:10) { print(i) }',                                       expectedType: new RNullType() },

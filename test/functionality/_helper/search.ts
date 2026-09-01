@@ -1,61 +1,65 @@
-import type { TestLabel } from './label';
-import { decorateLabelContext } from './label';
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { assert, beforeAll, describe, test } from 'vitest';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type { ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
-import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
-import { getFlowrSearch } from '../../../src/search/flowr-search-builder';
+import { type TestLabel, decorateLabelContext } from './label';
+import { assert, beforeAll, bench, describe, test } from 'vitest';
+import { type NormalizedAst, type ParentInformation, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type FlowrSearchLike, getFlowrSearch } from '../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { runSearch } from '../../../src/search/flowr-search-executor';
 import { arrayEqual } from '../../../src/util/collections/arrays';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../src/slicing/criterion/parse';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
-import { defaultConfigOptions } from '../../../src/config';
 import type { FlowrSearchElement } from '../../../src/search/flowr-search';
-import type { Enrichment, EnrichmentElementContent } from '../../../src/search/search-executor/search-enrichers';
-import { enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
+import { type Enrichment, type EnrichmentElementContent, enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
 import type { KnownParser } from '../../../src/r-bridge/parser';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import { format } from 'util';
+import type { RParseRequest } from '../../../src/r-bridge/retriever';
+import { applyAssumedPackages, assumedPackagesOf } from './shell';
 
 /**
- * Asserts the result of a search or a set of searches (all of which should return the same result)!
- * The `expected` items may be slicing criteria, which will be converted to node ids, or a function to test the results.
+ * Implementation of assertSearch that works with both string code and parse requests
  */
 export function assertSearch(
 	name: string | TestLabel,
 	parser: KnownParser,
-	code: string,
-	expected: readonly (NodeId | SingleSlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
+	codeOrRequests: string | readonly RParseRequest[],
+	expected: readonly (NodeId | SlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
 	...searches: FlowrSearchLike[]
 ) {
-	const effectiveName = decorateLabelContext(name, ['search']);
-	describe(effectiveName, () => {
-		let results: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> | undefined;
+	const assumed = assumedPackagesOf(undefined);
+	describe(decorateLabelContext(name, ['search']), () => {
+		let analyzer: FlowrAnalyzer | undefined;
+		let dataflow: DataflowInformation | undefined;
+		let ast: NormalizedAst | undefined;
+
 		beforeAll(async() => {
-			results = await createDataflowPipeline(parser, {
-				request: requestFromInput(code),
-				getId:   deterministicCountingIdGenerator(0)
-			}, defaultConfigOptions).allRemainingSteps();
+			analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder()
+				.setInput({
+					getId: deterministicCountingIdGenerator(0)
+				})
+				.setParser(parser), assumed)
+				.build();
+			analyzer.addRequest(codeOrRequests);
+			dataflow = await analyzer.dataflow();
+			ast = await analyzer.normalize();
 		});
 
-
 		describe.each([true, false])('optimize %s', optimize => {
-			test.each(searches)('%s', search => {
-				guard(isNotUndefined(results), 'Results must be defined');
-				const info = results;
+			test.each(searches)('%s', async search => {
+				guard(isNotUndefined(analyzer), 'Analyzer must be defined');
+				guard(isNotUndefined(dataflow), 'Dataflow must be defined');
+				guard(isNotUndefined(ast), 'Normalized AST must be defined');
 				search = getFlowrSearch(search, optimize);
 
-				const result = runSearch(search,  { ...info, config: defaultConfigOptions }).getElements();
+				const result = (await analyzer.runSearch(search)).getElements();
 				try {
 					if(Array.isArray(expected)) {
 						expected = expected.map(id => {
 							try {
-								return slicingCriterionToId(id as SingleSlicingCriterion, info.normalize.idMap);
+								guard(isNotUndefined(ast), 'Normalized AST must be defined');
+								return SlicingCriterion.parse(id as SlicingCriterion, ast.idMap);
 							} catch{
 								/* just keep it :D */
 								return id as NodeId;
@@ -66,10 +70,10 @@ export function assertSearch(
 							`Expected search results to match. Wanted: [${expected.join(', ')}], got: [${result.map(r => r.node.info.id).join(', ')}]`);
 					} else {
 						const expectedFunc = expected as (result: FlowrSearchElement<ParentInformation>[]) => boolean;
-						assert(expectedFunc([...result]), `Expected search results ${JSON.stringify(results)} to match expected function`);
+						assert(expectedFunc([...result]), `Expected search results ${JSON.stringify(result)} to match expected function`);
 					}
 				} /* v8 ignore next 4 */ catch(e: unknown) {
-					console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
+					console.error('Dataflow-Graph', Dataflow.visualize.mermaid.url(dataflow));
 					console.error('Search', flowrSearchToAscii(search));
 					throw e;
 				}
@@ -78,6 +82,36 @@ export function assertSearch(
 	});
 }
 
+/**
+ * Modified version of {@link assertSearch} that benchmarks instead of comparing to an expected result.
+ */
+export function benchmarkSearch(
+	name: string | TestLabel,
+	parser: KnownParser,
+	code: string,
+	...searches: FlowrSearchLike[]
+) {
+	describe(decorateLabelContext(name, ['search']), async() => {
+		// beforeAll is not supported when using bench atm :(
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setInput({ getId: deterministicCountingIdGenerator(0) })
+			.setParser(parser)
+			.build();
+		analyzer.addRequest(code);
+
+		describe.each([true, false])('optimize %s', optimize => {
+			for(const search of searches) {
+				bench(format('%s', search), async() => {
+					await analyzer.runSearch(getFlowrSearch(search, optimize));
+				}, { throws: true });
+			}
+		});
+	});
+}
+
+/**
+ * checks whether the flowR search has the expected enrichments
+ */
 export function assertSearchEnrichment(
 	name: string | TestLabel,
 	parser: KnownParser,

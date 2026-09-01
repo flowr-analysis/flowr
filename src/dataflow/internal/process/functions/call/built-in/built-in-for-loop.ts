@@ -1,7 +1,5 @@
-import type { DataflowProcessorInformation } from '../../../../../processor';
-import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -11,35 +9,51 @@ import {
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { define } from '../../../../../environments/define';
 import { appendEnvironment } from '../../../../../environments/append';
-import { makeAllMaybe } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { ReferenceType } from '../../../../../environments/identifier';
+import type { IdentifierDefinition } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
+
+/**
+ * Processes a for-loop call: `for(<variable> in <vector>) <body>`
+ * desugared as:
+ * ```r
+ * `for`(<variable>, <vector>, <body>)
+ * ```
+ */
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length !== 3) {
-		dataflowLogger.warn(`For-Loop ${name.content} does not have three arguments, skipping`);
+		dataflowLogger.warn(`For-Loop ${Identifier.toString(name.content)} does not have three arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackArgument(e));
+	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackNonameArg(e));
+
+	// we store the original environment here, as we merge it back lter in case the for-loop never executes
+	const origEnv = data.environment;
 
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);
 	const vector = processDataflowFor(vectorArg, data);
-	if(alwaysExits(vector)) {
+	if(ControlFlow.alwaysExits(vector)) {
 		dataflowLogger.warn(`For-Loop ${rootId} forces exit in vector, skipping rest`);
 		return vector;
 	}
@@ -47,58 +61,92 @@ export function processForLoop<OtherInfo>(
 	const variable = processDataflowFor(variableArg, data);
 	// this should not be able to exit always!
 
-	const originalDependency = data.controlDependencies;
+	const originalDependency = data.cds;
 
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment);
-	const headGraph = variable.graph.mergeWith(vector.graph);
+	/* only the vector's references and entry point are read past this, its graph is not */
+	const headGraph = variable.graph.mergeWith(vector.graph, true, true);
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
+	const writtenIds = new Set<NodeId>();
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.flowrConfig);
+		writtenIds.add(write.nodeId);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type:      ReferenceType.Variable,
+			value:     [vectorArg.info.id], iterated:  true } as (IdentifierDefinition & { name: string }), false, headEnvironments);
 	}
-	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
+
+	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
 
 	const body = processDataflowFor(bodyArg, data);
 
-	const nextGraph = headGraph.mergeWith(body.graph);
-	const outEnvironment = appendEnvironment(headEnvironments, body.environment );
+	const outEnvironment = appendEnvironment(headEnvironments, body.environment);
+	const cd = [{ id: name.info.id, when: true }];
+
+
+	const bodyRefs = body.in.concat(body.unknownReferences);
+	applyCdsToAllInGraphButConstants(body.graph, bodyRefs, cd);
+	/* likewise the body's, what is taken from it afterwards are its references, exit points and hooks */
+	const nextGraph = headGraph.mergeWith(body.graph, true, true);
 
 	// now we have to identify all reads that may be effected by a circular redefinition
 	// for this, we search for all reads with a non-local read resolve!
-	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph, writtenVariable));
+	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph, writtenIds));
 
 	for(const write of writtenVariable) {
 		nextGraph.addEdge(write.nodeId, vector.entryPoint, EdgeType.DefinedBy);
-		nextGraph.setDefinitionOfVertex(write);
+		nextGraph.setDefinitionOfVertex(write, [vector.entryPoint]);
 	}
 
-	const outgoing = variable.out.concat(writtenVariable, makeAllMaybe(body.out, nextGraph, outEnvironment, true));
+	applyCdToReferences(body.out, cd);
+	const outgoing = variable.out.concat(writtenVariable, body.out);
 
-	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
+	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
 
-	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out,body.unknownReferences));
+	/* the loop variable is bound by the head whenever the body runs, so reads of it are not ingoing */
+	const loopVariables = new Set(writtenVariable.map(w => w.name));
+	const bodyReadsOfOthers = [...nameIdShares.entries()].filter(([n]) => !loopVariables.has(n)).flatMap(([, refs]) => refs);
+
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 
 	patchFunctionCall({
 		nextGraph,
 		rootId,
 		name,
-		data:                  { ...data, controlDependencies: originalDependency },
+		data:                  { ...data, cds: originalDependency },
 		argumentProcessResult: [variable, vector, body],
-		origin:                'builtin:for-loop'
+		origin:                BuiltInProcName.ForLoop
 	});
 	/* mark the last argument as nse */
 	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);
 	// as the for-loop always evaluates its condition
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
+	const bodyEntry = ControlFlow.entryOf(body);
+	const variableEntry = ControlFlow.entryOf(variable);
+	ControlFlow.continuesWith(nextGraph, vector, variableEntry);
+	ControlFlow.branchesTo(nextGraph, variable, bodyEntry, cd[0]);
+	ControlFlow.branchesTo(nextGraph, variable, rootId, { id: cd[0].id, when: false });
+	ControlFlow.continuesWith(nextGraph, body, variableEntry);
+	ControlFlow.jumpsTo(nextGraph, body, ExitPointType.Next, variableEntry);
+	ControlFlow.jumpsTo(nextGraph, body, ExitPointType.Break, rootId);
+
+	// the body may never execute, so a removal within it only happens maybe; apply it as the merge cannot represent it
+	const loopKill = body.kill?.length ? makeKillsMaybe(body.kill, cd) : undefined;
+	const loopEnvironment = appendEnvironment(origEnv, outEnvironment);
+
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,
+		cfgEntry:          ControlFlow.entryOf(vector),
+		cfgExit:           rootId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
-		environment:       outEnvironment
+		// if we can not be sure that the for-loop runs once, we have to merge back the original environment, as the body may never execute
+		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
+		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
+		kill:              loopKill,
 	};
 }

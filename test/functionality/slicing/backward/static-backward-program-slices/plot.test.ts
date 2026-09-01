@@ -1,8 +1,10 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 
-describe.sequential('visualizations', withShell(shell => {
+assumeLoadedPackages('ggplot2', 'magick');
+
+describe('visualizations', { concurrent: false }, withShell(shell => {
 	assertSliced(label('magick for image writes', ['functions-with-global-side-effects']),
 		shell, `
 library(magick)

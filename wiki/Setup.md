@@ -1,15 +1,19 @@
-There are several ways to use _flowR_.
-You can download and build it from source, download the accompanying docker image, or use its Visual Studio Code extension and RStudio Addin.
+_<span title="an overview of flowR's setup instructions">Generated</span> from '[wiki-setup.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-setup.ts "src/documentation/wiki-setup.ts")' on 2026-08-27, 11:07:27 UTC (v2.15.5, R v4.6.1), please do not edit directly._
 
-<!-- TOC -->
+There are several ways to use _flowR_.
+Want to try it without installing anything? Run code straight away in the [Playground](https://flowr-analysis.github.io/flowr/wiki/playground/), or search what _flowR_ knows about R packages in the [Signature Database](https://flowr-analysis.github.io/flowr/wiki/sigdb/).
+Otherwise, you can download and build it from source, download the accompanying [docker image](https://hub.docker.com/r/eagleoutice/flowr),
+or use its [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) and [RStudio Addin](https://github.com/flowr-analysis/rstudio-addin-flowr).
+
 - [🗒️ Using the Visual Studio Code Extension](#-using-the-visual-studio-code-extension)
 - [🗒️ Using the RStudio Addin](#-using-the-rstudio-addin)
 - [🐳️ Using the Docker Image](#-using-the-docker-image)
 - [⚒️ Building From Scratch](#-building-from-scratch)
 - [📜 Developing for _flowR_](#-developing-for-flowr)
-<!-- TOC -->
 
-If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a look at the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/main//.github/CONTRIBUTING.md).
+
+If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a
+look at the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md).
 
 ## 🗒️ Using the Visual Studio Code Extension
 
@@ -37,7 +41,7 @@ docker run -it --rm eagleoutice/flowr
 ```
 
 This should drop you into _flowR_'s read-evaluate-print loop.
-Enter `:help` to receive more information and `:quit` to leave.
+Enter <span title="Description (Repl Command): Show help information (aliases: :h, :?)">`:help`</span> to receive more information and <span title="Description (Repl Command): End the repl (aliases: :q, :exit)">`:quit`</span> to leave.
 Please remember that you have to link external directories to make them available within the running container.
 
 To start flowr as a server, you can run:
@@ -51,17 +55,17 @@ For more information, see the [Interface](https://github.com/flowr-analysis/flow
 ## ⚒️ Building From Scratch
 
 To use _flowR_, you may need [_R_](https://www.r-project.org/) installed and on your path
-(this only affects the [`r-shell` engine][r-shell], which is _not_ the default).
+(this only affects the [`r-shell` engine](https://github.com/flowr-analysis/flowr/wiki/Engines), which is _not_ the default).
 
 ### Installing R
 Although there are several ways to do so, there is nothing wrong with installing&nbsp;R with the help of your favorite package manager or directly from the [website](https://cloud.r-project.org/).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 For 🪟&nbsp;Windows, see [here](https://www.hanss.info/sebastian/post/rtools-path/) for an explanation on how to add [_R_](https://www.r-project.org/) to your path variable.
-Again, you only require this for the [`r-shell` engine][r-shell].
+Again, you only require this for the [`r-shell` engine](https://github.com/flowr-analysis/flowr/wiki/Engines).
 
 ### Installing Node.js
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
-To work, we currently rely on node versions starting from `22.x`.
+To work, we currently rely on node versions starting from `22.x` (as declared by the `engines.node` field of the [package.json](https://github.com/flowr-analysis/flowr/tree/main/package.json)).
 
 ### Installing _flowR_
 
@@ -91,12 +95,37 @@ At the time of writing this, there is currently no page for frequently encounter
 ## 📜 Developing for _flowR_
 
 If you want to develop for _flowR_, explore the wiki.
-For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository.
+For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md) in the repository.
+
+### 📦 The Signature Database
+
+_flowR_ knows the exported functions of thousands of R packages, resolving `library(pkg)`/`pkg::fn` calls from a downloaded signature database (`flowr-sigdb`); no shards are committed (only the `sigdb.remote.json` pointer), everything else is fetched on demand. Search it live at [flowr-analysis.github.io/flowr/wiki/sigdb](https://flowr-analysis.github.io/flowr/wiki/sigdb/), try _flowR_ itself in the [Playground](https://flowr-analysis.github.io/flowr/wiki/playground/) without installing anything, or see the [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) page for how the database works.
+
+### 📦 Using _flowR_ as a Dependency in Another Project
+
+_flowR_ is published as `@eagleoutice/flowr`, but you may want an unreleased branch or a local build instead. Plain `npm install /path/to/flowr` (or `npm link`) looks like it works, but skips resolving _flowR_'s own dependencies, so the bundled WASM parser fails at runtime with an `ENOENT` on `tree-sitter.wasm`. Package a tarball instead, which installs like any normal package:
+
+```shell
+npm run build:dev
+npm run pack-library
+```
+
+This produces `eagleoutice-flowr-<version>.tgz` in the repository root. Install it in your project:
+
+```shell
+npm install /path/to/flowr/eagleoutice-flowr-<version>.tgz
+```
+
+You can also depend on a Git branch directly:
+
+```shell
+npm install github:flowr-analysis/flowr#your-branch-name
+```
+
+npm clones the repository and runs its `prepare` script (`build:dev`) before installing it, so it arrives fully built with its own dependencies resolved. Some package managers (npm's own script-approval prompt included, plus pnpm and Yarn PnP) block install/lifecycle scripts by default; approve _flowR_'s if the install warns that they were skipped.
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, _flowR_ is only tested with R versions `4.x` and `3.6.x`.
 
 <a id="note2" href="#note2ref">&lt;2&gt;</a>: We use
-[git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository for more information).
-
-[r-shell]: (https://github.com/flowr-analysis/flowr/wiki/Engines)
+[git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md) in the repository for more information).

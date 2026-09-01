@@ -1,19 +1,20 @@
-import { type AbstractInterpretationInfo, type DataFrameOperationType, hasDataFrameExpressionInfo } from '../../abstract-interpretation/data-frame/absint-info';
-import { type DataFrameDomain, satisfiesColsNames, satisfiesLeqInterval } from '../../abstract-interpretation/data-frame/domain';
-import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
-import { amendConfig } from '../../config';
-import { extractCfg } from '../../control-flow/extract-cfg';
+import { AbstractInterpreter } from '../../abstract-interpretation/absint-inference';
+import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
+import type { DataFrameShapeSemantics } from '../../abstract-interpretation/data-frame/dataframe-semantics';
+import { DataFrameShapeAnalysis, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
+import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/value-abstract-domain';
+import { FlowrConfig } from '../../config';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
-import { Enrichment } from '../../search/search-executor/search-enrichers';
-import { formatRange } from '../../util/mermaid/dfg';
-import { type MergeableRecord } from '../../util/objects';
-import { rangeFrom, type SourceRange } from '../../util/range';
-import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { arraySum } from '../../util/collections/arrays';
+import { Ternary } from '../../util/logic';
+import type { MergeableRecord } from '../../util/objects';
+import { SourceLocation } from '../../util/range';
+import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 interface DataFrameAccessOperation {
@@ -31,15 +32,13 @@ interface DataFrameAccess {
 
 export interface DataFrameAccessValidationResult extends LintingResult {
 	/** The type of the data frame access ("column" or "row") */
-	type:     'column' | 'row',
+	readonly type:     'column' | 'row',
 	/** The name or index of the column or row being accessed in the data frame */
-	accessed: string | number,
+	readonly accessed: string | number,
 	/** The name of the function/operation used for the access (e.g. `$`, `[`, `[[`, but also `filter`, `select`, ...) */
-	access:   string,
+	readonly access:   string,
 	/** The variable/symbol name of the accessed data frame operand (`undefined` if operand is no symbol) */
-	operand?: string,
-	/** The source range in the code where the access occurs */
-	range:    SourceRange
+	readonly operand?: string,
 }
 
 export interface DataFrameAccessValidationConfig extends MergeableRecord {
@@ -57,18 +56,26 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 }
 
 export const DATA_FRAME_ACCESS_VALIDATION = {
-	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
-	processSearchResult: (elements, config, data) => {
-		const flowrConfig = amendConfig(data.config, flowrConfig => {
-			if(config.readLoadedData !== undefined) {
-				flowrConfig.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles = config.readLoadedData;
-			}
-			return flowrConfig;
-		});
-		const cfg = extractCfg(data.normalize, flowrConfig, data.dataflow.graph);
-		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, flowrConfig);
+	createSearch:        () => Q.all(),
+	processSearchResult: async(elements, config, data) => {
+		const normalize = await data.normalize();
+		const dataflow = await data.dataflow();
+		let ctx = data.inspectContext();
+		ctx = {
+			...ctx,
+			config: FlowrConfig.amend(data.flowrConfig, flowrConfig => {
+				if(config.readLoadedData !== undefined) {
+					(flowrConfig.abstractInterpretation.dataFrame.readLoadedData as { readExternalFiles: boolean }).readExternalFiles = config.readLoadedData;
+				}
+				return flowrConfig;
+			})
+		};
+		const cfg = await data.controlflow();
+		const analysis = new DataFrameShapeAnalysis();
+		const inference = new AbstractInterpreter({ controlFlow: cfg, dfg: dataflow.graph, normalizedAst: normalize, ctx }, analysis);
+		inference.start();
 
-		const accessOperations = getAccessOperations(elements);
+		const accessOperations = getAccessOperations(elements, analysis.semantics.dataFrame);
 		const accesses: DataFrameAccessOperation[] = [];
 
 		for(const [nodeId, operations] of accessOperations) {
@@ -76,7 +83,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 			for(const operation of operations) {
 				access.operand ??= operation.operand;
-				access.operandShape ??= resolveIdToDataFrameShape(operation.operand, data.dataflow.graph);
+				access.operandShape ??= inference.getAbstractValue(operation.operand, 'dataFrame');
 
 				if(operation.operation === 'accessCols' && operation.columns !== undefined) {
 					access.accessedCols ??= [];
@@ -94,9 +101,8 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		const metadata: DataFrameAccessValidationMetadata = {
 			numOperations: accessOperations.size,
 			numAccesses:   operations.length,
-			totalAccessed: operations
-				.map(operation => operation.operation === 'accessCols' ? operation.columns?.length ?? 0 : operation.rows?.length ?? 0)
-				.reduce((a, b) => a + b, 0)
+			totalAccessed: arraySum(operations
+				.map(operation => operation.operation === 'accessCols' ? operation.columns?.length ?? 0 : operation.rows?.length ?? 0))
 		};
 
 		const results: DataFrameAccessValidationResult[] = accesses
@@ -105,15 +111,16 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			)
 			.map(({ nodeId, operand, ...accessed }) => ({
 				...accessed,
-				node:    data.normalize.idMap.get(nodeId),
-				operand: operand !== undefined ? data.normalize.idMap.get(operand) : undefined,
+				node:    normalize.idMap.get(nodeId),
+				operand: operand === undefined ? undefined : normalize.idMap.get(operand),
 			}))
 			.map(({ node, operand, ...accessed }) => ({
 				...accessed,
-				access:    node?.lexeme ?? '???',
-				...(operand?.type === RType.Symbol ? { operand: operand.content } : {}),
-				range:     node?.info.fullRange ?? node?.location ?? rangeFrom(-1, -1, -1, -1),
-				certainty: LintingResultCertainty.Certain
+				involvedId: node?.info.id,
+				access:     node?.lexeme ?? '???',
+				...(RSymbol.is(operand) ? { operand: Identifier.getName(operand.content) } : {}),
+				loc:        SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
+				certainty:  LintingResultCertainty.Certain
 			}));
 
 		return { results, '.meta': metadata };
@@ -121,32 +128,31 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Access of ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' ' +
-			(result.operand !== undefined ? `of \`${result.operand}\`` : `at \`${result.access}\``) + ` at ${formatRange(result.range)}`,
+			(result.operand === undefined ? `at \`${result.access}\`` : `of \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`,
 		[LintingPrettyPrintContext.Full]: result => `Accessed ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' does not exist ' +
-			(result.operand !== undefined ? `in \`${result.operand}\`` : `at \`${result.access}\``) + ` at ${formatRange(result.range)}`
+			(result.operand === undefined ? `at \`${result.access}\`` : `in \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`
 	},
 	info: {
 		name:          'Dataframe Access Validation',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		// this rule is unable to detect all cases of dataframe access, but sufficiently ensures returned results are valid
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Validates the existance of accessed columns and rows of dataframes.',
+		description:   'Validates the existence of accessed columns and rows of dataframes.',
 		defaultConfig: { readLoadedData: false }
 	}
 } as const satisfies LintingRule<DataFrameAccessValidationResult, DataFrameAccessValidationMetadata, DataFrameAccessValidationConfig>;
 
 function getAccessOperations(
-	elements: FlowrSearchElements<ParentInformation & AbstractInterpretationInfo>
+	elements: FlowrSearchElements<ParentInformation>,
+	semantics: DataFrameShapeSemantics
 ): Map<NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]> {
 	return new Map(elements.getElements()
-		.map(element => element.node)
-		.filter(hasDataFrameExpressionInfo)
-		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(node =>
-			[node.info.id, node.info.dataFrame.operations
-				.filter(({ operation }) => operation === 'accessCols' || operation === 'accessRows')
+		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(element =>
+			[element.node.info.id, semantics.getAbstractOperations(element.node.info.id)
+				?.filter(({ operation }) => operation === 'accessCols' || operation === 'accessRows')
 				.map(({ operation, operand, type: _type, options: _options, ...args }) =>
-					({ operation, operand, ...args } as DataFrameOperationType<'accessCols' | 'accessRows'>))
+					({ operation, operand, ...args } as DataFrameOperationType<'accessCols' | 'accessRows'>)) ?? []
 			])
 		.filter(([, operations]) => operations.length > 0)
 	);
@@ -159,15 +165,15 @@ function findInvalidDataFrameAccesses(
 
 	if(operandShape !== undefined) {
 		for(const row of accessedRows ?? []) {
-			if(!satisfiesLeqInterval(operandShape.rows, row)) {
-				invalidAccesses.push({ type: 'row',accessed: row });
+			if(operandShape.rows.satisfies(row, NumericalComparator.LessOrEqual) === Ternary.Never) {
+				invalidAccesses.push({ type: 'row', accessed: row });
 			}
 		}
 		for(const col of accessedCols ?? []) {
-			if(typeof col === 'string' && !satisfiesColsNames(operandShape.colnames, col)) {
-				invalidAccesses.push({ type: 'column',accessed: col });
-			} else if(typeof col === 'number' && !satisfiesLeqInterval(operandShape.cols, col)) {
-				invalidAccesses.push({ type: 'column',accessed: col });
+			if(typeof col === 'string' && operandShape.colnames.satisfies([col], SetComparator.SubsetOrEqual) === Ternary.Never) {
+				invalidAccesses.push({ type: 'column', accessed: col });
+			} else if(typeof col === 'number' && operandShape.cols.satisfies(col, NumericalComparator.LessOrEqual) === Ternary.Never) {
+				invalidAccesses.push({ type: 'column', accessed: col });
 			}
 		}
 	}

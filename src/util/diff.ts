@@ -1,7 +1,6 @@
 /**
  * Provides utility types and functions to provide difference information if two structures
  * are not equal. Maybe. Sometime, in the far future this will be as capable as the waldo package :dream:
- *
  * @module
  */
 
@@ -15,14 +14,14 @@ import type { MergeableRecord } from './objects';
  */
 export interface DifferenceReport {
 	/**
-     * A human-readable description of differences during the comparison
-     * In combination with {@link isEqual} this can be used to provide detailed
-     * explanation on equal structures as well (e.g., if structures _could_ be equal).
-     */
+	 * A human-readable description of differences during the comparison
+	 * In combination with {@link isEqual} this can be used to provide detailed
+	 * explanation on equal structures as well (e.g., if structures _could_ be equal).
+	 */
 	comments(): readonly string[] | undefined
 	/**
-     * @returns true iff the compared structures are equal (i.e., the diff is empty)
-     */
+	 * @returns true iff the compared structures are equal (i.e., the diff is empty)
+	 */
 	isEqual(): boolean
 }
 
@@ -50,17 +49,26 @@ export interface GenericDifferenceInformation<Report extends WriteableDifference
 
 export interface GenericDiffConfiguration {
 	/**
-	 * The left graph may contain more vertices and or edges than the right graph.
+	 * The left/first graph may contain more vertices and or edges than the right/second graph.
 	 * However, those which are the same (based on their ids) have to be equal
 	 */
-	readonly rightIsSubgraph?: boolean
+	readonly rightIsSubgraph?:    boolean
 	/**
-	 * Similar to {@link rightIsSubgraph}, but for the left graph.
+	 * Similar to {@link rightIsSubgraph}, but for the left/first graph.
 	 */
-	readonly leftIsSubgraph?:  boolean
+	readonly leftIsSubgraph?:     boolean
+	/**
+	 * Compare the control flow a dataflow graph carries as well.
+	 * Off by default: the control flow is compared through the control flow graph, so a dataflow comparison
+	 * that included it would only be repeating that check on a less readable representation.
+	 */
+	readonly compareControlFlow?: boolean
 }
 
 
+/**
+ * Computes the difference of two sets and adds human-readable information to the current report
+ */
 export function setDifference<T, Report extends WriteableDifferenceReport = WriteableDifferenceReport>(left: ReadonlySet<T>, right: ReadonlySet<T>, info: GenericDifferenceInformation<Report>): void {
 	const lWithoutR = setMinus(left, right);
 	const rWithoutL = setMinus(right, left);

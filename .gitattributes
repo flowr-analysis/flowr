@@ -1,3 +1,5 @@
+* text=auto eol=lf
+
 *.ai              binary
 *.bmp             binary
 *.eps             binary
@@ -20,3 +22,10 @@
 *.tiff            binary
 *.wbmp            binary
 *.webp            binary
+
+# brotli-compressed signature-database shards: opaque binary, never worth diffing/delta-compressing
+src/data/sigdb/*.br binary -delta
+
+# generated pages, reviewed via their generators (`npm run wiki`, `scripts/gen-*.ts`) and not by hand
+wiki/**    linguist-generated=true
+index.html linguist-generated=true

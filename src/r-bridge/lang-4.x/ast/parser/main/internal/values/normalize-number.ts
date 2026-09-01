@@ -1,6 +1,5 @@
 import type { NormalizerData } from '../../normalizer-data';
-import type { RNa } from '../../../../../convert-values';
-import { number2ts, boolean2ts, isBoolean, isNA } from '../../../../../convert-values';
+import { type RNa, boolean2ts, isBoolean, isNA, RNumberValue } from '../../../../../convert-values';
 import { retrieveMetaStructure } from '../../normalize-meta';
 import type { RNumber } from '../../../../model/nodes/r-number';
 import type { RLogical } from '../../../../model/nodes/r-logical';
@@ -11,10 +10,9 @@ import type { JsonEntry } from '../../../json/format';
 
 
 /**
- * Normalize the given object as a R number (see {@link number2ts}), supporting booleans (see {@link boolean2ts}),
+ * Normalize the given object as a R number (see {@link RNumberValue.fromRLexeme}), supporting booleans (see {@link boolean2ts}),
  * and special values.
  * This requires you to check the corresponding name beforehand.
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The JSON object to extract the meta-information from
  */
@@ -24,9 +22,9 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 		location,
 		lexeme: content,
 		info:   {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 
@@ -34,8 +32,7 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 	if(isNA(content)) {
 		return {
 			...common,
-			namespace: undefined,
-			type:      RType.Symbol,
+			type: RType.Symbol,
 			content
 		};
 	} else if(isBoolean(content)) {
@@ -48,7 +45,7 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 		return {
 			...common,
 			type:    RType.Number,
-			content: number2ts(content)
+			content: RNumberValue.fromRLexeme(content)
 		};
 	}
 }

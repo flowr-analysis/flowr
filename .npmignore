@@ -1,23 +1,44 @@
+# What ships is the built library. `publish-library`/`pack-library` pack from `dist/src`; `npm pack` at the
+# repository root reads these same rules, so they also trim everything a checkout carries around the build.
+
 node_modules/
-
-/wiki
-
-# Logs
 *.log
+**/*.map
 
-.git*
+# every dotfile and dot-folder, wherever it sits: git, CI, editor and tool state, none of it package content
+.*
 
-# Coverage
-/.nyc_output
-/coverage
-
-# IDE specific
-/.vscode/
-/.project/
-/.settings/
-
-/.DS_Store
+# the sources and tests the build was made from, the compiled tests, and what a scratch file left in `dist`
 src/**
 test/**
-**/*.map
-.idea/
+/dist/test
+/dist/*.js
+/dist/*.d.ts
+
+# the repository's own tooling configuration, which says nothing to a consumer of the package
+/tsconfig.json
+/tsdoc.json
+/vitest.config.js
+/license-clarifications.json
+/codecov.yml
+/coverage
+
+# the published pages, their generators, and the generated documentation: site material, not package content
+/index.html
+/wiki
+/doc
+/scripts/landing-*
+/scripts/playground
+/scripts/gen-landing.ts
+/scripts/gen-sigdb-index.ts
+/scripts/gen-playground.ts
+/scripts/sigdb-index.ts
+/dist/scripts/gen-landing*
+/dist/scripts/gen-sigdb-index*
+/dist/scripts/gen-playground*
+/dist/scripts/sigdb-index*
+/dist/scripts/playground
+
+# pkgdb: npm ships the `tiny` and `latest` tiers; the large `all` tier is left out and downloadable
+# (see the Package Database wiki). The plain JSON tiers live under src/** (excluded above).
+pkgdb-all.json.br

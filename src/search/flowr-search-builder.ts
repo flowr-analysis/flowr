@@ -12,19 +12,35 @@ import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../util/assert';
 import type { Enrichment, EnrichmentElementArguments } from './search-executor/search-enrichers';
-import type { MapperArguments } from './search-executor/search-mappers';
-import { Mapper } from './search-executor/search-mappers';
+import { type MapperArguments, Mapper } from './search-executor/search-mappers';
 import type { Query } from '../queries/query';
-
+import type { LintingResultCertainty } from '../linter/linter-format';
+import type TreeSitter from 'web-tree-sitter';
 
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
 	[FlowrSearchElement<ParentInformation>] : FlowrSearchElement<ParentInformation>[]>;
 
 /**
+ * Returns all elements (nodes/dataflow vertices) from the given data without any filters.
+ */
+function all(): FlowrSearchBuilder<'all'>;
+/**
+ * Returns all elements (nodes/dataflow vertices) that match the given file path regex.
+ * This internally uses {@link get} to filter by file path.
+ */
+function all(filePathRegex: string): FlowrSearchBuilder<'get'>;
+function all(filePathRegex?: string): FlowrSearchBuilder<'all'> | FlowrSearchBuilder<'get'> {
+	if(!filePathRegex) {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'all', args: undefined });
+	}
+	return FlowrSearchGenerator.get({ filePathRegex });
+}
+/**
  * This object holds all the methods to generate search queries.
  * For compatibility, please use the {@link Q} identifier object to access these methods.
  */
 export const FlowrSearchGenerator = {
+	name: 'FlowrSearchGenerator',
 	/**
 	 * Initialize a search query with the given elements.
 	 * <b>This is not intended to serialize well</b> wrt. the nodes,
@@ -38,23 +54,29 @@ export const FlowrSearchGenerator = {
 	 * Internally, the {@link SupportedQuery#flattenInvolvedNodes} function is used to flatten the resulting nodes of the query.
 	 * Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.
 	 */
-	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
+	fromQuery(from: Query | readonly Query[], certainty?: LintingResultCertainty): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+		const queries = Array.isArray(from) ? from as readonly Query[] : [from as Query];
+		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from: queries, certainty } });
 	},
 	/**
-	 * Returns all elements (nodes/dataflow vertices) from the given data.
+	 * Initializes a new search query based on the results of the given tree-sitter syntax query.
+	 * Please note that this search generator is incompatible with the {@link RShell} parser and only works when using flowR with the {@link TreeSitterExecutor}.
 	 */
-	all(): FlowrSearchBuilder<'all'> {
-		return new FlowrSearchBuilder({ type: 'generator', name: 'all', args: undefined });
+	syntax(source: TreeSitter.Query | string, ...captures: readonly string[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'syntax', args: { source, captures } });
 	},
 	/**
-	 * Returns all elements that match the given {@link FlowrSearchGetFilters|filters}.
+	 * Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter).
+	 */
+	all: all,
+	/**
+	 * Returns all elements that match the given {@link FlowrSearchGetFilter|filters}.
 	 * You may pass a negative line number to count from the back.
 	 * Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for "production".
 	 */
 	get(filter: FlowrSearchGetFilter): FlowrSearchBuilder<'get'> {
 		guard(!filter.nameIsRegex || filter.name, 'If nameIsRegex is set, a name should be provided');
-		guard(!filter.line || filter.line != 0, 'If line is set, it must be different from 0 as there is no 0 line');
+		guard(!filter.line || filter.line !== 0, 'If line is set, it must be different from 0 as there is no 0 line');
 		guard(!filter.column || filter.column > 0, 'If column is set, it must be greater than 0, but was ' + filter.column);
 		return new FlowrSearchBuilder({ type: 'generator', name: 'get', args: { filter } });
 	},
@@ -70,32 +92,52 @@ export const FlowrSearchGenerator = {
 	},
 	/**
 	 * Short form of {@link get} with only the
-	 * {@link FlowrSearchGetFilters#line|line} and {@link FlowrSearchGetFilters#column|column} filters:
-	 * `get({line, column})`.
+	 * {@link FlowrSearchGetFilter#line|line} and {@link FlowrSearchGetFilter#column|column} filters:
+	 * `get({line, column})`. Please use {@link FlowrSearchGenerator#locFuzzy|locFuzzy} for a fuzzy location search.
+	 * @param line          - the line number to search in
+	 * @param column        - the column number to search in
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	loc(line?: number, column?: number): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ line, column });
+	loc(line?: number, column?: number, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ line, column, filePathRegex });
 	},
 	/**
-	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#name|name} and {@link FlowrSearchGetFilters#line|line} filters:
+	 * Fuzzy variant of {@link loc} that matches any node whose source range contains the given position.
+	 * @param line          - the line number to search in (required for fuzzy matching)
+	 * @param column        - the column number to search in
+	 * @param innermostOnly - if true, return only the deepest (innermost) matching nodes in the AST
+	 * @param filePathRegex - optional regex to filter by file path
+	 */
+	locFuzzy(line: number, column?: number, innermostOnly?: boolean, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ line, column, fuzzy: true, innermostOnly: innermostOnly ?? false, filePathRegex });
+	},
+	/**
+	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#name|name} and {@link FlowrSearchGetFilter#line|line} filters:
 	 * `get({name, line})`.
+	 * @param name          - the variable name to search for
+	 * @param line          - the line number to search in
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	varInLine(name: string, line: number): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ name, line });
+	varInLine(name: string, line: number, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ name, line, filePathRegex });
 	},
 	/**
-	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#name|name} filter:
+	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#name|name} filter:
 	 * `get({name})`.
+	 * @param name          - the variable name to search for
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	var(name: string): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ name });
+	var(name: string, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ name, filePathRegex });
 	},
 	/**
-	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#id|id} filter:
+	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#id|id} filter:
 	 * `get({id})`.
+	 * @param id            - the node id to search for
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	id(id: NodeId): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ id });
+	id(id: NodeId, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ id, filePathRegex });
 	}
 } as const;
 
@@ -112,7 +154,6 @@ export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorN
 /**
  * The search query is a combination of a generator and a list of transformers
  * and allows this view to pass such queries in a serialized form.
- *
  * @typeParam Transformers - The list of transformers that are applied to the generator's output.
  */
 export interface FlowrSearch<
@@ -129,14 +170,13 @@ export interface FlowrSearch<
 }
 
 
-type FlowrSearchBuilderOut<Generator extends GeneratorNames, Transformers extends TransformerNames[], Info, Transformer extends TransformerNames> = FlowrSearchBuilder<Generator,[...Transformers, Transformer], Info, GetOutputOfTransformer<Transformer>>;
+type FlowrSearchBuilderOut<Generator extends GeneratorNames, Transformers extends TransformerNames[], Info, Transformer extends TransformerNames> = FlowrSearchBuilder<Generator, [...Transformers, Transformer], Info, GetOutputOfTransformer<Transformer>>;
 
 /**
  * Allows you to construct a search query from a {@link FlowrSearchGeneratorNode}.
  * Please use the {@link Q} object to create an object of this class!
  * In the end, you _can_ freeze the search by calling {@link FlowrSearchBuilder#build},
  * however, the search executors may do that for you.
- *
  * @see {@link FlowrSearchGenerator}
  * @see {@link FlowrSearch}
  * @see {@link FlowrSearchLike}
@@ -152,7 +192,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * only returns the elements that match the given filter.
 	 */
-	filter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter> ): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
+	filter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
 		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter as FlowrFilterExpression } });
 		return this;
 	}
@@ -168,14 +208,14 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * last either returns the last element of the search or nothing, if no elements are present.
 	 */
-	last(): FlowrSearchBuilderOut<Generator, Transformers,Info, 'last'> {
+	last(): FlowrSearchBuilderOut<Generator, Transformers, Info, 'last'> {
 		this.search.push({ type: 'transformer', name: 'last', args: undefined });
 		return this;
 	}
 	/**
 	 * index returns the element at the given index if it exists
 	 */
-	index<Idx extends number>(index: Idx): FlowrSearchBuilderOut<Generator, Transformers,Info, 'index'> {
+	index<Idx extends number>(index: Idx): FlowrSearchBuilderOut<Generator, Transformers, Info, 'index'> {
 		guard(index >= 0, 'Index must be greater or equal to 0, but was ' + index);
 		this.search.push({ type: 'transformer', name: 'index', args: { index } });
 		return this;
@@ -184,7 +224,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * tail returns all elements of the search except the first one.
 	 */
-	tail(): FlowrSearchBuilderOut<Generator, Transformers,Info, 'tail'> {
+	tail(): FlowrSearchBuilderOut<Generator, Transformers, Info, 'tail'> {
 		this.search.push({ type: 'transformer', name: 'tail', args: undefined });
 		return this;
 	}
@@ -222,7 +262,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 * Added enrichments can later be retrieved using the {@link enrichmentContent} function.
 	 */
 	with<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentElementArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
-		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentElementArguments<Enrichment> } });
+		this.search.push({ type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentElementArguments<Enrichment> } });
 		return this;
 	}
 
@@ -230,7 +270,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 * Maps the elements of the search to new values using the given mapper function.
 	 */
 	map<MapperType extends Mapper>(mapper: MapperType, args: MapperArguments<MapperType>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'map'> {
-		this.search.push( { type: 'transformer', name: 'map', args: { mapper: mapper, args: args as MapperArguments<Mapper> } });
+		this.search.push({ type: 'transformer', name: 'map', args: { mapper: mapper, args: args as MapperArguments<Mapper> } });
 		return this;
 	}
 
@@ -248,7 +288,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		other: FlowrSearchBuilder<Generator2, Transformers2, Info, OtherElementType> /* | FlowrSearch<Info, Generator2, Transformers2, OtherElementType> */
 	): FlowrSearchBuilder<Generator, Transformers, Info> {
 		this.search.push({ type: 'transformer', name: 'merge', args: { generator: other.generator, search: other.search  } });
-		return this as unknown as FlowrSearchBuilder<Generator, Transformers, Info>;
+		return this;
 	}
 
 	/**
@@ -261,7 +301,6 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 
 	/**
 	 * Construct the final search (this may happen automatically with most search handlers).
-	 *
 	 * @param shouldOptimize - This may optimize the search.
 	 */
 	build(shouldOptimize = true): FlowrSearch<Info, Generator, Transformers, ElementType> {
@@ -280,7 +319,7 @@ export type FlowrSearchLike<Info = ParentInformation,
 	Generator extends GeneratorNames = GeneratorNames,
 	Transformers extends TransformerNames[] = TransformerNames[],
 	ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>>
-		= FlowrSearch<Info, Generator, Transformers, ElementType> | FlowrSearchBuilderType<Generator, Transformers, Info, ElementType>;
+	= FlowrSearch<Info, Generator, Transformers, ElementType> | FlowrSearchBuilderType<Generator, Transformers, Info, ElementType>;
 
 export type SearchOutput<Search> = Search extends FlowrSearch ? Search : Search extends FlowrSearchBuilderType<infer Generator, infer Transformers, infer Info, infer Elements> ? FlowrSearch<Info, Generator, Transformers, Elements> : never;
 

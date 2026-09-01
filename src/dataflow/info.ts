@@ -1,29 +1,100 @@
 import type { DataflowProcessorInformation } from './processor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from './environments/identifier';
+import type { BrandedIdentifier, IdentifierReference } from './environments/identifier';
 import type { REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
-
+import { isNotUndefined } from '../util/assert';
+import type { HookInformation } from './hooks';
+import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
+import type { DataflowBudgetExhaustion } from '../gas';
 
 /**
  * A control dependency links a vertex to the control flow element which
  * may have an influence on its execution.
  * Within `if(p) a else b`, `a` and `b` have a control dependency on the `if` (which in turn decides based on `p`).
- *
  * @see {@link happensInEveryBranch} - to check whether a list of control dependencies is exhaustive
+ * @see {@link negateControlDependency} - to easily negate a control dependency
  */
 export interface ControlDependency {
 	/** The id of the node that causes the control dependency to be active (e.g., the condition of an if) */
-	readonly id:    NodeId,
+	readonly id:           NodeId,
 	/** when does this control dependency trigger (if the condition is true or false)? */
-	readonly when?: boolean
+	readonly when?:        boolean
+	/** whether this control dependency was created due to iteration (e.g., a loop) */
+	readonly byIteration?: boolean
+	/**
+	 * any file-exist assumptions made
+	 */
+	readonly file?:        string
 }
 
+/** Whether the two control dependencies trigger on the same condition and branch. */
+function sameControlDependency(a: ControlDependency, b: ControlDependency): boolean {
+	return a.id === b.id && a.when === b.when;
+}
+
+/**
+ * Utility functions to work with {@link ControlDependency|control dependencies}.
+ */
+export const ControlDependency = {
+	name:   'ControlDependency',
+	/** Whether the two trigger on the same condition and branch. */
+	same:   sameControlDependency,
+	/** @see {@link appendCds} */
+	append: appendCds,
+	/** @see {@link withCds} */
+	with:   withCds,
+	/** @see {@link negateControlDependency} */
+	negate: negateControlDependency,
+	/** @see {@link happensInEveryBranch} */
+	happensInEveryBranch,
+	/** @see {@link happensInEveryBranchSet} */
+	happensInEveryBranchSet,
+	/** Whether the dependency stems from a loop, so what it guards may happen more than once. */
+	isIterated(this: void, cd: ControlDependency, idMap: AstIdMap | undefined): boolean {
+		return cd.byIteration === true || RLoopConstructs.loopConstructTypes.has(idMap?.get(cd.id)?.type as RType);
+	},
+	/** The dependencies of `a` that `b` is not subject to as well. */
+	minus(this: void, a: readonly ControlDependency[], b: readonly ControlDependency[]): ControlDependency[] {
+		return a.filter(cd => !b.some(other => sameControlDependency(other, cd)));
+	}
+} as const;
+
+/** Appends the given control dependencies to `target`, skipping the ones that are already in there. */
+export function appendCds(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void {
+	if(!toAdd) {
+		return;
+	}
+	for(const add of toAdd) {
+		if(!target.some(have => sameControlDependency(have, add))) {
+			target.push(add);
+		}
+	}
+}
+
+/** A copy of `base` with `toAdd` appended, skipping the control dependencies that are already in there. */
+export function withCds(base: readonly ControlDependency[] | undefined, toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
+	const result = base ? Array.from(base) : [];
+	appendCds(result, toAdd);
+	return result;
+}
+
+/**
+ * Negates the given control dependency (i.e., flips the `when` flag).
+ * This keeps undefined `when` values intact as undefined.
+ */
+export function negateControlDependency(cd: ControlDependency): ControlDependency {
+	return {
+		...cd,
+		when: cd.when === undefined ? undefined : !cd.when,
+	};
+}
 
 /**
  * Classifies the type of exit point encountered.
- *
  * @see {@link ExitPoint}
  */
 export const enum ExitPointType {
@@ -34,45 +105,110 @@ export const enum ExitPointType {
 	/** The exit point is an explicit `break` call (or an alias of it) */
 	Break = 2,
 	/** The exit point is an explicit `next` call (or an alias of it) */
-	Next = 3
+	Next = 3,
+	/** The exit point is caused by an error being thrown, e.g., by `stop` or `stopifnot` */
+	Error = 4
+}
+
+/**
+ * Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution).
+ */
+export function doesExitPointPropagateCalls(type: ExitPointType): boolean {
+	return type === ExitPointType.Error;
 }
 
 /**
  * An exit point describes the position which ends the current control flow structure.
  * This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
- *
  * @see {@link ExitPointType} - for the different types of exit points
  * @see {@link addNonDefaultExitPoints} - to easily modify lists of exit points
- * @see {@link alwaysExits} - to check whether a list of control dependencies always triggers an exit
+ * @see {@link ControlFlow#alwaysExits|ControlFlow.alwaysExits()} - to check whether a subtree always jumps away
  * @see {@link filterOutLoopExitPoints} - to remove loop exit points from a list
  */
 export interface ExitPoint {
 	/** What kind of exit point is this one? May be used to filter for exit points of specific causes. */
-	readonly type:                ExitPointType,
+	readonly type:   ExitPointType,
 	/** The id of the node which causes the exit point! */
-	readonly nodeId:              NodeId,
+	readonly nodeId: NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
-	 *
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly controlDependencies: ControlDependency[] | undefined
+	readonly cds?:   ControlDependency[]
 }
 
 /**
- * Adds all non-default exit points to the existing list.
+ * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
-export function addNonDefaultExitPoints(existing: ExitPoint[], add: readonly ExitPoint[]): void {
-	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default));
+export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+	const toAdd = add.filter(({ type }) => type !== ExitPointType.Default);
+	if(toAdd.length === 0) {
+		return;
+	}
+	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
+		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
+	).map(negateControlDependency)).filter(isNotUndefined);
+	for(const ep of toAdd) {
+		existing.push(ep);
+	}
+	for(const icd of invertedCds) {
+		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
+			invertExitCds.push(icd);
+		}
+	}
 }
+
+/**
+ * Overwrites the existing exit points with the given ones, taking care of cds.
+ */
+export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
+	const replaceCds = replace.flatMap(e => e.cds);
+	if(replaceCds.length === 0 || replaceCds.includes(undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
+		return replace;
+	}
+	return existing.concat(replace);
+}
+
+/**
+ * A reference removed from scope within the current subtree (e.g., via `rm`). Like {@link DataflowInformation#out|out}
+ * references, kills bubble up so the enclosing scope can apply the removal at the right location.
+ * @see {@link applyKills}
+ */
+export type KillReference =
+	/** a statically known name (carries {@link IdentifierReference#cds|cds} for conditional removals) */
+	| { readonly kind: 'named', readonly reference: IdentifierReference }
+	/** the whole current scope is cleared, e.g., `rm(list = ls())` */
+	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> }
+	/** a not statically resolvable set of names, e.g., `rm(list = someVector)` */
+	| { readonly kind: 'unknown', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> };
 
 /** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
 	/** The entry node into the subgraph */
 	entryPoint: NodeId,
-	/** All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure. */
+	/**
+	 * The node control flow enters this subtree at.
+	 * Control flow is modeled in post-order (operands are evaluated before the operator that consumes them),
+	 * so for compound constructs this is not the {@link DataflowCfgInformation#entryPoint|entryPoint}
+	 * (which names the value-producing node) but the first node that is actually evaluated.
+	 * Left `undefined` whenever both coincide, which is the case for all leaves.
+	 */
+	cfgEntry?:  NodeId,
+	/**
+	 * The node control flow leaves this subtree at, joining the branches of the construct if it has any.
+	 * Left `undefined` whenever the {@link DataflowCfgInformation#exitPoints|exitPoints} already name it,
+	 * which is the case whenever the construct has a single point of exit.
+	 */
+	cfgExit?:   NodeId,
+	/**
+	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
+	 * This also tracks (local knowledge of) exceptions thrown within the structure.
+	 * See the {@link ExitPointType#Error|Error} type for more information.
+	 */
 	exitPoints: readonly ExitPoint[]
+	/** Registered hooks within the current subtree */
+	hooks:      HookInformation[];
 }
 
 /**
@@ -82,8 +218,7 @@ export interface DataflowCfgInformation {
  * Each processor during the dataflow analysis may use the information from its children
  * to produce a new state of the dataflow information.
  *
- * You may initialize a new dataflow information with {@link initializeCleanDataflowInformation}.
- *
+ * You may initialize a new dataflow information with {@link DataflowInformation.initialize}.
  * @see {@link DataflowCfgInformation} - the control flow aspects
  */
 export interface DataflowInformation extends DataflowCfgInformation {
@@ -92,19 +227,16 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	 *
 	 * For example, when we analyze the `x` vertex in `x <- 3`, we will first create an unknown reference for `x`
 	 * as we have not yet seen the assignment!
-	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
 	unknownReferences: readonly IdentifierReference[]
 	/**
 	 * References which are read within the current subtree.
-	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
-	 * */
+	 */
 	in:                readonly IdentifierReference[]
 	/**
 	 * References which are written to within the current subtree
-	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
 	out:               readonly IdentifierReference[]
@@ -112,70 +244,93 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
 	graph:             DataflowGraph
+	/**
+	 * References removed from scope within the current subtree (e.g., via `rm`); `undefined` unless an `rm` occurred.
+	 * @see {@link KillReference}
+	 */
+	kill?:             readonly KillReference[]
+	/**
+	 * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+	 * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+	 */
+	cutShort?:         DataflowBudgetExhaustion
 }
 
 /**
- * Initializes an empty {@link DataflowInformation} object with the given entry point and data.
- * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
- *
- * @see {@link DataflowInformation}
+ * Helper object for {@link DataflowInformation}
  */
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'builtInEnvironment' | 'completeAst'>): DataflowInformation {
-	return {
-		unknownReferences: [],
-		in:                [],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap),
-		entryPoint,
-		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
-	};
-}
+export const DataflowInformation = {
+	name: 'DataflowInformation',
+	/**
+	 * Initializes an empty {@link DataflowInformation} object with the given entry point and data.
+	 * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
+	 * @see {@link DataflowInformation}
+	 */
+	initialize<T>(this: void, entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
+		return {
+			unknownReferences: [],
+			in:                [],
+			out:               [],
+			environment:       data.environment,
+			graph:             new DataflowGraph(undefined),
+			entryPoint,
+			exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
+			hooks:             []
+		};
+	},
+	/**
+	 * Type guard to check whether the given information is a {@link DataflowInformation}.
+	 */
+	is(info: unknown): info is DataflowInformation {
+		return typeof info === 'object' && info !== null && 'entryPoint' in info && 'exitPoints' in info && 'hooks' in info;
+	}
+} as const;
 
 /**
  * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,
  * the list contains a dependency on the `true` and on the `false` case).
+ * @see {@link happensInEveryBranchSet} - for the set-based version
  */
-export function happensInEveryBranch(controlDependencies: readonly ControlDependency[] | undefined): boolean {
-	if(controlDependencies === undefined) {
-		/* the cds are unconstrained */
-		return true;
-	} else if(controlDependencies.length === 0) {
-		/* this happens only when we have no idea and require more analysis */
-		return false;
-	}
-
-	const trues = [];
-	const falseSet = new Set();
-
-	for(const { id, when } of controlDependencies) {
-		if(when) {
-			trues.push(id);
-		} else {
-			falseSet.add(id);
-		}
-	}
-
-	return trues.every(id => falseSet.has(id));
+export function happensInEveryBranch(cds: readonly ControlDependency[] | undefined): boolean {
+	/* this happens only when we have no idea and require more analysis */
+	return cds === undefined || (cds.length !== 0 && coversSet(cds));
 }
 
-/**
- * Checks whether the given dataflow information always exits (i.e., if there is a non-default exit point in every branch).
- * @see {@link ExitPoint} - for the different types of exit points
- */
-export function alwaysExits(data: DataflowInformation): boolean {
-	return data.exitPoints?.some(
-		e => e.type !== ExitPointType.Default && happensInEveryBranch(e.controlDependencies)
-	) ?? false;
+function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
+	/* as deep as the surrounding branches, so the pairwise scan beats any set */
+	for(const { id, when } of cds) {
+		if(when !== true && when !== false) {
+			continue;
+		}
+		let counterpart = false;
+		for(const other of cds) {
+			if(other.id === id && other.when === !when) {
+				counterpart = true;
+				break;
+			}
+		}
+		if(!counterpart) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** As {@link happensInEveryBranch}, but for a set of control dependencies. */
+export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
+	return cds === undefined || (cds.size !== 0 && coversSet(cds));
 }
 
 /**
  * Filters out exit points which end their cascade within a loop.
  */
 export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): readonly ExitPoint[] {
-	return exitPoints.filter(({ type }) => type === ExitPointType.Return || type === ExitPointType.Default);
+	return exitPoints.filter(({ type }) => type !== ExitPointType.Break && type !== ExitPointType.Next);
 }
 
+/**
+ * Calculates the difference between two control dependencies.
+ */
 export function diffControlDependency<Report extends WriteableDifferenceReport>(a: ControlDependency | undefined, b: ControlDependency | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
@@ -184,13 +339,16 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 		return;
 	}
 	if(a.id !== b.id) {
-		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${a.id} vs. ${info.rightname}: ${b.id}`);
+		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${JSON.stringify(a.id)} vs. ${info.rightname}: ${JSON.stringify(b.id)}`);
 	}
 	if(a.when !== b.when) {
-		info.report.addComment(`${info.position}Different control dependency when. ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);
+		info.report.addComment(`${info.position}Different control dependency when (id: ${JSON.stringify(a.id)}). ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);
 	}
 }
 
+/**
+ * Calculates the difference between two lists of control dependencies.
+ */
 export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: ControlDependency[] | undefined, b: ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {

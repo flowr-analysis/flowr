@@ -1,9 +1,9 @@
 import { splitAtEscapeSensitive } from '../../../src/util/text/args';
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
 
 
 describe('Arguments', () => {
-	const positive = (input: string, expected: readonly string[], escapeQuote = true, split = ' ') => {
+	const positive = (input: string, expected: readonly string[], escapeQuote = true, split: RegExp | string = ' ') => {
 		test(`${JSON.stringify(input)}`, () => {
 			assert.deepEqual(splitAtEscapeSensitive(input, escapeQuote, split), expected);
 		});
@@ -16,6 +16,7 @@ describe('Arguments', () => {
 		positive('argument are cool', ['argument', 'are', 'cool']);
 		positive('a "b c" d', ['a', 'b c', 'd']);
 		positive('a "b\nc" d', ['a', 'b\nc', 'd']);
+		positive('a "x <- \'y\'" d', ['a', "x <- 'y'", 'd']);
 		// this seems to be an error with the comparison function as it does not expand escaped characters?
 		positive('a "b\\nc" d', ['a', 'b\nc', 'd']);
 		positive('a "b\t\r\v\f\bc" d', ['a', 'b\t\r\v\f\bc', 'd']);
@@ -26,13 +27,16 @@ describe('Arguments', () => {
 	});
 
 	describe('split statements', () => {
-		const positiveStatements = (input: string, expected: string[]) => positive(input, expected, false, ';');
+		const positiveStatements = (input: string, expected: string[]) => positive(input, expected, false, /^;\s*:/);
 		positiveStatements(':help', [':help']);
 		positiveStatements(':help;:slicer', [':help', ':slicer']);
-		// Try out slicer examples
+		positiveStatements(':help; \t  \t :slicer', [':help', ' \t  \t :slicer']);
+		//// Try out slicer examples
 		positiveStatements(':slicer -c "2@x" -r "x <- 3 * 4\n y <- x * 2"', [':slicer -c "2@x" -r "x <- 3 * 4\n y <- x * 2"']);
 		positiveStatements(':slicer -c "12@product" test/testfiles/example.R', [':slicer -c "12@product" test/testfiles/example.R']);
 		positiveStatements(':slicer --help; :slicer -i example.R --stats --criterion "8:3;3:1;12@product"',
 			[':slicer --help', ' :slicer -i example.R --stats --criterion "8:3;3:1;12@product"']);
+		positiveStatements(':slicer --help; \t  \t   :slicer -i example.R --stats --criterion "8:3;3:1;12@product"',
+			[':slicer --help', ' \t  \t   :slicer -i example.R --stats --criterion "8:3;3:1;12@product"']);
 	});
 });

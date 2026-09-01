@@ -1,7 +1,6 @@
 import { withShell } from '../_helper/shell';
 import { fakeSend, withSocket } from '../_helper/net';
 import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/message-hello';
-import { retrieveVersionInformation } from '../../../src/cli/repl/commands/repl-version';
 import type {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
@@ -12,22 +11,25 @@ import type {
 	FileAnalysisResponseMessageCompact,
 	FileAnalysisResponseMessageJson
 } from '../../../src/cli/repl/server/messages/message-analysis';
-import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { jsonReplacer } from '../../../src/util/json';
-import { extractCfg } from '../../../src/control-flow/extract-cfg';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { extractCfg } from '../../../src/control-flow/control-flow-graph';
+import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
+import type { SliceRequestMessage } from '../../../src/cli/repl/server/messages/message-slice';
+import type { FlowrErrorMessage } from '../../../src/cli/repl/server/messages/message-error';
 import { assert, describe, test } from 'vitest';
 import { uncompact } from '../../../src/cli/repl/server/compact';
 import { getPlatform } from '../../../src/util/os';
-import { defaultConfigOptions } from '../../../src/config';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { retrieveVersionInformation } from '../../../src/util/version';
+import { FlowrFile } from '../../../src/project/context/flowr-file';
 
 describe('flowr', () => {
 	const skip = getPlatform() !== 'linux';
-	describe.sequential('Server', withShell(shell => {
-		test.skipIf(skip)('Correct Hello Message', withSocket(shell,async socket => {
+	describe('Server', { concurrent: false }, withShell(shell => {
+		test.skipIf(skip)('Correct Hello Message', withSocket(shell, async socket => {
 			const messages = socket.getMessages();
 			assert.strictEqual(messages.length, 1, 'Expected exactly one message to hello the client');
 
@@ -86,10 +88,11 @@ describe('flowr', () => {
 			const response = messages[1] as FileAnalysisResponseMessageJson;
 
 			// we are testing the server and not the slicer here!
-			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				request: requestFromInput('1 + 1'),
-			}, defaultConfigOptions).allRemainingSteps());
+			const analyzer = await new FlowrAnalyzerBuilder()
+				.setParser(shell)
+				.build();
+			analyzer.addRequest('1 + 1');
+			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
@@ -98,9 +101,11 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 			const got = JSON.stringify(response.results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
@@ -120,10 +125,11 @@ describe('flowr', () => {
 			const response = messages[1] as FileAnalysisResponseMessageCompact;
 
 			// we are testing the server and not the slicer here!
-			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				request: requestFromInput('1 + 1'),
-			}, defaultConfigOptions).allRemainingSteps());
+			const analyzer = await new FlowrAnalyzerBuilder()
+				.setParser(shell)
+				.build();
+			analyzer.addRequest('1 + 1');
+			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
@@ -134,9 +140,11 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 			const got = JSON.stringify(unpacked, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
@@ -158,7 +166,10 @@ describe('flowr', () => {
 
 			const gotCfg = response.cfg;
 			assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it');
-			const expectedCfg = extractCfg(response.results.normalize, defaultConfigOptions);
+			/* the response carries the analysis as plain json, so the graph to compare against is analyzed here */
+			const context = contextFromInput('a;b');
+			const local = await createDataflowPipeline(shell, { context }).allRemainingSteps();
+			const expectedCfg = extractCfg(local.dataflow);
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
 		}));
 
@@ -187,6 +198,85 @@ describe('flowr', () => {
 			assert.exists(response.results['call-context'], 'Expected the query to return at least one result');
 			assert.exists(response.results['.meta'], 'Expected the query to return at least one result');
 			assert.equal(response.results['call-context']['kinds']['.']['subkinds']['.'].length, 1, 'We should find one call to print!');
+		}));
+
+		test.skipIf(skip)('Invalidate a file token', withSocket(shell, async socket => {
+			/* analyze and drop the very same token in one request */
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:            'request-file-analysis',
+				id:              '42',
+				filetoken:       'super-token',
+				filename:        'x',
+				content:         'print(17)',
+				invalidateToken: 'super-token'
+			});
+			await socket.waitForMessage('response-file-analysis');
+
+			const analysis = socket.getMessages(['hello', 'response-file-analysis'])[1] as FileAnalysisResponseMessageJson;
+			assert.strictEqual(analysis.id, '42', 'Expected the analysis response to carry the request id');
+			assert.exists(analysis.results.dataflow, 'Expected the analysis to still produce results before the token is dropped');
+
+			/* as the token is dropped after the response, it must no longer be queryable */
+			fakeSend<QueryRequestMessage>(socket, {
+				type:      'request-query',
+				id:        '21',
+				filetoken: 'super-token',
+				query:     [{ type: 'call-context', callName: 'print' }]
+			});
+			await socket.waitForMessage('error');
+			const error = socket.getMessages(['hello', 'response-file-analysis', 'error'])[2] as FlowrErrorMessage;
+			assert.strictEqual(error.id, '21', 'Expected the error to carry the query id');
+			assert.match(error.reason, /never been analyzed/, 'Expected the token to be dropped after the response');
+
+			/* a request carrying only invalidateToken needs no file and is answered with empty results */
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:            'request-file-analysis',
+				id:              '43',
+				invalidateToken: 'super-token'
+			});
+			await socket.waitForMessage('response-file-analysis');
+			const dropOnly = socket.getMessages(['hello', 'response-file-analysis', 'error', 'response-file-analysis'])[3] as FileAnalysisResponseMessageJson;
+			assert.strictEqual(dropOnly.id, '43', 'Expected the invalidation response to carry the request id');
+			assert.strictEqual(Object.keys(dropOnly.results).length, 0, 'Expected the drop-only request to be answered with empty results');
+		}));
+
+		test.skipIf(skip)('Many requests in quick succession do not crash', withSocket(shell, async socket => {
+			/* fire an analysis and a burst of slices/queries for the same token without awaiting in between */
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:      'request-file-analysis',
+				id:        'a',
+				filetoken: 'super-token',
+				filename:  'x',
+				content:   'x <- 1\ny <- x + 2\nprint(y)'
+			});
+			const burst = 12;
+			for(let i = 0; i < burst; i++) {
+				if(i % 2 === 0) {
+					fakeSend<SliceRequestMessage>(socket, {
+						type:      'request-slice',
+						id:        `s${i}`,
+						filetoken: 'super-token',
+						criterion: ['3@y']
+					});
+				} else {
+					fakeSend<QueryRequestMessage>(socket, {
+						type:      'request-query',
+						id:        `q${i}`,
+						filetoken: 'super-token',
+						query:     [{ type: 'call-context', callName: 'print' }]
+					});
+				}
+			}
+
+			/* wait until every request produced its response (hello + analysis + burst) */
+			const expected = 2 + burst;
+			for(let waited = 0; socket.getMessages().length < expected && waited < 100; waited++) {
+				await new Promise(resolve => setTimeout(resolve, 100));
+			}
+
+			const messages = socket.getMessages();
+			assert.strictEqual(messages.length, expected, `expected ${expected} messages, got ${messages.length}`);
+			assert.isUndefined(messages.find(m => m.type === 'error'), 'no request may fail when they arrive in quick succession');
 		}));
 	}));
 });

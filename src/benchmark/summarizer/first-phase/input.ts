@@ -5,10 +5,9 @@ import { summarizeSlicerStats } from './process';
 import { guard } from '../../../util/assert';
 import { escape } from '../../../util/text/ansi';
 import { jsonReplacer } from '../../../util/json';
-import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
+import type { AdditionalSlicerMeasurements, BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { stats2string } from '../../stats/print';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 interface BenchmarkData {
 	filename:  string,
@@ -17,6 +16,9 @@ interface BenchmarkData {
 	stats:     SlicerStats
 }
 
+/**
+ * Processes a single run measurement line from the benchmark output.
+ */
 export async function processRunMeasurement(line: Buffer, fileNum: number, lineNum: number, textOutputAppendPath: string, rawOutputPath: string) {
 	let got = JSON.parse(line.toString()) as BenchmarkData;
 	console.log(`[file ${fileNum}, line ${lineNum}] Summarize for ${got.filename}`);
@@ -36,13 +38,20 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 						return [k, BigInt(v.slice(0, -1))];
 					})
 			),
+			additionalMeasurements: new Map(
+				(got.stats.additionalMeasurements as unknown as [AdditionalSlicerMeasurements, string][] ?? [])
+					.map(([k, v]) => {
+						guard(v.endsWith('n'), 'Expected a bigint');
+						return [k, BigInt(v.slice(0, -1))];
+					})
+			),
 			perSliceMeasurements: new Map(
 				(got.stats.perSliceMeasurements as unknown as [SlicingCriteria, PerSliceStats][])
 					.map(([k, v]) => mapPerSliceStats(k, v))
 			),
 			dataFrameShape: got.stats.dataFrameShape !== undefined ? {
 				...got.stats.dataFrameShape,
-				perNodeStats: new Map(got.stats.dataFrameShape.perNodeStats as unknown as [NodeId, PerNodeStatsDfShape][])
+				perNodeStats: new Map(got.stats.dataFrameShape.perNodeStats)
 			} : undefined
 		}
 	};
@@ -53,7 +62,7 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	const summarized  = await summarizeSlicerStats(got.stats, (criterion, stats) => {
 		console.log(`${escape}1F${escape}1G${escape}2K    [${++atSliceNumber}/${totalSlices}] Summarizing ${JSON.stringify(criterion)} (reconstructed has ${stats.reconstructedCode.code.length} characters)`);
 		if(stats.reconstructedCode.code.length < 50) {
-			console.log(`Reconstructed code: ${stats.reconstructedCode.code}`);
+			console.log(`Reconstructed code: ${stats.reconstructedCode.code as string}`);
 		}
 	});
 
@@ -69,6 +78,9 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	fs.appendFileSync(textOutputAppendPath, `${stats2string(summarized)}\n`);
 }
 
+/**
+ * Processes multiple summarized run measurement files and appends an overall summary to the given path.
+ */
 export function processSummarizedRunMeasurement(runNum: number, summarizedFiles: string[], appendPath: string) {
 	console.log(`Summarizing all file statistics for run ${runNum}`);
 

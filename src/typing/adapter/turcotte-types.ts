@@ -26,13 +26,13 @@ import { jsonReplacer } from '../../util/json';
 import type { RohdeFunctionTypeInformation, RohdeTypes } from './interface';
 
 export interface TurcotteCsvRow {
-    readonly package_name:       string;
-    readonly function_name:      string;
-    readonly parameter_position: string;
-    readonly outer_alternative:  string;
-    readonly inner_alternative:  string;
-    readonly type:               string;
-    readonly count:              string;
+	readonly package_name:       string;
+	readonly function_name:      string;
+	readonly parameter_position: string;
+	readonly outer_alternative:  string;
+	readonly inner_alternative:  string;
+	readonly type:               string;
+	readonly count:              string;
 }
 
 function groupTurcotteData<T>(data: readonly TurcotteCsvRow[], makeKey: (d: TurcotteCsvRow) => T): Map<T, TurcotteCsvRow[]> {
@@ -342,6 +342,10 @@ function rohdeReviver(key: string, value: unknown): unknown {
 	}
 }
 
+/**
+ * Reads back what {@link dumpRohdeTypesFromTurcotte} wrote.
+ * @param dump - The serialized types.
+ */
 export function recoverRohdeTypesFromTurcotteFromDump(dump: string): RohdeTypes {
 	return JSON.parse(dump, rohdeReviver) as RohdeTypes;
 }

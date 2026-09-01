@@ -3,13 +3,14 @@ import type {
 	CfgStatementVertex,
 	ControlFlowInformation
 } from './control-flow-graph';
+import { CfgVertex
+} from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
 	NormalizedAst,
 	ParentInformation
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
-import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
+import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { assertUnreachable } from '../util/assert';
@@ -37,10 +38,11 @@ import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 export interface SyntaxCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>
 > extends BasicCfgGuidedVisitorConfiguration<ControlFlow> {
-	readonly normalizedAst: Ast;
+	/** the ast the vertices refer to; only the id map is used, so {@link cfgVisitorConfig} can take it from the dataflow graph */
+	readonly normalizedAst: Pick<Ast, 'idMap'>;
 }
 
 /**
@@ -50,7 +52,7 @@ export interface SyntaxCfgGuidedVisitorConfiguration<
  */
 export class SyntaxAwareCfgGuidedVisitor<
 	OtherInfo = NoInfo,
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
 	Config extends SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast> = SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast>,
 > extends BasicCfgGuidedVisitor<ControlFlow, Config> {
@@ -73,7 +75,7 @@ export class SyntaxAwareCfgGuidedVisitor<
 	}
 
 	private onExprOrStmtNode(node: CfgStatementVertex | CfgExpressionVertex): void {
-		const astVertex = this.getNormalizedAst(node.id);
+		const astVertex = this.getNormalizedAst(CfgVertex.getId(node));
 		if(!astVertex) {
 			return;
 		}

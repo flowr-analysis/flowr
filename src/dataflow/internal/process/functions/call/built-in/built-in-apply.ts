@@ -1,25 +1,55 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
-import type { IdentifierReference } from '../../../../../environments/identifier';
-import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { type Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { isValue } from '../../../../../eval/values/r-value';
-import { expensiveTrace } from '../../../../../../util/log';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { ClosureRefs } from '../../../../linker';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+
+/** the function reference extracted from an argument passed to a higher-order call */
+export interface ResolvedFunctionArgument {
+	readonly functionId:   NodeId
+	readonly functionName: Identifier
+	readonly anonymous:    boolean
+	readonly asString:     boolean
+}
+
+/** Resolve the function an argument stands for: a string literal, a symbol, or an inline definition; `undefined` if none. */
+export function resolveFunctionArgument<OtherInfo>(
+	val:  RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	opts: { readonly unquoteFunction?: boolean, readonly resolveValue?: boolean }
+): ResolvedFunctionArgument | undefined {
+	if(opts.unquoteFunction && RString.is(val)) {
+		return { functionId: val.info.id, functionName: val.content.str, anonymous: false, asString: true };
+	}
+	if(RFunctionDefinition.is(val)) {
+		return { functionId: val.info.id, functionName: `${UnnamedFunctionCallPrefix}${val.info.id}`, anonymous: true, asString: false };
+	}
+	if(!RSymbol.is(val)) {
+		return undefined;
+	}
+	const functionName = opts.resolveValue
+		? NodeValue.singleStringOf(val.info.id, data)
+		: val.content;
+	return functionName === undefined ? undefined : { functionId: val.info.id, functionName, anonymous: false, asString: false };
+}
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -29,37 +59,55 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** Should we unquote the function if it is given as a string? */
 	readonly unquoteFunction?:        boolean
 	/** Should the function be resolved in the global environment? */
-	readonly resolveInEnvironment:    'global' | 'local'
+	readonly resolveInEnvironment?:   'global' | 'local'
 	/** Should the value of the function be resolved? */
 	readonly resolveValue?:           boolean
+	/** the call reaches beyond what we can see even when the callee resolves, like `rlang::exec` */
+	readonly hasUnknownSideEffects?:  boolean
 }
 
+/**
+ * Process an apply call like `vapply` or `mapply`.
+ */
 export function processApply<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: BuiltInApplyConfiguration
 ): DataflowInformation {
-	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue } = config;
-	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
-	const forceArgsMask = new Array(indexOfFunction).fill(false);
-	forceArgsMask.push(true);
+	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects } = config;
+	/* the length is one-based and the argument mapping zero-based, so the function sits at `indexOfFunction` */
 	const resFn = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: forceArgsMask, origin: 'builtin:apply'
+		name, args, rootId, data, sig: FunctionSemantics.call.signature.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
 	});
 	let information = resFn.information;
+	if(hasUnknownSideEffects) {
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+	}
 	const processedArguments = resFn.processedArguments;
 
 	let index = indexOfFunction;
 	/* search, if one of the arguments actually contains the argument name if given in the config */
 	if(nameOfFunctionArgument !== undefined) {
-		const mayFn = args.findIndex(arg => arg !== EmptyArgument && arg.name && arg.name.content === nameOfFunctionArgument);
+		const mayFn = args.findIndex(arg => arg !== EmptyArgument && arg.name?.content === nameOfFunctionArgument);
 		if(mayFn >= 0) {
 			index = mayFn;
 		}
 	}
-
+	// shift the index to point to the index'd unnamed argument
+	let posArgsFound = 0;
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if(arg !== EmptyArgument && arg.name) {
+			// do nothing
+		} else if(posArgsFound === index) {
+			index = i;
+			break;
+		} else {
+			posArgsFound++;
+		}
+	}
 
 	/* validate, that we indeed have so many arguments to fill this one :D */
 	if(index >= args.length) {
@@ -69,52 +117,35 @@ export function processApply<OtherInfo>(
 
 	const arg = args[index];
 
-	if(arg === EmptyArgument || !arg.value || (!unquoteFunction && arg.value.type !== RType.Symbol && arg.value.type !== RType.FunctionDefinition)) {
+	if(RArgument.isEmpty(arg) || !arg.value || (!unquoteFunction && !RSymbol.is(arg.value) && !RFunctionDefinition.is(arg.value))) {
 		dataflowLogger.warn(`Expected symbol as argument at index ${index}, but got ${JSON.stringify(arg)} instead.`);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
-
-	let functionId: NodeId | undefined = undefined;
-	let functionName: string | undefined = undefined;
-	let anonymous: boolean = false;
 
 	const val = arg.value;
-	if(unquoteFunction && val.type === RType.String) {
-		functionId = val.info.id;
-		functionName = val.content.str;
-		information = {
-			...information,
-			in: [...information.in, { type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }]
-		};
-	} else if(val.type === RType.Symbol) {
-		functionId = val.info.id;
-		if(resolveValue) {
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.flowrConfig.solver.variables }));
-			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
-				functionName = isValue(resolved.elements[0].value) ? resolved.elements[0].value.str : undefined;
-			}
-		} else {
-			functionName = val.content;
-		}
-	} else if(val.type === RType.FunctionDefinition) {
-		anonymous = true;
-		functionId = val.info.id;
-		functionName = `${UnnamedFunctionCallPrefix}${functionId}`;
-	}
-
-	if(functionName === undefined || functionId === undefined) {
+	const resolvedFn = resolveFunctionArgument(val, data, { unquoteFunction, resolveValue });
+	if(resolvedFn === undefined) {
 		dataflowLogger.warn(`Expected symbol or string as function argument at index ${index}, but got ${JSON.stringify(val)} instead.`);
+		// the called function is dynamic and unresolvable: reached-but-unknown rather than dropped
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
+	}
+	const { functionName, anonymous, asString } = resolvedFn;
+	let functionId: NodeId = resolvedFn.functionId;
+	if(asString) {
+		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	}
 
 	const allOtherArguments: FunctionArgument[] = processedArguments.map((arg, i) => {
 		const counterpart = args[i];
 		if(arg && counterpart !== EmptyArgument) {
 			return {
-				name:                counterpart.name?.content,
-				controlDependencies: data.controlDependencies,
-				type:                ReferenceType.Argument,
-				nodeId:              arg.entryPoint
+				name:    counterpart.name?.content,
+				valueId: counterpart.value?.info.id,
+				cds:     data.cds,
+				type:    ReferenceType.Argument,
+				nodeId:  arg.entryPoint
 			};
 		} else {
 			return EmptyArgument;
@@ -131,44 +162,22 @@ export function processApply<OtherInfo>(
 			name:        functionName,
 			/* can never be a direct built-in-call */
 			onlyBuiltin: false,
-			cds:         data.controlDependencies,
+			cds:         data.cds,
 			args:        allOtherArguments, // same reference
-			origin:      ['function']
-		});
+			origin:      [BuiltInProcName.Function]
+		}, data.ctx.env.cleanEnv);
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
 		information = {
 			...information,
 			in: [
 				...information.in,
-				{ type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }
+				{ type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
-		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
-			// resolve all ingoings against the environment
-			const ingoingRefs = dfVert.subflow.in;
-			const remainingIn: IdentifierReference[] = [];
-			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, ingoing.type) : undefined;
-				if(resolved === undefined) {
-					remainingIn.push(ingoing);
-					continue;
-				}
-				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${rootId}`);
-				let allBuiltIn = true;
-				for(const ref of resolved) {
-					information.graph.addEdge(ingoing, ref, EdgeType.Reads);
-					information.graph.addEdge(rootId, ref, EdgeType.Reads); // because the def. is the anonymous call
-					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
-						allBuiltIn = false;
-					}
-				}
-				if(allBuiltIn) {
-					remainingIn.push(ingoing);
-				}
-			}
-			dfVert.subflow.in = remainingIn;
+		if(dfVert && DfgVertex.isFunctionDefinition(dfVert)) {
+			ClosureRefs.resolveOpenIngoing(information.graph, rootId, dfVert, data.environment);
 		}
 	} else {
 		/* identify it as a full-blown function call :) */
@@ -179,8 +188,8 @@ export function processApply<OtherInfo>(
 			args:        allOtherArguments,
 			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
 			onlyBuiltin: resolveInEnvironment === 'global',
-			cds:         data.controlDependencies,
-			origin:      ['function']
+			cds:         data.cds,
+			origin:      [BuiltInProcName.Function]
 		});
 	}
 

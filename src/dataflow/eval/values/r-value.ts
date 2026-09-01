@@ -1,27 +1,28 @@
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
+import { stringFromLiteral, unescapeRString } from './string/string-constants';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { assertUnreachable, guard } from '../../../util/assert';
 
 export const Top = { type: Symbol('⊤') };
 export const Bottom = { type: Symbol('⊥') };
 
-export type Lift<N> = N | typeof Top | typeof Bottom
-export type Unlift<N> = N extends typeof Top ? never : N extends typeof Bottom ? never : N
+export type Lift<N> = N | typeof Top | typeof Bottom;
+export type Unlift<N> = N extends typeof Top ? never : N extends typeof Bottom ? never : N;
 
 export interface ValueInterval<Limit extends ValueNumber = ValueNumber> {
-    type:           'interval'
-    start:          Limit
-    startInclusive: boolean
-    end:            Limit
-    endInclusive:   boolean
+	type:           'interval'
+	start:          Limit
+	startInclusive: boolean
+	end:            Limit
+	endInclusive:   boolean
 }
 
 /**
  * An R vector with either a known set of elements or a known domain.
  */
 export interface ValueVector<Elements extends Lift<unknown[]> = Lift<Value[]>, Domain extends Lift<Value> = Lift<Value>> {
-    type:       'vector'
-    elements:   Elements
+	type:          'vector'
+	elements:      Elements
 	/** if we do not know the amount of elements, we can still know the domain */
 	elementDomain: Domain
 }
@@ -31,20 +32,26 @@ export interface ValueSet<Elements extends Lift<unknown[]> = Lift<Value[]>> {
 	elements: Elements
 }
 export interface ValueNumber<Num extends Lift<RNumberValue> = Lift<RNumberValue>> {
-    type:  'number'
-    value: Num
+	type:  'number'
+	value: Num
 }
 export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>> {
-    type:  'string'
-    value: Str
+	type:  'string'
+	value: Str
+}
+export interface ValueNull {
+	type: 'null'
+}
+export interface ValueFunctionDefinition {
+	type: 'function-definition'
 }
 export interface ValueMissing {
 	type: 'missing'
 }
-export type TernaryLogical = RLogicalValue | 'maybe'
+export type TernaryLogical = RLogicalValue | 'maybe';
 export interface ValueLogical {
-    type:  'logical'
-    value: Lift<TernaryLogical>
+	type:  'logical'
+	value: Lift<TernaryLogical>
 }
 
 export type Value = Lift<
@@ -55,27 +62,28 @@ export type Value = Lift<
         | ValueString
         | ValueLogical
 		| ValueMissing
-    >
-export type ValueType<V> = V extends { type: infer T } ? T : never
-export type ValueTypes = ValueType<Value>
-
-export function typeOfValue<V extends Value>(value: V): V['type'] {
-	return value.type;
-}
-
+        | ValueFunctionDefinition
+	    | ValueNull
+>;
+/** Checks whether the given value is the top value */
 // @ts-expect-error -- this is a save cast
 export function isTop<V extends Lift<unknown>>(value: V): value is typeof Top {
 	return value === Top;
 }
+/** Checks whether the given value is the bottom value */
 // @ts-expect-error -- this is a save cast
 export function isBottom<V extends Lift<unknown>>(value: V): value is typeof Bottom {
 	return value === Bottom;
 }
 
+/** Checks whether the given value is a proper value (neither top nor bottom) */
 export function isValue<V extends Lift<unknown>>(value: V): value is Unlift<V> {
 	return !isTop(value) && !isBottom(value);
 }
 
+/**
+ * Treat a value as unlifted value, throws if it is top or bottom.
+ */
 export function asValue<V extends Lift<unknown>>(value: V): Unlift<V> {
 	guard(isValue(value), 'Expected a value, but got a top or bottom value');
 	return value;
@@ -118,10 +126,17 @@ function renderString(value: RStringValue): string {
 	}
 }
 
+
+/**
+ * A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well.
+ * @param value - the value to print
+ */
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
 		const t = v.type;
 		switch(t) {
+			case 'null':
+				return 'NULL';
 			case 'interval':
 				return `${v.startInclusive ? '[' : '('}${stringifyValue(v.start)}, ${stringifyValue(v.end)}${v.endInclusive ? ']' : ')'}`;
 			case 'vector':
@@ -143,8 +158,39 @@ export function stringifyValue(value: Lift<Value>): string {
 				return tryStringifyBoTop(v.value, l => l === 'maybe' ? 'maybe' : l ? 'TRUE' : 'FALSE',  () => '⊤ (logical)', () => '⊥ (logical)');
 			case 'missing':
 				return '(missing)';
+			case 'function-definition':
+				return 'fn-def';
 			default:
 				assertUnreachable(t);
 		}
 	});
 }
+/**
+ * Reads the plain TS value a {@link Value} stands for, `undefined` whenever it stands for more than one, for
+ * none, or for another kind. Prefer these over reaching into a value's shape by hand.
+ *
+ * This is the constant-folding view: it answers "is this one known constant" and nothing else. It runs no
+ * fixpoint, knows no control flow, and widens nothing. For an abstract state that does, use the dedicated
+ * abstract interpretation in `src/abstract-interpretation/`.
+ */
+export const RValue = {
+	name:            'RValue',
+	/** What the escapes in a string literal stand for; see {@link unescapeRString}. */
+	unescapeString:  unescapeRString,
+	/** The string a literal stands for, `undefined` when R would not accept it; see {@link stringFromLiteral}. */
+	ofStringLiteral: stringFromLiteral,
+	/** The number the value stands for, collapsing an interval that admits a single one. */
+	numberOf(this: void, value: Value): number | undefined {
+		if(value.type === 'number') {
+			return isValue(value.value) && !value.value.complexNumber ? value.value.num : undefined;
+		} else if(value.type === 'interval' && value.startInclusive && value.endInclusive) {
+			const start = RValue.numberOf(value.start);
+			return start !== undefined && start === RValue.numberOf(value.end) ? start : undefined;
+		}
+		return undefined;
+	},
+	/** The string the value stands for. */
+	stringOf(this: void, value: Value): string | undefined {
+		return value.type === 'string' && isValue(value.value) ? value.value.str : undefined;
+	}
+} as const;

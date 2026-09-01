@@ -1,6 +1,10 @@
-import type { Lift, TernaryLogical, ValueLogical } from '../r-value';
-import { Bottom, Top } from '../r-value';
+import { type Lift, type TernaryLogical, type ValueLogical, Bottom, Top } from '../r-value';
 
+
+/**
+ * Lifts a ternary logical into the {@link ValueLogical} the evaluator works on, `Top` included.
+ * @param log - the logical to lift
+ */
 export function liftLogical(log: Lift<TernaryLogical>): ValueLogical {
 	if(log === Top) {
 		return ValueLogicalTop;

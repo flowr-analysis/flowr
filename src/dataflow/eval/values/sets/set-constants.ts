@@ -1,6 +1,5 @@
-import { bottomTopGuard } from '../general';
-import type { Lift, Value, ValueSet } from '../r-value';
-import { Top } from '../r-value';
+import { bottomTopGuard, bottomTopGuardOf } from '../general';
+import { type Lift, type Value, type ValueSet, Top } from '../r-value';
 
 function flattenSetElements(s: Lift<Value[]>): Lift<Value[]> {
 	return bottomTopGuard(s) ?? (s as Value[]).flatMap(e => {
@@ -8,17 +7,34 @@ function flattenSetElements(s: Lift<Value[]>): Lift<Value[]> {
 	});
 }
 
+/**
+ * Creates a value set from the given elements.
+ * @see {@link isSet} - to check whether a value is a set
+ */
 export function setFrom<V extends Value[]>(...elements: V): Lift<ValueSet<Value[]>> {
+	return setOf(elements);
+}
+
+/**
+ * {@link setFrom} for elements that are already a list, which a set of many of them could not be spread into.
+ * @see {@link isSet} - to check whether a value is a set
+ */
+export function setOf(elements: readonly Value[]): Lift<ValueSet<Value[]>> {
 	const vals = elements.flatMap(e => {
 		return e.type === 'set' ? flattenSetElements(e.elements) : e;
 	});
 
-	return bottomTopGuard(...vals) ?? {
+	return bottomTopGuardOf(vals) ?? {
 		type:     'set',
 		elements: vals
 	};
 }
 
+
+/**
+ * Checks, whether the given value is a set.
+ * @see {@link setFrom} - to create sets
+ */
 export function isSet<V extends Value>(element: V): boolean {
 	return element.type === 'set';
 }

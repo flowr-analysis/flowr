@@ -64,6 +64,10 @@ export class UnresolvedRTypeVariable {
 }
 
 
+/**
+ * The resolved type of a unification type, i.e. the type its variables settled on.
+ * @param type - The type to resolve.
+ */
 export function resolve(type: UnresolvedRDataType): DataType {
 	if(type instanceof UnresolvedRTypeVariable) {
 		const typeRep = type.find();
@@ -79,7 +83,7 @@ export function resolve(type: UnresolvedRDataType): DataType {
 		return type;
 	}
 }
-	
+
 export type UnresolvedRDataType
 	= AtomicVectorBaseType
 	| UnresolvedRListType

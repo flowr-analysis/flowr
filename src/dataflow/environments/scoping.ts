@@ -1,21 +1,49 @@
-import type { REnvironmentInformation } from './environment';
-import { Environment } from './environment';
+import { type REnvironmentInformation, Environment, REnvironment } from './environment';
 import { guard } from '../../util/assert';
 
-/** Add a new local environment scope to the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone) */
-export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
+/**
+ * Add a new local environment scope to the stack, returns the modified variant (shares the original stack, no deep-clone).
+ * @see {@link popLocalEnvironment} - to remove the local scope again
+ */
+export function pushLocalEnvironment({ level, current }: REnvironmentInformation): REnvironmentInformation {
 	return {
-		current: new Environment(base.current),
-		level:   base.level + 1
+		current: new Environment(current),
+		level:   level + 1
 	};
 }
 
-export function popLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
-	guard(base.level > 0, 'cannot remove the global/root environment');
-	const parent = base.current.parent;
-	guard(parent !== undefined, 'level is wrong, parent is undefined even though level suggested depth > 0 (starts with 0)');
+/**
+ * Remove the top local environment scope from the stack, returns the modified variant (shares the original stack, no deep-clone).
+ * @see {@link pushLocalEnvironment} - to add a local scope
+ */
+export function popLocalEnvironment({ current, level }: REnvironmentInformation): REnvironmentInformation {
+	guard(level > 0, 'cannot remove the global/root environment');
 	return {
-		current: parent,
-		level:   base.level - 1
+		current: current.parent,
+		level:   level - 1
 	};
+}
+
+/**
+ * Pads whichever of `base`/`next` is shallower with empty local scopes until both are at the same lexical {@link REnvironmentInformation#level|level}.
+ */
+export function padToCommonScope(base: REnvironmentInformation, next: REnvironmentInformation): { base: REnvironmentInformation, next: REnvironmentInformation } {
+	while(next.level < base.level) {
+		next = pushLocalEnvironment(next);
+	}
+	while(next.level > base.level) {
+		base = pushLocalEnvironment(base);
+	}
+	return { base, next };
+}
+
+/**
+ * The environment's search path with an empty global frame: attached packages stay visible, the global frame's
+ * binds do not. Prefer this over `makeCleanEnv` wherever an environment is at hand; the chain below is shared.
+ */
+export function cleanEnvOf({ current }: REnvironmentInformation): REnvironmentInformation {
+	const inner = REnvironment.findGlobal(current);
+	const global = new Environment(inner.parent).asGlobal();
+	global.n = inner.n;
+	return { level: 0, current: global };
 }

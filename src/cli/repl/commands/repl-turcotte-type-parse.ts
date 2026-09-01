@@ -14,11 +14,12 @@ import type { RohdeTypes } from '../../../typing/adapter/interface';
 
 
 export const replTurcotteTypeParseCommand: ReplCommand = {
-	description:  'Give me a file to read from and I will happily print you the types in the Rohde System!',
-	usageExample: ':turcotte-type-parse foo.csv out.data',
-	aliases:      [ 'ttp',],
-	script:       false,
-	fn:           async(info) => {
+	description:   'Give me a file to read from and I will happily print you the types in the Rohde System!',
+	usageExample:  ':turcotte-type-parse foo.csv out.data',
+	aliases:       ['ttp'],
+	script:        false,
+	isCodeCommand: false,
+	fn:            async(info) => {
 		const now = new Date();
 		if(!info.remainingLine.trim()) {
 			info.output.stderr('Please provide a file to read from. You do not need a prefix, just the file path.');
@@ -30,12 +31,12 @@ export const replTurcotteTypeParseCommand: ReplCommand = {
 			return;
 		}
 		const [readFilePath, writeFilePath] = args as [string, string | undefined];
-		const readFile = findSource(undefined, readFilePath.trim(), { referenceChain: [] });
+		const readFile = findSource(undefined, readFilePath.trim(), { referenceChain: [], ctx: info.analyzer.inspectContext() });
 		if(readFile?.length !== 1) {
 			info.output.stderr(`Could not find a single file to read from. Got: ${JSON.stringify(readFile)}`);
 			return;
 		}
-		const writeFile = writeFilePath ? findSource(undefined, writeFilePath.trim(), { referenceChain: [] }) : undefined;
+		const writeFile = writeFilePath ? findSource(undefined, writeFilePath.trim(), { referenceChain: [], ctx: info.analyzer.inspectContext() }) : undefined;
 		if(writeFilePath && writeFile && writeFile.length > 0) {
 			info.output.stderr(`The output file already exists, will not overwrite: ${writeFilePath}`);
 			return;

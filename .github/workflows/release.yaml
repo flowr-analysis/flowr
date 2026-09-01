@@ -5,6 +5,9 @@ name: "Release Action"
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: "👩‍🏫 Linting (Full)"
@@ -12,21 +15,22 @@ jobs:
         startsWith(github.event.head_commit.message, '[release:major]') ||
         startsWith(github.event.head_commit.message, '[release:patch]')
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
@@ -34,25 +38,19 @@ jobs:
   test-full:
     name: "🧪 Test Suite (full)"
     needs: ['lint']
-    if: ${{
-          startsWith(github.event.head_commit.message, '[release:minor]') ||
-          startsWith(github.event.head_commit.message, '[release:major]') ||
-          startsWith(github.event.head_commit.message, '[release:patch]') || (
-            always()
-            && !failure()
-            && (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
-          )
-        }}
-    timeout-minutes: 25
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    timeout-minutes: 65
     strategy:
       fail-fast: false
       matrix:
-        r-version: [ '4.4.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
+        r-version: [ '4.5.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
         os: [ ubuntu-latest ]
         include:
-           - r-version: '4.4.0'
+           - r-version: '4.5.0'
              os: macos-latest
-           - r-version: '4.4.0'
+           - r-version: '4.5.0'
              os: windows-latest
     runs-on: ${{ matrix.os }}
     concurrency:
@@ -60,31 +58,49 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ matrix.r-version }}
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run:   lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        run:   lapply(c("dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
+
+      # `test:full` excludes them, so the matrix is the only place they meet macOS and windows. They shell out to
+      # the cli, and the windows leg has never run them, so it reports without holding up a release until it is green.
+      - name: "⚙️ Run System Tests"
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
+
+      - name: "⬆️ Upload Test Label Details"
+        # the test job is a matrix, so only one leg may claim the artifact name
+        if: matrix.os == 'ubuntu-latest' && matrix.r-version == '4.5.0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-label-details
+          path: |
+            coverage/flowr-test-details.json
+            coverage/flowr-test-results.json
+          if-no-files-found: warn
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
         uses: codecov/codecov-action@v4
@@ -95,13 +111,20 @@ jobs:
   release:
     name: "📦 Release"
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     needs: ['test-full']
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
         startsWith(github.event.head_commit.message, '[release:major]') ||
         startsWith(github.event.head_commit.message, '[release:patch]')
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
           lfs:        true
@@ -109,36 +132,41 @@ jobs:
           fetch-depth: 0
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
         uses: r-lib/actions/setup-r-dependencies@v2
+        timeout-minutes: 20
         with:
+          cache: 'true'
+          cache-version: '1'
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
-      - name: "⚙️ Name and Email for Git (config) and update"
+      - name: "⚙️ Name and Email for Git (config)"
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull
 
       - name: "📦 Install Dependencies"
         run: npm ci
+
+      - name: "🔁 Fetch latest main before release"
+        run: git fetch origin main && git reset --hard origin/main
 
       - name: "🌟 Release"
         id: release
@@ -177,12 +205,12 @@ jobs:
         # we use publish-library because flowr itself is a runnable, and we do not want to publish something with extra
         # dist paths etc.
         # besides, we make dead-sure we have a clean directory to work on!
+        # uses npm trusted publishing (OIDC): no token, package.json's Trusted Publisher config on npmjs.com must
+        # match this repo/workflow/environment. node's bundled npm (11.9.0+ on node 25) already speaks OIDC.
         run: |
           rm -rf dist
           npm run build
           npm run publish-library
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
     outputs:
       version: ${{ steps.release.outputs.version }}
 
@@ -190,12 +218,17 @@ jobs:
     needs: ['release']
     name: "🚀 Deploy Docker (only on main)"
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: [ 'scripts/Dockerfile', 'scripts/Dockerfile-NoR' ]
     concurrency:
-      group: docker-${{ github.workflow }}-${{ github.ref }}
+      group: docker-${{ github.workflow }}-${{ github.ref }}-${{ matrix.dockerfile }}
       cancel-in-progress: true
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             lfs: true
             submodules: true
@@ -204,7 +237,7 @@ jobs:
         run: git pull
 
       - name: "🛠️ Build the image"
-        run: docker build -t flowr -f scripts/Dockerfile .
+        run: docker build -t flowr -f "${{ matrix.dockerfile }}" .
 
       - name: "🧪 Test that the image works"
         timeout-minutes: 5
@@ -213,27 +246,46 @@ jobs:
 
       - name: "🚀 Deploy the Image"
         run: |
-          TAG="eagleoutice/flowr"
+          # add -slim suffix if no R
+          if [[ "${{ matrix.dockerfile }}" == "scripts/Dockerfile-NoR" ]]; then
+            TAG="eagleoutice/flowr-slim"
+            ARTIFACT_SUFFIX="-slim"
+            ARTIFACT_NAME="slim"
+          else
+            TAG="eagleoutice/flowr"
+            ARTIFACT_SUFFIX=""
+            ARTIFACT_NAME="full"
+          fi
           VERSION="$(date '+%Y%m%d')"
-          FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
-          docker tag flowr "${TAG}":"date-$VERSION"
-          docker tag flowr "${TAG}":"$FLOWR_VERSION"
-          docker tag flowr "${TAG}":latest
+          FLOWR_VERSION="$(docker run --rm flowr --version | sed 's/\x1b]8;;[^\x07]*\x07//g; s/\x1b\[[0-9;]*m//g' | grep -oP 'flowR\s*:\s*\K[^ ]+' | head -n1)"
+          if [[ -z "$FLOWR_VERSION" ]]; then
+            echo "ERROR: failed to extract flowR version from docker image"
+            exit 1
+          fi
+          docker tag flowr "${TAG}:date-$VERSION"
+          docker tag flowr "${TAG}:$FLOWR_VERSION"
+          docker tag flowr "${TAG}:latest"
           docker images "$TAG"
           echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
           docker push "$TAG" --all-tags
           echo "THE_FLOWR_VERSION=$FLOWR_VERSION" >> "$GITHUB_ENV"
+          echo "ARTIFACT_SUFFIX=$ARTIFACT_SUFFIX" >> "$GITHUB_ENV"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
 
       - name: "🗃️ Compress the image"
         run: |
-          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          if [[ "${{ matrix.dockerfile }}" == "scripts/Dockerfile-NoR" ]]; then
+            SUFFIX="-slim"
+          else
+            SUFFIX=""
+          fi
+          docker save flowr | gzip > "./flowr-${{ env.THE_FLOWR_VERSION }}$SUFFIX.tar.gz"
 
       - name: "⬆️ Upload the compressed image to the workflow"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          path: flowr-${{ env.THE_FLOWR_VERSION }}.tar.gz
+          name: "flowr-image-${{ env.ARTIFACT_NAME }}"
+          path: "flowr-${{ env.THE_FLOWR_VERSION }}${{ env.ARTIFACT_SUFFIX }}.tar.gz"
 
   performance-test:
     name: "⏱️ Performance Test"
@@ -243,78 +295,105 @@ jobs:
       startsWith(github.event.head_commit.message, '[release:major]') ||
       startsWith(github.event.head_commit.message, '[release:patch]')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: true
       matrix:
         # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
-        name: ['artificial', 'social-science']
+        name: ['artificial', 'real-world']
         parser: ["tree-sitter", "r-shell"]
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
         uses: r-lib/actions/setup-r-dependencies@v2
+        timeout-minutes: 20
         with:
+          cache: 'true'
+          cache-version: '1'
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
       - name: "⏱️ Run the performance benchmarks"
-        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
+        run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 2 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
+          if-no-files-found: error
     outputs:
       version: ${{ needs.release.outputs.version }}
 
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     needs: [ performance-test ]
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
           token:      ${{ secrets.RELEASE_TOKEN }}
-          # check out the release ref so that the upload action finds the commit
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
+          ref: main
 
       - name: "⚙️ Name and Email for Git (config) and update"
-        # we fetch just to be totally sure
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git fetch --tags
+          git fetch --tags origin main
+          git pull origin main
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          cache: npm
+
+      # the counters need node and the labels, so both have to be there before the first suite is touched
+      - name: "⬇️ Get the Test Label Details"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: test-label-details
+          path: test-labels/
 
       - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results-artificial-r-shell
           path: benchmark-ai-r-shell/
+
+      - name: "🧪 Add the Test Counters (artificial-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json"
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
@@ -335,18 +414,42 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
-      - name: "⬇️ Get benchmark Artifacts (social-science, r-shell)"
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results-social-science-r-shell
-          path: benchmark-ss-r-shell/
-
-      - name: "🥄 Merge and Produce Performance Results (social-science, r-shell)"
+      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
+      # them: a release with more linting rules must never read as a performance regression. The page merges
+      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
+      - name: "🧮 Merge and Produce the Counters (artificial, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"social-science" Benchmark Suite'
+          name: '"artificial" Benchmark Suite [info]'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss-r-shell/social-science/social-science-summarized-graph.json
+          output-file-path: benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: false
+          comment-always: false
+          alert-threshold: '100000%'
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
+      - name: "⬇️ Get benchmark Artifacts (real-world, r-shell)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-real-world-r-shell
+          path: benchmark-rw-r-shell/
+
+      - name: "🧪 Add the Test Counters (real-world-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json"
+
+      - name: "🥄 Merge and Produce Performance Results (real-world, r-shell)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"real-world" Benchmark Suite'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-rw-r-shell/real-world/real-world-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false
@@ -358,11 +461,35 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
+      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
+      # them: a release with more linting rules must never read as a performance regression. The page merges
+      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
+      - name: "🧮 Merge and Produce the Counters (real-world, r-shell)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"real-world" Benchmark Suite [info]'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: false
+          comment-always: false
+          alert-threshold: '100000%'
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
       - name: "⬇️ Get benchmark Artifacts (artificial, tree-sitter)"
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results-artificial-tree-sitter
           path: benchmark-ai-tree-sitter/
+
+      - name: "🧪 Add the Test Counters (artificial-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json"
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
@@ -383,18 +510,42 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
-      - name: "⬇️ Get benchmark Artifacts (social-science, tree-sitter)"
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results-social-science-tree-sitter
-          path: benchmark-ss-tree-sitter/
-
-      - name: "🥄 Merge and Produce Performance Results (social-science, tree-sitter)"
+      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
+      # them: a release with more linting rules must never read as a performance regression. The page merges
+      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
+      - name: "🧮 Merge and Produce the Counters (artificial, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"social-science" Benchmark Suite (tree-sitter)'
+          name: '"artificial" Benchmark Suite (tree-sitter) [info]'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss-tree-sitter/social-science/social-science-summarized-graph.json
+          output-file-path: benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: false
+          comment-always: false
+          alert-threshold: '100000%'
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
+      - name: "⬇️ Get benchmark Artifacts (real-world, tree-sitter)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-real-world-tree-sitter
+          path: benchmark-rw-tree-sitter/
+
+      - name: "🧪 Add the Test Counters (real-world-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json"
+
+      - name: "🥄 Merge and Produce Performance Results (real-world, tree-sitter)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"real-world" Benchmark Suite (tree-sitter)'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-rw-tree-sitter/real-world/real-world-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false
@@ -406,16 +557,39 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
-      - name: "⬆️ Push benchmark results"
-        # we manipulate the name of the last commit message
-        run: |
-          git reset --soft HEAD~2
-          git add -f wiki/stats/benchmark/
-          git commit -m "[skip ci] doc: new benchmark data"
-
-      - name: "⬆️ Push changes"
-        uses: ad-m/github-push-action@master
+      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
+      # them: a release with more linting rules must never read as a performance regression. The page merges
+      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
+      - name: "🧮 Merge and Produce the Counters (real-world, tree-sitter)"
+        uses: benchmark-action/github-action-benchmark@v1
         with:
-          branch: main
-          github_token: ${{ secrets.RELEASE_TOKEN }}
-          force: true
+          name: '"real-world" Benchmark Suite (tree-sitter) [info]'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: false
+          comment-always: false
+          alert-threshold: '100000%'
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
+      - name: "⬆️ Pull latest to avoid conflicts"
+        run: git pull origin main --no-edit
+
+      - name: "🗜️ Compact the benchmark data"
+        # the action pretty prints the history, one line per run keeps the file and its diffs small
+        run: bash .github/workflows/scripts/run-flowr-command.sh benchmark:compact
+
+      # the data is not committed here: the wiki workflow picks the artifact up and folds it into its own
+      # documentation commit, so a release produces one doc commit instead of two
+      - name: "⬆️ Upload the benchmark data for the wiki workflow"
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-data
+          path: wiki/stats/benchmark/
+          if-no-files-found: error

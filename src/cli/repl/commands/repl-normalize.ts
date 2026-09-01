@@ -1,55 +1,70 @@
-import type { ReplCommand, ReplOutput } from './repl-main';
-import { createNormalizePipeline } from '../../../core/steps/pipeline/default-pipelines';
-import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
+import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
-import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import type { FlowrConfigOptions } from '../../../config';
+import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
+import { handleString } from '../core';
+import { ReplClipboard } from './repl-clipboard';
+import { DefaultMap } from '../../../util/collections/defaultmap';
+import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
-async function normalize(parser: KnownParser, remainingLine: string, config: FlowrConfigOptions) {
-	return await createNormalizePipeline(parser, {
-		request: requestFromInput(remainingLine.trim())
-	}, config).allRemainingSteps();
+function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
+	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
-function handleString(code: string): string {
-	return code.startsWith('"') ? JSON.parse(code) as string : code;
-}
-
-function formatInfo(out: ReplOutput, type: string, timing: number): string {
-	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${timing}ms).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
-}
-
-export const normalizeCommand: ReplCommand = {
-	description:  `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
-	usageExample: ':normalize',
-	aliases:      [ 'n' ],
-	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
-		const result = await normalize(parser, handleString(remainingLine), config);
-		const mermaid = normalizedAstToMermaid(result.normalize.ast);
-		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
-		} catch{ /* do nothing this is a service thing */ }
+export const normalizeCommand: ReplCodeCommand = {
+	description:   'Get mermaid code for the normalized AST of R code',
+	isCodeCommand: true,
+	usageExample:  ':normalize',
+	aliases:       ['n'],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
+		const result = await analyzer.normalize();
+		const mermaid = normalizedAstToMermaid(result.ast);
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };
 
-export const normalizeStarCommand: ReplCommand = {
-	description:  'Returns the URL to mermaid.live',
-	usageExample: ':normalize*',
-	aliases:      [ 'n*' ],
-	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
-		const result = await normalize(parser, handleString(remainingLine), config);
-		const mermaid = normalizedAstToMermaidUrl(result.normalize.ast);
-		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
-		} catch{ /* do nothing this is a service thing */ }
+export const normalizeStarCommand: ReplCodeCommand = {
+	description:   'Returns the URL to mermaid.live',
+	isCodeCommand: true,
+	usageExample:  ':normalize*',
+	aliases:       ['n*'],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
+		const result = await analyzer.normalize();
+		const mermaid = normalizedAstToMermaidUrl(result.ast);
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
+	}
+};
+
+export const normalizeHashCommand: ReplCodeCommand = {
+	description:   'Returns summarization stats for the normalized AST',
+	isCodeCommand: true,
+	usageExample:  ':normalize#',
+	aliases:       ['n#'],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
+		const result = await analyzer.normalize();
+		const counts = new DefaultMap<RType, number>(() => 0);
+		let total = 0;
+		const files = result.ast.files.length;
+		RProject.visitAst(result.ast, n => {
+			counts.set(n.type, counts.get(n.type) + 1);
+			total++;
+		});
+		const num = (s: number, pad = 0) => output.formatter.format(s.toString().padStart(pad, ' '), { color: Colors.Cyan, effect: ColorEffect.Foreground });
+		output.stdout(output.formatter.format('Calculated in ' + result['.meta'].timing + 'ms', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic }));
+		output.stdout(`${num(total)} nodes total over ${num(files)} file(s)`);
+		const longestType = counts.keys().map(p => p.toString().length).reduce((a, b) => Math.max(a, b), 0);
+		for(const [type, count] of counts.entries().toArray().sort((a, b) => b[1] - a[1])) {
+			output.stdout(`  ${(type + ':').padEnd(longestType + 1, ' ')} ${num(count, 7)}`);
+		}
+		if(result.hasError) {
+			output.stderr(output.formatter.format('There were errors during normalization, enable lax mode to parse (see :parse)!', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		}
 	}
 };

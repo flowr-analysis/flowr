@@ -1,5 +1,4 @@
-import type { NormalizerData } from '../../normalizer-data';
-import { ParseError } from '../../normalizer-data';
+import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
@@ -10,11 +9,20 @@ import { normalizeExpressions, splitComments } from '../structure/normalize-expr
 import { tryNormalizeSymbol } from '../values/normalize-symbol';
 import { normalizeComment } from '../other/normalize-comment';
 import type { RNode } from '../../../../model/model';
-import type { RSymbol } from '../../../../model/nodes/r-symbol';
+import { RSymbol } from '../../../../model/nodes/r-symbol';
 import type { RComment } from '../../../../model/nodes/r-comment';
 import type { JsonEntry, NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 
+
+/**
+ * Normalizes a `for(<variable> in <vector>) <body>`, `undefined` if the entry is not one.
+ * @param data      - the normalizer's state
+ * @param forToken  - the `for` keyword itself
+ * @param condition - the `(<variable> in <vector>)` head
+ * @param body      - what the loop repeats
+ */
 export function tryNormalizeFor(
 	data: NormalizerData,
 	[forToken, head, body]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]
@@ -32,13 +40,13 @@ export function tryNormalizeFor(
 	const newParseData = { ...data, data, currentRange: undefined, currentLexeme: undefined };
 
 	const { variable: parsedVariable, vector: parsedVector, comments } =
-    normalizeForHead(newParseData, head.content);
+		normalizeForHead(newParseData, head.content);
 	const parseBody = normalizeSingleNode(newParseData, body);
 
 	if(
 		parsedVariable === undefined ||
     parsedVector === undefined ||
-    parseBody.type === RType.Delimiter
+    RDelimiter.is(parseBody)
 	) {
 		throw new ParseError(
 			`unexpected under-sided for-loop, received ${JSON.stringify([
@@ -58,9 +66,9 @@ export function tryNormalizeFor(
 		body:     ensureExpressionList(parseBody),
 		lexeme:   content,
 		info:     {
-			fullRange:        data.currentRange,
-			additionalTokens: comments,
-			fullLexeme:       data.currentLexeme,
+			fullRange:  data.currentRange,
+			adToks:     comments,
+			fullLexeme: data.currentLexeme,
 		},
 		location
 	};
@@ -75,10 +83,10 @@ function normalizeForHead(data: NormalizerData, forCondition: JsonEntry): { vari
 	guard(inPosition > 0 && inPosition < others.length - 1, () => `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`);
 	const variable = tryNormalizeSymbol(data, [others[inPosition - 1]]);
 	guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`);
-	guard((variable as RNode).type === RType.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`);
+	guard(RSymbol.is(variable), () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`);
 
 	const vector = normalizeExpressions(data, [others[inPosition + 1]]);
-	guard(vector.length === 1 && vector[0].type !== RType.Delimiter, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`);
+	guard(vector.length === 1 && !RDelimiter.is(vector[0]), () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`);
 	const parsedComments = comments.map(c => normalizeComment(data, c.content));
 
 	return { variable, vector: vector[0], comments: parsedComments };

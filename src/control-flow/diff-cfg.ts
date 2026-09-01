@@ -1,19 +1,20 @@
-import { jsonReplacer } from '../util/json';
+/**
+ * `Dataflow` spreads {@link GraphHelper} in, and it is built on this file, so the diff pieces are reached
+ * through the helper itself here; going through `Dataflow` would be a cycle.
+ * @lintIgnore use-instead
+ */
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { GraphDiffContext, NamedGraph } from '../util/diff-graph';
-import { initDiffContext , GraphDifferenceReport } from '../util/diff-graph';
-import type { GenericDiffConfiguration } from '../util/diff';
-import { setDifference } from '../util/diff';
-import type { CfgEdge, CfgSimpleVertex, ControlFlowGraph } from './control-flow-graph';
-import { equalVertex } from './control-flow-graph';
+import { GraphHelper } from '../dataflow/graph/graph-helper';
+import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../util/diff-graph';
+import { type GenericDiffConfiguration, setDifference } from '../util/diff';
+import { CfgEdge, CfgVertex, type ControlFlowGraph } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
 
 
 /**
  * Compare two control flow graphs and return a report on the differences.
  * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
- *
- * @see {@link diffOfDataflowGraphs} - for dataflow graphs
+ * @see {@link diffDataflowGraph} - for dataflow graphs
  */
 export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, right: NamedGraph<ControlFlowGraph>, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
 	if(left.graph === right.graph) {
@@ -29,7 +30,7 @@ export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, righ
 function diffDataflowGraphs(ctx: GraphDiffContext<ControlFlowGraph>): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
-	diffOutgoingEdges(ctx);
+	GraphHelper.diff.outgoingEdges(ctx, diffEdges);
 }
 
 function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
@@ -40,8 +41,8 @@ function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 }
 
 function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
-	const lVert = [...ctx.left.vertices(false)].map(([id, info]) => ([id, info] as const));
-	const rVert = [...ctx.right.vertices(false)].map(([id, info]) => ([id, info] as const));
+	const lVert = [...ctx.left.vertices(false).entries()];
+	const rVert = [...ctx.right.vertices(false).entries()];
 	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
         || lVert.length > rVert.length && !ctx.config.rightIsSubgraph
 	) {
@@ -56,25 +57,21 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 			}
 			continue;
 		}
-		if(lInfo.type !== rInfo.type) {
-			ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.type} vs. ${ctx.rightname}: ${rInfo.type}`, {
+		const lType = CfgVertex.getType(lInfo);
+		const rType = CfgVertex.getType(rInfo);
+		if(lType !== rType) {
+			ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${CfgVertex.typeToString(lType)} vs. ${ctx.rightname}: ${CfgVertex.typeToString(rType)}`, {
 				tag: 'vertex',
 				id
 			});
 		}
 
-		if(lInfo.kind !== undefined || rInfo.kind !== undefined) {
-			if(lInfo.kind !== rInfo.kind) {
-				ctx.report.addComment(`Vertex ${id} differs in kinds. ${ctx.leftname}: ${String(lInfo.kind)} vs ${ctx.rightname}: ${String(rInfo.kind)}`, {
-					tag: 'vertex',
-					id
-				});
-			}
-		}
-		if(lInfo.callTargets !== undefined || rInfo.callTargets !== undefined) {
+		const lCt = CfgVertex.getCallTargets(lInfo);
+		const rCt = CfgVertex.getCallTargets(rInfo);
+		if(lCt !== undefined || rCt !== undefined) {
 			setDifference(
-				new Set(lInfo.callTargets ?? []),
-				new Set(rInfo.callTargets ?? []),
+				new Set(lCt ?? []),
+				new Set(rCt ?? []),
 				{
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in call targets. `
@@ -82,132 +79,63 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 			);
 		}
 
-		if(lInfo.elems !== undefined || rInfo.elems !== undefined) {
+		const lElems = CfgVertex.isBlock(lInfo) ? CfgVertex.getBasicBlockElements(lInfo) : undefined;
+		const rElems = CfgVertex.isBlock(rInfo) ? CfgVertex.getBasicBlockElements(rInfo) : undefined;
+		if(lElems !== undefined || rElems !== undefined) {
 			if(!arrayEqual(
-				(lInfo.elems ?? []) as CfgSimpleVertex[],
-				(rInfo.elems ?? []) as CfgSimpleVertex[],
-				equalVertex,
+				(lElems ?? []) as CfgVertex[],
+				(rElems ?? []) as CfgVertex[],
+				CfgVertex.equal
 			)) {
 				ctx.report.addComment(
-					`Vertex ${id} differs in elems.\n  ${ctx.leftname}: ${JSON.stringify(lInfo.elems)}\n  vs\n  ${ctx.rightname}: ${JSON.stringify(rInfo.elems)}`,
+					`Vertex ${id} differs in elems.\n  ${ctx.leftname}: ${JSON.stringify(lElems)}\n  vs\n  ${ctx.rightname}: ${JSON.stringify(rElems)}`,
 					{ tag: 'vertex', id }
 				);
 			}
 		}
-		setDifference(new Set(lInfo.mid as NodeId[] | undefined ?? []), new Set(rInfo.mid as NodeId[] | undefined ?? []), {
-			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in attached mid markers. `
-		});
-		setDifference(new Set(lInfo.end as NodeId[] | undefined ?? []), new Set(rInfo.end as NodeId[] | undefined ?? []), {
-			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in attached end markers. `
-		});
-
-		if(lInfo.root !== rInfo.root) {
-			ctx.report.addComment(`Vertex ${id} differs in root. ${ctx.leftname}: ${JSON.stringify(lInfo.root)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.root)}`, {
-				tag: 'vertex',
-				id
+		const lTargets = CfgVertex.getCallTargets(lInfo);
+		const rTargets = CfgVertex.getCallTargets(rInfo);
+		if(lTargets !== undefined || rTargets !== undefined) {
+			setDifference(lTargets ?? new Set(), rTargets ?? new Set(), {
+				...ctx,
+				position: `${ctx.position}Vertex ${id} differs in call targets. `
 			});
 		}
 
-		setDifference(new Set(lInfo.children), new Set(rInfo.children), {
+		setDifference(new Set(CfgVertex.getChildren(lInfo)), new Set(CfgVertex.getChildren(rInfo)), {
 			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in chilren. `
+			position: `${ctx.position}Vertex ${id} differs in children. `
 		});
-	}
-}
-
-function diffOutgoingEdges(ctx: GraphDiffContext<ControlFlowGraph>): void {
-	const lEdges = new Map([...ctx.left.edges()]);
-	const rEdges = new Map([...ctx.right.edges()]);
-
-	if(lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph) {
-		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}). ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`);
-	}
-
-	for(const [id, edge] of lEdges) {
-		/* This has nothing to do with the subset relation as we verify this in the same graph.
-         * Yet we still do the check as a subgraph may not have to have all source vertices for edges.
-         */
-		if(!ctx.left.hasVertex(id)) {
-			if(!ctx.config.leftIsSubgraph) {
-				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`);
-				continue;
-			}
-		}
-		diffEdges(ctx, id, edge, rEdges.get(id));
-	}
-	// just to make it both ways in case the length differs
-	for(const [id, edge] of rEdges) {
-		if(!ctx.right.hasVertex(id)) {
-			if(!ctx.config.rightIsSubgraph) {
-				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`);
-				continue;
-			}
-		}
-		if(!ctx.config.leftIsSubgraph && !lEdges.has(id)) {
-			diffEdges(ctx, id, undefined, edge);
-		}
-		/* otherwise, we already cover the edge above */
 	}
 }
 
 function diffEdge(edge: CfgEdge, otherEdge: CfgEdge, ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, target: NodeId) {
-	if(edge.label !== otherEdge.label) {
+	const el = CfgEdge.getType(edge);
+	const ol = CfgEdge.getType(otherEdge);
+	if(el !== ol) {
 		ctx.report.addComment(
-			`Edge ${id}->${target} differs in labels. ${ctx.leftname}: ${edge.label} vs ${ctx.rightname}: ${otherEdge.label}`,
+			`Edge ${id}->${target} differs in labels. ${ctx.leftname}: ${el} vs ${ctx.rightname}: ${ol}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}
-	if(edge.caused !== otherEdge.caused) {
+	const ec = CfgEdge.getCause(edge);
+	const oc = CfgEdge.getCause(otherEdge);
+	if(ec !== oc) {
 		ctx.report.addComment(
-			`Edge ${id}->${target} differs in caused. ${ctx.leftname}: ${JSON.stringify(edge.caused)} vs ${ctx.rightname}: ${JSON.stringify(otherEdge.caused)}`,
+			`Edge ${id}->${target} differs in caused. ${ctx.leftname}: ${JSON.stringify(ec)} vs ${ctx.rightname}: ${JSON.stringify(oc)}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}
-	if(edge.when !== otherEdge.when) {
+	const ew = CfgEdge.getWhen(edge);
+	const ow = CfgEdge.getWhen(otherEdge);
+	if(ew !== ow) {
 		ctx.report.addComment(
-			`Edge ${id}->${target} differs in when. ${ctx.leftname}: ${JSON.stringify(edge.when)} vs ${ctx.rightname}: ${JSON.stringify(otherEdge.when)}`,
+			`Edge ${id}->${target} differs in when. ${ctx.leftname}: ${JSON.stringify(ew)} vs ${ctx.rightname}: ${JSON.stringify(ow)}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}
 }
 
 function diffEdges(ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, lEdges: ReadonlyMap<NodeId, CfgEdge> | undefined, rEdges: ReadonlyMap<NodeId, CfgEdge> | undefined): void {
-	if(lEdges === undefined || rEdges === undefined) {
-		if(
-			(lEdges === undefined && !ctx.config.leftIsSubgraph)
-            || (rEdges === undefined && !ctx.config.rightIsSubgraph)
-		) {
-			ctx.report.addComment(
-				`Vertex ${id} has undefined outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`,
-				{ tag: 'vertex', id }
-			);
-		}
-		return;
-	}
-
-	if(
-		lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph
-        || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph
-	) {
-		ctx.report.addComment(
-			`Vertex ${id} differs in number of outgoing edges. ${ctx.leftname}: [${[...lEdges.keys()].join(',')}] vs ${ctx.rightname}: [${[...rEdges.keys()].join(',')}] `,
-			{ tag: 'vertex', id }
-		);
-	}
-	// order independent compare
-	for(const [target, edge] of lEdges) {
-		const otherEdge = rEdges.get(target);
-		if(otherEdge === undefined) {
-			if(!ctx.config.rightIsSubgraph) {
-				ctx.report.addComment(
-					`Target of ${id}->${target} in ${ctx.leftname} is not present in ${ctx.rightname}`,
-					{ tag: 'edge', from: id, to: target }
-				);
-			}
-			continue;
-		}
-		diffEdge(edge, otherEdge, ctx, id, target);
-	}
+	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffEdge);
 }

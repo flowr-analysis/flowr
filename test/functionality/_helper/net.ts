@@ -4,8 +4,8 @@ import { jsonReplacer } from '../../../src/util/json';
 import { guard } from '../../../src/util/assert';
 import { FlowRServer } from '../../../src/cli/repl/server/server';
 import type { IdMessageBase } from '../../../src/cli/repl/server/messages/all-messages';
-import type { RShell } from '../../../src/r-bridge/shell';
-import { defaultConfigOptions } from '../../../src/config';
+import type { KnownParser } from '../../../src/r-bridge/parser';
+import { FlowrConfig } from '../../../src/config';
 
 export class FakeServer implements Server {
 	private connectHandler: OnConnect | undefined;
@@ -24,6 +24,9 @@ export class FakeServer implements Server {
 	}
 }
 
+/**
+ * Appends a fake message to the given fake socket.
+ */
 export function fakeSend<T extends IdMessageBase>(c: FakeSocket, message: T): void {
 	const msg = JSON.stringify(message, jsonReplacer);
 	c.send(`${msg}\n`);
@@ -51,14 +54,14 @@ export class FakeSocket implements Socket {
 		this.closeHandler?.();
 	}
 
-	public on(event: 'close', listener: () => void): void
-	public on(event: 'error', listener: (e: unknown) => void): void
-	public on(event: 'data', listener: (data: Buffer) => void): void
+	public on(event: 'close', listener: () => void): void;
+	public on(event: 'error', listener: (e: unknown) => void): void;
+	public on(event: 'data', listener: (data: Buffer) => void): void;
 	public on(event: 'close' | 'data' | 'error', listener: (() => void) | ((data: Buffer) => void) | ((e: unknown) => void)): void {
 		if(event === 'close') {
 			this.closeHandler = listener as () => void;
 		} else if(event === 'data') {
-			this.dataHandler = listener as (data: Buffer) => void;
+			this.dataHandler = listener;
 		}
 	}
 
@@ -106,9 +109,8 @@ export class FakeSocket implements Socket {
 
 	/**
 	 * Returns all messages received by the respective socket.
-	 *
 	 * @param expected - if given, this enforces the respective type field to be as given.
-	 * 									 In case of failure, this will throw an exception.
+	 *                   In case of failure, this will throw an exception.
 	 */
 	public getMessages(expected?: IdMessageBase['type'][]): readonly IdMessageBase[] {
 		if(expected) {
@@ -124,10 +126,14 @@ export class FakeSocket implements Socket {
 	}
 }
 
-export function withSocket<T = void>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T>): () => Promise<T>  {
+
+/**
+ * Runs the given function in a fake server/socket environment.
+ */
+export function withSocket<T = void>(shell: KnownParser, fn: (socket: FakeSocket, server: FakeServer) => Promise<T>): () => Promise<T>  {
 	return async function() {
 		const net = new FakeServer();
-		const server = new FlowRServer({ 'r-shell': shell }, 'r-shell', true, defaultConfigOptions, net);
+		const server = new FlowRServer({ [shell.name]: shell }, shell.name, true, FlowrConfig.default(), net);
 		await server.start(42);
 		const socket = new FakeSocket();
 		net.connectClient(socket);

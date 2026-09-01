@@ -18,6 +18,8 @@ PARALLEL="${3-1}"
 # default to running 1 time
 RUNS="${4-1}"
 PARSER="${5-"r-shell"}"
+# pass "no-extra-phases" to skip the dependencies query, the linter run and the calibration
+EXTRA="${6-}"
 
 SUITE="suite-${SUITE_NAME}"
 SETUP_SCRIPT="setup.sh"
@@ -38,7 +40,12 @@ echo "done."
 FILES_DIR="$(pwd)/files/"
 
 ## run the benchmark script for each file
-CMD=(npm run benchmark -- --cfg --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" --parser "${PARSER}" "${FILES_DIR}")
+SKIP_EXTRA=()
+if [[ "${EXTRA}" == "no-extra-phases" ]]; then
+  SKIP_EXTRA=(--no-extra-phases)
+fi
+
+CMD=(npm run benchmark -- --cfg --cg --dataframe-shape-inference "${SKIP_EXTRA[@]}" --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" --parser "${PARSER}" "${FILES_DIR}")
 
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"
@@ -49,6 +56,13 @@ CMD=(npm run summarizer -- --input "${RAW_OUTPUT}" --output "${OUTPUT_FILE}" --g
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"
 echo -e "\033[0m  * Done (written to ${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX})."
+
+# the CI consumes the graph summary, so refuse to report success without it
+GRAPH_SUMMARY="${OUTPUT_FILE}-graph.json"
+if [[ ! -s "${GRAPH_SUMMARY}" ]]; then
+  printf "Suite \"%s\" produced no graph summary at \"%s\".\n" "${SUITE_NAME}" "${GRAPH_SUMMARY}" >&2
+  exit 3
+fi
 
 # step out
 cd ..

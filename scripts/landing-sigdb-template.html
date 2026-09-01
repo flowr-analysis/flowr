@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowR &middot; signature database</title>
+<meta name="description" content="Search the R functions flowR knows: <!--FUNCTIONS--> exported names from <!--PACKAGES--> base-R and CRAN packages, the database behind its sophisticated call resolution.">
+<link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
+<link rel="search" type="application/opensearchdescription+xml" title="flowR sigdb" href="opensearch.xml">
+<script>
+	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
+	try {
+		const theme = localStorage.getItem('flowr-theme');
+		if(theme) { document.documentElement.dataset.theme = theme; }
+	} catch(e) { /* private mode keeps the system theme */ }
+	/* every flowR page reads the same key, so a change on one of them follows you to the others */
+	addEventListener('storage', e => {
+		if(e.key === 'flowr-theme') {
+			if(e.newValue) {
+				document.documentElement.dataset.theme = e.newValue;
+			} else {
+				delete document.documentElement.dataset.theme;
+			}
+		}
+	});
+</script>
+<style>
+:root {
+	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
+	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff;
+	--shadow: 0 1px 2px rgba(16,20,30,.06), 0 6px 18px rgba(16,20,30,.06);
+	color-scheme: light;
+}
+:root[data-theme="dark"] {
+	--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
+	--border: #2f343d; --accent: #56b4e9; --accent-fg: #10131a;
+	--shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35); color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
+		--border: #2f343d; --accent: #56b4e9; --accent-fg: #10131a;
+		--shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35); color-scheme: dark;
+	}
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0; padding: 0 1rem 3rem; color: var(--fg); -webkit-text-size-adjust: 100%;
+	font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	background: radial-gradient(64rem 24rem at 50% -10rem, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%) var(--bg) no-repeat;
+}
+main { max-width: 62rem; margin: 0 auto; }
+a {
+	color: var(--accent); text-decoration: underline;
+	text-decoration-thickness: from-font; text-underline-offset: .16em;
+	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+	transition: color .12s, text-decoration-color .12s, opacity .12s;
+}
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
+@media (prefers-reduced-motion: reduce) { a { transition: none; } }
+h1 { font-size: clamp(1.5rem, 5vw, 2.1rem); line-height: 1.2; letter-spacing: -.02em; margin: 1.4rem 0 .4rem; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.bar {
+	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
+	padding: .8rem 0 .6rem; border-bottom: 1px solid var(--border);
+}
+.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
+.bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }
+.bar .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+.bar .version { margin-left: .55rem; font-size: .82rem; font-weight: 400; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar .version:hover { color: var(--fg); }
+.mark { flex: none; }
+.bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+.bar nav::-webkit-scrollbar { display: none; }
+.bar nav a {
+	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
+	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
+}
+.bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
+.bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
+/* a phone has no room for one row: the links wrap under the name instead of scrolling out of sight */
+@media (max-width: 46rem) {
+	.bar { flex-wrap: wrap; }
+	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
+	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
+	.bar .controls { margin-left: auto; }
+}
+/* the four names no longer fit on one line: two by two reads better than three and a stray */
+@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
+/* GitHub asks that its mark stay solid black or white and unmodified, so only the backdrop reacts to the pointer */
+.bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
+.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
+.bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+:root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .bar .controls .gh, :root:not([data-theme="light"]) .bar .controls .gh:hover { color: #fff; }
+}
+.bar .controls .gh svg { display: block; }
+#theme {
+	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; flex: none;
+	font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
+	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+}
+#theme:hover { border-color: var(--accent); color: var(--accent); }
+#theme svg { display: block; }
+#theme .sun { display: none; }
+:root[data-theme="dark"] #theme .sun { display: block; }
+:root[data-theme="dark"] #theme .moon { display: none; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) #theme .sun { display: block; }
+	:root:not([data-theme="light"]) #theme .moon { display: none; }
+}
+
+p.lead { color: var(--muted); margin: 0 0 1.2rem; }
+.when { font-size: .9em; }
+.search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.search input {
+	flex: 1 1 18rem; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	padding: .7rem .9rem; border-radius: .6rem; border: 1px solid var(--border);
+	background: var(--panel); color: var(--fg); box-shadow: var(--shadow);
+}
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.search select { font: inherit; padding: .7rem .6rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); }
+#status { min-height: 1.6em; margin: .7rem 0 0; color: var(--muted); font-size: .9rem; }
+.filters { display: flex; flex-wrap: wrap; gap: .35rem; margin: .8rem 0 0; }
+.filters button {
+	font: inherit; font-size: .74rem; padding: .2rem .6rem; cursor: pointer; border-radius: 1rem;
+	border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+	transition: color .12s, border-color .12s, background .12s;
+}
+.filters button:hover:not(:disabled) { color: var(--fg); border-color: var(--accent); }
+.filters button:disabled { opacity: .4; cursor: default; }
+.mix { order: 2; margin-left: auto; display: flex; align-items: center; gap: .45rem; }
+.mixlabel, .filterlabel { font-size: .72rem; color: var(--muted); }
+.filterlabel { align-self: center; margin-right: .1rem; }
+#scope {
+	font: inherit; font-size: .76rem; font-weight: 600; cursor: pointer; padding: .22rem .7rem;
+	border-radius: 1rem; border: 1px solid transparent; background: var(--accent); color: var(--accent-fg);
+}
+#scope:hover { filter: brightness(1.08); }
+#scope[hidden] { display: none; }
+.mix .track { display: inline-flex; gap: .1rem; padding: .16rem; border-radius: 999px; border: 1px solid var(--border); background: var(--sunk); }
+.mix .pick { font: inherit; font-size: .74rem; line-height: 1.5; cursor: pointer; color: var(--muted); border-radius: 999px; border: 0; background: none; padding: .16rem .6rem; }
+.mix .pick[aria-pressed="true"] { color: var(--accent); background: var(--panel); border-color: transparent; }
+.filters button[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
+
+/* minmax(0, 1fr), not the implicit auto: a track sized to its content would let a long signature push the row past the page */
+#hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+#hits li {
+	padding: .55rem .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel);
+	transition: border-color .12s; cursor: pointer; min-width: 0;
+}
+/* one line per hit: the signature is the part that gives way, so nothing else is pushed onto a line of its own */
+#hits .head { display: flex; flex-wrap: nowrap; gap: .3rem .8rem; align-items: baseline; min-width: 0; }
+#hits .head > :not(.stated) { flex: none; }
+#hits .detail { margin-top: .55rem; border-top: 1px solid var(--border); padding-top: .55rem; }
+#hits .detail p { margin: .1rem 0; font-size: .85rem; }
+#hits .pkghit .detail p {
+	display: grid; grid-template-columns: minmax(0, 9rem) minmax(0, 1fr); gap: .8rem; align-items: baseline; color: var(--fg);
+}
+#hits .pkghit .detail .kind { color: var(--muted); }
+#hits .detail .links { display: flex; gap: 1.2rem; margin-top: .6rem; }
+#hits .detail .links a { font-size: .85rem; }
+#hits .owns { display: grid; gap: .1rem; max-height: 19rem; overflow-y: auto; }
+#hits .src {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem;
+	color: var(--muted); text-decoration: none; justify-self: end;
+	min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16rem;
+}
+#hits .src:hover { color: var(--accent); text-decoration: underline; }
+/* the same separator the version already uses between itself and its download count */
+#hits .own .src + .ver::before { content: '· '; }
+#hits .src.nofile { font-style: italic; opacity: .7; }
+#hits .own .pkg, #hits .own .go { text-decoration: none; color: inherit; }
+#hits .own .pkg:hover { color: var(--accent); }
+#hits .own {
+	display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto) auto minmax(4.2rem, auto) 1rem;
+	gap: .8rem; align-items: baseline;
+	padding: .3rem .5rem; border-radius: .4rem; text-decoration: none; color: var(--fg); font-size: .85rem;
+	cursor: pointer;
+}
+#hits .own:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+#hits .own.undocumented { color: var(--muted); opacity: .55; }
+#hits .own.undocumented .go { opacity: .5; }
+#hits .pkg { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
+#hits .ver, #hits .go { color: var(--muted); font-size: .78rem; }
+/* a long name or a version with its download count next to it gives way rather than running into the column beside it */
+#hits .pkg, #hits .ver { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#hits .tag {
+	justify-self: start; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
+	letter-spacing: .03em; color: var(--muted); border: 1px solid var(--border);
+}
+#hits .own:hover .go { color: var(--accent); }
+#hits .flags { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
+#hits .pkghit { border-style: dashed; }
+#hits .pkghit .owners { color: var(--muted); font-size: .78rem; }
+/* every badge is the same pill whatever it says, so only its colour carries the difference */
+#hits .kindtag, #hits .flag {
+	display: inline-flex; align-items: center; white-space: nowrap;
+	padding: .1rem .5rem; border-radius: 1rem; border: 1px solid transparent;
+	font-size: .7rem; line-height: 1.35; letter-spacing: .02em;
+}
+#hits .kindtag {
+	font-weight: 600;
+	color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+	border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+#hits .generic { font-size: .74rem; text-decoration: none; color: var(--muted); }
+#hits .generic:hover { color: var(--accent); text-decoration: underline; }
+#hits .flag {
+	font-weight: 500;
+	color: var(--muted); background: var(--sunk); border-color: var(--border);
+}
+#hits .ask {
+	display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; margin: .5rem 0 0;
+	color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+#hits .ask::after { content: ""; } /* the command itself is the text node after the label */
+#hits .ask span { font-family: system-ui, sans-serif; }
+#hits li:hover { border-color: var(--accent); }
+#hits .name { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
+#hits .name.value { font-weight: 500; font-style: italic; }
+#hits .kindtag.value { color: var(--muted); background: var(--sunk); border-color: var(--border); }
+#hits .kindtag.flowr { color: var(--muted); background: var(--panel); border-color: var(--border); font-weight: 500; }
+#hits .kindtag.gone { color: #d55e00; background: color-mix(in srgb, #d55e00 10%, transparent); border-color: color-mix(in srgb, #d55e00 35%, transparent); }
+/* what flowR states about the name, next to what the database says about it */
+#hits .kindtag.props { border-style: dashed; opacity: .8; }
+#hits .flag.stated { border-style: dashed; color: var(--accent); }
+/* stated: as wide as what it says and no wider, an ellipsis only once the line runs out; inline-flex so its own parts (kind/args/ret) lay out beside it */
+#hits .stated {
+	font-size: .78rem; color: var(--muted); background: var(--sunk);
+	padding: .05rem .35rem; border-radius: .3rem; white-space: nowrap;
+	overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;
+	display: inline-flex; align-items: baseline; vertical-align: bottom;
+}
+/* the formals are what may be cut: without min-width a flex item never shrinks below what it says, and the row would grow past the panel */
+#hits .stated .args { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+/* what the call does is the part worth keeping when the formals no longer fit */
+#hits .stated .ret, #hits .stated .kind { flex: none; }
+#hits .stated .role { font-style: normal; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
+#hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
+#hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
+#hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }
+#hits .owners a {
+	font-size: .78rem; text-decoration: none; padding: .1rem .45rem; border-radius: .8rem;
+	border: 1px solid var(--border); color: var(--muted); background: var(--sunk);
+}
+#hits .owners a:hover { border-color: var(--accent); color: var(--accent); }
+#hits .owners a.base { border-style: dashed; border-color: color-mix(in srgb, var(--fg) 30%, transparent); color: var(--fg); background: transparent; }
+#hits mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; border-radius: .2rem; }
+.more-hits {
+	justify-self: center; margin: .6rem 0 0; font: inherit; font-size: .8rem; font-weight: 600;
+	padding: .4rem 1.4rem; border-radius: 1rem; cursor: pointer;
+	border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+}
+.more-hits:hover { color: var(--accent); border-color: var(--accent); }
+.more { font: inherit; font-size: .78rem; color: var(--muted); background: none; border: 0; cursor: pointer; padding: .1rem .3rem; }
+.more:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="bar">
+	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Signature DB</span><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h2>
+	<nav>
+		<a href="../../" target="_blank" rel="noopener">Landing Page</a>
+		<a href="../playground/" target="_blank" rel="noopener">Playground</a>
+		<a href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+		<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">How It Works</a>
+		<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+	</nav>
+	<span class="controls">
+		<a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+		<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
+		<svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+		<svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
+	</button>
+	</span>
+</div>
+
+<h1>Signature Database</h1>
+<p class="lead">
+	Search through all R functions flowR knows, using its
+	<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">signature database</a>
+	<span class="when">(last updated <!--UPDATED-->, only most recent package versions)</span>.
+</p>
+
+<div class="search">
+	<input id="q" type="search" spellcheck="false" autocomplete="off" autofocus placeholder="dplyr::filter" aria-label="Function name">
+	<select id="sort" aria-label="How to sort">
+		<option value="auto">best match</option>
+		<option value="best">closest match</option>
+	</select>
+	<select id="mode" aria-label="How to match">
+		<option value="fuzzy">fuzzy</option>
+		<option value="prefix">starts with</option>
+		<option value="contains">contains</option>
+	</select>
+</div>
+<div class="filters" id="filters">
+	<span class="filterlabel">filter:</span>
+	<button type="button" id="scope" hidden></button>
+	<span class="mix">
+		<span class="mixlabel">match</span>
+		<span class="track" role="group" aria-label="How the filters combine">
+			<button type="button" class="pick" data-mix="all" aria-pressed="true">all</button>
+			<button type="button" class="pick" data-mix="any" aria-pressed="false">any</button>
+			<button type="button" class="pick" data-mix="none" aria-pressed="false">none</button>
+		</span>
+	</span>
+</div>
+<p id="status">Type a name to search.</p>
+<ul id="hits"></ul>
+
+</main>
+<script type="text/plain" id="data"><!--DATA--></script>
+<script type="application/json" id="kinds">"<!--KINDS-->"</script>
+<script type="application/json" id="stated">"<!--STATED-->"</script>
+<script type="application/json" id="topics">"<!--TOPICS-->"</script>
+<script type="application/json" id="formals">"<!--FORMALS-->"</script>
+<script type="application/json" id="groups">"<!--GROUPS-->"</script>
+<script type="application/json" id="generics">"<!--GENERICS-->"</script>
+<script>
+/* the ranker the playground shares, written in from `src/util/text/name-rank.ts` by the build */
+<!--RANKER-->
+'use strict';
+const theme = document.getElementById('theme');
+theme.addEventListener('click', () => {
+	const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+	const next = (document.documentElement.dataset.theme || (dark ? 'dark' : 'light')) === 'dark' ? 'light' : 'dark';
+	document.documentElement.dataset.theme = next;
+	try { localStorage.setItem('flowr-theme', next); } catch(e) { /* private mode forgets the choice */ }
+});
+
+/* The table is unpacked once, on the first search, so opening the page stays cheap. */
+let packages = null, names = null, known, byName = null;
+async function unpack() {
+	const encoded = document.getElementById('data').textContent.trim();
+	/* the decode is the slow part, so it happens in a worker built from a blob: no extra file to ship */
+	const text = await inWorker(encoded).catch(() => decode(encoded));
+	/* split at the first blank line only: a stray one further in must not cut the package table short */
+	const between = text.indexOf('\n\n');
+	const nameBlob = text.slice(0, between), packageBlob = text.slice(between + 2);
+	/* the name table stays one string: splitting it into 577k entries is what used to freeze the page */
+	names = nameBlob;
+	packages = packageBlob.split('\n').map(line => line.split('\t'));
+	/* a package name back to its row, so `dplyr::` can be answered without scanning the table */
+	byName = new Map(packages.map(([name], index) => [name, index]));
+}
+
+const q = document.getElementById('q'), mode = document.getElementById('mode');
+const sort = document.getElementById('sort');
+/** each filter, with what it says when the pointer rests on it */
+const Filters = [
+	['only', 'package', 'packages', 'list packages rather than the names they export'],
+	['pkg', 'archive', 'archived', 'names from a package CRAN no longer carries'],
+	['flag', 't', 'throw', 'may raise an error, so a caller cannot count on getting a value back'],
+	['flag', 'n', 'non-det.', 'non-deterministic: may answer differently for the same arguments, like random draws or the clock'],
+	['flag', '3', 'S3', 'S3 method: an implementation of a generic for one class, like print.data.frame'],
+	['flag', 'x', 'depr.', 'marked as deprecated by the package itself'],
+	['flag', 'd', 'calls depr.', 'calls deprecated: calls something deprecated, so it may stop working when that goes'],
+	['flag', 'c', 'value', 'a value rather than a function, like pi or LETTERS'],
+	['flag', 'v', 'no loc', 'no location: the database records no file and line for it. Usually a constant, a dataset or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds'],
+	['name', 'group', 'S4', 'S4 group member: a member of an S4 group generic (Math, Arith, Summary, ...), which a package usually exports because it answered the group for one of its classes'],
+	['kind', 'read', 'read', 'reads data from somewhere outside the program, like read.csv'],
+	['kind', 'write', 'write', 'writes data out of the program, like write.csv'],
+	['kind', 'visualize', 'plot', 'draws something, like plot or ggsave'],
+	['kind', 'library', 'load', 'attaches a package, like library or require']
+];
+const active = new Set();
+const filters = document.getElementById('filters');
+const scope = document.getElementById('scope');
+scope.addEventListener('click', () => {
+	q.value = q.value.replace(/^[\w.]+:::?/, '');
+	void search();
+});
+const picks = [...document.querySelectorAll('.pick')];
+let how = 'all';
+const buttons = new Map();
+for(const [what, key, label, about] of Filters) {
+	const button = document.createElement('button');
+	button.type = 'button';
+	button.textContent = label;
+	button.title = about + '. Click to filter by it, click again to drop it';
+	button.setAttribute('aria-pressed', 'false');
+	button.addEventListener('click', () => {
+		const id = what + ':' + key;
+		active.has(id) ? active.delete(id) : active.add(id);
+		button.setAttribute('aria-pressed', String(active.has(id)));
+		void search();
+	});
+	buttons.set(what + ':' + key, button);
+	filters.append(button);
+}
+for(const pick of picks) {
+	pick.addEventListener('click', () => {
+		how = pick.dataset.mix;
+		picks.forEach(other => other.setAttribute('aria-pressed', String(other === pick)));
+		void search();
+	});
+}
+
+/** drops every active filter, which is what asking for a whole package means */
+function clearFilters() {
+	active.clear();
+	for(const button of buttons.values()) {
+		button.setAttribute('aria-pressed', 'false');
+	}
+}
+
+/** does one filter hold for this name? */
+function holds(id, name, owners) {
+	const [what, key] = id.split(':');
+	if(what === 'only') {
+		return false;   // it selects what is listed, not which names qualify
+	}
+	if(what === 'name') {
+		/* a property of the name itself, so no owner has to agree for it to hold */
+		return groups.has(name);
+	}
+	if(what === 'pkg') {
+		/* a property of the package rather than of the name: archived means CRAN dropped it */
+		return owners.some(entry => packages[owner(entry).index]?.[7] === '1');
+	}
+	return what === 'kind'
+		? (kinds.get(name) ?? []).includes(key)
+		: owners.some(entry => owner(entry).flags.includes(key));
+}
+
+/** `all of` wants every active filter, `any of` wants one of them */
+function passes(name, owners) {
+	if(active.size === 0) {
+		return true;
+	}
+	const matched = [...active].filter(id => holds(id, name, owners)).length;
+	return how === 'any' ? matched > 0 : how === 'none' ? matched === 0 : matched === active.size;
+}
+
+/** a filter that would leave nothing behind is greyed out rather than silently emptying the list */
+function offerFilters(matches) {
+	for(const [id, button] of buttons) {
+		/* `match none` is about what to exclude, so a filter that matches nothing is still useful there */
+		const would = id.startsWith('only:') || how === 'none' || matches.some(([name, , owners]) => holds(id, name, owners.split(',')));
+		button.disabled = !would && !active.has(id);
+	}
+}
+const status = document.getElementById('status'), hits = document.getElementById('hits');
+const Step = 100;
+let limit = Step;
+
+/** base64 to gzip to text, the plain way */
+async function decode(encoded) {
+	const raw = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+	return new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+}
+
+/** the same, on a worker thread, so the page stays usable while several megabytes are unpacked */
+function inWorker(encoded) {
+	const source = `self.onmessage = async ({ data }) => {
+		const raw = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+		const text = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+		self.postMessage(text);
+	};`;
+	return new Promise((resolve, reject) => {
+		const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+		const worker = new Worker(url);
+		worker.onmessage = event => {
+			resolve(event.data);
+			worker.terminate();
+			URL.revokeObjectURL(url);
+		};
+		worker.onerror = error => {
+			reject(error);
+			worker.terminate();
+			URL.revokeObjectURL(url);
+		};
+		worker.postMessage(encoded);
+	});
+}
+
+/** the bare names, so an S3 method can tell whether its generic is a name flowR knows */
+function knownNames() {
+	if(known === undefined) {
+		known = new Set();
+		for(let at = 0; at < names.length;) {
+			const tab = names.indexOf('\t', at);
+			known.add(names.slice(at, tab));
+			const end = names.indexOf('\n', tab);
+			at = end < 0 ? names.length : end + 1;
+		}
+	}
+	return known;
+}
+
+/** whether a manual page can be named for this one; `%o%` and friends have none, and a name the database says nothing about (`?`) is only safe to guess at where an alias table settles it */
+function documented(name, flags, index) {
+	if(flags.includes('u')) {
+		return false;
+	}
+	const pkg = packages[index]?.[0];
+	/* what a link would name: the topic when one is recorded, else the name itself */
+	const page = topics.get(pkg + '::' + name) || name;
+	if(!/^[A-Za-z.][A-Za-z0-9._-]*$/.test(page)) {
+		return false;
+	}
+	/* base R ships an alias table naming every page it has, so a name it does not carry has none: most of what base exports without documenting, locals and internals alike */
+	if(packages[index]?.[2] === '1') {
+		return !topicsKnown || topics.has(pkg + '::' + name);
+	}
+	/* `?` says the database holds nothing about it, and outside base R there is no table to settle it, so guessing only produces a dead link */
+	return !flags.includes('?');
+}
+
+/** the file of a package an export lives in, `undefined` where the database records none; see sourceUrl below for where that file lives */
+function sourceFile(index, file) {
+	return file === undefined ? undefined : (packages[index][8] ?? '').split('|')[file] || undefined;
+}
+
+/** where the code of an export lives: base R in the read-only mirror of R's sources (a branch per release series, not a tag), CRAN packages on the CRAN mirror at their version; without a file of its own, the package's sources are as close as this gets, and a package from anywhere else has only its repository to point at */
+function sourceUrl(pkg, version, base, file, line, repository) {
+	const at = line === undefined ? '' : '#L' + line;
+	if(base) {
+		const series = /^(\d+)\.(\d+)/.exec(version ?? '');
+		const ref = series ? 'R-' + series[1] + '-' + series[2] + '-branch' : 'trunk';
+		const root = 'https://github.com/wch/r-source/' + (file ? 'blob' : 'tree') + '/' + ref
+			+ '/src/library/' + encodeURIComponent(pkg);
+		return file ? root + '/' + file + at : root + '/R';
+	}
+	if(repository !== undefined && repository !== Repositories['cran']) {
+		return repository.home(pkg);
+	}
+	const root = 'https://github.com/cran/' + encodeURIComponent(pkg) + '/' + (file ? 'blob' : 'tree') + '/'
+		+ encodeURIComponent(version ?? 'master');
+	return file ? root + '/' + file + at : root;
+}
+
+/**
+ * Where a package comes from, as the database records it: CRAN unless a version states another repository.
+ * `sources` names the repository rather than a URL, so each one says how to reach a package of its own.
+ */
+const Repositories = {
+	'cran':         { label: 'CRAN',          home: pkg => 'https://cran.r-project.org/package=' + encodeURIComponent(pkg) },
+	'bioc':         { label: 'Bioconductor',  home: pkg => 'https://bioconductor.org/packages/' + encodeURIComponent(pkg) },
+	'bioconductor': { label: 'Bioconductor',  home: pkg => 'https://bioconductor.org/packages/' + encodeURIComponent(pkg) },
+	'github':       { label: 'GitHub',        home: pkg => 'https://github.com/search?q=' + encodeURIComponent(pkg) + '+language%3AR&type=repositories' },
+	'r-universe':   { label: 'R-universe',    home: pkg => 'https://r-universe.dev/search?q=' + encodeURIComponent(pkg) },
+	'runiverse':    { label: 'R-universe',    home: pkg => 'https://r-universe.dev/search?q=' + encodeURIComponent(pkg) },
+	'omegahat':     { label: 'Omegahat',      home: pkg => 'https://www.omegahat.net/' + encodeURIComponent(pkg) + '/' },
+	'rforge':       { label: 'R-Forge',       home: pkg => 'https://r-forge.r-project.org/projects/' + encodeURIComponent(pkg) + '/' }
+};
+
+/** the repository of the package at `index`; base R comes with R itself, and an unrecorded one is CRAN */
+function repositoryOf(index) {
+	const [, , base, , , , , , , source] = packages[index] ?? [];
+	if(base === '1') {
+		return { label: 'base R', home: pkg => 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/00Index.html' };
+	}
+	const stated = (source ?? '').toLowerCase();
+	/* a repository the page has no address for still says its name, which beats claiming CRAN */
+	return Repositories[stated] ?? (stated === '' ? Repositories['cran'] : { label: source, home: () => undefined });
+}
+
+/** where a package documents itself, for a name that has no page of its own */
+function packageDocUrl(index) {
+	const [pkg, , base] = packages[index];
+	/* rdrr.io has no index page for a base package, but the R manual does */
+	return base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/00Index.html'
+		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/';
+}
+
+/* base R goes to R's own manual, not rdrr.io (which serves an older release and lacks recent additions like array2DF); it is also where the alias table above comes from, so the two never disagree */
+function docUrl(name, entry) {
+	const { index, topic } = typeof entry === 'object' ? entry : { index: entry };
+	const [pkg, , base] = packages[index];
+	const page = encodeURIComponent(topic || topics.get(pkg + '::' + name) || name);
+	return base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/' + page + '.html'
+		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/man/' + page + '.html';
+}
+
+/** a name with the matched part marked, built as nodes so a function name can never inject markup */
+function marked(name, needle, at) {
+	const span = document.createElement('span');
+	span.className = 'name';
+	span.title = 'click for every package that exports ' + name;
+	if(at < 0) {
+		/* a fuzzy hit matches scattered characters; neighbours join into one mark so `filter` reads as one highlight, not six boxes in a row */
+		const wanted = needle.toLowerCase();
+		let next = 0, run = '', plain = '';
+		const flush = () => {
+			if(run) {
+				const one = document.createElement('mark');
+				one.textContent = run;
+				span.append(one);
+				run = '';
+			}
+		};
+		for(const c of name) {
+			if(next < wanted.length && c.toLowerCase() === wanted[next]) {
+				span.append(plain);
+				plain = '';
+				run += c;
+				next++;
+			} else {
+				flush();
+				plain += c;
+			}
+		}
+		flush();
+		span.append(plain);
+		return span;
+	}
+	span.append(name.slice(0, at));
+	const hit = document.createElement('mark');
+	hit.textContent = name.slice(at, at + needle.length);
+	span.append(hit, name.slice(at + needle.length));
+	return span;
+}
+
+/** what a reader most likely meant, ordered by the ranker the playground's completion also uses (src/util/text/name-rank.ts, written in here by the build); this only states what the page knows about a name */
+function score(name, owners, rank, needle) {
+	const first = owner(owners.split(',')[0]);
+	const pkg = packages[first.index];
+	return rankName({
+		name, needle, rank,
+		downloads: Number(pkg?.[3] ?? 0),
+		baseR:     pkg?.[2] === '1',
+		base:      pkg?.[0] === 'base',
+		known:     kinds.has(name),
+		s3:        first.flags.includes('3'),
+		/* only a stated value ranks lower: a function the database records no definition for is still a function */
+		variable:  first.flags.includes('c')
+	});
+}
+
+/** every character of the needle, in order but not necessarily adjacent: `rcsv` finds `read.csv` */
+function fuzzy(name, needle) {
+	let at = 0;
+	for(const c of needle) {
+		at = name.indexOf(c, at) + 1;
+		if(at === 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** what the letters in an owner entry mean, spelled out for the reader */
+const FlagNames = {
+	t: 'can throw', 3: 'S3 method', n: 'non-deterministic', d: 'calls something deprecated',
+	r: 'recursive', i: 'calls internals', o: 'owns an S3 class', 4: 'owns an S4 class',
+	m: 'S4 method', h: 'higher order', x: 'deprecated', c: 'value', v: 'no loc', u: 'no docs'
+};
+
+/** the flags recording something about the entry rather than about the call, which no signature states */
+const MetaFlags = ['c', 'v', 'u'];
+
+/** the few flags whose short form does not speak for itself */
+const FlagAbout = {
+	c: 'the database records it as a value rather than a function',
+	v: 'no location: the database records no file and line for it in this package. Usually a constant, a dataset '
+		+ 'or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds',
+	u: 'no manual page for this name in this package'
+};
+
+/** an owner reads `12`, or `12:tn:4:topic:5:2g`: package, flags, parameters, topic, and file and line in base 36 */
+function owner(entry) {
+	const [index, flags, params, topic, file, line] = String(entry).split(':');
+	return {
+		index:  Number(index),
+		flags:  [...(flags ?? '')],
+		params: Number(params) || 0,
+		topic:  topic ? decodeURIComponent(topic) : undefined,
+		file:   file ? parseInt(file, 36) : undefined,
+		line:   line ? parseInt(line, 36) : undefined
+	};
+}
+
+/* a Map, not the parsed object: R exports names like `toString`, and those would hit Object's prototype */
+const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
+/* `name -> [package, properties, formals with their roles][]`: what flowR states about the names it defines */
+const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
+/* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself; the keys are also the set of base R names with a manual page at all */
+const topics = new Map(Object.entries(JSON.parse(document.getElementById('topics').textContent)));
+/* the names something dispatches on, which is what makes `format.Date` a method and `is.datacggm` a function */
+const generics = new Set(JSON.parse(document.getElementById('generics').textContent).split('\n').filter(Boolean));
+/* whether that set is the real one: without an R to read the alias tables from, it holds the primitives alone */
+const topicsKnown = '<!--TOPICS-COMPLETE-->' === 'true';
+/* `name -> [package, parameters][]`: what base R itself declares, which flowR states nothing about */
+const formals = new Map(Object.entries(JSON.parse(document.getElementById('formals').textContent)));
+/* `name -> S4 group generic`: `sin` belongs to `Math`, so a package answering `Math` for its class exports `sin` */
+const groups = new Map(Object.entries(JSON.parse(document.getElementById('groups').textContent)));
+/** how flowR describes what one of its known functions does */
+const KindNames = {
+	library: 'can load a package', source: 'can source a file', read: 'can read a file',
+	write: 'can write a file', visualize: 'can draw a plot', test: 'a test', remote: 'can use the network',
+	builtin: 'flowR'
+};
+
+/** CRAN downloads over the last month (what `cran_downloads(when = "last-month")` reported) */
+function count(downloads) {
+	const n = Number(downloads);
+	return (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n)) + '/month';
+}
+
+function ownerLink(index) {
+	const [name, version, base] = packages[index];
+	const link = document.createElement('a');
+	link.target = '_blank';
+	link.rel = 'noopener';
+	link.textContent = name;
+	const repository = repositoryOf(index);
+	link.title = name + ' ' + version + (base === '1' ? ' (base R, always available)' : ' (' + repository.label + ')');
+	link.className = base === '1' ? 'base' : '';
+	link.href = (base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html'
+		: repository.home(name)) ?? '';
+	return link;
+}
+
+const Shown = 3;
+
+/** one aligned row per owning package, each one a link to that package's manual page for this name */
+function detail(name, owners) {
+	/* the packages flowR itself states something about, so its words land on the right row */
+	const statedFor = new Map((stated.get(name) ?? []).map(entry => [entry[0], entry]));
+	const box = document.createElement('div');
+	box.className = 'detail';
+	const list = document.createElement('div');
+	list.className = 'owns';
+	for(const entry of owners) {
+		const { index, flags, topic, file, line } = owner(entry);
+		if(packages[index] === undefined) {
+			continue;   // an index the table does not have: never expected, never fatal
+		}
+		const [pkg, version, base, downloads] = packages[index];
+		const row = document.createElement('div');
+		row.className = 'own';
+		row.target = '_blank';
+		row.rel = 'noopener';
+		if(documented(name, flags, index)) {
+			row.href = docUrl(name, { index, topic });
+			row.title = 'the manual page for ' + name + ' in ' + pkg;
+		} else {
+			/* no page of its own, so the package's documentation is the next best thing */
+			row.href = packageDocUrl(index);
+			row.classList.add('undocumented');
+			/* a group member is usually documented under its S4 alias (`sin,float32-method` on float's `trig` page), a name the database does not carry, so say so rather than claim there is nothing */
+			row.title = groups.has(name) && base !== '1'
+				? name + ' has no manual page of its own in ' + pkg + ': an S4 method is documented under its '
+					+ name + ',<class>-method alias, so this links to the package documentation'
+				: name + ' has no manual page in ' + pkg + ', so this links to the package documentation';
+		}
+		/* the name and the arrow open the manual page; the row is not one link so the source can sit within it */
+		const docs = [];
+		const who = document.createElement('a');
+		who.className = 'pkg';
+		who.textContent = pkg;
+		docs.push(who);
+		row.append(who);
+		const marks = document.createElement('span');
+		marks.className = 'flags';
+		/* one signature for this package's version: flowR's formals where it declares them (`filter` is `stats`'s
+		   to a reader, dplyr's to flowR), and the labels of both statements merged into it */
+		const own = statedFor.get(pkg);
+		const here = {
+			args:  own?.[2] || declaredIn(name, pkg) || '',
+			props: mergedWords(own?.[1], flagWords(flags))
+		};
+		/* the signature spells these out a moment later, and a badge saying it once more only costs the line */
+		const said = new Set(wordsOf(here.props));
+		for(const flag of flags) {
+			if(FlagNames[flag] && !said.has(FlagNames[flag])) {
+				const one = document.createElement('span');
+				one.className = 'flag';
+				one.textContent = FlagNames[flag];
+				if(FlagAbout[flag]) {
+					one.title = FlagAbout[flag];
+				}
+				marks.append(one);
+			}
+		}
+		const ver = document.createElement('span');
+		ver.className = 'ver';
+		ver.textContent = Number(downloads) > 0 ? version + ' · ' + count(downloads) : version;
+		ver.title = Number(downloads) > 0
+		? Number(downloads).toLocaleString('en-US') + ' CRAN downloads in the last month'
+		: 'ships with R, so CRAN counts nothing';
+		const tag = document.createElement('span');
+		tag.className = 'tag';
+		tag.textContent = base === '1' ? 'base R' : 'CRAN';
+		if(here.args !== '' || here.props !== '') {
+			marks.append(signature(name, here.args, here.props));
+		}
+		const go = document.createElement('a');
+		go.className = 'go';
+		go.textContent = '↗';
+		for(const link of docs) {
+			link.target = '_blank';
+			link.rel = 'noopener';
+			if(documented(name, flags, index)) {
+				link.href = docUrl(name, { index, topic });
+				link.title = 'the manual page for ' + name + ' in ' + pkg;
+			} else {
+				/* no page of its own, so the package's documentation is the next best thing */
+				link.href = packageDocUrl(index);
+				row.classList.add('undocumented');
+				link.title = 'no manual page is recorded for ' + name + ' in ' + pkg + ', so this links to the package documentation';
+			}
+		}
+		/* where this very function is written, which the manual page never shows */
+		const where = sourceFile(index, file);
+		const src = document.createElement('a');
+		src.className = 'src';
+		src.target = '_blank';
+		src.rel = 'noopener';
+		src.href = sourceUrl(pkg, version, base === '1', where, line, repositoryOf(index)) ?? '';
+		src.textContent = where === undefined ? '' : where + (line === undefined ? '' : ':' + line);
+		src.title = where === undefined
+			? 'the database records no file for ' + name + ' in ' + pkg + ', so this links to its sources'
+			: 'where ' + pkg + '::' + name + ' is written, in ' + pkg + ' ' + version;
+		if(where === undefined) {
+			src.classList.add('nofile');
+			src.textContent = 'sources';
+		}
+		row.append(marks, src, ver, tag, go);
+		/* the row reads as one thing, so anything on it that is not a link of its own opens the manual page */
+		row.addEventListener('click', event => {
+			if(!event.target.closest('a')) {
+				window.open(who.href, '_blank', 'noopener');
+			}
+		});
+		list.append(row);
+	}
+	const note = document.createElement('p');
+	note.className = 'ask';
+	const command = document.createElement('span');
+	/* pointing at a package means asking about that one, so the command says which */
+	const asks = qualified => command.textContent = ':query @signature ' + qualified;
+	asks(name);
+	const said = document.createElement('span');
+	said.textContent = 'for parameters and the call graph, ask flowR:';
+	note.append(said, command);
+	list.addEventListener('mouseover', event => {
+		const row = event.target.closest('.own');
+		asks(row === null ? name : row.querySelector('.pkg').textContent + '::' + name);
+	});
+	list.addEventListener('mouseleave', () => asks(name));
+	box.append(list, note);
+	return box;
+}
+
+/** `print.rema` dispatches for `print`: the longest prefix before a dot that is itself a known name */
+function genericOf(name, owners) {
+	if(!owners.some(entry => owner(entry).flags.includes('3'))) {
+		return undefined;
+	}
+	/* the longest prefix something dispatches on: `is` is a name, but `is.datacggm` is not a method of it */
+	let found;
+	for(let at = name.indexOf('.'); at > 0; at = name.indexOf('.', at + 1)) {
+		if(generics.has(name.slice(0, at))) {
+			found = name.slice(0, at);
+		}
+	}
+	return found;
+}
+
+/** the generic an S4 method answers (from `generic,signature-method`), `undefined` when the name is no S4 method */
+function s4GenericOf(name, owners) {
+	if(!owners.some(entry => owner(entry).flags.includes('m'))) {
+		return undefined;
+	}
+	const at = name.indexOf(',');
+	return at > 0 ? name.slice(0, at) : undefined;
+}
+
+/** a package is a thing to find too: searching `dplyr` should offer the package, not only its names */
+function showPackage(index, needle, at) {
+	const [name, version, base, downloads, exports, releases, since, archived] = packages[index];
+	const row = document.createElement('li');
+	row.className = 'pkghit';
+	const head = document.createElement('div');
+	head.className = 'head';
+	const title = document.createElement('span');
+	title.className = 'name';
+	title.append(name.slice(0, at));
+	const hit = document.createElement('mark');
+	hit.textContent = name.slice(at, at + needle.length);
+	title.append(hit, name.slice(at + needle.length));
+	const badge = document.createElement('span');
+	badge.className = 'kindtag';
+	badge.textContent = base === '1' ? 'base R package' : archived === '1' ? 'archived package' : 'package';
+	if(archived === '1') {
+		badge.classList.add('gone');
+	}
+	const facts = document.createElement('span');
+	facts.className = 'owners';
+	facts.textContent = [
+		version,
+		Number(downloads) > 0 ? count(downloads) : null,
+		exports + ' exports',
+		Number(releases) > 0 ? releases + (Number(releases) === 1 ? ' release' : ' releases') : null
+	].filter(Boolean).join(' · ');
+	facts.title = Number(downloads) > 0
+		? Number(downloads).toLocaleString('en-US') + ' CRAN downloads in the last month'
+		: 'ships with R, so CRAN counts nothing';
+	head.append(title, badge, facts);
+	row.append(head);
+	/* the button scopes the search; the row itself opens what flowR knows about the package */
+	row.addEventListener('click', event => {
+		if(event.target.closest('a')) {
+			return;
+		}
+		const open = row.querySelector('.detail');
+		open ? open.remove() : row.append(aboutPackage(index));
+	});
+	hits.append(row);
+}
+
+/** what the database holds about one package, in the same shape as the per-name detail */
+function aboutPackage(index) {
+	const [name, version, base, downloads, exports, releases, since, archived] = packages[index];
+	const box = document.createElement('div');
+	box.className = 'detail';
+	const facts = [
+		['latest version', version],
+		['exported names', Number(exports).toLocaleString('en-US')],
+		['releases known', Number(releases) > 0
+			? Number(releases).toLocaleString('en-US') + (Number(since) > 0 ? ', the first in ' + since : '')
+			: 'none recorded'],
+		['downloads', Number(downloads) > 0 ? Number(downloads).toLocaleString('en-US') + ' in the last month' : 'ships with R'],
+		['comes from', base === '1' ? 'base R'
+			: repositoryOf(index).label + (archived === '1' ? ', since archived' : '')]
+	];
+	for(const [label, value] of facts) {
+		const line = document.createElement('p');
+		const key = document.createElement('span');
+		key.className = 'kind';
+		key.textContent = label;
+		line.append(key, value);
+		box.append(line);
+	}
+	const links = document.createElement('p');
+	links.className = 'links';
+	const repository = repositoryOf(index);
+	const where = base === '1'
+		? ['https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html', 'the R manual']
+		: [repository.home(name), repository.label];
+	for(const [href, text] of [where, ['?q=' + encodeURIComponent(name + '::'), 'everything it exports']].filter(([href]) => href)) {
+		const link = document.createElement('a');
+		link.href = href;
+		if(href.startsWith('http')) {
+			link.target = '_blank';
+			link.rel = 'noopener';
+		} else {
+			link.addEventListener('click', event => {
+				event.preventDefault();
+				clearFilters();
+				q.value = name + '::';
+				void search();
+			});
+		}
+		link.textContent = text;
+		links.append(link);
+	}
+	box.append(links);
+	return box;
+}
+
+/** the package flowR states a name for, put first among owners when the database omits it (a primitive exports from no NAMESPACE, so `+` would otherwise show as `lubridate`'s); a statement naming no package adds none, so `sinkplot` keeps its flowR badge with no package rather than a wrong one */
+function withStatedOwner(name, owners) {
+	/* a name no package exports has one empty entry, which is a row rather than an owner */
+	const known = owners.filter(entry => entry !== '');
+	const mine = stated.get(name) ?? [];
+	if(mine.length === 0) {
+		return known;
+	}
+	const already = new Set(known.map(entry => packages[owner(entry).index]?.[0]));
+	const missing = mine.map(entry => entry[0]).filter(pkg => pkg !== '' && !already.has(pkg));
+	/* `?` says the database holds nothing about it, so nothing about its manual page is guessed either */
+	const found = missing.map(pkg => packages.findIndex(entry => entry[0] === pkg)).filter(at => at >= 0);
+	return found.length === 0 ? known : [...found.map(at => at + ':?'), ...known];
+}
+
+/** short forms of what a call is/does/hands back and what an argument is used for; missing entries are short enough already, the full words sit on every signature as a tooltip */
+const Words = {
+	/* what a call is and does, flowR's words and the database's for the same thing alike */
+	'can throw': 'throws', 'invisible': 'invis', 's3 method': 's3', 'S3 method': 's3', 'S4 method': 's4',
+	'changes scope': 'scope', 'non deterministic': 'nondet', 'non-deterministic': 'nondet',
+	'ambient state': 'ambient', 'file system': 'file', 'network': 'net', 'concurrent': 'async',
+	'calls something deprecated': 'calls depr', 'calls internals': 'internal', 'recursive': 'rec',
+	'owns an S3 class': 's3 class', 'owns an S4 class': 's4 class', 'higher order': 'hof', 'deprecated': 'depr',
+	'maybe pure': 'maypure', 'sets ambient state': 'configures', 'calls native code': 'ffi',
+	'produces language object': 'lang',
+	/* the semantic labels, which flowR states as the words its configuration spells them with */
+	'temp-file': 'tmpfile', 'asks-user': 'user', 'command-line': 'argv', 'draws-graphics': 'plot',
+	'opens-handle': 'opens', 'closes-handle': 'closes', 'narrows-args': 'narrows', 'statistics': 'stats',
+	'javascript': 'js',
+	/* when an argument is evaluated is a letter (`F+val`), what it is used for stays a word */
+	'forced': 'F', 'no default': 'R', 'lazy': 'L',
+	'value': 'val', 'resource': 'res', 'written': 'out', 'callee': 'fn', 'presence': 'seen'
+};
+
+/** what a call hands back, which belongs behind the formals like a return type */
+const Returns = ['invisible'];
+
+/** the `|`-joined words of the page's own encoding, as a list */
+function wordsOf(joined) {
+	return joined.split('|').filter(Boolean);
+}
+
+/** the words as a reader sees them, shortened where {@link Words} has something shorter */
+function short(words) {
+	return words.map(word => Words[word] ?? word);
+}
+
+/**
+ * What several statements about one name say, as one list of words: flowR's labels (its semantic ones
+ * included) and the database's, in that order, with nothing said twice. Two spellings of the same thing are
+ * one word once shortened (`file system` is the database's `file`), so the shortened form decides.
+ */
+function mergedWords(...statements) {
+	const seen = new Set();
+	const kept = [];
+	for(const word of statements.flatMap(statement => wordsOf(statement ?? ''))) {
+		const shortened = Words[word] ?? word;
+		if(!seen.has(shortened)) {
+			seen.add(shortened);
+			kept.push(word);
+		}
+	}
+	return kept.join('|');
+}
+
+/** the words of `props` split into what the call is and does, and what it hands back */
+function parts(props) {
+	const words = wordsOf(props);
+	return { kind: words.filter(word => !Returns.includes(word)), returns: words.filter(word => Returns.includes(word)) };
+}
+
+/** the formals of `args` as `[name, roles]`, the roles empty for a declaration that states none */
+function argsOf(args) {
+	return args.split(',').filter(Boolean).map(arg => {
+		const at = arg.indexOf(':');
+		return at < 0 ? [arg.trim(), []] : [arg.slice(0, at).trim(), wordsOf(arg.slice(at + 1))];
+	});
+}
+
+/** one `name: roles` part of a signature, the roles set apart from the formal they belong to */
+function formal([name, roles]) {
+	const part = document.createElement('span');
+	part.className = 'formal';
+	part.append(name);
+	if(roles.length > 0) {
+		part.append(Object.assign(document.createElement('i'), { className: 'role', textContent: ': ' + short(roles).join('+') }));
+	}
+	return part;
+}
+
+/** the same signature spelled out, which is what a reader gets on hovering the short one */
+function readable(name, args, props) {
+	const spelled = argsOf(args).map(([formal, roles]) => roles.length === 0 ? formal : formal + ': ' + roles.join(' + ')).join(', ');
+	const { kind, returns } = parts(props);
+	return name + (kind.length > 0 ? '[' + kind.join(',') + ']' : '') + (args === '' ? '' : '(' + spelled + ')')
+		+ (returns.length > 0 ? ', returns ' + returns.join(' and ') : '');
+}
+
+/** a signature as `name<kind>(formal: role, ...): returns`; R has no types, so roles stand in, and the parens are left out where no formals are known at all (not the same as a call taking none) */
+function signature(name, args, props) {
+	const said = document.createElement('code');
+	said.className = 'stated';
+	const { kind, returns } = parts(props);
+	said.append(Object.assign(document.createElement('b'), { textContent: name }));
+	if(kind.length > 0) {
+		said.append(Object.assign(document.createElement('i'), { className: 'kind', textContent: '[' + short(kind).join(',') + ']' }));
+	}
+	if(args !== '') {
+		/* the formals are what gets cut when the line is too long; what the call is and does stays */
+		const list = document.createElement('span');
+		list.className = 'args';
+		list.append('(');
+		argsOf(args).forEach((arg, at) => list.append(at > 0 ? ', ' : '', formal(arg)));
+		list.append(')');
+		said.append(list);
+	}
+	if(returns.length > 0) {
+		said.append(Object.assign(document.createElement('i'), { className: 'ret', textContent: ': ' + short(returns).join(',') }));
+	}
+	/* the short form is for the glance, the words for the reader who stops on it */
+	said.title = readable(name, args, props);
+	return said;
+}
+
+/** the flags the database records about the call itself, as the `|`-joined words a signature states */
+function flagWords(flags) {
+	return flags.filter(flag => !MetaFlags.includes(flag)).map(flag => FlagNames[flag]).filter(Boolean).join('|');
+}
+
+/** what base R declares for `name` in `pkg`, which the page carries for base R alone */
+function declaredIn(name, pkg) {
+	return (formals.get(name) ?? []).find(entry => entry[0] === pkg)?.[1];
+}
+
+/** the package the current search is scoped to, `dplyr` in `dplyr::filter` */
+let scoped;
+
+function show(name, needle, at, owners) {
+	const row = document.createElement('li');
+	const head = document.createElement('div');
+	head.className = 'head';
+	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()`. Only `c`, what the database states, heads a row -- `v` shows on the package rows below instead */
+	const value = owner(owners[0]).flags.includes('c');
+	head.append(marked(name, needle, at));
+	if(value) {
+		head.firstChild.classList.add('value');
+		const badge = document.createElement('span');
+		badge.className = 'kindtag value';
+		badge.textContent = 'value';
+		badge.title = 'the database records it as a value rather than a function';
+		head.append(badge);
+	}
+	/* flowR's own statement about the name, the one thing the database cannot tell a reader; stated per package, so the one the reader means is the one shown */
+	const mine = stated.get(name) ?? [];
+	/* the package the search named, else the one a reader most likely means */
+	const chosen = owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0];
+	const first = packages[owner(chosen).index];
+	const own = mine.find(entry => entry[0] === first?.[0]) ?? mine.find(entry => entry[0] === 'base') ?? mine[0];
+	const words = short(wordsOf(own?.[1] ?? ''));
+	/* what the name does comes first, that flowR knows it at all comes after */
+	const known = kinds.get(name) ?? [];
+	for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
+		const badge = document.createElement('span');
+		badge.className = kind === 'builtin' ? 'kindtag flowr' : 'kindtag';
+		badge.textContent = KindNames[kind] ?? kind;
+		head.append(badge);
+		/* the signature below states them where flowR carries one, and repeating them as a count says nothing */
+		if(kind === 'builtin' && words.length > 0 && !own) {
+			const more = document.createElement('span');
+			more.className = 'kindtag props';
+			more.textContent = '+' + words.length;
+			more.title = 'flowR states ' + words.join(', ') + ' about this call; open the entry to see which package for';
+			head.append(more);
+		}
+	}
+	/* the generics this name answers, which the row states in words rather than the signature in short */
+	const dispatches = [['S3', genericOf(name, owners)], ['S4', s4GenericOf(name, owners)]]
+		.filter(([, generic]) => generic !== undefined);
+	/* where the row states `S3 method for format` next to it, the signature saying `s3` once more says nothing */
+	const said = dispatches.map(([kind]) => kind.toLowerCase() + ' method');
+	/* one signature for the package a reader means, flowR's formals leading and both statements' labels in it;
+	   one line, ellipsis on overflow, the words spelled out as a tooltip */
+	const shown = {
+		args:  own?.[2] || declaredIn(name, first?.[0]) || '',
+		props: wordsOf(mergedWords(own?.[1], flagWords(owner(chosen).flags)))
+			.filter(word => !said.includes(word.toLowerCase())).join('|')
+	};
+	if(shown.args !== '' || shown.props !== '') {
+		head.append(signature(name, shown.args, shown.props));
+	}
+	for(const [kind, generic] of dispatches) {
+		const link = document.createElement('a');
+		link.className = 'generic';
+		link.href = '?q=' + encodeURIComponent(generic);
+		link.textContent = kind + ' method for ' + generic;
+		link.title = 'search for the generic this method dispatches for';
+		head.append(link);
+	}
+	/* a member of an S4 group: a package exports it by answering the whole group for one of its classes, so the name says far less about that package than an ordinary export would */
+	const group = groups.get(name);
+	if(group) {
+		const link = document.createElement('a');
+		link.className = 'generic';
+		link.href = '?q=' + encodeURIComponent(group);
+		link.textContent = group + ' group';
+		link.title = name + ' belongs to R\'s ' + group + ' group generic: a package may answer it for its own '
+			+ 'class with setMethod("' + name + '", ...) or setMethod("' + group + '", ...) instead of defining a '
+			+ 'function of its own. Click to search for ' + group + '.';
+		head.append(link);
+	}
+	const list = document.createElement('span');
+	list.className = 'owners';
+	for(const entry of owners.slice(0, Shown)) {
+		list.append(ownerLink(owner(entry).index));
+	}
+	if(owners.length > Shown) {
+		const rest = document.createElement('button');
+		rest.type = 'button';
+		rest.className = 'more';
+		rest.textContent = '+' + (owners.length - Shown) + ' more';
+		list.append(rest);
+	}
+	head.append(list);
+	row.append(head);
+	row.addEventListener('click', event => {
+		if(event.target.closest('a')) {
+			return;   // a link is a link, not a toggle
+		}
+		const open = row.querySelector('.detail');
+		if(open) {
+			open.remove();
+		} else {
+			row.append(detail(name, owners));
+		}
+	});
+	hits.append(row);
+}
+
+/* how many names the scan walks before it lets the page breathe again, and how many hits are still worth counting the packages of */
+const Chunk = 40000;
+const Countable = 50000;
+
+let pending = 0;
+async function search() {
+	/* `dplyr::filter` asks about that package, not about every `filter` there is */
+	const typed = q.value.trim().replace(/^\?/, '').replace(/\(\s*\)$/, '').trim();
+	const qualified = /^([\w.]+):::?(.*)$/.exec(typed);
+	const inPackage = qualified?.[1];
+	/* a search for `dplyr::filter` is about dplyr's, so that is the one a hit answers for */
+	scoped = inPackage;
+	const needle = (qualified?.[2] ?? typed).trim();
+	const run = ++pending;
+	hits.replaceChildren();
+
+	if(names === null) {
+		await ready;   // set up at the bottom of this script, so the first listing waits for it
+		if(run !== pending) {
+			return;   // the reader typed on while it was being read
+		}
+	}
+	const lower = needle.toLowerCase();
+	const matches = [];
+	/* 577k names are more than one frame can hold, so the scan hands the thread back every so often and gives up once a newer keystroke has started its own */
+	let breathe = Chunk;
+	for(let start = 0; start < names.length;) {
+		if(--breathe === 0) {
+			breathe = Chunk;
+			await new Promise(resume => setTimeout(resume, 0));
+			if(run !== pending) {
+				return;
+			}
+		}
+		const tab = names.indexOf('\t', start);
+		const stop = names.indexOf('\n', tab);
+		const end = stop < 0 ? names.length : stop;
+		const name = names.slice(start, tab);
+		start = end + 1;
+		const at = needle.length === 0 ? 0 : name.toLowerCase().indexOf(lower);
+		const hit = needle.length === 0 || (mode.value === 'prefix' ? at === 0 : at >= 0);
+		if(!hit && mode.value !== 'fuzzy') {
+			continue;   // the owners are only sliced out for a name that survives
+		}
+		const owners = names.slice(tab + 1, end);
+		if(hit) {
+			/* `print` should beat `PRINT`: a match that also matches in case ranks ahead of one that does not */
+			const cased = name.slice(at, at + needle.length) === needle ? 0 : 1;
+			matches.push([name, at, owners, (at === 0 ? 0 : 2) + cased]);
+		} else if(mode.value === 'fuzzy' && fuzzy(name.toLowerCase(), lower)) {
+			/* `flter` should find `filter` before `Filter`: a fuzzy hit that also matches in case ranks first */
+			matches.push([name, -1, owners, fuzzy(name, needle) ? 4 : 5]);
+		}
+	}
+	if(sort.value === 'auto') {
+		/* scoring parses an owner entry per hit, so a query matching six figures of names is first cut down by the cheap key and only its head is scored properly */
+		/* the cut has to know about the badge too, or `ggplot` never survives long enough to be scored; `kinds` is a Map lookup, so this stays cheap */
+		const key = (name, rank) => (kinds.has(name) ? 0 : 1000) + rank;
+		/* comparison-sorting six figures of matches costs a visible pause; the key takes a handful of values, so counting them out keeps the good ones in front for a fraction of that */
+		const buckets = new Map();
+		for(const match of matches) {
+			const at = key(match[0], match[3]);
+			const bucket = buckets.get(at);
+			if(bucket === undefined) {
+				buckets.set(at, [match]);
+			} else {
+				bucket.push(match);
+			}
+		}
+		let into = 0;
+		for(const at of [...buckets.keys()].sort((a, b) => a - b)) {
+			for(const match of buckets.get(at)) {
+				matches[into++] = match;
+			}
+		}
+		const scored = matches.slice(0, 2000);
+		scored.sort(([a], [b]) => a.length - b.length);
+		for(const match of scored) {
+			match[4] = score(match[0], match[2], match[3], needle);
+		}
+		scored.sort((a, b) => b[4] - a[4]);
+		matches.splice(0, scored.length, ...scored);
+	} else {
+		matches.sort(([a, , , ra], [b, , , rb]) => ra - rb || a.length - b.length
+			|| (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : a < b ? -1 : 1));
+	}
+	/* a package was named, so only the names it exports count */
+	scope.hidden = true;
+	const wanted = inPackage === undefined ? undefined : byName.get(inPackage);
+	/* `base::sin` is base R's whatever the database holds, so the scope asks the same owners a row shows */
+	const inScope = wanted === undefined ? matches
+		: matches.filter(([name, , owners]) => withStatedOwner(name, owners.split(',')).some(entry => owner(entry).index === wanted));
+	/* the packages whose own name matches; `packages` asks for those alone */
+	const onlyPackages = active.has('only:package') || (needle.length === 0 && active.size === 0 && inPackage === undefined);
+	const allPackages = inPackage !== undefined || (active.size > 0 && !onlyPackages) ? [] : packages
+		.map(([name], index) => [name, index, name.toLowerCase().indexOf(lower)])
+		/* only the package that was typed outright: three near-misses would bury `plot` under `plotly` and `plotrix`; browsing by name is what the `package` filter is for */
+		.filter(([name, , at]) => onlyPackages ? at >= 0 : name.toLowerCase() === lower)
+		.sort(sort.value === 'auto'
+			? ([, a], [, b]) => Number(packages[b][3]) - Number(packages[a][3])
+			: ([a], [b]) => a.length - b.length || (a < b ? -1 : 1));
+	const asPackage = allPackages.slice(0, onlyPackages ? limit : 3);
+	for(const [, index, at] of asPackage) {
+		showPackage(index, needle, at);
+	}
+	offerFilters(inScope);
+	const kept = onlyPackages ? [] : inScope.filter(([name, , owners]) => passes(name, owners.split(',')));
+	const found = kept.length;
+	/* how many packages those names come from; a query matching half the database is not worth counting, and its answer would be `all of them` anyway */
+	let inPackages;
+	if(found > 0 && found <= Countable) {
+		const seen = new Set();
+		for(const [, , owners] of kept) {
+			for(const entry of owners.split(',')) {
+				const colon = entry.indexOf(':');
+				seen.add(colon < 0 ? entry : entry.slice(0, colon));
+			}
+		}
+		inPackages = seen.size;
+	}
+	for(const [name, at, owners] of kept.slice(0, limit)) {
+		show(name, needle, at, withStatedOwner(name, owners.split(',')));
+	}
+	const where = inPackage === undefined ? ''
+		: wanted === undefined ? ` (flowR knows no package called ${inPackage})` : ` in ${inPackage}`;
+	report(onlyPackages ? allPackages.length : found, onlyPackages ? 'package' : 'name', where, inPackages);
+}
+
+/** how many there are, where they live, how many are on screen, and a way to see more of them */
+function report(total, what, where, inPackages) {
+	const shown = hits.children.length;
+	if(total === 0) {
+		status.textContent = `Nothing here goes by that name${where}.`;
+		return;
+	}
+	/* `11 names in dplyr in 23 packages` reads as a mistake, so a scoped answer says `also in` */
+	const count = inPackages === undefined ? undefined
+		: `${inPackages.toLocaleString('en-US')} package${inPackages === 1 ? '' : 's'}`;
+	const from = count === undefined ? '' : where.length > 0 ? ` (also in ${count})` : ` in ${count}`;
+	status.textContent = `${total.toLocaleString('en-US')} ${what}${total === 1 ? '' : 's'}${where}${from}`
+		+ (shown < total ? ` · showing ${shown.toLocaleString('en-US')}` : '');
+	if(shown < total) {
+		const more = document.createElement('button');
+		more.type = 'button';
+		more.className = 'more-hits';
+		more.textContent = `show ${Math.min(Step, total - shown)} more`;
+		more.addEventListener('click', () => {
+			limit += Step;
+			void search();
+		});
+		hits.append(more);
+	}
+}
+
+let timer = 0;
+q.addEventListener('input', () => {
+	clearTimeout(timer);
+	limit = Step;   // a new question starts from the top again
+	timer = setTimeout(search, 120);
+});
+mode.addEventListener('change', search);
+sort.addEventListener('change', search);
+
+q.value = new URLSearchParams(location.search).get('q') ?? '';
+/* the table is read once, in the background, and the first listing follows on its own */
+status.textContent = 'Unpacking the database…';
+const ready = unpack().then(() => search(), error => {
+	status.textContent = `This browser could not unpack the database, sorry (${error}).`;
+});
+q.addEventListener('change', () => history.replaceState(null, '', q.value ? '?q=' + encodeURIComponent(q.value) : location.pathname));
+</script>
+<!--VERSION-SCRIPT-->
+</body>
+</html>

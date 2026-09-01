@@ -32,6 +32,13 @@ export class UnresolvedRListType {
 	}
 }
 
+/**
+ * The element type `list` has at the given index or name, created and constrained into the list when the list
+ * does not carry one yet.
+ * @param list            - The list type to look into.
+ * @param indexOrName     - The position or the name of the element.
+ * @param constraintCache - The cache the constraints are recorded in.
+ */
 export function getIndexedElementTypeFromList(list: UnresolvedRListType, indexOrName: number | string, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable> = new Set()): UnresolvedRTypeVariable {
 	let elementType = list.indexedElementTypes.get(indexOrName);
 	if(elementType === undefined) {
@@ -59,6 +66,12 @@ export class UnresolvedRFunctionType {
 	}
 }
 
+/**
+ * The type of the parameter `func` takes at the given position or under the given name, created when the
+ * signature does not carry one yet.
+ * @param func        - The function type to look into.
+ * @param indexOrName - The position or the name of the parameter.
+ */
 export function getParameterTypeFromFunction(func: UnresolvedRFunctionType, indexOrName: number | string): UnresolvedRTypeVariable {
 	let parameterType = func.parameterTypes.get(indexOrName);
 	if(parameterType === undefined) {
@@ -107,6 +120,13 @@ export class UnresolvedRTypeVariable {
 }
 
 
+/**
+ * Records that `subtype` must be a subtype of `supertype`, propagating the constraint into the bounds of every
+ * type variable involved.
+ * @param subtype   - The type that must be the smaller one.
+ * @param supertype - The type that must be the larger one.
+ * @param cache     - The cache the already recorded constraints are kept in, so a cycle terminates.
+ */
 export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable> = new Set()): boolean {
 	// console.debug('Constraining');
 	// console.debug('Constraining', inspect(subtype, { depth: null, colors: true }), 'to subsume', supertype instanceof UnresolvedRTypeVariable ? supertype.id : inspect(supertype, { depth: null, colors: true }));
@@ -173,6 +193,11 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 }
 
 
+/**
+ * Drops the constraints of `variable` that state nothing beyond what its remaining bounds already do.
+ * @param variable        - The type variable to prune.
+ * @param constraintCache - The recorded constraints.
+ */
 export function prune(variable: UnresolvedRTypeVariable, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable>): boolean {
 	// console.debug('Pruning');
 	// console.debug('Pruning variable', variable.id);
@@ -201,7 +226,7 @@ export function prune(variable: UnresolvedRTypeVariable, constraintCache: Map<Un
 			// console.debug('New lower bound:', inspect(newLowerBound, { depth: null, colors: true }));
 
 			lowerBound.types = newLowerBound instanceof UnresolvedRTypeIntersection ? newLowerBound.types : new Set([newLowerBound]);
-			
+
 			if(lowerBound.types.size === 1) {
 				const [type] = lowerBound.types;
 				// console.debug('Constraining', inspect(type, { depth: null, colors: true }), 'to subsume', inspect(variable, { depth: null, colors: true }));
@@ -238,15 +263,21 @@ export function prune(variable: UnresolvedRTypeVariable, constraintCache: Map<Un
 				// console.debug('Constraining', inspect(variable, { depth: null, colors: true }), 'to subsume', inspect(type, { depth: null, colors: true }));
 				newConstraintsFound ||= constrain(variable, type, constraintCache, prunableVariables);
 			}
-			
+
 		}
 	}
-	
+
 	// console.debug('New constraints found:', newConstraintsFound);
 	return newConstraintsFound;
 }
 
 
+/**
+ * The {@link DataType} an unresolved type stands for, i.e. its bounds combined into a single type.
+ * @param type        - The type to resolve.
+ * @param isUpperBound - Whether the type is read as an upper bound, which decides how unions and intersections collapse.
+ * @param cache       - The bounds already resolved for a variable, so a cycle terminates.
+ */
 export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
 	// console.debug('Resolving');
 	// console.debug('Resolving', inspect(type, { depth: null, colors: true }));
@@ -275,7 +306,7 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		}
 
 		const combined = combine(lowerBound, upperBound);
-		
+
 		cache.set(type, { lowerBound, upperBound, combined });
 
 		switch(isUpperBound) {
@@ -321,6 +352,11 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 	}
 }
 
+/**
+ * The single type standing for a variable bounded from below by `lowerBound` and from above by `upperBound`.
+ * @param lowerBound - The lower bound.
+ * @param upperBound - The upper bound.
+ */
 export function combine(lowerBound: DataType, upperBound: DataType): DataType {
 	// console.debug('Combining');
 	// console.debug('Combining', inspect(lowerBound, { depth: null, colors: true }), 'and', inspect(upperBound, { depth: null, colors: true }));
@@ -353,10 +389,16 @@ export function combine(lowerBound: DataType, upperBound: DataType): DataType {
 	} else if(subsumes(lowerBound, upperBound) && subsumes(upperBound, lowerBound)) {
 		return lowerBound; // If both types are the same, we return the upper bound
 	} else {
-		return new RTypeVariable(lowerBound, upperBound); // If the types are not compatible, we create a new variable type that combines both bounds 
+		return new RTypeVariable(lowerBound, upperBound); // If the types are not compatible, we create a new variable type that combines both bounds
 	}
 }
 
+/**
+ * Whether every value of `subtype` is a value of `supertype`.
+ * @param subtype   - The candidate smaller type.
+ * @param supertype - The candidate larger type.
+ * @param cache     - The pairs already decided, so a cycle terminates.
+ */
 export function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType, cache: Map<DataType | UnresolvedDataType, Map<DataType | UnresolvedDataType, boolean>> = new Map()): boolean {
 	// console.debug('Checking subsumption' + (subtype instanceof UnresolvedRTypeVariable ? ` (variable ${subtype.id})` : ''));
 	// console.debug('Checking if', inspect(subtype, { depth: null, colors: true }), 'subsumes', inspect(supertype, { depth: null, colors: true }));
@@ -425,6 +467,12 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 	return result;
 }
 
+/**
+ * The least upper bound of two unresolved types, i.e. the type standing for either of them.
+ * @param type1           - The first type.
+ * @param type2           - The second type.
+ * @param constraintCache - The cache the constraints are recorded in.
+ */
 export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataType, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable>): UnresolvedDataType {
 	// console.debug('Joining (unresolved)');
 	// console.debug('Joining (unresolved)', type1, 'and', type2);
@@ -528,6 +576,11 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 	}
 	return new UnresolvedRTypeUnion(type1, type2);
 }
+/**
+ * The least upper bound of two resolved types, i.e. the type standing for either of them.
+ * @param type1 - The first type.
+ * @param type2 - The second type.
+ */
 export function join(type1: DataType, type2: DataType): DataType {
 	// console.debug('Joining');
 	// console.debug('Joining', type1, 'and', type2);
@@ -605,6 +658,12 @@ export function join(type1: DataType, type2: DataType): DataType {
 	return new RTypeUnion(type1, type2);
 }
 
+/**
+ * The greatest lower bound of two unresolved types, i.e. the type standing for both of them at once.
+ * @param type1           - The first type.
+ * @param type2           - The second type.
+ * @param constraintCache - The cache the constraints are recorded in.
+ */
 export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataType, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable>): UnresolvedDataType {
 	// console.debug('Meeting (unresolved)');
 	// console.debug('Meeting (unresolved)', inspect(type1, { depth: null, colors: true }), 'and', inspect(type2, { depth: null, colors: true }));
@@ -704,6 +763,11 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 	}
 	return new UnresolvedRTypeIntersection(type1, type2);
 }
+/**
+ * The greatest lower bound of two resolved types, i.e. the type standing for both of them at once.
+ * @param type1 - The first type.
+ * @param type2 - The second type.
+ */
 export function meet(type1: DataType, type2: DataType): DataType {
 	// console.debug('Meeting');
 	// console.debug('Meeting', type1, 'and', type2);

@@ -1,9 +1,583 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { Accessor } from '../../util/accessor';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
-import type { ContainerIndicesCollection } from '../graph/vertex';
+import { startAndEndsWith } from '../../util/text/strings';
+import { baseRExportOwner } from '../../util/r-base-packages';
+import type { REnvironmentInformation } from './environment';
+import type { Origin } from '../origin/dfg-get-origin';
+/* type-only, as the value import would cycle back through the graph helpers */
+import type { Dataflow } from '../graph/df-helper';
+import { enumMembers } from '../../util/objects';
 
-export type Identifier = string & { __brand?: 'identifier' }
+/** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
+export type BrandedIdentifier = string & { __brand?: 'identifier' };
+/** this is just a safe-guard type to prevent mixing up branded namespaces with normal strings */
+export type BrandedNamespace = string & { __brand?: 'namespace' };
+
+/**
+ * Refers to an identifier by its name.
+ * This can either be a simple name like `a` or a namespaced name like `pkg::a` (stored as ['a', 'pkg']).
+ * By storing the namespace second, you can easily access the actual name via `id[0]`.
+ * This represents the fundamental way to represent binding names in R.
+ * @see {@link Identifier.getName} - to get the name part
+ * @see {@link Identifier.getNamespace} - to get the namespace part
+ * @see {@link Identifier.accessesInternal} - to check if the identifier accesses internal objects (`:::`)
+ * @see {@link Identifier.toString} - to convert the identifier to a string representation
+ */
+export type Identifier = BrandedIdentifier | [id: BrandedIdentifier, namespace: BrandedNamespace, internal?: boolean];
+
+/**
+ * A string type representing a namespaced identifier in the format `pkg::name`.
+ */
+export type IdentifierString = `${string}::${string}`;
+
+const dotDotDotAccess = /^\.\.\d+$/;
+
+/**
+ * Helper functions to work with {@link Identifier|identifiers}.
+ * Use {@link Identifier.matches} to check if two identifiers match according to R's scoping rules!
+ * @example
+ * ```ts
+ * const id1 = Identifier.make('a', 'pkg');
+ * const id2 = Identifier.parse('pkg::a');
+ * const id3 = Identifier.parse('a');
+ * Identifier.matches(id1, id2); // true
+ * Identifier.matches(id3, id2); // true, as id3 has no namespace
+ * ```
+ */
+export const Identifier = {
+	name: 'Identifier',
+	/**
+	 * Creates an identifier. Strips surrounding backticks from the name.
+	 * Prefer {@link Identifier.from} for static config entries where namespace is always present and name has no backticks.
+	 */
+	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
+		if(startAndEndsWith(name, '`')) {
+			name = name.slice(1, -1);
+		}
+		if(namespace) {
+			return [name, namespace, internal];
+		} else {
+			return name;
+		}
+	},
+	/**
+	 * Fast-path factory: returns the tuple as-is with no allocation or runtime checks.
+	 * Use for static built-in config entries where name is a compile-time constant with no backticks.
+	 * @example
+	 * ```ts
+	 * Identifier.from(['map', 'purrr'])       // ['map', 'purrr']
+	 * Identifier.from(['map', 'purrr', true]) // ['map', 'purrr', true]
+	 * ```
+	 */
+	from(this: void, arr: [BrandedIdentifier, BrandedNamespace] | [BrandedIdentifier, BrandedNamespace, boolean]): Identifier {
+		return arr;
+	},
+	/**
+	 * The same fast path for many names of one package: the given array of names is cast in place,
+	 * so the literal you pass is the only array involved.
+	 * @example
+	 * ```ts
+	 * Identifier.fromAll('purrr', ['map', 'walk']) // [['map', 'purrr'], ['walk', 'purrr']]
+	 * ```
+	 */
+	fromAll(this: void, namespace: BrandedNamespace, names: BrandedIdentifier[]): Identifier[] {
+		const ids = names as unknown as Identifier[];
+		for(let i = 0; i < names.length; i++) {
+			ids[i] = [names[i], namespace];
+		}
+		return ids;
+	},
+	/**
+	 * The names as every one of the given packages exports them, for a function one package owns and others
+	 * re-export unchanged (`dplyr::%>%` is `magrittr::%>%`).
+	 * @example
+	 * ```ts
+	 * Identifier.fromAllIn(['magrittr', 'dplyr'], ['%>%']) // [['%>%', 'magrittr'], ['%>%', 'dplyr']]
+	 * ```
+	 */
+	fromAllIn(this: void, namespaces: readonly BrandedNamespace[], names: readonly BrandedIdentifier[]): Identifier[] {
+		const ids: Identifier[] = [];
+		for(const namespace of namespaces) {
+			for(const name of names) {
+				ids.push([name, namespace]);
+			}
+		}
+		return ids;
+	},
+	/**
+	 * Verify whether an unknown element has a valid identifier shape!
+	 */
+	is(this: void, id: unknown): id is Identifier {
+		if(typeof id === 'string') {
+			return true;
+		}
+		if(Array.isArray(id)) {
+			if(id.length === 2) {
+				return typeof id[0] === 'string' && typeof id[1] === 'string';
+			} else if(id.length === 3) {
+				return typeof id[0] === 'string' && typeof id[1] === 'string' && typeof id[2] === 'boolean';
+			}
+		}
+		return false;
+	},
+	/**
+	 * Parse an identifier from its string representation,
+	 * Please note, that in R if one writes `"pkg::a"` this refers to a symbol named `pkg::a` and NOT to the namespaced identifier `a` in package `pkg`.
+	 * In this scenario, see {@link Identifier.make} instead.
+	 */
+	parse(this: void, str: string): Identifier {
+		const at = namespaceSeparatorAt(str);
+		if(at < 0) {
+			return str;
+		}
+		const internal = str[at + 2] === ':';
+		return [str.slice(at + (internal ? 3 : 2)), str.slice(0, at), internal] as Identifier;
+	},
+	/**
+	 * Get the name part of the identifier, `undefined` if there is no identifier.
+	 */
+	getName: ((id?: Identifier) => Array.isArray(id) ? id[0] : id) as Accessor<Identifier, BrandedIdentifier>,
+	/**
+	 * Get the namespace part of the identifier, `undefined` if there is none (or no identifier).
+	 */
+	getNamespace(this: void, id: Identifier | undefined): BrandedNamespace | undefined {
+		return Array.isArray(id) ? id[1] : undefined;
+	},
+	/**
+	 * Check if the identifier accesses internal objects (`:::`), `undefined` if it says nothing about it.
+	 */
+	accessesInternal(this: void, id: Identifier | undefined): boolean | undefined {
+		return Array.isArray(id) ? id[2] : undefined;
+	},
+
+	/**
+	 * Convert the identifier to a **valid R** string representation,
+	 * this will properly quote namespaces that contain `::` to avoid confusion.
+	 * @example
+	 * ```ts
+	 * Identifier.toString('a') // 'a'
+	 * Identifier.toString(['a', 'pkg']) // 'pkg::a'
+	 * Identifier.toString(['a', 'pkg:::internal', true]) // '"pkg:::internal":::a'
+	 * ```
+	 */
+	toString: ((id?: Identifier) => {
+		if(id === undefined) {
+			return undefined;
+		} else if(Array.isArray(id)) {
+			if(id[1].includes('::')) {
+				return `${JSON.stringify(id[1])}${id[2] ? ':::' : '::'}${id[0]}`;
+			}
+			return `${id[1]}${id[2] ? ':::' : '::'}${id[0]}`;
+		} else {
+			if(id.includes('::')) {
+				return JSON.stringify(id);
+			}
+			return id;
+		}
+	}) as Accessor<Identifier, string>,
+	/**
+	 * Check if two identifiers match.
+	 * This differs from eq!
+	 * If the first identifier is not namespaced, it will match any namespace!
+	 * If we search for S3 methods (s3=true), the target may have an additional suffix after a dot.
+	 * If the first identifier is internal, it will match any target (internal or not).
+	 */
+	matches(this: void, id: Identifier, target: Identifier, s3: boolean = false): boolean {
+		const idName = Identifier.getName(id);
+		const targetName = Identifier.getName(target);
+		if(idName !== targetName) {
+			return s3 ? targetName.startsWith(idName + '.') : false;
+		}
+		const idNs = Identifier.getNamespace(id);
+		if(idNs === undefined) {
+			return true;
+		}
+		const targetNs = Identifier.getNamespace(target);
+		if(idNs !== targetNs) {
+			return false;
+		}
+		const idInternal = Identifier.accessesInternal(id);
+		if(idInternal === true) {
+			return true;
+		}
+		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
+		return (idInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
+	},
+	/** The text as a regex matches it literally: `[`, `$` and `.` name functions in R, they are not pattern syntax. */
+	quote(this: void, text: string): string {
+		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	},
+	/**
+	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
+	 */
+	regex(this: void, ...identifiers: readonly Identifier[]): RegExp {
+		// if the passed identifier is not namespaced, we match against *any* namespace. if it is namespaced, we match against the correct namespace or no namespace
+		return new RegExp(`^(${identifiers.map(i => {
+			const namespace = Identifier.getNamespace(i);
+			return `(${namespace === undefined ? '.+' : Identifier.quote(namespace)}:::?)?${Identifier.quote(Identifier.getName(i))}`;
+		}).join('|')})$`);
+	},
+	/** Special identifier for the `...` argument */
+	dotdotdot(this: void): BrandedIdentifier {
+		return '...';
+	},
+	/**
+	 * Check if the identifier is the special `...` argument / or one of its accesses like `..1`, `..2`, etc.
+	 * This always returns false for namespaced identifiers.
+	 */
+	isDotDotDotAccess(this: void, id: Identifier): boolean {
+		return !Array.isArray(id) && (dotDotDotAccess.test(id) || id === '...');
+	},
+	/**
+	 * Functor over the name of the identifier
+	 */
+	mapName(this: void, id: Identifier, fn: (name: BrandedIdentifier) => BrandedIdentifier): Identifier {
+		if(Array.isArray(id)) {
+			return [fn(id[0]), id[1], id[2]];
+		} else {
+			return fn(id);
+		}
+	},
+	/**
+	 * Functor over the namespace of the identifier
+	 */
+	mapNamespace(this: void, id: Identifier, fn: (ns: BrandedNamespace) => BrandedNamespace): Identifier {
+		if(Array.isArray(id)) {
+			return [id[0], fn(id[1]), id[2]];
+		} else {
+			return id;
+		}
+	},
+	/**
+	 * Convert the identifier to its array representation
+	 */
+	toArray(this: void, id: Identifier): [BrandedIdentifier, BrandedNamespace | undefined, boolean | undefined] {
+		if(Array.isArray(id)) {
+			return [id[0], id[1], id[2]];
+		} else {
+			return [id, undefined, undefined];
+		}
+	},
+	/**
+	 * The package-qualified identifier of a call, resolved in order of decreasing certainty:
+	 * 1. a package export the {@link Origin|origins} resolve to (`map()` with `purrr` loaded yields `purrr::map`),
+	 * 2. an already-namespaced `name` returned unchanged (an explicit `pkg::fn` call),
+	 * 3. with `qualifyBaseR`, a bare base-R call qualified from its exporting package via {@link baseRExportOwner}
+	 * (`sd` yields `stats::sd`), needing no loaded database or graph edge and skipped when the call resolves to
+	 * a user definition, so a local `sd()` stays bare.
+	 *
+	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
+	 * @param origins      - the origins of the call to qualify
+	 * @param name         - the name the call was written with, needed by steps 2 and 3
+	 * @param qualifyBaseR - whether to also qualify a bare base-R call from its exporting package (default `true`)
+	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
+	 */
+	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier, qualifyBaseR = true): Identifier | undefined {
+		let sawUserDefinition = false;
+		for(const origin of origins ?? []) {
+			if('proc' in origin) {
+				const pkgFn = NodeId.toPkgFn(origin.proc);
+				if(pkgFn) {
+					return Identifier.make(pkgFn[1], pkgFn[0]);
+				} else if(Identifier.getNamespace(origin.fn.name) !== undefined) {
+					return origin.fn.name;
+				}
+			} else if(!NodeId.isBuiltIn(origin.id)) {
+				/* a read that lands on a built-in (e.g. the constant `pi`) is no user definition and must not block step 3 */
+				sawUserDefinition = true;
+			}
+		}
+		if(name === undefined) {
+			return undefined;
+		}
+		if(Identifier.getNamespace(name) !== undefined) {
+			return name;
+		}
+		if(qualifyBaseR && !sawUserDefinition) {
+			const bare = Identifier.getName(name);
+			const owner = baseRExportOwner(bare);
+			if(owner !== undefined) {
+				return Identifier.make(bare, owner);
+			}
+		}
+		return undefined;
+	},
+	/**
+	 * Wraps the identifier in an {@link IdentifierView|view} offering property access (`id.name`, `id.namespace`)
+	 * and methods. The view does not copy anything; see {@link IdentifierView} for when to use it.
+	 */
+	view: ((id?: Identifier) => id === undefined ? undefined : new IdentifierView(id)) as Accessor<Identifier, IdentifierView>
+} as const;
+
+/**
+ * An object-oriented read-only view on an {@link Identifier}.
+ *
+ * The view holds a reference to the identifier it was created from and copies nothing, so it costs one small
+ * object and every accessor is a plain read. {@link IdentifierView.toJSON|Serializing} it yields the identifier
+ * again, so a view may be handed to `JSON.stringify` in its place.
+ *
+ * The bare {@link Identifier} remains the representation that is stored and sent over the wire; create a view
+ * where you *read* one and drop it afterwards rather than keeping one per binding.
+ * @example
+ * ```ts
+ * const id = Identifier.view(Dataflow.qualify(callId, graph));
+ * console.log(id?.name, id?.namespace, id?.toString());
+ * ```
+ */
+export class IdentifierView {
+	/** The underlying identifier; use it whenever you need the plain representation back. */
+	readonly raw: Identifier;
+
+	constructor(id: Identifier) {
+		this.raw = id;
+	}
+
+	/** the name part, so the `fn` of a `pkg::fn` */
+	get name(): BrandedIdentifier {
+		return Identifier.getName(this.raw);
+	}
+
+	/** the namespace part, `undefined` for a name written without one */
+	get namespace(): BrandedNamespace | undefined {
+		return Identifier.getNamespace(this.raw);
+	}
+
+	/** whether the identifier reaches for an internal object (`:::`), `undefined` if it says nothing about it */
+	get isInternal(): boolean | undefined {
+		return Identifier.accessesInternal(this.raw);
+	}
+
+	/** whether the identifier names its package, i.e. whether it carries a namespace */
+	get isQualified(): boolean {
+		return Array.isArray(this.raw);
+	}
+
+	/** whether this is the `...` argument or one of its accesses (`..1`, `..2`, ...) */
+	get isDotDotDot(): boolean {
+		return Identifier.isDotDotDotAccess(this.raw);
+	}
+
+	/** @see {@link Identifier.matches} */
+	matches(target: IdentifierLike, s3 = false): boolean {
+		return Identifier.matches(this.raw, rawIdentifier(target), s3);
+	}
+
+	/** Whether both name the very same thing, namespace and `:::` flag included. */
+	equals(other: IdentifierLike): boolean {
+		const target = rawIdentifier(other);
+		return this.name === Identifier.getName(target)
+			&& this.namespace === Identifier.getNamespace(target)
+			&& (this.isInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
+	}
+
+	/** @see {@link Identifier.mapName} */
+	mapName(fn: (name: BrandedIdentifier) => BrandedIdentifier): IdentifierView {
+		return new IdentifierView(Identifier.mapName(this.raw, fn));
+	}
+
+	/** @see {@link Identifier.mapNamespace} */
+	mapNamespace(fn: (ns: BrandedNamespace) => BrandedNamespace): IdentifierView {
+		return new IdentifierView(Identifier.mapNamespace(this.raw, fn));
+	}
+
+	/** @see {@link Identifier.toString} - the **valid R** spelling, so `pkg::fn` for a qualified name */
+	toString(): string {
+		return Identifier.toString(this.raw);
+	}
+
+	/** Serializes to the underlying identifier, so a view is interchangeable with one in JSON output. */
+	toJSON(): Identifier {
+		return this.raw;
+	}
+}
+
+/** An {@link Identifier} or a {@link IdentifierView} of one. Accepted wherever an identifier is only read. */
+export type IdentifierLike = Identifier | IdentifierView;
+
+/** Unwraps an {@link IdentifierView} to its identifier, passing bare identifiers through unchanged. */
+function rawIdentifier(of: IdentifierLike): Identifier {
+	return of instanceof IdentifierView ? of.raw : of;
+}
+
+/** The index of the `::` separating namespace from name, skipping backtick-quoted spans; `-1` if there is none. */
+function namespaceSeparatorAt(str: string): number {
+	let quoted = false;
+	for(let i = 0; i < str.length; i++) {
+		if(str[i] === '`') {
+			quoted = !quoted;
+		} else if(!quoted && str[i] === ':' && str[i + 1] === ':') {
+			return i;
+		}
+	}
+	return -1;
+}
+
+/**
+ * Well-known R package names used in {@link DefaultBuiltinConfig}.
+ * Using a const enum keeps the string values inlined at compile time.
+ */
+export const enum PkgName {
+	/* R built-in / recommended packages */
+	Base        = 'base',
+	Compiler    = 'compiler',
+	Graphics    = 'graphics',
+	GrDevices   = 'grDevices',
+	Methods     = 'methods',
+	Parallel    = 'parallel',
+	Stats       = 'stats',
+	Utils       = 'utils',
+	/* CRAN / third-party */
+	AnnotationHub = 'AnnotationHub',
+	Ape          = 'ape',
+	Arrow        = 'arrow',
+	AssertThat   = 'assertthat',
+	Audio        = 'audio',
+	Av           = 'av',
+	AwsS3        = 'aws.s3',
+	Box          = 'box',
+	Brew         = 'brew',
+	Callr        = 'callr',
+	Car          = 'car',
+	Claddis      = 'Claddis',
+	Cli          = 'cli',
+	CohortBuilder = 'cohortBuilder',
+	Cowplot      = 'cowplot',
+	Curl         = 'curl',
+	DataTable    = 'data.table',
+	Dbi          = 'DBI',
+	DbPlyr       = 'dbplyr',
+	Devtools     = 'devtools',
+	DiagrammeR   = 'DiagrammeR',
+	DoFuture     = 'doFuture',
+	DoMc         = 'doMC',
+	DoParallel   = 'doParallel',
+	DoSnow       = 'doSNOW',
+	Dplyr        = 'dplyr',
+	EbImage      = 'EBImage',
+	ExperimentHub = 'ExperimentHub',
+	Expss        = 'expss',
+	FastUtils    = 'FastUtils',
+	Feather      = 'feather',
+	Foreach      = 'foreach',
+	Forecats     = 'forcats',
+	Foreign      = 'foreign',
+	Fs           = 'fs',
+	Fst          = 'fst',
+	Functools    = 'functools',
+	Furrr        = 'furrr',
+	Future       = 'future',
+	FutureApply  = 'future.apply',
+	FutureCallr  = 'future.callr',
+	Geomorph     = 'geomorph',
+	GgPlot2      = 'ggplot2',
+	Gifski       = 'gifski',
+	Glue         = 'glue',
+	GoogleCloudStorageR = 'googleCloudStorageR',
+	GoogleDrive  = 'googledrive',
+	Haven        = 'haven',
+	Here         = 'here',
+	Hmisc        = 'Hmisc',
+	HtmlTools    = 'htmltools',
+	HtmlWidgets  = 'htmlwidgets',
+	Httr         = 'httr',
+	Imager       = 'imager',
+	Import       = 'import',
+	Inferference = 'inferference',
+	Janitor      = 'janitor',
+	Jpeg         = 'jpeg',
+	Jsonlite     = 'jsonlite',
+	Lattice      = 'lattice',
+	Lim          = 'LIM',
+	LmTest       = 'lmtest',
+	Magick       = 'magick',
+	Magrittr     = 'magrittr',
+	Maptools     = 'maptools',
+	Meltr        = 'meltr',
+	Mirai        = 'mirai',
+	Msgr         = 'msgr',
+	Multcomp     = 'multcomp',
+	Ncdf4        = 'ncdf4',
+	NorTest      = 'nortest',
+	OpenImageR   = 'OpenImageR',
+	OpenXlsx     = 'openxlsx',
+	Parallelly   = 'parallelly',
+	PkgLoad      = 'pkgload',
+	Plyr         = 'plyr',
+	Png          = 'png',
+	Processx     = 'processx',
+	Promises     = 'promises',
+	Purrr        = 'purrr',
+	Qs           = 'qs',
+	R6           = 'R6',
+	Ragg         = 'ragg',
+	Raster       = 'raster',
+	RasterPdf    = 'rasterpdf',
+	Rbdat        = 'rBDAT',
+	Rcpp         = 'Rcpp',
+	RcppParallel = 'RcppParallel',
+	Rcurl        = 'RCurl',
+	ReadOds      = 'readODS',
+	Readr        = 'readr',
+	Readstata13  = 'readstata13',
+	Readxl       = 'readxl',
+	Remotes      = 'remotes',
+	Rgdal        = 'rgdal',
+	Rhdf5        = 'rhdf5',
+	Rio          = 'rio',
+	Rlang        = 'rlang',
+	Rmatlab      = 'R.matlab',
+	RmethodsS3   = 'R.methodsS3',
+	Rnetcdf      = 'RNetCDF',
+	Roo          = 'R.oo',
+	Rprintf      = 'rprintf',
+	RsConnect    = 'rsconnect',
+	Rstatix      = 'rstatix',
+	RstudioApi   = 'rstudioapi',
+	Rutils       = 'R.utils',
+	Rvest        = 'rvest',
+	S7           = 'S7',
+	Seewave      = 'seewave',
+	Seqinr       = 'seqinr',
+	Sf           = 'sf',
+	Shiny        = 'shiny',
+	ShinyCohortBuilder = 'shinyCohortBuilder',
+	ShinyFiles   = 'shinyFiles',
+	ShinyJs      = 'shinyjs',
+	SimPhe       = 'SimPhe',
+	Soda         = 'SoDA',
+	Sourcetools  = 'sourcetools',
+	Sqldf        = 'sqldf',
+	Stars        = 'stars',
+	Stringmagic  = 'stringmagic',
+	Stringr      = 'stringr',
+	SvDialogs    = 'svDialogs',
+	Svglite      = 'svglite',
+	Sys          = 'sys',
+	Tcltk        = 'tcltk',
+	Terra        = 'terra',
+	Testthat     = 'testthat',
+	Tibble       = 'tibble',
+	TidyR        = 'tidyr',
+	Tiff         = 'tiff',
+	TinyPlot     = 'tinyplot',
+	TryCatchLog  = 'tryCatchLog',
+	Tseries      = 'tseries',
+	TuneR        = 'tuneR',
+	UseThis      = 'usethis',
+	VisNetwork   = 'visNetwork',
+	Vroom        = 'vroom',
+	Whisker      = 'whisker',
+	Withr        = 'withr',
+	Wrapr        = 'wrapr',
+	Writexl      = 'writexl',
+	Xfun         = 'xfun',
+	XlConnect    = 'XLConnect',
+	Xlsx         = 'xlsx',
+	Xml2         = 'xml2',
+	Yaml         = 'yaml',
+}
 
 /**
  * Each reference has exactly one reference type, stored as the respective number.
@@ -14,31 +588,39 @@ export type Identifier = string & { __brand?: 'identifier' }
  * a function when resolving an {@link Identifier|identifier}.
  * In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
  * while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
- *
  * @see {@link isReferenceType} - for checking if a (potentially joint) reference type contains a certain type
  * @see {@link ReferenceTypeReverseMapping} - for debugging
  */
 export enum ReferenceType {
 	/** The identifier type is unknown */
-	Unknown = 1,
+	Unknown = 1 << 0,
 	/** The identifier is defined by a function (includes built-in function) */
-	Function = 2,
+	Function = 1 << 1,
 	/** The identifier is defined by a variable (includes parameter and argument) */
-	Variable = 4,
+	Variable = 1 << 2,
 	/** The identifier is defined by a constant (includes built-in constant) */
-	Constant = 8,
+	Constant = 1 << 3,
 	/** The identifier is defined by a parameter (which we know nothing about at the moment) */
-	Parameter = 16,
+	Parameter = 1 << 4,
 	/** The identifier is defined by an argument (which we know nothing about at the moment) */
-	Argument = 32,
+	Argument = 1 << 5,
 	/** The identifier is defined by a built-in value/constant */
-	BuiltInConstant = 64,
+	BuiltInConstant = 1 << 6,
 	/** The identifier is defined by a built-in function */
-	BuiltInFunction = 128
+	BuiltInFunction = 1 << 7,
+	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
+	S3MethodPrefix = 1 << 8,
+	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
+	S7MethodPrefix = 1 << 9,
+	/**
+	 * Only ever a lookup target, never the type of a definition: everything a value position may see.
+	 * `id` in `id > 2` names data, so a function `id` in scope is not what the comparison reads.
+	 */
+	NonFunction = 1 << 10
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
-export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(Object.entries(ReferenceType).map(([k, v]) => [v as ReferenceType, k]));
+export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(enumMembers(ReferenceType).map(([name, value]) => [value, name]));
 
 /**
  * Check if the reference types have an overlapping type!
@@ -50,10 +632,9 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
 /**
  * Describes all types of reference (definitions) that can appear within a graph (i.e., that are not built-in like the
  * default definition for the assignment operator `<-`).
- *
  * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
  */
-export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>
+export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction | ReferenceType.NonFunction>;
 
 /**
  * An identifier reference points to a variable like `a` in `b <- a`.
@@ -67,23 +648,22 @@ export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInC
  * they indicate the references that are currently (during the analysis at this given node)
  * {@link DataflowInformation#in|read (`in`)}, {@link DataflowInformation#out|written (`out`)},
  * or {@link DataflowInformation#unknownReferences|unknown (`unknownReferences`)}.
- *
  * @see {@link InGraphIdentifierDefinition}
  */
 export interface IdentifierReference {
 	/**
 	 * The id of the node which represents the reference in the {@link NormalizedAst|normalized AST} and the {@link DataflowGraph|dataflow graph}.
 	 */
-	readonly nodeId:     NodeId
+	readonly nodeId: NodeId
 	/** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
-	readonly name:       Identifier | undefined
+	readonly name:   Identifier | undefined
 	/** Type of the reference to be resolved */
-	readonly type:       ReferenceType;
+	readonly type:   ReferenceType;
 	/**
 	 * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
 	 * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	controlDependencies: ControlDependency[] | undefined
+	cds?:            ControlDependency[] | undefined
 }
 
 /**
@@ -95,23 +675,43 @@ export interface IdentifierReference {
  * Within a code snippet like `a <- 3`, the symbol processor will first create an
  * {@link IdentifierReference|identifier reference} for `a` to reference the use
  * and then promote it to an {@link InGraphIdentifierDefinition|identifier definition}.
- *
  * @see {@link IdentifierReference}
  */
 export interface InGraphIdentifierDefinition extends IdentifierReference {
-	readonly type:      InGraphReferenceType
+	readonly type:             InGraphReferenceType
 	/**
 	 * The assignment node which ultimately defined this identifier
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
-	readonly definedAt: NodeId
-
-	readonly value?:    NodeId[]
+	readonly definedAt:        NodeId
 	/**
-	 * this attribute links a definition to indices (pointer links) it may be affected by or related to
+	 * For value tracking, this contains all nodeIds of constant values that may be made available to this identifier
+	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
 	 */
-	indicesCollection?: ContainerIndicesCollection
+	readonly value?:           NodeId[]
+	/**
+	 * If this variable holds an R environment (created by `new.env()` etc.),
+	 * this tracks the current known state of that environment.
+	 * Use this to resolve variables assigned via `assign(name, val, envir=<this var>)`.
+	 */
+	readonly envState?:        REnvironmentInformation
+	/**
+	 * If this is a function that returns a tracked environment, stores the envState
+	 * that the function returns (best-effort: only set when statically detectable).
+	 */
+	readonly returnsEnvState?: REnvironmentInformation
+	/**
+	 * Whether {@link value} names the sequence this identifier iterates over rather than what it holds, as a
+	 * `for` loop's variable does: it takes one element of that sequence at a time.
+	 */
+	readonly iterated?:        boolean
 }
+
+/**
+ * A narrowed variant of {@link InGraphIdentifierDefinition} that is guaranteed to have a non-undefined `name`.
+ * Prefer this over the inline intersection `InGraphIdentifierDefinition & { name: Identifier }`.
+ */
+export type NamedInGraphIdentifierDefinition = InGraphIdentifierDefinition & { readonly name: Identifier };
 
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}.
@@ -119,4 +719,4 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
  * {@link BuiltInIdentifierDefinition} and {@link BuiltInIdentifierConstant} are used for built-in functions and constants only,
  * so the most important one for your day-to-day R script is the {@link InGraphIdentifierDefinition}.
  */
-export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant
+export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant;

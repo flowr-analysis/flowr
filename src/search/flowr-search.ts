@@ -1,11 +1,15 @@
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
-import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowInformation } from '../dataflow/info';
-import type { FlowrConfigOptions } from '../config';
-import type { Enrichment, EnrichmentSearchArguments, EnrichmentData, EnrichmentElementContent, EnrichmentSearchContent, EnrichmentElementArguments } from './search-executor/search-enrichers';
-import { Enrichments } from './search-executor/search-enrichers';
+import {
+	type Enrichment,
+	type EnrichmentData,
+	type EnrichmentElementArguments,
+	type EnrichmentElementContent,
+	type EnrichmentSearchArguments,
+	type EnrichmentSearchContent,
+	Enrichments } from './search-executor/search-enrichers';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
  * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
@@ -17,50 +21,65 @@ export interface FlowrSearchElement<Info> {
 }
 
 export interface FlowrSearchNodeBase<Type extends string, Name extends string, Args extends Record<string, unknown> | undefined> {
-    readonly type: Type;
-    readonly name: Name;
-    readonly args: Args;
+	readonly type: Type;
+	readonly name: Name;
+	readonly args: Args;
 }
 
 export type FlowrSearchGeneratorNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
-		FlowrSearchNodeBase<'generator', Name, Args>;
+	FlowrSearchNodeBase<'generator', Name, Args>;
 export type FlowrSearchTransformerNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
-		FlowrSearchNodeBase<'transformer', Name, Args>;
+	FlowrSearchNodeBase<'transformer', Name, Args>;
 
 export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	/**
 	 * The node must be in the given line.
 	 */
-    readonly line?:     number;
+	readonly line?:          number;
 	/**
 	 * The node must be in the given column.
 	 */
-    readonly column?:   number;
+	readonly column?:        number;
 	/**
 	 * The node must have the given name.
 	 * To treat this name as a regular expression, set {@link FlowrSearchGetFilter#nameIsRegex} to true.
 	 */
-    readonly name?:     string;
+	readonly name?:          string;
 	/**
 	 * Only useful in combination with `name`. If true, the name is treated as a regular expression.
 	 */
-	readonly nameIsRegex?: boolean;
+	readonly nameIsRegex?:   boolean;
 	/**
 	 * The node must have the given id.
 	 */
-    readonly id?:       NodeId;
+	readonly id?:            NodeId;
+	/**
+	 * The node must stem from a file with the given path matching the regex.
+	 * Inline code (code without a file path) is treated as having an empty path `""`.
+	 * Please note that you can address the full path!
+	 * @example
+	 * ```ts
+	 * // matches all files in any 'tests' folder
+	 * filePathRegex: '.*\\tests\\.*'
+	 * // matches all files named 'myfile.R' in any folder
+	 * filePathRegex: '.*\\/myfile\\.R$'
+	 * // matches only inline code
+	 * filePathRegex: '^$'
+	 * // matches inline code or .R files
+	 * filePathRegex: '^$|.*\\.R$'
+	 * ```
+	 */
+	readonly filePathRegex?: string;
+	/**
+	 * If true, match any node whose source range contains the given line/column (fuzzy position match).
+	 * Requires `line` to be provided.
+	 */
+	readonly fuzzy?:         boolean;
+	/**
+	 * If true (and `fuzzy` is true), return only the innermost (deepest in the AST) matching node(s).
+	 */
+	readonly innermostOnly?: boolean;
 }
-
-type MinimumInputForFlowrSearch<P extends Pipeline> =
-    PipelineStepOutputWithName<P, 'normalize'> extends NormalizedAst ? (
-        PipelineStepOutputWithName<P, 'dataflow'> extends DataflowInformation ? PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }
-            : never
-    ): never
-
-/** we allow any pipeline, which provides us with a 'normalize' and 'dataflow' step */
-export type FlowrSearchInput<
-    P extends Pipeline
-> = MinimumInputForFlowrSearch<P>
 
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
@@ -87,23 +106,32 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this.elements;
 	}
 
-	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements): this {
-		this.elements = mutator(this.elements);
-		return this;
+	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements | Promise<OutElements>): this | Promise<this> {
+		const result = mutator(this.elements);
+		if(result instanceof Promise) {
+			return result.then(resolvedElements => {
+				this.elements = resolvedElements;
+				return this;
+			});
+		} else {
+			this.elements = result;
+			return this;
+		}
 	}
+
 
 	/**
 	 * Enriches this flowr search element collection with the given enrichment.
 	 * To retrieve enrichment content for a given enrichment type, use {@link enrichmentContent}.
 	 *
-	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a consise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
+	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a concise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
 	 */
-	public enrich<E extends Enrichment>(data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentSearchArguments<E>): this {
+	public async enrich<E extends Enrichment>(data: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentSearchArguments<E>): Promise<this> {
 		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
 		if(enrichmentData.enrichSearch !== undefined) {
 			this.enrichments = {
 				...this.enrichments ?? {},
-				[enrichment]: enrichmentData.enrichSearch(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
+				[enrichment]: await enrichmentData.enrichSearch(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
 			};
 		}
 		return this;

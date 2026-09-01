@@ -1,5 +1,6 @@
-import type { Base, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
+import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RExpressionList } from './r-expression-list';
 
@@ -8,7 +9,7 @@ import type { RExpressionList } from './r-expression-list';
  * for(<variable> in <vector>) <body>
  * ```
  */
-export interface RForLoop<Info = NoInfo> extends Base<Info>, Location {
+export interface RForLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.ForLoop
 	/** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
 	variable:      RSymbol<Info>
@@ -17,3 +18,18 @@ export interface RForLoop<Info = NoInfo> extends Base<Info>, Location {
 	/** body used in for-loop: <p> `for(... in ...) <body>`*/
 	body:          RExpressionList<Info>
 }
+
+/**
+ * Helper for working with {@link RForLoop} AST nodes.
+ */
+export const RForLoop = {
+	...RNode,
+	name: 'RForLoop',
+	/**
+	 * Type guard for RForLoop nodes.
+	 * @lintIgnore node-is node-is-optional
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RForLoop<Info> {
+		return node?.type === RType.ForLoop;
+	}
+} as const;

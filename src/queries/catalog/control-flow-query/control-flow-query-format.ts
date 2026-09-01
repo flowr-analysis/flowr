@@ -4,11 +4,9 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { executeControlFlowQuery } from './control-flow-query-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
-import { CfgVertexType } from '../../../control-flow/control-flow-graph';
+import { type ControlFlowInformation, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
-import type { CfgSimplificationPassName } from '../../../control-flow/cfg-simplification';
-import { CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
+import { type CfgSimplificationPassName, CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
 
 /**
  * Provides the control flow graph with an optional, fixed configuration
@@ -29,11 +27,12 @@ export interface ControlFlowQueryResult extends BaseQueryResult {
 }
 
 export const ControlFlowQueryDefinition = {
+	title:           'Control-Flow Query',
 	executor:        executeControlFlowQuery,
-	asciiSummarizer: (formatter, processed, queryResults, result) => {
+	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
 		result.push(`Query: ${bold('control-flow', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
-		result.push(`   ╰ CFG: ${cfgToMermaidUrl(out.controlFlow, processed.normalize)}`);
+		result.push(`   ╰ CFG: ${cfgToMermaidUrl(out.controlFlow, await analyzer.normalize())}`);
 		return true;
 	},
 	schema: Joi.object({
@@ -46,8 +45,9 @@ export const ControlFlowQueryDefinition = {
 	}).description('The control flow query provides the control flow graph of the analysis, optionally simplified.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
-		return [...out.controlFlow.graph.vertices(true)]
-			.filter(([,v]) => v.type !== CfgVertexType.Block)
-			.map(v => v[0]);
+		return out.controlFlow.graph.vertices(true).entries()
+			.filter(([,v]) => !CfgVertex.isBlock(v))
+			.map(v => v[0])
+			.toArray();
 	}
 } as const satisfies SupportedQuery<'control-flow'>;

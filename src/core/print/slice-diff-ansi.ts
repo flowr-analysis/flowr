@@ -1,5 +1,4 @@
-import type { SourceRange } from '../../util/range';
-import { mergeRanges, rangeCompare, rangesOverlap } from '../../util/range';
+import { SourceRange } from '../../util/range';
 import { isNotUndefined } from '../../util/assert';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -11,15 +10,16 @@ function grayOut(): string {
 
 function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolean }[]) {
 	return loc.reduce((acc, curr) => {
-		if(rangesOverlap(acc[acc.length - 1].location, curr.location)) {
-			return [
-				...acc.slice(0, -1), {
-					selected: curr.selected || acc[acc.length - 1].selected,
-					location: mergeRanges(acc[acc.length - 1].location, curr.location)
-				}];
+		const last = acc[acc.length - 1];
+		if(SourceRange.overlap(last.location, curr.location)) {
+			acc[acc.length - 1] = {
+				selected: curr.selected || last.selected,
+				location: SourceRange.merge([last.location, curr.location])
+			};
 		} else {
-			return [...acc, curr];
+			acc.push(curr);
 		}
+		return acc;
 	}, [loc[0]]);
 }
 
@@ -28,6 +28,9 @@ function highlight(s: string, selected: boolean): string {
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary;
 }
 
+/**
+ * Print a slice diff with ANSI colors
+ */
 export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())
 		.filter(([id, { location }]) => slice.has(id) && isNotUndefined(location))
@@ -38,7 +41,7 @@ export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: Normalized
 	}
 
 	// we sort all locations from back to front so that replacements do not screw up the indices
-	importantLocations.sort((a, b) => -rangeCompare(a.location, b.location));
+	importantLocations.sort((a, b) => -SourceRange.compare(a.location, b.location));
 
 	// we need to merge all ranges that overlap, otherwise even reversed traversal can still crew us up
 	importantLocations = mergeJointRangesInSorted(importantLocations);
@@ -48,7 +51,7 @@ export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: Normalized
 	for(const { selected, location } of importantLocations) {
 		const [sl, sc, , ec] = location;
 		const line = lines[sl - 1];
-		lines[sl - 1] = `${line.substring(0, sc - 1)}${ansiFormatter.reset()}${highlight(line.substring(sc - 1, ec), selected)}${grayOut()}${line.substring(ec)}`;
+		lines[sl - 1] = `${line.slice(0, Math.max(0, sc - 1))}${ansiFormatter.reset()}${highlight(line.slice(Math.max(0, sc - 1), ec), selected)}${grayOut()}${line.slice(Math.max(0, ec))}`;
 	}
 
 	return `${grayOut()}${lines.join('\n')}${ansiFormatter.reset()}`;

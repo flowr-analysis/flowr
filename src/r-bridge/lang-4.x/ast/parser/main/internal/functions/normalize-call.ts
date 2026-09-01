@@ -5,10 +5,9 @@ import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../../util/assert';
 import { tryToNormalizeArgument } from './normalize-argument';
 import type { SourceRange } from '../../../../../../../util/range';
-import type { RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../../../../model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../model/nodes/r-function-call';
-import type { RNext } from '../../../../model/nodes/r-next';
-import type { RBreak } from '../../../../model/nodes/r-break';
+import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall, EmptyArgument } from '../../../../model/nodes/r-function-call';
+import { RNext } from '../../../../model/nodes/r-next';
+import { RBreak } from '../../../../model/nodes/r-break';
 import { RawRType, RType } from '../../../../model/type';
 import type { RArgument } from '../../../../model/nodes/r-argument';
 import { normalizeExpression } from '../expression/normalize-expression';
@@ -16,14 +15,13 @@ import { normalizeString } from '../values/normalize-string';
 import type { RNode } from '../../../../model/model';
 import { tryNormalizeSymbol } from '../values/normalize-symbol';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RSymbol } from '../../../../model/nodes/r-symbol';
 
 /**
  * Tries to parse the given data as a function call.
- *
  * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- *
- * @returns The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
+ * @returns              The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
  * May return a {@link RNext} or {@link RBreak} as `next()` and `break()` work as such.
  */
 export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[]): RFunctionCall | RNext | RBreak | undefined {
@@ -46,7 +44,7 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: r
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
 		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content);
-	} else if(namedSymbolContent.findIndex(x => x.name === RawRType.SymbolFunctionCall) < 0) {
+	} else if(!namedSymbolContent.some(x => x.name === RawRType.SymbolFunctionCall)) {
 		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`);
 		return tryParseUnnamedFunctionCall(data, mappedWithName, location, content);
 	} else {
@@ -79,26 +77,26 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 
 	if(parsedArguments.length === 0) {
 		// interestingly, next() and break() work
-		if(calledFunction.type === RType.Next) {
+		if(RNext.is(calledFunction)) {
 			return {
 				type:   RType.Next,
 				lexeme: content,
 				location,
 				info:   {
-					fullRange:        data.currentRange,
-					additionalTokens: [],
-					fullLexeme:       data.currentLexeme
+					fullRange:  data.currentRange,
+					adToks:     [],
+					fullLexeme: data.currentLexeme
 				}
 			};
-		} else if(calledFunction.type === RType.Break) {
+		} else if(RBreak.is(calledFunction)) {
 			return {
 				type:   RType.Break,
 				lexeme: content,
 				location,
 				info:   {
-					fullRange:        data.currentRange,
-					additionalTokens: [],
-					fullLexeme:       data.currentLexeme
+					fullRange:  data.currentRange,
+					adToks:     [],
+					fullLexeme: data.currentLexeme
 				}
 			};
 		}
@@ -112,9 +110,9 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 		calledFunction: calledFunction,
 		arguments:      parsedArguments.map(x => x ?? EmptyArgument),
 		info:           {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }
@@ -125,18 +123,17 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 	if(symbolContent.length === 1 && symbolContent[0].name === RawRType.StringConst) {
 		const stringBase = normalizeString(data, symbolContent[0].content);
 		functionName = {
-			type:      RType.Symbol,
-			namespace: undefined,
-			lexeme:    stringBase.lexeme,
-			info:      stringBase.info,
-			location:  stringBase.location,
-			content:   stringBase.content.str
+			type:     RType.Symbol,
+			lexeme:   stringBase.lexeme,
+			info:     stringBase.info,
+			location: stringBase.location,
+			content:  stringBase.content.str
 		};
 	} else {
 		functionName = tryNormalizeSymbol(data, symbolContent);
 	}
 	guard(functionName !== undefined, 'expected function name to be a symbol, yet received none');
-	guard(functionName.type === RType.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`);
+	guard(RSymbol.is(functionName), () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`);
 
 	const parsedArguments = parseArguments(mappedWithName, data);
 
@@ -148,9 +145,9 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 		functionName,
 		arguments: parsedArguments.map(x => x ?? EmptyArgument),
 		info:      {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

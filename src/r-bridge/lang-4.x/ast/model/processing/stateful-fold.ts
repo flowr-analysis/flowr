@@ -1,4 +1,3 @@
-import { assertUnreachable } from '../../../../../util/assert';
 import type { DeepReadonly } from 'ts-essentials';
 import { RType } from '../type';
 import type { RNode } from '../model';
@@ -10,8 +9,7 @@ import type { RAccess } from '../nodes/r-access';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import type { RPipe } from '../nodes/r-pipe';
 import type { RUnaryOp } from '../nodes/r-unary-op';
-import type { RFunctionCall } from '../nodes/r-function-call';
-import { EmptyArgument } from '../nodes/r-function-call';
+import { type RFunctionCall, EmptyArgument } from '../nodes/r-function-call';
 import type { RForLoop } from '../nodes/r-for-loop';
 import type { RWhileLoop } from '../nodes/r-while-loop';
 import type { RRepeatLoop } from '../nodes/r-repeat-loop';
@@ -22,8 +20,9 @@ import type { RLineDirective } from '../nodes/r-line-directive';
 import type { RIfThenElse } from '../nodes/r-if-then-else';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RFunctionDefinition } from '../nodes/r-function-definition';
-import type { RArgument } from '../nodes/r-argument';
+import { RArgument } from '../nodes/r-argument';
 import type { RParameter } from '../nodes/r-parameter';
+import { assertUnreachable } from '../../../../../util/assert';
 
 
 /**
@@ -31,7 +30,7 @@ import type { RParameter } from '../nodes/r-parameter';
  * <p>
  * Exists for leafs as well for consistency reasons.
  */
-export type DownFold<Info, Down> = (node: RNode<Info>, down: Down) => Down
+export type DownFold<Info, Down> = (node: RNode<Info>, down: Down) => Down;
 
 /**
  * All fold functions besides `down` are called after the down-pass in conventional fold-fashion.
@@ -59,7 +58,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 		foldLineDirective: (comment: RLineDirective<Info>, down: Down) => Up;
 	};
 	/** The `otherwise` argument is `undefined` if the `else` branch is missing */
-	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
+	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down) => Up;
 	foldExprList:   (exprList: RExpressionList<Info>, grouping: [start: Up, end: Up] | undefined, expressions: Up[], down: Down) => Up;
 	functions: {
 		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, params: Up[], body: Up, down: Down) => Up;
@@ -71,7 +70,6 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 		foldParameter:          (parameter: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
 	}
 }
-
 
 /**
  * Folds in old functional-fashion over the AST structure but allowing for a down function which can pass context to child nodes.
@@ -99,7 +97,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.UnaryOp:
 			return folds.foldUnaryOp(ast, foldAstStateful(ast.operand, down, folds), down);
 		case RType.Access:
-			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.access.map(access => access === EmptyArgument ? EmptyArgument : foldAstStateful(access, down, folds)), down);
+			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.access.map(access => RArgument.isEmpty(access) ? EmptyArgument : foldAstStateful(access, down, folds)), down);
 		case RType.ForLoop:
 			return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down);
 		case RType.WhileLoop:
@@ -107,7 +105,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.RepeatLoop:
 			return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down);
 		case RType.FunctionCall:
-			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.named ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === EmptyArgument ? param : foldAstStateful(param, down, folds)), down);
+			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.named ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => RArgument.isEmpty(param) ? param : foldAstStateful(param, down, folds)), down);
 		case RType.FunctionDefinition:
 			return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down);
 		case RType.Parameter:
@@ -121,7 +119,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.IfThenElse:
 			return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down);
 		case RType.ExpressionList:
-			return folds.foldExprList(ast, ast.grouping ? [foldAstStateful(ast.grouping[0], down, folds), foldAstStateful(ast.grouping[1], down, folds)] : undefined ,  ast.children.map(expr => foldAstStateful(expr, down, folds)), down);
+			return folds.foldExprList(ast, ast.grouping ? [foldAstStateful(ast.grouping[0], down, folds), foldAstStateful(ast.grouping[1], down, folds)] : undefined,  ast.children.map(expr => foldAstStateful(expr, down, folds)), down);
 		default:
 			assertUnreachable(type);
 	}

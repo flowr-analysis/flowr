@@ -6,6 +6,12 @@ import { RType } from '../../../../model/type';
 import type { RNext } from '../../../../model/nodes/r-next';
 import type { JsonEntry } from '../../../json/format';
 
+
+/**
+ * Normalizes a `next`, which carries nothing beyond where it is written.
+ * @param data - the normalizer's state
+ * @param obj  - the parsed entry to normalize
+ */
 export function normalizeNext(data: NormalizerData, obj: JsonEntry): RNext {
 	expensiveTrace(parseLog, () => `[next] ${JSON.stringify(obj)}`);
 
@@ -16,9 +22,9 @@ export function normalizeNext(data: NormalizerData, obj: JsonEntry): RNext {
 		location,
 		lexeme: content,
 		info:   {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

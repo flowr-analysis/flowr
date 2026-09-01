@@ -14,7 +14,6 @@ const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/;
  * Normalize the given object as an R line directive (`#line <number> "<file>"`).
  * This requires you to check the corresponding name beforehand.
  * If the given object turns out to be no line directive, this returns a normal comment instead.
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The JSON object to extract the meta-information from
  */
@@ -29,9 +28,9 @@ export function normalizeLineDirective(data: NormalizerData, obj: JsonEntry): RL
 			location,
 			lexeme: content,
 			info:   {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       content
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: content
 			},
 			content: content.slice(1)
 		};
@@ -43,9 +42,9 @@ export function normalizeLineDirective(data: NormalizerData, obj: JsonEntry): RL
 			file:   match[2],
 			lexeme: content,
 			info:   {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       content
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: content
 			}
 		};
 	}

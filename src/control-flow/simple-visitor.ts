@@ -1,18 +1,17 @@
-import type { ControlFlowGraph } from './control-flow-graph';
-import { CfgVertexType } from './control-flow-graph';
+import { type ControlFlowGraph, CfgVertex, NoNeighbors } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { ArrayQueue } from '../util/collections/queue';
 
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[], visitor: (node: NodeId) => boolean | void) => void;
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.
- * @param graph     - The control flow graph.
+ * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
- * @param visitor   - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
+ * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  *
  * This function is of type {@link SimpleCfgVisitor}.
- *
  * @see {@link visitCfgInOrder} for a traversal in order
  */
 export function visitCfgInReverseOrder(
@@ -22,7 +21,7 @@ export function visitCfgInReverseOrder(
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
-	let queue = [...startNodes];
+	const queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
 	while(queue.length > 0) {
 		const current = queue.pop() as NodeId;
@@ -34,13 +33,14 @@ export function visitCfgInReverseOrder(
 			continue;
 		} else if(hasBb) {
 			const get = graph.getVertex(current);
-			if(get?.type === CfgVertexType.Block) {
-				queue = queue.concat(get.elems.toReversed().map(e => e.id));
+			if(CfgVertex.isBlock(get)) {
+				for(const e of CfgVertex.getBasicBlockElements(get)) {
+					queue.push(CfgVertex.getId(e));
+				}
 			}
 		}
-		const incoming = graph.outgoingEdges(current);
-		if(incoming) {
-			queue.push(...incoming.keys());
+		for(const c of graph.predecessors(current)) {
+			queue.push(c);
 		}
 	}
 }
@@ -52,7 +52,6 @@ export function visitCfgInReverseOrder(
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  *
  * This function is of type {@link SimpleCfgVisitor}.
- *
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order
  */
 export function visitCfgInOrder(
@@ -60,29 +59,36 @@ export function visitCfgInOrder(
 	startNodes: readonly NodeId[],
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
 	visitor: (node: NodeId) => boolean | void
-): void {
+): Set<NodeId> {
 	const visited = new Set<NodeId>();
-	let queue = startNodes.slice();
+	const queue = new ArrayQueue(startNodes);
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(queue.length > 0) {
-		const current = queue.shift() as NodeId;
+	while(!queue.isEmpty()) {
+		const current = queue.dequeue() as NodeId;
 		if(visited.has(current)) {
 			continue;
 		}
 		visited.add(current);
 		if(visitor(current)) {
 			continue;
-		} else if(hasBb) {
-			const get = graph.getVertex(current);
-			if(get?.type === CfgVertexType.Block) {
-				queue = queue.concat(get.elems.map(e => e.id));
+		} else {
+			if(hasBb) {
+				const get = graph.getVertex(current);
+				if(CfgVertex.isBlock(get)) {
+					for(const e of CfgVertex.getBasicBlockElements(get)) {
+						queue.enqueue(CfgVertex.getId(e));
+					}
+				}
+			}
+			for(const child of graph.childrenOf(current) ?? NoNeighbors) {
+				queue.enqueue(child);
 			}
 		}
-		const outgoing = graph.ingoingEdges(current) ?? [];
-		for(const [to] of outgoing) {
-			queue.push(to);
+		for(const to of graph.successors(current)) {
+			queue.enqueue(to);
 		}
 	}
+	return visited;
 }
 
 /**

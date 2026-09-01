@@ -1,6 +1,5 @@
 import { label } from '../../../_helper/label';
-import type { TestConfigurationWithOutput } from '../../../_helper/shell';
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { type TestConfigurationWithOutput, assertSliced, withShell } from '../../../_helper/shell';
 import { makeMagicCommentHandler } from '../../../../../src/reconstruct/auto-select/magic-comments';
 import { describe } from 'vitest';
 
@@ -12,7 +11,7 @@ function withMagicComments(expectedOutput?: string): Partial<TestConfigurationWi
 	};
 }
 
-describe.sequential('Reconstruct with Magic Comments', withShell(shell => {
+describe('Reconstruct with Magic Comments', { concurrent: false }, withShell(shell => {
 	describe('Without Comments', () => {
 		assertSliced(label('full', ['local-left-assignment', 'assignments-and-bindings', 'numbers']),
 			shell, 'x <- 2\ncat()\nx', ['3@x'],

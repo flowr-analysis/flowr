@@ -1,11 +1,11 @@
 import type { FlowrSearchLike } from './flowr-search-builder';
 import { traverseFlowrSearchBuilderType } from './flowr-search-traverse';
-import { escapeMarkdown } from '../util/mermaid/mermaid';
 import { binaryTreeToString, isBinaryTree, ValidFlowrFilters, ValidFlowrFiltersReverse } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode } from './search-executor/search-generators';
 import type { FlowrSearchTransformerNode } from './search-executor/search-transformer';
 import { ValidVertexTypeReverse, ValidVertexTypes } from '../dataflow/graph/vertex';
 import { ValidRTypes, ValidRTypesReverse } from '../r-bridge/lang-4.x/ast/model/type';
+import { Mermaid } from '../util/mermaid/mermaid';
 
 
 export interface FlowrSearchMermaidBuilderOptions {
@@ -33,8 +33,8 @@ function argsToMermaidString(args: Record<string, unknown> | undefined): string 
 		return '';
 	}
 	return Object.entries(args).map(([key, value]) =>
-		`${key}: ${isBinaryTree(value) ? '_' + escapeMarkdown(binaryTreeToString(value.tree)) + '_' 
-			: escapeMarkdown(JSON.stringify(value))}`)
+		`${key}: ${isBinaryTree(value) ? '_' + Mermaid.escape(binaryTreeToString(value.tree)) + '_'
+			: Mermaid.escape(JSON.stringify(value))}`)
 		.join(', ');
 }
 
@@ -51,6 +51,9 @@ function argsToAsciiString(args: Record<string, unknown> | undefined): string {
 		.join(', ');
 }
 
+/**
+ * Converts a {@link FlowrSearchLike} object to an ASCII representation.
+ */
 export function flowrSearchToAscii(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(
 		search,
@@ -71,6 +74,9 @@ function argsToCodeString(args: Record<string, unknown> | undefined): string {
 		.join(', ');
 }
 
+/**
+ * Converts a {@link FlowrSearchLike} object to code that can be used to recreate it.
+ */
 export function flowrSearchToCode(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(
 		search,
@@ -84,12 +90,14 @@ export function flowrSearchToCode(search: FlowrSearchLike): string {
 function flowrTransformerToCode(node: FlowrSearchTransformerNode): string {
 	if(node.name === 'filter') {
 		const a = node.args.filter;
-		if(ValidVertexTypes.has(String(a as string))) {
-			return `${node.name}(VertexType.${ValidVertexTypeReverse[String(a as string)]})`;
-		} else if(ValidRTypes.has(String(a as string))) {
-			return `${node.name}(RType.${ValidRTypesReverse[String(a as string)]})`;
-		} else if(ValidFlowrFilters.has(String(a as string))) {
-			return `${node.name}(FlowrFilter.${ValidFlowrFiltersReverse[String(a as string)]})`;
+		if(typeof a === 'string') {
+			if(ValidVertexTypes.has(a)) {
+				return `${node.name}(VertexType.${ValidVertexTypeReverse[a]})`;
+			} else if(ValidRTypes.has(a)) {
+				return `${node.name}(RType.${ValidRTypesReverse[a]})`;
+			} else if(ValidFlowrFilters.has(a)) {
+				return `${node.name}(FlowrFilter.${ValidFlowrFiltersReverse[a]})`;
+			}
 		}
 	}
 	return `${node.name}(${argsToCodeString(node.args)})`;

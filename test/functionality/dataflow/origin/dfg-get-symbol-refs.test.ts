@@ -1,29 +1,26 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { defaultConfigOptions } from '../../../../src/config';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
-describe.sequential('Get Symbol Refs Test', withTreeSitter(shell => {
-	function testCode(name: string, criterion: SingleSlicingCriterion, code: string, expected: SlicingCriteria | undefined) {
+describe('Get Symbol Refs Test', { concurrent: false }, withTreeSitter(shell => {
+	function testCode(name: string, criterion: SlicingCriterion, code: string, expected: SlicingCriteria | undefined) {
 		test(name, async() => {
-			const { dataflow, normalize } = 
-			await createDataflowPipeline(shell, { request: requestFromInput(code.trim()) }, defaultConfigOptions).allRemainingSteps();
+			const { dataflow, normalize } =
+				await createDataflowPipeline(shell, { context: contextFromInput(code.trim()) }).allRemainingSteps();
 
-			const refs = getAllRefsToSymbol(dataflow.graph, slicingCriterionToId(criterion, normalize.idMap));
+			const refs = getAllRefsToSymbol(dataflow.graph, SlicingCriterion.parse(criterion, normalize.idMap));
 			if(expected !== undefined) {
-				const expectedIds = expected.map(c => slicingCriterionToId(c, normalize.idMap));
+				const expectedIds = expected.map(c => SlicingCriterion.parse(c, normalize.idMap));
 				assert.deepEqual(refs, expectedIds);
 			} else {
 				assert.isUndefined(refs);
 			}
-			
+
 		});
 	}
-
 
 	testCode('Simple Use', '2@x', 'x <- 5\nprint(x)',             ['1@x', '2@x']);
 	testCode('Simple Def', '1@x', 'x <- 5\nprint(x)',             ['1@x', '2@x']);

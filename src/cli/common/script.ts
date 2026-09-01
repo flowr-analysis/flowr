@@ -1,6 +1,5 @@
 /**
  * The goal of this module is simply to streamline the creation of new scripts.
- *
  * @module
  */
 import { scripts } from './scripts-info';
@@ -9,6 +8,7 @@ import type { CommonOptions } from './options';
 import commandLineArgs from 'command-line-args';
 import { italic } from '../../util/text/ansi';
 import { log, LogLevel } from '../../util/log';
+import { exitSafe } from '../../util/proc';
 
 /**
  * Just a helping data structure to allow the user to provide example usages of the respective script.
@@ -40,21 +40,23 @@ export function helpForOptions(script: keyof typeof scripts, content: HelpConten
 	]);
 }
 
-
+/**
+ * Processes the command line arguments for a given script.
+ */
 export function processCommandLineArgs<T extends CommonOptions>(script: keyof typeof scripts, requireAdditionally: (keyof T)[], help: HelpContent): T {
 	const options = commandLineArgs(scripts[script].options) as T;
 
 	if(options.help) {
 		console.log(helpForOptions(script, help));
-		process.exit(0);
+		exitSafe(0);
 	} else if(requireAdditionally.length > 0) {
 		const keys = new Set(Object.keys(options));
-		 
+
 		const missing = requireAdditionally.filter(k => !keys.has(k as string) || options[k] === undefined);
 		if(missing.length > 0) {
 			console.error(italic(`Missing required arguments: ${missing.join(', ')}. Showing help.`));
 			console.log(helpForOptions(script, help));
-			process.exit(0);
+			exitSafe(0);
 		}
 	}
 

@@ -1,5 +1,5 @@
 import type { UnresolvedDataType } from '../subtyping/types';
-import { UnresolvedRTypeVariable , constrain, getParameterTypeFromFunction, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType } from '../subtyping/types';
+import { UnresolvedRTypeVariable, constrain, getParameterTypeFromFunction, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType } from '../subtyping/types';
 import { RComplexType, RDoubleType, REnvironmentType, RIntegerType, RLanguageType, RLogicalType, RNullType, RRawType, RS4Type, RStringType } from '../types';
 import type { RohdeFunctionTypeInformation } from './interface';
 
@@ -10,6 +10,11 @@ export interface TraceCsvRow {
 	readonly return_type:     string;
 }
 
+/**
+ * The function types the trace rows state, one entry per package and function, along with the number of
+ * signatures each package was the first to contribute.
+ * @param data - The rows of the trace corpus.
+ */
 export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeFunctionTypeInformation[], Map<string, number>] {
 	const extractedTypes: Map<string, Map<string, UnresolvedRFunctionType[]>> = new Map();
 	const unseenSignaturePackageContributions: Map<string, Set<string>> = new Map();
@@ -27,7 +32,7 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 				unseenSignaturePackageContributions.get(row.package_name)!.add(signature);
 			}
 			// if(row.function_name === 'print') {
-			// 	console.log('Found print signature:', signature);
+			//  console.log('Found print signature:', signature);
 			// }
 		} else {
 			continue; // Skip if we have already seen this signature for this package

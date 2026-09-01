@@ -1,15 +1,14 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { retrieveMetaStructure } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
-import { string2ts } from '../../../../../convert-values';
 import type { RString } from '../../../../model/nodes/r-string';
 import { RType } from '../../../../model/type';
 import type { JsonEntry } from '../../../json/format';
+import { RStringValue } from '../../../../../convert-values';
 
 /**
- * Normalize the given object as a R string (see {@link string2ts}).
+ * Normalize the given object as a R string (see {@link RStringValue.fromRLexeme}).
  * This requires you to check the corresponding name beforehand.
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The JSON object to extract the meta-information from
  */
@@ -27,12 +26,12 @@ export function normalizeString(data: NormalizerData, obj: JsonEntry): RString {
 	return {
 		type:    RType.String,
 		location,
-		content: string2ts(stringContent),
+		content: RStringValue.fromRLexeme(stringContent),
 		lexeme:  stringContent,
 		info:    {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

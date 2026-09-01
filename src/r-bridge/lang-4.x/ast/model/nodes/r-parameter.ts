@@ -1,15 +1,47 @@
-import type { Base, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
+import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
+import type { BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
 
 /**
  * Represents a parameter of a function definition in R.
  */
-export interface RParameter<Info = NoInfo> extends Base<Info>, Location {
+export interface RParameter<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.Parameter;
 	/* the name is represented as a symbol to additionally get location information */
-	name:          RSymbol<Info>;
+	name:          RSymbol<Info, BrandedIdentifier>;
 	/** is it the special ... parameter? */
 	special:       boolean;
 	defaultValue:  RNode<Info> | undefined;
 }
+
+/**
+ * Helper for working with {@link RParameter} AST nodes.
+ */
+export const RParameter = {
+	...RNode,
+	name: 'RParameter',
+	/**
+	 * Type guard for {@link RParameter} nodes.
+	 * @lintIgnore node-is node-is-optional
+	 * @see {@link RParameter.isDotDotDotDot} - to check whether a parameter is the special `...` parameter
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RParameter<Info> {
+		return node?.type === RType.Parameter;
+	},
+	/**
+	 * Type guard for the special `...` parameter.
+	 * @see {@link RParameter.is} - to check whether a node is a parameter at all
+	 */
+	isDotDotDotDot<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RParameter<Info> {
+		return RParameter.is(node) && node.special;
+	},
+	/**
+	 * Type guard for a parameter that names what it is worth when a call passes nothing for it.
+	 * @see {@link RParameter.is} - to check whether a node is a parameter at all
+	 */
+	isWithDefault<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RParameter<Info> & { defaultValue: RNode<Info> } {
+		return RParameter.is(node) && node.defaultValue !== undefined;
+	}
+} as const;

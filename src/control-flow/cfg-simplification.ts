@@ -5,15 +5,19 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { visitCfgInOrder } from './simple-visitor';
 import { cfgAnalyzeDeadCode } from './cfg-dead-code';
-import type { FlowrConfigOptions } from '../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { uniqueArray } from '../util/collections/arrays';
 
 export interface CfgPassInfo {
-	ast?:   NormalizedAst,
-	dfg?:   DataflowGraph,
-	config: FlowrConfigOptions
+	ast?: NormalizedAst,
+	dfg?: DataflowGraph,
+	ctx:  ReadOnlyFlowrAnalyzerContext
 }
 export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassInfo) => ControlFlowInformation;
 
+/**
+ * All available control flow graph simplification passes.
+ */
 export const CfgSimplificationPasses = {
 	'unique-cf-sets':    uniqueControlFlowSets,
 	'analyze-dead-code': cfgAnalyzeDeadCode,
@@ -61,11 +65,11 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): Co
 
 function uniqueControlFlowSets(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	return {
-		returns:     Array.from(new Set(cfg.returns)),
-		entryPoints: Array.from(new Set(cfg.entryPoints)),
-		exitPoints:  Array.from(new Set(cfg.exitPoints)),
-		breaks:      Array.from(new Set(cfg.breaks)),
-		nexts:       Array.from(new Set(cfg.nexts)),
+		returns:     uniqueArray(cfg.returns),
+		entryPoints: uniqueArray(cfg.entryPoints),
+		exitPoints:  uniqueArray(cfg.exitPoints),
+		breaks:      uniqueArray(cfg.breaks),
+		nexts:       uniqueArray(cfg.nexts),
 		graph:       cfg.graph
 	};
 }
@@ -76,12 +80,11 @@ function toBasicBlocks(cfg: ControlFlowInformation, _info?: CfgPassInfo): Contro
 
 /**
  * Uses {@link visitCfgInOrder} to find all nodes that are reachable from the control flow graph's {@link ControlFlowInformation.entryPoints} and returns them as a set.
+ * Please note that this will not visit the grouping delimiters of expression list!
  * @param cfg - The control flow graph whose reachable nodes to find.
  */
 export function cfgFindAllReachable(cfg: ControlFlowInformation): Set<NodeId> {
-	const reachable = new Set<NodeId>();
-	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
-		reachable.add(node);
+	return visitCfgInOrder(cfg.graph, cfg.entryPoints, () => {
+		/* do nothing */
 	});
-	return reachable;
 }

@@ -2,12 +2,11 @@ import type { MergeableRecord } from './objects';
 import { arraySum } from './collections/arrays';
 
 export const enum SummarizerType {
-	Benchmark	 = 'benchmark',
-	Statistics	 = 'statistics',
+	Benchmark  = 'benchmark',
+	Statistics = 'statistics',
 }
 
-
-export interface CommonSummarizerConfiguration extends MergeableRecord{
+export interface CommonSummarizerConfiguration extends MergeableRecord {
 	logger: (message: string) => void
 }
 
@@ -32,36 +31,28 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 		this.log = this.config.logger;
 	}
 
-
 	/**
 	 * First phase of the summary, can be used to extract all data of interest from the individual
 	 * benchmark or statistic results. This can write temporary files based on the configuration.
-	 *
 	 * @param useTypeClassification - Whether to split the analysis based on the detected type (e.g. 'test', 'example', ...)
 	 */
-	public abstract preparationPhase(useTypeClassification: boolean): Promise<void>
+	public abstract preparationPhase(useTypeClassification: boolean): Promise<void>;
 
 	/**
 	 * Second phase of the summary, can be used to combine the data from the first phase
 	 * and produce some kind of "ultimate results".
 	 */
-	public abstract summarizePhase(): Promise<Output>
+	public abstract summarizePhase(): Promise<Output>;
 }
 
-export function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
-	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`;
-}
-
-const summarizedKeys = ['min', 'max', 'median', 'mean', 'std', 'total'];
-export function summarizedMeasurement2CsvHeader(prefix?: string): string {
-	return summarizedKeys.map(k => prefix ? `${prefix}-${k}` : k).join(',');
-}
-
+/**
+ * Summarizes the given measurement data.
+ */
 export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: number): SummarizedMeasurement {
 	// just to avoid in-place modification
 	const sorted = [...data].sort((a, b) => a - b);
 	const min = sorted[0];
-	const max = sorted[sorted.length - 1];
+	const max = sorted.at(-1) as number;
 	const median = sorted[Math.floor(sorted.length / 2)];
 	const total = arraySum(sorted);
 	const length = totalNumberOfDataPoints ?? sorted.length;

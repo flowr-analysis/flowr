@@ -25,21 +25,29 @@ export enum ColorEffect {
 	Background = 40,
 }
 
-export type FormatOptions = ColorFormatOptions | WeightFormatOptions | ColorFormatOptions & WeightFormatOptions
+export type FormatOptions = ColorFormatOptions | WeightFormatOptions | ColorFormatOptions & WeightFormatOptions;
 
 export interface ColorFormatOptions {
-	color:  Colors
-	effect: ColorEffect
+	color:   Colors
+	effect:  ColorEffect
+	/** use the high-intensity variant */
+	bright?: boolean
 }
 
 export interface WeightFormatOptions {
-	style: FontStyles
+	style: FontStyles | readonly FontStyles[]
 }
 
 export interface OutputFormatter {
 	format(input: string, options?: FormatOptions): string
 	getFormatString(options?: FormatOptions): string
 	reset(): string
+	/**
+	 * Render `text` as a link to `url` in whatever form this output supports (OSC 8, markdown, or plain text).
+	 * When a live hyperlink cannot be rendered, the raw `url` is shown so the target is not lost; pass
+	 * `force` to always emit just the short `text` label instead.
+	 */
+	hyperlink(text: string, url: string, force?: boolean): string
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -54,6 +62,10 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 	public reset(): string {
 		return '';
 	}
+
+	public hyperlink(text: string, url: string, force = false): string {
+		return force ? text : url;
+	}
 }();
 
 export const markdownFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -61,10 +73,10 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 		if(options && 'style' in options) {
 			if(options.style === FontStyles.Bold) {
 				input = `**${input}**`;
-			} else if(options.style === FontStyles.Italic) {
+			} else if(options.style === FontStyles.Italic || options.style === FontStyles.Faint) {
 				input = `_${input}_`;
 			} else {
-				throw new Error(`Unsupported font style: ${options.style}`);
+				throw new Error(`Unsupported font style: ${String(options.style)}`);
 			}
 		}
 
@@ -86,6 +98,10 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 	public reset(): string {
 		return '';
 	}
+
+	public hyperlink(text: string, url: string, _force = false): string {
+		return `[${text}](${url})`;
+	}
 }();
 
 /**
@@ -102,11 +118,66 @@ export function bold(s: string, f: OutputFormatter = formatter, options?: Format
 	return f.format(s, { style: FontStyles.Bold, ...options });
 }
 
+/**
+ * Color the text in the given foreground color.
+ */
+export function color(s: string, c: Colors, f: OutputFormatter = formatter, opts?: { bright?: boolean, style?: FontStyles | readonly FontStyles[] }): string {
+	return f.format(s, { color: c, effect: ColorEffect.Foreground, ...opts });
+}
+
+/** Faint/dim ("grayed out") text. */
+export function faint(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+	return f.format(s, { style: FontStyles.Faint, ...options });
+}
+
+/**
+ * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message.
+ */
+export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
+	return f.format(s, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+}
+
 export const escape = '\x1b[';
+
+/** every {@link escape} sequence, so a place that cannot colour (a browser, a log file) can drop them */
+// eslint-disable-next-line no-control-regex -- the escape character is what an escape sequence starts with
+const AnsiSequence = /\x1b\[[\d;]*m/g;
+
+/** The text without any colouring, for wherever an escape sequence would only show up as `[0m`. */
+export function stripAnsi(text: string): string {
+	return text.replaceAll(AnsiSequence, '');
+}
 const colorSuffix = 'm';
+let hyperlinkSupport: boolean | undefined;
+/** best-effort, env-based OSC 8 hyperlink support (`FORCE_HYPERLINK`/`NO_HYPERLINK` override; unknown terminals are treated as unsupported) */
+export function supportsHyperlinks(): boolean {
+	if(hyperlinkSupport !== undefined) {
+		return hyperlinkSupport;
+	}
+	const env = process.env;
+	if(env.FORCE_HYPERLINK !== undefined) {
+		return (hyperlinkSupport = env.FORCE_HYPERLINK !== '' && env.FORCE_HYPERLINK !== '0');
+	}
+	if(env.NO_HYPERLINK !== undefined || !process.stdout.isTTY) {
+		return (hyperlinkSupport = false);
+	}
+	const known = Boolean(env.WT_SESSION || env.KITTY_WINDOW_ID || env.KONSOLE_VERSION || env.DOMTERM)
+		|| (env.TERM_PROGRAM !== undefined && ['iTerm.app', 'WezTerm', 'vscode', 'ghostty', 'Hyper', 'rio'].includes(env.TERM_PROGRAM))
+		|| (env.VTE_VERSION !== undefined && Number(env.VTE_VERSION) >= 5000)
+		|| (env.TERM !== undefined && /kitty|wezterm|ghostty/i.test(env.TERM));
+	return (hyperlinkSupport = known);
+}
+
 export const ansiFormatter = {
 	reset(): string {
 		return `${escape}0${colorSuffix}`;
+	},
+
+	hyperlink(text: string, url: string, force = false): string {
+		if(supportsHyperlinks()) {
+			return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+		}
+		return force ? text : url;
 	},
 
 	format(input: string, options?: FormatOptions): string {
@@ -117,14 +188,23 @@ export const ansiFormatter = {
 		if(options === undefined) {
 			return '';
 		}
-		const colorString = 'color' in options ? `${options.effect + options.color}` : '';
-		const weightString = 'style' in options ? `${options.style}` : '';
-		return `${escape}${colorString}${weightString !== '' ? ';' : ''}${weightString}${colorSuffix}`;
+		const params: number[] = [];
+		if('style' in options) {
+			const styles: readonly FontStyles[] = Array.isArray(options.style) ? options.style as readonly FontStyles[] : [options.style as FontStyles];
+			params.push(...styles);
+		}
+		if('color' in options) {
+			params.push((options.bright ? options.effect + 60 : options.effect) + options.color);
+		}
+		return params.length === 0 ? '' : `${escape}${params.join(';')}${colorSuffix}`;
 	}
 };
 
 export let formatter: OutputFormatter = ansiFormatter;
 
+/**
+ * (Globally) sets the output formatter used by the utility functions in this module.
+ */
 export function setFormatter(setFormatter: OutputFormatter): void {
 	formatter = setFormatter;
 }

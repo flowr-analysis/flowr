@@ -1,52 +1,76 @@
-# syntax=docker/dockerfile:1
+# optional full-history signature database. The default is a tiny image with no data (image stays small);
+# bake the full bundle in by overriding with the published data image:
+#   docker build --build-arg SIGDB_IMAGE=ghcr.io/flowr-analysis/flowr-sigdb:latest ...
+ARG SIGDB_IMAGE=busybox:stable
+FROM ${SIGDB_IMAGE} AS sigdb-full
+RUN mkdir -p /data/sigdb
 
-FROM node:22.13-alpine3.20 AS builder
+FROM node:25.3-alpine3.23 AS builder
 
 WORKDIR /app
 
 # copy the source and build files of all modules into the workdir
 COPY ./src /app/src
 COPY ./test /app/test
+COPY ./scripts /app/scripts
 COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 
 # install python and build tools for node-gyp
 RUN apk add --no-cache python3 make g++
 
-# install and build all modules
-RUN npm ci && npm run build:bundle-flowr
+RUN npm ci && npm run build:bundle-flowr && npx ts-node --transpile-only scripts/sigdb-decompress-all.ts dist/src/data/sigdb
+
+# merge in the full-history database when one was provided via SIGDB_IMAGE (the default busybox ships none),
+# then decompress all shards so they're ready for fast queries
+COPY --from=sigdb-full /data/sigdb/ /tmp/sigdb-full/
+RUN if ls /tmp/sigdb-full/*.br >/dev/null 2>&1; then \
+      cp /tmp/sigdb-full/* dist/src/data/sigdb/ && npx ts-node --transpile-only scripts/sigdb-decompress-all.ts dist/src/data/sigdb; \
+    fi; rm -rf /tmp/sigdb-full
+
+# make sure the image ships the FULL bundle: a local build already copied current.*/history.* in; a fresh
+# clone shipped only the base floor, so download whatever the committed link file lists but is still missing
+# (from the free release), then decompress all shards. Never fails the build (offline -> base floor).
+RUN npx ts-node --transpile-only scripts/sigdb-bake.ts dist/src/data/sigdb && npx ts-node --transpile-only scripts/sigdb-decompress-all.ts dist/src/data/sigdb
+
+# stage the sigdb bundle aside so the final image copies it as its own layer (it is large and versioned
+# independently of the code, so a code-only rebuild reuses the cached database layer and vice versa)
+RUN mv dist/src/data/sigdb /app/sigdb-bundle
 
 
-FROM node:22.13-alpine3.20 AS flowr
+FROM node:25.3-alpine3.23 AS flowr
 
 LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
 WORKDIR /app
 
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories; apk add --no-cache --update icu-libs R
+# persist the v8 module compile cache so container startup skips recompiling the bundle
+ENV NODE_COMPILE_CACHE=/app/.compile-cache
 
 COPY ./scripts/demo.R LICENSE /app/
-
-# copy all package.jsons so we can install them (see below)
+# the signature databases as their own image layer, before the code copy, so a code-only change reuses it
+COPY --from=builder /app/sigdb-bundle /app/src/data/sigdb
+COPY --from=builder /app/dist /app
 COPY ./package.json ./package-lock.json /app/
 
-# install python and build tools for node-gyp
-RUN apk add --no-cache python3 make g++
-
-# install all modules so that we have dependencies in here too
-# (we don't copy them from the builder because builder modules include dev deps too)
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/dist /app/dist
-
-# make new user
-RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/dist/**/*.d.ts && addgroup -S flowr && adduser -S flowr -G flowr
+# install deps, make new user and clean up the test files
+# the optional deps ship in the image on purpose (quad export needs `n3`), only the dev ones are dropped
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/main"  \
+          >> /etc/apk/repositories; apk add --no-cache icu-libs=76.1-r1 R=4.5.2-r0 && \
+    rm -rf /app/package.json /app/node_modules/**/*.md /app/node_modules/.bin  \
+           /app/node_modules/**/LICENSE /app/package-lock.json \
+           /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && \
+    addgroup -S flowr && adduser -S flowr -G flowr && \
+    mkdir -p /app/.compile-cache && chown -R flowr:flowr /app/.compile-cache
 USER flowr
 
+# prime the compile cache with a real analysis so the hot path is warm on first run
+RUN node /app/src/cli/flowr.min.js --execute ":dataflowsilent file://demo.R" >/dev/null
+
+# we also configure basic memory options
 ENTRYPOINT [\
-    "node",\
-    # configure basic memory options
-    "--max-old-space-size=8192",\
-    "--stack-size=8192",\
-    "--max-semi-space-size=8192",\
-    "/app/dist/src/cli/flowr.min.js"\
-   ]
+   "node",\
+   "--max-old-space-size=8192",\
+   "--stack-size=8192",\
+   "/app/src/cli/flowr.min.js"\
+  ]

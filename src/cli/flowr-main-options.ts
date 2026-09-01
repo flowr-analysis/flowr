@@ -3,6 +3,9 @@ import { scripts } from './common/scripts-info';
 
 let _scriptsText: string | undefined;
 
+/**
+ * Returns a comma-separated list of all available master scripts.
+ */
 export function getScriptsText() {
 	if(_scriptsText === undefined) {
 		_scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k]) => k).join(', ');
@@ -10,7 +13,7 @@ export function getScriptsText() {
 	return _scriptsText;
 }
 
-export const flowrMainOptionDefinitions: OptionDefinition[] = [
+export const flowrMainOptionDefinitions = [
 	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false },
 	{
 		name:        'config-json',
@@ -36,6 +39,11 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 		name:        'no-ansi',
 		type:        Boolean,
 		description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'
+	},
+	{
+		name:        'no-fs',
+		type:        Boolean,
+		description: 'Read nothing from the file system: ignore any flowR config file, do not load or save the repl history, and disable the on-disk signature database.'
 	},
 	{
 		name:         'port',
@@ -123,6 +131,16 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 		description: 'The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.',
 		multiple:    false
 	}
-];
+] as const satisfies OptionDefinition[];
 
 export const defaultConfigFile = 'flowr.json';
+
+/**
+ * Arguments to forward to a sub-script: everything the user passed except the script name token,
+ * which (being the default option) may appear before or after the main flowR options.
+ */
+export function getScriptArguments(script: string, argv: readonly string[] = process.argv): string[] {
+	const passedArgs = argv.slice(2);
+	const scriptIndex = passedArgs.indexOf(script);
+	return scriptIndex < 0 ? [...passedArgs] : [...passedArgs.slice(0, scriptIndex), ...passedArgs.slice(scriptIndex + 1)];
+}

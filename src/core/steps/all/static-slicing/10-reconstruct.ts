@@ -1,18 +1,45 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import type { IPipelineStep } from '../../pipeline-step';
-import { PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { SliceResult } from '../../../../slicing/static/slicer-types';
-import { reconstructToCode } from '../../../../reconstruct/reconstruct';
+import { reconstructToCode, type InlineFull } from '../../../../reconstruct/reconstruct';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { AutoSelectPredicate } from '../../../../reconstruct/auto-select/auto-select-defaults';
+import type { DataflowInformation } from '../../../../dataflow/info';
+import { buildSourceInlineMap } from '../../../../reconstruct/inline/source-inline-map';
 
 export interface ReconstructRequiredInput {
-	autoSelectIf?: AutoSelectPredicate
+	autoSelectIf?:     AutoSelectPredicate
+	/**
+	 * When confronted with a project of multiple files the question for reconstruct arises wrt. which files to rebuild.
+	 * This option can be used to either reconstruct all files or only specific files by their index in the project.
+	 * By default, (for legacy) this will reconstruct the *first* file (index 0).
+	 *
+	 * Either you can set this to `'all'` to reconstruct all files or provide an array of file indices in the files context to reconstruct only those files.
+	 */
+	reconstructFiles?: 'all' | number[]
+	/**
+	 * Inline resolvable `source()` calls into the reconstruction so the result is a single self-contained R text.
+	 * Cyclic and unresolvable `source()` calls are kept verbatim and reported via `reconstruct.inlineWarnings`.
+	 */
+	inlineSources?:    boolean
+	/**
+	 * Inline *every* file into the reconstruction, in flowR's loading order (which respects implicit sources).
+	 * Overrides {@link inlineSources} and {@link reconstructFiles}.
+	 */
+	inlineFull?:       InlineFull
 }
 
-function processor(results: { normalize?: NormalizedAst, slice?: SliceResult }, input: Partial<ReconstructRequiredInput>) {
-	return reconstructToCode(results.normalize as NormalizedAst, (results.slice as SliceResult).result, input.autoSelectIf);
+function processor(results: { normalize?: NormalizedAst, slice?: SliceResult, dataflow?: DataflowInformation }, input: Partial<ReconstructRequiredInput>) {
+	const normalize = results.normalize as NormalizedAst;
+	const inline = input.inlineSources || input.inlineFull;
+	return reconstructToCode(normalize, {
+		nodes:            (results.slice as SliceResult).result,
+		reconstructFiles: input.reconstructFiles,
+		inlineSources:    input.inlineSources,
+		inlineFull:       input.inlineFull,
+		sourceMap:        inline ? buildSourceInlineMap(normalize, (results.dataflow as DataflowInformation).graph) : undefined
+	}, input.autoSelectIf);
 }
 
 export const NAIVE_RECONSTRUCT = {
@@ -24,6 +51,6 @@ export const NAIVE_RECONSTRUCT = {
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
-	dependencies:  [ 'slice' ],
+	dependencies:  ['slice'],
 	requiredInput: undefined as unknown as ReconstructRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'reconstruct', typeof processor>>;

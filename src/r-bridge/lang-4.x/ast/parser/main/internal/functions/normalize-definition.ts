@@ -9,14 +9,13 @@ import { RawRType, RType } from '../../../../model/type';
 import type { RParameter } from '../../../../model/nodes/r-parameter';
 import { normalizeExpressions } from '../structure/normalize-expressions';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 /**
  * Tries to parse the given data as a function definition.
- *
- * @param data - The data used by the parser (see {@link NormalizerData})
+ * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- *
- * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
+ * @returns              The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
 export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[]): RFunctionDefinition | undefined {
 	const fnBase = mappedWithName[0];
@@ -37,7 +36,7 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 
 	const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryNormalizeParameter(data, x));
 
-	if(parameters.some(p => p === undefined)) {
+	if(parameters.includes(undefined)) {
 		parseLog.error(`function had unexpected unknown parameters: ${JSON.stringify(parameters.filter(isNotUndefined))}, aborting.`);
 		return undefined;
 	}
@@ -46,7 +45,7 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 	guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${bodyStructure.length}`);
 
 	const body = normalizeExpressions(data, bodyStructure);
-	guard(body.length === 1 && body[0].type !== RType.Delimiter, () => `expected function body to yield one normalized expression, but ${body.length}`);
+	guard(body.length === 1 && !RDelimiter.is(body[0]), () => `expected function body to yield one normalized expression, but ${body.length}`);
 
 
 	return {
@@ -56,9 +55,9 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 		parameters: parameters as RParameter[],
 		body:       ensureExpressionList(body[0]),
 		info:       {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

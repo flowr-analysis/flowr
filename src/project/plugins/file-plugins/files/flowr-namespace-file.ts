@@ -1,0 +1,572 @@
+import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
+import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
+import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
+import { removeRQuotes } from '../../../../r-bridge/retriever';
+import { startAndEndsWith } from '../../../../util/text/strings';
+import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
+import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
+import type {
+	AstIdMap,
+	NormalizedAst,
+	ParentInformation
+} from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { foldAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/fold';
+import { Identifier } from '../../../../dataflow/environments/identifier';
+import { isNotUndefined } from '../../../../util/assert';
+import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
+import {
+	toUnnamedArgument
+} from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
+import { SourceRange } from '../../../../util/range';
+import { parseRRegexPattern } from '../../../../util/r-regex';
+import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { uniqueArray } from '../../../../util/collections/arrays';
+import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+
+export interface NamespaceInfo {
+	exportedSymbols:      string[];
+	exportedFunctions:    string[];
+	/**
+	 * Names listed by `exportMethods()`: S4 methods the package registered for one of its classes, which is a
+	 * different claim than an ordinary export (the package answers a generic, it does not define the function).
+	 * Only the context-parsed path ({@link parseNamespaceComplex}) tells these apart; the regex fallback folds
+	 * them into {@link exportedFunctions}.
+	 */
+	exportedS4Methods:    string[];
+	/** Classes listed by `exportClasses()`: the S4 classes the package owns. Separated like {@link exportedS4Methods}. */
+	exportedS4Classes:    string[];
+	exportS3Generics:     Map<string, string[]>;
+	exportedPatterns:     string[];
+	importedPackages:     Map<string, string[] | 'all'>;
+	loadsWithSideEffects: boolean;
+	callable:             string[];
+	/** Present only in complex parsed NAMESPACE files. Maps conditions to the parts they gate. */
+	conditional?:         Map<RNode<ParentInformation>, NamespaceInfo>;
+}
+
+export interface NamespaceFormat {
+	current:               NamespaceInfo;
+	[packageName: string]: NamespaceInfo;
+}
+
+/**
+ * Decorates a text file to expose its content as a {@link NamespaceFormat}.
+ * Simple parsing is quicker but does not support `if`/other R constructs.
+ */
+export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
+	private readonly wrapped: FlowrFileProvider;
+	private readonly ctx:     FlowrAnalyzerContext | undefined;
+
+	/** Prefer {@link FlowrNamespaceFile.from}, which avoids re-wrapping and handles roles. */
+	constructor(file: FlowrFileProvider, ctx?: FlowrAnalyzerContext) {
+		super(file.path(), file.roles);
+		this.wrapped = file;
+		this.ctx = ctx;
+	}
+
+	/** Creates a {@link FlowrNamespaceFile} from an already-parsed {@link NamespaceFormat}. */
+	public static fromNamespaceFormat(fmt: NamespaceFormat, path: string, roles?: FileRole[]): FlowrNamespaceFile {
+		const file = new FlowrNamespaceFile(new FlowrTextFile(path, roles));
+		file.setContent(fmt);
+		return file;
+	}
+
+	/**
+	 * Loads and parses the content of the wrapped file in the {@link NamespaceFormat}.
+	 * @see {@link parseNamespaceSimple} for details on the parsing logic.
+	 * @see {@link parseNamespaceComplex} for a more complex parser.
+	 */
+	protected loadContent(): NamespaceFormat {
+		return this.ctx ? parseNamespaceComplex(this.wrapped, this.ctx) : parseNamespaceSimple(this.wrapped);
+	}
+
+	/** See {@link isExportedInNamespaceFormat}, which this answers for the file's own content. */
+	public isExported(name: string, pkg: string = 'current'): boolean | RNode<ParentInformation>[] {
+		const fmt = this.content();
+		return isExportedInNamespaceFormat(fmt, name, pkg);
+	}
+
+	/**
+	 * Lifts a file to a {@link FlowrNamespaceFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already a namespace file
+	 * @param ctx  - An optional analyzer context to use for complex parsing
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider | FlowrNamespaceFile, ctx?: FlowrAnalyzerContext, role?: FileRole): FlowrNamespaceFile {
+		if(role) {
+			file.assignRole(role);
+		}
+		return file instanceof FlowrNamespaceFile ? file : new FlowrNamespaceFile(file, ctx);
+	}
+}
+
+/**
+ * Either returns whether the given symbol/function is exported from the given package
+ * or the list of (`and`) conditions under which it is exported.
+ * @param fmt  - The namespace format to check in
+ * @param name - The name of the symbol/function to check
+ * @param pkg  - The package to check in
+ */
+export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, name: string, pkg: string = 'current'): boolean | RNode<ParentInformation>[] {
+	const nsInfo: NamespaceInfo | undefined = pkg === 'current' ? fmt.current : fmt[pkg];
+	return nsInfo ? isExportedInInfo(name, nsInfo) : false;
+}
+
+/** As {@link isExportedInNamespaceFormat}, but for one already picked {@link NamespaceInfo}. */
+export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
+	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)
+		|| nsInfo.exportedS4Methods.includes(name) || nsInfo.exportedS4Classes.includes(name)) {
+		return true;
+	}
+	if(name.includes('.')) {
+		for(const [k, m] of nsInfo.exportS3Generics.entries()) {
+			if(m.some(method => `${k}.${method}` === name)) {
+				return true;
+			}
+		}
+	}
+	for(const pattern of nsInfo.exportedPatterns) {
+		const regex = parseRRegexPattern(pattern);
+		if(regex.test(name)) {
+			return true;
+		}
+	}
+	if(nsInfo.conditional) {
+		for(const [cond, info] of nsInfo.conditional) {
+			const res = isExportedInInfo(name, info);
+			if(res === true) {
+				return [cond];
+			} else if(Array.isArray(res)) {
+				return [cond, ...res];
+			}
+		}
+	}
+	return false;
+}
+
+function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContext): NamespaceFormat {
+	const analyzer = ctx.analyzer;
+	if(!analyzer) {
+		return parseNamespaceSimple(file);
+	}
+	const c = file.content().toString();
+	let nast: NormalizedAst;
+	try {
+		nast = analyzer.normalizeStandalone(c);
+	} catch{
+		return parseNamespaceSimple(file);
+	}
+	const f = nast.ast.files[0];
+	if(!f?.root) {
+		return parseNamespaceSimple(file);
+	}
+	const nothing = getEmptyNamespaceFormat;
+	return foldAst(f.root, {
+		foldAccess:   nothing,
+		foldBinaryOp: nothing,
+		foldUnaryOp:  nothing,
+		foldString:   nothing,
+		foldLogical:  nothing,
+		foldNumber:   nothing,
+		foldPipe:     nothing,
+		loop:         {
+			foldBreak: nothing,
+			foldNext:  nothing,
+			foldWhile: (loop, _condition, body) =>
+				handleConditionCall(nast.idMap, loop.condition, body, undefined),
+			foldFor:    (_loop, _var, _vector, body) => body,
+			foldRepeat: (_loop, body) => body,
+		},
+		foldExprList: (_expr, _g, children) => {
+			return children.reduce<NamespaceFormat>((acc, child) => {
+				return mergeNamespaceFormat(acc, child);
+			}, getEmptyNamespaceFormat());
+		},
+		foldIfThenElse: (ifNode, _cond, thenBranch, elseBranch) =>
+			handleConditionCall(nast.idMap, ifNode.condition, thenBranch, elseBranch),
+		foldSymbol: nothing,
+		other:      {
+			foldComment:       nothing,
+			foldLineDirective: nothing
+		},
+		functions: {
+			foldFunctionDefinition: nothing,
+			foldArgument:           (_arg, _name, value) => value ?? getEmptyNamespaceFormat(),
+			foldParameter:          (_param, _name, defaultValue, _down) => defaultValue ?? getEmptyNamespaceFormat(),
+			foldFunctionCall:       (call, expr) => {
+				if(!call.named) {
+					return expr ?? getEmptyNamespaceFormat();
+				}
+				const name = Identifier.getName(call.functionName.content);
+				const g = expr ?? getEmptyNamespaceFormat();
+				switch(name) {
+					case 'export':
+						return handleExportCall(g, call.arguments);
+					case 'exportPattern':
+						return handleExportPatternCall(g, call.arguments);
+					case 'S3method':
+						return handleS3MethodCall(g, call.arguments);
+					case 'import':
+						return handleImportCall(g, call.arguments);
+					case 'importFrom':
+					case 'importClassesFrom':
+					case 'importMethodsFrom':
+						return handleImportFromCall(g, call.arguments);
+					case 'useDynLib':
+						return handleUseDynLibCall(g, call.arguments);
+					case 'exportClasses':
+						return handleS4ExportCall(g, call.arguments, 'exportedS4Classes');
+					case 'exportMethods':
+						return handleS4ExportCall(g, call.arguments, 'exportedS4Methods');
+				}
+				return g;
+			}
+		}
+	});
+}
+
+/** All exported names of a namespace that can be referenced (functions, symbols, patterns, and S3 methods as `generic.class`). */
+export function getExportedNames(info: NamespaceInfo): string[] {
+	const s3: string[] = [];
+	for(const [g, methods] of info.exportS3Generics) {
+		for(const m of methods) {
+			s3.push(`${g}.${m}`);
+		}
+	}
+	return uniqueArray([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedS4Methods,
+		...info.exportedS4Classes, ...info.exportedPatterns, ...s3]);
+}
+
+/** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
+export function getCallables(info: NamespaceInfo): string[] {
+	return info.callable.length > 0 ? info.callable : getExportedNames(info);
+}
+
+/** Sets the given list of strings as callable functions */
+export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo {
+	const all = new Set(getExportedNames(info));
+	for(const f of func) {
+		if(all.has(f)) {
+			info.callable.push(f);
+		}
+	}
+	return info;
+}
+
+function handleConditionCall(idMap: AstIdMap, cond: RNode<ParentInformation>, thenBranch: NamespaceFormat, elseBranch: NamespaceFormat | undefined): NamespaceFormat {
+	const g = getEmptyNamespaceFormat();
+	const condMap = g.current.conditional ?? new Map<RNode<ParentInformation>, NamespaceInfo>();
+	condMap.set(cond, thenBranch.current);
+	if(elseBranch) {
+		condMap.set(wrapRNodeInNotCall(cond, idMap), elseBranch.current);
+	}
+	g.current.conditional = condMap;
+	return g;
+}
+
+function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RFunctionCall<ParentInformation> {
+	return {
+		type:         RType.FunctionCall,
+		info:         node.info,
+		named:        true,
+		functionName: {
+			type:     RType.Symbol,
+			info:     node.info,
+			lexeme:   'not',
+			content:  Identifier.make('not'),
+			location: node.location ?? SourceRange.invalid(),
+		},
+		location:  node.location ?? SourceRange.invalid(),
+		lexeme:    'not',
+		arguments: [toUnnamedArgument(node, idMap)]
+	};
+}
+/** the name a NAMESPACE directive lists, without the quotes or backticks R allows around it */
+function unquoteName(name: string): string {
+	return startAndEndsWith(name, '`') ? name.slice(1, -1) : removeRQuotes(name);
+}
+
+/** Unquotes every lexeme of `args` (dropping empty/nameless arguments) and pushes the result onto `target`. */
+function pushUnquotedLexemes(target: string[], args: readonly PotentiallyEmptyRArgument<ParentInformation>[], unquote: (s: string) => string): void {
+	target.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquote(a.lexeme) : undefined).filter(isNotUndefined));
+}
+
+/** The array stored for `key` in a `string[]`-valued map, creating and registering an empty one if there is none yet. */
+function arrayAt<K>(map: Map<K, string[]>, key: K): string[] {
+	const arr = map.get(key) ?? [];
+	map.set(key, arr);
+	return arr;
+}
+
+/** As {@link arrayAt}, but for an import map: a package imported wholesale (`'all'`) also gets a fresh array to add to. */
+function importArrayAt(map: Map<string, string[] | 'all'>, key: string): string[] {
+	const arr = map.get(key);
+	if(arr && arr !== 'all') {
+		return arr;
+	}
+	const fresh: string[] = [];
+	map.set(key, fresh);
+	return fresh;
+}
+
+/** Registers `pkg` (creating it if new) as loading with side effects, as `useDynLib()` directives do. */
+function markSideEffectLoader(fmt: NamespaceFormat, pkg: string): void {
+	(fmt[pkg] ??= emptyNamespaceInfo()).loadsWithSideEffects = true;
+}
+
+function handleExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
+	pushUnquotedLexemes(g.current.exportedSymbols, args, unquoteName);
+	return g;
+}
+function handleExportPatternCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
+	pushUnquotedLexemes(g.current.exportedPatterns, args, unquoteArgument);
+	return g;
+}
+function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
+	/* `S3method(generic, class)` and `S3method(generic, class, method)` both register the class */
+	if(args.length !== 2 && args.length !== 3) {
+		return g;
+	}
+	const pkgArg = args[0];
+	const funcArg = args[1];
+	if(RArgument.isEmpty(pkgArg) || RArgument.isEmpty(funcArg) || !pkgArg.lexeme || !funcArg.lexeme) {
+		return g;
+	}
+	arrayAt(g.current.exportS3Generics, unquoteName(pkgArg.lexeme)).push(unquoteName(funcArg.lexeme));
+	return g;
+}
+function handleImportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
+	/* `import(a, b)` imports both; a named argument like `except =` names no package */
+	for(const arg of args) {
+		if(arg !== EmptyArgument && arg.name === undefined && arg.lexeme) {
+			g.current.importedPackages?.set(unquoteName(arg.lexeme), 'all');
+		}
+	}
+	return g;
+}
+
+function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
+	if(args.length < 2) {
+		return g;
+	}
+	const pkgArg = args[0];
+	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
+		return g;
+	}
+	const arr = importArrayAt(g.current.importedPackages, unquoteName(pkgArg.lexeme));
+	for(let i = 1; i < args.length; i++) {
+		const symArg = args[i];
+		if(RArgument.isEmpty(symArg) || !symArg.lexeme) {
+			continue;
+		}
+		arr.push(unquoteName(symArg.lexeme));
+	}
+	return g;
+}
+function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
+	if(args.length < 1) {
+		return g;
+	}
+	const pkgArg = args[0];
+	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
+		return g;
+	}
+	markSideEffectLoader(g, unquoteName(pkgArg.lexeme));
+	return g;
+}
+/** `exportClasses(A, B)` / `exportMethods(show, summary)`: a directive may list several names, and each goes to `into`. */
+function handleS4ExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], into: 'exportedS4Classes' | 'exportedS4Methods'): NamespaceFormat {
+	pushUnquotedLexemes(g.current[into], args, unquoteName);
+	return g;
+}
+const cleanLineCommentRegex = /^#.*$/gm;
+
+/** A namespace that neither exports nor imports anything yet. */
+function emptyNamespaceInfo(): NamespaceInfo {
+	return {
+		exportedSymbols:      [] as string[],
+		exportedFunctions:    [] as string[],
+		exportedS4Methods:    [] as string[],
+		exportedS4Classes:    [] as string[],
+		exportS3Generics:     new Map<string, string[]>(),
+		exportedPatterns:     [] as string[],
+		importedPackages:     new Map<string, string[] | 'all'>(),
+		callable:             [] as string[],
+		loadsWithSideEffects: false,
+	};
+}
+
+function getEmptyNamespaceFormat(): NamespaceFormat {
+	return { current: emptyNamespaceInfo() };
+}
+function mergeNamespaceFormat(target: NamespaceFormat, source: NamespaceFormat): NamespaceFormat {
+	return {
+		current: mergeNamespaceInfo(target.current, source.current),
+		...Object.fromEntries(
+			new Set<string>([...Object.keys(target), ...Object.keys(source)].filter(k => k !== 'current')).values()
+				.map(pkg => {
+					const targetPkg = target[pkg] || getEmptyNamespaceFormat().current;
+					const sourcePkg = source[pkg] || getEmptyNamespaceFormat().current;
+					return [pkg, mergeNamespaceInfo(targetPkg, sourcePkg)];
+				}))
+	};
+}
+
+function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): NamespaceInfo {
+	const mergedConditional = new Map<RNode<ParentInformation>, NamespaceInfo>();
+	if(target.conditional) {
+		for(const [key, value] of target.conditional) {
+			mergedConditional.set(key, value);
+		}
+	}
+	if(source.conditional) {
+		for(const [key, value] of source.conditional) {
+			if(mergedConditional.has(key)) {
+				const existing = mergedConditional.get(key) as NamespaceInfo;
+				mergedConditional.set(key, mergeNamespaceInfo(existing, value));
+			} else {
+				mergedConditional.set(key, value);
+			}
+		}
+	}
+
+	const mergedS3Generics = new Map<string, string[]>();
+	for(const [key, value] of target.exportS3Generics) {
+		mergedS3Generics.set(key, [...value]);
+	}
+	for(const [key, value] of source.exportS3Generics) {
+		const existing = mergedS3Generics.get(key);
+		if(existing) {
+			existing.push(...value);
+		} else {
+			mergedS3Generics.set(key, [...value]);
+		}
+	}
+	const mergedImportedPackages = new Map<string, string[] | 'all'>();
+	for(const [key, value] of target.importedPackages) {
+		mergedImportedPackages.set(key, value);
+	}
+	for(const [key, value] of source.importedPackages) {
+		const existing = mergedImportedPackages.get(key);
+		if(existing === 'all' || value === 'all') {
+			mergedImportedPackages.set(key, 'all');
+		} else if(existing) {
+			mergedImportedPackages.set(key, [...existing, ...value]);
+		} else {
+			mergedImportedPackages.set(key, value);
+		}
+	}
+
+	return {
+		callable:             [...target.callable, ...source.callable],
+		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
+		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
+		exportedS4Methods:    [...target.exportedS4Methods, ...source.exportedS4Methods],
+		exportedS4Classes:    [...target.exportedS4Classes, ...source.exportedS4Classes],
+		exportS3Generics:     mergedS3Generics,
+		exportedPatterns:     [...target.exportedPatterns, ...source.exportedPatterns],
+		importedPackages:     mergedImportedPackages,
+		loadsWithSideEffects: target.loadsWithSideEffects || source.loadsWithSideEffects,
+		conditional:          mergedConditional.size > 0 ? mergedConditional : undefined,
+	};
+}
+
+/** an argument given by name (`except = c(x)`), which names no symbol of its own */
+const namedArgument = /^[\w.]+\s*=[^=]/;
+
+/**
+ * Split a NAMESPACE directive's argument list (`a, "b", except = c(x)`) into its positional, quote-stripped
+ * names. Only top-level commas separate, so an argument that is itself a call stays in one piece.
+ */
+function splitNamespaceArgs(args: string): string[] {
+	const names: string[] = [];
+	let depth = 0;
+	let start = 0;
+	for(let i = 0; i <= args.length; i++) {
+		const c = args[i];
+		if(c === '(' || c === '[') {
+			depth++;
+		} else if(c === ')' || c === ']') {
+			depth--;
+		} else if(i === args.length || (c === ',' && depth === 0)) {
+			const part = args.slice(start, i).trim();
+			start = i + 1;
+			if(part.length > 0 && !namedArgument.test(part)) {
+				names.push(unquoteName(part));
+			}
+		}
+	}
+	return names;
+}
+
+/**
+ * Parses the given NAMESPACE file
+ */
+function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
+	const result = getEmptyNamespaceFormat();
+	const fileContent = file.content().toString().replaceAll(cleanLineCommentRegex, '').trim()
+		.split(/\r?\n/).filter(Boolean);
+
+	for(const line of fileContent) {
+		const match = line.trim().match(/^(\w+)\((.*)\)$/);
+		if(!match) {
+			continue;
+		}
+		const [, type, args] = match;
+
+		switch(type) {
+			case 'exportClasses':
+			case 'exportMethods':
+				// a single directive may list several symbols, e.g. `exportMethods(show, summary)`
+				result.current.exportedFunctions.push(...splitNamespaceArgs(args));
+				break;
+			case 'S3method':
+			{
+				const parts = splitNamespaceArgs(args);
+				if(parts.length !== 2 && parts.length !== 3) {
+					continue;
+				}
+				const [pkg, func] = parts;
+				arrayAt(result.current.exportS3Generics, pkg).push(func);
+				break;
+			}
+			case 'export':
+				// `export(a, b)` exports both `a` and `b`, so split rather than storing the literal `"a, b"`
+				result.current.exportedSymbols.push(...splitNamespaceArgs(args));
+				break;
+			case 'useDynLib':
+			{
+				const parts = args.split(',').map(s => s.trim());
+				if(parts.length !== 2) {
+					continue;
+				}
+				markSideEffectLoader(result, parts[0]);
+				break;
+			}
+			case 'import': {
+				for(const pkg of splitNamespaceArgs(args)) {
+					result.current.importedPackages?.set(pkg, 'all');
+				}
+				break;
+			}
+			case 'importFrom':
+			case 'importClassesFrom':
+			case 'importMethodsFrom': {
+				const parts = splitNamespaceArgs(args);
+				if(parts.length < 2) {
+					continue;
+				}
+				const [pkg, ...symbols] = parts;
+				importArrayAt(result.current.importedPackages, pkg).push(...symbols);
+				break;
+			}
+			case 'exportPattern': {
+				result.current.exportedPatterns?.push(unquoteArgument(args.trim()));
+				break;
+			}
+		}
+	}
+
+	return result;
+}

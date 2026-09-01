@@ -1,192 +1,139 @@
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RValue } from '../values/r-value';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
-import { BuiltInEvalHandlerMapper, builtInId, isBuiltIn } from '../../environments/built-in';
-import type { REnvironmentInformation } from '../../environments/environment';
-import type { DataflowGraph } from '../../graph/graph';
-import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
-import { intervalFrom } from '../values/intervals/interval-constants';
+import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environments/built-in';
+import { OriginType } from '../../origin/dfg-get-origin';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
-import type { Lift, Value, ValueNumber, ValueVector } from '../values/r-value';
-import { Top } from '../values/r-value';
-import { stringFrom } from '../values/string/string-constants';
+import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
-import { resolveIdToValue } from './alias-tracking';
-import type { VariableResolve } from '../../../config';
-import { liftScalar } from '../values/scalar/scalar-consatnts';
+import { valueFromRNumber } from '../values/general';
+import { liftScalar } from '../values/scalar/scalar-constants';
+import { Identifier, type IdentifierDefinition, ReferenceType } from '../../environments/identifier';
+import type { REnvironmentInformation } from '../../environments/environment';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { Dataflow } from '../../graph/df-helper';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Resolve } from '../../environments/resolve-helper';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
 /**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function converts an RNode to its Value, but also recursively resolves
- * aliases and vectors (in case of a vector).
- *
- * @param a       - Ast node to resolve
- * @param resolve - Variable resolve mode
- * @param env     - Environment to use
- * @param graph   - Dataflow Graph to use
- * @param map     - Idmap of Dataflow Graph
- * @returns resolved value or top/bottom
+ * The {@link BuiltInEvalHandler} the given name resolves to in the current environment, just like the
+ * {@link BuiltInIdentifierDefinition#processor} a call resolves to; `undefined` if the name is shadowed
+ * by a user definition or its built-in declares no handler.
  */
-export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
-	if(a.type === RType.String) {
-		return stringFrom(a.content.str);
-	} else if(a.type === RType.Number) {
-		return intervalFrom(a.content.num, a.content.num);
-	} else if(a.type === RType.Logical) {
-		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} else if((a.type === RType.FunctionCall || a.type === RType.BinaryOp || a.type === RType.UnaryOp) && graph) {
-		const origin = getOriginInDfg(graph, a.info.id)?.[0];
-		if(origin === undefined || origin.type !== OriginType.BuiltInFunctionOrigin) {
-			return Top;
-		}
-		let builtInName;
+function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | undefined, ctx: ReadOnlyFlowrAnalyzerContext): BuiltInEvalHandler | undefined {
+	const defs = environment ?
+		Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction)
+		/* without an environment the search path is unknown, so what a package states about the name has its say */
+		: ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
+			?? ctx.env.statedDefinitionsOf(name);
+	const def = defs?.length === 1 ? defs[0] : undefined;
+	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
+}
 
-		if(isBuiltIn(origin.proc)) {
-			builtInName = origin.proc;
-		} else if(a.type === RType.FunctionCall && a.named) {
-			builtInName = builtInId(a.functionName.content);
-		} else if(a.type === RType.BinaryOp || a.type === RType.UnaryOp) {
-			builtInName = builtInId(a.operator);
-		} else {
-			return Top;
-		}
-		if(Object.hasOwn(BuiltInEvalHandlerMapper, builtInName)) {
-			const handler = BuiltInEvalHandlerMapper[builtInName as keyof typeof BuiltInEvalHandlerMapper];
-			return handler(resolve, a, env, graph, map);
-		}
+/** the node types that may fold through a built-in: calls, operators, and the `(`/`{` groupings */
+const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.ExpressionList];
+
+/**
+ * The name of the built-in the given node folds through, `undefined` if it is no call to one or if it may just
+ * as well resolve to something else (a user redefinition, a conditional one, ...), which must not be folded.
+ */
+function evalNameOf({ node, graph }: BuiltInEvalHandlerArgs): Identifier | undefined {
+	if(graph === undefined || !EvalNodeTypes.includes(node.type)) {
+		return undefined;
 	}
-	return Top;
+	let name: Identifier | undefined;
+	for(const origin of Dataflow.origin(graph, node.info.id) ?? []) {
+		if(origin.type === OriginType.FunctionCallOrigin || origin.type === OriginType.WriteVariableOrigin) {
+			/* the call may go to a definition of the program instead, so we know too little to fold it */
+			return undefined;
+		} else if(origin.type !== OriginType.BuiltInFunctionOrigin) {
+			continue;
+		}
+		/* an alias like `f <- c` keeps the built-in it stands for in `proc`, a direct call names itself */
+		const pkgFn = NodeId.toPkgFn(origin.proc);
+		const named = pkgFn !== undefined ? Identifier.make(pkgFn[1], pkgFn[0])
+			: NodeId.isBuiltIn(origin.proc) ? NodeId.fromBuiltIn(origin.proc) : origin.fn.name;
+		if(name !== undefined && Identifier.getName(name) !== Identifier.getName(named)) {
+			return undefined;
+		}
+		/* the same call is named bare by one origin and qualified by another; the qualified one says whose it is */
+		name = name !== undefined && Identifier.getNamespace(named) === undefined ? name : named;
+	}
+	return name;
 }
 
 /**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function resolves a vector function call `c` to a {@link ValueVector}
- * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
- * @param resolve - Variable resolve mode
- * @param node    - Node of the vector function to resolve
- * @param env     - Environment to use
- * @param graph   - Dataflow graph
- * @param map     - Id map of the dataflow graph
- * @returns ValueVector or Top
+ * Converts an RNode to its Value, either directly for a constant or by handing the node to the
+ * {@link BuiltInEvalHandler} its built-in declares, which may resolve further nodes recursively.
+ * Helper of {@link Resolve.toValue}; use that instead to resolve the value of an identifier or node.
  */
-export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<Value[]>> | typeof Top {
-	if(node.type !== RType.FunctionCall) {
-		return Top;
+export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
+	const { node, environment, ctx } = args;
+	const nt = node.type;
+	if(nt === RType.String) {
+		return RValue.ofStringLiteral(node.content) ?? Top;
+	} else if(nt === RType.Number) {
+		return valueFromRNumber(node.content);
+	} else if(nt === RType.Logical) {
+		return node.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
+	} else if(nt === RType.FunctionDefinition) {
+		return { type: 'function-definition' };
 	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
-	const values = node.arguments.map(arg => arg !== EmptyArgument ? resolveIdToValue(arg.value, resolveInfo) : Top);
-
-	return vectorFrom(flattenVectorElements(values));
+	const name = evalNameOf(args);
+	const handler = name === undefined ? undefined : evalHandlerOf(name, environment, ctx);
+	return handler?.(args) ?? Top;
 }
 
-/**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function resolves a binary sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s
- * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
- * @param resolve  - Variable resolve mode
- * @param operator - Node of the sequence operator to resolve
- * @param env      - Environment to use
- * @param graph    - Dataflow graph
- * @param map      - Id map of the dataflow graph
- * @returns ValueVector of ValueNumbers or Top
- */
-export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<ValueNumber[]>> | typeof Top {
-	if(operator.type !== RType.BinaryOp) {
+/** Resolves a vector call `c` to a {@link ValueVector}; helper of {@link resolveNode|resolveNode}. */
+export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typeof Top {
+	const node = args.node;
+	if(!RFunctionCall.is(node)) {
 		return Top;
 	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
-	const leftArg = resolveIdToValue(operator.lhs, resolveInfo);
-	const rightArg = resolveIdToValue(operator.rhs, resolveInfo);
-	const leftValue = unliftRValue(leftArg);
-	const rightValue = unliftRValue(rightArg);
+	return vectorFrom(flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? Resolve.toValue(arg.value, args) : Top)));
+}
+
+/** Resolves the sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s; helper of {@link resolveNode}. */
+export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<ValueNumber[]>> | typeof Top {
+	const operator = args.node;
+	if(!RBinaryOp.is(operator)) {
+		return Top;
+	}
+	const leftValue = unliftRValue(Resolve.toValue(operator.lhs, args));
+	const rightValue = unliftRValue(Resolve.toValue(operator.rhs, args));
 
 	if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
-		return vectorFrom(createNumberSequence(leftValue, rightValue).map(liftScalar));
+		const sequence = createNumberSequence(leftValue, rightValue);
+		return sequence === undefined ? Top : vectorFrom(sequence.map(liftScalar));
 	}
 	return Top;
 }
 
 /**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function resolves a unary plus operator `+` to a {@link ValueNumber} or {@link ValueVector} of ValueNumbers
- * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
- * @param resolve  - Variable resolve mode
- * @param operator - Node of the plus operator to resolve
- * @param env      - Environment to use
- * @param graph    - Dataflow graph
- * @param map      - Id map of the dataflow graph
- * @returns ValueNumber, ValueVector of ValueNumbers, or Top
+ * How many elements of a sequence are worth naming one by one. `1:148066` is a loop bound rather than a set of
+ * indices anything asks about, and holding one object per element costs more than the precision is worth, so
+ * a longer sequence resolves to {@link Top} instead.
  */
-export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
-	if(operator.type !== RType.UnaryOp) {
-		return Top;
-	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
-	const arg = resolveIdToValue(operator.operand, resolveInfo);
-	const argValue = unliftRValue(arg);
-
-	if(isRNumberValue(argValue)) {
-		return liftScalar(argValue);
-	} else if(Array.isArray(argValue) && argValue.every(isRNumberValue)) {
-		return vectorFrom(argValue.map(liftScalar));
-	}
-	return Top;
-}
+const MaxSequenceLength = 4096;
 
 /**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function resolves a unary minus operator `-` to a {@link ValueNumber} or {@link ValueVector} of ValueNumbers
- * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
- * @param resolve  - Variable resolve mode
- * @param operator - Node of the minus operator to resolve
- * @param env      - Environment to use
- * @param graph    - Dataflow graph
- * @param map      - Id map of the dataflow graph
- * @returns ValueNumber, ValueVector of ValueNumbers, or Top
+ * The elements `from:to` runs over, counting down whenever `to` is the smaller one, and stopping before it
+ * would pass `to` (`1:3.5` ends at `3`). `undefined` for a bound that names no position to count from or to,
+ * and for a sequence longer than {@link MaxSequenceLength}.
  */
-export function resolveAsMinus(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
-	if(operator.type !== RType.UnaryOp) {
-		return Top;
+function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] | undefined {
+	if(!Number.isFinite(start.num) || !Number.isFinite(end.num)) {
+		return undefined;
+	} else if(Math.floor(Math.abs(end.num - start.num)) + 1 > MaxSequenceLength) {
+		return undefined;
 	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
-	const arg = resolveIdToValue(operator.operand, resolveInfo);
-	const argValue = unliftRValue(arg);
-
-	if(isRNumberValue(argValue)) {
-		return liftScalar({ ...argValue, num: -argValue.num });
-	} else if(Array.isArray(argValue) && argValue.every(isRNumberValue)) {
-		return vectorFrom(argValue.map(element => liftScalar({ ...element, num: -element.num })));
-	}
-	return Top;
-}
-
-function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] {
+	const step = start.num <= end.num ? 1 : -1;
 	const sequence: RNumberValue[] = [];
-	const min = Math.min(start.num, end.num);
-	const max = Math.max(start.num, end.num);
-
-	for(let i = min; i <= max; i++) {
+	for(let i = start.num; step > 0 ? i <= end.num : i >= end.num; i += step) {
 		sequence.push({ ...start, num: i });
-	}
-
-	if(start > end) {
-		sequence.reverse();
 	}
 	return sequence;
 }

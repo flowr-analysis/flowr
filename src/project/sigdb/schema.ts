@@ -1,0 +1,328 @@
+/**
+ * On-disk schema of the `flowr-sigdb` database (schema 5): the constants, enums, numeric tuple forms,
+ * and data interfaces that define the serialized format and its read view. The reader/writer/builder logic that
+ * operates on these lives in `./sigdb` (which re-exports this module, so `./sigdb` stays the single entry point).
+ */
+
+import type { ArgProps } from '../../dataflow/environments/built-in-props';
+
+/** The definition location of the binding, with a file path usually relative to the package project root. */
+export interface SigDefinitionLocation {
+	readonly file: string
+	readonly line: number
+}
+
+/** The resolved identifiers of a singular package version */
+export interface LibraryExports {
+	/** R version identifier (see `RVersion.parse`) */
+	readonly version:    string;
+	readonly exported:   readonly string[];
+	/** defined-but-not-exported identifiers (only available when internal names are stored, which we usually avoid in the db) */
+	readonly internal:   readonly string[];
+	readonly deprecated: readonly string[];
+	/**
+	 * S3 classes this package version OWNS: it registers at least one S3 method for the class (its NAMESPACE's
+	 * `S3method(generic, class)`) AND exports a same-named constructor function. See {@link FnProp.S3Owner}.
+	 */
+	readonly s3Classes:  readonly string[];
+	/** S4 classes this package version OWNS: it exports the class via its NAMESPACE `exportClasses()`. See {@link FnProp.S4Owner}. */
+	readonly s4Classes:  readonly string[];
+	/** flag indicating whether this is a package available on CRAN */
+	readonly cran:       boolean;
+	/** package documentation url base in case this package is found at a different endpoint */
+	readonly cranUrl?:   string;
+	/** definition location per identifier, if the database carries them */
+	readonly locations?: ReadonlyMap<string, SigDefinitionLocation>;
+}
+
+export const SigDbMagic = 'flowr-sigdb';
+export const SigDbSchema = 5;
+/** default CRAN source-package base URL, used to build a version's tarball link */
+export const DefaultCranBase = 'https://cran.r-project.org/src/contrib/';
+/** parameter default expressions longer than this are stored truncated (with a `…` marker): a short lexeme preview keeps the dictionary compact */
+export const MaxDefaultLength = 10;
+/** file extension of the (uncompressed) bundle */
+export const SigDbExt = '.sigs.ndjson';
+
+/** function-level boolean properties, packed into {@link SigFn}'s bitfield */
+export const enum FnProp {
+	Exported         = 1 << 0,
+	HigherOrder      = 1 << 1,
+	Recursive        = 1 << 2,
+	CallsDeprecated  = 1 << 3,
+	CanThrow         = 1 << 4,
+	Deprecated       = 1 << 5,
+	CallsInternal    = 1 << 6,
+	NonDeterministic = 1 << 7,
+	NoDoc            = 1 << 8,
+	S3Method         = 1 << 9,
+	/**
+	 * An exported function that is also an S3 class this package OWNS: it is a same-named constructor for a
+	 * class the package registers at least one S3 method for (see {@link LibraryExports.s3Classes}, derived
+	 * from this bit by {@link deriveLibraryExports}).
+	 */
+	S3Owner          = 1 << 10,
+	/**
+	 * Set on the name of an S4 class this package OWNS: it exports the class via its NAMESPACE `exportClasses()`
+	 * (see {@link LibraryExports.s4Classes}, derived from this bit by {@link deriveLibraryExports}).
+	 */
+	S4Owner          = 1 << 11,
+	/**
+	 * A registered S4 method: the name is exported because the package answers a generic for one of its classes
+	 * (`setMethod('sin', 'float32', ...)`, `exportMethods(sin)`), not because it defines a function of its own.
+	 * The S4 analogue of {@link FnProp.S3Method}.
+	 */
+	S4Method         = 1 << 12,
+	/**
+	 * The export binds a value rather than a function: a constant, a dataset, a class object (`pi`, `LETTERS`,
+	 * ggplot2's `class_gg`). Only the extractor can tell: an entry without a definition location may equally be
+	 * a function built at load time, an S4 generic or a `Vectorize` result, which has no source to point at.
+	 */
+	Value            = 1 << 13,
+	/**
+	 * The definition is a generic others dispatch on (S3 `UseMethod`, S4 `setGeneric`/`standardGeneric`, S7
+	 * `new_generic`). The call graph only shows this for an S3 generic with a bundled body, never for S4/S7.
+	 */
+	Generic          = 1 << 14
+}
+
+/** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
+export const FnPropNames: Readonly<Record<FnProp, string>> = {
+	[FnProp.Exported]:         'exported',
+	[FnProp.HigherOrder]:      'higher-order',
+	[FnProp.Recursive]:        'recursive',
+	[FnProp.CallsDeprecated]:  'calls-deprecated',
+	[FnProp.CanThrow]:         'can-throw',
+	[FnProp.Deprecated]:       'deprecated',
+	[FnProp.CallsInternal]:    'calls-internal',
+	[FnProp.NonDeterministic]: 'non-deterministic',
+	[FnProp.NoDoc]:            'no-doc',
+	[FnProp.S3Method]:         's3-method',
+	[FnProp.S3Owner]:          's3-owner',
+	[FnProp.S4Owner]:          's4-owner',
+	[FnProp.S4Method]:         's4-method',
+	[FnProp.Value]:            'value',
+	[FnProp.Generic]:          'generic'
+};
+
+/**
+ * One parameter of a signature (position implied by array order): `nameIdx`, `[nameIdx, props]`, or
+ * `[nameIdx, props, defaultIdx]` (indices into the global dictionary). `props` is the {@link ArgProp} bitfield,
+ * whose two lowest bits are the pre-existing `Forced`/`NoDefault`, so old bundles read the same.
+ */
+export type SigParam = number | [nameIdx: number, props: number] | [nameIdx: number, props: number, defaultIdx: number];
+/** a full signature: the ordered parameter list */
+export type Sig = SigParam[];
+/**
+ * One function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when
+ * absent), with an optional trailing `topicIdx` (the Rd help topic, present only when it differs from the name).
+ * The trailing element is additive: readers that stop at `line` ignore it, so older bundles stay readable.
+ */
+export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number]
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number];
+
+/** the object system a class record belongs to, mirroring {@link ClassSystem} in a single on-disk byte */
+export const enum SigClassSystem { S4 = 0, RefClass = 1, S7 = 2, R6 = 3 }
+/** the {@link SigClassSystem} values in order, with their names (for decoding) */
+export const SigClassSystemNames = ['s4', 'rc', 's7', 'r6'] as const;
+
+/** class-level boolean properties, packed into {@link SigClass}'s bitfield */
+export const enum ClassProp {
+	/** the class cannot be instantiated: `representation("VIRTUAL")`, `contains = "VIRTUAL"`, or S7 `abstract = TRUE` */
+	Virtual = 1 << 0,
+	/** the record is a `setClassUnion`, so its {@link SigClass} supers are the classes it *unites* (its subclasses), not the ones it extends. Always {@link ClassProp.Virtual} too. */
+	Union   = 1 << 1,
+	/** the package does not define the class, it only extends or relates it (a `setIs`, or a `contains` naming another package's class) */
+	Foreign = 1 << 2
+}
+
+/**
+ * One declared member of a class (an S4 slot, an S7 property, an RC field, an R6 entry): just `nameIdx` when
+ * the declaration states no type, `[nameIdx, typeIdx]` when it does. Both index the global dictionary.
+ */
+export type SigSlot = number | [nameIdx: number, typeIdx: number];
+
+/**
+ * One class record `[nameIdx, system, propBits, supers, slots]` (`supers`: dictionary indices of the direct
+ * superclasses, in declaration order), with an optional trailing `pkgIdx` naming the package that *defines* the
+ * class when that is not the one carrying the record (see {@link ClassProp.Foreign}); additive, so older readers stay working.
+ */
+export type SigClass = [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[]]
+	| [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[], pkgIdx: number];
+
+/** the kind of a package dependency (mirrors the DESCRIPTION fields) */
+export const enum DepType { Depends = 0, Imports = 1, LinkingTo = 2, Suggests = 3, Enhances = 4 }
+/** the {@link DepType} values in order, with their names (for decoding) */
+export const DepTypeNames = ['depends', 'imports', 'linkingTo', 'suggests', 'enhances'] as const;
+
+/** one dependency: `[nameIdx, type]` or `[nameIdx, type, constraintIdx]` (indices into the global dictionary) */
+export type SigDep = [nameIdx: number, type: DepType] | [nameIdx: number, type: DepType, constraintIdx: number];
+
+/**
+ * A self-contained package. A `versions[ver]` entry is a **delta-encoded** ascending list of indices into
+ * {@link PkgBlob.fns} (cumulative-sum to decode); its long runs of `1` just mean a version's functions sit in
+ * consecutive pool slots, which brotli collapses on disk. See {@link PkgBlobTuple} for the on-disk order.
+ */
+export interface PkgBlob {
+	sigs:              Sig[];
+	cgs:               number[][];
+	fns:               SigFn[];
+	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.fns} */
+	versions:          Record<string, number[]>;
+	/** the subset of {@link PkgBlob.versions} that are not from CRAN (usually empty, so left undefined in memory) */
+	noncran?:          string[];
+	/** pool of unique dependency lists (shared across a package's versions) */
+	deps:              SigDep[][];
+	/** version name to an index into {@link PkgBlob.deps} (absent when the version declares no dependencies) */
+	depsByVersion:     Record<string, number>;
+	/** version name to its release date as **days since the Unix epoch** (absent when the date is unknown) */
+	dates:             Record<string, number>;
+	/**
+	 * Version name to a dictionary index naming the repository it came from (`cran`, `bioc`, ...).
+	 * Absent in bundles written before this field, where {@link PkgBlob.noncran} is all there is.
+	 */
+	sources?:          Record<string, number>;
+	/** pool of unique class records (shared across a package's versions), absent when the bundle stores none */
+	classes?:          SigClass[];
+	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.classes} */
+	classesByVersion?: Record<string, number[]>;
+}
+/** On-disk tuple form of a {@link PkgBlob}, field order, ending `sources`; trailing elements are additive. */
+export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?, SigClass[]?, Record<string, number[]>?];
+
+/**
+ * Per-package metadata. The optional 4th element marks an **R-core / base package**: for these the version keys
+ * are the R releases the package shipped with core R, so the set of versions is exactly its core-R history.
+ */
+export type SigDbPkgMeta = [latest: string, archived: number, downloads: number, core?: number];
+
+/** Every package the database knows, mapped from its name to its {@link SigDbPkgMeta}. */
+export type SigDbPkgMetaIndex = Record<string, SigDbPkgMeta>;
+
+/**
+ * Temporal tier of a bundle's packages:
+ * - `current` -- only each package's latest version.
+ * - `full`    -- every version (self-contained history).
+ * - `history` -- every version EXCEPT the latest. This is the delta a `current` bundle already carries, so a
+ *                `history` bundle mounts beside a `current`/slim one to add the older versions with no duplicate
+ */
+export type SigDbTier = 'full' | 'current' | 'history';
+/** popularity shard: `top` keeps the most-downloaded packages, `rest` the remainder (undefined = all) */
+export type SigDbShard = 'top' | 'rest';
+
+export interface SigDbContent {
+	readonly version:        number;
+	readonly date:           string;
+	readonly generated:      number;
+	/** temporal tier of this bundle */
+	readonly tier:           SigDbTier;
+	/** popularity shard, when the bundle was split by download rank */
+	readonly shard?:         SigDbShard;
+	/** the download-rank cutoff used for {@link SigDbContent.shard} */
+	readonly topN?:          number;
+	/** which information this bundle stores */
+	readonly features?:      Required<SigDbFeatures>;
+	readonly packages:       number;
+	readonly versions:       number;
+	readonly functions:      number;
+	readonly uniquePackages: number;
+	readonly strings:        number;
+	readonly hash:           string;
+}
+
+export interface SigDb {
+	format:    typeof SigDbMagic;
+	schema:    typeof SigDbSchema;
+	scope:     'signatures';
+	content:   SigDbContent;
+	cranBase?: string;
+	/** global string dictionary */
+	strings:   string[];
+	/** unique per-package blobs */
+	blobs:     PkgBlob[];
+	/** package name to its index into {@link SigDb.blobs} */
+	pkgs:      Record<string, number>;
+	/** package name to its {@link SigDbPkgMeta} */
+	meta:      SigDbPkgMetaIndex;
+}
+
+export interface SigParamInfo {
+	readonly name:     string;
+	/** bitfield of {@link ArgProp}: what the extractor could tell about the parameter, the rest unset */
+	readonly props?:   ArgProps;
+	readonly default?: string;
+}
+export interface SigFunctionInfo {
+	readonly name:    string;
+	/** bitfield of {@link FnProp} (must set {@link FnProp.Exported} for exported functions) */
+	readonly props:   number;
+	readonly params:  readonly SigParamInfo[];
+	/** named callees (order/duplication irrelevant; deduped + sorted internally) */
+	readonly callees: readonly string[];
+	readonly file?:   string;
+	readonly line?:   number;
+	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
+	readonly topic?:  string;
+}
+/** one declared package dependency, e.g. `{ name: 'testthat', type: Suggests, constraint: '>= 2.1.0' }` */
+export interface SigDependencyInfo {
+	readonly name:        string;
+	readonly type:        DepType;
+	/** the version qualifier as written in DESCRIPTION, e.g. `>= 3.0.0` (absent = any version) */
+	readonly constraint?: string;
+}
+export interface SigVersionInfo {
+	readonly cran:          boolean;
+	/** the repository it came from (`cran`, `bioc`, ...); {@link SigVersionInfo.cran} only says whether it is CRAN */
+	readonly source?:       string;
+	readonly functions:     readonly SigFunctionInfo[];
+	/** declared dependencies of this version (Depends/Imports/LinkingTo/Suggests/Enhances) */
+	readonly dependencies?: readonly SigDependencyInfo[];
+	/** release date as milliseconds since the Unix epoch (stored at day granularity, used to find the newest release) */
+	readonly date?:         number;
+	/** the classes this version declares and the relations it states between them */
+	readonly classes?:      readonly SigClassInfo[];
+}
+
+/**
+ * One class of a package version: what its declaration states, plus which package defines it -- structure
+ * `s4Classes` (a flat name list) has no room for, so a consumer can tell an owned class from an inherited one.
+ */
+export interface SigClassInfo {
+	readonly name:     string;
+	readonly system:   typeof SigClassSystemNames[number];
+	/** the direct superclasses, in declaration order; for a {@link SigClassInfo.union} the united members instead */
+	readonly supers:   readonly string[];
+	/** the declared members, in declaration order */
+	readonly slots:    readonly SigSlotInfo[];
+	/** the class cannot be instantiated (see {@link ClassProp.Virtual}) */
+	readonly virtual?: boolean;
+	/** the record is a class union, so {@link SigClassInfo.supers} are its members (see {@link ClassProp.Union}) */
+	readonly union?:   boolean;
+	/** The package defining the class, when not the one carrying the record (see {@link ClassProp.Foreign}); absent when self-defined. */
+	readonly package?: string;
+}
+
+/** one declared member of a {@link SigClassInfo}: an S4 slot, an S7 property, an RC field, or an R6 entry */
+export interface SigSlotInfo {
+	readonly name:  string;
+	/** the class the declaration states for the member (`"numeric"`, `class_numeric`); absent when it states none */
+	readonly type?: string;
+}
+
+/**
+ * Which information to store in a bundle (default: everything); turning a feature off shrinks the database. The
+ * export view (exported/internal/deprecated) is always available.
+ */
+export interface SigDbFeatures {
+	/** parameter lists (names, forced/optional, defaults) -- default true */
+	signatures?:   boolean;
+	/** per-function call graphs (named callees) -- default true */
+	callGraphs?:   boolean;
+	/** definition locations (file + line) -- default true */
+	locations?:    boolean;
+	/** per-version declared dependencies -- default true */
+	dependencies?: boolean;
+	/** per-version class relations (superclasses, slots, unions) -- default true */
+	classes?:      boolean;
+}

@@ -1,23 +1,24 @@
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { RShell } from '../../r-bridge/shell';
-import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../r-bridge/retriever';
-import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
-import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
-import { guard } from '../../util/assert';
+import { createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
+import type {
+	ParentInformation,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
 import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
-import type { GraphDifferenceReport } from '../../util/diff-graph';
-import { defaultConfigOptions } from '../../config';
+import type { GeneralDocContext } from '../wiki-mk/doc-context';
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
+import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
-export function printNormalizedAst(ast: RNodeWithParent, prefix = 'flowchart TD\n') {
+/**
+ * Visualizes the normalized AST using mermaid syntax.
+ * This is mainly intended for documentation purposes.
+ */
+export function printNormalizedAst(ast: RProject<ParentInformation> | RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `
 \`\`\`mermaid
-${normalizedAstToMermaid(ast, prefix)}
+${normalizedAstToMermaid(ast, { prefix })}
 \`\`\`
 	`;
 }
@@ -25,15 +26,21 @@ ${normalizedAstToMermaid(ast, prefix)}
 export interface PrintNormalizedAstOptions {
 	readonly showCode?: boolean;
 	readonly prefix?:   string;
+	readonly ctx?:      GeneralDocContext;
 }
-export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
+
+/**
+ * Generates and prints the normalized AST for the given code, along with optional metadata and the original code.
+ * This is intended for documentation purposes.
+ */
+export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n', ctx }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
 	const result = await createNormalizePipeline(parser, {
-		request: requestFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
+		context: contextFromInput(code)
+	}).allRemainingSteps();
 	const duration = performance.now() - now;
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.`;
 
 	return '\n\n' +  printNormalizedAst(result.normalize.ast, prefix) + (showCode ? `
 <details>
@@ -51,7 +58,7 @@ ${code}
 <summary style="color:gray">Mermaid Code</summary>
 
 \`\`\`
-${normalizedAstToMermaid(result.normalize.ast, prefix)}
+${normalizedAstToMermaid(result.normalize.ast, { prefix })}
 \`\`\`
 
 </details>
@@ -60,27 +67,4 @@ ${normalizedAstToMermaid(result.normalize.ast, prefix)}
 
 ` : '\n(' + metaInfo + ')\n\n')
 	;
-}
-
-
-/** returns resolved expected df graph */
-export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
-	/* we verify that we get what we want first! */
-	const info = await createDataflowPipeline(shell, {
-		request: requestFromInput(code),
-		getId:   deterministicCountingIdGenerator(0)
-	}, defaultConfigOptions).allRemainingSteps();
-
-	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);
-	const report: GraphDifferenceReport = diffOfDataflowGraphs(
-		{ name: 'expected', graph: expectedSubgraph },
-		{ name: 'got',      graph: info.dataflow.graph },
-		{
-			leftIsSubgraph: true
-		}
-	);
-
-	guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);
-	return expectedSubgraph;
 }

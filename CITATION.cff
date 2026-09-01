@@ -1,0 +1,98 @@
+cff-version: 1.2.0
+title: >-
+  flowR: A sophisticated static program analysis framework
+  for the R programming language
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Florian
+    family-names: Sihler
+    email: florian.sihler@uni-ulm.de
+    affiliation: Ulm University
+    orcid: 'https://orcid.org/0000-0001-7195-7801'
+  - given-names: Oliver
+    family-names: Gerstl
+    orcid: 'https://orcid.org/0009-0007-5612-0780'
+    email: oliver.gerstl@uni-ulm.de
+    affiliation: Ulm University
+  - given-names: Julian
+    family-names: Schubert
+    orcid: 'https://orcid.org/0009-0007-1284-8008'
+    affiliation: Ulm University
+  - given-names: Lars
+    family-names: Pfrenger
+    affiliation: Ulm University
+  - given-names: Lukas
+    family-names: Pietzschmann
+    orcid: 'https://orcid.org/0009-0002-7803-6583'
+    affiliation: Ulm University
+  - given-names: Thomas
+    family-names: Schöller
+    affiliation: Ulm University
+  - given-names: Felix
+    family-names: Schlegel
+    affiliation: Ulm University
+  - given-names: Lukas
+    family-names: Rohde
+    affiliation: Ulm University
+  - given-names: Johanna
+    family-names: Scheck
+    affiliation: Ulm University
+    orcid: 'https://orcid.org/0009-0003-2465-3858'
+  - given-names: Tim
+    family-names: Schmidt
+    affiliation: Ulm University
+identifiers:
+  - type: doi
+    value: 10.1145/3763087
+    description: >-
+      Statically Analyzing the Dataflow of R Programs
+      (OOPSLA '25)
+  - type: doi
+    value: 10.1145/3643991.3644911
+    description: >-
+      On the Anatomy of Real-World R Code for Static
+      Analysis (MSR '24)
+  - type: doi
+    value: 10.1145/3691620.3695603
+    description: >-
+      Improving the Comprehension of R Programs by Hybrid
+      Dataflow Analysis (ASE '24, Doc-Sym)
+  - type: doi
+    value: 10.1145/3691620.3695359
+    description: >-
+      flowR: A Static Program Slicer for R (ASE '24,
+      Tool-Demonstration)
+  - type: doi
+    value: 10.5281/zenodo.17403763
+    description: Zenodo Artifact
+repository-code: 'https://github.com/flowr-analysis/flowr'
+url: 'https://github.com/flowr-analysis/flowr/wiki'
+repository: 'https://github.com/flowr-analysis/vscode-flowr'
+repository-artifact: 'https://doi.org/10.5281/zenodo.13319290'
+abstract: >-
+  flowR is a sophisticated static program analysis framework
+  for the R programming language. 
+keywords:
+  - r
+  - static-analyzer
+  - dataflow-analysis
+  - program-slicing
+  - static-program-slicing
+license: GPL-3.0
+preferred-citation:
+  type: article
+  authors:
+  - given-names: Florian
+    family-names: Sihler
+  - given-names: Matthias
+    family-names: Tichy
+  doi: "10.1145/3763087"
+  journal: "Proc. ACM Program. Lang."
+  month: 10
+  title: "Statically Analyzing the Dataflow of R Programs"
+  issue: OOPSLA2
+  volume: 9
+  year: 2025

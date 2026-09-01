@@ -1,12 +1,15 @@
-import type { NormalizerData } from '../../normalizer-data';
-import { ParseError } from '../../normalizer-data';
+import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
 import { RawRType, RType } from '../../../../model/type';
 import type { RWhileLoop } from '../../../../model/nodes/r-while-loop';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
+/**
+ * Tries to normalize a while-loop structure from the given tokens.
+ */
 export function tryNormalizeWhile(
 	data: NormalizerData,
 	[whileToken, leftParen, condition, rightParen, body]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]
@@ -36,7 +39,7 @@ export function tryNormalizeWhile(
 	const parsedCondition = normalizeSingleNode(data, condition);
 	const parseBody = normalizeSingleNode(data, body);
 
-	if(parsedCondition.type === RType.Delimiter || parseBody.type === RType.Delimiter) {
+	if(RDelimiter.is(parsedCondition) || RDelimiter.is(parseBody)) {
 		throw new ParseError(
 			`unexpected under-sided while-loop, received ${JSON.stringify([
 				parsedCondition,
@@ -54,9 +57,9 @@ export function tryNormalizeWhile(
 		lexeme:    content,
 		location,
 		info:      {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

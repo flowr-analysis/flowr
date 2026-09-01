@@ -1,28 +1,27 @@
 import { DataflowGraph } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexArgument } from '../../dataflow/graph/vertex';
-import { VertexType } from '../../dataflow/graph/vertex';
-import type { MergeableRecord } from '../objects';
-import { deepMergeObject } from '../objects';
+import { type DataflowGraphVertexArgument, VertexType } from '../../dataflow/graph/vertex';
+import { deepMergeObject, type MergeableRecord } from '../objects';
 import type { DeepPartial } from 'ts-essentials';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../assert';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 
 export interface ReduceVertexOptions extends MergeableRecord {
-    tags:             VertexType[]
-	nameRegex:           string
-	blacklistWithName:   boolean,
-	keepEnv:             boolean
-    keepCd:           boolean
-    compactFunctions: boolean
+	tags:              VertexType[]
+	nameRegex:         string
+	blacklistWithName: boolean,
+	keepEnv:           boolean
+	keepCd:            boolean
+	compactFunctions:  boolean
 }
 
 export interface ReduceOptions extends MergeableRecord {
-    vertices: ReduceVertexOptions
+	vertices: ReduceVertexOptions
 }
 
 const defaultReduceOptions: Required<ReduceOptions> = {
 	vertices: {
-		tags:              [...Object.values(VertexType)],
+		tags:              Object.values(VertexType),
 		nameRegex:         '.*',
 		blacklistWithName: false,
 		keepEnv:           false,
@@ -45,14 +44,16 @@ function makeFilter(options: ReduceVertexOptions, idMap?: AstIdMap): <T extends 
 		return {
 			...arg,
 			environment:         options.keepEnv ? arg.environment : undefined,
-			controlDependencies: options.keepCd ? arg.controlDependencies : undefined,
+			cds:                 options.keepCd ? arg.cds : undefined,
 			functionInformation: options.compactFunctions ? arg.functionInformation : undefined
 		};
 	};
 }
 
-
-export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions>): DataflowGraph {
+/**
+ * Produces a reduced version of the given dataflow graph according to the given options.
+ */
+export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions>, cleanEnv: REnvironmentInformation): DataflowGraph {
 	const newDfg = new DataflowGraph(dfg.idMap);
 	const applyOptions = deepMergeObject(defaultReduceOptions, options) as Required<ReduceOptions>;
 	// overwrite the tag set if possible
@@ -66,7 +67,7 @@ export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions
 	for(const [id, info] of dfg.vertices(!applyOptions)) {
 		const result = applyFilter(info);
 		if(result) {
-			newDfg.addVertex(result, dfg.isRoot(id));
+			newDfg.addVertex(result, cleanEnv, dfg.isRoot(id));
 		}
 	}
 

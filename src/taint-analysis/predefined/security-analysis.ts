@@ -2,7 +2,7 @@ import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
 import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { CallProp } from '../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
 export const UserInput = Symbol('User Input');
@@ -29,7 +29,7 @@ const protocolTaint = (path: unknown) =>
 export const securityAnalysis = new TaintAnalysisDefinition('security', securityDomain)
 	.from([
 		{
-			identifier: [...BuiltInIndex.default().with(CallProp.User)],
+			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User)],
 			taint:      UserInput
 		},
 		{

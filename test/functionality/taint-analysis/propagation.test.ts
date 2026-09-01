@@ -114,7 +114,7 @@ describe('Taint Propagation', () => {
 	describe('User-Defined Functions', () => {
 		testPropagate('taint passes through an identity function via its argument and return value', 'f <- function(v) { v }\nx <- taint()\ny <- f(x)', { '3@y': TaintA });
 		testPropagate('a source called inside a user-defined function taints the returned value', 'f <- function() { taint() }\ny <- f()', { '2@y': TaintA });
-		testPropagate('a user-defined function that discards its argument does not forward the taint', 'f <- function(v) { 1 }\nx <- taint()\ny <- f(x)', { '3@y': undefined });
+		testPropagate('a user-defined function that discards its argument does not forward the taint', 'f <- function(v) { 1 }\nx <- taint()\ny <- f(x)', { '3@y': Top });
 	});
 
 	describe('Source-Sink Conflict (Greatest Lower Bound)', () => {

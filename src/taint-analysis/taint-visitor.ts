@@ -3,7 +3,7 @@ import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { TaintMapper } from './function-mapper';
-import { mapFnCallToTaint, resolveTaint } from './function-mapper';
+import { getMappingsForCall, resolveFnCallToTaint } from './function-mapper';
 import type { AnyStateDomain } from '../abstract-interpretation/domains/state-domain-like';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -59,12 +59,11 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 			return;
 		}
 
-		const taint = mapFnCallToTaint(node, this.fnCallMapper, this.config.dfg, this.config.ctx);
-
-		const value = resolveTaint(taint, this.domain, this.projectArg);
+		const mappings = getMappingsForCall(node, this.fnCallMapper);
+		const { value, role } = resolveFnCallToTaint(node, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
 		this.currentState.set(node.info.id, value);
 
-		this.config.fnCallHook({ taint, node, value, projectArg: this.projectArg, call, role: taint?.role });
+		this.config.fnCallHook({ node, value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role: role });
 	}
 
 	protected isUnsupportedFunctionCall(_nodeId: NodeId): boolean {

@@ -7,7 +7,7 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { ResolvedTaint, TaintRole } from '../function-mapper';
+import type { TaintRole } from '../function-mapper';
 import type { ArgTaintProjector, TaintVisitorConfiguration, TaintVisitorHook } from '../taint-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
@@ -21,12 +21,12 @@ import { SourceLocation } from '../../util/range';
 export interface FnCallHookInfo {
 	/** The name of the taint analysis */
 	name:       string;
-	/** The resolved taint information for the function call */
-	taint:      ResolvedTaint<AnyAbstractDomain>;
 	/** The role of the matched mapping (source/propagator/sink), or `undefined` for unmapped calls */
 	role:       TaintRole | undefined;
 	/** The AST node representing the function call */
 	node:       RNamedFunctionCall<ParentInformation>;
+	/** Whether the function call had an explicit mapping */
+	wasMapped:  boolean;
 	/** The abstract domain value at this point (the outgoing/resolved taint) */
 	value:      AnyAbstractDomain;
 	/** Resolves the incoming taint of any argument node at this call, regardless of mapping rules */
@@ -146,7 +146,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 
 	private wrapFnCallHook(fn: FnCallHook | undefined, name: string, dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): TaintVisitorHook {
 		return fn
-			? ({ taint, node, value, projectArg, call, role }) => fn({ name, taint, node, value, projectArg, call, dfg, ctx, role })
+			? ({ node, value, wasMapped, projectArg, call, role }) => fn({ name, node, value, wasMapped, projectArg, call, dfg, ctx, role })
 			: () => {};
 	}
 }

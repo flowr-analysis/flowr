@@ -23,11 +23,50 @@ const marker = new TaintAnalysisDefinition('marker', lattice)
 		{ identifier: Identifier.make('TaintB'), taint: TaintB },
 	]);
 
+const conflict = new TaintAnalysisDefinition('conflict', lattice)
+	.from([
+		{ identifier: Identifier.make('taint'), taint: TaintA },
+		{ identifier: Identifier.make('sink'), taint: TaintA },
+		{ identifier: Identifier.make('reclassify'), taint: TaintA },
+		{ identifier: Identifier.make('narrow'), taint: TaintC },
+	])
+	.to([
+		{
+			identifier: Identifier.make('sink'),
+			condition:  {
+				argTaints:   [{ pos: 0 }],
+				conditionFn: (_args, [taint]) => taint === undefined ? undefined : Bottom
+			}
+		},
+		{
+			identifier: Identifier.make('reclassify'),
+			condition:  {
+				argTaints:   [{ pos: 0 }],
+				conditionFn: (_args, [taint]) => taint === undefined ? undefined : TaintB
+			}
+		},
+		{
+			identifier: Identifier.make('narrow'),
+			condition:  {
+				argTaints:   [{ pos: 0 }],
+				conditionFn: (_args, [taint]) => taint === undefined ? undefined : TaintA
+			}
+		},
+	]);
+
 function testPropagate(name: string, code: string, expectation: TaintAnalysisExpectation): void {
 	const effectiveName = decorateLabelContext(label(name), ['taint']);
 
 	test(effectiveName, async() => {
 		await testTaintAnalysis(code, marker, expectation);
+	});
+}
+
+function testConflict(name: string, code: string, expectation: TaintAnalysisExpectation): void {
+	const effectiveName = decorateLabelContext(label(name), ['taint']);
+
+	test(effectiveName, async() => {
+		await testTaintAnalysis(code, conflict, expectation);
 	});
 }
 
@@ -65,4 +104,12 @@ describe('Taint Propagation', () => {
 	describe('Value Loss Through Unmapped Operations', () => {
 		testPropagate('reading through an unmapped regular function call yields Top', 'x <- taint()\ny <- unmappedFn(x)', { '2@y': Top });
 	});
+});
+
+describe('Source-Sink Conflict (Greatest Lower Bound)', () => {
+	testConflict('meeting the source taint with the sink finding taint (Bottom) drops to Bottom', 'a <- taint()\nx <- sink(a)', { '2@x': Bottom });
+	testConflict('meeting incomparable source and sink taints drops to Bottom', 'a <- taint()\nx <- reclassify(a)', { '2@x': Bottom });
+	testConflict('meeting comparable source and sink taints keeps the lower bound', 'a <- taint()\nx <- narrow(a)', { '2@x': TaintA });
+	testConflict('an inapplicable sink condition (undefined) leaves the source taint', 'x <- sink(1)', { '1@x': TaintA });
+	testConflict('an inapplicable sink condition (undefined) leaves the higher source taint', 'x <- narrow(1)', { '1@x': TaintC });
 });

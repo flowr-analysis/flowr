@@ -40,15 +40,19 @@ const TestSignatures = {
 	transitiveCallees: (pkg: string, name: string) => pkg === 'base' && name === 'known' ? ['paste', 'system'] : undefined
 } as unknown as PackageSignatureSource;
 
-/** one instance of each kind of claim the configuration makes, so a name that loses its props shows up */
+/**
+ * One instance of each kind of claim the configuration makes, so a name that loses its props shows up.
+ * `CallProp.Primitive` is added by `markPrimitives` to whatever R itself provides, which is every name here
+ * but `print` (a closure) and `grDevices::png` (not base).
+ */
 const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
-	[Identifier.from(['sum', PkgName.Base]), { props: CallProp.Pure | CallProp.Generic }],
-	[Identifier.from(['nchar', PkgName.Base]), { props: CallProp.Pure, tags: [SemanticCallTag.Narrows] }],
-	[Identifier.from(['lapply', PkgName.Base]), { props: CallProp.MayPure }],
+	[Identifier.from(['sum', PkgName.Base]), { props: CallProp.Pure | CallProp.Generic | CallProp.Primitive }],
+	[Identifier.from(['nchar', PkgName.Base]), { props: CallProp.Pure | CallProp.Primitive, tags: [SemanticCallTag.Narrows] }],
+	[Identifier.from(['lapply', PkgName.Base]), { props: CallProp.MayPure | CallProp.Primitive }],
 	[Identifier.from(['print', PkgName.Base]), { props: CallProp.Invisible | CallProp.Generic, tags: [SemanticCallTag.Prints] }],
-	[Identifier.from(['stop', PkgName.Base]), { props: CallProp.Throws }],
-	[Identifier.from(['rm', PkgName.Base]), { props: CallProp.Invisible | CallProp.Scope }],
-	[Identifier.from(['set.seed', PkgName.Base]), { props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random] }],
+	[Identifier.from(['stop', PkgName.Base]), { props: CallProp.Throws | CallProp.Primitive }],
+	[Identifier.from(['rm', PkgName.Base]), { props: CallProp.Invisible | CallProp.Scope | CallProp.Primitive }],
+	[Identifier.from(['set.seed', PkgName.Base]), { props: CallProp.Invisible | CallProp.Configures | CallProp.Primitive, tags: [SemanticCallTag.Random] }],
 	[Identifier.from(['png', PkgName.GrDevices]), { props: CallProp.Invisible,
 		tags:  [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes] }]
 ];
@@ -109,14 +113,14 @@ describe('Built-in properties', () => {
 			assert.isTrue(pure.has('base::sum'), 'sum is pure');
 			assert.isFalse(pure.has('base::tempfile'), 'tempfile is not');
 			assert.isTrue(index.with(SemanticCallTag.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
-			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure);
+			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Primitive);
 			assert.deepStrictEqual(index.get('nchar')?.tags, [SemanticCallTag.Narrows]);
 			const foldable = new Set(BuiltInIndex.default().foldable.map(Identifier.getName));
 			assert.isTrue(foldable.has('+'), 'arithmetic is folded');
 			assert.isTrue(foldable.has('paste'));
 			assert.isFalse(foldable.has('read.csv'), 'reading a file is not');
 			const registered = BuiltInIndex.ofEnvironment(getDefaultBuiltInDefinitions());
-			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure);
+			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Primitive);
 			assert.deepStrictEqual(registered.get('nchar')?.tags, [SemanticCallTag.Narrows]);
 			assert.isTrue(registered.with(SemanticCallTag.Process).some(i => Identifier.getName(i) === 'system'));
 			/* `DBI` is not attached at startup, so it is in the package memory the index walks, not the built-in one */
@@ -268,10 +272,12 @@ describe('Built-in properties', () => {
 		});
 	});
 
-	describe('Labeling the generics', () => {
+	describe('Labeling the generics and the primitives', () => {
 		const written = new Map(WrittenBuiltinDefinitions.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
 		const registered = new Map(DefaultBuiltinConfig.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
-		test(label('every definition stays registered, and nothing but the `Generic` bit changes', ['name-normal'], ['other']), () => {
+		/* the two labeling passes the written definitions go through, and the only bits they may add */
+		const labeled = CallProp.Generic | CallProp.Primitive;
+		test(label('every definition stays registered, and nothing but the `Generic` and `Primitive` bits change', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual([...registered.keys()].sort(), [...written.keys()].sort());
 			for(const [name, def] of registered) {
 				const before = written.get(name) as typeof def;
@@ -281,7 +287,7 @@ describe('Built-in properties', () => {
 				assert.deepStrictEqual((def as { processor?: string }).processor, (before as { processor?: string }).processor, name);
 				assert.deepStrictEqual((def as { evalHandler?: string }).evalHandler, (before as { evalHandler?: string }).evalHandler, name);
 				const gained = (info(def)?.props ?? 0) & ~(info(before)?.props ?? 0);
-				assert.strictEqual(gained & ~CallProp.Generic, 0, `${name} gained more than \`Generic\``);
+				assert.strictEqual(gained & ~labeled, 0, `${name} gained more than \`Generic\`/\`Primitive\``);
 				assert.strictEqual((info(before)?.props ?? 0) & ~(info(def)?.props ?? 0), 0, `${name} lost a property`);
 			}
 		});

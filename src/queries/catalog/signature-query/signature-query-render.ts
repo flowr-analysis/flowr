@@ -66,6 +66,10 @@ function renderParameter(f: OutputFormatter, p: SignatureFunctionView['parameter
 
 /** render a function signature as `name(a, b = default, ...)`; see {@link renderParameter} for the per-parameter styling */
 function renderSignature(f: OutputFormatter, fn: SignatureFunctionView): string {
+	/* flowR declares no formals for `if` and its kin, and `if()` would read as a call that takes none */
+	if(fn.flowrOnly && fn.parameters.length === 0) {
+		return bold(fn.name, f);
+	}
 	return `${bold(fn.name, f)}(${fn.parameters.map(p => renderParameter(f, p)).join(', ')})`;
 }
 
@@ -84,7 +88,8 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	}
 	if(fn.flowrOnly) {
 		// nothing below comes from the database, so say so instead of rendering its empty fields as facts
-		result.push(`      ╰ ${italic('only flowR knows this one, the signature database has no entry', f)}`);
+		const silent = fn.flowr ? '' : ', and flowR states nothing about it beyond defining it';
+		result.push(`      ╰ ${italic(`only flowR knows this one, the signature database has no entry${silent}`, f)}`);
 	} else {
 		const tags = [fn.exported ? color('exported', Colors.Green, f) : color('internal', Colors.Yellow, f),
 			...fn.properties.filter(p => p !== 'exported').map(p => italic(p, f))];

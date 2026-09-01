@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's every helper object flowR has, by what it is about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-08-31, 22:34:06 UTC (v2.15.8, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's every helper object flowR has, by what it is about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-08-31, 20:31:00 UTC (v2.15.8, R v4.6.1), please do not edit directly._
 
 
 A *helper object* is a `const` named after a type, holding the operations on values of it. flowR has

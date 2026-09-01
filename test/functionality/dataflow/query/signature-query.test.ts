@@ -578,6 +578,29 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			expect(res.signature.builtInSuggestions).not.toContain('paste2');
 		});
 
+		test(label('a language construct is found, with the signature and the primitive label R gives it', [], ['other']), async() => {
+			// `if`, `for` and their kin have no entry in any package's sources, so flowR is the only one that answers
+			for(const name of ['if', 'for', 'while', 'repeat']) {
+				const bare = (await runQuery([{ type: 'signature', package: name }])).res.signature;
+				expect(bare.function?.name, `bare ${name}`).toBe(name);
+				expect(bare.function?.flowrOnly).toBe(true);
+				expect(bare.function?.flowr?.props, `props of ${name}`).toContain('primitive');
+				expect(bare.function?.parameters.length, `formals of ${name}`).toBeGreaterThan(0);
+				const qualified = (await runQuery([{ type: 'signature', package: 'base', function: name }])).res.signature;
+				expect(qualified.function?.name, `base::${name}`).toBe(name);
+			}
+			// the operands R's own `?Control` names, so the signature is researched rather than invented
+			const ifView = (await runQuery([{ type: 'signature', package: 'if' }])).res.signature.function;
+			expect(ifView?.parameters.map(p => p.name)).toEqual(['cond', 'cons.expr', 'alt.expr']);
+			expect(ifView?.parameters.map(p => (p.props & ArgProp.NoDefault) !== 0)).toEqual([true, true, false]);
+		});
+
+		test(label('a glob search reaches the built-ins that state nothing', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'i?' }]);
+			const own = (res.signature.matches ?? []).filter(m => m.flowrOnly).map(m => m.name);
+			expect(own).toContain('if');
+		});
+
 		test(label('the summary reports how many names the fallback covers', [], ['other']), async() => {
 			const { res } = await runQuery([{ type: 'signature' }]);
 			expect(res.signature.builtInCount).toBe(BuiltInIndex.default().entries.length);

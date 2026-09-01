@@ -244,10 +244,10 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(definition === undefined) {
 		return undefined;
 	}
+	/* a definition that states no props and no signature is still a name flowR defines: `if`, `for`, `while`,
+	   `repeat` and `function` say nothing about themselves, and answering nothing for them would deny a call
+	   flowR very much knows. The view then carries the name alone, with no `flowr` block to state. */
 	const info = queryFnProps(definition.name ?? name, { environment: env });
-	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
-		return undefined;
-	}
 	const group = groupGenericOf(name);
 	const namespace = definition.name === undefined ? undefined : Identifier.getNamespace(definition.name);
 	if(pkg !== undefined && namespace !== undefined && namespace !== pkg) {
@@ -259,10 +259,10 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 		flowrOnly:  true,
 		exported:   true,
 		properties: [],
-		/* flowR states no defaults, so nothing here says a parameter has none; what it is used for it does know */
-		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, props: p & ~ArgProp.NoDefault })),
+		/* whatever the definition states, `NoDefault` included where the formals were read out of a real R */
+		parameters: (info?.sig ?? []).map(([n, p]) => ({ name: n, props: p })),
 		callees:    [],
-		flowr:      flowrViewOf(info, []),
+		...(info !== undefined ? { flowr: flowrViewOf(info, []) } : {}),
 		...(s4GroupView(name, group, false))
 	};
 }
@@ -607,8 +607,8 @@ function isVerbatimFunction(sources: readonly PackageSignatureSource[], pkg: str
 
 /**
  * A built-in read as if it were a database record, so the search filters ({@link parameterFilter},
- * {@link matchedParamPreview}) apply to it unchanged. flowR's configuration states no defaults and no
- * location, so nothing here claims a parameter is required (see {@link flowrOnlyFunctionInfo}).
+ * {@link matchedParamPreview}) apply to it unchanged. The required-parameter count is dropped, as only some
+ * definitions state it; {@link builtInMatches} keeps the fallback out of that filter for the same reason.
  */
 function builtInAsDecoded(name: string, sig: FnSig | undefined): DecodedFunction {
 	return {
@@ -641,8 +641,8 @@ function builtInMatches(
 	env: REnvironmentInformation | undefined, q: SignatureQuery, literalFunction: boolean,
 	seen: ReadonlySet<string>, room: number
 ): SignatureMatchView[] {
-	/* flowR states no defaults, so it cannot say how many parameters of a built-in are required: a
-	   `--required` filter is a question only the database can answer, and the fallback stays out of it */
+	/* only the definitions whose formals were read out of a real R state `NoDefault`, so a required-parameter
+	   count over the built-ins would be a mix of researched and unstated: the fallback stays out of that filter */
 	if(env === undefined || room <= 0 || q.requiredParameters !== undefined) {
 		return [];
 	}

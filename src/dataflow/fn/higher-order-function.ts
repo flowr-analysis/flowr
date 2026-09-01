@@ -145,11 +145,3 @@ export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ct
 }
 
 
-/**
- * Whether the function is higher-order: it takes a function argument, may return one, or calls one of its own
- * formals as a function. `function(x) x` alone is not higher-order; pass an inverted graph to speed up repeat queries.
- * @deprecated use {@link isHigherOrder} instead
- */
-export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
-	return isHigherOrder(id, graph, { ctx, invertedGraph });
-}

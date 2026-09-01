@@ -432,7 +432,3 @@ export function strictnessOfFunction(id: NodeId, graph: DataflowGraph, ctx?: Rea
 	return strictnessOfEach([id], graph, { ctx })[id];
 }
 
-/** @deprecated use {@link strictnessOfEach} instead */
-export function strictnessOfFunctions(ids: Iterable<NodeId>, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): Record<NodeId, FunctionStrictness> {
-	return strictnessOfEach(ids, graph, { ctx });
-}

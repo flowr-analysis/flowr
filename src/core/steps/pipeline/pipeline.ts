@@ -64,11 +64,6 @@ export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepNa
  */
 export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor'];
 /**
- * Returns the printer function of the step with the given name from the given pipeline.
- * @see {@link PipelineStepWithName}
- */
-export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer'];
-/**
  * Returns the output type of the step with the given name from the given pipeline.
  * @example
  * ```ts

@@ -363,11 +363,6 @@ export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, Cl
 	return chain;
 }
 
-/** @deprecated use {@link superClassesOfImpl} instead */
-export function superClassesOf(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
-	return superClassesOfImpl(name, classes);
-}
-
 /**
  * The {@link SigClassInfo} records the signature database stores for the classes an analysis found. A class
  * the analysis declared carries no `package`; a referenced class `ownerOf` can place becomes a `foreign` record.

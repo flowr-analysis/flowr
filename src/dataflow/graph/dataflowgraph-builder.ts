@@ -19,8 +19,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { EdgeType } from './edge';
 import type { ControlDependency, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
-import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
-import { DefaultBuiltinConfig, getDefaultProcessor } from '../environments/default-builtin-config';
+import { getDefaultProcessor } from '../environments/default-builtin-config';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { guard } from '../../util/assert';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
@@ -421,19 +420,6 @@ export class DataflowGraphBuilder<
 	}
 }
 
-
-/**
- * The side effect the default built-in configuration states for the function `name`,
- * `undefined` if it states none (or does not know the name at all).
- * @param name - the function to look up
- */
-export function getBuiltInSideEffect(name: string): LinkTo<RegExp> | undefined {
-	const got = DefaultBuiltinConfig.find(e => (e.names as string[]).includes(name));
-	if(got?.type !== 'function') {
-		return undefined;
-	}
-	return (got?.config as { hasUnknownSideEffects: LinkTo<RegExp> | undefined }).hasUnknownSideEffects;
-}
 
 interface Query {
 	query: FlowrSearchLike;

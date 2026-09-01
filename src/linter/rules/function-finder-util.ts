@@ -29,14 +29,6 @@ export interface FunctionsMetadata extends MergeableRecord {
 	totalFunctionDefinitions: number;
 }
 
-export interface FunctionsToDetectConfig extends MergeableRecord {
-	/**
-	 * The list of function names that should be marked in the given context.
-	 */
-	fns: readonly Identifier[]
-}
-
-
 /**
  * This helper object collects utility functions used to create linting rules that search for specific functions.
  */

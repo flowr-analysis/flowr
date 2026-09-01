@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-08-29, 18:14:15 UTC (v2.15.8, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-09-01, 11:38:13 UTC (v2.15.8, R v4.6.1), please do not edit directly._
 
 
 - [Overview](#Overview)
@@ -316,7 +316,7 @@ Currently, flowR supports the following plugin types built-in:
 | <code>versions:renv</code> | <code>package-versions</code> | Extracts package versions from an renv.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L25"><code><span title="Reads package versions from an renv.lock (JSON). renv pins are exact.">FlowrAnalyzerPackageVersionsRenvPlugin</span></code></a> |
 | <code>versions:rv</code> | <code>package-versions</code> | Extracts package versions from an rv.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L104"><code><span title="Reads package versions from an rv.lock (the resolved rv project lockfile, TOML). rv pins are exact.">FlowrAnalyzerPackageVersionsRvPlugin</span></code></a> |
 | <code>versions:session-info</code> | <code>package-versions</code> | Extracts package and R versions from a pasted sessionInfo() output block. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-session-info-plugin.ts#L31"><code><span title="Reads package (and R) versions from a pasted sessionInfo() output block within a source file (typically inside a comment). This is how R users record a reproducible environment, so when present it pins exact versions, just like a lockfile. Detection is conservative: we only act once we see the R version line and/or one of sessionInfo()'s package-listing headers, and additionally require at least o...">FlowrAnalyzerPackageVersionsSessionInfoPlugin</span></code></a> |
-| <code>versions:sigdb</code> | <code>package-versions</code> | Resolves library exports (and versioned base R) from precomputed flowr-sigdb databases. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L114"><code><span title="Resolves library(pkg) / use(pkg, fn) from precomputed flowr-sigdb databases via the PackageSignatureSource contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a .br/manifest source needs preload ; on by default.">FlowrAnalyzerPackageVersionsSigDbPlugin</span></code></a> |
+| <code>versions:sigdb</code> | <code>package-versions</code> | Resolves library exports (and versioned base R) from precomputed flowr-sigdb databases. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L108"><code><span title="Resolves library(pkg) / use(pkg, fn) from precomputed flowr-sigdb databases via the PackageSignatureSource contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a .br/manifest source needs preload ; on by default.">FlowrAnalyzerPackageVersionsSigDbPlugin</span></code></a> |
 | <code>versions:uvr</code> | <code>package-versions</code> | Extracts package versions from a uvr.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L121"><code><span title="Reads package versions from a uvr.lock (TOML). uvr pins are exact, the dev-dependencies among them.">FlowrAnalyzerPackageVersionsUvrPlugin</span></code></a> |
 
 
@@ -580,9 +580,9 @@ that allows you to query for a specific dependency by name.
 <h3 id="Functions_Context">Functions Context</h3>
 
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L125"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> also provides access to the associated
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L55"><code><span title="This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata. It works in conjunction with FlowrAnalyzerPackageVersionsPlugin s to gather and maintain this information. If you are interested in inspecting these functions, refer to ReadOnlyFlowrAnalyzerFunctionsContext .">FlowrAnalyzerFunctionsContext</span></code></a> via its `functionsContext` attribute.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L49"><code><span title="This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata. It works in conjunction with FlowrAnalyzerPackageVersionsPlugin s to gather and maintain this information. If you are interested in inspecting these functions, refer to ReadOnlyFlowrAnalyzerFunctionsContext .">FlowrAnalyzerFunctionsContext</span></code></a> via its `functionsContext` attribute.
 
- * [FlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L55)   
+ * [FlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L49)   
    This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata.
    It works in conjunction with
    <code>FlowrAnalyzerPackageVersionsPlugin</code>
@@ -590,7 +590,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
    If you are interested in inspecting these functions, refer to
    <code>ReadOnlyFlowrAnalyzerFunctionsContext</code>
    .
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L55">src/project/context/flowr-analyzer-functions-context.ts#L55</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L49">src/project/context/flowr-analyzer-functions-context.ts#L49</a>)</i>
    
     <details><summary>View more (AbstractFlowrAnalyzerContext, ReadOnlyFlowrAnalyzerFunctionsContext)</summary>
 
@@ -608,7 +608,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
      to access the full project context.
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/abstract-flowr-analyzer-context.ts#L12">src/project/context/abstract-flowr-analyzer-context.ts#L12</a>)</i>
      
-   * **[ReadOnlyFlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L38)**   
+   * **[ReadOnlyFlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L32)**   
      This is a read-only interface to the
      <code>FlowrAnalyzerFunctionsContext</code>
      .
@@ -620,13 +620,13 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
      and want to modify the functions, you can use the
      <code>FlowrAnalyzerFunctionsContext</code>
      directly.
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L38">src/project/context/flowr-analyzer-functions-context.ts#L38</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L32">src/project/context/flowr-analyzer-functions-context.ts#L32</a>)</i>
      
 
     </details>
 
 Probably the most important method is
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L105"><code>FlowrAnalyzerFunctionsContext::<i>getFunctionInfo</i></code></a>
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L99"><code>FlowrAnalyzerFunctionsContext::<i>getFunctionInfo</i></code></a>
 that allows you to query for a specific function by name.
 
 <h3 id="Environment_Context">Environment Context</h3>

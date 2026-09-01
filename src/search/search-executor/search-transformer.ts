@@ -22,8 +22,6 @@ export type FlowrSearchTransformerNode = {
 
 export type TransformerNames = keyof typeof transformers;
 
-export type GetTransformer<Name extends TransformerNames> = FlowrSearchTransformerNode & { name: Name };
-
 export type GetOutputOfTransformer<Name extends TransformerNames> = ReturnType<typeof transformers[Name]>;
 
 /**

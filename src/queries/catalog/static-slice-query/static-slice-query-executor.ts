@@ -1,6 +1,6 @@
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
 import { staticSlice } from '../../../slicing/static/static-slicer';
-import { reconstructSlice, resolveSliceCriteria, sliceResultKey, sliceResultKeys } from '../slice-query-options';
+import { reconstructSlice, resolveSliceCriteria, sliceResultKey, sliceResultKeys, timedSliceEntry } from '../slice-query-options';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../util/slice-direction';
@@ -32,25 +32,14 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		if(results[key]) {
 			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
 		}
-		const { criteria, noReconstruction, includeCallees } = query;
+		const { criteria, includeCallees } = query;
 		const sliceStart = Date.now();
 		const n = await analyzer.normalize();
 		const df = await analyzer.dataflow();
 		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: df, ast: n, ids: resolveSliceCriteria(criteria, n), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold, includeCallees });
-		const sliceEnd = Date.now();
 		const packages = query.reportPackages ? [...Dataflow.packagesOf(slice.result, df.graph)] : undefined;
-		if(noReconstruction) {
-			results[key] = { packages, slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
-		} else {
-			const reconstructStart = Date.now();
-			const reconstruct = reconstructSlice(n, df.graph, slice.result, query);
-			const reconstructEnd = Date.now();
-			results[key] = {
-				packages,
-				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },
-				reconstruct: { ...reconstruct, '.meta': { timing: reconstructEnd - reconstructStart } }
-			};
-		}
+		results[key] = { packages, ...timedSliceEntry(query, slice, Date.now() - sliceStart,
+			() => reconstructSlice(n, df.graph, slice.result, query)) };
 	}
 	return {
 		'.meta': {

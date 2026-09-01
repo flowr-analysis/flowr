@@ -65,18 +65,6 @@ export type Value = Lift<
         | ValueFunctionDefinition
 	    | ValueNull
 >;
-export type ValueType<V> = V extends { type: infer T } ? T : never;
-export type ValueTypes = ValueType<Value>;
-
-
-/**
- * The `type` discriminator of a value, kept as a function so it narrows to the value's own type.
- * @param value - the value to read the type off
- */
-export function typeOfValue<V extends Value>(value: V): V['type'] {
-	return value.type;
-}
-
 /** Checks whether the given value is the top value */
 // @ts-expect-error -- this is a save cast
 export function isTop<V extends Lift<unknown>>(value: V): value is typeof Top {

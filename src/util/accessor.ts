@@ -19,11 +19,5 @@
  */
 export type Accessor<In, Out> = <T extends In | undefined>(this: void, of: T) => IfPresent<T, Out>;
 
-/**
- * The same as {@link Accessor}, but for a reader that takes arguments besides the value it reads off.
- */
-export type AccessorWith<In, Args extends unknown[], Out> =
-	<T extends In | undefined>(this: void, of: T, ...args: Args) => IfPresent<T, Out>;
-
 /** `Out` for a `T` that is there, `undefined` for one that is not, and the union for a `T` that may be either. */
 export type IfPresent<T, Out> = T extends undefined ? undefined : Out;

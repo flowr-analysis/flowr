@@ -99,16 +99,6 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	evalHandler?: BuiltInEvalHandler
 }
 
-/**
- * Whether the definition states that the call does not evaluate some of its arguments the standard way, either
- * by quoting them or by handing them a data mask. Only such a definition changes what the arguments read, so
- * only it has to run in place of the default processor.
- */
-export function statesNonStandardEvaluation(definition: BuiltInIdentifierDefinition | undefined): boolean {
-	const config = definition?.config as Pick<DefaultBuiltInProcessorConfiguration, 'markArgsAsNSE' | 'markArgsAsMasked'> | undefined;
-	return config?.markArgsAsNSE !== undefined || config?.markArgsAsMasked !== undefined;
-}
-
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
 	type:      ReferenceType.BuiltInConstant
 	definedAt: BuiltIn

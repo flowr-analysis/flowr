@@ -102,12 +102,6 @@ function exportOwners(src: PackageSignatureSource, name: string): readonly strin
 }
 
 /**
- * The packages exporting one name: the sole exporter bare, rivals as an array. About 95% of names have exactly
- * one exporter, so wrapping those in an array too would cost more than the index itself.
- */
-export type ExportIndexEntry = string | string[];
-
-/**
  * Resolves `library(pkg)` / `use(pkg, fn)` from precomputed `flowr-sigdb` databases via the {@link PackageSignatureSource}
  * contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a `.br`/manifest source needs {@link preload}; on by default.
  */

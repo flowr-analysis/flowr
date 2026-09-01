@@ -127,18 +127,6 @@ export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGen
 }
 
 /**
- * Writes the given table as a CSV file.
- * @param table   - The table to write
- * @param file    - The file path to write the CSV to
- * @param sep     - The separator to use (default: `,`)
- * @param newline - The newline character to use (default: `\n`)
- */
-export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
-	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline);
-	fs.writeFileSync(file, csv);
-}
-
-/**
  * Reads a file line by line and calls the given function for each line.
  * The `lineNumber` starts at `0`.
  * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.

@@ -123,3 +123,24 @@ export function reconstructSlice(ast: NormalizedAst, graph: DataflowGraph, nodes
 		sourceMap:        inlining ? buildSourceInlineMap(ast, graph) : undefined
 	}, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
 }
+
+/** A value reported together with how long producing it took. */
+type Timed<T> = T & { readonly '.meta': { readonly timing: number } };
+
+/**
+ * How a slicing query reports one result: the slice with the time it took, and -- unless the query asked for
+ * none -- the reconstruction with its own. `static-slice` and `dice` differ in what they slice, not in how they
+ * report it, so both build their entry here; `reconstruct` is only called when one is wanted, and is timed
+ * around that call alone.
+ */
+export function timedSliceEntry<Slice extends object>(
+	options: SliceQueryOptions, slice: Slice, sliceTiming: number, reconstruct: () => ReconstructionResult
+): { slice: Timed<Slice>, reconstruct?: Timed<ReconstructionResult> } {
+	const timedSlice = { ...slice, '.meta': { timing: sliceTiming } };
+	if(options.noReconstruction) {
+		return { slice: timedSlice };
+	}
+	const start = Date.now();
+	const result = reconstruct();
+	return { slice: timedSlice, reconstruct: { ...result, '.meta': { timing: Date.now() - start } } };
+}

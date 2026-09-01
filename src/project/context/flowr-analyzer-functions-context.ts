@@ -7,12 +7,6 @@ import {
 	namespaceFileLog
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 
-export enum FunctionTypes {
-	Function = 'function',
-	ExportTypes = 'exportTypes',
-	S3 = 'S3'
-}
-
 export interface FunctionInfo {
 	name:            string;
 	packageOrigin:   string;

@@ -33,9 +33,6 @@ export type FlowrSearchGeneratorNode = {
 
 export type GeneratorNames = keyof typeof generators;
 
-export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode & { name: Name };
-
-
 /**
  * All supported generators!
  */

@@ -63,7 +63,7 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 		const { value, role } = resolveFnCallToTaint(node, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
 		this.currentState.set(node.info.id, value);
 
-		this.config.fnCallHook({ node, value, projectArg: this.projectArg, call, role: role });
+		this.config.fnCallHook({ node, value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role: role });
 	}
 
 	protected isUnsupportedFunctionCall(_nodeId: NodeId): boolean {

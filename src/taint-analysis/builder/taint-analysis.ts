@@ -25,6 +25,8 @@ export interface FnCallHookInfo {
 	role:       TaintRole | undefined;
 	/** The AST node representing the function call */
 	node:       RNamedFunctionCall<ParentInformation>;
+	/** Whether the function call had an explicit mapping */
+	wasMapped:  boolean;
 	/** The abstract domain value at this point (the outgoing/resolved taint) */
 	value:      AnyAbstractDomain;
 	/** Resolves the incoming taint of any argument node at this call, regardless of mapping rules */
@@ -144,7 +146,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 
 	private wrapFnCallHook(fn: FnCallHook | undefined, name: string, dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): TaintVisitorHook {
 		return fn
-			? ({ node, value, projectArg, call, role }) => fn({ name, node, value, projectArg, call, dfg, ctx, role })
+			? ({ node, value, wasMapped, projectArg, call, role }) => fn({ name, node, value, wasMapped, projectArg, call, dfg, ctx, role })
 			: () => {};
 	}
 }

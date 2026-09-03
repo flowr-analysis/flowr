@@ -1187,7 +1187,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['f', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['e', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['loadcmp', PkgName.Compiler])],                                                processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, sig: [['file', ArgProp.NoDefault], ['envir', 0], ['chdir', 0]] } },
-	{ type: 'function', names: [Identifier.from(['setnames', PkgName.DataTable]), Identifier.from(['setNames', PkgName.Base]), Identifier.from(['setNames', PkgName.FastUtils]), ...Identifier.fromAll(PkgName.DataTable, ['setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'])], processor: BuiltInProcName.Assignment, config: { canBeReplacement: false, targetVariable: false, makeMaybe: true, mayHaveMoreArgs: true, sig: [['object', 0], ['nm', ArgProp.NoDefault]] } },
+	{ type: 'function', names: [Identifier.from(['setnames', PkgName.DataTable]), Identifier.from(['setNames', PkgName.Base]), Identifier.from(['setNames', PkgName.FastUtils]), ...Identifier.fromAll(PkgName.DataTable, ['setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'])], processor: BuiltInProcName.Assignment, config: { canBeReplacement: false, targetVariable: false, makeMaybe: true, mayHaveMoreArgs: true, readTarget: true, sig: [['object', 0], ['nm', ArgProp.NoDefault]] } },
 	{
 		type:  'function',
 		names: [

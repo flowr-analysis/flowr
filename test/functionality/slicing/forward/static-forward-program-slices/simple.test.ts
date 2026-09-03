@@ -18,7 +18,7 @@ describe('Simple Forward', { concurrent: false }, withShell(shell => {
 			);
 		}
 		assertSlicedF(label('using setnames', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-			shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['1@x'], 'x <- read.csv("foo")\nprint(x)'
+			shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['1@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)'
 		);
 		assertSlicedF(label('using setnames but wanting another', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
 			shell, 'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['2@y'], 'y <- 3\nprint(y)'

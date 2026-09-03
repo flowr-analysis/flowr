@@ -1,0 +1,227 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>AbsintContext | @eagleoutice/flowr - v2.15.8</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.15.8</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_abstract-interpretation_abstract-semantics.html">src/abstract-interpretation/abstract-semantics</a></li>
+<li><a href="" aria-current="page">AbsintContext</a></li></ul>
+<h1>Interface AbsintContext&lt;Domain&gt;</h1></div>
+<section class="tsd-panel tsd-comment">
+<div class="tsd-comment tsd-typography"><p>The context passed to the <a href="src_abstract-interpretation_abstract-semantics.AbstractSemantics.html" class="tsd-kind-interface">AbstractSemantics</a> handlers of an abstract domain,
+providing access to the analyzed program (AST, DFG, CFG), the analyzer context, the value domain of the analysis,
+as well as to the abstract states and values inferred so far.</p>
+</div></section>
+<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">AbsintContext</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a> <span class="tsd-signature-keyword">extends</span> <a href="src_abstract-interpretation_domains_state-domain.StateDomain.html" class="tsd-signature-type tsd-kind-interface">StateDomain</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#ast">ast</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Pick</span><span class="tsd-signature-symbol">&lt;</span><a href="src_r-bridge_lang-4.x_ast_model_processing_decorate.NormalizedAst.html" class="tsd-signature-type tsd-kind-interface">NormalizedAst</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;idMap&quot;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#cfg">cfg</a><span class="tsd-signature-symbol">:</span> <a href="../classes/src_control-flow_control-flow-graph.ControlFlowGraph.html" class="tsd-signature-type tsd-kind-class">ControlFlowGraph</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#context">context</a><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-context.ReadOnlyFlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-interface">ReadOnlyFlowrAnalyzerContext</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#dfg">dfg</a><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#domain-1">domain</a><span class="tsd-signature-symbol">:</span> <a href="../types/src_abstract-interpretation_domains_state-domain.ValueDomain.html" class="tsd-signature-type tsd-kind-type-alias">ValueDomain</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#getabstractstate-1">getAbstractState</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#getabstractvalue-1">getAbstractValue</a><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">node</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">state</span><span class="tsd-signature-symbol">?:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_abstract-interpretation_domains_state-domain.ValueDomain.html" class="tsd-signature-type tsd-kind-type-alias">ValueDomain</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#getastnode-1">getAstNode</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#getcfgvertex-1">getCfgVertex</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vertexId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgVertex.html" class="tsd-signature-type tsd-kind-type-alias">CfgVertex</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#getdfgvertex-1">getDfgVertex</a><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">vertexId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_dataflow_graph_vertex.DataflowGraphVertexArgument.html" class="tsd-signature-type tsd-kind-type-alias">DataflowGraphVertexArgument</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#getvariableorigins-1">getVariableOrigins</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li><span id="domain"><span class="tsd-kind-type-parameter">Domain</span> <span class="tsd-signature-keyword">extends</span> <a href="src_abstract-interpretation_domains_state-domain.StateDomain.html" class="tsd-signature-type tsd-kind-interface">StateDomain</a></span>
+<div class="tsd-comment tsd-typography"><p>Type of the state abstract domain the semantics are defined for</p>
+</div></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L18">src/abstract-interpretation/abstract-semantics.ts:18</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h5 class="tsd-index-heading uppercase">Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#ast" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>ast</span></a>
+<a href="#cfg" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>cfg</span></a>
+<a href="#context" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>context</span></a>
+<a href="#dfg" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>dfg</span></a>
+<a href="#domain-1" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>domain</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="methods">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#getabstractstate" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Abstract<wbr/>State</span></a>
+<a href="#getabstractvalue" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Abstract<wbr/>Value</span></a>
+<a href="#getastnode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Ast<wbr/>Node</span></a>
+<a href="#getcfgvertex" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Cfg<wbr/>Vertex</span></a>
+<a href="#getdfgvertex" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Dfg<wbr/>Vertex</span></a>
+<a href="#getvariableorigins" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Variable<wbr/>Origins</span></a>
+</div></section></div></details></section></section>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="ast"><code class="tsd-tag">Readonly</code><span>ast</span><a href="#ast" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">ast</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Pick</span><span class="tsd-signature-symbol">&lt;</span><a href="src_r-bridge_lang-4.x_ast_model_processing_decorate.NormalizedAst.html" class="tsd-signature-type tsd-kind-interface">NormalizedAst</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;idMap&quot;</span><span class="tsd-signature-symbol">&gt;</span></div>
+<div class="tsd-comment tsd-typography"><p>The normalized AST of the analyzed program (the control flow visitor only requires its id map)</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L20">src/abstract-interpretation/abstract-semantics.ts:20</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="cfg"><code class="tsd-tag">Readonly</code><span>cfg</span><a href="#cfg" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">cfg</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_control-flow_control-flow-graph.ControlFlowGraph.html" class="tsd-signature-type tsd-kind-class">ControlFlowGraph</a></div>
+<div class="tsd-comment tsd-typography"><p>The control flow graph of the analyzed program</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L24">src/abstract-interpretation/abstract-semantics.ts:24</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="context"><code class="tsd-tag">Readonly</code><span>context</span><a href="#context" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">context</span><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-context.ReadOnlyFlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-interface">ReadOnlyFlowrAnalyzerContext</a></div>
+<div class="tsd-comment tsd-typography"><p>The current flowR analyzer context (e.g. for accessing the configuration or loaded files)</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L26">src/abstract-interpretation/abstract-semantics.ts:26</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="dfg"><code class="tsd-tag">Readonly</code><span>dfg</span><a href="#dfg" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">dfg</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></div>
+<div class="tsd-comment tsd-typography"><p>The dataflow graph of the analyzed program</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L22">src/abstract-interpretation/abstract-semantics.ts:22</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="domain-1"><code class="tsd-tag">Readonly</code><span>domain</span><a href="#domain-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">domain</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_abstract-interpretation_domains_state-domain.ValueDomain.html" class="tsd-signature-type tsd-kind-type-alias">ValueDomain</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a><span class="tsd-signature-symbol">&gt;</span></div>
+<div class="tsd-comment tsd-typography"><p>The value abstract domain the semantics are defined for (e.g. to create Top or Bottom values)</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L28">src/abstract-interpretation/abstract-semantics.ts:28</a></li></ul></aside></section></section></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getabstractstate"><span>get<wbr/>Abstract<wbr/>State</span><a href="#getabstractstate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getabstractstate-1"><span class="tsd-kind-call-signature">getAbstractState</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getabstractstate-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the abstract state inferred at the location of an AST node.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span>
+<div class="tsd-comment tsd-typography"><p>The ID of the node to get the abstract state at</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>The abstract state at the node, or <code>undefined</code> if the node has no abstract state (i.e. the node has not been visited or is unreachable)</p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L56">src/abstract-interpretation/abstract-semantics.ts:56</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getabstractvalue"><span>get<wbr/>Abstract<wbr/>Value</span><a href="#getabstractvalue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getabstractvalue-1"><span class="tsd-kind-call-signature">getAbstractValue</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">node</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">state</span><span class="tsd-signature-symbol">?:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_abstract-interpretation_domains_state-domain.ValueDomain.html" class="tsd-signature-type tsd-kind-type-alias">ValueDomain</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getabstractvalue-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Resolves the abstract value inferred for an AST node, by following symbols to their variable origins,
+arguments to their values, expression lists to their last expression, and pipes and <code>if</code> expressions to their results.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">node</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span>
+<div class="tsd-comment tsd-typography"><p>The node (or ID of the node) to get the inferred abstract value for</p>
+</div></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">state</span>: <a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a></span>
+<div class="tsd-comment tsd-typography"><p>An optional abstract state used to resolve the inferred value (defaults to the state at the requested node)</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_abstract-interpretation_domains_state-domain.ValueDomain.html" class="tsd-signature-type tsd-kind-type-alias">ValueDomain</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#domain">Domain</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>The inferred abstract value of the node, or <code>undefined</code> if no value was inferred for the node</p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L72">src/abstract-interpretation/abstract-semantics.ts:72</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getastnode"><span>get<wbr/>Ast<wbr/>Node</span><a href="#getastnode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getastnode-1"><span class="tsd-kind-call-signature">getAstNode</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getastnode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the normalized AST node with the given node ID.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span>
+<div class="tsd-comment tsd-typography"><p>The ID of the node to get the AST node for</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>The normalized AST node, or <code>undefined</code> if there is no such node</p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L35">src/abstract-interpretation/abstract-semantics.ts:35</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getcfgvertex"><span>get<wbr/>Cfg<wbr/>Vertex</span><a href="#getcfgvertex" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getcfgvertex-1"><span class="tsd-kind-call-signature">getCfgVertex</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vertexId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgVertex.html" class="tsd-signature-type tsd-kind-type-alias">CfgVertex</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getcfgvertex-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the control flow graph vertex with the given node ID.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">vertexId</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span>
+<div class="tsd-comment tsd-typography"><p>The ID of the vertex to get the control flow graph vertex for</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_control-flow_control-flow-graph.CfgVertex.html" class="tsd-signature-type tsd-kind-type-alias">CfgVertex</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>The control flow graph vertex, or <code>undefined</code> if there is no such vertex</p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L49">src/abstract-interpretation/abstract-semantics.ts:49</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getdfgvertex"><span>get<wbr/>Dfg<wbr/>Vertex</span><a href="#getdfgvertex" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getdfgvertex-1"><span class="tsd-kind-call-signature">getDfgVertex</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">vertexId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_dataflow_graph_vertex.DataflowGraphVertexArgument.html" class="tsd-signature-type tsd-kind-type-alias">DataflowGraphVertexArgument</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getdfgvertex-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the dataflow graph vertex with the given node ID.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">vertexId</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span>
+<div class="tsd-comment tsd-typography"><p>The ID of the vertex to get the dataflow graph vertex for</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_dataflow_graph_vertex.DataflowGraphVertexArgument.html" class="tsd-signature-type tsd-kind-type-alias">DataflowGraphVertexArgument</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>The dataflow graph vertex, or <code>undefined</code> if there is no such vertex</p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L42">src/abstract-interpretation/abstract-semantics.ts:42</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getvariableorigins"><span>get<wbr/>Variable<wbr/>Origins</span><a href="#getvariableorigins" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getvariableorigins-1"><span class="tsd-kind-call-signature">getVariableOrigins</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">[]</span><a href="#getvariableorigins-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the origins of a variable use, i.e. the definitions the variable may be read from.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span>
+<div class="tsd-comment tsd-typography"><p>The ID of the node to get the variable origins for</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">[]</span></h4><p>The IDs of the definitions the variable may be read from</p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/651d4869cebe33c9e08c0796f7fdb5e84f645eba/src/abstract-interpretation/abstract-semantics.ts#L63">src/abstract-interpretation/abstract-semantics.ts:63</a></li></ul></aside></div></li></ul></section></section></details></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
+<div><a href="#ast"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>ast</span></a><a href="#cfg"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>cfg</span></a><a href="#context"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>context</span></a><a href="#dfg"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>dfg</span></a><a href="#domain-1"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>domain</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Methods</summary>
+<div><a href="#getabstractstate"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Abstract<wbr/>State</span></a><a href="#getabstractvalue"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Abstract<wbr/>Value</span></a><a href="#getastnode"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Ast<wbr/>Node</span></a><a href="#getcfgvertex"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Cfg<wbr/>Vertex</span></a><a href="#getdfgvertex"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Dfg<wbr/>Vertex</span></a><a href="#getvariableorigins"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Variable<wbr/>Origins</span></a></div></details></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.15.8</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

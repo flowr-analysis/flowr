@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowR Benchmark History</title>
+<meta name="description" content="Performance history of the flowR static analyzer for R, measured on every release.">
+<script>
+		/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
+		(function() {
+			try {
+				var url = new URLSearchParams(location.hash.replace(/^#/, ''));
+				var theme = url.get('theme') || localStorage.getItem('flowr-bench-theme');
+				if(theme === 'light' || theme === 'dark') {
+					document.documentElement.setAttribute('data-theme', theme);
+				}
+			} catch(e) { /* private mode keeps the system theme */ }
+		})();
+	</script>
+<link rel="icon" href="../../img/flowR-mark-red.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<div class="titles">
+<div class="title-row">
+<h1><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><a class="version" id="version" data-release="v2.15.8" href="https://github.com/flowr-analysis/flowr/commit/651d4869cebe33c9e08c0796f7fdb5e84f645eba" target="_blank" rel="noopener" title="a development build of flowR, 7 commits after v2.15.8 (651d486)">v2.15.8*</a></h1>
+</div>
+<p class="intro">
+One point per release, measured on a shared CI runner.
+<a href="../../../" target="_blank" rel="noopener">Landing Page</a>
+</p>
+</div>
+<div class="theme">
+<label for="theme">Theme</label>
+<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
+</div>
+</header>
+<p id="status" class="status" hidden></p>
+<main>
+<aside id="controls">
+<details class="panel" id="panel-data" open>
+<summary><span class="panel-title">Data</span><span class="digest" id="digest-data"></span></summary>
+<label class="field"><span>Suite</span><select id="suite"></select></label>
+<label class="field"><span>Engine</span><select id="engine"></select></label>
+<label class="field"><span>Time range</span><select id="range"><option value="6">Last 6 months</option><option value="12" selected>Last year</option><option value="24">Last two years</option><option value="0">Everything</option></select></label>
+<p class="hint" id="range-note"></p>
+</details>
+<details class="panel" id="panel-view" open>
+<summary><span class="panel-title">View</span><span class="digest" id="digest-view"></span></summary>
+<label class="field"><span>Values</span><select id="mode"><option value="absolute">Absolute</option><option value="delta">Delta vs. recent median</option></select></label>
+<label class="field" id="baseline-field"><span>Baseline: last <output id="baseline-out">3</output> releases</span><input id="baseline" type="range" min="1" max="25" step="1" value="3"></label>
+<label class="field" id="smooth-field"><span>Smoothing window: <output id="smooth-out">1 run</output></span><input id="smooth" type="range" min="1" max="15" step="2" value="1"></label>
+<label class="check"><input id="band" type="checkbox"><span>Error band (standard deviation)</span></label>
+<label class="check" id="calibrate-field" hidden><input id="calibrate" type="checkbox" checked><span>Divide timings by calibration</span></label>
+<p class="hint" id="calibration-note" hidden></p>
+</details>
+<details class="panel" id="panel-layout" open>
+<summary><span class="panel-title">Layout</span><span class="digest" id="digest-layout"></span></summary>
+<label class="check"><input id="lock" type="checkbox"><span>Lock the tiles</span></label>
+<div class="buttons"><button type="button" id="reset-layout">Reset</button><button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button></div>
+<p class="hint">Unlock to drag the tiles into another order. The corner button folds tiles away.</p>
+</details>
+<details class="panel" id="panel-download" open>
+<summary><span class="panel-title">Download</span><span class="digest" id="digest-download"></span></summary>
+<div class="buttons"><button type="button" id="dl-suite">Suite JSON</button><button type="button" id="dl-csv">Visible CSV</button><button type="button" id="dl-all">Full data.js</button></div>
+</details>
+</aside>
+<section id="charts"></section>
+</main>
+<footer>
+<a href="https://github.com/flowr-analysis/flowr">flowr-analysis/flowr</a> |
+<a href="https://github.com/flowr-analysis/flowr/wiki">wiki</a> |
+<a href="https://github.com/flowr-analysis/flowr/wiki/Interface">interface docs</a> |
+<span id="source-note"></span> |
+<span id="watch-note"></span>
+<button type="button" id="fullscreen" aria-pressed="false">Fullscreen</button>
+</footer>
+<div id="tooltip" hidden></div>
+<script src="data.js" onerror="window.BENCH_NO_DATA_FILE = true"></script>
+<script src="stats.js"></script>
+<script src="viewer.js"></script>
+<script>
+	(function() {
+		const tag = document.getElementById('version');
+		if(!tag || !tag.dataset.release) { return; }
+		const said = tag.title;
+		const ahead = tag.textContent.trim().endsWith('*');
+		let asked = false;
+		const name = () => {
+			if(asked) { return; }
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.dataset.release)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => {
+					if(release.name) {
+						const when = release.published_at
+							? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+							: '';
+						const also = when ? release.name + ', released ' + when : release.name;
+						tag.title = ahead ? said + ' · ' + also : also;
+					}
+				})
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tag.addEventListener('pointerenter', name);
+		tag.addEventListener('focus', name);
+	})();
+</script>
+<script>
+	(function() {
+		if(!/(^|\/)index\.html$/.test(location.pathname)) { return; }
+		for(const a of document.querySelectorAll('a[href$="/"]')) {
+			const href = a.getAttribute('href');
+			if(!/^[a-z]+:|^\/\//i.test(href)) { a.setAttribute('href', href + 'index.html'); }
+		}
+	})();
+</script>
+</body>
+</html>

@@ -69,6 +69,8 @@ export interface AssignmentConfiguration {
 	readonly canBeReplacement?:    boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
+	/** does the call use the old value of its target (e.g. `setNames(x, nm)`), so that the target reads its previous definition? */
+	readonly readTarget?:          boolean
 	readonly mayHaveMoreArgs?:     boolean
 	readonly modesForFn?:          DataflowGraphVertexFunctionDefinition['mode']
 	/**
@@ -265,7 +267,7 @@ export function processAssignment<OtherInfo>(
 			reverseOrder: !config.swapSourceAndTarget,
 			origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 		});
-		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+		const info = processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,
 			nameOfAssignmentFunction: name.content,
 			source,
@@ -276,6 +278,12 @@ export function processAssignment<OtherInfo>(
 			data,
 			information:              res.information,
 		});
+		if(config.readTarget && RSymbol.is(target)) {
+			/* just like a replacement function, the call works on the old value of its target */
+			info.graph.addEdge(target.info.id, rootId, EdgeType.Reads);
+			return { ...info, in: [...info.in, { name: target.content, type: ReferenceType.Variable, nodeId: target.info.id, cds: data.cds }] };
+		}
+		return info;
 	};
 
 	if(type === RType.Symbol && !config.targetVariable) {

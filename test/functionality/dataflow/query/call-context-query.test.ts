@@ -164,31 +164,30 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('Print calls', 'print(1)', [q('pr')], r([{ id: 3, name: 'print' }]));
 		testQuery('With compaction optimization', 'print(1)', new Array(10000).fill(q('print')), r([{ id: 3, name: 'print' }]));
 	});
-	describe('Ask for args', () => {
-		testQuery('1', 'print(getOption("x", default = 1)); print(4)',
-			[q(/print/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 9, name: 'print' }]),
+	describe('Arguments rely on criteria', () => {
+		testQuery('Simple direct call', 'print(getOption("x", default = 1)); print(4)',
+			[q(/print/, { reliesOnCriteria: [{ name: 'x', calls: 'getOption' }] })], r([{ id: 9, name: 'print' }])
 		);
-		testQuery('2', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 17, name: 'print' }]));
-		testQuery('3', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }] })], r([{ id: 27, name: 'print' }]));
-		testQuery('4', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: 'x', calls: '\\+' }] })], r([{ id: 19, name: 'print' }]));
-
-		testQuery('5', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: 'x', calls: '\\+' }, { name: '*', calls: '\\*' }] })], r([{ id: 19, name: 'print' }]));
-		testQuery('6', `f <- function(x = foo())  {
+		testQuery('Simple 2', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 17, name: 'print' }]));
+		testQuery('Simple 3', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }] })], r([{ id: 27, name: 'print' }]));
+		testQuery('Simple 4', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: 'x', calls: '\\+' }] })], r([{ id: 19, name: 'print' }]));
+		testQuery('Simple nested', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }, { name: '*', calls: '\\*' }] })], r([{ id: 19, name: 'print' }]));
+		testQuery('Relies on with default value', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
 f()
 f(x=42)
 f(42)
-f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
+f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: 'x', calls: 'getOption' }] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
 
-		testQuery('7', `f <- function(x = foo())  {
+		testQuery('Direct call - own function', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
 f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 29, name: 'f' }]));
 
-		testQuery('values', `f <- function(x = foo())  {
+		testQuery('Relies on value', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
@@ -197,21 +196,22 @@ b <- a
 f(b)`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', value: '2' }] })], r([{ id: 31, name: 'f' }]));
 
 
-		testQuery('8', `f <- function(x = foo())  {
+		testQuery('Relies on nested criteria', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
 f(getOption(toString(4)))
-f()`, [q(/f/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }, { name: '*', calls: 'toString' }] })], r([{ id: 31, name: 'f' }]));
+f(getOption("bar"))
+f(getOption(toString(3)))`, [q(/f/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }, { name: '*', calls: 'toString' }, { name: '*', value: '4' }] })], r([{ id: 31, name: 'f' }]));
+
+		testQuery('Relies on nested criteria - default values', `f <- function(x = foo())  {
+  print(x)
+}
+foo <- function(x = 5) print(y)
+f()
+f(4)`, [q(/^f$/, { reliesOnCriteria: [{ name: 'x', calls: 'foo' }, { name: 'x', value: '5' }] })], r([{ id: 26, name: 'f' }]));
+
 
 	});
-	//todo: remove after testing
-	describe('Remove after testing', () => {
-		testQuery('8', `f <- function(x = foo())  {
-  print(x)
-}
-foo <- function() getOption("bar")
-f(getOption(toString(4)))
-f()`, [q(/f/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }, { name: '*', calls: 'toString' }] })], r([{ id: 31, name: 'f' }]));
-	});
 }));
+

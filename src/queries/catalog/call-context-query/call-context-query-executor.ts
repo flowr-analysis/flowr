@@ -22,7 +22,7 @@ import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import { isNotUndefined } from '../../../util/assert';
+import { guard, isNotUndefined, isUndefined } from '../../../util/assert';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverContent, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -38,12 +38,12 @@ import { SliceDirection } from '../../../util/slice-direction';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { MatchArgs } from '../../../dataflow/graph/match-args';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { VariableResolve } from '../../../config';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { unwrapRValueToString, unliftRValue } from '../../../util/r-value';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -185,7 +185,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		}
 		const [info, outgoing] = vertex;
 
-		if(FunctionCallVertex.is(info)) {
+		if(!FunctionCallVertex.is(info)) {
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
@@ -278,18 +278,18 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	return false;
 }
 
-function resolveValueOfArgument(args: { name: string | undefined, id: NodeId }[], fCall: DataflowGraphVertexFunctionCall, value: string, graph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): { dep: true, id: NodeId } | { dep: false }{
+function resolveValueOfArgument(args: { name: string | undefined, id: NodeId }[], fCall: DataflowGraphVertexFunctionCall, value: string, graph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): { dep: true, call: undefined } | { dep: false }{
 	for(const { id } of args){
 		const resolved = Resolve.toValue(id, { environment: fCall.environment, graph, full: true, ctx: analyzer.inspectContext(), resolve: VariableResolve.Alias });
 		const result = unwrapRValueToString(unliftRValue(resolved));
 		if(result === value){
-			return { dep: true, id: id };
+			return { dep: true, call: undefined };
 		}
 	}
 	return { dep: false };
 }
 
-async function sliceAfterDep(args: { name: string | undefined, id: NodeId }[], dep: PromotedCallTest, graph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, slicedParam: Set<NodeId>): Promise<{ dep: true, id: NodeId } | { dep: false }>{
+async function sliceAfterDep(args: { name: string | undefined, id: NodeId }[], dep: PromotedCallTest, graph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, slicedParam: Set<NodeId>): Promise<{ dep: true, call: Required<DataflowGraphVertexFunctionCall> } | { dep: false }>{
 	for(const { name, id } of args) {
 		if(isNotUndefined(name)){
 			if(slicedParam.has(name)){
@@ -306,8 +306,9 @@ async function sliceAfterDep(args: { name: string | undefined, id: NodeId }[], d
 		for(const results of Object.values(argSlice['static-slice'].results)) {
 			for(const resultId of results.slice.result) {
 				const name = recoverName(resultId, graph.idMap);
-				if(name && dep(name) && FunctionCallVertex.is(graph.getVertex(resultId))) {
-					return { dep: true, id: id };
+				const vertex = graph.getVertex(resultId);
+				if(name && dep(name) && FunctionCallVertex.is(vertex)) {
+					return { dep: true, call: vertex };
 				}
 			}
 		}
@@ -315,23 +316,25 @@ async function sliceAfterDep(args: { name: string | undefined, id: NodeId }[], d
 	return { dep: false };
 }
 
-async function isDependentOn(parameter: string, dep: PromotedCallTest | undefined, value: string | undefined, fCall: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph, analyzer: ReadonlyFlowrAnalysisProvider): Promise<{ dep: true, id: NodeId } | { dep: false }> {
+async function isDependentOn(parameter: string, dep: PromotedCallTest | undefined, value: string | undefined, fCall: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph, analyzer: ReadonlyFlowrAnalysisProvider): Promise<{ dep: true, call: Required<DataflowGraphVertexFunctionCall> | undefined } | { dep: false }> {
 	const astCall = graph.idMap?.get(fCall?.id) as RFunctionCall<ParentInformation> | undefined;
-	if(!RFunctionCall.is(astCall)) {
+	if(!RFunctionCall.is(astCall) && !RBinaryOp.is(astCall) && !RUnaryOp.is(astCall)) {
 		return { dep: false };
 	}
 	const defs = MatchArgs.toDefinition(astCall, graph, analyzer.inspectContext());
 	// TODO: match against signaue (so that we can for example slice for the x of a print)
-	const slicedParam = new Set<NodeId>();
+	const slicedParam = new Set<string>();
 	const isParam = parameter === '*' ? () => true : (p: string | undefined) => p === parameter;
+	//todo: den fall nachher raus?
 	if(defs === undefined){
 		if(isNotUndefined(dep)){
 			//e.g. f(getOption(x)), searching for dep 'getOption'
 			for(const arg of fCall.args){
 				if(!FunctionArgument.isEmpty(arg)){
-					const rArg = graph.idMap?.get(arg.nodeId) as RArgument;
-					if(rArg.value?.type === 'RFunctionCall' && isNotUndefined((rArg.value?.functionName as RSymbol).content) && dep(Identifier.getName((rArg.value?.functionName as RSymbol).content))){
-						return { dep: true, id: arg.nodeId };
+					const name = recoverName(arg.nodeId, graph.idMap);
+					const vertex = graph.getVertex(arg.nodeId);
+					if(name && dep(name) && FunctionCallVertex.is(vertex)){
+						return { dep: true, call: vertex };
 					}
 				}
 			}
@@ -362,8 +365,12 @@ async function isDependentOn(parameter: string, dep: PromotedCallTest | undefine
 		if(isNotUndefined(dep)){
 			//e.g. f(getOption(x)), searching for dep 'getOption'
 			for(const [_, arg] of possibleArgs){
-				if(arg.value?.type === 'RFunctionCall' && isNotUndefined((arg.value?.functionName as RSymbol).content) && dep(Identifier.getName((arg.value?.functionName as RSymbol).content))){
-					return { dep: true, id: arg.info.id };
+				if(isNotUndefined(arg.value?.info.id)){
+					const name = recoverName(arg.value?.info.id, graph.idMap);
+					const vertex = graph.getVertex(arg.value.info.id);
+					if(name && dep(name) && FunctionCallVertex.is(vertex)){
+						return { dep: true, call: vertex };
+					}
 				}
 			}
 		}
@@ -391,14 +398,14 @@ async function isDependentOn(parameter: string, dep: PromotedCallTest | undefine
 	if(isNotUndefined(defId)){
 		const def = graph.idMap?.get(defId);
 		if(RFunctionDefinition.is(def)){
-			const params = def.parameters.filter(param => {
-				if(isParam(param.name.lexeme) && !slicedParam.has(param.name.lexeme) && isNotUndefined(param.defaultValue?.info.id)){
+			const params = def.parameters.map(param => {
+				return { name: recoverName(param.info.id, graph.idMap), id: param.defaultValue?.info.id };
+			}).filter(({ name, id }) => {
+				if(isParam(name) && isNotUndefined(name) && !slicedParam.has(name) && isNotUndefined(id)){
 					return true;
 				}
 				return false;
-			}).map(param => {
-				return { name: param.name.lexeme, id: param.defaultValue?.info.id as NodeId };
-			});
+			}) as { name: string | undefined; id: NodeId }[];
 			if(isNotUndefined(dep)){
 				const sliced = await sliceAfterDep(params, dep, graph, analyzer, slicedParam);
 				if(sliced.dep){
@@ -526,7 +533,8 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			if(query.reliesOnCriteria) {
 				let isDependent = true;
 				let fCall = info;
-				for(const entry of query.reliesOnCriteria) {
+				for(let i = 0; i < query.reliesOnCriteria.length; i++) {
+					const entry = query.reliesOnCriteria[i];
 					const name = entry.name;
 					const calls = Object.hasOwn(entry, 'calls') ? (entry as ParameterConstraintWithCall).calls : undefined;
 					const value = Object.hasOwn(entry, 'value') ? (entry as ParameterConstraintWithValue).value : undefined;
@@ -535,9 +543,15 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 						isDependent = false;
 						break;
 					} else {
-						const vertex = dataflowGraph.getVertex(res.id);
-						if(FunctionCallVertex.is(vertex)){
-							fCall = vertex;
+						//case: we try to further resolve a value
+						if(isUndefined(res.call)){
+							if(i !== query.reliesOnCriteria.length - 1){
+								guard(true, 'A value cannot be resolved further, wrong criteria');
+								isDependent = false;
+							}
+							break;
+						} else {
+							fCall = res.call;
 						}
 					}
 				}

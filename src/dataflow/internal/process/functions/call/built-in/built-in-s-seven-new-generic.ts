@@ -126,7 +126,7 @@ export function processMakeConstructor<OtherInfo>(
 		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	if(config?.wrapIndex !== undefined) {
-		linkWrappedFunction(info, args, config.wrapIndex, config.wrapName, data);
+		linkWrappedFunction(info, args, rootId, config.wrapIndex, config.wrapName, data);
 	}
 	attachClassDeclaration(info, rootId, args, config?.classDecl);
 	linkS4Declaration(info, rootId, data);
@@ -149,10 +149,14 @@ export function attachClassDeclaration<OtherInfo>(
 	}
 }
 
-/** Mark the wrapped function of an eager higher-order wrapper (`Negate`/`Vectorize`/`partial`) as called. */
+/**
+ * Mark the wrapped function of an eager higher-order wrapper (`Negate`/`Vectorize`/`partial`) as called, and let
+ * the wrapper's body call it: whoever runs the wrapper later runs what it wraps.
+ */
 function linkWrappedFunction<OtherInfo>(
 	info: DataflowInformation,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
 	wrapIndex: number,
 	wrapName: string | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -179,6 +183,7 @@ function linkWrappedFunction<OtherInfo>(
 		cds:         data.cds,
 		origin:      [BuiltInProcName.Function]
 	});
+	info.graph.addEdge(rootId + '-s7-new-generic-fun-body', resolved.functionId, EdgeType.Reads | EdgeType.Calls);
 }
 
 /**

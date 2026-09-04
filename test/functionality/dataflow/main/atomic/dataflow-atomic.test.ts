@@ -544,7 +544,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(3)
 					.defineVariable(0, 'a', { definedBy: [9, 10] })
 			);
-			assertDataflow(label('partial assignment reads the previous definition of its target', ['name-normal', 'strings', 'unnamed-arguments', 'call-normal', 'newlines', 'assignment-functions']),
+			assertDataflow(label('setNames hands back a renamed copy and leaves its argument alone', ['name-normal', 'strings', 'unnamed-arguments', 'call-normal', 'newlines']),
 				shell, 'df <- data.frame(1:5)\nsetNames(df, "id")', emptyGraph()
 					.constant(2)
 					.constant(3)
@@ -558,12 +558,12 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.argument(7, [0, 6])
 					.calls(7, NodeId.toBuiltIn('<-'))
 					.defineVariable(0, 'df', { definedBy: [7, 6] })
+					.use(9, 'df')
+					.reads(9, 0)
 					.constant(11)
-					.call(13, 'setNames', [argumentInCall(9), argumentInCall(11)], { returns: [9], reads: [11, NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
-					.argument(13, [11, 9])
+					.call(13, 'setNames', [argumentInCall(9), argumentInCall(11)], { returns: [], reads: [9, 11, NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
+					.argument(13, [9, 11])
 					.calls(13, NodeId.toBuiltIn('setNames'))
-					.defineVariable(9, 'df', { definedBy: [13, 11] })
-					.reads(9, [13, 0])
 			);
 		});
 	});

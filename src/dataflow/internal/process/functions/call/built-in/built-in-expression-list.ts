@@ -9,7 +9,7 @@ import type { Environment, REnvironmentInformation } from '../../../../../enviro
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import { EdgeType } from '../../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
@@ -21,7 +21,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
-import { cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
+import { removalsOf, cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
@@ -45,7 +45,13 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 	return cds !== undefined && happensInEveryBranch(cds);
 }
 
-function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
+/** whether reading the definition at `id` runs a function, as an active binding does */
+function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
+	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Calls)) === true;
+}
+
+/** `activeReads` collects the reads that turn out to run a function, see {@link callsOnRead} */
+function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]) {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
 	const probableTarget = readName ? Resolve.byNameAndType(readName, environments, read.type) : undefined;
 
@@ -68,12 +74,21 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 
 	const rid = read.nodeId;
 	const isFunc = read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction;
+	/* what this name means now may be what a removal uncovered, so dropping that removal would change it back */
+	if(readName !== undefined) {
+		for(const removal of removalsOf(readName, environments)) {
+			nextGraph.addEdge(rid, removal, EdgeType.Reads);
+		}
+	}
 	for(const target of probableTarget) {
 		const tid = target.nodeId;
 		if(NodeId.isBuiltIn(target.definedAt) && isFunc) {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
+			if(!isFunc && read.name !== undefined && callsOnRead(nextGraph, tid) && DfgVertex.isUse(nextGraph.getVertex(rid))) {
+				activeReads.push(read);
+			}
 		}
 		if(target.type === ReferenceType.BuiltInConstant) {
 			nextGraph.addVertex({
@@ -194,10 +209,29 @@ function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: 
 	return true;
 }
 
+/**
+ * Whether the write at `node` happens as part of the call `call`, which is what tells a write the call itself
+ * performed from one the surrounding expression makes afterwards; only the latter shadows what the call wrote.
+ * A synthetic call vertex has no node of its own, and stands for the callee, so everything it does counts.
+ */
+function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean {
+	if(!idMap.has(call)) {
+		return true;
+	}
+	let current = idMap.get(node);
+	while(current !== undefined) {
+		if(current.info.id === call) {
+			return true;
+		}
+		current = current.info.parent !== undefined ? idMap.get(current.info.parent) : undefined;
+	}
+	return false;
+}
+
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
-}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
+}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap) {
 	for(const { functionCall, called } of calledEnvs) {
 		let callDependencies: ControlDependency[] | null | undefined = null;
 		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
@@ -232,10 +266,11 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				current = current.parent;
 			}
 			if(hasUpdate) {
-				// link all definitions to the corresponding function call, but ignore expression-local writes
-				if(localDefs.length > 0) {
+				// link all definitions to the corresponding function call, but ignore writes made after it
+				const shadowing = localDefs.filter(d => isNotUndefined(d.name) && !writtenWithinCall(functionCall, d.nodeId, idMap));
+				if(shadowing.length > 0) {
 					environment = {
-						current: environment.current.removeAll(localDefs.filter(d => isNotUndefined(d.name)) as { name: string }[]),
+						current: environment.current.removeAll(shadowing as { name: string }[]),
 						level:   environment.level
 					};
 				}
@@ -303,14 +338,19 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		// all inputs that have not been written until now are read!
+		const activeReads: IdentifierReference[] = [];
 		for(const read of processed.in) {
-			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads);
 		}
 		for(const read of processed.unknownReferences) {
-			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads);
+		}
+		/* a read of an active binding runs the bound function, so it is linked and folded like the call it is */
+		for(const read of activeReads) {
+			nextGraph.updateToFunctionCall({ tag: VertexType.FunctionCall, id: read.nodeId, name: read.name as Identifier, args: [], environment, onlyBuiltin: false, cds: read.cds, origin: [BuiltInProcName.Function] });
 		}
 
-		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
+		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph, activeReads.map(r => r.nodeId));
 		for(const c of calledEnvs) {
 			if(c.propagateExitPoints.length > 0 && errorEscapes(c.functionCall, expression.info.id, data.completeAst.idMap, nextGraph)) {
 				for(const exit of c.propagateExitPoints) {
@@ -322,7 +362,7 @@ export function processExpressionList<OtherInfo>(
 		addNonDefaultExitPoints(exitPoints, invertExitCds, activeCdsAtStart, processed.exitPoints);
 		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, data.completeAst.idMap);
 
 		// removals are already reflected in the threaded environment; we only bubble them (net of later writes)
 		if(killed && processed.out.length > 0) {

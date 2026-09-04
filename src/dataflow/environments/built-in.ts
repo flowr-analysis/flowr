@@ -65,6 +65,7 @@ import { processClassGenerator } from '../internal/process/functions/call/built-
 import { processClassRelation } from '../internal/process/functions/call/built-in/built-in-class-relation';
 import { processS4Use } from '../internal/process/functions/call/built-in/built-in-s-four';
 import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
+import { processEnvContents, processListToEnv } from '../internal/process/functions/call/built-in/built-in-env-contents';
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
@@ -364,6 +365,8 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,
 	[BuiltInProcName.StopIfNot]:          processStopIfNot,
 	[BuiltInProcName.Try]:                processTryCatch,
+	[BuiltInProcName.EnvContents]:        processEnvContents,
+	[BuiltInProcName.ListToEnv]:          processListToEnv,
 	[BuiltInProcName.Attach]:             processAttach,
 	[BuiltInProcName.NewEnv]:             processNewEnv,
 	[BuiltInProcName.ClassGenerator]:     processClassGenerator,

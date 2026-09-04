@@ -21,6 +21,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DfgVertex } from '../../dataflow/graph/vertex';
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
@@ -96,10 +97,20 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		/*
 		 * if we do not have any call to resolve this function, we have to assume that every function passed is actually called!
 		 * hence, we add a new flag and add all argument values to the queue causing directly
+		 * (an assignment only stores the function, and a call handing an argument back unchanged, like `return(f)`,
+		 * did not call it either: what it is bound to is called later, or never)
 		 */
+		if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment)) {
+			return;
+		}
 		const argEnvironmentFingerprint = envFingerprint(activeEnvironment);
+		const outgoing = graph.outgoingEdges(callerInfo.id);
 		for(const arg of callerInfo.args) {
-			includeArgumentFunctionCallClosure(arg, activeEnvironment, argEnvironmentFingerprint, queue, graph);
+			const reference = FunctionArgument.getReference(arg);
+			const edge = reference === undefined ? undefined : outgoing?.get(reference);
+			if(edge === undefined || !DfEdge.includesType(edge, EdgeType.Returns)) {
+				includeArgumentFunctionCallClosure(arg, activeEnvironment, argEnvironmentFingerprint, queue, graph);
+			}
 		}
 		return;
 	}

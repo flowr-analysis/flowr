@@ -23,6 +23,9 @@ import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-ar
 import { removeRQuotes } from '../../../../../r-bridge/retriever';
 import { happensBefore } from '../../../../../control-flow/happens-before';
 import { Ternary } from '../../../../../util/logic';
+import type { REnvironmentInformation } from '../../../../environments/environment';
+import { callFnProps } from '../../../../environments/query-fn-props';
+import { CallProp } from '../../../../environments/built-in-props';
 
 /** Calls capturing a language object. */
 const CapturingProcessors: readonly BuiltInProcName[] = [BuiltInProcName.Quote];
@@ -99,16 +102,22 @@ export const Quoted = {
 	 * could not know. A capture reaches the `eval` that forces it, a promise reaches the bindings it may be
 	 * forced against, and a masked name the caller binds after all loses its mark.
 	 */
-	finalize<Info>(this: void, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>, controlFlow: () => ControlFlowGraph | undefined): void {
+	finalize<Info>(this: void, graph: DataflowGraph, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>, controlFlow: () => ControlFlowGraph | undefined): void {
 		let names: ReturnType<typeof Deferred.indexOf> | undefined = undefined;
 		let bindings: ReadonlyMap<string, NodeId[]> | undefined = undefined;
 		let cfg: ControlFlowGraph | undefined | null = null;
 		const cfgOnce = () => (cfg === null ? (cfg = controlFlow()) : cfg);
 		const masking: MaskingCall[] = [];
+		const withSideEffects = callsWithSideEffects(graph);
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
 			if(masks !== undefined) {
 				masking.push(masks);
+			}
+			for(const installed of installedLanguageOf(graph, id, environment)) {
+				names ??= Deferred.indexOf(graph, idMap);
+				Deferred.link(graph, installed, names, idMap);
+				graph.addEdge(id, installed, EdgeType.Returns);
 			}
 			if(DelayingCalls.has(Identifier.getName(vertex.name))) {
 				const promise = capturedArgumentsOf(graph, id, true)[0];
@@ -130,6 +139,20 @@ export const Quoted = {
 				for(const escaped of escapingArguments(graph, id)) {
 					names ??= Deferred.indexOf(graph, idMap);
 					Deferred.link(graph, escaped, names, idMap);
+				}
+				/* an argument the callee writes over before reading it is forced on the written value, not the
+				 * one the call site handed in: `f(x)` with `f <- function(a) { x <<- 99; a }` yields 99 */
+				if(withSideEffects.has(id)) {
+					const flow = cfgOnce();
+					if(flow !== undefined) {
+						for(const [argument, parameter] of forcedParameters(graph, id)) {
+							names ??= Deferred.indexOf(graph, idMap);
+							const sites = Deferred.forcedAt(graph, parameter, flow);
+							if(sites.length > 0) {
+								Deferred.link(graph, argument, names, idMap, { cfg: flow, sites, binding: parameter });
+							}
+						}
+					}
 				}
 			}
 		}
@@ -160,6 +183,35 @@ function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: Nod
 	for(const [reader, edge] of graph.edgesTo(binding)) {
 		if(DfEdge.includesType(edge, EdgeType.Reads) && reader !== promise) {
 			graph.addEdge(reader, promise, EdgeType.Reads);
+		}
+	}
+}
+
+/**
+ * The captured language a call evaluates because a replacement working on language installed it into what the call
+ * reads: after `body(f) <- quote(k)`, every `f()` evaluates `k`.
+ */
+function* installedLanguageOf(graph: DataflowGraph, id: NodeId, environment: REnvironmentInformation): Generator<NodeId> {
+	for(const [definition, edge] of graph.edgesFrom(id)) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads) || !DfgVertex.isVariableDefinition(graph.getVertex(definition))) {
+			continue;
+		}
+		let installs = false;
+		const captured: NodeId[] = [];
+		for(const [by, e] of graph.edgesFrom(definition)) {
+			if(!DfEdge.includesType(e, EdgeType.DefinedBy)) {
+				continue;
+			}
+			const captures = capturedArgumentsOf(graph, by, true);
+			if(captures.length > 0) {
+				captured.push(...captures);
+			} else if(DfgVertex.hasOrigin(graph.getVertex(by), BuiltInProcName.Replacement)
+				&& ((callFnProps(by, { graph, environment })?.props ?? 0) & CallProp.Lang) !== 0) {
+				installs = true;
+			}
+		}
+		if(installs) {
+			yield* captured;
 		}
 	}
 }
@@ -243,6 +295,40 @@ function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierRe
 	}
 }
 
+
+/** The calls that write something outside their own frame, which is what can outrun a promise. */
+function callsWithSideEffects(graph: DataflowGraph): ReadonlySet<NodeId> {
+	const calls = new Set<NodeId>();
+	for(const [id] of graph.vertices(true)) {
+		for(const [target, edge] of graph.edgesFrom(id)) {
+			if(DfEdge.includesType(edge, EdgeType.SideEffectOnCall)) {
+				calls.add(target);
+			}
+		}
+	}
+	return calls;
+}
+
+/** The arguments of `id` paired with the parameter they are bound to, for every definition the call resolves to. */
+function* forcedParameters(graph: DataflowGraph, id: NodeId): Generator<readonly [NodeId, NodeId]> {
+	for(const [target, edge] of graph.edgesFrom(id)) {
+		if(!DfEdge.includesType(edge, EdgeType.Calls)) {
+			continue;
+		}
+		const callee = graph.getVertex(target);
+		if(!DfgVertex.isFunctionDefinition(callee)) {
+			continue;
+		}
+		for(const parameter of Object.keys(callee.params ?? {}).map(NodeId.normalize)) {
+			for(const [argument, paramEdge] of graph.edgesFrom(parameter)) {
+				if(DfEdge.includesType(paramEdge, EdgeType.DefinedByOnCall)) {
+					yield [argument, parameter];
+				}
+			}
+		}
+	}
+}
+
 /** Links a capture handed to an evaluating call, in that call's scope. */
 function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<Info & ParentInformation>, names: ReturnType<typeof Deferred.indexOf>, bindings: ReadonlyMap<string, NodeId[]>, cfg: ControlFlowGraph | undefined): void {
 	const id = call.id;
@@ -256,6 +342,8 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 		if(elsewhere) {
 			const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id };
 			Deferred.link(graph, expr, { definitions: bindings, uses: names.uses }, idMap, forces);
+			/* the frame it writes in is not ours to know, so a later use of that name may be the one it wrote */
+			Deferred.publish(graph, expr, names, idMap, id, undefined);
 		} else {
 			const open = linkExpressionIn(graph, expr, environment, idMap);
 			/* R falls through to the enclosing scope for names the evaluating frame does not bind */

@@ -354,10 +354,11 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			emptyGraph()
 				.defineVariable('1@x', 'x')
 				.use('3@x').reads('3@x', '1@x')
-				.use('4@foo').reads('4@foo', '2@foo')
+				/* a field of an environment binds the value written into it, so a read of it reads that value */
+				.use('4@foo').reads('4@foo', '2@42')
 				.defineVariable('5@foo', 'foo')
 				.use('6@foo').reads('6@foo', '5@foo')
-				.use('8@foo').reads('8@foo', '2@foo'),
+				.use('8@foo').reads('8@foo', '2@42'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,

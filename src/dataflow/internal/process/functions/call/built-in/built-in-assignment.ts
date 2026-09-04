@@ -27,6 +27,8 @@ import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { ClosureRefs } from '../../../../linker';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -67,6 +69,8 @@ export interface AssignmentConfiguration {
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
 	readonly canBeReplacement?:    boolean
+	/** the call is a replacement function, which keeps the kind of its target whatever value it is given */
+	readonly replacement?:         boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
 	/** does the call use the old value of its target (e.g. `setNames(x, nm)`), so that the target reads its previous definition? */
@@ -78,6 +82,8 @@ export interface AssignmentConfiguration {
 	 * {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope.
 	 */
 	readonly environmentArg?:      string
+	/** does the call run what it binds, as `makeActiveBinding` runs its function on every read of the name? */
+	readonly callsSource?:         boolean
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
@@ -94,6 +100,28 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 		return current;
 	}
 	return undefined;
+}
+
+
+/** The processors whose call hands back an environment, which a write into it therefore changes in place. */
+const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName.NewEnv, BuiltInProcName.StackEnv, BuiltInProcName.ListToEnv];
+
+/**
+ * Whether the expression denotes an environment: its call is processed as one that creates or names an
+ * environment, or it is `environment()`, R's accessor for the environment a closure carries.
+ */
+function yieldsEnvironment<OtherInfo>(
+	node:  RNode<OtherInfo & ParentInformation>,
+	graph: DataflowGraph,
+	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
+): boolean {
+	if(!RFunctionCall.isNamed(node)) {
+		return false;
+	}
+	const vertex = graph.getVertex(node.info.id);
+	return EnvironmentProducers.some(origin => DfgVertex.hasOrigin(vertex, origin))
+		|| (Identifier.getName(node.functionName.content) === 'environment'
+			&& Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function));
 }
 
 function tryReplacement<OtherInfo>(
@@ -230,6 +258,42 @@ export function processAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation {
+	const information = processAssignmentTarget(name, args, rootId, data, config);
+	if(config.callsSource) {
+		linkSourceAsCalled(args, rootId, data, config, information);
+	}
+	return information;
+}
+
+/**
+ * Links the function a binding is made of against the scope it was written in, which is what a call to it would
+ * do: `makeActiveBinding("ab", function() v, e)` runs that function on every read of `ab`, so `v` is read here.
+ */
+function linkSourceAsCalled<OtherInfo>(
+	args:        readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId:      NodeId,
+	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config:      AssignmentConfiguration,
+	information: DataflowInformation
+): void {
+	const source = unpackArg(args[config.swapSourceAndTarget ? 0 : 1]);
+	const vertex = source ? information.graph.getVertex(source.info.id) : undefined;
+	if(vertex && DfgVertex.isFunctionDefinition(vertex)) {
+		ClosureRefs.resolveOpenIngoing(information.graph, rootId, vertex, data.environment);
+		/* the binding itself calls the function, which is what turns every later read of it into a call */
+		for(const written of information.out) {
+			information.graph.addEdge(written.nodeId, vertex.id, EdgeType.Calls);
+		}
+	}
+}
+
+function processAssignmentTarget<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration
+): DataflowInformation {
 	if(isMaskedNamePair(name, rootId, data)) {
 		return processMaskedNamePair(name, args, rootId, data);
 	}
@@ -306,7 +370,12 @@ export function processAssignment<OtherInfo>(
 		if(envRouted !== undefined) {
 			return envRouted;
 		}
-		return tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+		const replaced = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+		if(yieldsEnvironment(target.accessed, replaced.graph, data)) {
+			/* an environment is not copied on modify, so this writes a frame we do not hold, not a new value */
+			handleUnknownSideEffect(replaced.graph, replaced.environment, rootId);
+		}
+		return replaced;
 	} else if(type === RType.Access) {
 		const rootArg = findRootAccess(target);
 		if(rootArg) {
@@ -464,11 +533,14 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 
 	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
+	/* the binding is the value, not the name written down: a later `e$f` has to reach what was assigned */
+	const isFunction = RFunctionDefinition.is(source)
+		|| (RSymbol.is(source) && (Resolve.byNameAndType(source.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
-		type:      ReferenceType.Variable,
+		type:      isFunction ? ReferenceType.Function : ReferenceType.Variable,
 		name:      fieldName,
-		nodeId:    fieldNode.info.id,
-		definedAt: rootId,
+		nodeId:    source.info.id,
+		definedAt: normalResult.entryPoint,
 		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
 	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
@@ -593,7 +665,9 @@ export function markAsAssignment<OtherInfo>(
 /** Helper for when the _target_ of an assignment is known to be a (single) symbol (i.e. `x <- ...`, not `names(x) <- ...`). */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
-	const referenceType = checkTargetReferenceType(sourceArg, config.modesForFn);
+	const kindOfValue = checkTargetReferenceType(sourceArg, config.modesForFn);
+	/* a replacement keeps the kind of its target; only a function value tells that kind for sure */
+	const referenceType = config.replacement && kindOfValue === ReferenceType.Variable ? ReferenceType.Unknown : kindOfValue;
 	const useSourceIds = [sourceArg.graph.hasVertex(source.info.id) ? source.info.id : sourceArg.entryPoint];
 
 	const aliases = getAliases(useSourceIds, information.graph, information.environment);

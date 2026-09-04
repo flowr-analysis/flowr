@@ -9,6 +9,7 @@ import type { ParseStepOutput, ParseStepOutputSingleFile } from '../../../../par
 import { FlowrConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
 import { RProject } from '../../model/nodes/r-project';
+import { guardNesting } from '../../../../../util/assert';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -34,7 +35,7 @@ export function normalizeButNotDecorated(
 	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined };
 	const object = convertPreparedParsedData(prepareParsedData(parsed));
 
-	return normalizeRootObjToAst(data, object, filePath);
+	return guardNesting('Normalization', filePath, () => normalizeRootObjToAst(data, object, filePath));
 }
 
 /**
@@ -46,7 +47,7 @@ export function normalizeTreeSitter(
 	config: FlowrConfig = FlowrConfig.default(),
 ): NormalizedAst {
 	const lax = FlowrConfig.getForEngine(config, 'tree-sitter')?.lax;
-	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed.files, lax), { getId });
+	const result = decorateAst(guardNesting('Normalization', undefined, () => normalizeTreeSitterTreeToAst(parsed.files, lax)), { getId });
 	result.hasError = parsed.files.some(p => p.parsed.rootNode.hasError);
 	return result;
 }

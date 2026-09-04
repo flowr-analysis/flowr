@@ -356,6 +356,10 @@ export const CallGraph = {
 			graph.edges(),
 			([e, ts]) => ts.entries().map(([t, { types }]) => [e, t, types] as [NodeId, NodeId, EdgeType]).toArray()
 		).flat()
+			/* NOTE: `dropTransitiveEdges` below keeps whichever edge it reaches first, so this order decides the
+			 * result. The comparator is not a total order (it compares each pair against itself) and reads the
+			 * machine's locale; making it one changes which transitive edges survive, so it is left as it was
+			 * until that algorithm no longer depends on the order it sees. */
 			.sort((a, b) => String(a[0]).localeCompare(String(a[1])) - String(b[0]).localeCompare(String(b[1])));
 
 		for(const [from, to, types] of es) {

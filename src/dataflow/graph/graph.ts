@@ -40,7 +40,10 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
  */
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
-/** Helper functions to work with {@link FunctionArgument}s. {@link EmptyArgument} marks an empty argument. */
+/**
+ * Helper functions to work with {@link FunctionArgument}s. {@link EmptyArgument} marks an empty argument.
+ * @helper dataflow Helper functions to work with FunctionArguments.
+ */
 export const FunctionArgument = {
 	name: 'FunctionArgument',
 	/** Whether `arg` is positional, e.g. the `2` in `foo(b=3, 2)`. */

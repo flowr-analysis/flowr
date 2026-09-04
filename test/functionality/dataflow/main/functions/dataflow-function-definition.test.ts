@@ -159,6 +159,7 @@ describe('Function Definition', { concurrent: false }, withShell(shell => {
 		assertDataflow(label('previously defined read in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'normal-definition', 'implicit-return']),
 			shell, 'x <- 3; function() { x }', emptyGraph()
 				.use('5', 'x', undefined, false)
+				.reads('5', '0')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
 				.argument('2', ['1', '0'])
@@ -289,6 +290,7 @@ describe('Function Definition', { concurrent: false }, withShell(shell => {
 		);
 		assertDataflow(label('shadow in body with closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'normal-definition']), shell, 'x <- 2; function() { x <- x; x }; x',  emptyGraph()
 			.use('6', 'x', undefined, false)
+			.reads('6', '0')
 			.use('8', 'x', undefined, false)
 			.reads('8', '5')
 			.use('11', 'x')
@@ -391,7 +393,8 @@ print(x)`,  emptyGraph()
 
 		assertDataflow(label('Read later definition', ['formals-named', 'name-normal', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities]), shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }', emptyGraph()
 			.use('1', 'b', undefined, false)
-			.reads('1', '8')
+			/* the default is a promise: it reads the `b` of the moment it is forced, so both forces of `a` count */
+			.reads('1', ['8', '11', '15'])
 			.use('11', 'a', undefined, false)
 			.reads('11', '0')
 			.use('15', 'a', undefined, false)
@@ -514,6 +517,7 @@ print(x)`,  emptyGraph()
 	describe('Late binding of environment variables', () => {
 		assertDataflow(label('define after function definition', ['normal-definition', 'implicit-return', 'semicolons', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']), shell, 'function() { x }; x <- 3',  emptyGraph()
 			.use('2', 'x', undefined, false)
+			.reads('2', '5')
 			.call('3', '{', [argumentInCall('2')], { returns: ['2'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv() }, false)
 			.calls('3', NodeId.toBuiltIn('{'))
 			.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [NodeId.toBuiltIn('<-'), 6], onlyBuiltIn: true })
@@ -534,6 +538,7 @@ print(x)`,  emptyGraph()
 	describe('Nested Function Definitions', () => {
 		assertDataflow(label('double nested functions', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'unnamed-arguments', 'semicolons', 'closures']), shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',  emptyGraph()
 			.use('9', 'b', undefined, false)
+			.reads('9', '18')
 			.use('14', 'x', undefined, false)
 			.reads('14', '3')
 			.use('21', 'a')
@@ -563,7 +568,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('3', 'x', { definedBy: ['12', '13'] }, false)
 			.defineFunction('16', ['14'], {
 				out:               [],
-				in:                [{ nodeId: '13', name: '<-', cds: undefined, type: ReferenceType.Function }, { nodeId: '15', name: '{', cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: '13', name: '<-', cds: undefined, type: ReferenceType.Function }, { nodeId: '15', name: '{', cds: undefined, type: ReferenceType.Function }, { nodeId: '9', name: 'b', cds: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '15',
 				graph:             new Set(['12', '3', '13', '14', '15']),
@@ -634,6 +639,7 @@ g <- f(8)
 print(g())`, emptyGraph()
 				.use('14', 'x', undefined, false)
 				.reads('14', '1')
+				.definedByOnCall('14', '1')
 				.use('15', 'y', undefined, false)
 				.reads('15', '8')
 				.use('17', 'z', undefined, false)
@@ -651,6 +657,7 @@ print(g())`, emptyGraph()
 				.argument('23', '22')
 				.call('24', `${UnnamedFunctionCallPrefix}24`, [], { returns: ['20'], reads: ['23'], environment: defaultEnv().pushEnv().defineParameter('x', '1', '3') }, false)
 				.calls('24', ['22'])
+				.definesOnCall('24', '1')
 				.argument('25', '24')
 				.call('25', '{', [argumentInCall('24')], { returns: ['24'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv().defineParameter('x', '1', '3') }, false)
 				.calls('25', NodeId.toBuiltIn('{'))
@@ -747,6 +754,7 @@ print(x)`, emptyGraph()
 				.argument('18', ['17', '16'])
 				.call('20', 'f', [], { returns: ['12'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
 				.calls('20', '14')
+				.definesOnCall('20', '16')
 				.call('21', `${UnnamedFunctionCallPrefix}21`, [], { returns: ['10'], reads: ['20'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
 				.definesOnCall('21', '16')
 				.definedByOnCall('6', '16')

@@ -5,7 +5,9 @@
 import type { ControlDependency, KillReference } from '../info';
 import { happensInEveryBranch, negateControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
-import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from './identifier';
+import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference, InGraphIdentifierDefinition } from './identifier';
+import { removalMarkerOf } from './removal-marker';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, ReferenceType } from './identifier';
 import { withAppliedCds } from './reference-to-maybe';
 
@@ -116,18 +118,35 @@ function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifi
 	env.cache?.clear();
 }
 
+/** The calls that removed `name` from the scope it would otherwise still be bound in. */
+export function removalsOf(name: Identifier, env: REnvironmentInformation): NodeId[] {
+	const marker = removalMarkerOf(Identifier.getName(name));
+	const nodes: NodeId[] = [];
+	for(let e: Environment | undefined = env.current; e !== undefined && !e.builtInEnv; e = e.parent) {
+		for(const def of e.memory.get(marker) ?? []) {
+			const definedAt = (def as Partial<InGraphIdentifierDefinition>).definedAt;
+			if(definedAt !== undefined) {
+				nodes.push(definedAt);
+			}
+		}
+	}
+	return nodes;
+}
+
 /** Groups the `named` kills by the name they remove, so removals from separate branches are decided together. */
-function groupNamedKills(kills: readonly KillReference[]): Map<Identifier, IdentifierReference[]> {
-	const named = new Map<Identifier, IdentifierReference[]>();
+function groupNamedKills(kills: readonly KillReference[]): Map<Identifier, { refs: IdentifierReference[], by: NodeId[] }> {
+	const named = new Map<Identifier, { refs: IdentifierReference[], by: NodeId[] }>();
 	for(const kill of kills) {
 		if(kill.kind !== 'named' || kill.reference.name === undefined) {
 			continue;
 		}
 		const group = named.get(kill.reference.name);
+		const by = kill.killedBy !== undefined ? [kill.killedBy] : [];
 		if(group) {
-			group.push(kill.reference);
+			group.refs.push(kill.reference);
+			group.by.push(...by);
 		} else {
-			named.set(kill.reference.name, [kill.reference]);
+			named.set(kill.reference.name, { refs: [kill.reference], by });
 		}
 	}
 	return named;
@@ -138,9 +157,17 @@ function isCertainRemoval(refs: readonly IdentifierReference[]): boolean {
 	return refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
 }
 
-function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[]): void {
+function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[], killedBy: readonly NodeId[]): void {
 	if(isCertainRemoval(refs)) {
+		/* only a removal that took something away can reveal what was hidden underneath it */
+		const removed = env.lookup(Identifier.getName(name)) !== undefined;
 		env.remove(name);
+		if(removed && killedBy.length > 0) {
+			const marker = removalMarkerOf(Identifier.getName(name));
+			env.writableMemory.set(marker, killedBy.map(by => (
+				{ name: marker, type: ReferenceType.Variable, nodeId: by, definedAt: by, cds: undefined }
+			)));
+		}
 	} else {
 		// the definition survives unless the killing branch executed
 		for(const ref of refs) {
@@ -170,8 +197,8 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 			weakenAll(current, kill.cds ?? [], kill.except);
 		}
 	}
-	for(const [name, refs] of groupNamedKills(kills)) {
-		applyNamedKill(current, name, refs);
+	for(const [name, { refs, by }] of groupNamedKills(kills)) {
+		applyNamedKill(current, name, refs, by);
 	}
 	return { current, level: env.level };
 }
@@ -183,7 +210,7 @@ export function makeKillsMaybe(kills: readonly KillReference[] | undefined, cds:
 	}
 	return kills.map(k => {
 		if(k.kind === 'named') {
-			return { kind: 'named', reference: { ...k.reference, cds: withCds(k.reference.cds, cds) } };
+			return { kind: 'named', reference: { ...k.reference, cds: withCds(k.reference.cds, cds) }, killedBy: k.killedBy };
 		}
 		return { ...k, cds: withCds(k.cds, cds) };
 	});
@@ -199,7 +226,7 @@ export function dropKilledWrites(out: readonly IdentifierReference[], kills: rea
 		return out;
 	}
 	const removed = new Set<BrandedIdentifier>();
-	for(const [name, refs] of groupNamedKills(kills)) {
+	for(const [name, { refs }] of groupNamedKills(kills)) {
 		if(isCertainRemoval(refs)) {
 			removed.add(Identifier.getName(name));
 		}

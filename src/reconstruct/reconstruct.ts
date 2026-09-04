@@ -5,6 +5,7 @@
  */
 
 import { expensiveTrace, log, LogLevel } from '../util/log';
+import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { guard } from '../util/assert';
 import type { MergeableRecord } from '../util/objects';
 import type {
@@ -392,6 +393,15 @@ function hasSelectedAncestor(n: RNodeWithParent, config: ReconstructionConfigura
 	return false;
 }
 
+
+/**
+ * Whether the definition is an argument of a call, where R never evaluates it: `safe(function() stop("x"))`
+ * defines a function, it does not stop.
+ */
+function isHandedToACall(definition: RFunctionDefinition<ParentInformation>): boolean {
+	return definition.info.role === RoleInParent.FunctionCallArgument || definition.info.role === RoleInParent.ArgumentValue;
+}
+
 function reconstructFunctionDefinition(
 	definition: RFunctionDefinition<ParentInformation>,
 	functionParameters: readonly Code[],
@@ -404,8 +414,10 @@ function reconstructFunctionDefinition(
 		const selected = isSelected(config, definition);
 		if(empty && selected) { // give function stub
 			return plain(`${definition.lexeme}(${reconstructParameters(definition.parameters).join(', ')}) { }`);
-		} else if(!selected && !hasSelectedAncestor(definition, config)) { // do not require function
-			return body;
+		} else if(!selected && !hasSelectedAncestor(definition, config)) {
+			/* the body may stand in for the definition where the definition itself stood; handed to a call it
+			 * was never evaluated, so writing it there would make the slice do something the program did not */
+			return isHandedToACall(definition) ? [] : body;
 		}
 	}
 	const parameters = reconstructParameters(definition.parameters).join(', ');

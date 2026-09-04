@@ -2,6 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
+import { EdgeType } from '../../../../../graph/edge';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -87,6 +88,10 @@ export function processLocal<OtherInfo>(
 	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
 		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
 	);
+	/* a write only leaves this frame because there is one: dropping the call would turn `<<-` into a global write */
+	for(const escaped of escaping) {
+		dfExpr.graph.addEdge(escaped.nodeId, rootId, EdgeType.Reads);
+	}
 
 	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });

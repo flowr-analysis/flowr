@@ -62,10 +62,13 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 
 		const lateCode = 'f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }\nf()\n';
 		assertSliced(label('Late bindings of parameter in body', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'call-normal', 'semicolons']),
-			shell, lateCode, ['2@f'], 'f <- function(a=b, m=3) {\n        b <- 1\n        a + 1\n    }\nf()');
+			shell, lateCode, ['2@f'], 'f <- function(a=b, m=3) {\n        b <- 1\n        a\n        a + 1\n    }\nf()',
+			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 		const lateCodeB = 'f <- function(a=b, b=3) { b <- 1; a; b <- 5; a + 1 }\nf()\n';
 		assertSliced(label('Late bindings of parameter in parameters', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'newlines', 'binary-operator', 'infix-calls', 'numbers', 'call-normal', ...OperatorDatabase['+'].capabilities, 'semicolons']),
-			shell, lateCodeB, ['2@f'], 'f <- function(a=b, b=3) a + 1\nf()');
+			/* the bare `a` is what forces the default, and it does so while `b` is still 1, so it has to stay */
+			shell, lateCodeB, ['2@f'], 'f <- function(a=b, b=3) {\n        b <- 1\n        a\n        a + 1\n    }\nf()',
+			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 		assertSliced(label('Parameters binding context', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
 			shell, 'f <- function(a=y) { a }\na <- 5\ny <- 3\ny <- 4\nf()', ['5@f'], 'f <- function(a=y) a\ny <- 4\nf()');
 

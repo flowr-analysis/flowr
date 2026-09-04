@@ -31,6 +31,18 @@ function startsNumeric(id: string): boolean {
 export const NodeId = {
 	name: 'NodeId',
 	/**
+	 * Orders two ids: numerically where both are numbers, and by code unit otherwise. Never `localeCompare`,
+	 * whose order depends on the machine's locale and ICU build, so a result decided by it would differ
+	 * between two users analyzing the same code.
+	 */
+	compare(this: void, a: NodeId, b: NodeId): number {
+		const [x, y] = [NodeId.normalize(a), NodeId.normalize(b)];
+		if(typeof x === 'number' && typeof y === 'number') {
+			return x - y;
+		}
+		return String(x) < String(y) ? -1 : String(x) > String(y) ? 1 : 0;
+	},
+	/**
 	 * Normalizes a node id by converting numeric strings to numbers.
 	 * This allows us to use numeric ids without storing them as strings, while still allowing custom string ids if needed.
 	 */

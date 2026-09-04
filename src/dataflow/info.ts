@@ -177,7 +177,7 @@ export function overwriteExitPoints(existing: readonly ExitPoint[], replace: Exi
  */
 export type KillReference =
 	/** a statically known name (carries {@link IdentifierReference#cds|cds} for conditional removals) */
-	| { readonly kind: 'named', readonly reference: IdentifierReference }
+	| { readonly kind: 'named', readonly reference: IdentifierReference, /** the call performing the removal */ readonly killedBy?: NodeId }
 	/** the whole current scope is cleared, e.g., `rm(list = ls())` */
 	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> }
 	/** a not statically resolvable set of names, e.g., `rm(list = someVector)` */

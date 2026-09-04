@@ -73,7 +73,8 @@ export function processReplacementFunction<OtherInfo>(
 		{
 			superAssignment:  config.assignmentOperator === '<<-',
 			makeMaybe:        config.makeMaybe,
-			canBeReplacement: true
+			canBeReplacement: true,
+			replacement:      true
 		}
 	);
 

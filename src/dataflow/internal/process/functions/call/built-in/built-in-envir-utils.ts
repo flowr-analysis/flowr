@@ -1,6 +1,6 @@
 /** Shared utilities for built-in functions that interact with tracked R environments. */
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { RValue } from '../../../../../eval/values/r-value';
+import { isValue, RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -93,15 +93,41 @@ export function signatureParamNames<OtherInfo>(
 	return names.length > 0 ? names : fallback;
 }
 
+/**
+ * What `as.character` makes of a node holding a non-string constant, which is how `paste0("v", i)` names `v1`.
+ * Only for the values R writes out the way JavaScript does: whole numbers below `1e5` (R switches to `1e+05`
+ * from there) and the two logicals. Everything else stays `undefined`, as a name built from a wrongly
+ * formatted number would be worse than one flowR admits it does not know.
+ */
+function asCharacterOf<OtherInfo>(
+	id:   NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): string | undefined {
+	const sole = NodeValue.sole(NodeValue.setOf(id, data));
+	if(sole === undefined) {
+		return undefined;
+	}
+	const num = RValue.numberOf(sole);
+	if(num !== undefined) {
+		return Number.isInteger(num) && Math.abs(num) < 1e5 ? String(num) : undefined;
+	}
+	if(sole.type === 'logical' && isValue(sole.value) && sole.value !== 'maybe') {
+		return sole.value ? 'TRUE' : 'FALSE';
+	}
+	return undefined;
+}
+
 /** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
 export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): string | undefined {
 	const unshadowed = new Map<string, boolean>();
-	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
+	/* only a part of a joined name is coerced: `paste0("v", 1)` names `v1`, while `get(1)` is an error in R */
+	const fold = (n: RNode<OtherInfo & ParentInformation>, joined = true): string | undefined => {
 		if(!RFunctionCall.isNamed(n)) {
-			return NodeValue.singleStringOf(n.info.id, data);
+			const str = NodeValue.singleStringOf(n.info.id, data);
+			return str ?? (joined ? asCharacterOf(n.info.id, data) : undefined);
 		}
 		const fnName = Identifier.getName(n.functionName.content);
 		if(!StringFold.pasteLike.has(fnName)) {
@@ -115,7 +141,7 @@ export function resolveConstantString<OtherInfo>(
 		const folded = ok ? StringFold.fold(n, fold) : undefined;
 		return typeof folded === 'string' ? folded : undefined;
 	};
-	return fold(node);
+	return fold(node, false);
 }
 
 /** The `returnsEnvState` of the first reaching definition that carries one, else `undefined`. */

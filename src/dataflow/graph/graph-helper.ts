@@ -18,6 +18,7 @@ import { DefaultMap } from '../../util/collections/defaultmap';
  * The underlying functions which work for any graph* like view.
  * Use {@link Dataflow} for the dataflow graph and {@link CallGraph} for the call graph, both spread this object in.
  * @useInstead {@link Dataflow}
+ * @helper dataflow The underlying functions which work for any graph* like view.
  */
 export const GraphHelper = {
 	name:      'GraphHelper',

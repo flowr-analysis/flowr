@@ -13,7 +13,7 @@ import { type ExplanationParameters, getAllEdges, getAllVertices, type SubExplan
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getTypesFromFolder, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
-import { codeBlock } from './doc-util/doc-code';
+import { codeBlock, jsonWithLimit } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -1119,8 +1119,7 @@ However, the dataflow information contains more, quite a lot of information in f
 
 <summary style="color:gray">Dataflow Information as Json</summary>
 
-_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
-${codeBlock('text', JSON.stringify(result, jsonReplacer))}
+${jsonWithLimit(result, 0, '_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_')}
 
 </details>
 

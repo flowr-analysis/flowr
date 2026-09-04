@@ -603,6 +603,7 @@ function attachedPackagesOf(this: void, env: Environment): Set<string> {
 
 /**
  * Helpers for navigating and manipulating {@link REnvironmentInformation|environments} around the global environment and attached-package search path.
+ * @helper api Helpers for navigating and manipulating environments around the global environment and attached-package search path.
  */
 export const REnvironment = {
 	name:             'REnvironment',

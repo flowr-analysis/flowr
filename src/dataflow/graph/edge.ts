@@ -105,6 +105,7 @@ type DfEdgeLike = { types: number };
 
 /**
  * Helper Functions to work with {@link DfEdge} and {@link EdgeType}.
+ * @helper dataflow Helper Functions to work with DfEdge and EdgeType.
  */
 export const DfEdge = {
 	name: 'DfEdge',

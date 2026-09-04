@@ -358,6 +358,7 @@ export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDif
 
 /**
  * The helper object for all things regarding the mermaid based visualization of dataflow graphs!
+ * @helper output The helper object for all things regarding the mermaid based visualization of dataflow graphs!.
  */
 export const DataflowMermaid = {
 	name: 'DataflowMermaid',

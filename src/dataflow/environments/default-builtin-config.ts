@@ -1193,6 +1193,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['f', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['e', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['loadcmp', PkgName.Compiler])],                                                processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, sig: [['file', ArgProp.NoDefault], ['envir', 0], ['chdir', 0]] } },
+	/* `setNames` hands back a renamed copy, while data.table's `set*` family modifies its first argument in place */
 	{ type: 'function', names: [Identifier.from(['setNames', PkgName.Base]), Identifier.from(['setNames', PkgName.FastUtils])], processor: BuiltInProcName.Default, config: { props: CallProp.Pure, sig: [['object', ArgProp.Forced | ArgProp.Value], ['nm', ArgProp.Forced | ArgProp.Value]] } },
 	{ type: 'function', names: Identifier.fromAll(PkgName.DataTable, ['setnames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr']), processor: BuiltInProcName.Assignment, config: { canBeReplacement: false, targetVariable: false, makeMaybe: true, mayHaveMoreArgs: true, readTarget: true, props: CallProp.Invisible, sig: [['x', ArgProp.Forced | ArgProp.Value | ArgProp.Written | ArgProp.Alias], ['...', ArgProp.Forced | ArgProp.Value]] } },
 	{

@@ -1,5 +1,6 @@
 /**
  * Helper for transforming records.
+ * @helper output Helper for transforming records.
  */
 export const Record = {
 	name: 'Record',

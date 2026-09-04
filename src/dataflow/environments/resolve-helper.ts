@@ -26,6 +26,7 @@ import {
  * - {@link Resolve.byNameAndType} additionally filters and merges the definitions of every layer it passes.
  * Given the unknown reference type it only forwards to {@link Resolve.byName}, so ask that one directly instead.
  * - {@link Resolve.toValue} and the {@link Resolve.argument} family run the evaluator on top of a resolution.
+ * @helper api The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold.
  * @example
  * ```ts
  * const where = await Resolve.infoOf(analyzer);

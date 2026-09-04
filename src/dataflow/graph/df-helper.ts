@@ -25,6 +25,7 @@ import { isBaseRPackage } from '../../util/r-base-packages';
  * What it used to re-expose under a second name is imported directly instead: {@link DfEdge} for the edges,
  * {@link CallGraph} for the call-graph view, {@link Resolve} for name and value resolution, and
  * {@link DataflowGraph} for the graph itself.
+ * @helper dataflow This is the root helper object to work with the DataflowGraph.
  * @example
  * ```ts
  * Dataflow.origin(graph, id);                  // where the use at `id` comes from

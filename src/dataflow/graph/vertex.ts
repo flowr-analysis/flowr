@@ -212,6 +212,7 @@ export interface VertexByType {
  *
  * Every check tolerates an absent vertex, which is what {@link DataflowGraph#getVertex|getVertex()} hands back
  * for an id the graph does not know.
+ * @helper dataflow The one helper to ask a vertex what it is.
  * @example
  * ```ts
  * const vertex = graph.getVertex(id);

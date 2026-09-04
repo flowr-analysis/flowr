@@ -11,6 +11,7 @@ interface FunctionFilteringQuery {
 
 /**
  * Resolves the function filter shared by the inspection queries (`inspect-*`).
+ * @helper api Resolves the function filter shared by the inspection queries (`inspect-*`).
  */
 export const QueryFunctionFilter = {
 	name:    'QueryFunctionFilter',

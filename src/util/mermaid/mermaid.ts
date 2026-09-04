@@ -3,6 +3,7 @@ import { toBase64 } from '../text/url-encoding';
 
 /**
  * Global mermaid helper object with useful functions.
+ * @helper output Global mermaid helper object with useful functions.
  */
 export const Mermaid = {
 	name:         'Mermaid',

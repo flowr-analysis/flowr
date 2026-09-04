@@ -436,6 +436,7 @@ export interface FoundLint {
 /**
  * Running queries and reading what they reported, without `Object.entries` and the casts it forces. Reading
  * changes nothing: the results keep the shape they are serialized in.
+ * @helper api Running queries and reading what they reported, without `Object.entries` and the casts it forces.
  * @example
  * ```ts
  * const out = await executeQueries({ analyzer }, [{ type: 'static-slice', criteria: ['2@x'] }]);

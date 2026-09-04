@@ -90,7 +90,10 @@ export type VersionString = string;
 /** A parsed R package version: a comparable {@link SemVer} that also keeps its original string as `.str`. */
 export type RVersion = SemVer & { str: string };
 
-/** Helpers for R package versions (`1.2-3` style), which are freer than SemVer. */
+/**
+ * Helpers for R package versions (`1.2-3` style), which are freer than SemVer.
+ * @helper values Helpers for R package versions (`1.2-3` style), which are freer than SemVer.
+ */
 export const RVersion = {
 	name: 'RVersion',
 	/**
@@ -174,7 +177,10 @@ export function rReleaseDate(version: string): Date | undefined {
 	return iso ? new Date(iso) : undefined;
 }
 
-/** Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`). */
+/**
+ * Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`).
+ * @helper values Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`).
+ */
 export const RRange = {
 	name: 'RRange',
 	/**

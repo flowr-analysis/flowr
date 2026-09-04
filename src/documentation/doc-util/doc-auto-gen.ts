@@ -18,7 +18,7 @@ export function autoGenHeader(
 	/* what the page is about only shows on hover: the line above every page should be short */
 	return `_<span title="an overview of flowR's ${purpose}">Generated</span> from`
 		+ ` '${fileNameForGenHeader(filename)}' on ${currentDateAndTime} (v${flowrVersion().format()}${rVersion ? ', R v' + rVersion : ''}),`
-		+ ' please do not edit directly._';
+		+ ' do not edit directly._';
 }
 
 

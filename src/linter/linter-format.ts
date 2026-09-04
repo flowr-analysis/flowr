@@ -99,6 +99,7 @@ export type LintQuickFix = LintQuickFixReplacement | LintQuickFixRemove;
 
 /**
  * Helper for working with {@link LintQuickFix|quick fixes}.
+ * @helper api Helper for working with quick fixes.
  */
 export const LintQuickFix = {
 	name: 'LintQuickFix',
@@ -175,6 +176,7 @@ export type LintingResults<Name extends LintingRuleNames> = LintingResultsSucces
 
 /**
  * Helper functions for working with {@link LintingResults}.
+ * @helper api Helper functions for working with LintingResults.
  */
 export const LintingResults = {
 	name: 'LintingResults',

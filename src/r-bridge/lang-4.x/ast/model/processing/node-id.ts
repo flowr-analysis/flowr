@@ -27,6 +27,7 @@ function startsNumeric(id: string): boolean {
 /**
  * What a {@link NodeId} is: the identity of a node within one analysis, plus the built-in and `pkg::fn`
  * names encoded as one, and the ways to read a name back out of it.
+ * @helper location What a NodeId is: the identity of a node within one analysis, plus the built-in and `pkg::fn` names encoded as one, and the ways to read a name back out of it.
  */
 export const NodeId = {
 	name: 'NodeId',

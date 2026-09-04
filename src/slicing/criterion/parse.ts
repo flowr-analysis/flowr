@@ -21,6 +21,7 @@ export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${num
 /**
  * The helper object for slicing criteria: parsing, validating and resolving them, one
  * ({@link SlicingCriterion.parse}) or several ({@link SlicingCriterion.decodeAll}) at a time.
+ * @helper location The helper object for slicing criteria: parsing, validating and resolving them, one (SlicingCriterion.parse) or several (SlicingCriterion.decodeAll) at a time.
  */
 export const SlicingCriterion = {
 	name: 'SlicingCriterion',

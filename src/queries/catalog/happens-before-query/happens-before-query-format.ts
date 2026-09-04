@@ -20,6 +20,7 @@ export interface HappensBeforeQueryResult extends BaseQueryResult {
 /**
  * How an answer of the {@link HappensBeforeQuery} is keyed: the two criteria it was asked about, so that both
  * the executor writing an answer and anyone reading one spell the key the same way.
+ * @helper api How an answer of the HappensBeforeQuery is keyed: the two criteria it was asked about, so that both the executor writing an answer and anyone reading one spell the key the same way.
  */
 export const HappensBeforeKey = {
 	name: 'HappensBeforeKey',

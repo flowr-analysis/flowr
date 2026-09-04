@@ -99,7 +99,7 @@ jobs:
         # without it every sigdb-backed page says "No signature database is loaded" instead of showing a result
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sync:sigdb
+        run: npm run sigdb:sync
 
       # the release workflow produces the data but does not commit it, so it lands in the same commit as the pages
       - name: "⬇️ Get the Benchmark Data from the Release Run"
@@ -292,7 +292,7 @@ jobs:
         # the signature browser is built from it; without the shards it is skipped and the page 404s
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sync:sigdb
+        run: npm run sigdb:sync
 
       - name: "🛠️ Build the documentation"
         run: bash .github/workflows/scripts/run-flowr-command.sh doc

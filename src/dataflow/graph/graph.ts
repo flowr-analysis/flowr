@@ -161,6 +161,7 @@ export interface LinkedUnknownSideEffect {
  * Helpers for the {@link UnknownSideEffect} union, which is either a plain {@link NodeId} or a
  * `{ id, linkTo }` object. Use these instead of hand-rolling `typeof x === 'object' ? x.id : x`
  * checks so the object/non-object discrimination lives in one place.
+ * @helper dataflow Helpers for the UnknownSideEffect union, which is either a plain NodeId or a `{ id, linkTo }` object.
  */
 export const UnknownSideEffect = {
 	name: 'UnknownSideEffect',

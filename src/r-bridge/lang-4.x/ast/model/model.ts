@@ -275,6 +275,7 @@ export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
  * For the individual type checks, please consult the individual vertices, e.g. {@link RPipe.is}.
  * Some vertices also have a {@link RPipe.availableFromRVersion} property that indicates from which R version they are available,
  * so you can check for that as well if needed.
+ * @helper ast Helper object to provide helper functions for RNodes.
  */
 export const RNode = {
 	name: 'RNode',

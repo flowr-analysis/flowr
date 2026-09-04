@@ -31,6 +31,7 @@ export interface RProject<Info = NoInfo> {
 
 /**
  * Helper object to identify RProject nodes by their type and to provide related functions.
+ * @helper ast Helper object to identify RProject nodes by their type and to provide related functions.
  * @see {@link RNode.visitAst} - to visit all nodes in the project
  */
 export const RProject = {

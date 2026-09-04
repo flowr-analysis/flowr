@@ -73,6 +73,21 @@ function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
 	});
 }
 
+/** GitHub stops rendering a wiki page well before the megabyte, so a page around this size is about to break */
+const GitHubPageCharacterLimit = 450_000;
+
+function warnIfNearGitHubLimit(file: string): void {
+	let size: number;
+	try {
+		size = fs.readFileSync(file, 'utf-8').length;
+	} catch{
+		return;
+	}
+	if(size > GitHubPageCharacterLimit) {
+		console.warn(ansiFormatter.format(`  [${file}] has ${size} characters, which is over the ${GitHubPageCharacterLimit} GitHub renders a wiki page up to; split it or trim it`, { style: FontStyles.Bold, color: Colors.Yellow, effect: ColorEffect.Foreground }));
+	}
+}
+
 /**
  * Updates and optionally re-creates all flowR wikis.
  */
@@ -126,6 +141,9 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 			for(const out of doc.getWrittenSubfiles()) {
 				changedWikis.add(out);
 				console.log(`    - Also updated: ${out}`);
+			}
+			for(const out of [doc.getTarget(), ...doc.getWrittenSubfiles()]) {
+				warnIfNearGitHubLimit(out);
 			}
 		}
 	} catch(error) {

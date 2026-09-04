@@ -162,7 +162,7 @@ jobs:
         # script as the tests so the node dependencies are installed once and reused by both
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/workflows/scripts/run-flowr-command.sh sync:sigdb
+        run: bash .github/workflows/scripts/run-flowr-command.sh sigdb:sync
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"

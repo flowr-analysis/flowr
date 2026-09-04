@@ -31,6 +31,7 @@ function infoOf<OtherInfo>(this: void, against: Against<OtherInfo>, overrides?: 
  * This is constant propagation over the dataflow graph, not abstract interpretation: it follows definitions to
  * constants and gives up wherever a value is not statically pinned down, with no fixpoint and no widening.
  * Anything needing an abstract state lives in `src/abstract-interpretation/`.
+ * @helper api The value(s) a node may hold.
  * @example
  * ```ts
  * NodeValue.of(id, data);                          // during processing

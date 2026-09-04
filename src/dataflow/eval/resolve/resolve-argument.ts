@@ -4,6 +4,11 @@ import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../../util/assert';
+import { DfgVertex } from '../../graph/vertex';
+import { DfEdge, EdgeType } from '../../graph/edge';
+import { callFnProps } from '../../environments/query-fn-props';
+import { ArgProp, SemanticCallTag } from '../../environments/built-in-props';
+import { FunctionSemantics } from '../../fn/function-semantics';
 import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -52,7 +57,7 @@ export function getArgumentStringValue(
 			}
 			if(valueNode) {
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? [Unknown];
+				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
 				map.set(ref, new Set(values));
 			}
 		}
@@ -69,8 +74,34 @@ export function getArgumentStringValue(
 		}
 
 		if(valueNode) {
-			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? [Unknown];
+			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
 			return new Map([[arg, new Set(values)]]);
+		}
+	}
+	return undefined;
+}
+
+/** What the handle an argument holds was opened on: `readLines(con)` after `con <- file("a.txt")` reads `a.txt`. */
+function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph, argument: NodeId, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+	const seen = new Set<NodeId>([argument]);
+	const pending = [argument];
+	while(pending.length > 0) {
+		const current = pending.pop() as NodeId;
+		const vertex = graph.getVertex(current);
+		if(DfgVertex.isFunctionCall(vertex)) {
+			const info = callFnProps(current, { graph, environment: ctx.env.cleanEnv() });
+			const resource = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
+			if(resource < 0 || !FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Opens])) {
+				continue;
+			}
+			const values = getArgumentStringValue(variableResolve, graph, vertex, resource, info?.sig?.[resource][0], true, ctx);
+			return values === undefined ? undefined : [...values.values()].flatMap(v => [...v]).filter(isNotUndefined);
+		}
+		for(const [target, edge] of graph.edgesFrom(current)) {
+			if(DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall) && !seen.has(target)) {
+				seen.add(target);
+				pending.push(target);
+			}
 		}
 	}
 	return undefined;

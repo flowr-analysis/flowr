@@ -99,6 +99,25 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('No dependencies', 'x + 1', { write: [{ nodeId: 2, functionName: '+', value: 'stdout', implicit: true }] });
 	});
 
+	describe('Through the dataflow', () => {
+		/* a handle stands for the file it was opened on */
+		testQuery('a handle reads what it was opened on', 'con <- file("a.txt", "r")\nl <- readLines(con)', {
+			read: [{ nodeId: '1@file', functionName: 'file', value: 'a.txt' }, { nodeId: '2@readLines', functionName: 'readLines', value: 'a.txt' }]
+		});
+		testQuery('a handle writes what it was opened on', 'con <- file("o.txt", "w")\nwriteLines("a", con)', {
+			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
+		});
+		/* a call leaving the parameter out reads the default */
+		testQuery('a default parameter names the file', 'ld <- function(p = "def.csv") read.csv(p)\nld()', {
+			read:  [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'def.csv' }],
+			write: [{ nodeId: '2@ld', functionName: 'ld', value: 'stdout', implicit: true }]
+		});
+		/* a user function hands its result back as its last call does, so nothing is echoed here */
+		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
+			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv' }]
+		});
+	});
+
 	describe('Libraries', () => {
 		for(const [loadFn, str] of [
 			['library', false],
@@ -602,11 +621,11 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Overwritten Function', () => {
+		/* `print` hands its argument back invisibly, and so does the function ending in it: nothing is echoed twice */
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", {
 			read:  [],
 			write: [
-				{ value: 'stdout', functionName: 'print', nodeId: '1@print' },
-				{ value: 'stdout', implicit: true, functionName: 'read.csv', nodeId: '1@[2]read.csv' }
+				{ value: 'stdout', functionName: 'print', nodeId: '1@print' }
 			]
 		});
 	});

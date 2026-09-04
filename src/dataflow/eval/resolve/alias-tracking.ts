@@ -11,6 +11,7 @@ import { Identifier, ReferenceType } from '../../environments/identifier';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { DataflowGraph } from '../../graph/graph';
+import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { DfgVertex, VertexType } from '../../graph/vertex';
@@ -248,6 +249,13 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 			values.add(valueFromTsValue(def.value));
 		} else if(def.type === ReferenceType.BuiltInFunction) {
 			// Tracked in #1207
+		} else if(def.value === undefined && graph !== undefined && !NodeId.isBuiltIn(def.nodeId)) {
+			/* the environment holds no value for a parameter, but the graph knows its default and what calls pass */
+			const value = trackAliasesInGraph(def.nodeId, graph, ctx, idMap, blocked);
+			if(isTop(value)) {
+				return Top;
+			}
+			values.add(value);
 		} else if(def.value !== undefined) {
 			/* if there is at least one location for which we have no idea, we have to give up for now! */
 			if(def.value.length === 0) {
@@ -332,10 +340,21 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return RNode.iterateParents(node, ast).some(RLoopConstructs.is);
 }
 
-/** whether the node is (or sits in) a parameter's default, which any call site may override */
-function isParameterDefault(node: RNodeWithParent | undefined, idMap: AstIdMap): boolean {
-	return node !== undefined && (node.info.role === RoleInParent.ParameterDefaultValue
-		|| RNode.iterateParents(node, idMap).some(p => p.info.role === RoleInParent.ParameterDefaultValue));
+/**
+ * What a node that is (or sits in) a parameter's default means for the parameter's value: `applies` when a
+ * known call leaves the parameter out, `overridden` when every known call passes something, and `unknown`
+ * when no call is known at all, as any call site may then override it.
+ */
+function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMap, graph: DataflowGraph): 'applies' | 'overridden' | 'unknown' {
+	const parameter = node === undefined ? undefined
+		: [node, ...RNode.iterateParents(node, idMap)].find(p => p.info.role === RoleInParent.ParameterDefaultValue)?.info.parent;
+	const bound = parameter === undefined ? undefined : idMap.get(parameter);
+	if(!RParameter.is(bound) || bound.info.parent === undefined) {
+		return 'applies';
+	}
+	const count = (edges: Iterable<[NodeId, DfEdge]>, type: EdgeType) => [...edges].filter(([, e]) => DfEdge.includesType(e, type)).length;
+	const calls = count(graph.edgesTo(bound.info.parent), EdgeType.Calls);
+	return calls === 0 ? 'unknown' : count(graph.edgesFrom(bound.name.info.id), EdgeType.DefinedByOnCall) >= calls ? 'overridden' : 'applies';
 }
 
 /**
@@ -470,8 +489,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			/* a call that hands back none of its arguments has no `Returns` edge to follow, yet the value solver may
 			 * well know what it produces (`p <- file.path("data", "x.csv")`), so we fold it instead of giving up */
 			const node = idMap.get(id);
-			const values = isParameterDefault(node, idMap) ? undefined
-				: valueSetGuard(resolveIdToValue(node, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked }));
+			const state = parameterDefaultState(node, idMap, graph);
+			if(state === 'overridden') {
+				continue;
+			}
+			const values = state === 'unknown' ? undefined : valueSetGuard(resolveIdToValue(node, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked }));
 			if(values === undefined || values.elements.some(isTop)) {
 				return Top;
 			}
@@ -493,8 +515,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			if(isParameterDefault(node, idMap)) {
+			const state = parameterDefaultState(node, idMap, graph);
+			if(state === 'unknown') {
 				return Top;
+			} else if(state === 'overridden') {
+				continue;
 			}
 			values.add(valueFromRNodeConstant(node));
 		}

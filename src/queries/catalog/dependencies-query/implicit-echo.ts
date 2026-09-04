@@ -13,6 +13,7 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RLineDirective } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
 import { DfgVertex } from '../../../dataflow/graph/vertex';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
@@ -93,15 +94,39 @@ function qualifiedName(node: RFunctionCall<ParentInformation>, dataflow: Dataflo
 		? Dataflow.qualify(node.info.id, dataflow.graph, false) ?? vertex.name : undefined;
 }
 
-/** the name of a call that reaches stdout, `undefined` if it returns invisibly, draws, or asserts */
-function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation): Identifier | undefined {
+/** the name of a call that reaches stdout, `undefined` if it returns invisibly, draws, or asserts; a user function does as its last call does */
+function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, seen = new Set<NodeId>()): Identifier | undefined {
 	const name = qualifiedName(node, dataflow);
 	if(name === undefined) {
 		return undefined;
 	}
 	const props = queryFnProps(name, { environment: dataflow.environment });
 	return FunctionSemantics.call.props.hasAny(props, [CallProp.Invisible, SemanticCallTag.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
-		? undefined : name;
+		|| (props === undefined && returnsInvisibly(node.info.id, dataflow, seen)) ? undefined : name;
+}
+
+/** whether every definition the call reaches ends in a call handing its result back invisibly */
+function returnsInvisibly(id: NodeId, dataflow: DataflowInformation, seen: Set<NodeId>): boolean {
+	const idMap = dataflow.graph.idMap;
+	if(idMap === undefined || seen.has(id)) {
+		return false;
+	}
+	seen.add(id);
+	let callee = false;
+	for(const [target, edge] of dataflow.graph.edgesFrom(id)) {
+		const definition = DfEdge.includesType(edge, EdgeType.Calls) ? dataflow.graph.getVertex(target) : undefined;
+		if(!DfgVertex.isFunctionDefinition(definition)) {
+			continue;
+		}
+		callee = true;
+		for(const exit of definition.exitPoints) {
+			const last = idMap.get(exit.nodeId);
+			if(!RFunctionCall.is(last) || callName(last, dataflow, seen) !== undefined) {
+				return false;
+			}
+		}
+	}
+	return callee;
 }
 
 /** what to report the echo under: the called name, or the operator or lexeme producing the value */

@@ -74,6 +74,9 @@ describe('Resolve Value Query', withTreeSitter(parser => {
 		testQuery('No call-sites with calculated parameter', 'f <- function(x=42+1) { \nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with maybe parameter', 'f <- function(x=42) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with maybe parameter and calc', 'f <- function(x=42+1) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
+		/* a call leaving the parameter out is what makes the default the value */
+		testQuery('Call without the argument uses the default', 'f <- function(x=42) {\nprint(x)}\nf()', ['2@x'], [[setFrom(intervalFrom(42, 42))]]);
+		testQuery('Call with the argument overrides the default', 'f <- function(x=42) {\nprint(x)}\nf(1)', ['2@x'], [[setFrom(intervalFrom(1, 1))]]);
 	});
 
 	/* `:` counts down whenever the second bound is the smaller one */

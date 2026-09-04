@@ -1,4 +1,5 @@
 import { FlowrAnalyzerPackageVersionsPlugin, type SigDbLoadedInfo } from './flowr-analyzer-package-versions-plugin';
+import { compareByCodeUnit } from '../../../util/text/strings';
 import { SemVer, minVersion, type Range } from 'semver';
 import path from 'path';
 import { Package } from './package';
@@ -287,7 +288,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			/* the comparator runs O(n log n) times, so each package is counted once up front */
 			const downloads = new Map(owners.map(pkg =>
 				[pkg, sources.reduce((m, s) => Math.max(m, s.has(pkg) ? s.downloads(pkg) : 0), 0)]));
-			owners.sort((a, b) => (downloads.get(b) as number) - (downloads.get(a) as number) || a.localeCompare(b));
+			owners.sort((a, b) => (downloads.get(b) as number) - (downloads.get(a) as number) || compareByCodeUnit(a, b));
 		}
 		this.exportsByName.set(name, owners);
 		return owners;

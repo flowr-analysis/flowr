@@ -69,6 +69,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('a namespaced call keeps the import', parser, 'library(ggplot2)\nggplot2::ggplot()', 'unused-import',
 				[], undefined, { sigDb });
 
+			assertLinter('an export handed on as a value keeps the import', parser, 'library(ggplot2)\nf <- aes\nf()', 'unused-import',
+				[], undefined, { sigDb });
+
 			assertLinter('a use inside a function body keeps the import', parser, 'library(ggplot2)\nf <- function() aes()\nf()', 'unused-import',
 				[], undefined, { sigDb });
 

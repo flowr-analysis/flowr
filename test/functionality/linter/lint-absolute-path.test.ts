@@ -249,8 +249,8 @@ describe('flowR linter', withTreeSitter(parser => {
 				's3://my-bucket/data.csv',
 				'gs://my-bucket/data.csv'
 			];
-			/* s3:// has a digit before the colon so isAbsolutePath never matches it; exclude from ignoreUrls=false tests */
-			const urlsMatchingAbsPath = remoteUrls.filter(u => !u.startsWith('s3://'));
+			/* a remote URL names an absolute location, so every one of them is reported once URLs are not ignored */
+			const urlsMatchingAbsPath = remoteUrls;
 
 			describe('ignoreUrls=true (default)', () => {
 				describe('path functions', () => {

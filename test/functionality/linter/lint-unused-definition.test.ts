@@ -105,5 +105,13 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 			}
 		});
 
+		describe('a definition whose value came from a side effect', () => {
+			/* removing `r <- bump()` would drop the `<<-` the call performs, so it is reported without a fix */
+			assertLinter('call with a super-assignment offers no fix', parser,
+				'counter <- 0\nbump <- function() { counter <<- counter + 1; counter }\nr <- bump()\nprint(counter)',
+				'unused-definitions',
+				[{ certainty: LintingResultCertainty.Uncertain, variableName: 'r', loc: [3, 1, 3, 1], quickFix: undefined }],
+				{ totalConsidered: 5 });
+		});
 	});
 }));

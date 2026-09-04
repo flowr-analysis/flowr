@@ -35,6 +35,19 @@ close(file)`,
 				}]
 			}]
 		);
+		assertLinter('Closed after the loop using it', parser, 'con <- file("x")\nfor(i in 1:3) readLines(con)',
+			'unclosed-connection',
+			[{
+				certainty: LintingResultCertainty.Certain,
+				loc:       [1, 8, 1, 16],
+				quickFix:  [{
+					type:        'replace',
+					loc:         [2, 29, 2, 28],
+					description: 'Close the connection with `close(con)`',
+					replacement: '\nclose(con)'
+				}]
+			}]
+		);
 		assertLinter('Closed after the last use', parser, `read <- function(){
 	con <- file("x")
 	readLines(con)

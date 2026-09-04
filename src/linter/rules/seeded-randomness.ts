@@ -181,7 +181,7 @@ export const SEEDED_RANDOMNESS = {
 			randomnessConsumers: [
 				...BuiltInIndex.default().with(SemanticCallTag.Random).map(Identifier.getName)
 					.filter(n => !RandomnessProducers.some(p => p.name === n)),
-				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
+				'princomp', 'pointLabel', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
 				'rxor', 'rmvnorm', 'randomForest',
 				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n',
 			],

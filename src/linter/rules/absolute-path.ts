@@ -1,4 +1,5 @@
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
+import { RPath } from '../../util/files';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -16,7 +17,6 @@ import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
-import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { Identifier } from '../../dataflow/environments/identifier';
@@ -81,7 +81,7 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 		type:        'replace',
 		loc,
 		description: `Replace with a relative path to \`${filePath}\``,
-		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
+		replacement: `${str.content.quotes}${RPath.relative(wd, filePath)}${str.content.quotes}`
 	}];
 }
 
@@ -94,7 +94,7 @@ const PathFunctions: ReadonlyMap<Identifier, PathFunction> = new Map([
 			df, vtx, undefined, 'fsep', true, ctx
 		);
 		// in the future we can access `.Platform$file.sep` here
-		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? [path.sep];
+		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? ['/'];
 		if(sepValues.some(s => s === Unknown || isUndefined(s))) {
 			// if we have no fsep, we cannot construct a path
 			return undefined;

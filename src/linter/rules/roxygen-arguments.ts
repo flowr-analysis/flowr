@@ -73,8 +73,10 @@ export const ROXYGEN_ARGS = {
 						//get parameter names
 						const params = roxygen.tags[KnownRoxygenTags.Param] ?? [];
 						const functionParamNames = getParameters(element.node).map(p => p.name.content.toString());
-						const inheritedParams = params.filter(tag => tag.inherited).map(tag => tag.value.name);
-						const roxygenParamNames = params.map(tag => tag.value.name);
+						/* roxygen2 documents several parameters at once as `@param x,y`, so one tag may name many */
+						const documented = (tag: { value: { name: string } }) => tag.value.name.split(',').map(n => n.trim()).filter(n => n.length > 0);
+						const inheritedParams = params.filter(tag => tag.inherited).flatMap(documented);
+						const roxygenParamNames = params.flatMap(documented);
 						const result = calculateArgumentDiff(inheritedParams ?? [], functionParamNames, roxygenParamNames);
 						if(result === false) {
 							return false;

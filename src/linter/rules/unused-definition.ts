@@ -254,6 +254,8 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, variable.info.parent))
+		/* a side effect is recorded from what it writes *to* the call performing it, so it is an ingoing edge */
+		|| definedBys.some(e => Array.from(dfg.edgesTo(e)).some(([, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets)))
 		|| definedBys.flatMap(e => Array.from(dfg.edgesFrom(e)))
 			.some(([target, e]) => {
 				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);

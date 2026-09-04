@@ -1,7 +1,7 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { EdgeTypeBits } from '../../dataflow/graph/edge';
@@ -95,6 +95,18 @@ function enclosingStatement(idMap: AstIdMap, id: NodeId): RNode<ParentInformatio
 	return undefined;
 }
 
+/** `id`, or the outermost loop around it that `definition` is not in as well: a close inside that loop would run every iteration. */
+function liftedOutOfLoops(idMap: AstIdMap, id: NodeId, definition: NodeId): NodeId {
+	let lifted = id;
+	for(let node = idMap.get(id); node !== undefined; node = node.info.parent === undefined ? undefined : idMap.get(node.info.parent)) {
+		const loop = node;
+		if(RLoopConstructs.is(loop) && RNode.findEnclosing(definition, idMap, n => n.info.id === loop.info.id) === undefined) {
+			lifted = loop.info.id;
+		}
+	}
+	return lifted;
+}
+
 /** A fix closing the connection after the last statement using it, if it is bound to a name to close. */
 function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefined {
 	const idMap = graph.idMap;
@@ -106,7 +118,7 @@ function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefine
 	const reads = (graph.edgesTo(definition)).entries()
 		.filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Reads)).map(([source]) => source);
 	const statements = [definition, ...reads]
-		.map(id => SourceLocation.fromNode(enclosingStatement(idMap, id)))
+		.map(id => SourceLocation.fromNode(enclosingStatement(idMap, liftedOutOfLoops(idMap, id, definition))))
 		.filter(isNotUndefined);
 	const last = statements.reduce<SourceLocation | undefined>(
 		(a, b) => a === undefined || SourceRange.compare(a, b) < 0 ? b : a, undefined);

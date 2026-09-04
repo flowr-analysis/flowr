@@ -10,7 +10,7 @@ import { DfgVertex } from '../../dataflow/graph/vertex';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
@@ -105,6 +105,12 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 		const vertex = graph.getVertex(id);
 		if(DfgVertex.isFunctionCall(vertex) && isUnbound(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
+		} else if(DfgVertex.isUse(vertex) && isUnbound(graph, id)) {
+			/* an export handed on as a value, `f <- aes`, is used just as well as one that is called */
+			const name = NodeId.recoverName(id, graph.idMap);
+			if(name !== undefined) {
+				unbound.add(Identifier.getName(name));
+			}
 		}
 	}
 	for(const { name, callable } of attachments) {

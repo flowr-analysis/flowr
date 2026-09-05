@@ -41,7 +41,6 @@ import { Dataflow } from './graph/df-helper';
 import { BuiltInProcName } from './environments/built-in-proc-name';
 import { uniqueArray } from '../util/collections/arrays';
 import { MatchArgs } from './graph/match-args';
-import { FunctionArgument } from './graph/graph';
 import { ArgProp, SemanticCallTag } from './environments/built-in-props';
 import type { BuiltInFnInfo } from './environments/built-in-props';
 import { callFnProps } from './environments/query-fn-props';
@@ -166,14 +165,7 @@ function resourceOf(
 	if(info?.sig === undefined || !DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
-	const matched = MatchArgs.findWithProps(vertex.args, info.sig, ArgProp.Resource)[0];
-	if(matched !== undefined) {
-		return matched;
-	}
-	/* a formal declared after `...` is only ever matched by its exact name, which `cat(x, file = f)` does */
-	const resourceNames = new Set(info.sig.filter(([, props]) => (props & ArgProp.Resource) !== 0).map(([param]) => param));
-	const named = vertex.args.find(a => !FunctionArgument.isEmpty(a) && a.name !== undefined && resourceNames.has(a.name));
-	return named !== undefined ? FunctionArgument.getReference(named) : undefined;
+	return MatchArgs.findWithProps(vertex.args, info.sig, ArgProp.Resource)[0];
 }
 
 /** The definitions a node reads, following reads through the uses in between until a definition is met. */

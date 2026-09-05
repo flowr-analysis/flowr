@@ -191,14 +191,16 @@ function stackEnvirResolution<OtherInfo>(
 export function resolveEnvirArg<OtherInfo>(
 	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data:    DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	argName  = 'envir'
+	argName  = 'envir',
+	position?: number
 ): EnvirResolution<OtherInfo> | undefined {
 	for(const arg of args) {
 		if(arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [argName]) === argName) {
 			return resolveArgToEnvir(arg, data);
 		}
 	}
-	return undefined;
+	const positional = position === undefined ? undefined : args[position];
+	return positional !== undefined && !RArgument.isNamed(positional) ? resolveArgToEnvir(positional, data) : undefined;
 }
 
 /** Resolves a symbol by name to an {@link EnvirResolution} when it holds a tracked environment. */

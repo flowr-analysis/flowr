@@ -14,23 +14,9 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { resolveArgToEnvir, resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { define } from '../../../../../environments/define';
-
-/** The environment a call names, be it its first argument (`ls(e)`) or its `envir` (`ls(envir = e)`). */
-function environmentArgumentOf<OtherInfo>(
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	envirName: string
-) {
-	const named = resolveEnvirArg(args, data, envirName);
-	if(named) {
-		return named;
-	}
-	const first = args.length >= 1 ? args[0] : undefined;
-	return first !== undefined && !RArgument.isNamed(first) ? resolveArgToEnvir(first, data) : undefined;
-}
 
 /**
  * Processes a call listing what an environment holds (`ls`, `objects`), which reads every binding in it: the
@@ -44,7 +30,7 @@ export function processEnvContents<OtherInfo>(
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.EnvContents }).information;
 
-	const resolution = environmentArgumentOf(args, data, 'envir');
+	const resolution = resolveEnvirArg(args, data, 'envir', 0);
 	if(!resolution) {
 		return result;
 	}

@@ -5,7 +5,8 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../../util/assert';
 import { DfgVertex } from '../../graph/vertex';
-import { DfEdge, EdgeType } from '../../graph/edge';
+import { EdgeType } from '../../graph/edge';
+import { Dataflow } from '../../graph/df-helper';
 import { callFnProps } from '../../environments/query-fn-props';
 import { ArgProp, SemanticCallTag } from '../../environments/built-in-props';
 import { FunctionSemantics } from '../../fn/function-semantics';
@@ -83,26 +84,15 @@ export function getArgumentStringValue(
 
 /** What the handle an argument holds was opened on: `readLines(con)` after `con <- file("a.txt")` reads `a.txt`. */
 function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph, argument: NodeId, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
-	const seen = new Set<NodeId>([argument]);
-	const pending = [argument];
-	while(pending.length > 0) {
-		const current = pending.pop() as NodeId;
-		const vertex = graph.getVertex(current);
-		if(DfgVertex.isFunctionCall(vertex)) {
-			const info = callFnProps(current, { graph, environment: ctx.env.cleanEnv() });
-			const resource = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
-			if(resource < 0 || !FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Opens])) {
-				continue;
-			}
-			const values = getArgumentStringValue(variableResolve, graph, vertex, resource, info?.sig?.[resource][0], true, ctx);
-			return values === undefined ? undefined : [...values.values()].flatMap(v => [...v]).filter(isNotUndefined);
+	for(const id of Dataflow.provenance(argument, graph, undefined, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall)) {
+		const vertex = graph.getVertex(id);
+		const info = DfgVertex.isFunctionCall(vertex) ? callFnProps(id, { graph, environment: ctx.env.cleanEnv() }) : undefined;
+		const resource = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
+		if(vertex === undefined || resource < 0 || !FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Opens])) {
+			continue;
 		}
-		for(const [target, edge] of graph.edgesFrom(current)) {
-			if(DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall) && !seen.has(target)) {
-				seen.add(target);
-				pending.push(target);
-			}
-		}
+		const values = getArgumentStringValue(variableResolve, graph, vertex as DataflowGraphVertexFunctionCall, resource, info?.sig?.[resource][0], true, ctx);
+		return values === undefined ? undefined : [...values.values()].flatMap(v => [...v]).filter(isNotUndefined);
 	}
 	return undefined;
 }

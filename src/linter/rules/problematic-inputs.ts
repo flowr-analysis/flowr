@@ -14,7 +14,7 @@ import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 
 const defaultConsider: readonly ConsiderSpec[] = [
-	{ pattern: '^eval$', allowedInputTypes: [InputType.Constant, InputType.DerivedConstant] },
+	{ pattern: '^eval$', allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true },
 	...BuiltInIndex.default().with(CallProp.Process).map(n => ({ pattern: `^${Identifier.getName(n)}$` }))
 ];
 
@@ -36,16 +36,18 @@ export interface ConsiderSpec {
 	allowedInputTypes?: InputType[]
 	allowedValues?:     string | RegExp
 	disallowedValues?:  string | RegExp
+	resolveSourceArgs?: boolean
 }
 
-function normalizePatternList(cfg: string | string[] | ConsiderSpec | ConsiderSpec[] | undefined): { pattern: RegExp, allowedInputTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp }[] {
+function normalizePatternList(cfg: string | string[] | ConsiderSpec | ConsiderSpec[] | undefined): { pattern: RegExp, allowedInputTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp, resolveSourceArgs?: boolean }[] {
 	const raw = (cfg === undefined ? defaultConsider : Array.isArray(cfg) ? (cfg.length === 0 ? defaultConsider : cfg) : [cfg])
 		.map(s => typeof s === 'string' ? { pattern: s } : s);
-	return raw.map(s => ( {
+	return raw.map(s => ({
 		pattern:           typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
 		allowedInputTypes: s.allowedInputTypes ?? [],
 		allowedValues:     typeof s.allowedValues === 'string' ? new RegExp(s.allowedValues) : s.allowedValues,
-		disallowedValues:  typeof s.disallowedValues === 'string' ? new RegExp(s.disallowedValues) : s.disallowedValues
+		disallowedValues:  typeof s.disallowedValues === 'string' ? new RegExp(s.disallowedValues) : s.disallowedValues,
+		resolveSourceArgs: s.resolveSourceArgs
 	}));
 }
 
@@ -80,17 +82,15 @@ function hasUnknownSource(sources: InputSources): boolean {
 	return sources.some(s => s.types.includes(InputType.Unknown));
 }
 
-function isProblematicForAllowed(sources: InputSources, allowedTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp): boolean {
-	for(const s of sources) {
-		if(allowedTypes.length > 0 && !s.types.some(t => !allowedTypes.includes(t))) {
-			continue;
-		}
-		if(allowedValues !== undefined && s.value !== undefined && allowedValues.test(String(s.value))){
-			continue;
-		}
-		if(disallowedValues !== undefined && (s.value === undefined || !disallowedValues.test(String(s.value)))) {
-			continue;
-		}
+function isProblematicForAllowed(sources: InputSources, evalValues: string[], allowedTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp): boolean {
+	if(sources.some(s => s.types.some(t => !allowedTypes.includes(t)))) {
+		return true;
+	}
+	const values = sources.map(s => s.value).concat(evalValues);
+	if(allowedValues !== undefined && values.every(v => v === undefined || !allowedValues.test(String(v)))) {
+		return true;
+	}
+	if(disallowedValues !== undefined && values.some(v => v !== undefined && disallowedValues.test(String(v)))) {
 		return true;
 	}
 	return false;
@@ -197,7 +197,19 @@ export const PROBLEMATIC_INPUTS = {
 				const criterion = SlicingCriterion.fromId(nid);
 				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 				const sources   = all['input-sources']?.results?.[criterion] ?? [];
-				if(isProblematicForAllowed(sources, consider.allowedInputTypes, consider.allowedValues, consider.disallowedValues)) {
+				const evalValues: string[] = [];
+				// TODO i'm not sure if this is right and it seems kind of messy :( i want the values from the eval calls
+				if(consider.resolveSourceArgs) {
+					for(const source of sources) {
+						if(source.value === undefined) {
+							const arg = df.graph.idMap?.get(source.id)?.info?.fullLexeme;
+							if(arg !== undefined) {
+								evalValues.push(arg);
+							}
+						}
+					}
+				}
+				if(isProblematicForAllowed(sources, evalValues, consider.allowedInputTypes, consider.allowedValues, consider.disallowedValues)) {
 					seen.add(nid);
 					results.push({ involvedId: nid, certainty: hasUnknownSource(sources) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, loc, name, sources });
 				}

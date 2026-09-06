@@ -44,27 +44,41 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:       SourceRange.from(1, 1, 1, 9),
 			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }]
 		}]);
-		assertLinter('disallowedValues match', parser, 'custom("rm -rf /")', 'problematic-inputs', [{
-			certainty: LintingResultCertainty.Certain,
-			name:      'custom',
-			loc:       SourceRange.from(1, 1, 1, 18),
-			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: 'rm -rf /' }]
-		}], undefined, {
-			consider: [{ pattern: /^custom$/, allowedInputTypes: [], disallowedValues: /^rm -rf/ }]
-		});
-		assertLinter('disallowedValues no match', parser, 'custom("rm -rf /")', 'problematic-inputs', [], undefined, {
-			consider: [{ pattern: /^custom$/, allowedInputTypes: [], disallowedValues: /^cat/ }]
-		});
-		assertLinter('allowedValues match', parser, 'custom("rm -rf /")', 'problematic-inputs', [{
-			certainty: LintingResultCertainty.Certain,
-			name:      'custom',
-			loc:       SourceRange.from(1, 1, 1, 18),
-			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: 'rm -rf /' }]
-		}], undefined, {
-			consider: [{ pattern: /^custom$/, allowedInputTypes: [], allowedValues: /^cat/ }]
-		});
-		assertLinter('allowedValues no match', parser, 'custom("rm -rf /")', 'problematic-inputs', [], undefined, {
-			consider: [{ pattern: /^custom$/, allowedInputTypes: [], allowedValues: /^rm -rf/  }]
+
+		describe('Allowance configs', () => {
+			assertLinter('disallowedValues match', parser, 'custom("rm -rf /")', 'problematic-inputs', [{
+				certainty: LintingResultCertainty.Certain,
+				name:      'custom',
+				loc:       SourceRange.from(1, 1, 1, 18),
+				sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: 'rm -rf /' }]
+			}], undefined, {
+				consider: [{ pattern: /^custom$/, allowedInputTypes: Object.values(InputType), disallowedValues: /^rm -rf/ }]
+			});
+			assertLinter('disallowedValues no match', parser, 'custom("rm -rf /")', 'problematic-inputs', [], undefined, {
+				consider: [{ pattern: /^custom$/, allowedInputTypes: Object.values(InputType), disallowedValues: /^cat/ }]
+			});
+			assertLinter('allowedValues match', parser, 'custom("rm -rf /")', 'problematic-inputs', [{
+				certainty: LintingResultCertainty.Certain,
+				name:      'custom',
+				loc:       SourceRange.from(1, 1, 1, 18),
+				sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: 'rm -rf /' }]
+			}], undefined, {
+				consider: [{ pattern: /^custom$/, allowedInputTypes: Object.values(InputType), allowedValues: /^cat/ }]
+			});
+			assertLinter('allowedValues no match', parser, 'custom("rm -rf /")', 'problematic-inputs', [], undefined, {
+				consider: [{ pattern: /^custom$/, allowedInputTypes: Object.values(InputType), allowedValues: /^rm -rf/  }]
+			});
+			assertLinter('disallowedValues match with resolve', parser, 'custom(parse(text=foo))', 'problematic-inputs', [{
+				certainty: LintingResultCertainty.Uncertain,
+				name:      'custom',
+				loc:       SourceRange.from(1, 1, 1, 23),
+				sources:   [{ id: 5, trace: InputTraceType.Known, types: [InputType.Unknown, InputType.DerivedConstant] }]
+			}], undefined, {
+				consider: [{ pattern: /^custom$/, allowedInputTypes: Object.values(InputType), resolveSourceArgs: true, disallowedValues: /^parse\(/ }]
+			});
+			assertLinter('disallowedValues no match with resolve', parser, 'custom(parse(text=runif(1)))', 'problematic-inputs', [], undefined, {
+				consider: [{ pattern: /^custom$/, allowedInputTypes: Object.values(InputType), resolveSourceArgs: true, disallowedValues: /^x$/ }]
+			});
 		});
 	});
 	describe('Pipe Command Injection', () => {
@@ -76,24 +90,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp -o landscape',
 			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
 		}]);
-		assertLinter('pipe disallowedValues match', parser, 'custom("|rm -rf /")', 'problematic-inputs', [{
-			certainty:   LintingResultCertainty.Certain,
-			name:        'custom',
-			loc:         SourceRange.from(1, 1, 1, 19),
-			pipeCommand: '|rm -rf /',
-			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|rm -rf /' }]
-		}], undefined, { pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', disallowedValues: /^\|rm/ }] });
-		assertLinter('pipe disallowedValues no match', parser, 'custom("|lp -o landscape")', 'problematic-inputs', [], undefined,
-			{ pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', disallowedValues: /^\|rm/ }] });
-		assertLinter('pipe allowedValues match', parser, 'custom("|rm -rf /")', 'problematic-inputs', [], undefined,
-			{ pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', allowedValues: /^\|rm/ }] });
-		assertLinter('pipe allowedValues no match', parser, 'custom("|lp -o landscape")', 'problematic-inputs', [{
-			certainty:   LintingResultCertainty.Certain,
-			name:        'custom',
-			loc:         SourceRange.from(1, 1, 1, 26),
-			pipeCommand: '|lp -o landscape',
-			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
-		}], undefined, { pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', allowedValues: /^\|rm/ }] });
 		assertLinter('pdf pipe with named arg', parser, 'pdf("|lp -o landscape", paper = "a4r")', 'problematic-inputs', [{
 			certainty:   LintingResultCertainty.Certain,
 			name:        'pdf',
@@ -115,5 +111,26 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp',
 			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp' }]
 		}]);
+
+		describe('Allowance configs', () => {
+			assertLinter('pipe disallowedValues match', parser, 'custom("|rm -rf /")', 'problematic-inputs', [{
+				certainty:   LintingResultCertainty.Certain,
+				name:        'custom',
+				loc:         SourceRange.from(1, 1, 1, 19),
+				pipeCommand: '|rm -rf /',
+				sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|rm -rf /' }]
+			}], undefined, { pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', disallowedValues: /^\|rm/ }] });
+			assertLinter('pipe disallowedValues no match', parser, 'custom("|lp -o landscape")', 'problematic-inputs', [], undefined,
+				{ pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', disallowedValues: /^\|rm/ }] });
+			assertLinter('pipe allowedValues match', parser, 'custom("|rm -rf /")', 'problematic-inputs', [], undefined,
+				{ pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', allowedValues: /^\|rm/ }] });
+			assertLinter('pipe allowedValues no match', parser, 'custom("|lp -o landscape")', 'problematic-inputs', [{
+				certainty:   LintingResultCertainty.Certain,
+				name:        'custom',
+				loc:         SourceRange.from(1, 1, 1, 26),
+				pipeCommand: '|lp -o landscape',
+				sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
+			}], undefined, { pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', allowedValues: /^\|rm/ }] });
+		});
 	});
 }));

@@ -1,5 +1,4 @@
 import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty, LintingResultCertainty } from '../linter-format';
-import { isArray } from '../../util/collections/arrays';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -14,38 +13,55 @@ import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 
-const defaultConsider: readonly string[] = [
-	'^eval$',
-	...BuiltInIndex.default().with(SemanticCallTag.Process).map(n => `^${Identifier.quote(Identifier.getName(n))}$`)
+const defaultConsider: readonly ConsiderSpec[] = [
+	{ pattern: '^eval$', allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true },
+	...BuiltInIndex.default().with(SemanticCallTag.Process).map(n => ({ pattern: `^${Identifier.getName(n)}$` }))
+];
+
+const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
+	{ pattern: /^pdf$/,        argIdx: 0, argName: 'file' },
+	{ pattern: /^postscript$/, argIdx: 0, argName: 'file' }
 ];
 
 export interface PipeCommandFunctionSpec {
-	pattern: string
-	argIdx:  number
-	argName: string
+	pattern:           string | RegExp
+	argIdx:            number
+	argName:           string
+	allowedValues?:    string | RegExp
+	disallowedValues?: string | RegExp
 }
 
-const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
-	{ pattern: '^pdf$',        argIdx: 0, argName: 'file' },
-	{ pattern: '^postscript$', argIdx: 0, argName: 'file' }
-];
-
-function normalizePatternList(cfg: string | readonly string[] | undefined, defaults: readonly string[]): RegExp[] {
-	if(cfg === undefined) {
-		return Array.from(defaults, s => new RegExp(s));
-	}
-	if(isArray<string>(cfg)) {
-		const arr = cfg.length === 0 ? defaults : cfg;
-		return Array.from(new Set(arr), s => new RegExp(s));
-	}
-	return [new RegExp(cfg)];
+export interface ConsiderSpec {
+	pattern:            string | RegExp
+	allowedInputTypes?: InputType[]
+	allowedValues?:     string | RegExp
+	disallowedValues?:  string | RegExp
+	resolveSourceArgs?: boolean
 }
 
-function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | readonly PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string }> {
+function normalizePatternList(cfg: string | string[] | ConsiderSpec | ConsiderSpec[] | undefined): { pattern: RegExp, allowedInputTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp, resolveSourceArgs?: boolean }[] {
+	const raw = (cfg === undefined ? defaultConsider : Array.isArray(cfg) ? (cfg.length === 0 ? defaultConsider : cfg) : [cfg])
+		.map(s => typeof s === 'string' ? { pattern: s } : s);
+	return raw.map(s => ({
+		pattern:           typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
+		allowedInputTypes: s.allowedInputTypes ?? [],
+		allowedValues:     typeof s.allowedValues === 'string' ? new RegExp(s.allowedValues) : s.allowedValues,
+		disallowedValues:  typeof s.disallowedValues === 'string' ? new RegExp(s.disallowedValues) : s.disallowedValues,
+		resolveSourceArgs: s.resolveSourceArgs
+	}));
+}
+
+function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string, allowedValues?: RegExp, disallowedValues?: RegExp }> {
 	const raw = cfg === undefined ? defaultPipeCommandFunctions
-		: isArray<PipeCommandFunctionSpec>(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
+		: Array.isArray(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
 			: [cfg];
-	return raw.map(s => ({ pattern: new RegExp(s.pattern), argIdx: s.argIdx, argName: s.argName }));
+	return raw.map(s => ({
+		pattern:          typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
+		argIdx:           s.argIdx,
+		argName:          s.argName,
+		allowedValues:    typeof s.allowedValues === 'string' ? new RegExp(s.allowedValues) : s.allowedValues,
+		disallowedValues: typeof s.disallowedValues === 'string' ? new RegExp(s.disallowedValues) : s.disallowedValues
+	}));
 }
 
 function formatInputSources(inputs: InputSources, inline = true): string | string[] {
@@ -66,15 +82,32 @@ function hasUnknownSource(sources: InputSources): boolean {
 	return sources.some(s => s.types.includes(InputType.Unknown));
 }
 
-function isProblematicForAllowed(sources: InputSources, allowed: InputType[]): boolean {
-	return sources.some(s => s.types.some(t => !allowed.includes(t)));
+function isProblematicForAllowed(sources: InputSources, evalValues: string[], allowedTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp): boolean {
+	if(sources.some(s => s.types.some(t => !allowedTypes.includes(t)))) {
+		return true;
+	}
+	const values = sources.map(s => s.value).concat(evalValues);
+	if(allowedValues !== undefined && values.every(v => v === undefined || !allowedValues.test(String(v)))) {
+		return true;
+	}
+	if(disallowedValues !== undefined && values.some(v => v !== undefined && disallowedValues.test(String(v)))) {
+		return true;
+	}
+	return false;
 }
 
-function getPipeCommandValue(sources: InputSources): string | undefined {
+function getPipeCommandValue(sources: InputSources, allowedValues?: RegExp, disallowedValues?: RegExp): string | undefined {
 	for(const s of sources) {
-		if(typeof s.value === 'string' && s.value.startsWith('|')) {
-			return s.value;
+		if(typeof s.value !== 'string' || !s.value.startsWith('|')) {
+			continue;
 		}
+		if(allowedValues !== undefined && allowedValues.test(s.value)){
+			continue;
+		}
+		if(disallowedValues !== undefined && !disallowedValues.test(s.value)) {
+			continue;
+		}
+		return s.value;
 	}
 	return undefined;
 }
@@ -95,8 +128,8 @@ function resolveFileArgId(vertex: DataflowGraphVertexFunctionCall | undefined, a
 	return FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
 }
 
-function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources): ProblematicInputsResult | undefined {
-	const pipeCmd = getPipeCommandValue(sources);
+function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources, allowedValues?: RegExp, disallowedValues?: RegExp): ProblematicInputsResult | undefined {
+	const pipeCmd = getPipeCommandValue(sources, allowedValues, disallowedValues);
 	if(pipeCmd !== undefined) {
 		return { involvedId: nid, certainty: LintingResultCertainty.Certain, loc, name, sources, pipeCommand: pipeCmd };
 	}
@@ -113,16 +146,16 @@ export interface ProblematicInputsResult extends LintingResult {
 }
 
 export interface ProblematicInputsConfig extends MergeableRecord {
-	consider?:             string | readonly string[]
+	consider?:             string | string[] | ConsiderSpec | ConsiderSpec[]
 	inputFns?:             InputClassifierConfig
-	pipeCommandFunctions?: PipeCommandFunctionSpec | readonly PipeCommandFunctionSpec[]
+	pipeCommandFunctions?: PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
 }
 
 export const PROBLEMATIC_INPUTS = {
 	createSearch: config => {
 		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
 		return Q.fromQuery([
-			...normalizePatternList(config?.consider, defaultConsider).map((n, i) => toQ(n, `fn-${i}`)),
+			...normalizePatternList(config?.consider).map((s, i) => toQ(s.pattern, `fn-${i}`)),
 			...normalizePipeSpecs(config?.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
 		]);
 	},
@@ -130,8 +163,7 @@ export const PROBLEMATIC_INPUTS = {
 		const df = await data.dataflow();
 		const results: ProblematicInputsResult[] = [];
 		const seen          = new Set<NodeId>();
-		const defaultAccept = [InputType.Constant, InputType.DerivedConstant];
-		const considerPats  = normalizePatternList(config?.consider, defaultConsider);
+		const considerPats  = normalizePatternList(config?.consider);
 		const pipePats      = normalizePipeSpecs(config?.pipeCommandFunctions);
 
 		for(const element of elements.getElements()) {
@@ -141,8 +173,8 @@ export const PROBLEMATIC_INPUTS = {
 			}
 			const name       = element.node.lexeme ?? '';
 			const pipeSpec   = pipePats.find(s => s.pattern.test(name));
-			const isConsider = pipeSpec === undefined && considerPats.some(p => p.test(name));
-			if(pipeSpec === undefined && !isConsider) {
+			const consider = pipeSpec === undefined ? considerPats.find(s => s.pattern.test(name)) : undefined;
+			if(pipeSpec === undefined && consider === undefined) {
 				continue;
 			}
 
@@ -155,17 +187,29 @@ export const PROBLEMATIC_INPUTS = {
 					const criterion = SlicingCriterion.fromId(fileArgId);
 					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 					const sources   = all['input-sources']?.results?.[criterion] ?? [];
-					const r         = checkPipeInjection(nid, loc, name, sources);
+					const r         = checkPipeInjection(nid, loc, name, sources, pipeSpec.allowedValues, pipeSpec.disallowedValues);
 					if(r !== undefined) {
 						seen.add(nid);
 						results.push(r);
 					}
 				}
-			} else {
+			} else if(consider !== undefined){
 				const criterion = SlicingCriterion.fromId(nid);
 				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 				const sources   = all['input-sources']?.results?.[criterion] ?? [];
-				if(isProblematicForAllowed(sources, defaultAccept)) {
+				const evalValues: string[] = [];
+				// TODO i'm not sure if this is right and it seems kind of messy :( i want the values from the eval calls
+				if(consider.resolveSourceArgs) {
+					for(const source of sources) {
+						if(source.value === undefined) {
+							const arg = df.graph.idMap?.get(source.id)?.info?.fullLexeme;
+							if(arg !== undefined) {
+								evalValues.push(arg);
+							}
+						}
+					}
+				}
+				if(isProblematicForAllowed(sources, evalValues, consider.allowedInputTypes, consider.allowedValues, consider.disallowedValues)) {
 					seen.add(nid);
 					results.push({ involvedId: nid, certainty: hasUnknownSource(sources) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, loc, name, sources });
 				}

@@ -19,13 +19,8 @@ import { foldAstStateful } from './stateful-fold';
 import type { NodeId } from './node-id';
 import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
-import type { RPipe } from '../nodes/r-pipe';
-import {
-	EmptyArgument,
-	type RFunctionCall,
-	type RNamedFunctionCall,
-	type RUnnamedFunctionCall
-} from '../nodes/r-function-call';
+import { RPipe } from '../nodes/r-pipe';
+import { EmptyArgument, type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall } from '../nodes/r-function-call';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RParameter } from '../nodes/r-parameter';
 import type { RArgument } from '../nodes/r-argument';
@@ -34,7 +29,7 @@ import type { RProject } from '../nodes/r-project';
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
  * @param data - the node to generate an id for
- * @returns a unique id for the given node
+ * @returns    a unique id for the given node
  */
 export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInfo>) => NodeId;
 
@@ -43,13 +38,6 @@ export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInf
  */
 export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++;
-}
-
-/**
- * Generates ids with a fixed prefix and an incrementing counter.
- */
-export function deterministicPrefixIdGenerator(prefix: string, id = 0): () => NodeId {
-	return () => `${prefix}-${id++}`;
 }
 
 /**
@@ -148,10 +136,10 @@ export interface NormalizedAstDecorationConfiguration<OtherInfo> {
 
 /**
  * Covert the given AST into a doubly linked tree while assigning ids (so it stays serializable).
- * @param project - The AST to decorate
- * @param getId - The id generator: must generate a unique id für each passed node
+ * @param     project - The AST to decorate
+ * @param     getId   - The id generator: must generate a unique id für each passed node
+ * @returns           A decorated AST based on the input and the id provider.
  * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
- * @returns A decorated AST based on the input and the id provider.
  */
 export function decorateAst<OtherInfo = NoInfo>(
 	project: RProject<OtherInfo>,
@@ -263,7 +251,7 @@ function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const rhsInfo = rhs.info;
 		rhsInfo.parent = id;
 		rhsInfo.index = 1;
-		if(data.type === RType.Pipe) {
+		if(RPipe.is(data)) {
 			lhsInfo.role = RoleInParent.PipeLhs;
 			rhsInfo.role = RoleInParent.PipeRhs;
 		} else {

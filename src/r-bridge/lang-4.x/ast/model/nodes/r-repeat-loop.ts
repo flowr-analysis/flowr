@@ -21,6 +21,7 @@ export const RRepeatLoop = {
 	name: 'RRepeatLoop',
 	/**
 	 * Type guard for RRepeatLoop nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RRepeatLoop<Info> {
 		return node?.type === RType.RepeatLoop;

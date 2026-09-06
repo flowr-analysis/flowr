@@ -6,7 +6,6 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FlowrConfig } from '../../../../src/config';
 import {
 	FlowrAnalyzerVirtualEnvFilePlugin
@@ -102,13 +101,13 @@ Requires: digest, gtable
 function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 	const ctx = new FlowrAnalyzerContext(
 		FlowrConfig.default(),
-		arraysGroupBy([
+		[
 			new FlowrAnalyzerVirtualEnvFilePlugin(),
 			new FlowrAnalyzerPackageVersionsRvPlugin(),
 			new FlowrAnalyzerPackageVersionsRenvPlugin(),
 			new FlowrAnalyzerPackageVersionsUvrPlugin(),
 			new FlowrAnalyzerPackageVersionsPackratPlugin()
-		], p => p.type)
+		]
 	);
 	ctx.addFile(new FlowrInlineTextFile(name, content));
 	return ctx;

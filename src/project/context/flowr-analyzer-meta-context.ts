@@ -1,7 +1,6 @@
 import type { SemVer } from 'semver';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
-import { assertUnreachable } from '../../util/assert';
+import { resetOnFullInvalidation } from '../cache/flowr-cache';
 import type { RAuthorInfo } from '../../util/r-author';
 import type { RLicenseElementInfo } from '../../util/r-license';
 import type { Package } from '../plugins/package-version-plugins/package';
@@ -125,17 +124,7 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 	}
 
 	receive(event: InvalidationEvent): void {
-		const type = event.type;
-		switch(type) {
-			case InvalidationEventType.Full:
-				this.reset();
-				break;
-			case InvalidationEventType.SingleFileInvalidate:
-				// nothing to do
-				break;
-			default:
-				assertUnreachable(type);
-		}
+		resetOnFullInvalidation(this, event);
 	}
 
 	/**

@@ -1,4 +1,5 @@
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
+import { stringFromLiteral, unescapeRString } from './string/string-constants';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { assertUnreachable, guard } from '../../../util/assert';
 
@@ -64,17 +65,6 @@ export type Value = Lift<
         | ValueFunctionDefinition
 	    | ValueNull
 >;
-export type ValueType<V> = V extends { type: infer T } ? T : never;
-export type ValueTypes = ValueType<Value>;
-
-
-/**
- *
- */
-export function typeOfValue<V extends Value>(value: V): V['type'] {
-	return value.type;
-}
-
 /** Checks whether the given value is the top value */
 // @ts-expect-error -- this is a save cast
 export function isTop<V extends Lift<unknown>>(value: V): value is typeof Top {
@@ -138,7 +128,8 @@ function renderString(value: RStringValue): string {
 
 
 /**
- *
+ * A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well.
+ * @param value - the value to print
  */
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
@@ -183,7 +174,11 @@ export function stringifyValue(value: Lift<Value>): string {
  * abstract interpretation in `src/abstract-interpretation/`.
  */
 export const RValue = {
-	name: 'RValue',
+	name:            'RValue',
+	/** What the escapes in a string literal stand for; see {@link unescapeRString}. */
+	unescapeString:  unescapeRString,
+	/** The string a literal stands for, `undefined` when R would not accept it; see {@link stringFromLiteral}. */
+	ofStringLiteral: stringFromLiteral,
 	/** The number the value stands for, collapsing an interval that admits a single one. */
 	numberOf(this: void, value: Value): number | undefined {
 		if(value.type === 'number') {

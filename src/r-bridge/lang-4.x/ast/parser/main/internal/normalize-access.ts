@@ -12,6 +12,7 @@ import type { RAccess } from '../../../model/nodes/r-access';
 import { normalizeExpressions } from './structure/normalize-expressions';
 import type { RArgument } from '../../../model/nodes/r-argument';
 import type { NamedJsonEntry } from '../../json/format';
+import { RExpressionList } from '../../../model/nodes/r-expression-list';
 
 function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: NormalizerData, operator: '$' | '@' | '[' | '[['): RArgument | typeof EmptyArgument {
 	if(x.length === 0) {
@@ -23,7 +24,7 @@ function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: Normalize
 	} else {
 		const { content, location } = retrieveMetaStructure(x[0].content);
 		const node = normalizeSingleNode({ ...data, currentRange: location, currentLexeme: content }, x[0]) as RNode;
-		guard(node.type !== RType.ExpressionList, () => `expected expression list to be parsed as argument, yet received ${JSON.stringify(node)} for ${JSON.stringify(x)}`);
+		guard(!RExpressionList.is(node), () => `expected expression list to be parsed as argument, yet received ${JSON.stringify(node)} for ${JSON.stringify(x)}`);
 		return {
 			type:     RType.Argument,
 			location: node.location,
@@ -43,7 +44,7 @@ function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: Normalize
  * Tries to normalize the given data as access (e.g., indexing).
  * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
+ * @returns              The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
 export function tryNormalizeAccess(data: NormalizerData, mappedWithName: NamedJsonEntry[]): RAccess | undefined {
 	if(mappedWithName.length < 3) {

@@ -1,5 +1,5 @@
 import { loopyFunctions, onlyLoopsOnce } from '../../control-flow/useless-loop';
-import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
@@ -29,7 +29,7 @@ export const USELESS_LOOP = {
 		const results = elements.getElements().filter(e => {
 			const vertex = dataflow.graph.getVertex(e.node.info.id);
 			return vertex
-				&& FunctionCallVertex.is(vertex)
+				&& DfgVertex.isFunctionCall(vertex)
 				&& vertex.origin !== 'unnamed'
 				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0]);
 		}).filter(loop =>

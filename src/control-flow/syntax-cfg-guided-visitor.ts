@@ -41,7 +41,8 @@ export interface SyntaxCfgGuidedVisitorConfiguration<
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>
 > extends BasicCfgGuidedVisitorConfiguration<ControlFlow> {
-	readonly normalizedAst: Ast;
+	/** the ast the vertices refer to; only the id map is used, so {@link cfgVisitorConfig} can take it from the dataflow graph */
+	readonly normalizedAst: Pick<Ast, 'idMap'>;
 }
 
 /**

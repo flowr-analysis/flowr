@@ -10,7 +10,10 @@ export interface DetailsOptions {
 }
 
 /**
- *
+ * A collapsible `<details>` block, empty content yielding nothing unless `hideIfEmpty` says otherwise.
+ * @param title   - the summary line the block is folded into
+ * @param content - what the block holds
+ * @param options - how to render it, see {@link DetailsOptions}
  */
 export function details(title: string, content: string, { color, open = false, hideIfEmpty = true, prefixInit = '' }: DetailsOptions = {}): string {
 	return hideIfEmpty && content.trim().length === 0 ? '' : `
@@ -27,7 +30,8 @@ export interface BlockOptions {
 }
 
 /**
- *
+ * A callout block of the given type, as GitHub renders them.
+ * @param options - the block's type and content
  */
 export function block({ type, content }: BlockOptions): string {
 	return `
@@ -39,7 +43,10 @@ ${prefixLines(content, '> ')}
 
 
 /**
- *
+ * A section heading with an explicit anchor, so a link to it survives the title being reworded.
+ * @param title  - the heading's text
+ * @param depth  - the heading level, `2` by default
+ * @param anchor - the id to link to, derived from the title by default
  */
 export function section(title: string, depth: 1 | 2 | 3 | 4 | 5 | 6 = 2, anchor = Mermaid.escapeId(title)): string {
 	return `<h${depth} id="${anchor}">${title}</h${depth}>`;

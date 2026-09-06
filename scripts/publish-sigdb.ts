@@ -42,7 +42,7 @@ function haveTool(cmd: string): boolean {
 /** regenerate the committed link file (hashes match the upload) and return the downloadable shard paths */
 async function bundleAssets(tag: string): Promise<string[]> {
 	if(!fs.existsSync(bundleDir)) {
-		throw new Error(`no sigdb bundle at ${bundleDir} -- generate it first (crawlr dump:sigs, then copy into src/data/sigdb)`);
+		throw new Error(`no sigdb bundle at ${bundleDir} -- generate it first with the extractor, then copy into src/data/sigdb`);
 	}
 	// the pointer is written for the same tag we upload the assets to, so the two can never drift
 	const { downloadable } = await writeRemotePointer({ bundleDir, skipVerification: true, tag });

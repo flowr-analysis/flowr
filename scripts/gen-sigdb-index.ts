@@ -11,11 +11,48 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { build } from 'esbuild';
 import { encode, pack, readSigIndex } from './sigdb-index';
+import { template, writePage } from './html-page';
 
+/**
+ * The name ranker as plain script, so this page orders its hits with the very function the playground's
+ * completion uses. The page has no bundler of its own, so the build writes the module into it.
+ */
+async function ranker(): Promise<string> {
+	const bundled = await build({
+		entryPoints: [path.join('src', 'util', 'text', 'name-rank.ts')],
+		bundle:      true,
+		write:       false,
+		format:      'iife',
+		globalName:  'NameRank',
+		target:      'es2022',
+		logLevel:    'error'
+	});
+	return `${bundled.outputFiles[0].text}\nconst rankName = NameRank.rankName;`;
+}
+
+const SiteUrl = 'https://flowr-analysis.github.io/flowr';
 const Target = path.join('wiki', 'sigdb');
 
 const group = (n: number): string => n.toLocaleString('en-US');
+
+/**
+ * The OpenSearch description, used by browsers to offer the page as a search engine
+ */
+const OpenSearchDescription = `<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+	<ShortName>flowR sigdb</ShortName>
+	<Description>Search the R functions flowR knows across base R and CRAN packages.</Description>
+	<InputEncoding>UTF-8</InputEncoding>
+	<!-- browsers pick the first image they can draw, and most of them will not take an svg for this -->
+	<Image height="16" width="16" type="image/png">${SiteUrl}/wiki/img/flowR-mark-red-16.png</Image>
+	<Image height="32" width="32" type="image/png">${SiteUrl}/wiki/img/flowR-mark-red-32.png</Image>
+	<Image height="16" width="16" type="image/svg+xml">${SiteUrl}/wiki/img/flowR-mark-red.svg</Image>
+	<Url type="text/html" method="get" template="${SiteUrl}/wiki/sigdb/?q={searchTerms}"/>
+	<Url type="application/opensearchdescription+xml" rel="self" template="${SiteUrl}/wiki/sigdb/opensearch.xml"/>
+</OpenSearchDescription>
+`;
 
 async function main(): Promise<void> {
 	/* the wiki job copies `wiki/` into the wiki repository, which has no business carrying megabytes;
@@ -31,19 +68,35 @@ async function main(): Promise<void> {
 	}
 	const blobs = encode(index.packages);
 	const kinds = JSON.stringify(Object.fromEntries(index.kinds)).replaceAll('</', '<\\/');
+	/* what flowR states about the names it defines, so a hit can show its signature next to the database's.
+	   `|` separates the words, `no default` and `changes scope` being two of them rather than four */
+	const stated = JSON.stringify(Object.fromEntries([...index.stated].map(([name, entries]) =>
+		[name, entries.map(({ pkg, props, args }) =>
+			[pkg, props.join('|'), (args ?? []).map(([arg, roles]) => arg + ':' + roles.join('|')).join(',')])
+		]))).replaceAll('</', '<\\/');
 	const page = Template
 		.replaceAll('<!--UPDATED-->', index.updated)
 		.replaceAll('<!--PACKAGES-->', group(index.packages.length))
 		.replaceAll('<!--FUNCTIONS-->', group(blobs.count))
+		.replace('<!--RANKER-->', await ranker())
 		.replace('"<!--KINDS-->"', kinds)
+		.replace('"<!--STATED-->"', stated)
+		.replace('"<!--FORMALS-->"', JSON.stringify(Object.fromEntries(index.formals)).replaceAll('</', '<\\/'))
+		.replace('"<!--TOPICS-->"', JSON.stringify(Object.fromEntries(index.topics)).replaceAll('</', '<\\/'))
+		.replaceAll('<!--TOPICS-COMPLETE-->', String(index.topicsComplete))
+		.replace('"<!--GROUPS-->"', JSON.stringify(Object.fromEntries(index.groups)).replaceAll('</', '<\\/'))
+		.replace('"<!--GENERICS-->"', JSON.stringify([...index.generics].sort().join('\n')).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));
 
-	fs.mkdirSync(Target, { recursive: true });
 	const target = path.join(Target, 'index.html');
-	fs.writeFileSync(target, page);
-	console.log(`  wrote ${target} (${group(index.packages.length)} packages, ${group(blobs.count)} names, ${(page.length / 1024 / 1024).toFixed(1)} MB, not committed)`);
+	writePage(target, page);
+	console.log(`  wrote ${target} (${group(index.packages.length)} packages, ${group(blobs.count)} names, ${group(index.stated.size)} flowR signatures, ${group(index.formals.size)} base R signatures, ${(page.length / 1024 / 1024).toFixed(1)} MB, not committed)`);
+
+	const descriptionTarget = path.join(Target, 'opensearch.xml');
+	fs.writeFileSync(descriptionTarget, OpenSearchDescription);
+	console.log(`  wrote ${descriptionTarget}`);
 }
 
-const Template = fs.readFileSync(path.join('scripts', 'landing-sigdb-template.html'), 'utf8');
+const Template = template('landing-sigdb-template.html');
 
 void main();

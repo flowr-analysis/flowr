@@ -3,6 +3,9 @@ name: Mark inactive issues as stale
   schedule:
     - cron: "30 1 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   close-issues:
     runs-on: ubuntu-latest

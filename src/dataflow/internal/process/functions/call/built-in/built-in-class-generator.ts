@@ -1,5 +1,5 @@
-import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -10,9 +10,14 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveListToEnvState } from './built-in-list';
 import { findReturnsEnvState } from './built-in-envir-utils';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
+import { attachClassDeclaration } from './built-in-s-seven-new-generic';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
@@ -23,8 +28,11 @@ export function processClassGenerator<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config?: { readonly classDecl?: ClassDeclarationConfig }
 ): DataflowInformation {
-	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ClassGenerator }).information;
+	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ClassGenerator }).information;
+	attachClassDeclaration(info, rootId, args, config?.classDecl);
+	return info;
 }
 
 /** The method env of a class generator's `public`/`methods` `list(...)` (via {@link resolveListToEnvState}); `undefined` if absent. */
@@ -46,15 +54,15 @@ export function resolveConstructorInstanceEnvState<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>,
 	data:   Pick<DataflowProcessorInformation<never>, 'environment'>
 ): REnvironmentInformation | undefined {
-	if(source.type !== RType.FunctionCall || source.named) {
+	if(!RFunctionCall.is(source) || source.named) {
 		return undefined;
 	}
 	const callee = source.calledFunction;
-	if(callee.type !== RType.Access || (callee.operator !== '$' && callee.operator !== '[[') || callee.accessed.type !== RType.Symbol) {
+	if(!RAccess.is(callee) || (callee.operator !== '$' && callee.operator !== '[[') || !RSymbol.is(callee.accessed)) {
 		return undefined;
 	}
-	const field = callee.access[0] === EmptyArgument ? undefined : callee.access[0]?.value;
-	const fieldName = field?.type === RType.String ? field.content.str : field?.lexeme;
+	const field = RArgument.isEmpty(callee.access[0]) ? undefined : callee.access[0]?.value;
+	const fieldName = RString.is(field) ? field.content.str : field?.lexeme;
 	if(fieldName !== ConstructorField) {
 		return undefined;
 	}

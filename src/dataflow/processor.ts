@@ -1,7 +1,9 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import type { ControlDependency, DataflowInformation } from './info';
+import type { ControlDependency } from './info';
+import { DataflowInformation } from './info';
+import { activeDataflowBudget } from '../gas';
 import type {
 	NormalizedAst,
 	ParentInformation,
@@ -87,6 +89,10 @@ export function processDataflowFor<OtherInfo>(
 	current: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	/* a used-up budget prunes the subtree: the fold stops here, and what was built so far stays the result */
+	if(activeDataflowBudget !== undefined && activeDataflowBudget.step()) {
+		return DataflowInformation.initialize(current.info.id, data);
+	}
 	return (
 		data.processors[current.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof current>
 	)(current, data);

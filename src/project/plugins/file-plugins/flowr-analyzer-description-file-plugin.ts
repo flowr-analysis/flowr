@@ -1,11 +1,9 @@
-import { FlowrAnalyzerFilePlugin } from './flowr-analyzer-file-plugin';
+import { FlowrAnalyzerPatternFilePlugin } from './flowr-analyzer-file-plugin';
 import { SemVer } from 'semver';
-import type { PathLike } from 'fs';
 import { log } from '../../../util/log';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FlowrDescriptionFile } from './files/flowr-description-file';
 import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
-import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 
@@ -30,23 +28,17 @@ export const DescriptionFile = {
 /**
  * This plugin provides support for R `DESCRIPTION` files.
  */
-export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
+export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
 	public readonly description = 'Reads DESCRIPTION files into key-value pairs.';
 	public readonly version = new SemVer('0.1.0');
-	private readonly pattern: RegExp;
 
 	/**
 	 * Creates a new instance of the DESCRIPTION file plugin.
 	 * @param filePattern - The pattern to identify DESCRIPTION files, see {@link DescriptionFilePattern} for the default pattern.
 	 */
 	constructor(filePattern: RegExp = DescriptionFilePattern) {
-		super();
-		this.pattern = filePattern;
-	}
-
-	public applies(file: PathLike): boolean {
-		return this.pattern.test(platformBasename(file.toString()));
+		super(filePattern);
 	}
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrDescriptionFile {

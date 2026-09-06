@@ -15,10 +15,10 @@ import { Dataflow } from '../graph/df-helper';
  * print(y)
  * }
  * ```
- * @example getAllRefsToSymbol('3\@y') returns ['3\@y', '4\@y']
  * @param graph  - Dataflow Graph
  * @param nodeId - NodeId of Symbol to resolve
- * @returns List including the Definitions and References to that definition
+ * @returns      List including the Definitions and References to that definition
+ * @example getAllRefsToSymbol('3\@y') returns ['3\@y', '4\@y']
  */
 export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId[] | undefined {
 	// Get all origins and filter for ones that happen for sure
@@ -30,7 +30,7 @@ export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId
 	const definitiveOrigins = origins.filter(o =>
 		happensInEveryBranch(graph.getVertex(o.id)?.cds)
 	);
-	if(definitiveOrigins.length === 0 ) {
+	if(definitiveOrigins.length === 0) {
 		return undefined;
 	}
 

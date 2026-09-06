@@ -52,11 +52,17 @@ export interface GenericDiffConfiguration {
 	 * The left/first graph may contain more vertices and or edges than the right/second graph.
 	 * However, those which are the same (based on their ids) have to be equal
 	 */
-	readonly rightIsSubgraph?: boolean
+	readonly rightIsSubgraph?:    boolean
 	/**
 	 * Similar to {@link rightIsSubgraph}, but for the left/first graph.
 	 */
-	readonly leftIsSubgraph?:  boolean
+	readonly leftIsSubgraph?:     boolean
+	/**
+	 * Compare the control flow a dataflow graph carries as well.
+	 * Off by default: the control flow is compared through the control flow graph, so a dataflow comparison
+	 * that included it would only be repeating that check on a less readable representation.
+	 */
+	readonly compareControlFlow?: boolean
 }
 
 

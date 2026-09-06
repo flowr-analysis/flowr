@@ -24,14 +24,14 @@ export function assertUnreachable(x: never): never {
 /**
  * Verifies that the given value is not undefined.
  * This especially helps with a `.filter`
+ * @see {@link isUndefined}
+ * @see {@link isNotNull}
  * @example
  * ```ts
  * const values: (number | undefined)[] = [1, 2, undefined, 4];
  * const definedValues: number[] = values.filter(isNotUndefined);
  * // definedValues is now of type number[]
  * ```
- * @see {@link isUndefined}
- * @see {@link isNotNull}
  */
 export function isNotUndefined<T>(this: void, x: T | undefined): x is T {
 	return x !== undefined;
@@ -40,14 +40,14 @@ export function isNotUndefined<T>(this: void, x: T | undefined): x is T {
 /**
  * Verifies that the given value is undefined.
  * This especially helps with a `.filter`
+ * @see {@link isNotUndefined}
+ * @see {@link isNotNull}
  * @example
  * ```ts
  * const values: (number | undefined)[] = [1, 2, undefined, 4];
  * const undefinedValues: undefined[] = values.filter(isUndefined);
  * // undefinedValues is now of type undefined[]
  * ```
- * @see {@link isNotUndefined}
- * @see {@link isNotNull}
  */
 export function isUndefined<T>(this: void, x: T | undefined): x is undefined {
 	return x === undefined;
@@ -56,14 +56,14 @@ export function isUndefined<T>(this: void, x: T | undefined): x is undefined {
 /**
  * Verifies that the given value is not null.
  * This especially helps with a `.filter`
+ * @see {@link isUndefined}
+ * @see {@link isNotUndefined}
  * @example
  * ```ts
  * const values: (number | null)[] = [1, 2, null, 4];
  * const nonNullValues: number[] = values.filter(isNotNull);
  * // nonNullValues is now of type number[]
  * ```
- * @see {@link isUndefined}
- * @see {@link isNotUndefined}
  */
 export function isNotNull<T>(this: void, x: T | null): x is T {
 	return x !== null;
@@ -118,8 +118,8 @@ class GuardError extends Error {
 export type GuardMessage = string | (() => string);
 
 /**
- * @param assertion   - will be asserted
- * @param message     - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
+ * @param assertion - will be asserted
+ * @param message   - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
  * @throws GuardError - if the assertion fails
  */
 export function guard(assertion: unknown | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {

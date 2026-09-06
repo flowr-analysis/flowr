@@ -5,7 +5,7 @@ import { guard } from '../../../../../../../util/assert';
 import type { RParameter } from '../../../../model/nodes/r-parameter';
 import { RawRType, RType } from '../../../../model/type';
 import type { RNode } from '../../../../model/model';
-import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
 
@@ -14,7 +14,7 @@ import type { NamedJsonEntry } from '../../../json/format';
  * Probably directly called by the function definition parser as otherwise, we do not expect to find parameters.
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
- * @returns The parsed parameter or `undefined` if the given object is not a parameter.
+ * @returns    The parsed parameter or `undefined` if the given object is not a parameter.
  */
 export function tryNormalizeParameter(data: NormalizerData, objs: readonly NamedJsonEntry[]): RParameter | undefined {
 	if(objs.length !== 1 && objs.length !== 3) {
@@ -33,7 +33,7 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 
 	const { location, content } = retrieveMetaStructure(symbol.content);
 
-	const delim = defaultValue?.type === RType.Delimiter;
+	const delim = RDelimiter.is(defaultValue);
 
 	return {
 		type:    RType.Parameter,

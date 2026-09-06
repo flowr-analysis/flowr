@@ -4,10 +4,10 @@ import { FlowrConfig } from '../../../../src/config';
 import { type FlowrGasThresholds, GasFeatureKey, type GasHeapStatistics, GasLevel } from '../../../../src/gas';
 import { InvalidationEventType } from '../../../../src/project/cache/flowr-cache';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FlowrAnalyzerGasPlugin } from '../../../../src/project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { PluginType } from '../../../../src/project/plugins/flowr-analyzer-plugin';
 import { SemVer } from 'semver';
+import { withoutLogs } from '../../_helper/log';
 
 /** Returns a fixed level for the given target key; defers (undefined) for all other keys. */
 class FixedLevelGasPlugin extends FlowrAnalyzerGasPlugin {
@@ -33,7 +33,7 @@ function makeContext(plugins: FlowrAnalyzerGasPlugin[], gasFeatures: Record<stri
 		...base,
 		gas: { ...base.gas, features: gasFeatures, heapProvider, ...(thresholds ? { thresholds } : {}) }
 	};
-	return new FlowrAnalyzerContext(config, arraysGroupBy(plugins, p => p.type));
+	return new FlowrAnalyzerContext(config, plugins);
 }
 
 /** A context whose slicer may run for `slicerMs` while everything else may run for `defaultMs`. */
@@ -133,7 +133,7 @@ describe('FlowrAnalyzerGasContext', () => {
 		});
 
 		test('a bare number is not a per-feature entry', () => {
-			assert.isUndefined(FlowrConfig.parse(JSON.stringify({ gas: { thresholds: { timeMs: { slicer: 3 } } } })), 'a feature key must name a pair');
+			assert.isUndefined(withoutLogs(() => FlowrConfig.parse(JSON.stringify({ gas: { thresholds: { timeMs: { slicer: 3 } } } }))), 'a feature key must name a pair');
 		});
 	});
 

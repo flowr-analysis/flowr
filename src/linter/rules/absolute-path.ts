@@ -1,11 +1,4 @@
-import {
-	LintingPrettyPrintContext,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty,
-	type LintQuickFixReplacement
-} from '../linter-format';
+import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -18,7 +11,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
-import { type DataflowGraphVertexFunctionCall, FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -50,7 +43,7 @@ export interface AbsoluteFilePathConfig extends MergeableRecord {
 	 * The set of functions that should additionally be considered as using a file path.
 	 * Entries in this array use the {@link FunctionInfo} format from the dependencies query.
 	 */
-	additionalPathFunctions: FunctionInfo[]
+	additionalPathFunctions: readonly FunctionInfo[]
 	/**
 	 * Which path the relative-path quick fix is built against: `@project` (project root, falling back to the
 	 * script when there is no root), `@script`, `@home`, or a literal directory.
@@ -79,12 +72,14 @@ function inferWd(file: string | undefined, wd: SupportedWd, ctx: ReadOnlyFlowrAn
 
 // this can be improved by respecting raw strings and supporting more scenarios
 function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
-	if(!wd || !str || !RString.is(str)) {
+	const loc = SourceLocation.fromNode(str);
+	if(!wd || !str || !RString.is(str) || loc === undefined) {
+		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
 	return [{
 		type:        'replace',
-		loc:         SourceLocation.fromNode(str) ?? SourceLocation.invalid(),
+		loc,
 		description: `Replace with a relative path to \`${filePath}\``,
 		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
 	}];
@@ -205,7 +200,7 @@ export const ABSOLUTE_PATH = {
 					}
 				} else {
 					const dfNode = dataflow.graph.getVertex(node.info.id);
-					if(FunctionCallVertex.is(dfNode)) {
+					if(DfgVertex.isFunctionCall(dfNode)) {
 						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
 						const strings = handler ? handler(dataflow.graph, dfNode, data.inspectContext()) : [];
 						if(strings) {

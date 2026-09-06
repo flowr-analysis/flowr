@@ -350,7 +350,7 @@ print(x)`, emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10')
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [ { id: '14', when: true }] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '14', when: true }] })
 					.markIdForUnknownSideEffects('18')
 			);
 			assertDataflow(label('Break in condition (for)', ['for-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
@@ -399,7 +399,7 @@ print(x)`,  emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10')
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [ { id: '17', when: true }, { id: '15', when: false } ] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '17', when: true }, { id: '15', when: false }] })
 					.markIdForUnknownSideEffects('21')
 			);
 			assertDataflow(label('Next', ['for-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),

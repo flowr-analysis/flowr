@@ -32,7 +32,7 @@ export interface FileAnalysisRequestMessage extends IdMessageBase {
 	 * If you want to load multiple R files as one, either use this or concatenate the file-contents for the `content`.
 	 */
 	filepath?:        string | readonly string[]
-	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed (and not fully calculated) by default. */
+	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed by default. */
 	cfg?:             boolean
 	/** Controls the serialization of the `results` (and the {@link ControlFlowGraph} if the corresponding flag is set). If missing, we assume _json_. */
 	format?:          'compact' | 'json' | 'n-quads'

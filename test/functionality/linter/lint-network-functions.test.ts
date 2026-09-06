@@ -16,7 +16,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 }
 		);
-		for(const prefix of urlPrefix){
+		for(const prefix of urlPrefix) {
 			/* @ignore-in-wiki */
 			assertLinter(`network function with url prefix: ${prefix}`, parser, `read.csv("${prefix}www.example.com")`,
 				'network-functions',

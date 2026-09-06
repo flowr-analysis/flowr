@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-builder';
 import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
@@ -10,8 +10,10 @@ import { CallTargets } from '../../../src/queries/catalog/call-context-query/ide
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
-import type { CallProps } from '../../../src/dataflow/environments/built-in-props';
-import { CallProp } from '../../../src/dataflow/environments/built-in-props';
+import type { PropSelector } from '../../../src/dataflow/environments/built-in-props';
+import { CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+
+assumeLoadedPackages('svDialogs');
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -40,6 +42,37 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.var('x').filter(VertexType.Use).last(),
 		Q.var('x').filter(VertexType.Use).tail().last(),
 	);
+
+	describe('picking from an empty set', () => {
+		assertSearch('no element to pick', parser, 'x <- 1\nprint(x)\nprint(2)', [],
+			Q.all().filter(RType.Break).first(),
+			Q.all().filter(RType.Break).last(),
+			Q.all().filter(RType.Break).index(0),
+			Q.all().filter(RType.Break).index(3)
+		);
+		assertSearch('index out of range', parser, 'x <- 1\nprint(x)\nprint(2)', [],
+			Q.all().filter(RType.FunctionCall).index(7)
+		);
+		assertSearch('still picks the first when there is something to pick', parser, 'x <- 1\nprint(x)\nprint(2)', ['2@print'],
+			Q.all().filter(RType.FunctionCall).first(),
+			Q.all().filter(RType.FunctionCall).index(0)
+		);
+		assertSearch('still picks the last when there is something to pick', parser, 'x <- 1\nprint(x)\nprint(2)', ['3@print'],
+			Q.all().filter(RType.FunctionCall).last(),
+			Q.all().filter(RType.FunctionCall).index(1)
+		);
+	});
+
+	describe('unique', () => {
+		assertSearch('drops only the duplicates', parser, 'x <- 1\nprint(x)\nprint(2)', ['2@print', '3@print'],
+			Q.all().filter(RType.FunctionCall).merge(Q.all().filter(RType.FunctionCall)).unique(),
+			Q.all().filter(RType.FunctionCall).merge(Q.all().filter(RType.FunctionCall)).merge(Q.all().filter(RType.FunctionCall)).unique()
+		);
+		assertSearch('keeps a set without duplicates', parser, 'x <- 1\nprint(x)\nprint(2)', ['2@print', '3@print'],
+			Q.all().filter(RType.FunctionCall).unique(),
+			Q.all().filter(RType.FunctionCall).unique().unique()
+		);
+	});
 
 	describe('Filters', () => {
 		describe('matches enrichment', () => {
@@ -90,22 +123,22 @@ describe('flowR search', withTreeSitter(parser => {
 		});
 		/* what a call is, rather than what it is called, so that no consumer has to keep a list of names */
 		describe('call properties', () => {
-			const carrying = (props: CallProps, matchType?: 'some' | 'every') =>
+			const carrying = (props: PropSelector, matchType?: 'some' | 'every') =>
 				Q.all().filter({ name: FlowrFilter.CallProps, args: { props, matchType } });
 			const code = 'pdf("a.pdf")\nplot(1)\ndev.off()\nsetwd("/tmp")\nx <- readline("give: ")\nprint(1)';
 
-			assertSearch('asks the user', parser, code, ['5@readline'], carrying(CallProp.User));
-			assertSearch('closes a device', parser, code, ['3@dev.off'], carrying(CallProp.Closes));
+			assertSearch('asks the user', parser, code, ['5@readline'], carrying(SemanticCallTag.User));
+			assertSearch('closes a device', parser, code, ['3@dev.off'], carrying(SemanticCallTag.Closes));
 			assertSearch('sets ambient state', parser, code, ['4@setwd'], carrying(CallProp.Configures));
-			assertSearch('any of several properties', parser, code, ['3@dev.off', '4@setwd'], carrying(CallProp.Closes | CallProp.Configures));
-			assertSearch('every one of them', parser, code, ['3@dev.off'], carrying(CallProp.Closes | CallProp.Graphics, 'every'));
+			assertSearch('any of several properties', parser, code, ['3@dev.off', '4@setwd'], carrying([SemanticCallTag.Closes, CallProp.Configures]));
+			assertSearch('every one of them', parser, code, ['3@dev.off'], carrying([SemanticCallTag.Closes, SemanticCallTag.Graphics], 'every'));
 			/* a definition in the analyzed code shadows the built-in, so the call is no longer the one we labelled */
-			assertSearch('a shadowed built-in states nothing', parser, 'readline <- function(...) "x"\nreadline("give: ")', [], carrying(CallProp.User));
+			assertSearch('a shadowed built-in states nothing', parser, 'readline <- function(...) "x"\nreadline("give: ")', [], carrying(SemanticCallTag.User));
 			/* the call happens before that definition, so it is still the built-in that runs */
-			assertSearch('a redefinition afterwards does not speak for it', parser, 'readline("give: ")\nreadline <- function(...) "x"', ['1@readline'], carrying(CallProp.User));
+			assertSearch('a redefinition afterwards does not speak for it', parser, 'readline("give: ")\nreadline <- function(...) "x"', ['1@readline'], carrying(SemanticCallTag.User));
 			/* attaching a package binds its exports itself, which must not hide what flowR states about them */
-			assertSearch('a call of an attached package', parser, 'library(svDialogs)\nx <- dlgInput("give: ")', ['2@dlgInput'], carrying(CallProp.User));
-			assertSearch('the same call namespaced', parser, 'x <- svDialogs::dlgInput("give: ")', ['1@svDialogs::dlgInput'], carrying(CallProp.User));
+			assertSearch('a call of an attached package', parser, 'library(svDialogs)\nx <- dlgInput("give: ")', ['2@dlgInput'], carrying(SemanticCallTag.User));
+			assertSearch('the same call namespaced', parser, 'x <- svDialogs::dlgInput("give: ")', ['1@svDialogs::dlgInput'], carrying(SemanticCallTag.User));
 		});
 		describe('file path', () => {
 			assertSearch('filter by file path with RegExp', parser,

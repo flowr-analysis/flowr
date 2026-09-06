@@ -6,7 +6,7 @@ import { reconstructToCode, type InlineFull } from '../../../../reconstruct/reco
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { AutoSelectPredicate } from '../../../../reconstruct/auto-select/auto-select-defaults';
 import type { DataflowInformation } from '../../../../dataflow/info';
-import { SourceInlineMap } from '../../../../reconstruct/inline/source-inline-map';
+import { buildSourceInlineMap } from '../../../../reconstruct/inline/source-inline-map';
 
 export interface ReconstructRequiredInput {
 	autoSelectIf?:     AutoSelectPredicate
@@ -38,7 +38,7 @@ function processor(results: { normalize?: NormalizedAst, slice?: SliceResult, da
 		reconstructFiles: input.reconstructFiles,
 		inlineSources:    input.inlineSources,
 		inlineFull:       input.inlineFull,
-		sourceMap:        inline ? SourceInlineMap.build(normalize, (results.dataflow as DataflowInformation).graph) : undefined
+		sourceMap:        inline ? buildSourceInlineMap(normalize, (results.dataflow as DataflowInformation).graph) : undefined
 	}, input.autoSelectIf);
 }
 
@@ -51,6 +51,6 @@ export const NAIVE_RECONSTRUCT = {
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
-	dependencies:  [ 'slice' ],
+	dependencies:  ['slice'],
 	requiredInput: undefined as unknown as ReconstructRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'reconstruct', typeof processor>>;

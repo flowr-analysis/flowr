@@ -11,7 +11,7 @@ import type { RArgument } from '../ast/model/nodes/r-argument';
 import { splitArrayOn } from '../../../util/collections/arrays';
 import { EmptyArgument } from '../ast/model/nodes/r-function-call';
 import type { RSymbol } from '../ast/model/nodes/r-symbol';
-import type { RString } from '../ast/model/nodes/r-string';
+import { RString } from '../ast/model/nodes/r-string';
 import { startAndEndsWith } from '../../../util/text/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
 import { log } from '../../../util/log';
@@ -19,7 +19,7 @@ import type { RProject } from '../ast/model/nodes/r-project';
 import type { ParseStepOutputSingleFile } from '../../parser';
 import { parseLog } from '../ast/parser/json/parser';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import type { RExpressionList } from '../ast/model/nodes/r-expression-list';
+import { RExpressionList } from '../ast/model/nodes/r-expression-list';
 
 export interface TreeSitterInfo {
 	/** id of the tree-sitter node this AST node was created from, used for traceability and linking back to tree-sitter nodes */
@@ -29,7 +29,7 @@ type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
 
 /**
  * @param tree - The tree to normalize
- * @param lax - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
+ * @param lax  - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
  */
 export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tree>[], lax?: boolean): RProject<TreeSitterInfo> {
 	if(lax) {
@@ -40,7 +40,7 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
 	const files: { filePath: string | undefined, root: RExpressionList<TreeSitterInfo> }[] = [];
 	for(const t of tree) {
 		const root = convertTreeNode(t.parsed.rootNode);
-		if(root.type !== RType.ExpressionList) {
+		if(!RExpressionList.is(root)) {
 			throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
 		}
 		files.push({
@@ -147,6 +147,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const body = children.slice(1, -1).map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
 				const remainingComments = linkCommentsToNextNodes(body, comments);
 				const closing = children[children.length - 1];
+				const openText = opening.text;
+				const closeText = closing.text;
 				return {
 					type:     RType.ExpressionList,
 					location: undefined,
@@ -156,14 +158,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						{
 							type:     RType.Symbol,
 							location: makeSourceRange(opening),
-							content:  removeRQuotes(opening.text),
-							lexeme:   opening.text,
+							content:  removeRQuotes(openText),
+							lexeme:   openText,
 							...defaultInfo()
 						}, {
 							type:     RType.Symbol,
 							location: makeSourceRange(closing),
-							content:  removeRQuotes(closing.text),
-							lexeme:   closing.text,
+							content:  removeRQuotes(closeText),
+							lexeme:   closeText,
 							...defaultInfo()
 						}
 					],
@@ -257,12 +259,13 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.UnaryOperator: {
 				const [comments, children] = splitComments(nonErrorChildren(node));
 				const [op, operand] = children;
+				const opText = op.text;
 				return {
 					type:     RType.UnaryOp,
 					operand:  convertTreeNode(operand),
 					location: makeSourceRange(op),
-					operator: op.text,
-					lexeme:   op.text,
+					operator: opText,
+					lexeme:   opText,
 					info:     {
 						...defaultInfo().info,
 						adToks: comments.map(c => c[1]),
@@ -275,11 +278,12 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					break;
 				}
 				const [lhs, int, rhs] = children;
+				const rhsText = rhs.text;
 				return {
 					type:     RType.Symbol,
 					location: makeSourceRange(rhs),
-					content:  Identifier.make(rhs.text, lhs.text, int.text === ':::' ),
-					lexeme:   rhs.text,
+					content:  Identifier.make(rhsText, lhs.text, int.text === ':::'),
+					lexeme:   rhsText,
 					...defaultInfo(),
 					info:     {
 						...defaultInfo().info,
@@ -327,13 +331,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const body = children[2 + variable.length + 1 + sequence.length + 1];
 				const [variableComments, [variableNode]] = splitComments(variable);
 				const [sequenceComments, [sequenceNode]] = splitComments(sequence);
+				const variableText = variableNode.text;
 				return {
 					type:     RType.ForLoop,
 					variable: {
 						type:     RType.Symbol,
 						location: makeSourceRange(variableNode),
-						content:  removeRQuotes(variableNode.text),
-						lexeme:   variableNode.text,
+						content:  removeRQuotes(variableText),
+						lexeme:   variableText,
 						info:     {
 							fullRange:  undefined,
 							adToks:     [],
@@ -394,11 +399,12 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [comments, noCommentrawArgs] = splitComments(rawArgs);
 				const args = splitArrayOn(noCommentrawArgs.slice(1, -1), x => x.type === 'comma');
 				const funcRange = makeSourceRange(func);
+				const funcText = func.text;
 				const mappedArgs = args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>);
 				const call = {
 					arguments: mappedArgs,
 					location:  funcRange,
-					lexeme:    func.text,
+					lexeme:    funcText,
 					...defaultInfo(),
 					info:      {
 						...defaultInfo().info,
@@ -407,11 +413,11 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				};
 				if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
 					let funcNode = convertTreeNode(func) as RSymbol<TreeSitterInfo> | RString<TreeSitterInfo>;
-					if(funcNode.type === RType.String) {
+					if(RString.is(funcNode)) {
 						funcNode = {
 							...funcNode,
 							type:    RType.Symbol,
-							content: removeRQuotes(func.text)
+							content: removeRQuotes(funcText)
 						};
 					}
 					return {
@@ -505,13 +511,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [bracket, ...argsClosing] = nonErrorChildren(content);
 				const [argsComments, argsNoComments] = splitComments(argsClosing.slice(0, -1));
 				const args = splitArrayOn(argsNoComments, x => x.type === 'comma');
+				const bracketText = bracket.text;
 				return {
 					type:     RType.Access,
-					operator: bracket.text as '[' | '[[',
+					operator: bracketText as '[' | '[[',
 					accessed: convertTreeNode(func),
 					access:   args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
 					location: makeSourceRange(bracket),
-					lexeme:   bracket.text,
+					lexeme:   bracketText,
 					info:     {
 						...defaultInfo().info,
 						adToks: argsComments.map(c => c[1]),
@@ -521,25 +528,27 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.ExtractOperator: {
 				const [lhs, operator, rhs] = nonErrorChildren(node);
 				const rhsRange = makeSourceRange(rhs);
+				const rhsText = rhs?.text;
+				const operatorText = operator.text;
 				return {
 					type:     RType.Access,
-					operator: operator.text as '$' | '@',
+					operator: operatorText as '$' | '@',
 					accessed: convertTreeNode(lhs),
 					access:   [{
 						type:     RType.Argument,
 						name:     undefined,
 						value:    convertTreeNode(rhs),
 						location: rhsRange,
-						lexeme:   rhs?.text,
+						lexeme:   rhsText,
 						info:     {
 							fullRange:  rhsRange,
 							adToks:     [],
-							fullLexeme: rhs?.text,
+							fullLexeme: rhsText,
 							tsId:       rhs?.id
 						}
 					}],
 					location: makeSourceRange(operator),
-					lexeme:   operator.text,
+					lexeme:   operatorText,
 					...defaultInfo()
 				};
 			}
@@ -598,7 +607,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					let name = convertTreeNode(nameNode) as RString<TreeSitterInfo> | RSymbol<TreeSitterInfo, string>;
 
 					// unescape argument names
-					if(name.type === RType.String) {
+					if(RString.is(name)) {
 						name = {
 							...name,
 							type:    RType.Symbol,
@@ -608,17 +617,18 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						name.content = name.content.slice(1, -1);
 					}
 					const nameRange = makeSourceRange(nameNode);
+					const nameLexeme = nameNode.text;
 
 					return {
 						type:     RType.Argument,
 						name,
 						value:    valueNode ? convertTreeNode(valueNode) : undefined,
 						location: nameRange,
-						lexeme:   nameNode.text,
+						lexeme:   nameLexeme,
 						info:     {
 							fullRange:  nameRange,
 							adToks:     commentChildren.map(c => c[1]),
-							fullLexeme: nameNode.text,
+							fullLexeme: nameLexeme,
 							tsId:       nameNode.id
 						}
 					};
@@ -677,13 +687,14 @@ function splitComments(nodes: readonly SyntaxNode[]): [comments: SyntaxAndRNode[
 	const others: SyntaxNode[] = [];
 	for(const node of nodes) {
 		if(node.type === TreeSitterType.Comment) {
+			const commentText = node.text;
 			comments.push([node, {
 				type:     RType.Comment,
 				location: makeSourceRange(node),
-				lexeme:   node.text,
+				lexeme:   commentText,
 				info:     {
 					adToks:     [],
-					fullLexeme: node.text,
+					fullLexeme: commentText,
 					tsId:       node.id
 				}
 			}]);
@@ -696,7 +707,7 @@ function splitComments(nodes: readonly SyntaxNode[]): [comments: SyntaxAndRNode[
 
 /**
  * Find the first sibling of the given node that is not a comment, starting from the given node and going to the right.
- * @param snode - the node for which to find the first non-comment sibling
+ * @param snode      - the node for which to find the first non-comment sibling
  * @param knownNexts - cache map from node id to the id of the first non-comment sibling
  */
 function findFirstNonCommentSibling(snode: SyntaxNode, knownNexts: Map<number, SyntaxNode | null>): SyntaxNode | null {
@@ -756,7 +767,7 @@ function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNo
 
 function getNodesUntil(nodes: SyntaxNode[], type: TreeSitterType | string, startIndex = 0): SyntaxNode[] {
 	const ret = [];
-	for(let i = startIndex; i < nodes.length; i++){
+	for(let i = startIndex; i < nodes.length; i++) {
 		if(nodes[i].type === type) {
 			break;
 		}

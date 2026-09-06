@@ -24,6 +24,17 @@ export type Tail2TypesOrUndefined<T extends AnyArray, U = undefined> = T extends
 export type LastOfArray<T extends AnyArray> = T extends [...infer _, infer L] ? L : never;
 
 /**
+ * Whether `value` is an array, narrowing a `readonly T[]` as such rather than to `any[]`.
+ *
+ * `Array.isArray` is declared as `arg is any[]`, which a `readonly T[] | Something` union does not survive:
+ * the array branch loses its element type and the other branch is not narrowed at all. This keeps both.
+ * @param value - what to check
+ */
+export function isArray<T>(value: readonly T[] | unknown): value is readonly T[] {
+	return Array.isArray(value);
+}
+
+/**
  * Splits the array every time the given predicate fires.
  * The element the split appears on will not be included!
  * @example with this we can split on all empty strings:
@@ -72,13 +83,6 @@ export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boo
 		}
 	}
 	return [left, right];
-}
-
-/**
- * {@link partitionArray} for a mutable array.
- */
-export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
-	return partitionArray(arr, predicate);
 }
 
 /**
@@ -155,21 +159,10 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize
  */
 export function arraySum(arr: readonly number[]): number {
 	let sum = 0;
-	for(const elem of arr) {
-		sum += elem;
+	for(let i = 0, n = arr.length; i < n; i++) {
+		sum += arr[i];
 	}
 	return sum;
-}
-
-/**
- * Converts an array into a bag data-structure (in the form of a map mapping the entries/keys to their counts)
- */
-export function array2bag<T>(arr: T[]): Map<T, number> {
-	const result = new Map<T, number>();
-	for(const elem of arr) {
-		result.set(elem, (result.get(elem) ?? 0) + 1);
-	}
-	return result;
 }
 
 /**
@@ -199,10 +192,10 @@ export function arrayEqual<T>(
  *
  * If the number of elements to sample is greater or equal to the number of elements in the list, the list is returned as is.
  * If the number of elements to sample is less than or equal to 0, an empty list is returned.
- * @param list - list of elements
+ * @param list        - list of elements
  * @param sampleCount - number of elements to sample
- * @param rounding - rounding mode to use for the index calculation
- * @returns - a list of elements equidistantly sampled from the input list
+ * @param rounding    - rounding mode to use for the index calculation
+ * @returns           - a list of elements equidistantly sampled from the input list
  */
 export function equidistantSampling<T>(list: readonly T[], sampleCount: number, rounding: 'floor' | 'ceil' = 'ceil'): T[] {
 	if(sampleCount >= list.length) {
@@ -235,11 +228,7 @@ export function cartesianProduct<T>(...arrays: T[][]): T[][] {
 
 /** merge two arrays, removing duplicates */
 export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[] {
-	const result = new Set<T>(left);
-	for(const elem of right) {
-		result.add(elem);
-	}
-	return Array.from(result);
+	return Array.from(new Set<T>(left).union(new Set<T>(right)));
 }
 
 /**
@@ -253,15 +242,5 @@ export function uniqueArray<T>(a: Iterable<T>): T[] {
  * Groups the elements of the given array by the key returned by the given key function.
  */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {
-	const result = new Map<K, T[]>();
-	for(const elem of arr) {
-		const key = keyFn(elem);
-		const group = result.get(key);
-		if(group) {
-			group.push(elem);
-		} else {
-			result.set(key, [elem]);
-		}
-	}
-	return result;
+	return Map.groupBy(arr, keyFn);
 }

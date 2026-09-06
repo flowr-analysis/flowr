@@ -61,17 +61,27 @@ export function infoGraphPath(path: string): string {
 	return path.replace(/(\.json)?$/, m => '-info' + (m || '.json'));
 }
 
-function timeEntry(name: string, measurement: SummarizedMeasurement | undefined): BenchmarkGraphEntry | undefined {
+function timeEntry(name: string, measurement: SummarizedMeasurement | undefined, pick = plotValue): BenchmarkGraphEntry | undefined {
 	if(!measurement?.mean || !measurement?.std) {
 		return undefined;
 	}
 	return {
 		name,
 		unit:  'ms',
-		value: ms(plotValue(measurement)),
+		value: ms(pick(measurement)),
 		range: String(ms(measurement.std)),
 		extra: plotExtra(measurement, 2, 1 / 1e6, 'ms')
 	};
+}
+
+/**
+ * How fast the machine was, from the samples of the fixed synthetic workload. Interference on a shared
+ * runner only ever *adds* time, so the samples are skewed to the right and their mean is the machine plus
+ * whatever else ran beside it. The median holds that off; taking the mean lets a busy runner pass as a
+ * slow machine, and every measurement normalized by it is scaled by that noise instead of freed from it.
+ */
+function calibrationValue(measurement: SummarizedMeasurement): number {
+	return Number.isFinite(measurement.median) && measurement.median > 0 ? measurement.median : plotValue(measurement);
 }
 
 const SigDbPrefix = 'signature database';
@@ -127,7 +137,7 @@ function signatureDatabaseEntries(counts: SigDbCounts | undefined): BenchmarkGra
 
 /**
  * Write the graph output for the ultimate slicer stats to a file
- * @param ultimate - The ultimate slicer stats
+ * @param ultimate        - The ultimate slicer stats
  * @param outputGraphPath - The path to write the graph output to
  */
 export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath: string) {
@@ -145,7 +155,8 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 				continue;
 			}
 			const pointName = point === 'total' ? `total ${name}` : point;
-			const entry = timeEntry(pointName[0].toUpperCase() + pointName.slice(1), measurement);
+			const entry = timeEntry(pointName[0].toUpperCase() + pointName.slice(1), measurement,
+				point === 'calibration' ? calibrationValue : plotValue);
 			if(entry) {
 				data.push(entry);
 			}
@@ -175,6 +186,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 	for(const [name, value] of [
 		['linting rules', features.lintingRules],
 		['queries', features.queries],
+		['plugins', features.plugins],
 		['built-in definitions', features.builtinDefinitions],
 		['built-in definitions (default handler)', features.builtinDefinitionsDefault],
 		['built-in definitions (own handler)', features.builtinDefinitionsCustom],
@@ -187,6 +199,12 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 	for(const [tag, value] of Object.entries(features.lintingRulesByTag)) {
 		if(typeof value === 'number') {
 			data.push({ name: `linting rules (${tag})`, unit: '#', value });
+		}
+	}
+	/* the names ride along in `extra`, so the page can say which plugins a type stands for */
+	for(const [type, names] of Object.entries<readonly string[]>(features.pluginsByType ?? {})) {
+		if(Array.isArray(names)) {
+			data.push({ name: `plugins (${type})`, unit: '#', value: names.length, extra: names.slice().sort().join(', ') });
 		}
 	}
 	data.push({
@@ -206,6 +224,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		['input tokens (normalized)', ultimate.input.numberOfNormalizedTokens],
 		['dataflow vertices', ultimate.dataflow.numberOfNodes],
 		['dataflow edges', ultimate.dataflow.numberOfEdges],
+		['dataflow control flow edges', ultimate.dataflow.numberOfControlFlowEdges],
 		['dataflow calls', ultimate.dataflow.numberOfCalls],
 		['dataflow function definitions', ultimate.dataflow.numberOfFunctionDefinitions],
 		['control flow vertices', ultimate.controlFlow?.numberOfVertices],

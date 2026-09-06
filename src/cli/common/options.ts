@@ -57,6 +57,7 @@ export const benchmarkHelperOptions = [
 	{ name: 'threshold',     alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 	{ name: 'no-extra-phases',           type: Boolean, description: 'Skip the dependencies query, the linter run and the calibration, which cost suite runtime', defaultValue: false },
+	{ name: 'calibrate',                 type: Boolean, description: 'Run the machine calibration workload, which describes the machine and not the file, so only a few files of a suite carry it', defaultValue: false },
 	{ name: 'seed',                      type: String,  description: 'The random seed for sampling the slicing criteria if a maximum is set' },
 ] as const satisfies OptionDefinition[];
 

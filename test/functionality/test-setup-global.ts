@@ -6,7 +6,7 @@ import { jsonReplacer } from '../../src/util/json';
 
 
 /**
- *
+ * Runs once before the whole suite: prepares what every test file assumes to be there.
  */
 export function setup() {
 	try {

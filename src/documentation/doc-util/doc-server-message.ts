@@ -73,7 +73,7 @@ export interface MessagePingPongDocumentationArguments {
 function explainMsg(msg: IdMessageBase, type: 'request' | 'response', desc = '', open = false): string {
 	const bold: (s: string) => string = open ? s => `<b>${s}</b>` : s => s;
 	return `
-<li> ${bold( '<code>' + msg.type + `</code> (${type})`)}
+<li> ${bold('<code>' + msg.type + `</code> (${type})`)}
 <details${open ? ' open' : ''}> 
 
 <summary> Show Details </summary>

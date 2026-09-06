@@ -6,7 +6,7 @@ export const enum SummarizerType {
 	Statistics = 'statistics',
 }
 
-export interface CommonSummarizerConfiguration extends MergeableRecord{
+export interface CommonSummarizerConfiguration extends MergeableRecord {
 	logger: (message: string) => void
 }
 
@@ -43,22 +43,6 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 	 * and produce some kind of "ultimate results".
 	 */
 	public abstract summarizePhase(): Promise<Output>;
-}
-
-/**
- * Converts the summarized measurement to a CSV line.
- */
-export function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
-	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`;
-}
-
-const summarizedKeys = ['min', 'max', 'median', 'mean', 'std', 'total'];
-
-/**
- * Generates the CSV header for summarized measurements.
- */
-export function summarizedMeasurement2CsvHeader(prefix?: string): string {
-	return summarizedKeys.map(k => prefix ? `${prefix}-${k}` : k).join(',');
 }
 
 /**

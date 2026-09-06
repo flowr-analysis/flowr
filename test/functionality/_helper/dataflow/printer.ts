@@ -9,7 +9,8 @@ import type { ControlDependency, ExitPoint } from '../../../../src/dataflow/info
 
 
 /**
- *
+ * A node id as the dataflow test expectations spell it, quoted so it survives being read back.
+ * @param id - the id to print
  */
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {
@@ -27,7 +28,8 @@ export function wrap(id: string | NodeId | undefined): string {
 
 
 /**
- *
+ * Control dependencies as the dataflow test expectations spell them.
+ * @param cds - the dependencies to print, absent for a node under none
  */
 export function wrapControlDependencies(cds: ControlDependency[] | undefined): string {
 	if(cds === undefined) {

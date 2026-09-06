@@ -1,5 +1,11 @@
+/**
+ * `Dataflow` spreads {@link GraphHelper} in, and it is built on this file, so the diff pieces are reached
+ * through the helper itself here; going through `Dataflow` would be a cycle.
+ * @lintIgnore use-instead
+ */
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport, GraphDiff } from '../util/diff-graph';
+import { GraphHelper } from '../dataflow/graph/graph-helper';
+import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../util/diff-graph';
 import { type GenericDiffConfiguration, setDifference } from '../util/diff';
 import { CfgEdge, CfgVertex, type ControlFlowGraph } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
@@ -24,7 +30,7 @@ export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, righ
 function diffDataflowGraphs(ctx: GraphDiffContext<ControlFlowGraph>): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
-	GraphDiff.outgoingEdges(ctx, diffEdges);
+	GraphHelper.diff.outgoingEdges(ctx, diffEdges);
 }
 
 function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
@@ -87,21 +93,12 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 				);
 			}
 		}
-		setDifference(new Set(CfgVertex.getMid(lInfo) ?? []), new Set(CfgVertex.getMid(rInfo) ?? []), {
-			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in attached mid markers. `
-		});
-		setDifference(new Set(CfgVertex.getEnd(lInfo) ?? []), new Set(CfgVertex.getEnd(rInfo) ?? []), {
-			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in attached end markers. `
-		});
-
-		const lRoot = CfgVertex.getRootId(lInfo);
-		const rRoot = CfgVertex.getRootId(rInfo);
-		if(lRoot !== rRoot) {
-			ctx.report.addComment(`Vertex ${id} differs in root. ${ctx.leftname}: ${JSON.stringify(lRoot)} vs ${ctx.rightname}: ${JSON.stringify(rRoot)}`, {
-				tag: 'vertex',
-				id
+		const lTargets = CfgVertex.getCallTargets(lInfo);
+		const rTargets = CfgVertex.getCallTargets(rInfo);
+		if(lTargets !== undefined || rTargets !== undefined) {
+			setDifference(lTargets ?? new Set(), rTargets ?? new Set(), {
+				...ctx,
+				position: `${ctx.position}Vertex ${id} differs in call targets. `
 			});
 		}
 
@@ -140,5 +137,5 @@ function diffEdge(edge: CfgEdge, otherEdge: CfgEdge, ctx: GraphDiffContext<Contr
 }
 
 function diffEdges(ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, lEdges: ReadonlyMap<NodeId, CfgEdge> | undefined, rEdges: ReadonlyMap<NodeId, CfgEdge> | undefined): void {
-	GraphDiff.edges(ctx, id, lEdges, rEdges, diffEdge);
+	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffEdge);
 }

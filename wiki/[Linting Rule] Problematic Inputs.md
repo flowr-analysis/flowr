@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[src/documentation/wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
 <h2 id="problematic-inputs">Problematic inputs&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule is used to detect issues that are related to the performance of the code. For example, inefficient algorithms, unnecessary computations, or unoptimized data structures."><a href='#performance'>![performance](https://img.shields.io/badge/performance-teal) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[src/documen
 This rule is a `best-effort` rule.
  
 Detects uses of dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with '|' indicating a pipe command injection.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L120">src/linter/rules/problematic-inputs.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L121">src/linter/rules/problematic-inputs.ts</a>._
 
 
 ### Configuration
@@ -15,9 +15,9 @@ _This linting rule is implemented in <a href="https://github.com/flowr-analysis/
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `problematic-inputs` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L115"><code>consider</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L116"><code>consider</code></a>\
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L117"><code>pipeCommandFunctions</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L118"><code>pipeCommandFunctions</code></a>\
 
 
 ### Examples
@@ -51,12 +51,12 @@ Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Use of configured dynamic call at 3.2-8; inputs: 5 (type: [param], trace: pure)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: searchTimeMs: 2, processTimeMs: 1\
-_All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: searchTimeMs: 1, processTimeMs: 2\
+_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _3.7 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -92,8 +92,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           }
         ],
         ".meta": {
-          "searchTimeMs": 2,
-          "processTimeMs": 1
+          "searchTimeMs": 1,
+          "processTimeMs": 2
         }
       }
     },

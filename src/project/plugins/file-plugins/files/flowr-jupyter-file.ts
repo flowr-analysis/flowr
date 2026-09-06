@@ -11,8 +11,8 @@ export class FlowrJupyterFile extends FlowrFile {
 	private readonly wrapped: FlowrFileProvider<string>;
 
 	/**
-	 * Prefer the static {@link FlowrRMarkdownFile.from} method
-	 * @param file - the file to load as R Markdown
+	 * Prefer the static {@link FlowrJupyterFile.from} method
+	 * @param file - the file to load as Jupyter
 	 */
 	constructor(file: FlowrFileProvider<string>) {
 		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
@@ -27,7 +27,15 @@ export class FlowrJupyterFile extends FlowrFile {
 		return loadJupyter(this.wrapped.content());
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrJupyterFile): FlowrJupyterFile {
+	/**
+	 * Lifts a file to a {@link FlowrJupyterFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already a Jupyter file
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider<string> | FlowrJupyterFile, role?: FileRole): FlowrJupyterFile {
+		if(role) {
+			file.assignRole(role);
+		}
 		return file instanceof FlowrJupyterFile ? file : new FlowrJupyterFile(file);
 	}
 }

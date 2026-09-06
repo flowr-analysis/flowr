@@ -3,13 +3,15 @@ import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder
 import { EdgeType } from '../../../../src/dataflow/graph/edge';
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { label } from '../../_helper/label';
-import { withTreeSitter, assertDataflow } from '../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+
+assumeLoadedPackages('SoDA');
 
 describe('eval', { concurrent: false }, withTreeSitter(tr => {
 	assertDataflow(label('simple eval use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),

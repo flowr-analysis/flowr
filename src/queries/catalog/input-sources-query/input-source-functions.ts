@@ -1,7 +1,7 @@
 import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
 import type { LinkedInputDeclaration, LinkedInputEntryPoint, LinkedInputObject, NarrowingFunction } from './simple-input-classifier';
 import { InputType } from './simple-input-classifier';
-import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
 
 /** shiny's ui-side control widgets, all taking the id of the `input` entry they feed as their first argument */
@@ -29,14 +29,14 @@ export const LinkedInputObjects: readonly LinkedInputObject[] = [
 ];
 
 /**
- * The functions whose result is bounded no matter what flows in, read back from the {@link CallProp.Narrows}
+ * The functions whose result is bounded no matter what flows in, read back from the {@link SemanticCallTag.Narrows}
  * built-ins: with an {@link ArgProp.Bounds} parameter the result is one of that argument's values (`match.arg`
  * and its `choices`), without one it is a count, an index, or a logical of the call's own making. Label a
  * built-in `Narrows` (in the {@link DefaultBuiltinConfig} or your own definitions) and it shows up here.
  */
 export function narrowingFunctions(index: BuiltInIndex = BuiltInIndex.default()): readonly NarrowingFunction[] {
 	const bounds = new Map(index.params(ArgProp.Bounds).map(p => [Identifier.getName(p.call), p]));
-	return index.with(CallProp.Narrows).map(call => {
+	return index.with(SemanticCallTag.Narrows).map(call => {
 		const bound = bounds.get(Identifier.getName(call));
 		return bound === undefined ? { call } : { call, argName: bound.name, argIdx: bound.index };
 	});

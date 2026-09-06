@@ -4,8 +4,9 @@ import { guard } from '../../../../../../../util/assert';
 import { ensureExpressionList } from '../../normalize-meta';
 import type { RIfThenElse } from '../../../../model/nodes/r-if-then-else';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
-import { RawRType, RType } from '../../../../model/type';
+import { RawRType } from '../../../../model/type';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
@@ -30,7 +31,7 @@ export function tryNormalizeIfThenElse(
 	guard(eT.name === RawRType.Else, () => `expected else token for if-then-else but found ${JSON.stringify(eT)}`);
 
 	const parsedElse = normalizeSingleNode(data, ebT);
-	guard(parsedElse.type !== RType.Delimiter, () => `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify([ifT, lpT, cT, rpT, tT, eT, ebT])}`);
+	guard(!RDelimiter.is(parsedElse), () => `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify([ifT, lpT, cT, rpT, tT, eT, ebT])}`);
 
 	return {
 		...parsedIfThen,

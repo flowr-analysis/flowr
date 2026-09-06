@@ -3,7 +3,7 @@ import { ParseError } from './normalizer-data';
 import { SourceRange } from '../../../../../util/range';
 import { type RawRType, RType } from '../../model/type';
 import type { RNode } from '../../model/model';
-import type { RExpressionList } from '../../model/nodes/r-expression-list';
+import { RExpressionList } from '../../model/nodes/r-expression-list';
 
 /**
  * Given a JSON element, extract the source location of the corresponding element in the R-ast
@@ -16,7 +16,7 @@ export function extractLocation(ast: JsonEntry): SourceRange {
  * The JSON object that represents the input contains various meta-information.
  * This function extracts the meta-information and returns it.
  * @param entry - The JSON object to extract the meta-information from
- * @returns An object containing the passed entry, the location of the corresponding R-ast element, and the content of the passed entry
+ * @returns     An object containing the passed entry, the location of the corresponding R-ast element, and the content of the passed entry
  */
 export function retrieveMetaStructure(entry: JsonEntry): {
 	location: SourceRange
@@ -40,7 +40,7 @@ export function assureTokenType(token: string, expectedName: RawRType): void {
 /**
  * Extract the token-type of the given object. This is based on the knowledge, that all JSON objects created
  * from the R XML have a name attached.
- * @param content  - the JSON object to extract the token-type from
+ * @param content - the JSON object to extract the token-type from
  */
 export function getTokenType(content: JsonEntry): RawRType {
 	return content.token as RawRType;
@@ -81,7 +81,7 @@ export function ensureChildrenAreLhsAndRhsOrdered(first: JsonEntry, second: Json
  * Ensure that the given node is an expression list. If it is not, wrap it in an expression list.
  */
 export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
-	if(node.type !== RType.ExpressionList) {
+	if(!RExpressionList.is(node)) {
 		return {
 			type:     RType.ExpressionList,
 			grouping: undefined,

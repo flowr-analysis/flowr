@@ -1,10 +1,5 @@
-import {
-	LintingPrettyPrintContext,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty
-} from '../linter-format';
+import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -14,7 +9,6 @@ import type { Writable } from 'ts-essentials';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { pMatch } from '../../dataflow/internal/linker';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { Dataflow } from '../../dataflow/graph/df-helper';
@@ -42,7 +36,7 @@ export const STOP_WITH_CALL_ARG = {
 						const origins = Dataflow.origin(dataflow.graph, element.node.info.id);
 						if(isNotUndefined(origins)) {
 							const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
-							if(!builtIn){
+							if(!builtIn) {
 								return false;
 							}
 						}
@@ -55,13 +49,13 @@ export const STOP_WITH_CALL_ARG = {
 							'call.':  'call.',
 							'domain': 'domain'
 						} as const;
-						const mapping = pMatch(fCall.args, stopParamMap);
+						const mapping = FunctionSemantics.call.match.toSpec(fCall.args, stopParamMap);
 						const mappedToStop = mapping.get('call.') ?? [];
 						for(const argId of mappedToStop) {
 							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
 							const values = valueSetGuard(res);
-							if(values?.type === 'set' && values.elements.length !== 0){
-								if(values.elements[0].type === 'logical'){
+							if(values?.type === 'set' && values.elements.length !== 0) {
+								if(values.elements[0].type === 'logical') {
 									return values.elements[0].value;
 								}
 							}

@@ -10,15 +10,12 @@ import { InputType } from '../../../../src/queries/catalog/input-sources-query/s
 import type { ProblematicInputsResult } from '../../../../src/linter/rules/problematic-inputs';
 import { uniqueArray } from '../../../../src/util/collections/arrays';
 import { FlowrConfig } from '../../../../src/config';
+import { writeFilesUnder } from '../../project/plugin/plugin-test-helper';
 
 /** writes the given `name -> content` map below a fresh directory in `root` */
 function writeProject(root: string, name: string, files: Record<string, string>): string {
 	const dir = fs.mkdtempSync(path.join(root, name + '-'));
-	for(const [file, content] of Object.entries(files)) {
-		const target = path.join(dir, file);
-		fs.mkdirSync(path.dirname(target), { recursive: true });
-		fs.writeFileSync(target, content);
-	}
+	writeFilesUnder(dir, files);
 	return dir;
 }
 

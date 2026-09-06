@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 23:37:24 UTC (v2.14.1), please do not edit directly._
 <h2 id="Control-Flow Query">Control-Flow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides the control-flow of the program.\
@@ -23,12 +23,12 @@ In other words, if you have a script simply reading: `if(TRUE) 1 else 2`, the fo
 _Results (prettified and summarized):_
 
 Query: **control-flow** (2ms)\
-&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgbjYoW1wiYFJFeHByZXNzaW9uTGlzdCAoNilgXCJdKVxuICAgIG41W1wiYFJJZlRoZW5FbHNlICg1KVxuIzM0O2lmKFRSVUUpIDEgZWxzZSAyIzM0O2BcIl1cbiAgICBuNS1lW1s1LWVdXVxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbiMzNDtUUlVFIzM0O2BcIl0pXG4gICAgbjIoW1wiYFJFeHByZXNzaW9uTGlzdCAoMilcbiMzNDsxIzM0O2BcIl0pXG4gICAgbjEoW1wiYFJOdW1iZXIgKDEpXG4jMzQ7MSMzNDtgXCJdKVxuICAgIG4yLWVbWzItZV1dXG4gICAgbjQoW1wiYFJFeHByZXNzaW9uTGlzdCAoNClcbiMzNDsyIzM0O2BcIl0pXG4gICAgbjMoW1wiYFJOdW1iZXIgKDMpXG4jMzQ7MiMzNDtgXCJdKVxuICAgIG40LWVbWzQtZV1dXG4gICAgbjYtZVtbNi1lXV1cbiAgICBuNSAtLi0+fFwiRkRcInwgbjZcbiAgICBuMSAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1lIC0uLT58XCJGRFwifCBuMVxuICAgIG4zIC0uLT58XCJGRFwifCBuNFxuICAgIG40LWUgLS4tPnxcIkZEXCJ8IG4zXG4gICAgbjIgLS0+fFwiQ0QgKFRSVUUpXCJ8IG4wXG4gICAgbjQgLS0+fFwiQ0QgKEZBTFNFKVwifCBuMFxuICAgIG4wIC0uLT58XCJGRFwifCBuNVxuICAgIG41LWUgLS4tPnxcIkZEXCJ8IG4yLWVcbiAgICBuNS1lIC0uLT58XCJGRFwifCBuNC1lXG4gICAgbjYtZSAtLi0+fFwiRkRcInwgbjUtZVxuICAgIHN0eWxlIG42IHN0cm9rZTpjeWFuLHN0cm9rZS13aWR0aDo2LjVweDsgICAgc3R5bGUgbjYtZSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
-_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -43,58 +43,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       "timing": 2
     },
     "controlFlow": {
-      "returns": [],
-      "entryPoints": [
-        6
-      ],
-      "exitPoints": [
-        "6-e"
-      ],
-      "breaks": [],
-      "nexts": [],
       "graph": {
         "roots": [
-          6,
-          5,
-          "5-e",
           0,
-          2,
           1,
-          "2-e",
-          4,
-          3,
-          "4-e",
-          "6-e"
+          5
         ],
         "vtxInfos": [
-          [
-            6,
-            [
-              2,
-              6,
-              null,
-              [
-                "6-e"
-              ]
-            ]
-          ],
-          [
-            5,
-            [
-              1,
-              5,
-              [
-                0
-              ],
-              [
-                "5-e"
-              ]
-            ]
-          ],
-          [
-            "5-e",
-            "5-e"
-          ],
           [
             0,
             [
@@ -103,76 +58,24 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             ]
           ],
           [
-            2,
-            [
-              2,
-              2,
-              null,
-              [
-                "2-e"
-              ]
-            ]
-          ],
-          [
             1,
             [
-              2,
+              1,
               1
             ]
           ],
           [
-            "2-e",
-            "2-e"
-          ],
-          [
-            4,
+            5,
             [
-              2,
-              4,
-              null,
-              [
-                "4-e"
-              ]
+              1,
+              5
             ]
-          ],
-          [
-            3,
-            [
-              2,
-              3
-            ]
-          ],
-          [
-            "4-e",
-            "4-e"
-          ],
-          [
-            "6-e",
-            "6-e"
           ]
         ],
         "bbChildren": [],
         "edgeInfos": [
           [
-            5,
-            [
-              [
-                6,
-                0
-              ]
-            ]
-          ],
-          [
-            1,
-            [
-              [
-                2,
-                0
-              ]
-            ]
-          ],
-          [
-            "2-e",
+            0,
             [
               [
                 1,
@@ -181,81 +84,26 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             ]
           ],
           [
-            3,
-            [
-              [
-                4,
-                0
-              ]
-            ]
-          ],
-          [
-            "4-e",
-            [
-              [
-                3,
-                0
-              ]
-            ]
-          ],
-          [
-            2,
-            [
-              [
-                0,
-                [
-                  5,
-                  "TRUE"
-                ]
-              ]
-            ]
-          ],
-          [
-            4,
-            [
-              [
-                0,
-                [
-                  5,
-                  "FALSE"
-                ]
-              ]
-            ]
-          ],
-          [
-            0,
+            1,
             [
               [
                 5,
                 0
               ]
             ]
-          ],
-          [
-            "5-e",
-            [
-              [
-                "2-e",
-                0
-              ],
-              [
-                "4-e",
-                0
-              ]
-            ]
-          ],
-          [
-            "6-e",
-            [
-              [
-                "5-e",
-                0
-              ]
-            ]
           ]
         ],
-        "_mayBB": false
-      }
+        "mayHaveBasicBlocks": false
+      },
+      "entryPoints": [
+        0
+      ],
+      "exitPoints": [
+        5
+      ],
+      "returns": [],
+      "breaks": [],
+      "nexts": []
     }
   },
   ".meta": {
@@ -299,13 +147,13 @@ You can also overwrite the simplification passes to tune the perspective. for ex
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (2ms)\
-&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgc3ViZ3JhcGggbmJiLTAgW0Jsb2NrIGJiLTBdXG4gICAgICAgIGRpcmVjdGlvbiBCVFxuICAgIG4wW1wiYFJMb2dpY2FsICgwKVxuIzM0O1RSVUUjMzQ7YFwiXVxuICAgIG41W1wiYFJJZlRoZW5FbHNlICg1KVxuIzM0O2lmKFRSVUUpIDEgZWxzZSAyIzM0O2BcIl1cbiAgICBuMCAtLi0+IG41XG4gICAgbjZbXCJgUkV4cHJlc3Npb25MaXN0ICg2KWBcIl1cbiAgICBuNSAtLi0+IG42XG4gICAgZW5kXG4gICAgc3ViZ3JhcGggbmJiLTItZSBbQmxvY2sgYmItMi1lXVxuICAgICAgICBkaXJlY3Rpb24gQlRcbiAgICBuMi1lW1syLWVdXVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4jMzQ7MSMzNDtgXCJdXG4gICAgbjItZSAtLi0+IG4xXG4gICAgbjJbXCJgUkV4cHJlc3Npb25MaXN0ICgyKVxuIzM0OzEjMzQ7YFwiXVxuICAgIG4xIC0uLT4gbjJcbiAgICBlbmRcbiAgICBzdWJncmFwaCBuYmItNC1lIFtCbG9jayBiYi00LWVdXG4gICAgICAgIGRpcmVjdGlvbiBCVFxuICAgIG40LWVbWzQtZV1dXG4gICAgbjNbXCJgUk51bWJlciAoMylcbiMzNDsyIzM0O2BcIl1cbiAgICBuNC1lIC0uLT4gbjNcbiAgICBuNFtcImBSRXhwcmVzc2lvbkxpc3QgKDQpXG4jMzQ7MiMzNDtgXCJdXG4gICAgbjMgLS4tPiBuNFxuICAgIGVuZFxuICAgIHN1YmdyYXBoIG5iYi02LWUgW0Jsb2NrIGJiLTYtZV1cbiAgICAgICAgZGlyZWN0aW9uIEJUXG4gICAgbjYtZVtbNi1lXV1cbiAgICBuNS1lW1s1LWVdXVxuICAgIG42LWUgLS4tPiBuNS1lXG4gICAgZW5kXG4gICAgbmJiLTYtZSAtLi0+fFwiRkRcInwgbmJiLTItZVxuICAgIG5iYi02LWUgLS4tPnxcIkZEXCJ8IG5iYi00LWVcbiAgICBuYmItMi1lIC0tPnxcIkNEIChUUlVFKVwifCBuYmItMFxuICAgIG5iYi00LWUgLS0+fFwiQ0QgKEZBTFNFKVwifCBuYmItMFxuICAgIHN0eWxlIG5iYi0wIHN0cm9rZTpjeWFuLHN0cm9rZS13aWR0aDo2LjVweDsgICAgc3R5bGUgbmJiLTYtZSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+Query: **control-flow** (1ms)\
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgc3ViZ3JhcGggbmJiLTAgW0Jsb2NrIGJiLTBdXG4gICAgICAgIGRpcmVjdGlvbiBURFxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbioqVFJVRSoqYFwiXSlcbiAgICBuMVtcImBSTnVtYmVyICgxKVxuKioxKipgXCJdXG4gICAgbjAgLS0+IG4xXG4gICAgbjVbXCJgUklmVGhlbkVsc2UgKDUpXG4qKmlmKFRSVUUpIDEgZWxzZSAyKipgXCJdXG4gICAgbjEgLS0+IG41XG4gICAgZW5kXG4gICAgc3R5bGUgbmJiLTAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuYmItMCBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.9 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -317,7 +165,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "control-flow": {
     ".meta": {
-      "timing": 2
+      "timing": 1
     },
     "controlFlow": {
       "returns": [],
@@ -325,16 +173,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         "bb-0"
       ],
       "exitPoints": [
-        "bb-6-e"
+        "bb-0"
       ],
       "breaks": [],
       "nexts": [],
       "graph": {
         "roots": [
-          "bb-0",
-          "bb-2-e",
-          "bb-4-e",
-          "bb-6-e"
+          "bb-0"
         ],
         "vtxInfos": [
           [
@@ -349,211 +194,37 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
                 ],
                 [
                   1,
-                  5,
-                  [
-                    0
-                  ],
-                  [
-                    "5-e"
-                  ]
-                ],
-                [
-                  2,
-                  6,
-                  null,
-                  [
-                    "6-e"
-                  ]
-                ]
-              ]
-            ]
-          ],
-          [
-            "bb-2-e",
-            [
-              3,
-              "bb-2-e",
-              [
-                "2-e",
-                [
-                  2,
                   1
                 ],
                 [
-                  2,
-                  2,
-                  null,
-                  [
-                    "2-e"
-                  ]
+                  1,
+                  5
                 ]
-              ]
-            ]
-          ],
-          [
-            "bb-4-e",
-            [
-              3,
-              "bb-4-e",
-              [
-                "4-e",
-                [
-                  2,
-                  3
-                ],
-                [
-                  2,
-                  4,
-                  null,
-                  [
-                    "4-e"
-                  ]
-                ]
-              ]
-            ]
-          ],
-          [
-            "bb-6-e",
-            [
-              3,
-              "bb-6-e",
-              [
-                "6-e",
-                "5-e"
               ]
             ]
           ]
         ],
         "bbChildren": [
           [
-            6,
+            0,
+            "bb-0"
+          ],
+          [
+            1,
             "bb-0"
           ],
           [
             5,
             "bb-0"
-          ],
-          [
-            "5-e",
-            "bb-6-e"
-          ],
-          [
-            0,
-            "bb-0"
-          ],
-          [
-            2,
-            "bb-2-e"
-          ],
-          [
-            1,
-            "bb-2-e"
-          ],
-          [
-            "2-e",
-            "bb-2-e"
-          ],
-          [
-            4,
-            "bb-4-e"
-          ],
-          [
-            3,
-            "bb-4-e"
-          ],
-          [
-            "4-e",
-            "bb-4-e"
-          ],
-          [
-            "6-e",
-            "bb-6-e"
           ]
         ],
-        "edgeInfos": [
-          [
-            "bb-6-e",
-            [
-              [
-                "bb-2-e",
-                0
-              ],
-              [
-                "bb-4-e",
-                0
-              ]
-            ]
-          ],
-          [
-            "bb-2-e",
-            [
-              [
-                "bb-0",
-                [
-                  5,
-                  "TRUE"
-                ]
-              ]
-            ]
-          ],
-          [
-            "bb-4-e",
-            [
-              [
-                "bb-0",
-                [
-                  5,
-                  "FALSE"
-                ]
-              ]
-            ]
-          ]
-        ],
-        "revEdgeInfos": [
-          [
-            "bb-0",
-            [
-              [
-                "bb-2-e",
-                [
-                  5,
-                  "TRUE"
-                ]
-              ],
-              [
-                "bb-4-e",
-                [
-                  5,
-                  "FALSE"
-                ]
-              ]
-            ]
-          ],
-          [
-            "bb-2-e",
-            [
-              [
-                "bb-6-e",
-                0
-              ]
-            ]
-          ],
-          [
-            "bb-4-e",
-            [
-              [
-                "bb-6-e",
-                0
-              ]
-            ]
-          ]
-        ],
-        "_mayBB": true
+        "edgeInfos": [],
+        "mayHaveBasicBlocks": true
       }
     }
   },
   ".meta": {
-    "timing": 2
+    "timing": 1
   }
 }
 ```
@@ -575,52 +246,23 @@ this produces:
 
 
 ```mermaid
-flowchart RL
+flowchart LR
     subgraph nbb-0 [Block bb-0]
-        direction RL
-    n0["`RLogical (0)
-#34;TRUE#34;`"]
-    n5["`RIfThenElse (5)
-#34;if(TRUE) 1 else 2#34;`"]
-    n0 -.-> n5
-    n6["`RExpressionList (6)`"]
-    n5 -.-> n6
-    end
-    subgraph nbb-2-e [Block bb-2-e]
-        direction RL
-    n2-e[[2-e]]
+        direction LR
+    n0(["`RLogical (0)
+**TRUE**`"])
     n1["`RNumber (1)
-#34;1#34;`"]
-    n2-e -.-> n1
-    n2["`RExpressionList (2)
-#34;1#34;`"]
-    n1 -.-> n2
+**1**`"]
+    n0 --> n1
+    n5["`RIfThenElse (5)
+**if(TRUE) 1 else 2**`"]
+    n1 --> n5
     end
-    subgraph nbb-4-e [Block bb-4-e]
-        direction RL
-    n4-e[[4-e]]
-    n3["`RNumber (3)
-#34;2#34;`"]
-    n4-e -.-> n3
-    n4["`RExpressionList (4)
-#34;2#34;`"]
-    n3 -.-> n4
-    end
-    subgraph nbb-6-e [Block bb-6-e]
-        direction RL
-    n6-e[[6-e]]
-    n5-e[[5-e]]
-    n6-e -.-> n5-e
-    end
-    nbb-6-e -.->|"FD"| nbb-2-e
-    nbb-6-e -.->|"FD"| nbb-4-e
-    nbb-2-e -->|"CD (TRUE)"| nbb-0
-    nbb-4-e -->|"CD (FALSE)"| nbb-0
-    style nbb-0 stroke:cyan,stroke-width:6.5px;    style nbb-6-e stroke:green,stroke-width:6.5px;
+    style nbb-0 stroke:cyan,stroke-width:6.5px;    style nbb-0 stroke:green,stroke-width:6.5px;
 ```
 
 	
-_(The analysis required _1.9 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _2.0 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 	)_
 
@@ -653,12 +295,12 @@ If, on the other hand, you want to prune dead code edges:
 _Results (prettified and summarized):_
 
 Query: **control-flow** (2ms)\
-&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgbjYoW1wiYFJFeHByZXNzaW9uTGlzdCAoNilgXCJdKVxuICAgIG41W1wiYFJJZlRoZW5FbHNlICg1KVxuIzM0O2lmKFRSVUUpIDEgZWxzZSAyIzM0O2BcIl1cbiAgICBuNS1lW1s1LWVdXVxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbiMzNDtUUlVFIzM0O2BcIl0pXG4gICAgbjIoW1wiYFJFeHByZXNzaW9uTGlzdCAoMilcbiMzNDsxIzM0O2BcIl0pXG4gICAgbjEoW1wiYFJOdW1iZXIgKDEpXG4jMzQ7MSMzNDtgXCJdKVxuICAgIG4yLWVbWzItZV1dXG4gICAgbjQoW1wiYFJFeHByZXNzaW9uTGlzdCAoNClcbiMzNDsyIzM0O2BcIl0pXG4gICAgbjMoW1wiYFJOdW1iZXIgKDMpXG4jMzQ7MiMzNDtgXCJdKVxuICAgIG40LWVbWzQtZV1dXG4gICAgbjYtZVtbNi1lXV1cbiAgICBuNSAtLi0+fFwiRkRcInwgbjZcbiAgICBuMSAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1lIC0uLT58XCJGRFwifCBuMVxuICAgIG4zIC0uLT58XCJGRFwifCBuNFxuICAgIG40LWUgLS4tPnxcIkZEXCJ8IG4zXG4gICAgbjIgLS0+fFwiQ0QgKFRSVUUpXCJ8IG4wXG4gICAgbjAgLS4tPnxcIkZEXCJ8IG41XG4gICAgbjUtZSAtLi0+fFwiRkRcInwgbjItZVxuICAgIG41LWUgLS4tPnxcIkZEXCJ8IG40LWVcbiAgICBuNi1lIC0uLT58XCJGRFwifCBuNS1lXG4gICAgc3R5bGUgbjYgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNi1lIHN0cm9rZTpncmVlbixzdHJva2Utd2lkdGg6Ni41cHg7IiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19\
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
 _All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.1 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -675,56 +317,20 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "controlFlow": {
       "returns": [],
       "entryPoints": [
-        6
+        0
       ],
       "exitPoints": [
-        "6-e"
+        5
       ],
       "breaks": [],
       "nexts": [],
       "graph": {
         "roots": [
-          6,
-          5,
-          "5-e",
           0,
-          2,
           1,
-          "2-e",
-          4,
-          3,
-          "4-e",
-          "6-e"
+          5
         ],
         "vtxInfos": [
-          [
-            6,
-            [
-              2,
-              6,
-              null,
-              [
-                "6-e"
-              ]
-            ]
-          ],
-          [
-            5,
-            [
-              1,
-              5,
-              [
-                0
-              ],
-              [
-                "5-e"
-              ]
-            ]
-          ],
-          [
-            "5-e",
-            "5-e"
-          ],
           [
             0,
             [
@@ -733,76 +339,24 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             ]
           ],
           [
-            2,
-            [
-              2,
-              2,
-              null,
-              [
-                "2-e"
-              ]
-            ]
-          ],
-          [
             1,
             [
-              2,
+              1,
               1
             ]
           ],
           [
-            "2-e",
-            "2-e"
-          ],
-          [
-            4,
+            5,
             [
-              2,
-              4,
-              null,
-              [
-                "4-e"
-              ]
+              1,
+              5
             ]
-          ],
-          [
-            3,
-            [
-              2,
-              3
-            ]
-          ],
-          [
-            "4-e",
-            "4-e"
-          ],
-          [
-            "6-e",
-            "6-e"
           ]
         ],
         "bbChildren": [],
         "edgeInfos": [
           [
-            5,
-            [
-              [
-                6,
-                0
-              ]
-            ]
-          ],
-          [
-            1,
-            [
-              [
-                2,
-                0
-              ]
-            ]
-          ],
-          [
-            "2-e",
+            0,
             [
               [
                 1,
@@ -811,68 +365,16 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             ]
           ],
           [
-            3,
-            [
-              [
-                4,
-                0
-              ]
-            ]
-          ],
-          [
-            "4-e",
-            [
-              [
-                3,
-                0
-              ]
-            ]
-          ],
-          [
-            2,
-            [
-              [
-                0,
-                [
-                  5,
-                  "TRUE"
-                ]
-              ]
-            ]
-          ],
-          [
-            0,
+            1,
             [
               [
                 5,
                 0
               ]
             ]
-          ],
-          [
-            "5-e",
-            [
-              [
-                "2-e",
-                0
-              ],
-              [
-                "4-e",
-                0
-              ]
-            ]
-          ],
-          [
-            "6-e",
-            [
-              [
-                "5-e",
-                0
-              ]
-            ]
           ]
         ],
-        "_mayBB": false
+        "mayHaveBasicBlocks": false
       }
     }
   },
@@ -899,39 +401,20 @@ this produces:
 
 
 ```mermaid
-flowchart RL
-    n6(["`RExpressionList (6)`"])
-    n5["`RIfThenElse (5)
-#34;if(TRUE) 1 else 2#34;`"]
-    n5-e[[5-e]]
+flowchart LR
     n0(["`RLogical (0)
-#34;TRUE#34;`"])
-    n2(["`RExpressionList (2)
-#34;1#34;`"])
-    n1(["`RNumber (1)
-#34;1#34;`"])
-    n2-e[[2-e]]
-    n4(["`RExpressionList (4)
-#34;2#34;`"])
-    n3(["`RNumber (3)
-#34;2#34;`"])
-    n4-e[[4-e]]
-    n6-e[[6-e]]
-    n5 -.->|"FD"| n6
-    n1 -.->|"FD"| n2
-    n2-e -.->|"FD"| n1
-    n3 -.->|"FD"| n4
-    n4-e -.->|"FD"| n3
-    n2 -->|"CD (TRUE)"| n0
-    n0 -.->|"FD"| n5
-    n5-e -.->|"FD"| n2-e
-    n5-e -.->|"FD"| n4-e
-    n6-e -.->|"FD"| n5-e
-    style n6 stroke:cyan,stroke-width:6.5px;    style n6-e stroke:green,stroke-width:6.5px;
+**TRUE**`"])
+    n1["`RNumber (1)
+**1**`"]
+    n5["`RIfThenElse (5)
+**if(TRUE) 1 else 2**`"]
+    n0 -->|"flows to"| n1
+    n1 -->|"flows to"| n5
+    style n0 stroke:cyan,stroke-width:6.5px;    style n5 stroke:green,stroke-width:6.5px;
 ```
 
 	
-_(The analysis required _1.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _1.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `analyze-dead-code` .
 	)_
 
@@ -964,13 +447,13 @@ Or, completely remove dead code:
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (2ms)\
-&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgbjYoW1wiYFJFeHByZXNzaW9uTGlzdCAoNilgXCJdKVxuICAgIG41W1wiYFJJZlRoZW5FbHNlICg1KVxuIzM0O2lmKFRSVUUpIDEgZWxzZSAyIzM0O2BcIl1cbiAgICBuNS1lW1s1LWVdXVxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbiMzNDtUUlVFIzM0O2BcIl0pXG4gICAgbjIoW1wiYFJFeHByZXNzaW9uTGlzdCAoMilcbiMzNDsxIzM0O2BcIl0pXG4gICAgbjEoW1wiYFJOdW1iZXIgKDEpXG4jMzQ7MSMzNDtgXCJdKVxuICAgIG4yLWVbWzItZV1dXG4gICAgbjYtZVtbNi1lXV1cbiAgICBuNSAtLi0+fFwiRkRcInwgbjZcbiAgICBuMSAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1lIC0uLT58XCJGRFwifCBuMVxuICAgIG4yIC0tPnxcIkNEIChUUlVFKVwifCBuMFxuICAgIG4wIC0uLT58XCJGRFwifCBuNVxuICAgIG41LWUgLS4tPnxcIkZEXCJ8IG4yLWVcbiAgICBuNi1lIC0uLT58XCJGRFwifCBuNS1lXG4gICAgc3R5bGUgbjYgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNi1lIHN0cm9rZTpncmVlbixzdHJva2Utd2lkdGg6Ni41cHg7IiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+Query: **control-flow** (1ms)\
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.8 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -982,58 +465,25 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "control-flow": {
     ".meta": {
-      "timing": 2
+      "timing": 1
     },
     "controlFlow": {
       "returns": [],
       "entryPoints": [
-        6
+        0
       ],
       "exitPoints": [
-        "6-e"
+        5
       ],
       "breaks": [],
       "nexts": [],
       "graph": {
         "roots": [
-          6,
-          5,
-          "5-e",
           0,
-          2,
           1,
-          "2-e",
-          "6-e"
+          5
         ],
         "vtxInfos": [
-          [
-            6,
-            [
-              2,
-              6,
-              null,
-              [
-                "6-e"
-              ]
-            ]
-          ],
-          [
-            5,
-            [
-              1,
-              5,
-              [
-                0
-              ],
-              [
-                "5-e"
-              ]
-            ]
-          ],
-          [
-            "5-e",
-            "5-e"
-          ],
           [
             0,
             [
@@ -1042,113 +492,24 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             ]
           ],
           [
-            2,
-            [
-              2,
-              2,
-              null,
-              [
-                "2-e"
-              ]
-            ]
-          ],
-          [
             1,
             [
-              2,
+              1,
               1
             ]
           ],
           [
-            "2-e",
-            "2-e"
-          ],
-          [
-            "6-e",
-            "6-e"
+            5,
+            [
+              1,
+              5
+            ]
           ]
         ],
         "bbChildren": [],
         "edgeInfos": [
           [
-            5,
-            [
-              [
-                6,
-                0
-              ]
-            ]
-          ],
-          [
-            1,
-            [
-              [
-                2,
-                0
-              ]
-            ]
-          ],
-          [
-            "2-e",
-            [
-              [
-                1,
-                0
-              ]
-            ]
-          ],
-          [
-            2,
-            [
-              [
-                0,
-                [
-                  5,
-                  "TRUE"
-                ]
-              ]
-            ]
-          ],
-          [
             0,
-            [
-              [
-                5,
-                0
-              ]
-            ]
-          ],
-          [
-            "5-e",
-            [
-              [
-                "2-e",
-                0
-              ]
-            ]
-          ],
-          [
-            "6-e",
-            [
-              [
-                "5-e",
-                0
-              ]
-            ]
-          ]
-        ],
-        "revEdgeInfos": [
-          [
-            6,
-            [
-              [
-                5,
-                0
-              ]
-            ]
-          ],
-          [
-            2,
             [
               [
                 1,
@@ -1160,57 +521,18 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             1,
             [
               [
-                "2-e",
-                0
-              ]
-            ]
-          ],
-          [
-            0,
-            [
-              [
-                2,
-                [
-                  5,
-                  "TRUE"
-                ]
-              ]
-            ]
-          ],
-          [
-            5,
-            [
-              [
-                0,
-                0
-              ]
-            ]
-          ],
-          [
-            "2-e",
-            [
-              [
-                "5-e",
-                0
-              ]
-            ]
-          ],
-          [
-            "5-e",
-            [
-              [
-                "6-e",
+                5,
                 0
               ]
             ]
           ]
         ],
-        "_mayBB": false
+        "mayHaveBasicBlocks": false
       }
     }
   },
   ".meta": {
-    "timing": 2
+    "timing": 1
   }
 }
 ```
@@ -1232,31 +554,20 @@ this produces:
 
 
 ```mermaid
-flowchart RL
-    n6(["`RExpressionList (6)`"])
-    n5["`RIfThenElse (5)
-#34;if(TRUE) 1 else 2#34;`"]
-    n5-e[[5-e]]
+flowchart LR
     n0(["`RLogical (0)
-#34;TRUE#34;`"])
-    n2(["`RExpressionList (2)
-#34;1#34;`"])
-    n1(["`RNumber (1)
-#34;1#34;`"])
-    n2-e[[2-e]]
-    n6-e[[6-e]]
-    n5 -.->|"FD"| n6
-    n1 -.->|"FD"| n2
-    n2-e -.->|"FD"| n1
-    n2 -->|"CD (TRUE)"| n0
-    n0 -.->|"FD"| n5
-    n5-e -.->|"FD"| n2-e
-    n6-e -.->|"FD"| n5-e
-    style n6 stroke:cyan,stroke-width:6.5px;    style n6-e stroke:green,stroke-width:6.5px;
+**TRUE**`"])
+    n1["`RNumber (1)
+**1**`"]
+    n5["`RIfThenElse (5)
+**if(TRUE) 1 else 2**`"]
+    n0 -->|"flows to"| n1
+    n1 -->|"flows to"| n5
+    style n0 stroke:cyan,stroke-width:6.5px;    style n5 stroke:green,stroke-width:6.5px;
 ```
 
 	
-_(The analysis required _1.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _1.6 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `analyze-dead-code`, `remove-dead-code` .
 	)_
 

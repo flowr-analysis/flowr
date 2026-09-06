@@ -35,9 +35,9 @@ function obtainDetailedInfos(): Map<string, TestLabel[]> | undefined {
 }
 
 const supportedSymbolMap: Map<string, string> = new Map([
-	['not',       '🔴' ],
-	['partially', '🔶' ],
-	['fully',     '🟩' ]
+	['not',       '🔴'],
+	['partially', '🔶'],
+	['fully',     '🟩']
 ]);
 
 function getTestDetails(info: CapabilityInformation, capability: FlowrCapability) {

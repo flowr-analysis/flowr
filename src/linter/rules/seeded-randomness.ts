@@ -15,7 +15,7 @@ import { FlowrFilter } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
 import { NodeValue } from '../../dataflow/eval/resolve/node-value';
@@ -28,8 +28,9 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { CallProp } from '../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -45,7 +46,7 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	/**
 	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
 	 */
-	randomnessConsumers: string[]
+	randomnessConsumers: readonly string[]
 }
 
 const RandomnessProducers: SeededRandomnessConfig['randomnessProducers'] = [
@@ -118,7 +119,7 @@ export const SEEDED_RANDOMNESS = {
 						if(isConstantArgument(dataflow.graph, f, 0, data.inspectContext())) {
 							const fCds = new Set(f.cds).difference(cds);
 							metadata.callsWithFunctionProducers++;
-							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)){
+							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)) {
 								return [];
 							} else {
 								for(const f of fCds) {
@@ -134,7 +135,7 @@ export const SEEDED_RANDOMNESS = {
 					for(const a of assignment ?? []) {
 						const argIdx = assignmentArgIndexes.get(Identifier.getName(a.name)) as number;
 						const dest = FunctionArgument.getReference(a.args[argIdx]);
-						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
+						if(dest !== undefined && assignmentProducers.has(NodeId.recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
 							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, data.inspectContext())) {
 								const aCds = new Set(a.cds).difference(cds);
@@ -160,9 +161,13 @@ export const SEEDED_RANDOMNESS = {
 					if(cdsOfProduces.size > 0) {
 						metadata.callsWithOtherBranchProducers++;
 					}
+					/* a call within a function body is seeded by whatever its callers did first, which the control
+					   flow of this body does not show: `set.seed(1); sapply(1:3, function(i) runif(1))` is seeded.
+					   Only a call the program itself reaches can be stated as unseeded for certain. */
+					const nested = !dataflow.graph.isRoot(element.searchElement.node.info.id);
 					return [{
 						involvedId: element.involvedId,
-						certainty:  cdsOfProduces.size > 0 ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+						certainty:  cdsOfProduces.size > 0 || nested ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
 						function:   element.target,
 						loc:        element.loc
 					}];
@@ -174,7 +179,7 @@ export const SEEDED_RANDOMNESS = {
 		defaultConfig: {
 			randomnessProducers: RandomnessProducers,
 			randomnessConsumers: [
-				...BuiltInIndex.default().with(CallProp.Random).map(Identifier.getName)
+				...BuiltInIndex.default().with(SemanticCallTag.Random).map(Identifier.getName)
 					.filter(n => !RandomnessProducers.some(p => p.name === n)),
 				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
 				'rxor', 'rmvnorm', 'randomForest',
@@ -200,7 +205,7 @@ function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assi
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
-	const values = NodeValue.inGraph.setOf(args[argIndex], graph, ctx, { resolve: VariableResolve.Alias });
+	const values = NodeValue.setOf(args[argIndex], Resolve.info(graph, ctx), { resolve: VariableResolve.Alias });
 	return values?.elements.every(v =>
 		v.type === 'number' ||
 		v.type === 'logical' ||

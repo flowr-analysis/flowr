@@ -14,7 +14,7 @@
  * findByPrefixIfUnique('', [ 'hello', 'hell' ]) // => undefined (empty prefix)
  * ```
  */
-export function findByPrefixIfUnique(prefix: string, keys: readonly string[] | MapIterator<string>): string | undefined {
+export function findByPrefixIfUnique(prefix: string, keys: Iterable<string>): string | undefined {
 	if(prefix === '') {
 		return undefined;
 	}

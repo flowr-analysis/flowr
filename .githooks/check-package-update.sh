@@ -13,5 +13,8 @@ changed() {
 }
 
 
-echo "$changedFiles" | (grep --quiet "package.json" && changed)
+# no `grep -q`: it stops at the first hit and the write side then dies of a broken pipe
+if printf '%s\n' "$changedFiles" | grep -- '^package\.json$' > /dev/null; then
+  changed
+fi
 exit 0

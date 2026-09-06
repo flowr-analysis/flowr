@@ -23,7 +23,7 @@ export const controlflowCommand: ReplCodeCommand = {
 	description:   'Get mermaid code for the control-flow graph of R code',
 	isCodeCommand: true,
 	usageExample:  ':controlflow',
-	aliases:       [ 'cfg', 'cf' ],
+	aliases:       ['cfg', 'cf'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -36,7 +36,7 @@ export const controlflowStarCommand: ReplCodeCommand = {
 	description:   'Returns the URL to mermaid.live',
 	isCodeCommand: true,
 	usageExample:  ':controlflow*',
-	aliases:       [ 'cfg*', 'cf*' ],
+	aliases:       ['cfg*', 'cf*'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -49,7 +49,7 @@ export const controlflowBbCommand: ReplCodeCommand = {
 	description:   'Get mermaid code for the control-flow graph with basic blocks',
 	isCodeCommand: true,
 	usageExample:  ':controlflowbb',
-	aliases:       [ 'cfgb', 'cfb' ],
+	aliases:       ['cfgb', 'cfb'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -62,10 +62,10 @@ export const controlflowBbStarCommand: ReplCodeCommand = {
 	description:   'Returns the URL to mermaid.live',
 	isCodeCommand: true,
 	usageExample:  ':controlflowbb*',
-	aliases:       [ 'cfgb*', 'cfb*' ],
+	aliases:       ['cfgb*', 'cfb*'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
-		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks' ], cfgToMermaidUrl);
+		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks'], cfgToMermaidUrl);
 	}
 };

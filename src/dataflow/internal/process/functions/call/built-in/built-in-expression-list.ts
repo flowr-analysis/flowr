@@ -1,9 +1,5 @@
-/**
- * Processes a list of expressions joining their dataflow graphs accordingly.
- * @module
- */
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
@@ -14,23 +10,23 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
-import { cancelRevivedKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
+import { cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
-import { FunctionDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
-
-
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
@@ -65,8 +61,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 		}
 	}
 
-	// keep it, for we have no target, as read-ids are unique within the same fold, this should work for same links
-	// we keep them if they are defined outside the current parent and maybe throw them away later
+	// no target: keep it as an ingoing read (read-ids are unique within the same fold); a later fold may still resolve and drop it
 	if(probableTarget === undefined) {
 		return;
 	}
@@ -92,25 +87,22 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 }
 
 /**
- * Expands the directly-called function definitions (`direct`) with those they transitively call (resolved by name in
- * `resolveEnv`). A sibling/outer callee is invisible inside its caller's (clean) body, so its escaped globals never fold
- * into the caller's subflow; pulling them here lets a super-assignment escaping through several call levels reach the
- * outer read. Escapes are folded popped to the fold level, so a write binding an intermediate frame stops there.
- * Package attachments keep their own (lazy) propagation, so transitive callees only contribute their `<<-` escapes.
+ * Expands `direct`'s directly-called functions with everything they transitively call (via `resolveEnv`): a sibling/outer
+ * callee's escaped globals otherwise never fold into the caller, so a `<<-` escaping several call levels would go unlinked.
  */
 function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<{ fn: DataflowGraphVertexInfo, direct: boolean }> {
 	const seen = new Set<NodeId>();
 	const stack = initial.map(fn => ({ fn, direct: true }));
 	while(stack.length > 0) {
 		const { fn, direct } = stack.pop() as { fn: DataflowGraphVertexInfo, direct: boolean };
-		if(!FunctionDefinitionVertex.is(fn) || seen.has(fn.id)) {
+		if(!DfgVertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
 		seen.add(fn.id);
 		yield { fn, direct };
 		for(const nodeId of fn.subflow.graph) {
 			const call = graph.getVertex(nodeId);
-			if(!FunctionCallVertex.is(call) || call.onlyBuiltin || call.name === undefined) {
+			if(!DfgVertex.isFunctionCall(call) || call.onlyBuiltin || call.name === undefined) {
 				continue;
 			}
 			const resolved = Resolve.byNameAndType(call.name, resolveEnv, ReferenceType.Function);
@@ -152,6 +144,56 @@ function withoutPackageLayers(env: REnvironmentInformation): REnvironmentInforma
 	return { current: parent, level: env.level };
 }
 
+/** Drops the top frame, keeping its definitions in the frame below (they outlive it, see the caller). */
+function foldFrameIntoParent({ current, level }: REnvironmentInformation): REnvironmentInformation {
+	const parent = current.parent.clone(false);
+	for(const [name, definitions] of current.memory) {
+		parent.writableMemory.set(name, definitions);
+	}
+	return { current: parent, level: level - 1 };
+}
+
+/**
+ * Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop`
+ * written at that spot would have done, since we only learn a callee always throws after linking it here.
+ */
+function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
+	let node = idMap.get(from);
+	while(node !== undefined && node.info.id !== expression) {
+		const parent = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+		if(parent === undefined) {
+			return true;
+		}
+		switch(parent.type) {
+			case RType.Argument:
+			case RType.ExpressionList:
+				break;
+			case RType.FunctionCall:
+				/* a handler catches the error instead of passing it on */
+				if(DfgVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try)) {
+					return false;
+				}
+				break;
+			case RType.IfThenElse:
+			case RType.WhileLoop:
+				/* only the condition is guaranteed to be evaluated */
+				if(parent.condition.info.id !== node.info.id) {
+					return false;
+				}
+				break;
+			case RType.ForLoop:
+				if(parent.vector.info.id !== node.info.id) {
+					return false;
+				}
+				break;
+			default:
+				return false;
+		}
+		node = parent;
+	}
+	return true;
+}
+
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
@@ -159,11 +201,16 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	for(const { functionCall, called } of calledEnvs) {
 		let callDependencies: ControlDependency[] | null | undefined = null;
 		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
-			guard(FunctionDefinitionVertex.is(calledFn), 'called function must be a function definition');
+			guard(DfgVertex.isFunctionDefinition(calledFn), 'called function must be a function definition');
 			// only merge the environments they have in common
 			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
-			while(environment.level > inputEnvironment.level) {
+			if(environment.level > inputEnvironment.level) {
+				/* the callee's own frame dies with the call */
 				environment = popLocalEnvironment(environment);
+				/* frames above the caller are ones its closure captured, so fold them back instead of losing their writes */
+				while(environment.level > inputEnvironment.level) {
+					environment = foldFrameIntoParent(environment);
+				}
 			}
 			// update alle definitions to be defined at this function call
 			let current: Environment | undefined = environment.current;
@@ -185,8 +232,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				current = current.parent;
 			}
 			if(hasUpdate) {
-				// we update all definitions to be linked with the corresponding function call
-				// we, however, have to ignore expression-local writes!
+				// link all definitions to the corresponding function call, but ignore expression-local writes
 				if(localDefs.length > 0) {
 					environment = {
 						current: environment.current.removeAll(localDefs.filter(d => isNotUndefined(d.name)) as { name: string }[]),
@@ -202,7 +248,6 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	}
 	return inputEnvironment;
 }
-
 
 /**
  * Processes a list of expressions joining their dataflow graphs accordingly.
@@ -243,10 +288,10 @@ export function processExpressionList<OtherInfo>(
 		(data as Writable<DataflowProcessorInformation<OtherInfo & ParentInformation>>).environment = environment;
 		const processed = processDataflowFor(expression, data);
 		processedExpressions.push(processed);
-		nextGraph.mergeWith(processed.graph);
+		/* the expression's graph dies here, what is kept of it afterward is its entry point and its references */
+		nextGraph.mergeWith(processed.graph, true, true);
 		defaultReturnExpr = processed;
-		// if the expression contained next or break anywhere before the next loop, the "overwrite" should be an "append", because we do not know if the rest is executed
-		// update the environments for the next iteration with the previous writes
+		// a prior next/break means we do not know if the rest executes, so later environments append rather than overwrite
 		if(exitPoints.length > 0) {
 			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true, invertExitCds);
 			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false, invertExitCds);
@@ -267,7 +312,7 @@ export function processExpressionList<OtherInfo>(
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
 		for(const c of calledEnvs) {
-			if(c.propagateExitPoints.length > 0) {
+			if(c.propagateExitPoints.length > 0 && errorEscapes(c.functionCall, expression.info.id, data.completeAst.idMap, nextGraph)) {
 				for(const exit of c.propagateExitPoints) {
 					(processed.exitPoints as Writable<ExitPoint[]>).push(exit);
 				}
@@ -286,10 +331,7 @@ export function processExpressionList<OtherInfo>(
 		if(processed.kill?.length) {
 			// if we may have already exited (break/next), the removal only happens maybe
 			const kills = exitPoints.length > 0 ? makeKillsMaybe(processed.kill, invertExitCds) : processed.kill;
-			killed ??= [];
-			for(const kill of kills) {
-				killed.push(kill);
-			}
+			(killed ??= []).push(...kills);
 		}
 
 		for(const ref of processed.out) {
@@ -297,8 +339,8 @@ export function processExpressionList<OtherInfo>(
 			listEnvironments.add(ref.nodeId);
 		}
 
-		/** if at least built-one of the exit points encountered happens unconditionally, we exit here (dead code)! */
-		if(alwaysExits(processed)) {
+		/* if at least one exit point encountered happens unconditionally, we exit here (dead code) */
+		if(ControlFlow.alwaysExits(processed)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
 			break;
@@ -316,12 +358,7 @@ export function processExpressionList<OtherInfo>(
 		});
 	}
 
-	const ingoing: IdentifierReference[] = [];
-	for(const refs of remainingRead.values()) {
-		for(const ref of refs) {
-			ingoing.push(ref);
-		}
-	}
+	const ingoing: IdentifierReference[] = [...remainingRead.values()].flat();
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;
@@ -348,15 +385,38 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
+
+	/* an empty group completes on the spot, otherwise the last expression has to be able to reach the end */
+	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
+	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
+	/*
+	 * `{ break }` is entered and left by the jump within it, so its `{` is where that jump leaves the group:
+	 * whatever catches the jump continues from there instead of from within the group, which keeps the `{`
+	 * on the control flow rather than beside it as a vertex nothing leads away from.
+	 */
+	if(withGroup && !reachesEnd) {
+		for(let i = 0; i < exitPoints.length; i++) {
+			const exit = exitPoints[i];
+			nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
+			/* what a `return` hands back and what a `stop` raises stay with the node that does it */
+			if(exit.nodeId !== rootId && (exit.type === ExitPointType.Break || exit.type === ExitPointType.Next)) {
+				exitPoints[i] = { ...exit, nodeId: rootId };
+			}
+		}
+	}
+
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
 		in:                ingoing,
-		out,
+		/* a definition that a still-effective removal undid is no longer visible to the outside */
+		out:               dropKilledWrites(out, killed),
 		environment:       environment,
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
+		cfgEntry:          cfgEntry === meId ? undefined : cfgEntry,
+		cfgExit:           reachesEnd ? rootId : undefined,
 		exitPoints:        exitPoints,
 		hooks:             hooks ?? [],
 		kill:              killed,

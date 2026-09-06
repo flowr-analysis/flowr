@@ -10,7 +10,8 @@ import { expensiveTrace, FlowrLogger } from '../../../util/log';
 
 
 /**
- *
+ * Registers the wiki's frequently asked questions, so a page may link to one by id.
+ * @param ctx - the documentation context to register them with
  */
 export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	const wikiFaq = new FaqStore();
@@ -79,6 +80,14 @@ To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 	;
 
 	wikiFaq.withTopic('flowr.use')
+		.addFaq('Where do I find *all the helper objects*?', `
+flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
+thing it is about (${ctx.link({ name: 'SourceLocation' }, undefined, { type: 'variable' })},
+${ctx.link({ name: 'Vertex' }, undefined, { type: 'variable' })},
+${ctx.link({ name: 'Identifier' }, undefined, { type: 'variable' })}, ...).
+The ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} wiki page lists every one of them, grouped by what
+it is about, so you can find the one that answers your question without knowing where it lives.
+`)
 		.addFaq('How to *watch* a file for changes in the REPL?', `
 Replace the \`file://\` prefix with \`watch://\` when passing a path to any REPL command.
 flowR will run the command immediately and then re-run it every time the file (or any file inside the specified folder) changes.

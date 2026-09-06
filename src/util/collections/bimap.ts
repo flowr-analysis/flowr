@@ -17,7 +17,6 @@ export type BiMapReverse = 'lazy' | 'eager';
  */
 export class BiMap<K, V extends object> implements Map<K, V> {
 	public readonly [Symbol.toStringTag]: string = 'BiMap';
-	public size = 0;
 	private readonly k2v = new Map<K, V>();
 	/* see {@link BiMapReverse}: `undefined` until the first reverse lookup unless this map was asked to be eager */
 	private v2k:                          WeakMap<V, K> | undefined;
@@ -43,8 +42,12 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		return this.k2v[Symbol.iterator]();
 	}
 
+	/** Read off the forward direction, so filling the map costs no bookkeeping per entry. */
+	public get size(): number {
+		return this.k2v.size;
+	}
+
 	public clear(): void {
-		this.size = 0;
 		this.k2v.clear();
 		this.v2k = this.eager ? new WeakMap<V, K>() : undefined;
 	}
@@ -57,7 +60,6 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		this.k2v.delete(key);
 		/* another key may still hold this value, so dropping just its entry would lose a live mapping */
 		this.staleReverse();
-		this.size = this.k2v.size;
 		return true;
 	}
 
@@ -90,15 +92,21 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 	}
 
 	public set(key: K, value: V): this {
-		const replaced = this.k2v.get(key);
-		this.k2v.set(key, value);
-		if(replaced !== undefined && replaced !== value) {
-			/* the value this key held may now be unreachable, so its reverse entry cannot stand */
-			this.staleReverse();
+		/* with no reverse direction to keep there is nothing the replaced value could invalidate, so a map
+		   nobody asks in reverse (the id map while it is being filled) pays one lookup per entry rather than two */
+		if(this.v2k === undefined) {
+			this.k2v.set(key, value);
 		} else {
-			this.v2k?.set(value, key);
+			const replaced = this.k2v.get(key);
+			/* the forward direction has to be current before anything rebuilds the reverse one from it */
+			this.k2v.set(key, value);
+			if(replaced !== undefined && replaced !== value) {
+				/* the value this key held may now be unreachable, so its reverse entry cannot stand */
+				this.staleReverse();
+			} else {
+				this.v2k.set(value, key);
+			}
 		}
-		this.size = this.k2v.size;
 		return this;
 	}
 

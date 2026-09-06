@@ -17,6 +17,7 @@ export const RNext = {
 	name: 'RNext',
 	/**
 	 * Type guard for {@link RNext} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNext<Info> {
 		return node?.type === RType.Next;

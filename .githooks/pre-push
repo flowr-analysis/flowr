@@ -37,7 +37,8 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 # check if the latest commit starts with "[release"
-if git log -1 --pretty=%B | grep -q "\[release"; then
+# no `grep -q` anywhere in a pipeline: it stops at the first hit and the write side dies of a broken pipe
+if git log -1 --pretty=%B | grep -- "\[release" > /dev/null; then
   echo "Latest commit is a release commit, doing full checkup..."
   $NPM_CMD run checkup
 else
@@ -47,9 +48,12 @@ else
     if $unclean; then
       # we linted a disposable clone, so copy fixes back before it gets removed by the reset trap;
       # skip files you already have uncommitted changes for, to avoid clobbering your edits
-      dirtyFiles="$(git -C "$curdir" status --porcelain | awk '{print $2}')"
-      for f in $(git diff --name-only); do
-        if echo "$dirtyFiles" | grep -qx "$f"; then
+      # -z keeps every path whole and unquoted, which "status --porcelain" does not do for a path
+      # with a space in it; the newlines are only there so grep and read can work line by line
+      dirtyFiles="$({ git -C "$curdir" diff --name-only -z HEAD; git -C "$curdir" ls-files -o --exclude-standard -z; } | tr '\0' '\n')"
+      # read line by line, a plain "for f in $(...)" splits paths that contain spaces
+      git diff --name-only -z | tr '\0' '\n' | while IFS= read -r f; do
+        if printf '%s\n' "$dirtyFiles" | grep -xF -- "$f" > /dev/null; then
           echo "  - skipping $f (you have uncommitted changes to it, fix it manually)"
         else
           mkdir -p "$(dirname "$curdir/$f")"

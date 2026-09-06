@@ -492,8 +492,7 @@ testFuncCorrect(1:5)
 testFuncCorrect(1:5, sum)
 `, emptyGraph()
 				.call('3@length', 'length', [argumentInCall('3@x')], { returns: [], reads: ['3@x', NodeId.toBuiltIn('length')], onlyBuiltIn: false }, false)
-				.calls('3@length', NodeId.toBuiltIn('length'))
-			,
+				.calls('3@length', NodeId.toBuiltIn('length')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 	});
@@ -507,8 +506,8 @@ testFuncCorrect(1:5, sum)
 			emptyGraph()
 				.calls('2@Recall', '1@function')
 				.definedByOnCall('1@g', '2@3')
-				.definedByOnCall('1@x', '$10')
-			, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+				.definedByOnCall('1@x', '$10'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});
 }));

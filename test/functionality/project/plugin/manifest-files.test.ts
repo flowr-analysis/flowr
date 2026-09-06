@@ -1,6 +1,5 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrConfig } from '../../../../src/config';
 import {
@@ -35,7 +34,7 @@ describe('rproject.toml', () => {
 	function fileWith(content: string): FlowrRProjectFile {
 		const ctx = new FlowrAnalyzerContext(
 			FlowrConfig.default(),
-			arraysGroupBy([new FlowrAnalyzerRProjectFilePlugin()], p => p.type)
+			[new FlowrAnalyzerRProjectFilePlugin()]
 		);
 		ctx.addFile(new FlowrInlineTextFile('rproject.toml', content));
 		const files = ctx.files.getFilesByRole(FileRole.Manifest);
@@ -51,7 +50,7 @@ describe('rproject.toml', () => {
 	test('unrelated files are not tagged', () => {
 		const ctx = new FlowrAnalyzerContext(
 			FlowrConfig.default(),
-			arraysGroupBy([new FlowrAnalyzerRProjectFilePlugin()], p => p.type)
+			[new FlowrAnalyzerRProjectFilePlugin()]
 		);
 		ctx.addFile(new FlowrInlineTextFile('project.toml', ''));
 		ctx.addFile(new FlowrInlineTextFile('DESCRIPTION', ''));
@@ -112,7 +111,7 @@ describe('uvr.toml', () => {
 	function ctxWith(content: string, name = 'uvr.toml'): FlowrAnalyzerContext {
 		const ctx = new FlowrAnalyzerContext(
 			FlowrConfig.default(),
-			arraysGroupBy([new FlowrAnalyzerUvrManifestFilePlugin(), new FlowrAnalyzerMetaUvrManifestFilePlugin()], p => p.type)
+			[new FlowrAnalyzerUvrManifestFilePlugin(), new FlowrAnalyzerMetaUvrManifestFilePlugin()]
 		);
 		ctx.addFile(new FlowrInlineTextFile(name, content));
 		return ctx;

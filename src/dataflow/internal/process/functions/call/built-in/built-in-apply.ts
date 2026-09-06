@@ -1,30 +1,26 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import {
-	type Identifier,
-	ReferenceType
-} from '../../../../../environments/identifier';
+import { type Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { ClosureRefs } from '../../../../linker';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /** the function reference extracted from an argument passed to a higher-order call */
 export interface ResolvedFunctionArgument {
@@ -43,10 +39,10 @@ export function resolveFunctionArgument<OtherInfo>(
 	if(opts.unquoteFunction && RString.is(val)) {
 		return { functionId: val.info.id, functionName: val.content.str, anonymous: false, asString: true };
 	}
-	if(val.type === RType.FunctionDefinition) {
+	if(RFunctionDefinition.is(val)) {
 		return { functionId: val.info.id, functionName: `${UnnamedFunctionCallPrefix}${val.info.id}`, anonymous: true, asString: false };
 	}
-	if(val.type !== RType.Symbol) {
+	if(!RSymbol.is(val)) {
 		return undefined;
 	}
 	const functionName = opts.resolveValue
@@ -70,7 +66,6 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly hasUnknownSideEffects?:  boolean
 }
 
-
 /**
  * Process an apply call like `vapply` or `mapply`.
  */
@@ -82,11 +77,9 @@ export function processApply<OtherInfo>(
 	config: BuiltInApplyConfiguration
 ): DataflowInformation {
 	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects } = config;
-	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
-	const forceArgsMask = new Array(indexOfFunction).fill(false);
-	forceArgsMask.push(true);
+	/* the length is one-based and the argument mapping zero-based, so the function sits at `indexOfFunction` */
 	const resFn = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: forceArgsMask, origin: BuiltInProcName.Apply
+		name, args, rootId, data, sig: FunctionSemantics.call.signature.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
 	});
 	let information = resFn.information;
 	if(hasUnknownSideEffects) {
@@ -124,7 +117,7 @@ export function processApply<OtherInfo>(
 
 	const arg = args[index];
 
-	if(arg === EmptyArgument || !arg.value || (!unquoteFunction && arg.value.type !== RType.Symbol && arg.value.type !== RType.FunctionDefinition)) {
+	if(RArgument.isEmpty(arg) || !arg.value || (!unquoteFunction && !RSymbol.is(arg.value) && !RFunctionDefinition.is(arg.value))) {
 		dataflowLogger.warn(`Expected symbol as argument at index ${index}, but got ${JSON.stringify(arg)} instead.`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
@@ -172,7 +165,7 @@ export function processApply<OtherInfo>(
 			cds:         data.cds,
 			args:        allOtherArguments, // same reference
 			origin:      [BuiltInProcName.Function]
-		}, data.ctx.env.makeCleanEnv());
+		}, data.ctx.env.cleanEnv);
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
 		information = {
@@ -183,7 +176,7 @@ export function processApply<OtherInfo>(
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
-		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
+		if(dfVert && DfgVertex.isFunctionDefinition(dfVert)) {
 			ClosureRefs.resolveOpenIngoing(information.graph, rootId, dfVert, data.environment);
 		}
 	} else {

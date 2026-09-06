@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-27, 20:04:16 UTC (v2.15.8), please do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -26,11 +26,11 @@ Query: **config** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ Updated configuration:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- ignoreSourceCalls=true\
 &nbsp;&nbsp;&nbsp;╰ Specialized for project kind **unknown** (overrides linter.disabledRules)\
-_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈30 ms (1ms accuracy, total 32 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _32.3 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -39,7 +39,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 _As the code is pretty long, we inhibit pretty printing and syntax highlighting (JSON, hiding built-in):_
 
 ```text
-{"config":{".meta":{"timing":0},"config":{"ignoreSourceCalls":true,"ignoreLoadCalls":false,"semantics":{"environment":{"overwriteBuiltIns":{"loadDefaults":true,"definitions":[]}}},"defaultPlugins":["file:description","versions:description","versions:sigdb","versions:library","versions:namespace","versions:renv","versions:rv","versions:uvr","versions:packrat","versions:session-info","loading-order:description","loading-order:implicit-sources","loading-order:rprofile","loading-order:included-files","meta:description","meta:rproject","meta:uvr","file-roles:vignette","file-roles:test","file-roles:inst","file:rmd","file:qmd","file:rnw","file:ipynb","file:namespace","file:news","file:rda","file:license","file:virtualenv","file:rproject","file:uvr","file:rprofile"],"repl":{"quickStats":false,"dfProcessorHeat":false,"hints":true,"plugins":["flowr:default"],"autoUseFileProtocol":true,"queryStats":true,"showPlugins":false},"project":{"resolveUnknownPathsOnDisk":true,"failOnInaccessiblePath":false},"linter":{"disabledRules":["software-has-license","software-has-tests"]},"specializeConfig":{"package":{"solver":{"resolveSource":{"assumeFilesExist":true}}},"project":{"solver":{"resolveSource":{"assumeFilesExist":true}}},"shiny-app":{"project":{"implicitSources":["global.R","R/*.R","ui.R","server.R","app.R"]},"solver":{"resolveSource":{"assumeFilesExist":true}}},"script":{"inherit":"unknown"},"notebook":{"inherit":"unknown"},"unknown":{"linter":{"disabledRules":["software-has-license","software-has-tests"]}}},"engines":[],"defaultEngine":"tree-sitter","solver":{"variables":"alias","evalStrings":true,"trackEnvironments":true,"sigdb":{"enabled":true,"loadProjectDependencies":true,"eagerlyLoad":false,"eagerlyLoadExports":false,"assumedRVersion":"auto","linkBaseR":false,"linkDescriptionDependencies":false,"linkBaseRCalls":false,"linkPackageCalls":false,"warmInBackground":false,"additionalPaths":[],"autoSync":false,"versionSelection":"newest","versionOverrides":{},"installedLibrary":{"enabled":false,"paths":[],"useEnvironment":true,"useProjectLibrary":true,"maxDepth":3,"packages":[]}},"versionManagement":{"linkedVersionGroups":[]},"resolveSource":{"dropPaths":"no","ignoreCapitalization":true,"inferWorkingDirectory":"active-script","searchPath":[],"repeatedSourceLimit":2,"assumeFilesExist":false},"instrument":{},"slicer":{"threshold":50,"autoExtend":false}},"abstractInterpretation":{"wideningThreshold":4,"dataFrame":{"maxColNames":50,"readLoadedData":{"readExternalFiles":true,"maxReadLines":1000000}}},"incremental":{"alwaysIncremental":false,"parsing":{"activated":false,"heuristics":{"activated":true,"mtime":true,"linesFrom":500,"bytesFrom":50000,"alwaysWithEdits":false,"minFiles":1}}},"gas":{"thresholds":{"memory":{"problematic":0.7,"critical":0.9},"timeMs":{"problematic":100000,"critical":120000}},"features":{}}},"specialization":{"kind":"unknown","overwrite":{"linter":{"disabledRules":["software-has-license","software-has-tests"]}}}},".meta":{"timing":5}}
+{"config":{".meta":{"timing":0},"config":{"logLevel":"fatal","ignoreSourceCalls":true,"ignoreLoadCalls":false,"semantics":{"environment":{"overwriteBuiltIns":{"loadDefaults":true,"definitions":[]}}},"defaultPlugins":["file:description","versions:description","versions:sigdb","versions:library","versions:namespace","versions:renv","versions:rv","versions:uvr","versions:packrat","versions:session-info","loading-order:description","loading-order:implicit-sources","loading-order:rprofile","loading-order:included-files","meta:description","meta:rproject","meta:uvr","file-roles:vignette","file-roles:test","file-roles:inst","file:rmd","file:qmd","file:rnw","file:ipynb","file:namespace","file:news","file:rd-macros","file:rd","file:rd-index","file:rd-topics","file:rd-meta","file:datalist","file:sysdata","file:rda","file:license","file:virtualenv","file:rproject","file:uvr","file:rprofile"],"repl":{"quickStats":false,"dfProcessorHeat":false,"hints":true,"plugins":["flowr:default"],"autoUseFileProtocol":true,"queryStats":true,"showPlugins":false},"project":{"resolveUnknownPathsOnDisk":true,"failOnInaccessiblePath":false,"assumeImplicitEcho":true},"linter":{"disabledRules":["software-has-license","software-has-tests"]},"specializeConfig":{"package":{"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}}},"project":{"solver":{"resolveSource":{"assumeFilesExist":true}}},"shiny-app":{"project":{"implicitSources":["global.R","R/*.R","ui.R","server.R","app.R"]},"solver":{"resolveSource":{"assumeFilesExist":true}}},"script":{"inherit":"unknown"},"notebook":{"inherit":"unknown"},"unknown":{"linter":{"disabledRules":["software-has-license","software-has-tests"]}}},"engines":[],"defaultEngine":"tree-sitter","solver":{"variables":"alias","evalStrings":true,"trackEnvironments":true,"sigdb":{"enabled":true,"loadProjectDependencies":true,"eagerlyLoad":false,"eagerlyLoadExports":false,"blobCacheBudgetMb":16,"assumedRVersion":"auto","linkBaseR":false,"linkDescriptionDependencies":false,"linkBaseRCalls":false,"linkPackageCalls":false,"warmInBackground":false,"additionalPaths":[],"autoSync":false,"versionSelection":"newest","versionOverrides":{},"installedLibrary":{"enabled":false,"paths":[],"useEnvironment":true,"useProjectLibrary":true,"maxDepth":3,"packages":[]}},"versionManagement":{"linkedVersionGroups":[]},"resolveSource":{"dropPaths":"no","ignoreCapitalization":true,"inferWorkingDirectory":"active-script","searchPath":[],"repeatedSourceLimit":2,"assumeFilesExist":false},"transitiveSideEffectRounds":32,"instrument":{},"slicer":{"threshold":50,"autoExtend":false}},"abstractInterpretation":{"wideningThreshold":4,"followCalls":true,"dataFrame":{"maxColNames":50,"readLoadedData":{"readExternalFiles":true,"maxReadLines":1000000}}},"incremental":{"alwaysIncremental":false,"parsing":{"activated":false,"heuristics":{"activated":true,"mtime":true,"linesFrom":500,"bytesFrom":50000,"alwaysWithEdits":false,"minFiles":1}}},"gas":{"thresholds":{"memory":{"problematic":0.7,"critical":0.9},"timeMs":{"problematic":100000,"critical":120000}},"features":{}}},"specialization":{"kind":"unknown","overwrite":{"linter":{"disabledRules":["software-has-license","software-has-tests"]}}}},".meta":{"timing":30}}
 ```
 
 
@@ -58,7 +58,7 @@ Please note that, in the REPL, a special syntax starting with `+` (which should 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.13.16, R v4.6.1 (r-shell engine)
+flowR repl v2.15.8, R v4.6.1 (r-shell engine)
 R> :query @config +solver.slicer.threshold=10000
 ```
 
@@ -88,7 +88,7 @@ one path segment, `**` any number. This only reads: setting a value still names 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.13.16, R v4.6.1 (r-shell engine)
+flowR repl v2.15.8, R v4.6.1 (r-shell engine)
 R> :query @config **.enabled
 ```
 
@@ -104,7 +104,7 @@ Query: config (0 ms)
        - solver.sigdb.installedLibrary.enabled (boolean): false
            Recover packages no signature database knows from their installed copy (default false).
    ╰ Specialized for project kind unknown (overrides linter.disabledRules)
-All queries together required ≈0 ms (1ms accuracy, total 0 ms)
+All queries together required ≈0 ms (1ms accuracy, total 2 ms)
 ```
 
 
@@ -125,6 +125,8 @@ R> :query @config solver.*
 ```text
 Query: config (0 ms)
    ╰ Config:
+       - solver.assumeAttachedPackages (array): undefined
+           Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code.
        - solver.evalStrings (boolean): true
            Should we include eval(parse(text="...")) calls in the dataflow graph?
        - solver.instrument (object)
@@ -143,6 +145,7 @@ Query: config (0 ms)
            - loadProjectDependencies:     true (boolean)
            - eagerlyLoad:                 false (boolean)
            - eagerlyLoadExports:          false (boolean)
+           - blobCacheBudgetMb:           16 (number)
            - assumedRVersion:             "auto" (string)
            - linkBaseR:                   false (boolean)
            - linkDescriptionDependencies: false (boolean)
@@ -153,20 +156,22 @@ Query: config (0 ms)
            - autoSync:                    false (boolean)
            - versionSelection:            "newest" (string)
            - versionOverrides:            {} (object)
-           - installedLibrary:            {6 keys} (object)
+           ... and 1 more, inspect them with solver.sigdb.<key>
        - solver.slicer (object)
            The configuration for the slicer.
            - threshold:  50 (number)
            - autoExtend: false (boolean)
        - solver.trackEnvironments (boolean): true
            Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.
+       - solver.transitiveSideEffectRounds (number): 32
+           How many rounds the transitive side-effect fixpoint may run before it is cut off (default 32); the propagation stops on its own as soon as a round adds nothing.
        - solver.variables (string): "alias"
            How to resolve variables and their values.
        - solver.versionManagement (object)
            Policies for reasoning about dependency versions.
            - linkedVersionGroups: [] (array)
    ╰ Specialized for project kind unknown (overrides linter.disabledRules)
-All queries together required ≈0 ms (1ms accuracy, total 0 ms)
+All queries together required ≈0 ms (1ms accuracy, total 10 ms)
 ```
 
 

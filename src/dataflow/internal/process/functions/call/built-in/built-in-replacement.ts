@@ -2,12 +2,12 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
+import { patchFunctionCall, processAllArguments } from '../common';
+import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -24,8 +24,9 @@ import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-a
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { VariableDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
-
+import { DfgVertex } from '../../../../../graph/vertex';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
@@ -37,7 +38,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
+	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId }
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${Identifier.getName(name.content)} has less than 2 arguments, skipping`);
@@ -77,25 +78,35 @@ export function processReplacementFunction<OtherInfo>(
 	);
 
 	const createdVert = res.graph.getVertex(rootId);
-	if(FunctionCallVertex.is(createdVert)) {
+	if(DfgVertex.isFunctionCall(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
 	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
-	if(VariableDefinitionVertex.is(targetVert)) {
+	if(DfgVertex.isVariableDefinition(targetVert)) {
 		(targetVert as { par: boolean }).par = true;
 	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
-	const { callArgs } = processAllArguments({
+	const { callArgs, processedArguments: indexArguments } = processAllArguments({
 		functionName:   DataflowInformation.initialize(rootId, data),
 		args:           convertedArgs,
 		data,
 		functionRootId: rootId,
 		finalGraph:     res.graph,
-		forceArgs:      config.forceArgs,
 	});
+
+	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));
+	const targetNode = unpackArg(args[0]);
+	if(targetNode !== undefined && targetNode.info.id !== rootId) {
+		/*
+		 * `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced
+		 * (see the arguments of the call vertices), so the target is what this call continues from.
+		 */
+		res.graph.addEdge(targetNode.info.id, rootId, EdgeType.FlowEdge);
+	}
+	res = { ...res, cfgEntry: cfgEntry ?? res.cfgEntry, cfgExit: rootId };
 
 	patchFunctionCall({
 		nextGraph: res.graph,
@@ -103,7 +114,7 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
+			args.map(a => RArgument.isEmpty(a) ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
@@ -133,7 +144,7 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	}
 
-	if(firstArg?.type === RType.Symbol) {
+	if(RSymbol.is(firstArg)) {
 		res = {
 			...res,
 			in: [...res.in, { name: firstArg.content, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]

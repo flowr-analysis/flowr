@@ -7,8 +7,8 @@ import {
 	type EnrichmentElementArguments,
 	type EnrichmentElementContent,
 	type EnrichmentSearchArguments,
-	type EnrichmentSearchContent
-	, Enrichments } from './search-executor/search-enrichers';
+	type EnrichmentSearchContent,
+	Enrichments } from './search-executor/search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**

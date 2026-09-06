@@ -1,6 +1,5 @@
 import {
 	type CfgBasicBlockVertex,
-	type CfgMarkerVertex,
 	type CfgExpressionVertex,
 	CfgVertex,
 	type CfgStatementVertex,
@@ -13,15 +12,32 @@ import {
 	type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, VertexType
 } from '../dataflow/graph/vertex';
 import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
-import { assertUnreachable } from '../util/assert';
+import { assertUnreachable, guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
+import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export interface DataflowCfgGuidedVisitorConfiguration<
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Dfg extends DataflowGraph                  = DataflowGraph
 > extends BasicCfgGuidedVisitorConfiguration<ControlFlow> {
-	readonly dfg:                  Dfg;
-	readonly defaultVisitingType?: 'entry' | 'exit';
+	readonly dfg: Dfg;
+}
+
+/**
+ * Fill in what a cfg-guided visitor can take from the control flow view itself: the dataflow graph it views,
+ * and the ast that graph knows. Pass either yourself to use a different one.
+ * @example
+ * ```ts
+ * new MyVisitor(cfgVisitorConfig({ controlFlow, defaultVisitingOrder: 'forward' }))
+ * ```
+ */
+export function cfgVisitorConfig<Config extends BasicCfgGuidedVisitorConfiguration & {
+	dfg?:           DataflowGraph,
+	normalizedAst?: { idMap: AstIdMap }
+}>(config: Config): Config & { dfg: DataflowGraph, normalizedAst: { idMap: AstIdMap } } {
+	const dfg = config.dfg ?? config.controlFlow.graph.dataflow();
+	guard(dfg?.idMap !== undefined, 'pass the dataflow graph, this control flow graph is not a view of one');
+	return { ...config, dfg, normalizedAst: config.normalizedAst ?? { idMap: dfg.idMap } };
 }
 
 /**
@@ -45,30 +61,16 @@ export class DataflowAwareCfgGuidedVisitor<
 
 	protected override onStatementNode(node: CfgStatementVertex): void {
 		super.onStatementNode(node);
-
-		if(this.config.defaultVisitingType !== 'exit' || CfgVertex.getEnd(node) === undefined) {
-			this.visitDataflowNode(node);
-		}
+		this.visitDataflowNode(node);
 	}
 
 	protected override onExpressionNode(node: CfgExpressionVertex): void {
 		super.onExpressionNode(node);
-
-		if(this.config.defaultVisitingType !== 'exit' || CfgVertex.getEnd(node) === undefined) {
-			this.visitDataflowNode(node);
-		}
-	}
-
-	protected override onEndMarkerNode(node: CfgMarkerVertex): void {
-		super.onEndMarkerNode(node);
-
-		if(this.config.defaultVisitingType === 'exit') {
-			this.visitDataflowNode(node);
-		}
+		this.visitDataflowNode(node);
 	}
 
 	protected visitDataflowNode(node: Exclude<CfgVertex, CfgBasicBlockVertex>): void {
-		const dfgVertex = this.getDataflowGraph(CfgVertex.getRootId(node));
+		const dfgVertex = this.getDataflowGraph(CfgVertex.getId(node));
 		if(!dfgVertex) {
 			this.visitUnknown(node);
 			return;

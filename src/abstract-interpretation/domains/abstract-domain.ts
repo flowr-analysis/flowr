@@ -166,7 +166,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 	public merge(other: this, merge: (first: Value | Top | Bot, second: Value | Top | Bot) => Value | Top | Bot): this;
 	public merge(other: this, merge: (first: Value, second: Value) => Value | Top | Bot, bottomDefault?: (other: Value | Top | Bot) => Value | Top | Bot, topDefault?: (other: Value | Top | Bot) => Value | Top | Bot): this {
 		if(bottomDefault !== undefined) {
-			if(this.isBottom() ) {
+			if(this.isBottom()) {
 				return this.create(bottomDefault(other.value));
 			} else if(other.isBottom()) {
 				return this.create(bottomDefault(this.value));

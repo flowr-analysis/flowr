@@ -1,7 +1,7 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
 import { tryNormalizeAccess } from '../normalize-access';
-import { partition } from '../../../../../../../util/collections/arrays';
+import { partitionArray } from '../../../../../../../util/collections/arrays';
 import type { RNode } from '../../../../model/model';
 import { normalizeExpressions, splitComments } from '../structure/normalize-expressions';
 import { tryNormalizeFunctionCall } from '../functions/normalize-call';
@@ -14,8 +14,8 @@ import { RComment } from '../../../../model/nodes/r-comment';
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
- * @param data - The data used by the parser (see {@link NormalizerData})
- * @param entry  - The JSON object to extract the meta-information from
+ * @param data  - The data used by the parser (see {@link NormalizerData})
+ * @param entry - The JSON object to extract the meta-information from
  */
 export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNode {
 
@@ -49,7 +49,7 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 
 	const children = normalizeExpressions(childData, childrenSource);
 
-	const [delimiters, nodes] = partition(children, x => RDelimiter.is(x) || RComment.is(x));
+	const [delimiters, nodes] = partitionArray(children, x => RDelimiter.is(x) || RComment.is(x));
 
 	if(nodes.length === 1) {
 		const result = nodes[0] as RNode;

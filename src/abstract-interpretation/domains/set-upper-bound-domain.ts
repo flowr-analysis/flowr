@@ -28,8 +28,9 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 	protected readonly setType: typeof Set<T>;
 
 	/**
-	 * @param limit -  A limit for the maximum number of elements to store in the set
-	 * @param newSet - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
+	 * @param value   - The abstract value to start from.
+	 * @param limit   - A limit for the maximum number of elements to store in the set
+	 * @param setType - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
 	 */
 	constructor(value: Value | T[], limit: number = DEFAULT_INFERENCE_LIMIT, setType: typeof Set<T> = Set) {
 		if(value !== Top && value !== Bottom) {

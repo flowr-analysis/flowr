@@ -1,6 +1,8 @@
-import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
+import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { FunctionSemantics } from '../dataflow/fn/function-semantics';
+import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import type { VertexType } from '../dataflow/graph/vertex';
-import { FunctionCallVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
+import { DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
 import type { Enrichment } from './search-executor/search-enrichers';
@@ -10,10 +12,9 @@ import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-nam
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
-import { queryFnProps } from '../dataflow/environments/query-fn-props';
-import type { CallProp, CallProps } from '../dataflow/environments/built-in-props';
-import { Dataflow } from '../dataflow/graph/df-helper';
-import { REnvironment } from '../dataflow/environments/environment';
+import { callFnProps } from '../dataflow/environments/query-fn-props';
+import type { CallProp, PropSelector, SemanticCallTag } from '../dataflow/environments/built-in-props';
+import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -30,7 +31,7 @@ export enum FlowrFilter {
 	/**
 	 * Only returns search elements whose enrichments' JSON representations match a given test regular expression.
 	 * This filter accepts {@link MatchesEnrichmentArgs}, which includes the enrichment to match for, as well as the regular expression to test the enrichment's (non-pretty-printed) JSON representation for.
-	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link matchIdentifiers} can be used.
+	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link Identifier.regex} can be used.
 	 */
 	MatchesEnrichment = 'matches-enrichment',
 	/**
@@ -49,8 +50,9 @@ export enum FlowrFilter {
 	 */
 	FilePathFilter = 'file-path-filter',
 	/**
-	 * Only returns function calls whose {@link CallProp} bits match the given mask, so that _every call that asks
-	 * the user_ or _every call that closes a device_ can be searched for without naming a single function.
+	 * Only returns function calls carrying the given {@link CallProp}/{@link SemanticCallTag} properties, so that
+	 * _every call that asks the user_ or _every call that closes a device_ can be searched for without naming a
+	 * single function.
 	 * This filter accepts {@link CallPropsArgs}.
 	 */
 	CallProps = 'call-props'
@@ -62,7 +64,7 @@ export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrF
 
 export const FlowrFilters = {
 	[FlowrFilter.DropEmptyArguments]: ((e: FlowrSearchElement<ParentInformation>, _args: never) => {
-		return e.node.type !== RType.Argument || e.node.name !== undefined;
+		return !RArgument.is(e.node) || e.node.name !== undefined;
 	}) satisfies FlowrFilterFunction<never>,
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
 		const content = enrichmentContent(e, args.enrichment);
@@ -70,7 +72,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
-		if(!dfgNode || !FunctionCallVertex.is(dfgNode)) {
+		if(!dfgNode || !DfgVertex.isFunctionCall(dfgNode)) {
 			return args.keepNonFunctionCalls ?? false;
 		}
 		const match = typeof args.origin === 'string' ?
@@ -88,18 +90,8 @@ export const FlowrFilters = {
 		return rx.test(file ?? '');
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
-		const graph = data.dataflow.graph;
-		const vertex = graph.getVertex(e.node.info.id);
-		if(!FunctionCallVertex.is(vertex)) {
-			return false;
-		}
-		/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call
-		 * flowR settled on the built-ins keeps no environment, and a later redefinition must not speak for it */
-		const known = vertex.environment ?? data.dataflow.environment;
-		const environment = vertex.onlyBuiltin ? { level: 0, current: REnvironment.findBuiltIn(known.current) } : known;
-		const name = Dataflow.qualify(e.node.info.id, graph, false) ?? vertex.name;
-		const props = queryFnProps(name, { environment })?.props ?? 0;
-		return args.matchType === 'every' ? (props & args.props) === args.props : (props & args.props) !== 0;
+		const props = callFnProps(e.node.info.id, data.dataflow);
+		return args.matchType === 'every' ? FunctionSemantics.call.props.hasAll(props, args.props) : FunctionSemantics.call.props.hasAny(props, args.props);
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
@@ -124,9 +116,9 @@ export interface FilePathFilterArgs {
 	filePathRegex: string | RegExp
 }
 export interface CallPropsArgs {
-	/** the {@link CallProp} bits to look for, e.g. `CallProp.User | CallProp.Closes` */
-	props:      CallProps;
-	/** whether a call has to carry every bit of {@link props} or just one of them (the default) */
+	/** the properties to look for, e.g. `[SemanticCallTag.User, CallProp.Pure]` */
+	props:      PropSelector;
+	/** whether a call has to carry every one of {@link props} or just one of them (the default) */
 	matchType?: 'some' | 'every'
 }
 

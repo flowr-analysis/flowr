@@ -1,4 +1,4 @@
-import { UseVertex, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Q } from '../../search/flowr-search-builder';
@@ -7,22 +7,15 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { AttachedBasePackages, baseRExportOwner } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type LintingResult, type LintingRule, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import {
-	collectScopeDefinedNames,
-	isDefinedInEnclosingScope,
-	isInstalledResourceFile,
-	isInSubscript,
-	isNonStandardEvaluated,
-	useResolvesToDefinitionOrBuiltin
-} from './undefined-symbol-util';
+import { collectScopeDefinedNames, isDefinedInEnclosingScope, isInstalledResourceFile, isInSubscript, isNonStandardEvaluated, useResolvesToDefinitionOrBuiltin } from './undefined-symbol-util';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** whether the flagged symbol is used in a function-call position or as a plain variable */
 export type UndefinedSymbolKind = 'function' | 'variable';
@@ -81,7 +74,7 @@ const LibraryLoadFunctions = new Set(['library', 'require', 'requireNamespace', 
 // standard packages attached by default; exports are in scope without library()
 
 /** test frameworks whose namespace a test file runs under implicitly (e.g. `tests/testthat/test-*.R` sees testthat's exports without a `library()`) */
-const ImplicitTestFrameworks = new Set(['testthat', 'tinytest', 'RUnit']);
+const ImplicitTestFrameworks = ['testthat', 'tinytest', 'RUnit'];
 
 /** whether name is an export of a default-attached base package (needs no library()) */
 function isAttachedBaseName(name: string): boolean {
@@ -119,8 +112,10 @@ export const UNDEFINED_SYMBOL = {
 
 		// test files run under their framework's attached namespace, so a bare name a test framework exports is defined there
 		const testFiles = new Set(ctx.files.getFilesByRole(FileRole.Test).map(f => f.path()));
+		const testExports = new Set(testFiles.size === 0 ? [] : deps.signatureSources().flatMap(
+			src => ImplicitTestFrameworks.flatMap(pkg => src.lookup(pkg)?.exported ?? [])));
 		const isImplicitTestExport = (name: string, file: string | undefined): boolean =>
-			file !== undefined && testFiles.has(file) && deps.packagesExporting(name).some(p => ImplicitTestFrameworks.has(p));
+			file !== undefined && testFiles.has(file) && testExports.has(name);
 
 		// a library() we could not resolve could export any of these symbols; we still report but flag the
 		// findings as low-confidence (`mayBeProvidedByUnresolvedLibrary`) so the severity can be lowered
@@ -171,7 +166,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 			const inInstalledFile = isInstalledFile(element.node.info.file);
 
-			if(FunctionCallVertex.is(vtx)) {
+			if(DfgVertex.isFunctionCall(vtx)) {
 				if(vtx.origin === 'unnamed' || !config.checkFunctions) {
 					return undefined;
 				}
@@ -184,9 +179,9 @@ export const UNDEFINED_SYMBOL = {
 			}
 
 			// variable use: only plain symbols (not argument names, `...`, or empty)
-			if(UseVertex.is(vtx) && config.checkVariables) {
+			if(DfgVertex.isUse(vtx) && config.checkVariables) {
 				const node = element.node;
-				if(node.type !== RType.Symbol || node.lexeme === '...' || node.lexeme === undefined) {
+				if(!RSymbol.is(node) || node.lexeme === '...' || node.lexeme === undefined) {
 					return undefined;
 				}
 				meta.totalVariableUses++;

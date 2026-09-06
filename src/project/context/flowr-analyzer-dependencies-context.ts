@@ -1,8 +1,6 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import {
-	FlowrAnalyzerPackageVersionsPlugin,
-	type SigDbLoadedInfo
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import { FlowrAnalyzerPackageVersionsPlugin, type SigDbLoadedInfo } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import { Package } from '../plugins/package-version-plugins/package';
 import type { PackageSignatureSource } from '../sigdb/reader';
 import { Identifier } from '../../dataflow/environments/identifier';
@@ -10,10 +8,11 @@ import type { DecodedFunction } from '../sigdb/decode';
 import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
-import { assertUnreachable } from '../../util/assert';
+import { resetOnFullInvalidation } from '../cache/flowr-cache';
 import { isSigDbEnabled } from '../../config';
 import { RRange } from '../../util/r-version';
+import { uniqueArray } from '../../util/collections/arrays';
+import { signatureDbOf, type SignatureDb } from '../sigdb/signature-db';
 
 /**
  * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
@@ -36,7 +35,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * comes from the declared constraints.
 	 * @param name    - The name of the dependency to get.
 	 * @param version - Optional version constraint to pin the resolution to (exact version string or a {@link Range}).
-	 * @returns The dependency with the given name, or undefined if it does not exist.
+	 * @returns       The dependency with the given name, or undefined if it does not exist.
 	 */
 	getDependency(name: string, version?: string | Range): Readonly<Package> | undefined;
 
@@ -87,15 +86,35 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 */
 	packagesExporting(name: string): readonly string[];
 
-	/** The signature sources the version plugins currently have loaded (backs the signature query). */
+	/**
+	 * The way to reach the signature database programmatically.
+	 *
+	 * Everything the database can answer is on the returned {@link SignatureDb}, and it answers for the version
+	 * _this project_ assumes for each package, which is the one `solver.sigdb.versionOverrides`,
+	 * `solver.sigdb.versionSelection` and `solver.sigdb.assumedRVersion` produced. A bare
+	 * {@link PackageSignatureSource} would instead answer for whatever it happens to hold as newest.
+	 * @example
+	 * ```ts
+	 * const db = analyzer.inspectContext().deps.signatures();
+	 * db.versionOf('dplyr');                              // the version the analysis assumes
+	 * db.functionOf(Identifier.make('lead', 'dplyr'));    // its database entry
+	 * db.parametersOf(Identifier.make('lead', 'dplyr'));  // its formals, ready for FunctionSemantics.call.match.toNames
+	 * ```
+	 */
+	signatures(): SignatureDb;
+
+	/**
+	 * The signature sources the version plugins currently have loaded, as they are. Prefer
+	 * {@link signatures}, which is the same sources as one database with the versions already resolved.
+	 */
 	signatureSources(): readonly PackageSignatureSource[];
 
 	/**
 	 * The signature-database entry for the qualified call `id` (a `pkg::fn` {@link Identifier}) from the first
 	 * {@link signatureSources|source} that has it, resolving the package version from the project's dependency info
 	 * unless `version` overrides it. This is the easy way to obtain a function's parameters from a context: pass
-	 * `fn.signature` (or {@link signatureParameterNames}) to {@link RFunctionCall.matchArgsToParams}. `undefined`
-	 * if `id` is unqualified or no loaded source defines it.
+	 * `fn.signature` to {@link FunctionSemantics.call.match.toNames}. `undefined` if `id` is unqualified or no loaded source defines it.
+	 * @useInstead {@link SignatureDb.functionOf}
 	 */
 	signatureOf(id: Identifier, version?: string): DecodedFunction | undefined;
 }
@@ -137,7 +156,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public availableSignatureDatabases(): readonly string[] {
-		return [...new Set(this.loadedSignatureDatabases().map(d => d.scope))];
+		return uniqueArray(this.loadedSignatureDatabases().map(d => d.scope));
 	}
 
 	public hasSignatureDatabase(): boolean {
@@ -155,6 +174,10 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			}
 		}
 		return [...out];
+	}
+
+	public signatures(): SignatureDb {
+		return signatureDbOf(this);
 	}
 
 	public signatureSources(): readonly PackageSignatureSource[] {
@@ -213,17 +236,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	receive(event: InvalidationEvent): void {
-		const type = event.type;
-		switch(type) {
-			case InvalidationEventType.Full:
-				this.reset();
-				break;
-			case InvalidationEventType.SingleFileInvalidate:
-				// nothing to do
-				break;
-			default:
-				assertUnreachable(type);
-		}
+		resetOnFullInvalidation(this, event);
 	}
 
 	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
@@ -326,7 +339,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public declaredPackageNames(): string[] {
 		this.ensureStaticsLoaded();
 		const declared: readonly (readonly Package[] | undefined)[] = Object.values(this.ctx.meta.getDeclaredPackages());
-		return [...new Set(declared.flatMap(group => group?.map(p => p.name) ?? []))];
+		return uniqueArray(declared.flatMap(group => group?.map(p => p.name) ?? []));
 	}
 }
 

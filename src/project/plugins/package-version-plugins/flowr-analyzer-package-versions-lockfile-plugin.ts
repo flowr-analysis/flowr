@@ -7,6 +7,7 @@ import { platformBasename } from '../../../dataflow/internal/process/functions/c
 import { log } from '../../../util/log';
 import { parse as parseToml } from 'smol-toml';
 import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
+import { parseDCFRecords } from '../file-plugins/files/flowr-description-file';
 
 export const lockfileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-lockfile-plugin' });
 
@@ -44,35 +45,6 @@ export class FlowrAnalyzerPackageVersionsRenvPlugin extends FlowrAnalyzerPackage
 	}
 }
 
-/** Unlike a `DESCRIPTION`, a `packrat.lock` holds one record per package, so the records must not be merged. */
-function parseDCFRecords(content: string): Map<string, string>[] {
-	const records: Map<string, string>[] = [];
-	let current = new Map<string, string>();
-	let key: string | undefined;
-	for(const line of content.split(/\r?\n/)) {
-		if(line.trim().length === 0) {
-			if(current.size > 0) {
-				records.push(current);
-				current = new Map();
-			}
-			key = undefined;
-		} else if(/^\s/.test(line) && key !== undefined) {
-			current.set(key, `${current.get(key) ?? ''} ${line.trim()}`);
-		} else {
-			const colon = line.indexOf(':');
-			if(colon < 0) {
-				continue;
-			}
-			key = line.slice(0, colon).trim();
-			current.set(key, line.slice(colon + 1).trim());
-		}
-	}
-	if(current.size > 0) {
-		records.push(current);
-	}
-	return records;
-}
-
 /** Reads package versions from a `packrat.lock` (multi-record DCF, metadata first). packrat pins are exact. */
 export class FlowrAnalyzerPackageVersionsPackratPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name        = 'flowr-analyzer-package-versions-packrat-plugin';
@@ -81,16 +53,42 @@ export class FlowrAnalyzerPackageVersionsPackratPlugin extends FlowrAnalyzerPack
 
 	public process(ctx: FlowrAnalyzerContext): void {
 		for(const file of virtualEnvFiles(ctx, 'packrat.lock')) {
-			for(const record of parseDCFRecords(file.content().toString())) {
-				const rVersion = record.get('RVersion');
+			for(const record of parseDCFRecords(file)) {
+				const rVersion = record.get('RVersion')?.[0];
 				if(rVersion) {
 					ctx.meta.contribute({ rVersion }, MetaPriority.Lockfile);
 				}
-				const name = record.get('Package');
-				const version = record.get('Version');
+				const name = record.get('Package')?.[0];
+				const version = record.get('Version')?.[0];
 				if(name && version) {
 					pin(ctx, name, version);
 				}
+			}
+		}
+	}
+}
+
+/**
+ * Reads every TOML lockfile called `fileName`: contributes the R version it states and pins each `name`/`version`
+ * pair it lists. `read` says where that lockfile's dialect keeps the two, which is all they differ in.
+ */
+function pinFromTomlLock<Lock>(ctx: FlowrAnalyzerContext, fileName: string, read: (lock: Lock) => { rVersion: unknown, packages: unknown }): void {
+	for(const file of virtualEnvFiles(ctx, fileName)) {
+		let lock: Lock;
+		try {
+			lock = parseToml(file.content().toString()) as Lock;
+		} catch(e) {
+			lockfileLog.warn(`Could not parse ${fileName}: ${(e as Error).message}`);
+			continue;
+		}
+		const { rVersion, packages } = read(lock);
+		if(typeof rVersion === 'string') {
+			ctx.meta.contribute({ rVersion }, MetaPriority.Lockfile);
+		}
+		for(const pkg of Array.isArray(packages) ? packages : []) {
+			const { name, version } = pkg as { name?: unknown, version?: unknown };
+			if(typeof name === 'string' && typeof version === 'string') {
+				pin(ctx, name, version);
 			}
 		}
 	}
@@ -109,24 +107,7 @@ export class FlowrAnalyzerPackageVersionsRvPlugin extends FlowrAnalyzerPackageVe
 	public readonly version     = new SemVer('0.1.0');
 
 	public process(ctx: FlowrAnalyzerContext): void {
-		for(const file of virtualEnvFiles(ctx, 'rv.lock')) {
-			let lock: RvLock;
-			try {
-				lock = parseToml(file.content().toString());
-			} catch(e) {
-				lockfileLog.warn(`Could not parse rv.lock: ${(e as Error).message}`);
-				continue;
-			}
-			if(typeof lock.r_version === 'string') {
-				ctx.meta.contribute({ rVersion: lock.r_version }, MetaPriority.Lockfile);
-			}
-			for(const pkg of Array.isArray(lock.packages) ? lock.packages : []) {
-				const { name, version } = pkg as { name?: unknown, version?: unknown };
-				if(typeof name === 'string' && typeof version === 'string') {
-					pin(ctx, name, version);
-				}
-			}
-		}
+		pinFromTomlLock<RvLock>(ctx, 'rv.lock', lock => ({ rVersion: lock.r_version, packages: lock.packages }));
 	}
 }
 
@@ -143,23 +124,6 @@ export class FlowrAnalyzerPackageVersionsUvrPlugin extends FlowrAnalyzerPackageV
 	public readonly version     = new SemVer('0.1.0');
 
 	public process(ctx: FlowrAnalyzerContext): void {
-		for(const file of virtualEnvFiles(ctx, 'uvr.lock')) {
-			let lock: UvrLock;
-			try {
-				lock = parseToml(file.content().toString());
-			} catch(e) {
-				lockfileLog.warn(`Could not parse uvr.lock: ${(e as Error).message}`);
-				continue;
-			}
-			if(typeof lock.r?.version === 'string') {
-				ctx.meta.contribute({ rVersion: lock.r.version }, MetaPriority.Lockfile);
-			}
-			for(const pkg of Array.isArray(lock.package) ? lock.package : []) {
-				const { name, version } = pkg as { name?: unknown, version?: unknown };
-				if(typeof name === 'string' && typeof version === 'string') {
-					pin(ctx, name, version);
-				}
-			}
-		}
+		pinFromTomlLock<UvrLock>(ctx, 'uvr.lock', lock => ({ rVersion: lock.r?.version, packages: lock.package }));
 	}
 }

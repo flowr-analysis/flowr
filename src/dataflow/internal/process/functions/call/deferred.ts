@@ -1,18 +1,16 @@
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../../environments/identifier';
 import { removeRQuotes } from '../../../../../r-bridge/retriever';
-import { EdgeType, DfEdge  } from '../../../../graph/edge';
+import { EdgeType, DfEdge } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
-import { UseVertex, VariableDefinitionVertex, VertexType } from '../../../../graph/vertex';
+import { DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { happensBefore } from '../../../../../control-flow/happens-before';
 import { Ternary } from '../../../../../util/logic';
-import { NoEdges } from '../../../../graph/graph';
+import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -28,6 +26,7 @@ function dropRead(graph: DataflowGraph, use: NodeId, target: NodeId): void {
 }
 
 /** Where a name is bound and where it is read, so that a deferred expression can reach either. */
+export
 interface NameIndex {
 	readonly definitions: ReadonlyMap<string, NodeId[]>
 	readonly uses:        ReadonlyMap<string, NodeId[]>
@@ -54,12 +53,12 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 		if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
 			return false;
-		} else if(inner.type !== RType.Symbol || callees.has(inner.info.id)) {
+		} else if(!RSymbol.is(inner) || callees.has(inner.info.id)) {
 			return false;
 		}
 		const vertex = graph.getVertex(inner.info.id);
-		if(UseVertex.is(vertex) || VariableDefinitionVertex.is(vertex)) {
-			names.push([inner.info.id, Identifier.getName(inner.content), VariableDefinitionVertex.is(vertex)]);
+		if(DfgVertex.isUse(vertex) || DfgVertex.isVariableDefinition(vertex)) {
+			names.push([inner.info.id, Identifier.getName(inner.content), DfgVertex.isVariableDefinition(vertex)]);
 		}
 		return false;
 	});
@@ -76,14 +75,13 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
  * really depending on it, can be missed.
  */
 export const Deferred = {
-	name: 'Deferred',
 	/** Where each name is bound and read, built once and shared by every deferred expression in the graph. */
 	indexOf<Info>(this: void, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): NameIndex {
 		const definitions = new Map<string, NodeId[]>();
 		const uses = new Map<string, NodeId[]>();
 		for(const [type, index] of [[VertexType.VariableDefinition, definitions], [VertexType.Use, uses]] as const) {
 			for(const [id] of graph.verticesOfType(type)) {
-				const name = recoverName(id, idMap);
+				const name = NodeId.recoverName(id, idMap);
 				if(name !== undefined) {
 					add(index, name, id);
 				}
@@ -98,7 +96,7 @@ export const Deferred = {
 	 */
 	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph): readonly NodeId[] {
 		const reads: NodeId[] = [];
-		for(const [reader, edge] of graph.ingoingEdges(binding) ?? NoEdges) {
+		for(const [reader, edge] of graph.edgesTo(binding)) {
 			if(DfEdge.includesType(edge, EdgeType.Reads)) {
 				reads.push(reader);
 			}
@@ -143,7 +141,7 @@ export const Deferred = {
 		const reachedByAForce = (use: NodeId) => forces === undefined
 			|| (!forces.sites.includes(use) && forces.sites.some(site => happensBefore(forces.cfg, site, use) !== Ternary.Never));
 		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
-		const bindingName = forces === undefined ? undefined : removeRQuotes(recoverName(forces.binding, idMap) ?? '');
+		const bindingName = forces === undefined ? undefined : removeRQuotes(NodeId.recoverName(forces.binding, idMap) ?? '');
 		for(const [node, name, writes] of within) {
 			if(writes) {
 				/* a write of the bound name replaces the binding, so a read it definitely reaches sees only it */

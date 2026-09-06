@@ -4,13 +4,15 @@ import { type JsonEntry, convertPreparedParsedData, prepareParsedData } from '..
 import { extractLocation, getTokenType } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import { removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
+import type { SyntaxNode } from 'web-tree-sitter';
 import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
 import { FlowrFile } from '../../../project/context/flowr-file';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[];
 
-function toDepthMap(entry: JsonEntry): DepthList {
-	const visit: { depth: number, node: JsonEntry }[] = [ { depth: 0, node: entry } ];
+/** shared pre-order-to-depth-list traversal, `toEntry` converts a node and `children` reads its (mutable) child array */
+function toDepthList<T>(root: T, toEntry: (node: T) => JsonEntry, children: (node: T) => T[]): DepthList {
+	const visit: { depth: number, node: T }[] = [{ depth: 0, node: root }];
 	const result: DepthList = [];
 
 	while(visit.length > 0) {
@@ -19,18 +21,22 @@ function toDepthMap(entry: JsonEntry): DepthList {
 			continue;
 		}
 
-		const children = current.node.children;
+		const kids = children(current.node);
 
-		result.push({ ...current, leaf: children.length === 0 });
-		children.reverse();
+		result.push({ depth: current.depth, node: toEntry(current.node), leaf: kids.length === 0 });
+		kids.reverse();
 
 		const nextDepth = current.depth + 1;
 
-		for(const c of children) {
+		for(const c of kids) {
 			visit.push({ depth: nextDepth, node: c });
 		}
 	}
 	return result;
+}
+
+function toDepthMap(entry: JsonEntry): DepthList {
+	return toDepthList(entry, e => e, e => e.children);
 }
 
 function treeSitterToJsonEntry(node: Parser.SyntaxNode): JsonEntry {
@@ -49,28 +55,7 @@ function treeSitterToJsonEntry(node: Parser.SyntaxNode): JsonEntry {
 }
 
 function treeSitterToDepthList(node: Parser.SyntaxNode): DepthList {
-	const visit: { depth: number, node: Parser.SyntaxNode }[] = [ { depth: 0, node } ];
-	const result: DepthList = [];
-
-	while(visit.length > 0) {
-		const current = visit.pop();
-		if(current === undefined) {
-			continue;
-		}
-
-		const children = current.node.children;
-
-		result.push({ depth: current.depth, node: treeSitterToJsonEntry(current.node), leaf: children.length === 0 });
-
-		children.reverse();
-
-		const nextDepth = current.depth + 1;
-
-		for(const c of children) {
-			visit.push({ depth: nextDepth, node: c });
-		}
-	}
-	return result;
+	return toDepthList(node, treeSitterToJsonEntry, n => n.children);
 }
 
 function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: number): boolean {
@@ -152,11 +137,26 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 	return result;
 }
 
+function findErrors(node: SyntaxNode): SyntaxNode[] {
+	const errors: SyntaxNode[] = [];
+
+	if(node.type === 'ERROR' || node.isMissing) {
+		errors.push(node);
+	}
+
+	for(const child of node.children) {
+		errors.push(...findErrors(child));
+	}
+
+	return errors;
+}
+
+
 export const parseCommand: ReplCodeCommand = {
 	description:   'Prints ASCII Art of the parsed, unmodified AST',
 	isCodeCommand: true,
 	usageExample:  ':parse',
-	aliases:       [ 'p' ],
+	aliases:       ['p'],
 	script:        false,
 	argsParser:    (line: string) => {
 		return {
@@ -172,7 +172,7 @@ export const parseCommand: ReplCodeCommand = {
 		if(parserInfo.name === 'r-shell') {
 			for(const { parsed, filePath } of result as ParseStepOutputSingleFile<string>[]) {
 				if(filePath && filePath !== FlowrFile.INLINE_PATH) {
-					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }) );
+					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }));
 				}
 				const object = toDepthMap(convertPreparedParsedData(prepareParsedData(parsed)));
 				output.stdout(depthListToTextTree(object, output.formatter));
@@ -185,6 +185,23 @@ export const parseCommand: ReplCodeCommand = {
 				}
 				const object = treeSitterToDepthList(parsed.rootNode);
 				output.stdout(depthListToTextTree(object, output.formatter));
+				if(parsed.rootNode.hasError) {
+					output.stdout(output.formatter.format('\n\nThe parsed AST contains errors, enable lax mode to normalize partially!\n', { style: FontStyles.Italic }));
+					// print the error nodes grouped by line:
+					const errors = findErrors(parsed.rootNode);
+					const errorsByLine = new Map<number, SyntaxNode[]>();
+					for(const error of errors) {
+						const line = error.startPosition.row + 1;
+						if(!errorsByLine.has(line)) {
+							errorsByLine.set(line, []);
+						}
+						errorsByLine.get(line)?.push(error);
+					}
+					output.stdout(output.formatter.format('Errors by line:\n', { style: FontStyles.Bold }));
+					for(const [line, nodes] of Array.from(errorsByLine.entries()).sort((a, b) => a[0] - b[0])) {
+						output.stdout(output.formatter.format(`  Line ${line}: ${nodes.map(n => n.type).join(', ')}`, { style: FontStyles.Italic }));
+					}
+				}
 			}
 		}
 	}

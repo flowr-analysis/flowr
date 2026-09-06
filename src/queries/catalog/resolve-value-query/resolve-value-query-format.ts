@@ -37,7 +37,7 @@ function resolveValueLineParser(output: ReplOutput, line: readonly string[], _co
 				criteria: criteria,
 			}],
 		rCode: queryLineCode(line)
-	} ;
+	};
 }
 
 export const ResolveValueQueryDefinition = {

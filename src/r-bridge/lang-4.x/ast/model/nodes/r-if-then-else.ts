@@ -23,6 +23,7 @@ export const RIfThenElse = {
 	name: 'RIfThenElse',
 	/**
 	 * Type guard for {@link RIfThenElse} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RIfThenElse<Info> {
 		return node?.type === RType.IfThenElse;

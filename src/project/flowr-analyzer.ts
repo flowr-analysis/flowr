@@ -12,7 +12,6 @@ import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyz
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
-import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever';
 import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
@@ -24,6 +23,9 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
+import type { FnInfo } from '../dataflow/environments/query-fn-props';
+import { fnInfo } from '../dataflow/environments/query-fn-props';
+import { Identifier } from '../dataflow/environments/identifier';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -89,6 +91,16 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 */
 	inspectContext(): ReadOnlyFlowrAnalyzerContext
 	/**
+	 * What flowR knows about the function `name`, whether that is one of its own built-ins, a package function
+	 * the signature database carries, or both; see {@link fnInfo}.
+	 *
+	 * A string is read the way R source spells a name, so `'dplyr::lead'` and `'dplyr:::internal'` name the
+	 * package function rather than a symbol with a `::` in it (pass an {@link Identifier} for that one).
+	 * @param name    - The function to ask about, `'dplyr::lead'` or `Identifier.make('lead', 'dplyr')` to pin the package down.
+	 * @param version - The package version to answer for, the one the analysis assumes if omitted.
+	 */
+	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined
+	/**
 	 * Get the parse output for the request.
 	 *
 	 * The parse result type depends on the {@link KnownParser} used by the analyzer.
@@ -102,8 +114,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
 	/**
 	 * Parse standalone R code provided as a string or via the `file://` protocol.
-	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 * @param data - The R code to parse, either as a string or as a `file://` URL.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 */
 	parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree;
 	/**
@@ -119,8 +131,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 
 	/**
 	 * Normalize standalone R code provided as a string or via the `file://` protocol.
-	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 * @param data - The R code to normalize, either as a string or as a `file://` URL.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 */
 	normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst;
 	/**
@@ -136,15 +148,14 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/**
 	 * Get the control flow graph (CFG) for the request.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
-	 * @param kind            - The kind of CFG that is requested. By default, the CFG without dataflow information is returned.
 	 * @param force           - Do not use the cache, instead force new analyses.
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekControlflow} - to get the CFG if already available without triggering a new computation.
 	 */
-	controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation>;
+	controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation>;
 	/**
 	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
 	 */
-	peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined;
+	peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined;
 	/**
 	 * Calculate the call graph for the request.
 	 */
@@ -226,6 +237,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
 		return this.ctx.inspect();
+	}
+
+	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
+		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this.ctx.inspect(), version);
 	}
 
 	public reset() {
@@ -331,12 +346,12 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return;
 	}
 
-	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation> {
-		return this.cache.controlflow(force, kind ?? CfgKind.NoDataflow, simplifications);
+	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
+		return this.cache.controlflow(force, simplifications);
 	}
 
-	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined {
-		return this.cache.peekControlflow(kind ?? CfgKind.NoDataflow, simplifications);
+	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined {
+		return this.cache.peekControlflow(simplifications);
 	}
 
 	public async callGraph(force?: boolean): Promise<CallGraph> {

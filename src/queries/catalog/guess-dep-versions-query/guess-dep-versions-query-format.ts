@@ -5,9 +5,9 @@ import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query'
 import { bold, italic, faint, color, Colors, type OutputFormatter } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { RVersion, type VersionString } from '../../../util/r-version';
-import { arraysGroupBy } from '../../../util/collections/arrays';
+import { arraysGroupBy, uniqueArray } from '../../../util/collections/arrays';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { rdrrDocUrl } from '../signature-query/signature-query-executor';
+import { helpPageUrl } from '../signature-query/signature-query-executor';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { VersionSelection, type FlowrConfig } from '../../../config';
 import { executeGuessDepVersionsQuery } from './guess-dep-versions-query-executor';
@@ -497,7 +497,7 @@ export const GuessDepVersionsQueryDefinition = {
 			const tightestLe = versionBound(tightestBound(enforced.filter(e => versionBound(e.bound)), '<='))?.ver;
 			const active: string[] = [], dominated: string[] = [];
 			const nonSig = [...arraysGroupBy(dep.evidence.filter(e => e.source !== 'signature' && e.source !== 'available'), e => `${e.source}|${e.bound ?? ''}|${e.partial ? 'p' : ''}`)]
-				.map(([, evs]) => ({ ev: evs[0], origins: [...new Set(evs.map(e => e.origin))] }))
+				.map(([, evs]) => ({ ev: evs[0], origins: uniqueArray(evs.map(e => e.origin)) }))
 				.sort((x, y) => compareBounds(x.ev, y.ev));
 			const bestRankByBound = new Map<string, number>();
 			for(const { ev } of nonSig) {
@@ -527,12 +527,12 @@ export const GuessDepVersionsQueryDefinition = {
 			const sigRecords = [...arraysGroupBy(dep.evidence.filter(e => e.source === 'signature'), e => e.function ?? e.origin)].map(([fn, evs]) => {
 				const ge = tightestBound(evs, '>='), le = tightestBound(evs, '<=');
 				const geVer = versionBound(ge)?.ver, leVer = versionBound(le)?.ver;
-				const params = [...new Set(evs.map(e => e.parameter).filter((pm): pm is string => pm !== undefined))];
+				const params = uniqueArray(evs.map(e => e.parameter).filter((pm): pm is string => pm !== undefined));
 				const at = evs.find(e => e.location)?.location;
 				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${truncatedList(params)}]` : undefined,
 					at ? `at ${at}` : undefined].filter(Boolean).join(', ');
 				const name = Identifier.getName(Identifier.parse(fn));
-				const url = rdrrDocUrl(dep.package, name, { base: dep.base, cran: !dep.base });
+				const url = helpPageUrl(dep.package, name, { base: dep.base, cran: !dep.base });
 				const label = (url ? formatter.hyperlink(name, url, true) : name) + (reasons ? ` (${reasons})` : '');
 				const redundant = !(geVer !== undefined && geVer === tightestGe) && !(leVer !== undefined && leVer === tightestLe);
 				return { bounds: [ge, le].filter(Boolean).join(' '), label, redundant, geVer, leVer };

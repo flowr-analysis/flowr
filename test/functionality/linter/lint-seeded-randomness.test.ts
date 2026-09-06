@@ -77,7 +77,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('random seed', parser, 'set.seed(runif(1));\nrunif(1);', 'seeded-randomness', [
 			{ loc: [1, 10, 1, 17], function: 'runif', certainty: LintingResultCertainty.Certain },
 			{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }
-		], { consumerCalls: 2, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 2, callsWithOtherBranchProducers: 0 });
+			/* the `runif` inside the seed runs before the seed is set, so only the one after it has a producer */
+		], { consumerCalls: 2, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 1, callsWithOtherBranchProducers: 0 });
 
 		assertLinter('custom set.seed', parser, 'set.seed <- function(x) {}\nset.seed(17)\nrunif(1)', 'seeded-randomness',
 			[{ loc: [3, 1, 3, 8], function: 'runif', certainty: LintingResultCertainty.Certain }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });

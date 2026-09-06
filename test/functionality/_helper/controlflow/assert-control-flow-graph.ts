@@ -10,11 +10,11 @@ import type { CfgSimplificationPassName } from '../../../../src/control-flow/cfg
 import type { DataflowInformation } from '../../../../src/dataflow/info';
 import type { NormalizedAst } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { CfgKind } from '../../../../src/project/cfg-kind';
 import { label } from '../label';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { FlowrConfig } from '../../../../src/config';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { assumedPackagesOf, withAssumedPackages } from '../shell';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(NodeId.normalize);
@@ -36,8 +36,9 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 	// shallow copy is important to avoid killing the CFG :c
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 	const effectiveName = label(code, options?.testIds ?? [], ['controlflow']);
+	const assumed = assumedPackagesOf(undefined);
 	return test(effectiveName, async() => {
-		const config = FlowrConfig.default();
+		const config = withAssumedPackages(FlowrConfig.default(), assumed);
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)
 			.setParser(parser)
@@ -47,11 +48,11 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 		let cfg: ControlFlowInformation;
 
 		if(options?.withBasicBlocks) {
-			cfg = await analyzer.controlflow(['to-basic-blocks', 'remove-dead-code', ...options.simplificationPasses ?? []], CfgKind.WithDataflow);
+			cfg = await analyzer.controlflow(['to-basic-blocks', 'remove-dead-code', ...options.simplificationPasses ?? []]);
 		} else if(options?.simplificationPasses) {
-			cfg = await analyzer.controlflow(options.simplificationPasses ?? [], CfgKind.WithDataflow);
+			cfg = await analyzer.controlflow(options.simplificationPasses ?? []);
 		} else {
-			cfg = await analyzer.controlflow(undefined, CfgKind.WithDataflow);
+			cfg = await analyzer.controlflow(undefined);
 		}
 
 		let diff: GraphDifferenceReport | undefined;

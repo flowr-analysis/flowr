@@ -27,7 +27,7 @@ export type RoxygenArgsConfig = MergeableRecord;
 
 export type RoxygenArgsMetadata = MergeableRecord;
 
-function calculateArgumentDiff(inheritedParams: readonly string[], functionParam: readonly string[], roxygenParam: readonly string[]): false | { under: string[], over: string[] }{
+function calculateArgumentDiff(inheritedParams: readonly string[], functionParam: readonly string[], roxygenParam: readonly string[]): false | { under: string[], over: string[] } {
 
 	//match documented against existing params
 	let underDocumented = new Set(functionParam);
@@ -38,9 +38,9 @@ function calculateArgumentDiff(inheritedParams: readonly string[], functionParam
 	overDocumented = overDocumented.difference(commonParams);
 
 	//case: '...', overdocumentation not possible
-	if(notOverDocumented){
+	if(notOverDocumented) {
 		//if still remaining overdocumented parameters, "..." doesn't need to be documented
-		if(overDocumented.size > 0){
+		if(overDocumented.size > 0) {
 			underDocumented.delete('...');
 		}
 		//can't be overdocumented
@@ -76,7 +76,7 @@ export const ROXYGEN_ARGS = {
 						const inheritedParams = params.filter(tag => tag.inherited).map(tag => tag.value.name);
 						const roxygenParamNames = params.map(tag => tag.value.name);
 						const result = calculateArgumentDiff(inheritedParams ?? [], functionParamNames, roxygenParamNames);
-						if(result === false){
+						if(result === false) {
 							return false;
 						}
 						underDocumented.push(...result.under);
@@ -107,7 +107,7 @@ export const ROXYGEN_ARGS = {
 	}
 } as const satisfies LintingRule<RoxygenArgsResult, RoxygenArgsMetadata, RoxygenArgsConfig>;
 
-function getParameters(node: RNode): RParameter[]{
+function getParameters(node: RNode): RParameter[] {
 	return RFunctionDefinition.is(node) ? node.parameters : [];
 }
 

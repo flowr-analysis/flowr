@@ -19,6 +19,7 @@ export const RLineDirective = {
 	name: 'RLineDirective',
 	/**
 	 * Type guard for {@link RLineDirective} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RLineDirective<Info> {
 		return node?.type === RType.LineDirective;

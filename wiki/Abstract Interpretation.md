@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[src/documentation/wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16, R v4.6.1), so please do not edit it directly._
+_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-08-29, 17:39:06 UTC (v2.15.8, R v4.6.1), please do not edit directly._
 
 
 This page describes the abstract interpretation framework of _flowR_.
@@ -26,87 +26,7 @@ In _flowR_, an abstract domain is represented by the class <a href="https://gith
  * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L119"><code><span title="Widens the current abstract value with another abstract value as a sound over-approximation of the join (least upper bound) for fixpoint iteration acceleration.">AbstractDomain::<b>widen</b></span></code></a> to perform widening with another abstract value to ensure termination of the fixpoint iteration
  * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L137"><code><span title="Narrows the current abstract value with another abstract value as a sound over-approximation of the meet (greatest lower bound) to refine the value after widening.">AbstractDomain::<b>narrow</b></span></code></a> to perform narrowing with another abstract value to refine the abstract value after widening
 
-
-<details><summary>Class Diagram</summary>
-
-All boxes link to their respective implementation in the source code.
-
-```mermaid
-
----
-  config:
-    class:
-      hideEmptyMembersBox: true
----
-classDiagram
-direction RL
-class AbstractDomain~Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot~{
-    <<class>>
-    ##95;value#58; Lift
-    +value#58; Lift
-    +create(value#58; Value | Top | Bot) this*
-    +top() this #38; AbstractDomain#60;Value, Top, Bot, Top#62;*
-    +bottom() this #38; AbstractDomain#60;Value, Top, Bot, Bot#62;*
-    +equals(other#58; this) boolean
-    #equalsValue(this#58; AbstractDomain#60;Value, Top, Bot, Value#62;, other#58; AbstractDomain#60;Value, Top, Bot, Value#62;) boolean*
-    +leq(other#58; this) boolean
-    #leqValue(this#58; AbstractDomain#60;Value, Top, Bot, Value#62;, other#58; AbstractDomain#60;Value, Top, Bot, Value#62;) boolean*
-    +join(other#58; Value | Top | Bot | this) this
-    #joinValue(this#58; AbstractDomain#60;Value, Top, Bot, Value#62;, other#58; AbstractDomain#60;Value, Top, Bot, Value#62;) this*
-    +joinAll(values#58; #123;#125;) this
-    +meet(other#58; Value | Top | Bot | this) this
-    #meetValue(this#58; AbstractDomain#60;Value, Top, Bot, Value#62;, other#58; AbstractDomain#60;Value, Top, Bot, Value#62;) this*
-    +meetAll(values#58; #123;#125;) this
-    +widen(other#58; this) this
-    #widenValue(this#58; AbstractDomain#60;Value, Top, Bot, Value#62;, other#58; AbstractDomain#60;Value, Top, Bot, Value#62;) this
-    +narrow(other#58; this) this
-    #narrowValue(this#58; AbstractDomain#60;Value, Top, Bot, Value#62;, other#58; AbstractDomain#60;Value, Top, Bot, Value#62;) this
-    +transform#123; (transform#58; (value#58; Value) Value | Top | Bot, bottomDefault#58; Value | Top | Bot, topDefault#58; Value | Top | Bot)#58; this; (transform#58; (value#58; Value | Top) Value | ... 1 more ... | Bot, bottomDefault#58; Value | ... 1 more ... | Bot)#58; this; (transform#58; (value#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... ...
-    +transform#123; (transform#58; (value#58; Value) Value | Top | Bot, bottomDefault#58; Value | Top | Bot, topDefault#58; Value | Top | Bot)#58; this; (transform#58; (value#58; Value | Top) Value | ... 1 more ... | Bot, bottomDefault#58; Value | ... 1 more ... | Bot)#58; this; (transform#58; (value#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... ...
-    +transform#123; (transform#58; (value#58; Value) Value | Top | Bot, bottomDefault#58; Value | Top | Bot, topDefault#58; Value | Top | Bot)#58; this; (transform#58; (value#58; Value | Top) Value | ... 1 more ... | Bot, bottomDefault#58; Value | ... 1 more ... | Bot)#58; this; (transform#58; (value#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... ...
-    +transform#123; (transform#58; (value#58; Value) Value | Top | Bot, bottomDefault#58; Value | Top | Bot, topDefault#58; Value | Top | Bot)#58; this; (transform#58; (value#58; Value | Top) Value | ... 1 more ... | Bot, bottomDefault#58; Value | ... 1 more ... | Bot)#58; this; (transform#58; (value#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... ...
-    +merge#123; (other#58; this, merge#58; (first#58; Value, second#58; Value) Value | Top | Bot, bottomDefault#58; (other#58; Value | Top | Bot) Value | Top | Bot, topDefault#58; (other#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... | Bot)#58; this; (other#58; this, merge#58; (first#58; Value | Top, second#58; Value | Top) Value | ... 1 more ......
-    +merge#123; (other#58; this, merge#58; (first#58; Value, second#58; Value) Value | Top | Bot, bottomDefault#58; (other#58; Value | Top | Bot) Value | Top | Bot, topDefault#58; (other#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... | Bot)#58; this; (other#58; this, merge#58; (first#58; Value | Top, second#58; Value | Top) Value | ... 1 more ......
-    +merge#123; (other#58; this, merge#58; (first#58; Value, second#58; Value) Value | Top | Bot, bottomDefault#58; (other#58; Value | Top | Bot) Value | Top | Bot, topDefault#58; (other#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... | Bot)#58; this; (other#58; this, merge#58; (first#58; Value | Top, second#58; Value | Top) Value | ... 1 more ......
-    +merge#123; (other#58; this, merge#58; (first#58; Value, second#58; Value) Value | Top | Bot, bottomDefault#58; (other#58; Value | Top | Bot) Value | Top | Bot, topDefault#58; (other#58; Value | ... 1 more ... | Bot) Value | ... 1 more ... | Bot)#58; this; (other#58; this, merge#58; (first#58; Value | Top, second#58; Value | Top) Value | ... 1 more ......
-    +toJSON() unknown
-    #jsonify(this#58; AbstractDomain#60;Value, Top, Bot, Exclude#60;Value | Top | Bot, any#62;#62;) unknown*
-    +toString() string
-    #stringify(this#58; AbstractDomain#60;Value, Top, Bot, Exclude#60;Value | Top | Bot, any#62;#62;) string*
-    +isTop() this is this #38; AbstractDomain#60;Value, Top, Bot, Top#62;*
-    +isNotTop() this is this #38; AbstractDomain#60;Value, Top, Bot, Value | Bot#62;
-    +isBottom() this is this #38; AbstractDomain#60;Value, Top, Bot, Bot#62;*
-    +isNotBottom() this is this #38; AbstractDomain#60;Value, Top, Bot, Value | Top#62;
-    +isValue() this is this #38; AbstractDomain#60;Value, Top, Bot, Value#62;*
-    +isNotValue() this is this #38; AbstractDomain#60;Value, Top, Bot, Top | Bot#62;
-    +joinAll#60;Domain extends AnyAbstractDomain#62;(values#58; #123;#125;, defaultValue?#58; Domain) Domain$
-    +meetAll#60;Domain extends AnyAbstractDomain#62;(values#58; #123;#125;, defaultValue?#58; Domain) Domain$
-    +toString(this#58; void, value#58; unknown) string$
-}
-click AbstractDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L18" "An abstract domain as complete lattice with a widening and narrowing operator. All operations of value abstract domains should not modify the domain in#45;place but return new values using; #60;code#62;create#60;/code#62;; ."
-class Lattice~Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot~{
-    <<interface>>
-    value#58; Lift
-    create(value#58; Value | Top | Bot) this
-    top() this #38; Lattice#60;Value, Top, Bot, Top#62;
-    bottom() this #38; Lattice#60;Value, Top, Bot, Bot#62;
-    equals(other#58; this) boolean
-    leq(other#58; this) boolean
-    join(other#58; Value | Top | Bot | this) this
-    meet(other#58; Value | Top | Bot | this) this
-    toJSON() unknown
-    toString() string
-    isTop() this is Lattice#60;Value, Top, Bot, Top#62;
-    isBottom() this is Lattice#60;Value, Top, Bot, Bot#62;
-    isValue() this is Lattice#60;Value, Top, Bot, Value#62;
-}
-click Lattice href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/lattice.ts#L20" "A complete lattice with a partially ordered set, join operator (LUB), meet operator (GLB), top element, and bottom element (e.g. for abstract domains)."
-Lattice <|-- AbstractDomain
-```
-
-</details>
-
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/lattice.ts#L4"><code><span title="The Top symbol to represent the Top element of complete lattices (e.g. of abstract domains).">Top</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/lattice.ts#L10"><code><span title="The Bottom symbol to represent the Bottom element of complete lattices (e.g. of abstract domains).">Bottom</span></code></a> symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the  interface that provides the function  to check whether the current abstract value of the abstract domain satisfies a concrete value (see also <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/value-abstract-domain.ts#L125"><code><span title="Represents the different types of numerical comparators for satisfiability checks for an abstract domain.">NumericalComparator</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/value-abstract-domain.ts#L136"><code><span title="Represents the different types of set comparators for satisfiability checks for an abstract domain.">SetComparator</span></code></a>).
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/lattice.ts#L4"><code><span title="The Top symbol to represent the Top element of complete lattices (e.g. of abstract domains).">Top</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/lattice.ts#L10"><code><span title="The Bottom symbol to represent the Bottom element of complete lattices (e.g. of abstract domains).">Bottom</span></code></a> symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-domain.ts#L48"><code><span title="The type of the value abstract domain of a state abstract domain.">ValueDomain</span></code></a> interface that provides the function <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/value-abstract-domain.ts#L16"><code><span title="Checks whether the current abstract value satisfies a concrete value (i.e. includes a concrete value).">satisfies</span></code></a> to check whether the current abstract value of the abstract domain satisfies a concrete value (see also <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/value-abstract-domain.ts#L125"><code><span title="Represents the different types of numerical comparators for satisfiability checks for an abstract domain.">NumericalComparator</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/value-abstract-domain.ts#L136"><code><span title="Represents the different types of set comparators for satisfiability checks for an abstract domain.">SetComparator</span></code></a>).
 
 _flowR_ already provides different abstract domains for abstract interpretation in [src/abstract-interpretation/domains](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains). Many of the abstract domains are generic and can be used for differend kinds of analyses. The existing abstract domains are presented in the following. Some of the listed abstract domains can be expanded to show the inherited abstract domains.
 
@@ -134,6 +54,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
          protected readonly setType: typeof Set<T>;
      
          /**
+          * @param value   - The abstract value to start from.
           * @param limit   - A limit for the maximum number of elements to store in the set
           * @param setType - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
           */
@@ -317,9 +238,14 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.create([Math.max(this.lower, other.lower), Math.min(this.upper, other.upper)]);
          }
      
+         /** The open (unconstrained) lower bound of the interval; subclasses over a restricted domain (e.g. {@link PosIntervalDomain}) may tighten it. */
+         protected minLower(): number {
+             return -Infinity;
+         }
+     
          protected widenValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
              return this.create([
-                 this.lower <= other.lower ? this.lower : -Infinity,
+                 this.lower <= other.lower ? this.lower : this.minLower(),
                  this.upper >= other.upper ? this.upper : +Infinity
              ]);
          }
@@ -329,7 +255,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                  return this.bottom();
              }
              return this.create([
-                 this.lower === -Infinity ? other.lower : this.lower,
+                 this.lower === this.minLower() ? other.lower : this.lower,
                  this.upper === +Infinity ? other.upper : this.upper
              ]);
          }
@@ -384,75 +310,59 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.bottom();
          }
      
-         public add(other: this | IntervalLift): this {
+         /** Unwraps `this` and `other` to {@link IntervalValue}s and runs `op` with them, as long as both are actual values; falls back to Bottom otherwise. Shared by the binary numeric operations below. */
+         protected binaryOp(other: this | IntervalLift, op: (thisValue: IntervalValue, otherValue: IntervalValue) => this): this {
              const otherValue = other instanceof AbstractDomain ? other.value : other;
      
              if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([this.lower + otherValue[0], this.upper + otherValue[1]]);
+                 return op(this.value, otherValue);
              }
              return this.bottom();
+         }
+     
+         public add(other: this | IntervalLift): this {
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([thisValue[0] + otherValue[0], thisValue[1] + otherValue[1]]));
          }
      
          public subtract(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([this.lower - otherValue[0], this.upper - otherValue[1]]);
-             }
-             return this.bottom();
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([thisValue[0] - otherValue[0], thisValue[1] - otherValue[1]]));
          }
      
          public multiply(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
+             return this.binaryOp(other, (thisValue, otherValue) => {
                  const products = [
-                     this.value[0] * otherValue[0],
-                     this.value[0] * otherValue[1],
-                     this.value[1] * otherValue[0],
-                     this.value[1] * otherValue[1]
+                     thisValue[0] * otherValue[0],
+                     thisValue[0] * otherValue[1],
+                     thisValue[1] * otherValue[0],
+                     thisValue[1] * otherValue[1]
                  ];
                  return this.create([Math.min(...products), Math.max(...products)]);
-             }
-             return this.bottom();
+             });
          }
      
          public divide(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
+             return this.binaryOp(other, (thisValue, otherValue) => {
                  if(otherValue[0] <= 0 && 0 <= otherValue[1]) {
                      return this.top();
                  }
                  return this.multiply(this.create([1 / otherValue[1], 1 / otherValue[0]]));
-             }
-             return this.bottom();
+             });
          }
      
          public min(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([Math.min(this.lower, otherValue[0]), Math.min(this.upper, otherValue[1])]);
-             }
-             return this.bottom();
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.min(thisValue[0], otherValue[0]), Math.min(thisValue[1], otherValue[1])]));
          }
      
          public max(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([Math.max(this.lower, otherValue[0]), Math.max(this.upper, otherValue[1])]);
-             }
-             return this.bottom();
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.max(thisValue[0], otherValue[0]), Math.max(thisValue[1], otherValue[1])]));
          }
      
          /**
-          * Extends the lower bound of the current abstract value down to -∞.
+          * Extends the lower bound of the current abstract value down to {@link minLower}.
           */
          public widenDown(): this {
              if(this.isValue()) {
-                 return this.create([-Infinity, this.upper]);
+                 return this.create([this.minLower(), this.upper]);
              }
              return this.bottom();
          }
@@ -498,12 +408,12 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      
       <details><summary>View more (PosIntervalDomain)</summary>
 
-     * [PosIntervalDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L22)   
+     * [PosIntervalDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L21)   
        The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values.
        The Bottom element is defined as
        <code>Bottom</code>
        symbol and the Top element is defined as the interval [0, +∞].
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L22">src/abstract-interpretation/domains/positive-interval-domain.ts#L22</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L21">src/abstract-interpretation/domains/positive-interval-domain.ts#L21</a></summary>
        
        
        ```ts
@@ -539,40 +449,12 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                return this.create(PosIntervalTop) as this & PosIntervalDomain<PosIntervalTop>;
            }
        
-           protected widenValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
-               return this.create([
-                   this.lower <= other.lower ? this.lower : 0,
-                   this.upper >= other.upper ? this.upper : +Infinity
-               ]);
-           }
-       
-           protected narrowValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
-               if(Math.max(this.lower, other.lower) > Math.min(this.upper, other.upper)) {
-                   return this.bottom();
-               }
-               return this.create([
-                   this.lower === 0 ? other.lower : this.lower,
-                   this.upper === +Infinity ? other.upper : this.upper
-               ]);
+           protected minLower(): number {
+               return 0;
            }
        
            public subtract(other: this | PosIntervalLift): this {
-               const otherValue = other instanceof AbstractDomain ? other.value : other;
-       
-               if(this.isValue() && otherValue !== Bottom) {
-                   return this.create([Math.max(this.lower - otherValue[0], 0), Math.max(this.upper - otherValue[1], 0)]);
-               }
-               return this.bottom();
-           }
-       
-           /**
-            * Extends the lower bound of the current abstract value down to 0.
-            */
-           public widenDown(): this {
-               if(this.isValue()) {
-                   return this.create([0, this.upper]);
-               }
-               return this.bottom();
+               return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.max(thisValue[0] - otherValue[0], 0), Math.max(thisValue[1] - otherValue[1], 0)]));
            }
        
            public isTop(): this is this & PosIntervalDomain<PosIntervalTop> {
@@ -586,11 +468,11 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        
 
       </details>
-   * [PartialProductDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L20)   
+   * [PartialProductDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L24)   
      A partial product abstract domain as named Cartesian product of (optional) sub abstract domains.
      The sub abstract domains are represented by a (partial) record mapping property names to abstract domains.
      The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L20">src/abstract-interpretation/domains/partial-product-domain.ts#L20</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L24">src/abstract-interpretation/domains/partial-product-domain.ts#L24</a></summary>
      
      
      ```ts
@@ -600,14 +482,14 @@ _flowR_ already provides different abstract domains for abstract interpretation 
       * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
       * @template Product - Type of the abstract product of the product domain mapping (optional) property names to abstract domains
       */
-     export abstract class PartialProductDomain<Product extends AbstractProduct>
+     export abstract class PartialProductDomain<Product extends PartialProduct>
          extends AbstractDomain<Product, Product, Product> {
      
          public readonly domain:     Required<Product>;
          public readonly reductions: readonly ProductReduction<Product>[];
      
          constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = [], reduce = true) {
-             super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);
+             super(Record.mapPartialProps(value, entry => entry.create(entry.value)) as Product);
      
              this.reductions = reductions;
              this.domain = domain;
@@ -632,98 +514,85 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.create({} as Product);
          }
      
-         protected equalsValue(other: this): boolean {
+         /** Compares each sub abstract domain value pointwise with `cmp`; `skipWhenOtherUndefined` treats a missing (Top) property on `other` as trivially satisfying `cmp` instead of a mismatch. */
+         private compareValues(other: this, cmp: (a: AnyAbstractDomain, b: AnyAbstractDomain) => boolean, skipWhenOtherUndefined: boolean): boolean {
              if(this.value === other.value) {
                  return true;
              }
              for(const key in this.value) {
-                 if(this.value[key] === other.value[key]) {
+                 if(this.value[key] === other.value[key] || (skipWhenOtherUndefined && other.value[key] === undefined)) {
                      continue;
-                 } else if(this.value[key] === undefined || other.value[key] === undefined || !this.value[key].equals(other.value[key])) {
+                 } else if(this.value[key] === undefined || other.value[key] === undefined || !cmp(this.value[key], other.value[key])) {
                      return false;
                  }
              }
              return true;
+         }
+     
+         protected equalsValue(other: this): boolean {
+             return this.compareValues(other, (a, b) => a.equals(b), false);
          }
      
          protected leqValue(other: this): boolean {
-             if(this.value === other.value) {
-                 return true;
-             }
-             for(const key in this.value) {
-                 if(this.value[key] === other.value[key] || other.value[key] === undefined) {
-                     continue;
-                 } else if(this.value[key] === undefined || !this.value[key].leq(other.value[key])) {
-                     return false;
-                 }
-             }
-             return true;
+             return this.compareValues(other, (a, b) => a.leq(b), true);
          }
      
-         protected joinValue(other: this): this {
+         /** Combines each sub abstract domain value pointwise with `op`, keeping a property only if it is defined on both sides (used by join and widen). */
+         private combineDefined(other: this, op: PointwiseOp): this {
              const result = {} as Product;
      
              for(const key in this.domain) {
                  if(this.value[key] !== undefined && other.value[key] !== undefined) {
-                     result[key] = this.value[key].join(other.value[key]) as typeof result[typeof key];
+                     result[key] = op(this.value[key], other.value[key]) as typeof result[typeof key];
+                 }
+             }
+             return this.create(result);
+         }
+     
+         protected joinValue(other: this): this {
+             return this.combineDefined(other, (a, b) => a.join(b));
+         }
+     
+         protected widenValue(other: this): this {
+             return this.combineDefined(other, (a, b) => a.widen(b));
+         }
+     
+         /** Combines each sub abstract domain value pointwise with `op`, falling back to whichever side has a value if the other property is missing (used by meet and narrow). */
+         private combineOrFallback(other: this, op: PointwiseOp): this {
+             const result = {} as Product;
+     
+             for(const key in this.domain) {
+                 if(this.value[key] === undefined) {
+                     result[key] = other.value[key];
+                 } else if(other.value[key] === undefined) {
+                     result[key] = this.value[key];
+                 } else {
+                     result[key] = op(this.value[key], other.value[key]) as typeof result[typeof key];
                  }
              }
              return this.create(result);
          }
      
          protected meetValue(other: this): this {
-             const result = {} as Product;
-     
-             for(const key in this.domain) {
-                 if(this.value[key] === undefined) {
-                     result[key] = other.value[key];
-                 } else if(other.value[key] === undefined) {
-                     result[key] = this.value[key];
-                 } else {
-                     result[key] = this.value[key].meet(other.value[key]) as typeof result[typeof key];
-                 }
-             }
-             return this.create(result);
-         }
-     
-         protected widenValue(other: this): this {
-             const result = {} as Product;
-     
-             for(const key in this.domain) {
-                 if(this.value[key] !== undefined && other.value[key] !== undefined) {
-                     result[key] = this.value[key].widen(other.value[key]) as typeof result[typeof key];
-                 }
-             }
-             return this.create(result);
+             return this.combineOrFallback(other, (a, b) => a.meet(b));
          }
      
          protected narrowValue(other: this): this {
-             const result = {} as Product;
-     
-             for(const key in this.domain) {
-                 if(this.value[key] === undefined) {
-                     result[key] = other.value[key];
-                 } else if(other.value[key] === undefined) {
-                     result[key] = this.value[key];
-                 } else {
-                     result[key] = this.value[key].narrow(other.value[key]) as typeof result[typeof key];
-                 }
-             }
-             return this.create(result);
+             return this.combineOrFallback(other, (a, b) => a.narrow(b));
          }
      
          protected jsonify(): unknown {
-             return Record.mapProperties(this.value, entry => entry?.toJSON());
+             return Record.mapPartialProps(this.value, entry => entry.toJSON());
          }
      
          protected stringify(): string {
-             return '(' + Record.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
+             return '(' + Record.entries(this.value).filter(([, value]) => isNotUndefined(value)).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
          }
      
          public isTop(): boolean;
          public isTop(): this is this;
          public isTop(): this is this {
-             return Record.values(this.value).filter(isNotUndefined).length === 0;
+             return !Record.values(this.value).some(isNotUndefined);
          }
      
          public isBottom(): boolean;
@@ -753,10 +622,10 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      
       <details><summary>View more (MultiValueDomain, ProductDomain)</summary>
 
-     * [MultiValueDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L48)   
+     * [MultiValueDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L72)   
        A multi-value abstract domain as a (partial) product domain that combines multiple abstract domains.
        The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L48">src/abstract-interpretation/domains/multi-value-state-domain.ts#L48</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L72">src/abstract-interpretation/domains/multi-value-state-domain.ts#L72</a></summary>
        
        
        ```ts
@@ -766,7 +635,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
         * @template Product - Type of the abstract product of the multi-value domain combining multiple abstract values
         * @see {@link MultiValueStateDomain} for a state abstract domain of a multi-value domain
         */
-       export class MultiValueDomain<Product extends AbstractProduct>
+       export class MultiValueDomain<Product extends PartialProduct>
            extends PartialProductDomain<Product> {
        
            constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
@@ -800,7 +669,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
         * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
         * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
         */
-       export abstract class ProductDomain<Product extends Required<AbstractProduct>>
+       export abstract class ProductDomain<Product extends AbstractProduct>
            extends PartialProductDomain<Product> {
        
            constructor(value: Product) {
@@ -813,7 +682,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                const result = {} as Product;
        
                for(const key in this.domain) {
-                   result[key] = this.domain[key]?.top() as typeof result[typeof key];
+                   result[key] = this.domain[key]?.top();
                }
                return this.create(result);
            }
@@ -949,8 +818,9 @@ _flowR_ already provides different abstract domains for abstract interpretation 
          protected readonly setType: typeof Set<T>;
      
          /**
-          * @param limit -  A limit for the maximum number of elements to store in the must set and may set before over-approximation
-          * @param newSet - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
+          * @param value   - The abstract value to start from.
+          * @param limit   - A limit for the maximum number of elements to store in the must set and may set before over-approximation
+          * @param setType - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
           */
          constructor(value: Value | ArrayRangeValue<T>, limit: SetRangeLimit | number = DEFAULT_INFERENCE_LIMIT, setType: typeof Set<T> = Set) {
              limit = typeof limit === 'number' ? { must: limit, may: limit } : limit;
@@ -1059,22 +929,35 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return otherLower.isSubsetOf(thisLower) && (otherUpper === Top || (thisUpper !== Top && thisUpper.isSubsetOf(otherUpper)));
          }
      
+         /** Builds a {@link SetRangeValue} from a must set and an upper bound, deriving the may set as the upper bound minus the must set. */
+         private toRangeValue(must: ReadonlySet<T>, upper: ReadonlySet<T> | typeof Top): SetRangeValue<T> {
+             return { must, may: upper === Top ? Top : upper.difference(must) };
+         }
+     
+         /** The upper bound of the union of two sets bounded by `thisUpper` and `otherUpper` ({@link Top} if either is unbounded). Shared by {@link joinValue} and {@link union}. */
+         private unionUpperBound(thisUpper: ReadonlySet<T> | typeof Top, otherUpper: ReadonlySet<T> | typeof Top): ReadonlySet<T> | typeof Top {
+             if(thisUpper === Top || otherUpper === Top) {
+                 return Top;
+             }
+             return thisUpper.union(otherUpper);
+         }
+     
+         /** The upper bound of the intersection of two sets bounded by `thisUpper` and `otherUpper`. Shared by {@link meetValue} and {@link intersect}. */
+         private intersectUpperBound(thisUpper: ReadonlySet<T> | typeof Top, otherUpper: ReadonlySet<T> | typeof Top): ReadonlySet<T> | typeof Top {
+             if(thisUpper === Top) {
+                 return otherUpper;
+             } else if(otherUpper === Top) {
+                 return thisUpper;
+             }
+             return thisUpper.intersection(otherUpper);
+         }
+     
          protected joinValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
              const thisLower = this.lower(), thisUpper = this.upper();
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const joinLower = thisLower.intersection(otherLower);
-             let joinUpper;
-     
-             if(thisUpper === Top || otherUpper === Top) {
-                 joinUpper = Top;
-             } else {
-                 joinUpper = thisUpper.union(otherUpper);
-             }
-             return this.create({
-                 must: joinLower,
-                 may:  joinUpper === Top ? Top : joinUpper.difference(joinLower)
-             });
+             return this.create(this.toRangeValue(joinLower, this.unionUpperBound(thisUpper, otherUpper)));
          }
      
          protected meetValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -1082,22 +965,12 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const meetLower = thisLower.union(otherLower);
-             let meetUpper;
+             const meetUpper = this.intersectUpperBound(thisUpper, otherUpper);
      
-             if(thisUpper === Top) {
-                 meetUpper = otherUpper;
-             } else if(otherUpper === Top) {
-                 meetUpper = thisUpper;
-             } else {
-                 meetUpper = thisUpper.intersection(otherUpper);
-             }
              if(meetUpper !== Top && !meetLower.isSubsetOf(meetUpper)) {
                  return this.bottom();
              }
-             return this.create({
-                 must: meetLower,
-                 may:  meetUpper === Top ? Top : meetUpper.difference(meetLower)
-             });
+             return this.create(this.toRangeValue(meetLower, meetUpper));
          }
      
          public union(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -1110,17 +983,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const unionLower = thisLower.union(otherLower);
-             let unionUpper;
-     
-             if(thisUpper === Top || otherUpper === Top) {
-                 unionUpper = Top;
-             } else {
-                 unionUpper = thisUpper.union(otherUpper);
-             }
-             return this.create({
-                 must: unionLower,
-                 may:  unionUpper === Top ? Top : unionUpper.difference(unionLower)
-             });
+             return this.create(this.toRangeValue(unionLower, this.unionUpperBound(thisUpper, otherUpper)));
          }
      
          public intersect(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -1133,19 +996,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const intersectLower = thisLower.intersection(otherLower);
-             let intersectUpper;
-     
-             if(thisUpper === Top) {
-                 intersectUpper = otherUpper;
-             } else if(otherUpper === Top) {
-                 intersectUpper = thisUpper;
-             } else {
-                 intersectUpper = thisUpper.intersection(otherUpper);
-             }
-             return this.create({
-                 must: intersectLower,
-                 may:  intersectUpper === Top ? Top : intersectUpper.difference(intersectLower)
-             });
+             return this.create(this.toRangeValue(intersectLower, this.intersectUpperBound(thisUpper, otherUpper)));
          }
      
          public subtract(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -1173,10 +1024,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              } else {
                  subtractUpper = thisUpper.difference(otherUpper);
              }
-             return this.create({
-                 must: subtractLower,
-                 may:  subtractUpper === Top ? Top : subtractUpper.difference(subtractLower)
-             });
+             return this.create(this.toRangeValue(subtractLower, subtractUpper));
          }
      
          protected widenValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -1197,10 +1045,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              } else {
                  widenUpper = Top;
              }
-             return this.create({
-                 must: widenLower,
-                 may:  widenUpper === Top ? Top : widenUpper.difference(widenLower)
-             });
+             return this.create(this.toRangeValue(widenLower, widenUpper));
          }
      
          protected narrowValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -1224,10 +1069,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              } else {
                  narrowUpper = thisUpper;
              }
-             return this.create({
-                 must: narrowLower,
-                 may:  narrowUpper === Top ? Top : narrowUpper.difference(narrowLower)
-             });
+             return this.create(this.toRangeValue(narrowLower, narrowUpper));
          }
      
          public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
@@ -1358,8 +1200,9 @@ _flowR_ already provides different abstract domains for abstract interpretation 
          protected readonly setType: typeof Set<T>;
      
          /**
-          * @param limit -  A limit for the maximum number of elements to store in the set
-          * @param newSet - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
+          * @param value   - The abstract value to start from.
+          * @param limit   - A limit for the maximum number of elements to store in the set
+          * @param setType - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
           */
          constructor(value: Value | T[], limit: number = DEFAULT_INFERENCE_LIMIT, setType: typeof Set<T> = Set) {
              if(value !== Top && value !== Bottom) {
@@ -1700,6 +1543,10 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              }
          }
      
+         public entries(): readonly [NodeId, Domain][] {
+             return this.isValue() ? this.value.entries().toArray() : [];
+         }
+     
          public top(): this & StateAbstractDomain<Domain, StateDomainTop> {
              return this.create(new Map<NodeId, never>()) as this & StateAbstractDomain<Domain, StateDomainTop>;
          }
@@ -1708,35 +1555,31 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.create(Bottom) as this & StateAbstractDomain<Domain, StateDomainBottom>;
          }
      
-         protected equalsValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
-             if(this.value.size !== other.value.size) {
+         /** Checks the map sizes with `sizeOk`, then compares every entry of `this` against `other` pointwise with `cmp` (used by equals and leq). */
+         private compareValues(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, sizeOk: (thisSize: number, otherSize: number) => boolean, cmp: (a: Domain, b: Domain) => boolean): boolean {
+             if(!sizeOk(this.value.size, other.value.size)) {
                  return false;
              }
              for(const [key, currValue] of this.value.entries()) {
                  const otherValue = other.get(key);
      
-                 if(otherValue === undefined || !currValue.equals(otherValue)) {
+                 if(otherValue === undefined || !cmp(currValue, otherValue)) {
                      return false;
                  }
              }
              return true;
+         }
+     
+         protected equalsValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
+             return this.compareValues(other, (a, b) => a === b, (a, b) => a.equals(b));
          }
      
          protected leqValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
-             if(this.value.size > other.value.size) {
-                 return false;
-             }
-             for(const [key, currValue] of this.value.entries()) {
-                 const otherValue = other.get(key);
-     
-                 if(otherValue === undefined || !currValue.leq(otherValue)) {
-                     return false;
-                 }
-             }
-             return true;
+             return this.compareValues(other, (a, b) => a <= b, (a, b) => a.leq(b));
          }
      
-         protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+         /** Merges every entry of `other` into a copy of `this`, applying `op` pointwise where both sides have a value for a key (used by join and widen). */
+         private unionCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
              const result = new Map(this.value);
      
              for(const [key, otherValue] of other.value.entries()) {
@@ -1745,51 +1588,40 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                  if(currValue === undefined) {
                      result.set(key, otherValue);
                  } else {
-                     result.set(key, currValue.join(otherValue));
+                     result.set(key, op(currValue, otherValue));
+                 }
+             }
+             return this.create(result);
+         }
+     
+         protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+             return this.unionCombine(other, (a, b) => a.join(b));
+         }
+     
+         protected widenValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+             return this.unionCombine(other, (a, b) => a.widen(b));
+         }
+     
+         /** Combines only the entries shared between `this` and `other`, applying `op` pointwise (used by meet and narrow). */
+         private intersectCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
+             const result = new Map<NodeId, Domain>();
+     
+             for(const [key, currValue] of this.value.entries()) {
+                 const otherValue = other.value.get(key);
+     
+                 if(otherValue !== undefined) {
+                     result.set(key, op(currValue, otherValue));
                  }
              }
              return this.create(result);
          }
      
          protected meetValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
-             const result = new Map<NodeId, Domain>();
-     
-             for(const [key, currValue] of this.value.entries()) {
-                 const otherValue = other.value.get(key);
-     
-                 if(otherValue !== undefined) {
-                     result.set(key, currValue.meet(otherValue));
-                 }
-             }
-             return this.create(result);
-         }
-     
-         protected widenValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
-             const result = new Map(this.value);
-     
-             for(const [key, otherValue] of other.value.entries()) {
-                 const currValue = result.get(key);
-     
-                 if(currValue === undefined) {
-                     result.set(key, otherValue);
-                 } else {
-                     result.set(key, currValue.widen(otherValue));
-                 }
-             }
-             return this.create(result);
+             return this.intersectCombine(other, (a, b) => a.meet(b));
          }
      
          protected narrowValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
-             const result = new Map<NodeId, Domain>();
-     
-             for(const [key, currValue] of this.value.entries()) {
-                 const otherValue = other.value.get(key);
-     
-                 if(otherValue !== undefined) {
-                     result.set(key, currValue.narrow(otherValue));
-                 }
-             }
-             return this.create(result);
+             return this.intersectCombine(other, (a, b) => a.narrow(b));
          }
      
          protected jsonify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): unknown {
@@ -1830,7 +1662,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
         * @template Product - Type of the abstract product of the multi-value domain combining multiple abstract values
         * @see {@link NodeId} for the node IDs of the AST nodes
         */
-       export class MultiValueStateDomain<Product extends AbstractProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
+       export class MultiValueStateDomain<Product extends PartialProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
            extends StateAbstractDomain<MultiValueDomain<Product>, Value> {
        
            constructor(value: Value, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
@@ -1853,11 +1685,35 @@ _flowR_ already provides different abstract domains for abstract interpretation 
            }
        
            public setValue<Key extends keyof Product>(node: NodeId, property: Key, value: Product[Key]): void {
-               if(this.value !== Bottom) {
-                   const oldValue = this.get(node);
-                   const newValue = { ...oldValue?.value ?? {}, [property]: value };
-                   this.set(node, new MultiValueDomain(newValue as Product, this.domain.domain, this.domain.reductions));
+               if(this.value === Bottom) {
+                   return;
                }
+               const oldValue = this.get(node);
+               const newValue = { ...oldValue?.value ?? {}, [property]: value };
+               this.set(node, this.domain.create(newValue as Product));
+           }
+       
+           public removeValue<Key extends keyof Product>(node: NodeId, property: Key): void {
+               if(this.value === Bottom) {
+                   return;
+               }
+               const oldValue = this.get(node);
+       
+               if(oldValue !== undefined) {
+                   const { [property]: _value, ...newValue } = oldValue.value;
+                   this.set(node, this.domain.create(newValue as Product));
+               }
+           }
+       
+           public entries(): readonly [NodeId, MultiValueDomain<Product>][];
+           public entries<Key extends keyof Product>(property: Key): readonly [NodeId, Product[Key]][];
+           public entries<Key extends keyof Product>(property?: Key): readonly [NodeId, MultiValueDomain<Product>][] | readonly [NodeId, Product[Key]][] {
+               if(property === undefined) {
+                   return super.entries();
+               } else if(this.value === Bottom) {
+                   return [];
+               }
+               return super.entries().map(([id, domain]) => [id, domain.value[property]]);
            }
        }
        ```
@@ -1891,11 +1747,6 @@ class AnyAbstractDomain{
 }
 style AnyAbstractDomain opacity:.35,fill:#FAFAFA
 click AnyAbstractDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L268" "A type representing any abstract domain without additional information."
-class AnyStateDomain~Domain extends AnyAbstractDomain = AnyAbstractDomain~{
-    <<type>>
-}
-style AnyStateDomain opacity:.35,fill:#FAFAFA
-click AnyStateDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-domain-like.ts#L37" "A type representing any state abstract domain that stores abstract values for AST nodes."
 class BoundedSetDomain~T, Value extends BoundedSetLift<T> = BoundedSetLift<T>~{
     <<class>>
 }
@@ -1907,16 +1758,16 @@ click IntervalDomain href "https://github.com/flowr-analysis/flowr/tree/main/src
 class PosIntervalDomain~Value extends PosIntervalLift = PosIntervalLift~{
     <<class>>
 }
-click PosIntervalDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L22" "The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values. The Bottom element is defined as; #60;code#62;Bottom#60;/code#62;; symbol and the Top element is defined as the interval #91;0, #43;∞#93;."
-class PartialProductDomain~Product extends AbstractProduct~{
+click PosIntervalDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L21" "The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values. The Bottom element is defined as; #60;code#62;Bottom#60;/code#62;; symbol and the Top element is defined as the interval #91;0, #43;∞#93;."
+class PartialProductDomain~Product extends PartialProduct~{
     <<class>>
 }
-click PartialProductDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L20" "A partial product abstract domain as named Cartesian product of (optional) sub abstract domains. The sub abstract domains are represented by a (partial) record mapping property names to abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value."
-class MultiValueDomain~Product extends AbstractProduct~{
+click PartialProductDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L24" "A partial product abstract domain as named Cartesian product of (optional) sub abstract domains. The sub abstract domains are represented by a (partial) record mapping property names to abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value."
+class MultiValueDomain~Product extends PartialProduct~{
     <<class>>
 }
-click MultiValueDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L48" "A multi#45;value abstract domain as a (partial) product domain that combines multiple abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value."
-class ProductDomain~Product extends Required<AbstractProduct>~{
+click MultiValueDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L72" "A multi#45;value abstract domain as a (partial) product domain that combines multiple abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value."
+class ProductDomain~Product extends AbstractProduct~{
     <<class>>
 }
 click ProductDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/product-domain.ts#L10" "A product abstract domain as named Cartesian product of sub abstract domains. The sub abstract domains are represented by a record mapping property names to abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top."
@@ -1924,6 +1775,11 @@ class DataFrameDomain{
     <<class>>
 }
 click DataFrameDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame/dataframe-domain.ts#L15" "The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain."
+class DataFrameStateDomain{
+    <<type>>
+}
+style DataFrameStateDomain opacity:.35,fill:#FAFAFA
+click DataFrameStateDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame/dataframe-semantics.ts#L42" "The state abstract domain of the data frame shape analysis"
 class SetRangeDomain~T, Value extends SetRangeLift<T> = SetRangeLift<T>~{
     <<class>>
 }
@@ -1940,12 +1796,11 @@ class StateAbstractDomain~Domain extends AnyAbstractDomain, Value extends StateD
     <<class>>
 }
 click StateAbstractDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21" "A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain. The Bottom element is defined as; #60;code#62;Bottom#60;/code#62;; symbol and the Top element as empty mapping."
-class MultiValueStateDomain~Product extends AbstractProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>~{
+class MultiValueStateDomain~Product extends PartialProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>~{
     <<class>>
 }
 click MultiValueStateDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L11" "A multi#45;value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains."
 AnyAbstractDomain .. AbstractDomain
-AnyStateDomain .. AnyAbstractDomain
 BoundedSetDomain --|> AbstractDomain
 IntervalDomain --|> AbstractDomain
 PosIntervalDomain --|> IntervalDomain
@@ -1953,6 +1808,7 @@ PartialProductDomain --|> AbstractDomain
 MultiValueDomain --|> PartialProductDomain
 ProductDomain --|> PartialProductDomain
 DataFrameDomain --|> ProductDomain
+DataFrameStateDomain .. DataFrameDomain
 SetRangeDomain --|> AbstractDomain
 SetUpperBoundDomain --|> AbstractDomain
 SingletonDomain --|> AbstractDomain
@@ -1962,7 +1818,7 @@ MultiValueStateDomain --|> StateAbstractDomain
 
 </details>
 
-Multiple abstract domains can be combined using a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L48"><code><span title="A multi-value abstract domain as a (partial) product domain that combines multiple abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.">MultiValueDomain</span></code></a> (for example, to use an interval domain for numbers and bounded set domain for strings at the same time). A multi-value state domain (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L11"><code><span title="A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.">MultiValueStateDomain</span></code></a>) as state domain of a multi-value domain can be used to track the state of multiple value domains in a program. Additionally, is enables to define reductions on the multi-value domain to refine the inferred value for a value domain based on the other value domains in the multi-value domain. For example, the following example shows how a multi-value state domain can be defined to track numbers and strings at the same time with a simple reduction that sets both domains to bottom if one domain is bottom.
+Multiple abstract domains can be combined using a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L72"><code><span title="A multi-value abstract domain as a (partial) product domain that combines multiple abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.">MultiValueDomain</span></code></a> (for example, to use an interval domain for numbers and bounded set domain for strings at the same time). A multi-value state domain (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L11"><code><span title="A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.">MultiValueStateDomain</span></code></a>) as state domain of a multi-value domain can be used to track the state of multiple value domains in a program. Additionally, is enables to define reductions on the multi-value domain to refine the inferred value for a value domain based on the other value domains in the multi-value domain. For example, the following example shows how a multi-value state domain can be defined to track numbers and strings at the same time with a simple reduction that sets both domains to bottom if one domain is bottom.
 
 
 ```ts
@@ -1984,58 +1840,97 @@ state.setValue(1, 'string', new BoundedSetDomain(new Set(['Hello world!'])));
 
 <h2 id="abstract-interpretation">Abstract Interpretation</h2>
 
-We perform abstract interpretation by forward-traversing the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) of _flowR_ using an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L28"><code><span title="A control flow graph visitor to perform abstract interpretation.  However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.">AbstractInterpretationVisitor</span></code></a>. For each visited control flow vertex, the visitor retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The visitor already handles assignments and (delayed) widening at widening points. However, the visitor does not yet support interprocedural abstract interpretation.
+We perform abstract interpretation by forward-traversing the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) of _flowR_ using an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L107"><code><span title="An abstract interpreter that visits the control flow graph to perform abstract interpretation using fixpoint iteration. The visitor infers the abstract values of multiple abstract domains in a single traversal. The abstract state maps each AST node to the abstract values of all domains of the AbsintAnalysis , and whenever a node is visited, the AbstractSemantics of every domain of the analysis are...">AbstractInterpreter</span></code></a>. For each visited control flow vertex, the abstract interpreter retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The abstract interpreter already handles (delayed) widening at widening points.
 
-To implement a custom abstract interpretation analysis, we can just create a new class and extend the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L28"><code><span title="A control flow graph visitor to perform abstract interpretation.  However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.">AbstractInterpretationVisitor</span></code></a>. The abstract interpretation visitor uses a `StateDomain` (e.g., a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21"><code><span title="A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain. The Bottom element is defined as Bottom symbol and the Top element as empty mapping.">StateAbstractDomain</span></code></a>) to capture the current abstract state at each vertex in the control flow graph. We can then extend the callback functions of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L28"><code><span title="A control flow graph visitor to perform abstract interpretation.  However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.">AbstractInterpretationVisitor</span></code></a> to implement the abstract semantics of expressions, such as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L366"><code><span title="Called for every constant number value in the program.  For example, 42 in print(42).">onNumberConstant</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L305"><code><span title="This event triggers for every function call that is not a condition, loop, assignment, replacement call, or access operation.   For example, this triggers for data.frame in x <- data.frame(id = 1:5, name = letters[1:5]).  This bundles all function calls that are no conditions, loops, assignments, replacement calls, and access operations.">onFunctionCall</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L604"><code><span title="This event triggers for every call to a function that replaces a value in a container, such as names(x) <- 3. This is different from onAssignmentCall in that it does not assign a value to a variable, but rather replaces a value in a container. For example, this triggers for names in names(x) <- 3, but not for x <- 3. More specifically, this relates to the corresponding BuiltInProcessorMapper handl...">onReplacementCall</span></code></a> (make sure to still call the respective super function). The abstract interpretation visitor provides the following functions to retrieve the currently inferred values:
+Joining the predecessors goes through <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L749"><code><span title="The abstract state one predecessor contributes, joined into the state at the current vertex.  The condition semantics of the analysis are applied at branches: on the then-branch of if(u) a else b the predecessor is u and branch.when is true, so u held.">AbstractInterpreter::<b>getPredecessorState</b></span></code></a>, which is handed the branch that was taken to get to the vertex.
+For `if(u) 3 else 2` the step onto `3` reports the condition `u` as the predecessor and the `if` as the branch, together with the outcome `u` had, which is what the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L273"><code><span title="Handles a control flow edge that is only taken if a condition evaluates to a specific value, allowing to refine the abstract state with the information gained from the taken branch.">handleConditionBranch</span></code></a> semantics of a domain are applied to on the way into a branch.
+The other direction is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/basic-cfg-guided-visitor.ts#L108"><code><span title="The constructs whose outcome the given vertex decides, e.g. the if a condition belongs to. This is what tells you, standing on u in if(u) a else b, that you are evaluating the condition of that if.">BasicCfgGuidedVisitor::<b>getDecidedConstructs</b></span></code></a>: standing on `u`, it names the `if` that `u` decides.
 
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L68"><code><span title="Resolves the inferred abstract value of an AST node. This requires that the abstract interpretation visitor has been completed, or at least started.">AbstractInterpretationVisitor::<b>getAbstractValue</b></span></code></a> to resolve the inferred abstract value for an AST node (this includes resolving symbols, pipes, and if expressions)
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L120"><code><span title="Gets the inferred abstract state at the location of a specific AST node. This requires that the abstract interpretation visitor has been completed, or at least started.">AbstractInterpretationVisitor::<b>getAbstractState</b></span></code></a> to get the inferred abstract state at an AST node mapping AST nodes to abstract values
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L141"><code><span title="Gets the inferred abstract trace mapping AST nodes to the inferred abstract state at the respective node.">AbstractInterpretationVisitor::<b>getAbstractTrace</b></span></code></a> to get the complete abstract trace mapping AST nodes to abstract states at the respective node
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L129"><code><span title="Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph). This requires that the abstract interpretation visitor has been completed, or at least started.">AbstractInterpretationVisitor::<b>getEndState</b></span></code></a> to get the inferred abstract state at the end of the program (at the exit points of the control flow graph)
+The analysis is interprocedural: it steps into what a call dispatches to and continues with the state at the exit points of those functions, using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L807"><code><span title="Runs the bodies the given call dispatches to, starting from the state at the call, and returns the state control comes back with: the states at their exit points joined. A call already being interpreted is not entered again, so recursion stops at the second entry.">AbstractInterpreter::<b>enterCall</b></span></code></a>.
+This is what the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Whether the abstract interpretation is interprocedural, i.e. whether it steps into the functions a call may dispatch to.">abstractInterpretation.followCalls</a> configuration switches off, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L776"><code><span title="Whether to step into what the given call dispatches to, which is what makes the analysis interprocedural. Defaults to abstractInterpretation.followCalls; override it to decide per call. A call that reaches no definition is left alone either way.">AbstractInterpreter::<b>shouldEnterCall</b></span></code></a> is the hook to decide it per call.
+Each call site hands its own arguments to the parameters of the function it enters, so what a function is worth depends on where it is called, and every definition a call may reach is entered with the state at the call, so what the call is worth is what either of them leaves behind.
+A definition that calls itself is run until what it leaves behind and what its parameters are worth both stop moving: `shrink(head(x, nrow(x) - 1))` hands over fewer rows than it was given, so the parameters are as much part of the fixpoint as the result is, and both are widened once the rounds pass the threshold so that they must stop.
+What a call is worth is only known when every way out of every definition it reaches is: a function that leaves a frame behind on one path and something else on another says nothing about its result, the same way `if(u) df else 42` does not.
+This is how a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame/shape-inference.ts#L59"><code><span title="The abstract interpretation analysis to infer the shape of data frames, i.e. their column names, number of columns, and number of rows (see DataFrameDomain ).">DataFrameShapeAnalysis</span></code></a> shape flows through the functions a program defines.
 
-For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can implement the following <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L22"><code>IntervalInferenceVisitor</code></a> that extends <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L28"><code><span title="A control flow graph visitor to perform abstract interpretation.  However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.">AbstractInterpretationVisitor</span></code></a> using a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21"><code><span title="A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain. The Bottom element is defined as Bottom symbol and the Top element as empty mapping.">StateAbstractDomain</span></code></a> for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/interval-domain.ts#L26"><code><span title="The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values. The Bottom element is defined as Bottom symbol and the Top element is defined as the interval [-∞, +∞].">IntervalDomain</span></code></a>:
+An abstract interpretation analysis is described declaratively by an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L52"><code><span title="Represents an abstract interpretation analysis with the given domains, abstract semantics, and reduction functions.">AbsintAnalysis</span></code></a> which is executed using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L107"><code><span title="An abstract interpreter that visits the control flow graph to perform abstract interpretation using fixpoint iteration. The visitor infers the abstract values of multiple abstract domains in a single traversal. The abstract state maps each AST node to the abstract values of all domains of the AbsintAnalysis , and whenever a node is visited, the AbstractSemantics of every domain of the analysis are...">AbstractInterpreter</span></code></a>. An abstract interpretation analysis consists of
+
+ * `domains` — the value abstract domains to infer as a Cartesian product, mapping a name to an instance of the respective abstract domain (the abstract state maps each AST node to the values of _all_ of these domains, so multiple analyses can share a single traversal),
+ * `semantics` — the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L83"><code><span title="The abstract semantics of an abstract domain, defining the abstract effect of the different R constructs on the abstract state.  All handlers are optional, so only the semantics of the constructs relevant for the respective abstract domain have to be defined. The handlers are called by the abstract interpretation visitor whenever the respective construct is visited, and are expected to apply their...">AbstractSemantics</span></code></a> to apply for each of these domains, and
+ * `reductions` — optional reduction functions of the product domain refining the value of one domain based on the values of the others.
+
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L83"><code><span title="The abstract semantics of an abstract domain, defining the abstract effect of the different R constructs on the abstract state.  All handlers are optional, so only the semantics of the constructs relevant for the respective abstract domain have to be defined. The handlers are called by the abstract interpretation visitor whenever the respective construct is visited, and are expected to apply their...">AbstractSemantics</span></code></a> for a domain define the abstract semantics of different R constructs with respect to the current abstract state (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L140"><code><span title="Handles a function call that is not covered by any of the other, more specific handlers (e.g. data.frame(id = 1:5)).">handleFunctionCall</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L160"><code><span title="Handles a replacement call, i.e. an assignment to a function call such as names(x) <- 'id' or x$id <- 1:5.">handleReplacementCall</span></code></a>, or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L211"><code><span title="Handles a numeric constant, such as 42.">handleNumberConstant</span></code></a>). All handlers are optional and receive the current abstract `state` to update in place, the dataflow graph vertex of the visited construct, and an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L18"><code><span title="The context passed to the AbstractSemantics handlers of an abstract domain, providing access to the analyzed program (AST, DFG, CFG), the analyzer context, the value domain of the analysis, as well as to the abstract states and values inferred so far.">AbsintContext</span></code></a> providing access to the analyzed program and to the inferred abstract values (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L72"><code><span title="Resolves the abstract value inferred for an AST node, by following symbols to their variable origins, arguments to their values, expression lists to their last expression, and pipes and if expressions to their results.">getAbstractValue</span></code></a> to resolve the inferred value of an AST node, which includes resolving symbols, pipes, and if expressions).
+
+The abstract semantics for a (non-relational) abstract domain can be defined declaratively using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L98"><code><span title="The abstract semantics of an abstract domain defined by a declarative SemanticsDefinition , dispatching each visited constant and function call to the semantics defined for it. Function calls are dispatched by their qualified name, so that the semantics of a function are only applied if the called function actually originates from the expected namespace. Besides the defined semantics, this provide...">ValueSemantics</span></code></a> that receives a record of abstract semantics for constants, function calls, accesses, replacement calls, and condition semantics. Function calls, accesses and replacement calls are dispatched by their qualified name (e.g., `dplyr::filter`), so that the semantics of a function are only applied if the called function may actually originate from the expected package. Additionally, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L98"><code><span title="The abstract semantics of an abstract domain defined by a declarative SemanticsDefinition , dispatching each visited constant and function call to the semantics defined for it. Function calls are dispatched by their qualified name, so that the semantics of a function are only applied if the called function actually originates from the expected namespace. Besides the defined semantics, this provide...">ValueSemantics</span></code></a> provides default semantics for assignments by assigning the abstract value of the source to the assignment target.
+
+After the abstract interpreter is started with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L375"><code>start</code></a>, it provides the following functions to retrieve the inferred values:
+
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L253"><code><span title="Resolves the inferred abstract value of an AST node for one of the abstract domains of the analysis, by following symbols to their variable origins, arguments to their values, expression lists to their last expression, and pipes and if expressions to their results. This requires that the abstract interpretation visitor has been completed, or at least started.">AbstractInterpreter::<b>getAbstractValue</b></span></code></a> to resolve the inferred abstract value of a domain for an AST node (this includes resolving symbols, pipes, and if expressions)
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L324"><code><span title="Gets the inferred abstract state at the location of a specific AST node. This requires that the abstract interpretation visitor has been completed, or at least started.">AbstractInterpreter::<b>getAbstractState</b></span></code></a> to get the inferred abstract state of a domain at an AST node mapping AST nodes to the abstract value of the domain
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L361"><code><span title="Gets the inferred abstract trace mapping AST nodes to the inferred abstract state at the respective node.">AbstractInterpreter::<b>getAbstractTrace</b></span></code></a> to get the complete abstract trace mapping AST nodes to abstract states at the respective node
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L345"><code><span title="Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph). This requires that the abstract interpretation visitor has been completed, or at least started.">AbstractInterpreter::<b>getEndState</b></span></code></a> to get the inferred abstract state at the end of the program (at the exit points of the control flow graph)
+
+For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can define the following analysis using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/interval-domain.ts#L26"><code><span title="The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values. The Bottom element is defined as Bottom symbol and the Top element is defined as the interval [-∞, +∞].">IntervalDomain</span></code></a>:
 
 
 ```ts
-export class IntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
-	constructor(config: AbsintVisitorConfiguration) {
-		super(config, StateAbstractDomain.top(IntervalDomain.top()));
+/** The abstract domains of the interval analysis, i.e. a single interval domain named `interval` */
+export type IntervalDomains = { interval: IntervalDomain };
+```
+
+
+
+```ts
+IntervalSemantics = new ValueSemantics<StateDomain<IntervalDomain>>({
+	constants: {
+		// For numeric constants, the resulting interval consists just of the value of the constant
+		number: (state, vertex, ctx, value) => state.set(vertex.id, IntervalDomain.from(value.num))
+	},
+	// We map the numerical operations to the resulting interval after applying the abstract semantics of the operation
+	functionCalls: {
+		'base::+': applyBinaryOp((left, right) => left.add(right)),
+		'base::-': applyBinaryOp((left, right) => left.subtract(right))
 	}
+})
+```
 
-	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
-		super.onNumberConstant({ vertex, node });
 
-		const interval = new IntervalDomain([node.content.num, node.content.num]);
-		this.currentState.set(node.info.id, interval);
-	}
 
-	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		super.onFunctionCall({ call });
-
-		if(call.args.length === 2 && call.args.every(FunctionArgument.isNotEmpty)) {
-			const left = this.getAbstractValue(call.args[0].nodeId, this.currentState);
-			const right = this.getAbstractValue(call.args[1].nodeId, this.currentState);
-
-			if(left === undefined || right === undefined) {
-				// If an operand does not have an inferred interval, this might not be a numerical operation
-				return;
-			}
-			// We map the numerical operation to the resulting interval after applying the abstract semantics of the operation
-			switch(Identifier.getName(call.name)) {
-				case '+':
-					return this.currentState.set(call.id, left.add(right));
-				case '-':
-					return this.currentState.set(call.id, left.subtract(right));
-			}
-		}
-	}
+```ts
+IntervalAnalysis: AbsintAnalysis<IntervalDomains> = {
+	domains:   { interval: IntervalDomain.top() },
+	semantics: { interval: IntervalSemantics }
 }
 ```
 
 
-The interval inference visitor first overrides the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L366"><code><span title="Called for every constant number value in the program.  For example, 42 in print(42).">onNumberConstant</span></code></a> function to infer intervals for visited control flow vertices that represent numeric constants. For numeric constants, the resulting interval consists just of the number value of the constant. We then update the current abstract state of the visitor by setting the inferred abstract value of the currently visited control flow vertex to the new interval.
 
-In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we override the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L305"><code><span title="This event triggers for every function call that is not a condition, loop, assignment, replacement call, or access operation.   For example, this triggers for data.frame in x <- data.frame(id = 1:5, name = letters[1:5]).  This bundles all function calls that are no conditions, loops, assignments, replacement calls, and access operations.">onFunctionCall</span></code></a> function to apply the abstract semantics of additions and subtraction with resprect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have not inferred a value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we check whether the function call represents an addition or subtraction and apply the abstract semantics of the operation to the left and right operand. We then again update the current abstract state of the visitor by setting the inferred abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
+```ts
+/** Creates the abstract semantics of a binary numeric operation, such as `+` or `-` */
+function applyBinaryOp(
+	operation: (left: IntervalDomain, right: IntervalDomain) => IntervalDomain
+): AbstractSemantics<StateDomain<IntervalDomain>>['handleFunctionCall'] {
+	return (state, vertex, ctx) => {
+		if(vertex.args.length !== 2 || !vertex.args.every(FunctionArgument.isNotEmpty)) {
+			return;
+		}
+		const left = ctx.getAbstractValue(vertex.args[0].nodeId, state);
+		const right = ctx.getAbstractValue(vertex.args[1].nodeId, state);
+
+		// If an operand does not have an inferred interval, this might not be a numerical operation
+		if(left !== undefined && right !== undefined) {
+			state.set(vertex.id, operation(left, right));
+		}
+	};
+}
+```
+
+
+The semantics of the analysis first define the semantics of numeric constants, for which the resulting interval consists just of the value of the constant. We update the abstract state by setting the abstract value of the currently visited constant vertex to this new interval.
+
+In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we define the semantics of the functions `base::+` and `base::-` to apply the abstract semantics of additions and subtractions with respect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have not inferred a value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we again update the abstract state by setting the abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
+
+The data frame shape inference in [src/abstract-interpretation/data-frame](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame) provides a more comprehensive example of such an abstract interpretation analysis.
 
 If we now want to run the interval inference, we can write the following code:
 
@@ -2053,17 +1948,17 @@ analyzer.addRequest(`
 
 const ast = await analyzer.normalize();
 const dfg = (await analyzer.dataflow()).graph;
-const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
+const cfg = await analyzer.controlflow();
 const ctx = analyzer.inspectContext();
 
-const inference = new IntervalInferenceVisitor({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx });
+const inference = new AbstractInterpreter({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx }, IntervalAnalysis);
 inference.start();
 
-const result = inference.getEndState();
+const result = inference.getEndState('interval');
 ```
 
 
-We first need a [flowR analyzer](https://github.com/flowr-analysis/flowr/wiki/Analyzer) (in this case, using the [tree-sitter engine](https://github.com/flowr-analysis/flowr/wiki/Engines)). In this example, we want to analyze a small example code that assigns `42` to the variable `x`, randomly assigns `6` or `12` to the variable `y`, and assignes the sum of `x` and `y` to the variable `z`. For the abstract interpretation visitor, we need to retrieve the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph), and context of the flowR anaylzer. For performance reasons, we construct the control flow graph without simplification passes, data flow information, and function definitions. We then create a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L22"><code>IntervalInferenceVisitor</code></a> using the control flow graph, dataflow graph, normalized AST, and analyzer context, and start the visitor using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L145"><code>start</code></a>. After the visitor is finished, we retrieve the inferred abstract state at the end of the program using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L129"><code><span title="Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph). This requires that the abstract interpretation visitor has been completed, or at least started.">getEndState</span></code></a>.
+We first need a [flowR analyzer](https://github.com/flowr-analysis/flowr/wiki/Analyzer) (in this case, using the [tree-sitter engine](https://github.com/flowr-analysis/flowr/wiki/Engines)). In this example, we want to analyze a small example code that assigns `42` to the variable `x`, randomly assigns `6` or `12` to the variable `y`, and assignes the sum of `x` and `y` to the variable `z`. For the abstract interpreter, we need to retrieve the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph), and context of the flowR anaylzer. For performance reasons, we request the control flow graph without simplification passes; it is a view on the dataflow graph and is only projected once something walks it. We then create a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L107"><code><span title="An abstract interpreter that visits the control flow graph to perform abstract interpretation using fixpoint iteration. The visitor infers the abstract values of multiple abstract domains in a single traversal. The abstract state maps each AST node to the abstract values of all domains of the AbsintAnalysis , and whenever a node is visited, the AbstractSemantics of every domain of the analysis are...">AbstractInterpreter</span></code></a> using the control flow graph, dataflow graph, normalized AST, and analyzer context together with our interval analysis, and start the abstract interpreter using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L375"><code>start</code></a>. After the abstract interpreter is finished, we retrieve the inferred abstract state at the end of the program using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L345"><code><span title="Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph). This requires that the abstract interpretation visitor has been completed, or at least started.">getEndState</span></code></a>.
 
 If we now print the inferred abstract state at the end of the program, we get the following output:
 
@@ -2086,30 +1981,31 @@ The AST nodes are represented as slicing criteria for better readability in the 
 
 <h2 id="testing">Testing</h2>
 
-_flowR_ provides a generic testing framework for abstract interpretation in [test/functionality/abstract-interpretation/inference.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts). The framework supports two kinds of tests for testing inferred abstract domain values at given source code locations (as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/criterion/parse.ts#L98"><code><span title="several SlicingCriterion s, all of which are sliced for at once">SlicingCriteria</span></code></a>):
+_flowR_ provides a generic testing framework for abstract interpretation in [test/functionality/abstract-interpretation/inference.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts). The framework supports two kinds of tests for testing inferred abstract domain values at given source code locations (as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/criterion/parse.ts#L117"><code><span title="several SlicingCriterion s, all of which are sliced for at once">SlicingCriteria</span></code></a>):
 
- 1. **Assertion tests** — compare the inferred values against manually specified expected values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a>).
- 2. **Validation tests** — run the code to output the actual value at each location and compare the inferred values against the actual values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L190"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a>).
+ 1. **Assertion tests** — compare the inferred values against manually specified expected values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L197"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a>).
+ 2. **Validation tests** — run the code to output the actual value at each location and compare the inferred values against the actual values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L227"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a>).
 
-The test function <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L129"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> combines both tests: it performs an assertion test when an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L32"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> record of expected values is provided, and a validation test (unless the option `skipRun` is set). When only a list of slicing criteria is provided instead of a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L32"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a>, only the validation test is performed. For the validation test, it is required that all slicing criteria represent symbols, as the instrumentation of the code adds print statements for each symbol location after the code line of the symbol. The function takes the following arguments:
+The test function <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> combines both tests: it performs an assertion test when an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L34"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> record of expected values is provided, and a validation test (unless the option `skipRun` is set). When only a list of slicing criteria is provided instead of a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L34"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a>, only the validation test is performed. For the validation test, it is required that all slicing criteria represent symbols, as the instrumentation of the code adds print statements for each symbol location after the code line of the symbol. The function takes the following arguments:
 
  * `name` — the name or label of the test
  * `shell` — the R shell to use for the validation test
  * `code` — the R code to analyse and (for validation) to execute
- * `expected` — an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L32"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> mapping slicing criteria to expected abstract values, or a list of slicing criteria for validation-only tests
- * `inference` — a function that takes an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L21"><code>AbsintVisitorConfiguration</code></a> and returns an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L28"><code><span title="A control flow graph visitor to perform abstract interpretation.  However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.">AbstractInterpretationVisitor</span></code></a> to perform the inference
+ * `expected` — an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L34"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> mapping slicing criteria to expected abstract values, or a list of slicing criteria for validation-only tests
+ * `createAnalysis` — a function creating the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L52"><code><span title="Represents an abstract interpretation analysis with the given domains, abstract semantics, and reduction functions.">AbsintAnalysis</span></code></a> to perform
+ * `domain` — the name of the abstract domain of the analysis to compare the inferred values for
  * `createOutputCode` — a function `(marker, symbol) => string` that returns R code printing the analyzed properties of `symbol` in a line prefixed with `marker`
  * `parseOutput` — a function `(line) => Domain | undefined` that parses the output line produced by `createOutputCode` into an abstract domain value
  * `options` — optional inference test settings (_flowR_ configuration, additional project files, domain matching type, `skipRun`, etc.)
 
-Additionally, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L190"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a> are available to only perform the assertions for assertion tests or validation tests without wrapping them into a test case.
+Additionally, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L197"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L227"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a> are available to only perform the assertions for assertion tests or validation tests without wrapping them into a test case.
 
-When comparing inferred values with expected values, the framework supports two matching types via <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L24"><code><span title="Whether an inferred value should equal the expected value, or should be an over-approximation of the expected value.">DomainMatchingType</span></code></a>:
+When comparing inferred values with expected values, the framework supports two matching types via <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L26"><code><span title="Whether an inferred value should equal the expected value, or should be an over-approximation of the expected value.">DomainMatchingType</span></code></a>:
 
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L25"><code>DomainMatchingType::<b>Equal</b></code></a> — the inferred value must equal the expected value (default for assertion tests)
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L26"><code>DomainMatchingType::<b>Overapproximation</b></code></a> — the inferred value must be an over-approximation of the actual value via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L47"><code>AbstractDomain::<b>leq</b></code></a> (default for validation tests)
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L27"><code>DomainMatchingType::<b>Equal</b></code></a> — the inferred value must equal the expected value (default for assertion tests)
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L28"><code>DomainMatchingType::<b>Overapproximation</b></code></a> — the inferred value must be an over-approximation of the actual value via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L47"><code>AbstractDomain::<b>leq</b></code></a> (default for validation tests)
 
-For example, to use the test framework for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L22"><code>IntervalInferenceVisitor</code></a> defined above, we first define how to print the properties of an actual numeric scalar value in R using `createOutputCode` and how to parse it into an abstract domain value using `parseOutput`. Then, we can use <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L129"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the inference visitor, and our `createOutputCode` and `parseOutput` function:
+For example, to use the test framework for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L38"><code><span title="The interval analysis inferring the possible numeric values of the expressions of a program">IntervalAnalysis</span></code></a> defined above, we first define how to print the properties of an actual numeric scalar value in R using `createOutputCode` and how to parse it into an abstract domain value using `parseOutput`. Then, we can use <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the analysis and the name of its abstract domain, and our `createOutputCode` and `parseOutput` function:
 
 
 ```ts
@@ -2146,7 +2042,8 @@ z <- x + y
 			'2@y': new IntervalDomain([6, 12]),
 			'3@z': new IntervalDomain([48, 54])
 		},
-		config => new IntervalInferenceVisitor(config),
+		() => IntervalAnalysis,
+		'interval',
 		createOutputCode,
 		parseOutput
 	);
@@ -2154,7 +2051,7 @@ z <- x + y
 ```
 
 
-The assertion test verifies that the inferred intervals match the specified expected values exactly (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L25"><code>DomainMatchingType::<b>Equal</b></code></a>). The validation test instruments the code by inserting print statements after each tested location, executes the instrumented code with the R shell, and checks that each inferred interval at these locations is an over-approximation of the actual runtime value (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L26"><code>DomainMatchingType::<b>Overapproximation</b></code></a>). For example, the inferred interval `[6, 12]` for `y` is a sound over-approximation of the actual value `6` or `12`, depending on the random branch taken at runtime.
+The assertion test verifies that the inferred intervals match the specified expected values exactly (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L27"><code>DomainMatchingType::<b>Equal</b></code></a>). The validation test instruments the code by inserting print statements after each tested location, executes the instrumented code with the R shell, and checks that each inferred interval at these locations is an over-approximation of the actual runtime value (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L28"><code>DomainMatchingType::<b>Overapproximation</b></code></a>). For example, the inferred interval `[6, 12]` for `y` is a sound over-approximation of the actual value `6` or `12`, depending on the random branch taken at runtime.
 
-For an existing example of the test framework used in practice, see the data frame shape inference tests in [test/functionality/abstract-interpretation/data-frame/inference.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/inference.test.ts), which use a domain-specific wrapper <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/data-frame.ts#L58"><code><span title="Combined test to assert that the inferred data frame shapes match expected values for given slicing criteria and validate the inferred shapes against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip runnin...">testInferredDataFrameShape</span></code></a> built on top of <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L129"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a>.
+For an existing example of the test framework used in practice, see the data frame shape inference tests in [test/functionality/abstract-interpretation/data-frame/inference.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/inference.test.ts), which use a domain-specific wrapper <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/data-frame.ts#L58"><code><span title="Combined test to assert that the inferred data frame shapes match expected values for given slicing criteria and validate the inferred shapes against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip runnin...">testInferredDataFrameShape</span></code></a> built on top of <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a>.
         

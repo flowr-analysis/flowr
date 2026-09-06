@@ -4,16 +4,17 @@ import { ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isNotUndefined } from '../../../../../../util/assert';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Processes a built-in 'stopifnot' function call.
@@ -45,7 +46,7 @@ export function processStopIfNot<OtherInfo>(
 	// we can safely extract named args by full name
 	const argMap = new DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>(() => []);
 	for(const arg of args) {
-		const name = (arg === EmptyArgument ? undefined : arg.name)?.content;
+		const name = (RArgument.isEmpty(arg) ? undefined : arg.name)?.content;
 		if(name === 'exprObject' || name === 'exprs' || name === 'local') {
 			argMap.get(name).push(arg);
 		} else {
@@ -116,7 +117,7 @@ export function processStopIfNot<OtherInfo>(
 /** Generator so we can early exit on first always-false */
 function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	yield* argMap.get('...')
-		.map(a => a === EmptyArgument ? undefined : a.value?.info.id)
+		.map(a => RArgument.isEmpty(a) ? undefined : a.value?.info.id)
 		.filter(isNotUndefined)
 	;
 	const exprs = argMap.get('exprs');
@@ -124,7 +125,7 @@ function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, Potentially
 		const exprsArg = exprs.at(-1);
 		if(exprsArg !== EmptyArgument && exprsArg?.value?.info.id) {
 			const elem = data.completeAst.idMap.get(exprsArg.value?.info.id);
-			if(elem?.type === RType.ExpressionList) {
+			if(RExpressionList.is(elem)) {
 				for(const expr of elem.children) {
 					yield expr.info.id;
 				}

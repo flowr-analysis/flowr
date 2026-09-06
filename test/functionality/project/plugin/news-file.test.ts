@@ -1,6 +1,5 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import {
 	FlowrAnalyzerNewsFilePlugin
@@ -12,9 +11,9 @@ import { FlowrConfig } from '../../../../src/config';
 describe('NEWS-file', function() {
 	const ctx = new FlowrAnalyzerContext(
 		FlowrConfig.default(),
-		arraysGroupBy([
+		[
 			new FlowrAnalyzerNewsFilePlugin()
-		], p => p.type)
+		]
 	);
 
 	ctx.addFile(new FlowrInlineTextFile('NEWS', `

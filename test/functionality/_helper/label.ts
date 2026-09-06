@@ -75,7 +75,8 @@ export function label(testname: string, ids?: readonly SupportedFlowrCapabilityI
 
 
 /**
- *
+ * Records that a labelled test ran, so the capabilities it covers count as covered.
+ * @param l - the label of the test that ran
  */
 export function dropTestLabel(l: TestLabel): void {
 	const names = l.capabilities.size === 0 ? ['.'] : [...l.capabilities];
@@ -102,7 +103,9 @@ export function modifyLabelName(label: string, nameModification: (name: string) 
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string;
 
 /**
- *
+ * The same label under a reworded name, keeping the capabilities it claims.
+ * @param label            - the label (or plain name) to rework
+ * @param nameModification - how to reword it
  */
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string {
 	if(typeof label === 'string') {
@@ -143,7 +146,8 @@ function printMissingCapability(label: FlowrCapabilityWithPath, testNames: reado
 
 
 /**
- *
+ * Prints the capabilities no test claims, which is what the summary run reports.
+ * @param map - the label map to summarize, the global one by default
  */
 export function printMissingLabelSummary(map: Map<string, readonly TestLabel[]> | DefaultMap<string, readonly TestLabel[]> = TheGlobalLabelMap): void {
 	console.log('== Test Capability Coverage (missing only)' + '='.repeat(80));
@@ -169,7 +173,7 @@ export function printMissingLabelSummary(map: Map<string, readonly TestLabel[]> 
 			}
 		}
 	}
-	for(const [context, count] of [...contextMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))){
+	for(const [context, count] of [...contextMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
 		console.log(`- ${context}: ${count}`);
 	}
 }

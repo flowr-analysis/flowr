@@ -1,10 +1,11 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.13.16",
+  "version": "2.15.8",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "engines": {
     "node": ">=22"
   },
+  "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "repository": {
     "type": "git",
@@ -24,13 +25,14 @@
     "benchmark": "npm run build:dev && node dist/src/cli/benchmark-app.js",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
+    "prepare": "npm run build:dev",
     "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
     "build:dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
     "build:copy-data": "ts-node --transpile-only scripts/sigdb-copy.ts",
-    "build:copy-wasm": "mkdir -p dist/node_modules/@davisvaughan/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@davisvaughan/tree-sitter-r/ && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
+    "build:copy-wasm": "ts-node --transpile-only scripts/copy-wasm.ts",
     "gen:base-packages": "ts-node --transpile-only scripts/gen-base-packages.ts",
-    "gen:landing": "ts-node --transpile-only scripts/gen-landing.ts && ts-node --transpile-only scripts/gen-sigdb-index.ts && ts-node --transpile-only scripts/gen-playground.ts",
+    "gen:landing": "ts-node --transpile-only scripts/gen-landing.ts && ts-node --transpile-only scripts/gen-benchmark-index.ts && ts-node --transpile-only scripts/gen-sigdb-index.ts && ts-node --transpile-only scripts/gen-playground.ts",
     "gen:sigdb-remote": "ts-node --transpile-only scripts/sigdb-remote.ts",
     "sync:sigdb": "ts-node --transpile-only scripts/sigdb-sync.ts",
     "publish:sigdb": "ts-node scripts/publish-sigdb.ts",
@@ -54,7 +56,9 @@
     "test:docker": "func() { b() { docker build ${1:+--network=$1} -t flowr-docker-test -f \"$2\" .; }; r() { docker run --rm ${1:+--network=$1} flowr-docker-test --version; }; for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; b '' \"$df\" || { echo '(retrying with --network=host: bridge networking unavailable)'; b host \"$df\"; } || return 1; echo \"=== smoke-testing $df ===\"; r '' || r host || return 1; done; }; func",
     "benchmark:test-counts": "ts-node --transpile-only scripts/test-label-counts.ts",
     "benchmark:compact": "ts-node --transpile-only scripts/compact-benchmark-data.ts",
-    "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
+    "stage-library": "ts-node --transpile-only scripts/stage-library.ts",
+    "publish-library": "npm run stage-library && cd dist/src && npm publish --access public",
+    "pack-library": "npm run stage-library && cd dist/src && npm pack --pack-destination ../..",
     "release": "npx release-it --ci"
   },
   "keywords": [
@@ -174,9 +178,8 @@
           },
           {
             "file": "src/util/version.ts",
-            "search": "const versionDate = '[\\d-]+'",
-            "replace": "const versionDate = '{{now}}'",
-            "dateFormat": "yyyy-MM-dd"
+            "search": "const versionDate = '[^']*'",
+            "replace": "const versionDate = '{{now}}'"
           }
         ]
       }
@@ -186,8 +189,8 @@
     "@codemirror/legacy-modes": "^6.5.3",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
-    "@eagleoutice/eslint-config-flowr": "^2.1.1",
-    "@j-ulrich/release-it-regex-bumper": "^5.4.0",
+    "@eagleoutice/eslint-config-flowr": "^2.1.7",
+    "@j-ulrich/release-it-regex-bumper": "^5.6.0",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
     "@types/commonmark": "^0.27.10",
@@ -195,7 +198,6 @@
     "@types/n-readlines": "^1.0.6",
     "@types/n3": "^1.26.0",
     "@types/object-hash": "^3.0.6",
-    "@types/object-path": "^0.11.4",
     "@types/seedrandom": "^3.0.8",
     "@types/semver": "^7.7.0",
     "@types/tmp": "^0.2.6",
@@ -205,7 +207,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^10.8.0",
     "license-checker-rseidelsohn": "^4.4.2",
-    "release-it": "^20.0.0",
+    "release-it": "^21.0.2",
     "seedrandom": "^3.0.5",
     "ts-node": "^10.9.2",
     "typedoc": "^0.28.17",
@@ -217,19 +219,16 @@
   "dependencies": {
     "@davisvaughan/tree-sitter-r": "^1.2.0",
     "@jupyterlab/nbformat": "^4.5.4",
-    "@xmldom/xmldom": "^0.9.7",
     "bzip2": "^0.1.1",
     "command-line-args": "^6.0.1",
     "command-line-usage": "^7.0.3",
     "commonmark": "^0.31.2",
-    "dagre": "^0.8.5",
     "gray-matter": "^4.0.3",
     "ignore": "^5.3.2",
     "joi": "^18.0.1",
     "lz-string": "^1.5.0",
     "n-readlines": "^3.4.1",
     "object-hash": "^3.0.0",
-    "object-path": "^0.11.8",
     "object-sizeof": "^2.6.5",
     "semver": "^7.7.4",
     "smol-toml": "^1.7.0",
@@ -248,6 +247,7 @@
   },
   "optionalDependencies": {
     "clipboardy": "^4.0.0",
+    "dagre": "^0.8.5",
     "n3": "^1.26.0",
     "rotating-file-stream": "^3.2.8"
   }

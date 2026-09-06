@@ -29,7 +29,7 @@ describe('RShellExecutor', function() {
 describe('TreeSitterExecutor', () => {
 	test('query() frees the WASM-backed query it compiles from a string', () => {
 		const ts = new TreeSitterExecutor();
-		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default());
 		const tree = ts.parse(requestFromInput('x <- 1'), ctx);
 		let freed = 0;
 		const original = ts.createQuery.bind(ts);

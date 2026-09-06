@@ -19,6 +19,7 @@ export const RComment = {
 	name: 'RComment',
 	/**
 	 * Type guard for {@link RComment} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: unknown): node is RComment<Info> {
 		return typeof node === 'object' && node !== null && (node as RComment<Info>).type === RType.Comment;

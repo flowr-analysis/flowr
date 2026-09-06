@@ -45,10 +45,16 @@ export interface SlicerStatsInput<T = number> {
 	numberOfNormalizedTokensNoComments:        T
 }
 
-
 export interface SlicerStatsDataflow<T = number> {
 	numberOfNodes:               T
 	numberOfEdges:               T
+	/**
+	 * The edges that carry the control flow the {@link ControlFlowGraph} is a view on.
+	 * They live in the very same graph, so they are counted separately to keep the dataflow numbers comparable.
+	 * An edge that carries both a dataflow and a control flow type is counted on both sides.
+	 * Missing in data recorded before the control flow moved into the dataflow graph.
+	 */
+	numberOfControlFlowEdges:    T
 	numberOfCalls:               T
 	numberOfFunctionDefinitions: T
 	/* size of object in bytes as measured by v8 serialization */
@@ -68,6 +74,10 @@ export interface FlowrFeatureCounts {
 	builtinDefinitionsWithEvalHandler: number
 	/** how many linting rules carry each tag, a rule usually carries several */
 	lintingRulesByTag:                 Record<string, number>
+	/** built-in plugins the analyzer registers */
+	plugins:                           number
+	/** which of them carry each plugin type, every plugin has exactly one */
+	pluginsByType:                     Record<string, readonly string[]>
 }
 
 /**

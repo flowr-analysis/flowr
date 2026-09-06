@@ -9,25 +9,19 @@ import type {
 	DataflowGraphVertexInfo
 } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import {
-	type DataflowGraph,
-	FunctionArgument,
-	type OutgoingEdges
-} from '../../dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument, type OutgoingEdges } from '../../dataflow/graph/graph';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../../dataflow/environments/identifier';
-import {
-	retrieveActiveEnvironment
-} from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
+import { retrieveActiveEnvironment } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { FunctionDefinitionVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Returns the function call targets (definitions) by the given caller
@@ -119,14 +113,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
  * does not otherwise visit the function-definition vertex itself (nothing within the body links to it).
  */
 export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
-	let node = idMap.get(id);
-	while(node !== undefined) {
-		if(node.type === RType.FunctionDefinition) {
-			return node.info.id;
-		}
-		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
-	}
-	return undefined;
+	return RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
 }
 
 /**
@@ -138,7 +125,7 @@ export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): No
  */
 export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const vertex = graph.getVertex(fnDefId);
-	if(vertex === undefined || !FunctionDefinitionVertex.is(vertex)) {
+	if(vertex === undefined || !DfgVertex.isFunctionDefinition(vertex)) {
 		return false;
 	}
 	// (a) the slice reaches a parameter of this definition

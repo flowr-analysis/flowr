@@ -140,9 +140,30 @@ header {
 	margin: 0;
 	font-size: 1.15rem;
 	line-height: 1.2;
+	/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
+	display: inline-flex;
+	align-items: center;
 }
 
-.titles h1 a { display: inline; text-decoration: none; }
+.titles h1 a.brand {
+	display: inline-flex;
+	align-items: center;
+	gap: .45rem;
+	color: var(--fg);
+	text-decoration: none;
+}
+
+.mark { flex: none; }
+
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.titles h1 .where {
+	color: var(--muted);
+	font-weight: 400;
+	font-size: 1.05rem;
+	white-space: nowrap;
+}
+
+.titles h1 .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
 
 /* a grid is only as wide as its widest row, which puts the release above the end of the intro */
 .titles {
@@ -167,29 +188,19 @@ header {
 /* the way back to the landing page, after the sentence rather than crowding the heading */
 .intro a { margin-left: .5rem; }
 
-/* the release this page is about, which is what a reader looks for first */
-/* the size of the title it shares its line with, so the two read as one heading */
-.latest {
-	margin: 0 0 0 auto;
-	font-size: 1.15rem;
-	line-height: 1.2;
-	white-space: nowrap;
-}
-
-/* a link that carries its own weight instead of an underline, which would fight the title beside it */
-.latest .version {
-	color: var(--fg);
-	opacity: .35;
-	font-weight: 700;
+/* the release this page was built from, the same link every flowR page carries */
+.titles h1 > .version {
+	margin-left: .5rem;
+	font-size: .82rem;
+	font-weight: 400;
+	color: var(--muted);
 	font-variant-numeric: tabular-nums;
 	text-decoration: none;
-	transition: opacity .18s ease;
+	transition: color .18s ease;
 }
 
-.latest .version:hover,
-.latest .version:focus-visible {
-	opacity: 1;
-}
+.titles h1 > .version:hover,
+.titles h1 > .version:focus-visible { color: var(--fg); }
 
 .theme {
 	display: flex;
@@ -1217,10 +1228,61 @@ footer {
 	stroke-width: 1.2;
 }
 
+/* the releases named above the sparkline, as the charts name them above their own */
+.timeline-release {
+	fill: var(--muted);
+	font-size: 5px;
+	font-variant-numeric: tabular-nums;
+}
+
+.timeline-release.major { font-weight: 600; }
+
 .timeline-tick {
 	fill: var(--muted);
 	font-size: 5.5px;
 	font-variant-numeric: tabular-nums;
+}
+
+/* what a detailed view breaks down, said above it */
+.tags-head {
+	margin-bottom: .35rem;
+}
+
+.tags-title {
+	font-size: .78rem;
+	font-weight: 600;
+	color: var(--fg);
+}
+
+/* the breakdowns a tile could show instead of the one it does */
+.tags-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .35rem;
+	margin-top: .5rem;
+	border-top: 1px solid var(--border);
+	padding-top: .5rem;
+}
+
+.tags-tab {
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: none;
+	color: var(--muted);
+	font: inherit;
+	font-size: .74rem;
+	padding: .12rem .55rem;
+	cursor: pointer;
+	transition: color .18s ease, border-color .18s ease;
+}
+
+.tags-tab:hover { color: var(--fg); }
+
+.tags-tab.on {
+	color: var(--fg);
+	border-color: var(--fg);
+	font-weight: 600;
+	cursor: default;
 }
 
 .facts .composition {

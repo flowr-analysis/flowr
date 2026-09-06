@@ -1,7 +1,11 @@
-import { type MergeableRecord,
+import { type AutocompletablePaths,
+	type ValueAtPath,
+	type MergeableRecord,
 	deepMergeObject,
 	deepClonePreserveUnclonable,
-	isPlainObject
+	isPlainObject,
+	getOnPath,
+	setOnPath
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
@@ -11,16 +15,16 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepPartial, DeepWritable, Paths, PathValue } from 'ts-essentials';
+import type { DeepPartial, DeepWritable } from 'ts-essentials';
 import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import { ProjectKind } from './project/context/project-kind';
-import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
 import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from './queries/catalog/input-sources-query/input-types';
+import { uniqueArray } from './util/collections/arrays';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -70,51 +74,18 @@ export enum DropPathsOption {
 	All = 'all'
 }
 
+/** see {@link FlowrConfig.Schema}'s `resolveSource` for the per-field descriptions (kept there once, as that is what generates the published config docs) */
 export interface FlowrLaxSourcingOptions extends MergeableRecord {
-	/**
-	 * search for filenames matching in the lowercase
-	 */
 	readonly ignoreCapitalization:  boolean
-	/**
-	 * try to infer the working directory from the main or any script to analyze.
-	 */
 	readonly inferWorkingDirectory: InferWorkingDirectory
-	/**
-	 * Additionally search in these paths
-	 */
 	readonly searchPath:            string[]
-	/**
-	 * Allow to drop the first or all parts of the sourced path,
-	 * if it is relative.
-	 */
 	readonly dropPaths:             DropPathsOption
-	/**
-	 * How often the same file can be sourced within a single run?
-	 * Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.
-	 */
 	readonly repeatedSourceLimit?:  number
 	/**
-	 * sometimes files may have a different name in the source call (e.g., due to later replacements),
-	 * with this setting you can provide a list of replacements to apply for each sourced file.
-	 * Every replacement consists of a record that maps a regex to a replacement string.
-	 * @example
-	 * ```ts
-	 * [
-	 *      { }, // no replacement -> still try the original name/path
-	 *      { '.*\\.R$': 'main.R' }, // replace all .R files with main.R
-	 *      { '\s' : '_' }, // replace all spaces with underscores
-	 *      { '\s' : '-', 'oo': 'aa' }, // replace all spaces with dashes and oo with aa
-	 * ]
-	 * ```
-	 *
-	 * Given a `source("foo bar.R")` this configuration will search for (in this order):
-	 * - `foo bar.R` (original name)
-	 * - `main.R` (replaced with main.R)
-	 * - `foo_bar.R` (replaced spaces)
-	 * - `faa-bar.R` (replaced spaces and oo)
+	 * Regex replacements to try against a sourced file's candidate name, tried in order alongside the original
+	 * name, e.g. `{ '.*\\.R$': 'main.R' }` makes `source("foo bar.R")` also try `main.R`.
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
-	/** Assume a sourced file is always there, making what it defines certain instead of conditional on the `source` call. */
 	readonly assumeFilesExist?:     boolean
 }
 
@@ -129,40 +100,28 @@ export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inheri
  * @see {@link FlowrConfig.default} for the default configuration.
  * @see {@link FlowrConfig.Schema} for the Joi schema for validation.
  */
-export interface FlowrConfig extends MergeableRecord {
+/*
+ * Deliberately not a `MergeableRecord`: an index signature turns `keyof` into `string`, which swallows the
+ * literal keys `AutocompletablePaths` needs for `FlowrConfig::configure` and `linkConfig` to complete.
+ */
+export interface FlowrConfig {
 	readonly logLevel?:         LogLevelName
-	/**
-	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
-	 */
 	readonly ignoreSourceCalls: boolean
-	/**
-	 * Whether load calls should be ignored, causing {@link processLoadCall}'s behavior to be skipped
-	 */
 	readonly ignoreLoadCalls:   boolean
-	/** Configure language semantics and how flowR handles them */
 	readonly semantics: {
-		/** Semantics regarding the handling of the environment */
 		readonly environment: {
-			/** Do you want to overwrite (parts) of the builtin definition? */
 			readonly overwriteBuiltIns: {
-				/** Should the default configuration still be loaded? */
 				readonly loadDefaults?: boolean
-				/** The definitions to load */
 				readonly definitions:   BuiltInDefinitions
 			}
 		}
 	},
-	/** Plugins to load by default when creating a new FlowrAnalyzer */
 	readonly defaultPlugins: ConfigPlugin<string>[]
-	/** Configuration options for the REPL */
 	readonly repl: {
-		/** Whether to show quick stats in the REPL after each evaluation */
 		quickStats:           boolean
-		/** This instruments the dataflow processors to count how often each processor is called */
 		dfProcessorHeat:      boolean;
 		/** Whether to show dim inline hints (e.g. `:help`) on the empty prompt; automatically disabled on non-interactive terminals */
 		hints:                boolean;
-		/** Plugins to load in REPL mode */
 		plugins:              (ConfigPlugin<string> | 'flowr:default')[]
 		/** Automatically use the file protocol for inputs that look like paths (default `true`) */
 		autoUseFileProtocol?: boolean
@@ -172,102 +131,60 @@ export interface FlowrConfig extends MergeableRecord {
 		showPlugins?:         boolean
 	}
 	readonly project: {
-		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
-		/** Whether a directory that cannot be traversed during file discovery (e.g. due to permissions) aborts the analysis; when `false` (the default) such paths are logged and skipped. */
 		failOnInaccessiblePath?:   boolean
-		/** Overwrite the {@link ProjectKind} flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong. */
 		useProjectType?:           ProjectKind
-		/**
-		 * The packages considered part of R itself, used e.g. by the project query to classify dependencies. If
-		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
-		 */
+		/** Whether the top level's visible results count as an output (the `print` category); off by default for a {@link ProjectKind.Package}, whose top level runs at install time. */
+		assumeImplicitEcho?:       boolean
+		/** The packages considered part of R itself; if unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`. */
 		basePackages?:             string[]
-		/**
-		 * Files a framework loads on its own, without any `source()` call (e.g. `global.R` in a shiny app), in load
-		 * order. Entries are case-insensitive globs (`R/*.R`) matched against the path, a plain name matches any file
-		 * with that name; entries matching nothing are warned about. Usually set per {@link ProjectKind} via
-		 * {@link FlowrConfig.specializeConfig}.
-		 */
 		implicitSources?:          string[]
-		/** Scoping options for the default project discovery. */
 		discovery?: {
-			/** Collect every file below the project root (greedy) instead of only the files the detected {@link ProjectKind} needs (default `false`). */
 			full?:    boolean
-			/** Per-{@link ProjectKind} include/exclude glob overrides layered on the default scoping. */
 			perKind?: Partial<Record<ProjectKind, { include?: string[]; exclude?: string[] }>>
-			/** Case-insensitive globs that drop matching files from the intelligent discovery, regardless of kind (e.g. `.Renviron` to ignore environment files). */
 			ignore?:  string[]
 		}
-		/** Overrides for the signals flowR uses to classify the {@link ProjectKind}; unset fields keep the built-in defaults. */
 		classification?: {
 			/** DESCRIPTION `Type:` values that mark a shiny app (default `shiny`, `shiny-app`, `shinyapp`). */
 			shinyDescriptionTypes?: string[]
 			/** File names a shiny app is assembled from (default `app.R`, `ui.R`, `server.R`, `global.R`). */
 			shinyEntryFiles?:       string[]
-			/** Regex source evidencing shiny usage in an entry file. */
 			shinyUsagePattern?:     string
 			/** File extensions marking a notebook (default `ipynb`, `rmd`, `rmarkdown`, `qmd`, `rnw`). */
 			notebookExtensions?:    string[]
 		}
 	}
-	/** Linter configuration, usually specialized per {@link ProjectKind} via {@link FlowrConfig.specializeConfig}. */
 	readonly linter: {
-		/** Rule names excluded from the *default* rule set (a rule requested explicitly still runs). */
 		readonly disabledRules: string[]
 	}
 	/**
-	 * Teaches the {@link InputSourcesQuery|input-sources} analysis (and with it the `problematic-inputs` linter)
-	 * about further frameworks. Everything here is *added* to what flowR already knows, so a shiny app keeps its
-	 * `input` even when you declare your own. Usually set per {@link ProjectKind} via {@link specializeConfig}.
-	 * @see {@link InputClassifierConfig} - for what the entries mean
+	 * Teaches the {@link InputSourcesQuery|input-sources} analysis further frameworks; entries are *added* to what
+	 * flowR knows already. Usually set per {@link ProjectKind} via {@link specializeConfig}. See {@link InputClassifierConfig}.
 	 */
 	readonly inputSources?:     DeepWritable<InputClassifierConfig<string[]>>
 	/**
-	 * Overwrite (parts of) this configuration depending on the {@link ProjectKind} flowR detects for the project,
-	 * e.g. to give a shiny app its implicit sources. An entry may `inherit` another kind's overwrite (merged first,
-	 * with the entry's own keys winning) to avoid repeating it. Resolve it with {@link FlowrConfig.forKind}.
+	 * Overwrite (parts of) this configuration per {@link ProjectKind}; an entry may `inherit` another kind's
+	 * overwrite first (own keys win). Resolve with {@link FlowrConfig.forKind}.
 	 */
 	readonly specializeConfig?: Partial<Record<ProjectKind, SpecializeConfigEntry>>
-	/**
-	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
-	 * An empty array means all available engines will be used.
-	 */
+	/** Engines to use for interacting with R code ({@link TreeSitterEngineConfig}, {@link RShellEngineConfig}); empty means all available engines. */
 	readonly engines:           EngineConfig[]
-	/**
-	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
-	 */
+	/** The default engine to use. If undefined, an arbitrary one from {@link engines} is used. */
 	readonly defaultEngine?:    EngineConfig['type'];
-	/** How to resolve constants, constraints, cells, … */
 	readonly solver: {
-		/**
-		 * How to resolve variables and their values
-		 */
 		readonly variables:         VariableResolve,
-		/**
-		 * Should we include eval(parse(text="...")) calls in the dataflow graph?
-		 */
 		readonly evalStrings:       boolean,
-		/**
-		 * Track user-created environments (`new.env()`, `assign(..., envir=e)`, `get(..., envir=e)`,
-		 * `local({}, envir=e)`, `e$x <- v`, `attach(e)`) with precise per-variable envState.
-		 * When disabled all envir-style calls fall through to the conservative global treatment.
-		 */
 		readonly trackEnvironments: boolean
-		/** Resolving `library()`/`use()` exports from a signature database (e.g. the bundled `flowr-sigdb`). */
 		readonly sigdb: {
-			/** Resolve library exports from a signature database (default `true`); when `false` no database is consulted. */
 			readonly enabled:                     boolean
-			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `uvr.toml`, `renv.lock`, `rv.lock`, `uvr.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
 			readonly loadProjectDependencies:     boolean
-			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
 			readonly eagerlyLoad:                 boolean
-			/** Add a vertex for every export on load rather than on demand (default `false`); keeps the graph small. */
 			readonly eagerlyLoadExports:          boolean
+			/** How many MiB of decoded package blobs every open bundle may hold together; a bigger budget re-reads and re-parses less, a smaller one keeps less in memory (default `16`). */
+			readonly blobCacheBudgetMb?:          number
 			/**
-			 * The R version analysis assumes when resolving versioned (base-R) package exports: a pin like `"4.5"`,
-			 * or `"auto"` to detect the locally installed R (falling back to {@link DefaultAssumedRVersion} when the
-			 * engine reports none, e.g. the tree-sitter engine). Resolve it with {@link resolveAssumedRVersion}.
+			 * R version assumed when resolving versioned (base-R) exports: a pin, or `"auto"` to detect the installed R
+			 * (falling back to {@link DefaultAssumedRVersion} if none, e.g. tree-sitter). See {@link resolveAssumedRVersion}.
 			 */
 			readonly assumedRVersion?:            string
 			/** Eagerly attach base-R namespaces (from a signature database) so bare base calls resolve without `library()` (default `false`; changes every analysis; needs a base-R signature database). */
@@ -280,106 +197,56 @@ export interface FlowrConfig extends MergeableRecord {
 			readonly linkPackageCalls?:           boolean
 			/** Decompress the hot shards (base + most-downloaded) in a background task on startup, so the first `library()` lookup is warm (default `false`; useful for long-running servers/REPLs, not one-shot runs). */
 			readonly warmInBackground?:           boolean
-			/** Extra directories (or bundle/manifest files) searched for signature databases, alongside the shipped default and `$FLOWR_SIGDB_DIR`. A downloaded full-history bundle placed here is mounted automatically. */
 			readonly additionalPaths?:            string[]
-			/** GitHub `owner/repo` the full-history bundle is downloaded from (`:signature download`); default `flowr-analysis/flowr`, release tag `sigdb-v<flowR-version>`. */
 			readonly downloadRepo?:               string
-			/** On startup, compare the cache against the committed `sigdb.remote.json` link file and re-download changed shards in the background (default `false`; needs network, so opt-in — a `git pull` that updates the pointer then re-syncs automatically). */
 			readonly autoSync?:                   boolean
-			/** When a project constrains a dependency, resolve to the `newest` (default) or `oldest` version satisfying the constraint, or the `system`-installed version (needs R; falls back to `newest` when unavailable). Base-R packages always resolve against the assumed R version. */
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
 			readonly versionOverrides?:           Record<string, string>
 			/**
-			 * Recovering a package no signature database knows (a CRAN-archived one like `maptools`) from the copy
-			 * installed on this machine: its `DESCRIPTION` states the version, its `NAMESPACE` the exports. Opt-in,
-			 * as it reads directories outside the analyzed project and ties the analysis to what is installed here.
+			 * Recovering a package no signature database knows (e.g. `maptools`) from its local install: `DESCRIPTION`
+			 * states the version, `NAMESPACE` the exports. Opt-in, since it reads outside the analyzed project.
 			 */
 			readonly installedLibrary?:           {
-				/** Consult installed packages at all (default `false`). */
 				readonly enabled:            boolean
-				/** The library directories to search; when empty they are discovered as configured below (default `[]`). */
 				readonly paths?:             string[]
-				/** Search the libraries `R_LIBS_USER`/`R_LIBS`/`R_LIBS_SITE` name (default `true`, ignored when {@link paths} is given). */
 				readonly useEnvironment?:    boolean
-				/** Search a project-local `renv`/`packrat` library (default `true`, ignored when {@link paths} is given). */
 				readonly useProjectLibrary?: boolean
-				/** How far to descend into the nested layout of a project-local library (default `3`). */
 				readonly maxDepth?:          number
-				/** Only recover packages whose name matches one of these regular expressions; empty means any (default `[]`). */
 				readonly packages?:          string[]
 			}
 		}
-		/** Policies for reasoning about dependency versions (independent of how the signature database is loaded). */
 		readonly versionManagement?: {
-			/** Groups of packages that must resolve to the same version (like the base packages, which share the R version); version guessing intersects each group so its members stay mutually compatible (default `[]`). */
 			readonly linkedVersionGroups?: string[][]
 		}
-		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
+		readonly transitiveSideEffectRounds?: number
+		readonly assumeAttachedPackages?:     string[]
 		readonly instrument: {
 			/**
-			 * Modify the dataflow processors used during dataflow analysis.
-			 * Make sure that all processors required for correct analysis are still present!
-			 * This may have arbitrary consequences on the analysis precision and performance, consider focusing on decorating existing processors instead of replacing them.
+			 * Modify the dataflow processors used during analysis; keep every processor correctness requires present.
+			 * May affect precision/performance arbitrarily -- prefer decorating existing processors over replacing them.
 			 */
 			dataflowExtractors?: (extractor: DataflowProcessors<ParentInformation>, ctx: FlowrAnalyzerContext) => DataflowProcessors<ParentInformation>
 		},
-		/**
-		 * If lax source calls are active, flowR searches for sourced files much more freely,
-		 * based on the configurations you give it.
-		 * This option is only in effect if {@link ignoreSourceCalls} is set to false.
-		 */
 		readonly resolveSource?: FlowrLaxSourcingOptions,
-		/**
-		 * The configuration for flowR's slicer
-		 */
 		slicer?: {
-			/**
-			 * The maximum number of iterations to perform on a single function call during slicing
-			 */
 			readonly threshold?:  number
-			/**
-			 * If set, the slicer will gain an additional post-pass
-			 */
 			readonly autoExtend?: boolean
 		}
 	}
-	/**
-	 * Configuration options for abstract interpretation
-	 */
 	readonly abstractInterpretation: {
-		/**
-		 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
-		 */
 		readonly wideningThreshold: number;
-		/**
-		 * The configuration of the shape inference for data frames
-		 */
+		readonly followCalls:       boolean;
 		readonly dataFrame: {
-			/**
-			 * The maximum number of columns names to infer for data frames before over-approximating the column names to top
-			 */
 			readonly maxColNames:    number;
-			/**
-			 * Configuration options for reading data frame shapes from loaded external data files, such as CSV files
-			 */
 			readonly readLoadedData: {
-				/**
-				 * Whether data frame shapes should be extracted from loaded external data files, such as CSV files
-				 */
 				readonly readExternalFiles: boolean;
-				/**
-				 * The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files
-				 */
 				readonly maxReadLines:      number;
 			}
 		}
 	}
 
 	readonly incremental: {
-		/**
-		 * Always take the incremental path, regardless of heuristics
-		 */
 		readonly alwaysIncremental: boolean;
 
 		readonly parsing: {
@@ -387,46 +254,41 @@ export interface FlowrConfig extends MergeableRecord {
 
 			readonly heuristics: {
 				readonly activated:       boolean;
-				/**
-				 * Skip reparsing entirely if the file's modification time is unchanged since the last parse
-				 */
 				readonly mtime:           boolean;
-				/**
-				 * Only consider incremental parsing for files with at least this many lines
-				 */
 				readonly linesFrom:       number;
-				/**
-				 * Only consider incremental parsing for files with at least this many bytes
-				 */
 				readonly bytesFrom:       number;
-				/**
-				 * Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds
-				 */
 				readonly alwaysWithEdits: boolean;
-				/**
-				 * Only apply these heuristics once the project has at least this many files loaded
-				 */
 				readonly minFiles:        number
 			}
 		}
 	}
 
 	/**
-	 * Resource-usage guard (gas) configuration.
-	 * Gas checks are disabled by default (all feature factors are `0`).
-	 * Set a `feature factor > 0` to enable checking for that feature.
-	 * @see {@link FlowrGasConfig}
-	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
+	 * Resource-usage guard (gas) configuration; disabled by default (every feature factor `0`), enable by setting a
+	 * feature's factor `> 0`. See {@link FlowrGasConfig}, {@link ReadOnlyFlowrAnalyzerGasContext}.
 	 */
 	readonly gas: FlowrGasConfig;
 }
 
-export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
+/**
+ * Every path into the configuration, which is what {@link FlowrConfig.setInConfig} and
+ * {@link FlowrAnalyzerBuilder#configure|configure()} take and what an editor completes.
+ */
+export type ValidFlowrConfigPaths = AutocompletablePaths<FlowrConfig>;
 
 /** Whether library exports should be resolved from a signature database (`solver.sigdb.enabled`). */
 export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {
 	return config?.solver.sigdb.enabled === true;
 }
+
+/**
+ * Default of `gas.countedCheckEvery`: how many calls one accounting of an armed dataflow budget covers.
+ * A budget only has to catch work that has run away, so the sampling is deliberately coarse.
+ */
+export const DefaultCountedCheckEvery = 64;
+
+/** Default of `solver.transitiveSideEffectRounds`: round cap for the transitive side-effect fixpoint in {@link produceDataFlowGraph}, which stops on its own once a round adds nothing. */
+export const DefaultTransitiveSideEffectRounds = 32;
 
 /**
  * R version assumed for analysis when `solver.sigdb.assumedRVersion` is `"auto"` and none could be detected.
@@ -453,29 +315,60 @@ export function resolveAssumedRVersion(config: FlowrConfig | undefined, detected
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
 	readonly type:                'tree-sitter'
-	/**
-	 * The path to the tree-sitter-r WASM binary to use. If this is undefined, {@link DEFAULT_TREE_SITTER_R_WASM_PATH} will be used.
-	 */
+	/** The path to the tree-sitter-r WASM binary to use; defaults to {@link DEFAULT_TREE_SITTER_R_WASM_PATH}. */
 	readonly wasmPath?:           string
-	/**
-	 * The path to the tree-sitter WASM binary to use. If this is undefined, the path specified by the tree-sitter package will be used.
-	 */
 	readonly treeSitterWasmPath?: string
 	/**
-	 * Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.
+	 * Whether to keep parsing code that does not parse, so what tree-sitter did understand is still analyzed;
+	 * the strict parser rejects the file instead. Off by default.
+	 * @example
+	 * ```ts
+	 * new FlowrAnalyzerBuilder().setEngine('tree-sitter').configure('engine.tree-sitter.lax', true)
+	 * ```
 	 */
 	readonly lax?:                boolean
 }
 
 export interface RShellEngineConfig extends MergeableRecord {
 	readonly type:   'r-shell'
-	/**
-	 * The path to the R executable to use. If this is undefined, {@link DEFAULT_R_PATH} will be used.
-	 */
+	/** The path to the R executable to use; defaults to {@link DEFAULT_R_PATH}. */
 	readonly rPath?: string
 }
 
 export type EngineConfig = TreeSitterEngineConfig | RShellEngineConfig;
+
+/** The options one engine accepts, its `type` discriminator excluded. */
+type EngineOptions<T extends EngineConfig['type']> = Omit<Extract<EngineConfig, { type: T }>, 'type'>;
+
+/**
+ * The dotted paths addressing a single engine's option, e.g. `engine.tree-sitter.lax`.
+ * {@link FlowrConfig.engines} is an array, so these do not exist as real paths; the setters below understand
+ * them anyway, which is what lets `configure('engine.tree-sitter.lax', true)` work and matches how the CLI
+ * already spells the flag.
+ */
+export type EngineConfigPath = {
+	[T in EngineConfig['type']]: { [K in keyof EngineOptions<T>]: `engine.${T}.${K & string}` }[keyof EngineOptions<T>]
+}[EngineConfig['type']];
+
+/**
+ * Sets one option of one engine, which {@link FlowrConfig.engines|the engine list} holds as an array entry rather
+ * than under a path of its own; this is what an {@link EngineConfigPath} resolves to. The entry is created if the
+ * engine has none yet, and an empty list, which stands for "every available engine", is first written out so that
+ * naming one engine does not silently narrow the analysis to it.
+ */
+function setEngineOption(config: FlowrConfig, engine: EngineConfig['type'], option: string, value: unknown): void {
+	const engines = config.engines;
+	if(engines.length === 0) {
+		engines.push(...Object.values(defaultEngineConfigs).map(e => ({ ...e })));
+	}
+	const existing = engines.find(e => e.type === engine);
+	const entry: Record<string, unknown> = existing ?? { type: engine };
+	if(existing === undefined) {
+		engines.push(entry as EngineConfig);
+	}
+	entry[option] = value;
+}
+
 export type KnownEngines = { [T in EngineConfig['type']]?: KnownParser };
 
 const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type: T } } = {
@@ -510,6 +403,15 @@ export const FlowrDefaultPlugins = [
 	'file:ipynb',
 	'file:namespace',
 	'file:news',
+	/* the macro plugin before the page one, so `man/macros/` never reads as a page */
+	'file:rd-macros',
+	'file:rd',
+	'file:rd-index',
+	'file:rd-topics',
+	'file:rd-meta',
+	'file:datalist',
+	/* the sysdata plugin before the rda one, so `R/sysdata.rda` never reads as a plain workspace */
+	'file:sysdata',
 	'file:rda',
 	'file:license',
 	'file:virtualenv',
@@ -523,7 +425,8 @@ function mergeOverwrite(parent: DeepPartial<FlowrConfig>, own: DeepPartial<Flowr
 	const result: Record<string, unknown> = { ...parent };
 	for(const [key, value] of Object.entries(own)) {
 		const prev = (parent as Record<string, unknown>)[key];
-		result[key] = isPlainObject(prev) && isPlainObject(value) ? mergeOverwrite(prev, value) : value;
+		result[key] = isPlainObject(prev) && isPlainObject(value)
+			? mergeOverwrite(prev, value as DeepPartial<FlowrConfig>) : value;
 	}
 	return result;
 }
@@ -579,6 +482,44 @@ function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConf
 	return merge(base, addon) as FlowrConfig;
 }
 
+/** The shortest start of `key` that none of its `siblings` share, which is how a path stays short and readable. */
+function shortestPrefix(key: string, siblings: readonly string[] = []): string {
+	for(let length = 1; length < key.length; length++) {
+		const prefix = key.slice(0, length);
+		if(!siblings.some(other => other !== key && other.startsWith(prefix))) {
+			return prefix;
+		}
+	}
+	return key;
+}
+
+/**
+ * The full path a possibly shortened one names, walking `within` a segment at a time: a segment that names a
+ * key outright is that key, otherwise it has to start exactly one of them.
+ */
+function expandPath(path: string, within: unknown): string | undefined {
+	const full: string[] = [];
+	let at: unknown = within;
+	for(const segment of path.split('.')) {
+		if(at === null || typeof at !== 'object') {
+			return undefined;
+		}
+		const keys = Object.keys(at);
+		const key = keys.includes(segment) ? segment : keys.filter(other => other.startsWith(segment));
+		if(typeof key !== 'string' && key.length !== 1) {
+			return undefined;
+		}
+		const found = typeof key === 'string' ? key : key[0];
+		full.push(found);
+		at = (at as Record<string, unknown>)[found];
+	}
+	return full.length > 0 ? full.join('.') : undefined;
+}
+
+/**
+ * flowR's configuration: its default, reading one from disk, and getting or setting a single value at a
+ * dotted path (an {@link EngineConfigPath} included).
+ */
 export const FlowrConfig = {
 	name: 'FlowrConfig',
 	/**
@@ -587,6 +528,7 @@ export const FlowrConfig = {
 	 */
 	default(this: void): FlowrConfig {
 		return {
+			logLevel:          'fatal',
 			ignoreSourceCalls: false,
 			ignoreLoadCalls:   false,
 			semantics:         {
@@ -609,13 +551,15 @@ export const FlowrConfig = {
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false
+				failOnInaccessiblePath:    false,
+				assumeImplicitEcho:        true
 			},
 			linter: {
 				disabledRules: []
 			},
 			specializeConfig: {
-				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				/* a package's top-level code runs at install time, its results are not echoed to anyone */
+				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
@@ -632,7 +576,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, blobCacheBudgetMb: 16, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
 				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
@@ -642,7 +586,8 @@ export const FlowrConfig = {
 					repeatedSourceLimit:   2,
 					assumeFilesExist:      false
 				},
-				instrument: {
+				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
+				instrument:                 {
 					dataflowExtractors: undefined
 				},
 				slicer: {
@@ -652,6 +597,7 @@ export const FlowrConfig = {
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
+				followCalls:       true,
 				dataFrame:         {
 					maxColNames:    50,
 					readLoadedData: {
@@ -714,6 +660,7 @@ export const FlowrConfig = {
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
 			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.'),
+			assumeImplicitEcho:        Joi.boolean().optional().description('Whether the top level of the analyzed code is echoed, so that every visible result printed there is collected as an output by the dependencies query (default true, false for a package).'),
 			discovery:                 Joi.object({
 				full:    Joi.boolean().optional().description('Collect every file below the project root (greedy) instead of only the files the detected project kind needs (default false).'),
 				perKind: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
@@ -781,13 +728,16 @@ export const FlowrConfig = {
 					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
 					packages:          Joi.array().items(Joi.string()).optional().description('Only recover packages whose name matches one of these regular expressions; empty means any.')
 				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
-				versionSelection: Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
-				versionOverrides: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
+				blobCacheBudgetMb: Joi.number().min(0).optional().description('How many MiB of decoded package blobs every open bundle may hold together (default 16).'),
+				versionSelection:  Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
+				versionOverrides:  Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
 			}).description('Policies for reasoning about dependency versions.'),
-			instrument: Joi.object({
+			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code.'),
+			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
+			instrument:                 Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({
@@ -806,6 +756,7 @@ export const FlowrConfig = {
 		}).description('How to resolve constants, constraints, cells, ...'),
 		abstractInterpretation: Joi.object({
 			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
+			followCalls:       Joi.boolean().description('Whether the abstract interpretation is interprocedural, i.e. whether it steps into the functions a call may dispatch to.'),
 			dataFrame:         Joi.object({
 				maxColNames:    Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
 				readLoadedData: Joi.object({
@@ -843,10 +794,25 @@ export const FlowrConfig = {
 				}).pattern(Joi.string(), Joi.object({
 					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned for this feature.'),
 					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned for this feature.')
-				})).optional().description('Elapsed analysis time thresholds in milliseconds, either shared or given per feature key (with `default` covering the rest).')
+				})).optional().description('Elapsed analysis time thresholds in milliseconds, either shared or given per feature key (with `default` covering the rest).'),
+				steps: Joi.object({
+					problematic: Joi.number().min(0).optional().description('Processed AST nodes above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).optional().description('Processed AST nodes above which the extraction is cut short, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).optional().description('Processed AST nodes above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).optional().description('Processed AST nodes above which the extraction is cut short for this feature.')
+				})).optional().description('Processed-AST-node thresholds, counted rather than sampled; only a key that arms a budget (`dataflow`) reads them.'),
+				vertices: Joi.object({
+					problematic: Joi.number().min(0).optional().description('Created dataflow vertices above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).optional().description('Created dataflow vertices above which the extraction is cut short, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).optional().description('Created dataflow vertices above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).optional().description('Created dataflow vertices above which the extraction is cut short for this feature.')
+				})).optional().description('Created-dataflow-vertex thresholds, counted like `steps`.')
 			}).optional().description('Thresholds for all gas checks (scaled by per-feature factor), boundable per feature.'),
-			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`.'),
-			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
+			features:          Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`, `dataflow`.'),
+			countedCheckEvery: Joi.number().min(1).optional().description(`How many counted steps pass between two clock reads while an armed budget also carries a timeMs bound (default ${DefaultCountedCheckEvery}); trades overshoot against the cost of reading the clock.`),
+			heapProvider:      Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
 		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),
 	/**
@@ -927,6 +893,54 @@ export const FlowrConfig = {
 		}
 	},
 	/**
+	 * Every key `config` changed against the {@link FlowrConfig.default|default}, as `a.b.c=<json>` lines.
+	 * A whole configuration is a long document while an edit to it is usually one line, which is what makes
+	 * this the form to hand around: a link, a command line, a bug report.
+	 * @see {@link FlowrConfig.applyPaths} - to read them back
+	 * @example
+	 * ```ts
+	 * FlowrConfig.changedPaths(config); // ['solver.sigdb.enabled=false']
+	 * ```
+	 */
+	changedPaths(this: void, config: FlowrConfig): string[] {
+		const found: string[] = [];
+		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
+			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
+				&& !Array.isArray(current) && !Array.isArray(base)) {
+				const keys = uniqueArray([...Object.keys(current), ...Object.keys(base)]);
+				for(const key of keys) {
+					walk((current as Record<string, unknown>)[key], (base as Record<string, unknown>)[key],
+						[...path, key], [...siblings, keys]);
+				}
+			} else if(JSON.stringify(current) !== JSON.stringify(base)) {
+				const short = path.map((key, at) => shortestPrefix(key, siblings[at]));
+				found.push(`${short.join('.')}=${JSON.stringify(current)}`);
+			}
+		};
+		walk(config, FlowrConfig.default(), [], []);
+		return found;
+	},
+
+	/**
+	 * The inverse of {@link FlowrConfig.changedPaths}: the default configuration with those keys set again.
+	 * A line that names no known key, or whose value is not readable, is skipped rather than guessed at.
+	 */
+	applyPaths(this: void, paths: Iterable<string>, base: FlowrConfig = FlowrConfig.default()): FlowrConfig {
+		const config = structuredClone(base);
+		for(const line of paths) {
+			const at = line.indexOf('=');
+			const key = at < 0 ? undefined : expandPath(line.slice(0, at), config);
+			if(key === undefined) {
+				continue;
+			}
+			try {
+				setOnPath(config, key, JSON.parse(line.slice(at + 1)));
+			} catch{ /* a value nobody can read is one to leave alone */ }
+		}
+		return config;
+	},
+
+	/**
 	 * Returns a new config object with the given value set at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfigInPlace} for a version that modifies the config object in place instead of returning a new one.
 	 * @example
@@ -937,19 +951,31 @@ export const FlowrConfig = {
 	 * console.log(newConfig.solver.variables); // Output: "builtin"
 	 * ```
 	 */
-	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
+	setInConfig<Path extends ValidFlowrConfigPaths | EngineConfigPath>(this: void, config: FlowrConfig, key: Path, value: ConfigValueAt<Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
-		objectPath.set(clone, key, value);
+		FlowrConfig.setInConfigInPlace(clone, key, value);
 		return clone;
 	},
 	/**
 	 * Modifies the given config object in place by setting the given value at the given key, where the key is a dot-separated path to the value in the config object.
+	 * An {@link EngineConfigPath} (`engine.<type>.<option>`) is understood as well.
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
-	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
-		objectPath.set(config, key, value);
+	setInConfigInPlace<Path extends ValidFlowrConfigPaths | EngineConfigPath>(this: void, config: FlowrConfig, key: Path, value: ConfigValueAt<Path>): void {
+		const engine = /^engine\.([^.]+)\.(.+)$/.exec(key);
+		if(engine) {
+			setEngineOption(config, engine[1] as EngineConfig['type'], engine[2], value);
+		} else {
+			setOnPath(config, key, value);
+		}
 	},
 } as const;
+
+/** The value a {@link ValidFlowrConfigPaths} or an {@link EngineConfigPath} takes. */
+export type ConfigValueAt<Path> =
+	Path extends `engine.${infer T}.${infer K}`
+		? T extends EngineConfig['type'] ? (K extends keyof EngineOptions<T> ? EngineOptions<T>[K] : never) : never
+		: Path extends ValidFlowrConfigPaths ? ValueAtPath<FlowrConfig, Path> : never;
 
 /** Path to the user-global `flowr.json`, read as a fallback when no project config is found. */
 export function globalConfigFilePath(): string {
@@ -969,9 +995,9 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	} catch(e) {
 		log.warn(`Could not read global config ${file}, recreating it: ${(e as Error).message}`);
 	}
-	const current: unknown = objectPath.get(raw, 'solver.sigdb.additionalPaths');
+	const current: unknown = getOnPath(raw, 'solver.sigdb.additionalPaths');
 	const paths = Array.isArray(current) ? current as string[] : [];
-	objectPath.set(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
+	setOnPath(raw, 'solver.sigdb.additionalPaths', uniqueArray([...paths, dbPath]));
 	fs.mkdirSync(path.dirname(file), { recursive: true });
 	fs.writeFileSync(file, JSON.stringify(raw, null, '\t') + '\n');
 	return file;

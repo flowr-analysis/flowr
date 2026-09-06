@@ -1,8 +1,10 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import type { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+
+assumeLoadedPackages('glue');
 
 /**
  * Code flowR only gets to run through a detour -- a captured expression handed to `eval`, or the R inside a

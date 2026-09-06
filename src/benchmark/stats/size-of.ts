@@ -1,20 +1,24 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
-import { FunctionDefinitionVertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
-import {
-	type BrandedIdentifier,
-	type IdentifierDefinition,
-	ReferenceType
-} from '../../dataflow/environments/identifier';
+import { DfgVertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
+import { type BrandedIdentifier, type IdentifierDefinition, ReferenceType } from '../../dataflow/environments/identifier';
 import sizeof from 'object-sizeof';
 import { compactRecord } from '../../util/objects';
 
+/** the stripped copy of a frame that {@link killBuiltInEnv} hands to `sizeof`; it holds a plain map, not a frame view */
+interface SizedEnvironment {
+	readonly id:          number;
+	readonly parent:      SizedEnvironment;
+	readonly memory:      ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>;
+	readonly builtInEnv?: true;
+}
+
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
-function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
+function killBuiltInEnv(env: IEnvironment | undefined): SizedEnvironment {
 
 	if(env === undefined) {
-		return undefined as unknown as IEnvironment;
+		return undefined as unknown as SizedEnvironment;
 	} else if(env.builtInEnv) {
 		/* in this case, the reference would be shared for sure */
 		return {
@@ -37,7 +41,10 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	};
 }
 
-/** Returns the size of the given df graph in bytes (without sharing in-memory) */
+/**
+ * The memory the dataflow graph occupies, including the control flow it carries
+ * (see {@link getSizeOfCfGraph} for what a separate control flow graph costs on top of that).
+ */
 export function getSizeOfDfGraph(df: DataflowGraph): number {
 	const verts = [];
 	for(const [, v] of df.vertices(true)) {
@@ -53,7 +60,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 			} as DataflowGraphVertexInfo;
 		}
 
-		if(FunctionDefinitionVertex.is(vertex)) {
+		if(DfgVertex.isFunctionDefinition(vertex)) {
 			vertex = {
 				...vertex,
 				subflow: {
@@ -79,8 +86,9 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 }
 
 /**
- * Calculates the size of the control flow graph in bytes, counting its vertices and edges like
- * {@link getSizeOfDfGraph} does for the dataflow graph.
+ * The memory the control flow graph occupies on top of the dataflow graph it is a view on.
+ * Asking for it projects the view, so this is the cost of holding the control flow separately rather than
+ * walking it on the dataflow graph.
  */
 export function getSizeOfCfGraph(cfg: ControlFlowGraph): number {
 	return safeSizeOf([...cfg.vertices(true).values(), ...cfg.edges()]);
@@ -89,7 +97,7 @@ export function getSizeOfCfGraph(cfg: ControlFlowGraph): number {
 /**
  * Calculates the size of an array in bytes.
  * @param array - The array to calculate the size of.
- * @returns The size of the array in bytes.
+ * @returns     The size of the array in bytes.
  */
 export function safeSizeOf<T>(array: T[]): number {
 	const size = sizeof(array) as number | unknown;

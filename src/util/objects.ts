@@ -1,4 +1,5 @@
 import type { DeepPartial, DeepReadonly, DeepRequired } from 'ts-essentials';
+import { guard } from './assert';
 import { jsonReplacer } from './json';
 import { expensiveTrace } from './log';
 import type { ILogObj, Logger } from 'tslog';
@@ -44,22 +45,34 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 		throw new Error('illegal types for deepMergeObject!');
 	}
 
-	assertSameType(base, addon);
+	return deepMergeObjectCore(base, addon, false);
+}
 
-	const result: MergeableRecord = { ...base };
+/**
+ * The merge logic shared by {@link deepMergeObject} and {@link deepMergeObjectInPlace}, `inPlace` decides whether
+ * `base` is written to and returned, or left untouched in favor of a new object/array.
+ */
+function deepMergeObjectCore(base: Mergeable, addon: Mergeable, inPlace: boolean): Mergeable {
+	assertSameType(base, addon);
 
 	const baseIsArray = Array.isArray(base);
 	const addonIsArray = Array.isArray(addon);
 
 	if(!baseIsArray && !addonIsArray) {
+		const result: MergeableRecord = inPlace ? base : { ...base };
 		deepMergeObjectWithResult(addon, base, result);
+		return result;
 	} else if(baseIsArray && addonIsArray) {
+		if(inPlace) {
+			for(const item of addon) {
+				base.push(item);
+			}
+			return base;
+		}
 		return base.concat(addon);
 	} else {
 		throw new Error('cannot merge object with array!');
 	}
-
-	return result;
 }
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
@@ -100,22 +113,7 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 		throw new Error('illegal types for deepMergeObjectInPlace!');
 	}
 
-	assertSameType(base, addon);
-
-	const baseIsArray = Array.isArray(base);
-	const addonIsArray = Array.isArray(addon);
-
-	if(!baseIsArray && !addonIsArray) {
-		deepMergeObjectWithResult(addon, base, base);
-	} else if(baseIsArray && addonIsArray) {
-		for(const item of addon) {
-			(base).push(item);
-		}
-	} else {
-		throw new Error('cannot merge object with array!');
-	}
-
-	return base;
+	return deepMergeObjectCore(base, addon, true);
 }
 
 function assertSameType(base: unknown, addon: unknown): void {
@@ -159,19 +157,35 @@ type Primitive =
 	| Function;
 
 /**
- * Given an object type `T`, produces a union of string literal types representing all possible paths to primitive values within that object.
- * Sadly, right now, the ts-essential paths property breaks when it comes to deeper nested objects
+ * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
+ * `never` whenever the path names nothing.
  */
-export type AutocompletablePaths<T, Prefix extends string = ''> =
-	T extends Primitive | readonly unknown[]
+export type ValueAtPath<T, Path extends string> =
+	Path extends `${infer Key}.${infer Rest}`
+		? Key extends keyof T ? ValueAtPath<NonNullable<T[Key]>, Rest> : never
+		: Path extends keyof T ? T[Path] : never;
+
+/**
+ * Every path into `T`, as a union of string literals, so that an editor can complete them.
+ *
+ * The paths are built from the leaves up rather than by carrying a prefix down: a prefix that grows with the
+ * recursion costs enough instantiations that TypeScript gives up and hands back `any`, which type-checks
+ * everything and completes nothing. `Depth` bounds it whatever the shape of `T`.
+ */
+type OneLess = [never, 0, 1, 2, 3, 4, 5, 6, 7];
+
+export type AutocompletablePaths<T, Depth extends number = 6> =
+	[Depth] extends [never]
 		? never
-		: {
-			[K in keyof T & string]:
-			| `${Prefix}${K}`
-			| (T[K] extends Primitive | readonly unknown[]
-				? never
-				: AutocompletablePaths<T[K], `${Prefix}${K}.`>)
-		}[keyof T & string];
+		: T extends Primitive | readonly unknown[]
+			? never
+			: {
+				[K in keyof T & string]:
+				| K
+				| (NonNullable<T[K]> extends Primitive | readonly unknown[]
+					? never
+					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
+			}[keyof T & string];
 
 /**
  * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
@@ -198,10 +212,10 @@ export function deepClonePreserveUnclonable<T>(obj: T): T {
 
 /**
  * Compares the two passed objects deeply using the loose comparison system designed for the {@link FlowrFilter.MatchesEnrichment}. For this system in use, see {@link FlowrFilter.MatchesEnrichment} in use.
- * @param obj - The real object which we want to test against.
- * @param expected - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
+ * @param obj        - The real object which we want to test against.
+ * @param expected   - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
  * @param arrayMatch - For array entries, the expected value in {@link test} is compared against each array entry in the real value. This property determines whether every element in the array has to match, or only some. If unset, this defaults to `some`.
- * @param logger - The logger to use for trace debugging.
+ * @param logger     - The logger to use for trace debugging.
  */
 export function looselyCompareObjects(obj: Record<string, unknown>, expected: Record<string, unknown>, arrayMatch?: 'some' | 'every', logger?: Logger<ILogObj>): boolean {
 	expensiveTrace(logger, () => `Comparing ${JSON.stringify(obj)} against ${JSON.stringify(expected)}`);
@@ -249,4 +263,65 @@ export function looselyCompareObjects(obj: Record<string, unknown>, expected: Re
 
 	expensiveTrace(logger, () => `Object ${JSON.stringify(obj)} matches ${JSON.stringify(expected)}`);
 	return true;
+}
+
+/** Segments that would let a dotted path reach into the prototype chain. */
+const magicPathSegments = new Set(['__proto__', 'prototype', 'constructor']);
+
+/**
+ * Splits a dot-separated path into its segments, turning integral segments into numbers
+ * so that `a.0.b` indexes an array rather than an object with the key `'0'`.
+ */
+function pathSegments(path: string): (string | number)[] {
+	return path.split('.').map(segment => {
+		guard(!magicPathSegments.has(segment), () => `refusing to walk the magic property '${segment}' in path '${path}'`);
+		const asInt = parseInt(segment);
+		return String(asInt) === segment ? asInt : segment;
+	});
+}
+
+/**
+ * Reads the value at the given dot-separated `path` of `obj` (e.g. `solver.sigdb.additionalPaths`),
+ * or `undefined` if any segment along the way is missing.
+ * @see {@link setOnPath} for the counterpart that writes such a path
+ */
+export function getOnPath(obj: unknown, path: string): unknown {
+	let at: unknown = obj;
+	for(const segment of pathSegments(path)) {
+		if(at === null || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, segment)) {
+			return undefined;
+		}
+		at = (at as Record<string | number, unknown>)[segment];
+	}
+	return at;
+}
+
+/**
+ * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
+ * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * @see {@link getOnPath} for the counterpart that reads such a path
+ */
+export function setOnPath(obj: object, path: string, value: unknown): void {
+	const segments = pathSegments(path);
+	let at = obj as Record<string | number, unknown>;
+	for(let i = 0; i < segments.length - 1; i++) {
+		const segment = segments[i];
+		if(at[segment] === undefined) {
+			at[segment] = typeof segments[i + 1] === 'number' ? [] : {};
+		}
+		at = at[segment] as Record<string | number, unknown>;
+	}
+	at[segments[segments.length - 1]] = value;
+}
+
+/**
+ * The members of an enum as name-value pairs.
+ * A numeric enum maps its values back to their names as well, which this leaves out.
+ * @example
+ * ```ts
+ * enumMembers(CfgVertexType) // [['Statement', 1], ['Expression', 2], ['Block', 3]]
+ * ```
+ */
+export function enumMembers<T extends object>(enumObject: T): [name: string, value: T[keyof T]][] {
+	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
 }

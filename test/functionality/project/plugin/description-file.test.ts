@@ -3,7 +3,6 @@ import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-anal
 import {
 	FlowrAnalyzerDescriptionFilePlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
@@ -82,12 +81,12 @@ Date/Publication: 2025-12-31 23:00:00 UTC
 function contextWithFile(desc: string): FlowrAnalyzerContext {
 	const ctx = new FlowrAnalyzerContext(
 		FlowrConfig.default(),
-		arraysGroupBy([
+		[
 			new FlowrAnalyzerDescriptionFilePlugin(),
 			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
 			new FlowrAnalyzerMetaDescriptionFilePlugin(),
 			new FlowrAnalyzerLoadingOrderDescriptionFilePlugin()
-		], p => p.type)
+		]
 	);
 
 	ctx.addFile(new FlowrInlineTextFile('DESCRIPTION', desc));

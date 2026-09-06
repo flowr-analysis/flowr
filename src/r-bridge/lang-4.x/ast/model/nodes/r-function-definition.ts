@@ -28,6 +28,7 @@ export const RFunctionDefinition = {
 	name: 'RFunctionDefinition',
 	/**
 	 * Type guard for {@link RFunctionDefinition} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionDefinition<Info> {
 		return node?.type === RType.FunctionDefinition;

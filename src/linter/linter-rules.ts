@@ -16,7 +16,10 @@ import { SOFTWARE_HAS_LICENSE } from './rules/software-has-license';
 import { SOFTWARE_HAS_TESTS } from './rules/software-has-tests';
 import { NO_LEAKED_CREDENTIALS } from './rules/no-leaked-credentials';
 import { UNDEFINED_SYMBOL } from './rules/undefined-symbol';
+import { UNUSED_IMPORT } from './rules/unused-import';
 import { SYNTACTICALLY_VALID } from './rules/syntactically-valid';
+import { UNCLOSED_CONNECTION } from './rules/unclosed-connection';
+import { UNESCAPED_ARGUMENTS } from './rules/unescaped-arguments';
 
 /**
  * The registry of currently supported linting rules.
@@ -40,7 +43,10 @@ export const LintingRules = {
 	'software-has-tests':          SOFTWARE_HAS_TESTS,
 	'no-leaked-credentials':       NO_LEAKED_CREDENTIALS,
 	'undefined-symbol':            UNDEFINED_SYMBOL,
-	'syntactically-valid':         SYNTACTICALLY_VALID
+	'unused-import':               UNUSED_IMPORT,
+	'syntactically-valid':         SYNTACTICALLY_VALID,
+	'unclosed-connection':         UNCLOSED_CONNECTION,
+	'unescaped-arguments':         UNESCAPED_ARGUMENTS
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;

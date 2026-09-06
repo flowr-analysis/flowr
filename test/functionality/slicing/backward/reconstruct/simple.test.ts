@@ -12,16 +12,16 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 			[0, 'x <- 5; y <- 9', ['name-normal', 'numbers', 'semicolons', ...OperatorDatabase['<-'].capabilities]],
 			[2, '{ x <- 5 }', ['grouping', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
 			[2, '{ x <- 5; y <- 9 }', ['grouping', 'name-normal', 'numbers', 'semicolons', ...OperatorDatabase['<-'].capabilities]],
-		] as [number, string, SupportedFlowrCapabilityId[]][]){
+		] as [number, string, SupportedFlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, 'x');
 		}
 	});
 	describe('Nested Assignments', () => {
 		for(const [code, id, expected, caps] of [
 			['12 + (supi <- 42)', 0, '12', ['grouping', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'precedence']],
-			['y <- x <- 42', 1, 'x', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence'] ],
-			['y <- x <- 42', 0, 'y', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence'] ],
-			['for (i in 1:20) { x <- 5 }', 6, 'x', ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities] ]
+			['y <- x <- 42', 1, 'x', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence']],
+			['y <- x <- 42', 0, 'y', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence']],
+			['for (i in 1:20) { x <- 5 }', 6, 'x', ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]]
 		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected);
 		}
@@ -30,8 +30,8 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 	describe('Access', () => {
 		for(const [code, id, expected, caps] of [
 			/* we are interested in 'a' not in the result of the access*/
-			['a[3]', 0, 'a', ['single-bracket-access', 'numbers', 'name-normal'] ],
-			['a[x]', 1, 'x', ['single-bracket-access', 'name-normal'] ]
+			['a[3]', 0, 'a', ['single-bracket-access', 'numbers', 'name-normal']],
+			['a[x]', 1, 'x', ['single-bracket-access', 'name-normal']]
 		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected);
 		}

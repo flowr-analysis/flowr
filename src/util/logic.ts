@@ -5,8 +5,12 @@ export enum Ternary {
 	Never = 'never'
 }
 
+/**
+ * Always, never, or maybe, which is what a static answer about a running program usually is.
+ * Its operators keep `maybe` infectious, so a conclusion never claims more than what is known.
+ */
 export const TernaryLogic = {
-	name: 'Ternary',
+	name: 'TernaryLogic',
 	negate(this: void, value: Ternary): Ternary {
 		if(value === Ternary.Always) {
 			return Ternary.Never;

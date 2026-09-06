@@ -1,7 +1,8 @@
 import { describe } from 'vitest';
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
-import { SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
 import { SourceLocation, SourceRange } from '../../../src/util/range';
@@ -45,6 +46,7 @@ print(x)`,
 				'`[.foo` <- function(x, i) { x[i] }',
 				'as.character.foo <- function(x, ...) { x }',
 				'Ops.foo <- function(e1, e2) { e1 + e2 }\nx <- structure(1, class = "foo")\nprint(x + 1)',
+				'Math.foo <- function(x, ...) { x }\nx <- structure(1, class = "foo")\nprint(round(x, 2))',
 				/* S3 method for a project-local generic that is dispatched somewhere - not unused */
 				'myg <- function(x) UseMethod("myg")\nmyg.foo <- function(x) x\nz <- structure(1, class = "foo")\nmyg(z)',
 				/* R package lifecycle hook called by package machinery - not unused */
@@ -84,7 +86,7 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {
-					const ids = SlicingCriteria.decodeAll(criteria.split(';') as SlicingCriteria, ast.idMap);
+					const ids = SlicingCriterion.decodeAll(criteria.split(';') as SlicingCriteria, ast.idMap);
 					return ids.map(({ id }) => {
 						const node = ast.idMap.get(id);
 						guard(node !== undefined, `Expected node for id ${id} to be defined, but got undefined`);

@@ -1,4 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { ArgProps } from '../../../dataflow/environments/built-in-props';
 import type { ShardStatus } from '../../../project/sigdb/reader';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -11,6 +12,12 @@ import { executeSignatureQuery, signatureQueryCompleter } from './signature-quer
 import { printSignatureHelp, pushFunction, pushPackage, pushMatches, pushPackages, pushSummary } from './signature-query-render';
 
 /**
+ * Default of {@link SignatureQuery.callGraphMaxNodes}: how many nodes a rendered call graph may hold.
+ * Cross-package expansion could otherwise run off into base R, and a graph nobody can read is not an answer.
+ */
+export const DefaultCallGraphMaxNodes = 300;
+
+/**
  * Inspects the loaded signature database(s) (see the {@link https://github.com/flowr-analysis/flowr/wiki/Signature-Database|Signature Database wiki}).
  * The `package` and `function` fields accept glob wildcards (`*`, `?`), and `version` accepts an exact version,
  * a glob (`3.*`), a semver range (`>=3.0.0`, `3.x`), or a release-date bound (`<=2026`, `>=2021.05`, YYYY.MM.DD).
@@ -19,6 +26,11 @@ import { printSignatureHelp, pushFunction, pushPackage, pushMatches, pushPackage
  * functions that have a parameter matching *every* given name (position-independent) or an exact required-parameter
  * count (a parameter filter alone, e.g. `--param fuzz`, searches every package; repeat `--param` or comma-separate
  * to require several, e.g. `--param data --param mapping`).
+ *
+ * Wherever no loaded database records a name, flowR's own built-in configuration answers instead, so the query
+ * still says something with no database mounted at all. Every such answer is marked (`flowrOnly` on a function
+ * or a match, {@link SignatureQueryResult.builtInSuggestions} for a suggestion) and states no version, location,
+ * or export status, as the configuration records none of those.
  */
 export interface SignatureQuery extends BaseQueryFormat {
 	readonly type:                'signature';
@@ -34,13 +46,19 @@ export interface SignatureQuery extends BaseQueryFormat {
 	readonly requiredParameters?: number;
 	/** for a single function, also render its transitive call graph as a mermaid.live link (`--cg`) */
 	readonly callGraph?:          boolean;
+	/**
+	 * How many nodes the rendered call graph may hold before the expansion stops (default
+	 * {@link DefaultCallGraphMaxNodes}). Cross-package expansion would otherwise run off into base R, and a
+	 * graph nobody can read is not an answer. `--cg-max <n>` sets it.
+	 */
+	readonly callGraphMaxNodes?:  number;
 }
 
 /** one parameter of a function signature */
 export interface SignatureParameterView {
 	readonly name:     string;
-	readonly required: boolean;
-	readonly forced:   boolean;
+	/** bitfield of {@link ArgProp}: what the database states about the parameter, `0` when it states nothing */
+	readonly props:    ArgProps;
 	readonly default?: string;
 }
 
@@ -57,9 +75,9 @@ export interface SignatureFunctionView {
 	readonly line?:      number;
 	/** deep link to the definition on the read-only GitHub mirror of the sources (CRAN, or R's own for a base package) */
 	readonly sourceUrl?: string;
-	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
+	/** best-effort documentation link (R's own manual for base R, rdrr.io for CRAN), when the name maps to a documentable topic */
 	readonly docUrl?:    string;
-	/** link to the `.Rd` help source *at the queried version*, which {@link docUrl} cannot offer (rdrr.io only serves the current release) */
+	/** link to the `.Rd` help source *at the queried version*, which {@link docUrl} cannot offer (it serves the current release alone) */
 	readonly manUrl?:    string;
 	/** whether the function looks like an S3 generic (has `<generic>.<class>` dispatch targets in the same package) */
 	readonly s3generic?: boolean;
@@ -67,6 +85,16 @@ export interface SignatureFunctionView {
 	readonly s3methods?: readonly string[];
 	/** when the function is an S3 method, the generic it dispatches for (`print.rema` is `print` in `base`, class `rema`); lazily computed */
 	readonly s3method?:  { readonly generic: string, readonly class: string, readonly package: string };
+	/**
+	 * The S4 group generic the name belongs to (`sin` is in `Math`, `+` in `Arith`). `viaGroup` says the view was
+	 * answered by the package's entry for the group rather than by one for the name itself: a
+	 * `setMethod('Math', 'cls', ...)` answers every member of the group at once, and that is what a `sin(x)` call
+	 * on such a class dispatches to. A member is often documented only under its `sin,cls-method` Rd alias, which
+	 * is why such a name can carry `no-doc` and still have a help page.
+	 * `members` lists every name the group entry answers for, present whenever the entry found is the group
+	 * itself, with `Ops` flattened to its operators (see {@link groupGenericMembers}).
+	 */
+	readonly s4group?:   { readonly group: string, readonly viaGroup?: boolean, readonly members?: readonly string[] };
 	/** a mermaid.live link visualizing the transitive call graph from this function (only when requested with `--cg`) */
 	readonly callGraph?: string;
 	/** what flowR itself states about the function, from the built-in environment of the analysis */
@@ -74,8 +102,7 @@ export interface SignatureFunctionView {
 	/**
 	 * whether the whole view comes from flowR's built-in definition because the database has no entry: the
 	 * primitives and operators (`+`, `[`, `if`) that appear in no package's sources, and anything a flowR
-	 * configuration adds. Everything the database would contribute (defaults, callees, location) is then empty,
-	 * and since flowR records no defaults, every {@link SignatureParameterView.required} reads `false`.
+	 * configuration adds.
 	 */
 	readonly flowrOnly?: boolean;
 }
@@ -86,7 +113,7 @@ export interface SignatureFunctionView {
  * configured or overwritten built-in is what shows up here.
  */
 export interface SignatureFlowrView {
-	/** the {@link CallProp} names the built-in definition carries, like `pure` or `reads` */
+	/** the {@link CallProp}/{@link SemanticCallTag} names the built-in definition carries, like `pure` or `reads` */
 	readonly props:       readonly string[];
 	/** the {@link ArgProp} names of every parameter flowR declares, in order; a parameter it says nothing about has no roles */
 	readonly args?:       readonly { readonly name: string, readonly roles: readonly string[] }[];
@@ -143,7 +170,7 @@ export interface SignatureMatchView {
 	readonly file?:              string;
 	readonly line?:              number;
 	readonly sourceUrl?:         string;
-	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
+	/** best-effort documentation link, see {@link SignatureFunctionView.docUrl} */
 	readonly docUrl?:            string;
 	/** link to the `.Rd` help source at the queried version, see {@link SignatureFunctionView.manUrl} */
 	readonly manUrl?:            string;
@@ -151,6 +178,12 @@ export interface SignatureMatchView {
 	readonly parameters?:        readonly string[];
 	/** the subset of {@link parameters} that the `--param` filter actually matched, so the renderer can highlight them */
 	readonly matchedParameters?: readonly string[];
+	/**
+	 * whether the hit comes from flowR's built-in configuration instead of a signature database, which is what
+	 * a search falls back to when no database records the name (see {@link SignatureFunctionView.flowrOnly}).
+	 * Such a hit states no version, location, or export status: flowR's configuration records none of those.
+	 */
+	readonly flowrOnly?:         boolean;
 }
 
 /** a hit from a wildcard package search */
@@ -172,29 +205,39 @@ export interface SignatureDatabaseView {
 }
 
 export interface SignatureQueryResult extends BaseQueryResult {
-	readonly databases:    readonly SignatureDatabaseView[];
-	readonly packageCount: number;
-	readonly sourceCount:  number;
+	readonly databases:           readonly SignatureDatabaseView[];
+	readonly packageCount:        number;
+	readonly sourceCount:         number;
 	/** per-shard load state of the sharded sources (which shards this session has opened and unpacked); summary only */
-	readonly shards?:      readonly ShardStatus[];
+	readonly shards?:             readonly ShardStatus[];
+	/**
+	 * how many names flowR's own built-in configuration states, which every lookup falls back to when no loaded
+	 * database records the name (so this stays non-zero even with no database mounted at all); summary only
+	 */
+	readonly builtInCount?:       number;
 	/** set when a single package was requested and found */
-	readonly package?:     SignaturePackageView;
+	readonly package?:            SignaturePackageView;
 	/** set when a single function was requested and found */
-	readonly function?:    SignatureFunctionView;
+	readonly function?:           SignatureFunctionView;
 	/** function hits from a wildcard search */
-	readonly matches?:     readonly SignatureMatchView[];
-	readonly matchCount?:  number;
+	readonly matches?:            readonly SignatureMatchView[];
+	readonly matchCount?:         number;
 	/** how many functions the search examined against the filters (only interesting when it exceeds the hit count) */
-	readonly searched?:    number;
+	readonly searched?:           number;
 	/** whether the search covered only the latest version of each package, so historical releases were skipped */
-	readonly latestOnly?:  boolean;
+	readonly latestOnly?:         boolean;
 	/** package hits from a wildcard package search (no function given) */
-	readonly packages?:    readonly SignaturePackageMatch[];
+	readonly packages?:           readonly SignaturePackageMatch[];
 	/** whether the match list was capped */
-	readonly truncated?:   boolean;
+	readonly truncated?:          boolean;
 	/** a not-found / disabled note, with optional near-match suggestions */
-	readonly message?:     string;
-	readonly suggestions?: readonly string[];
+	readonly message?:            string;
+	readonly suggestions?:        readonly string[];
+	/**
+	 * near-match suggestions that only flowR's built-in configuration states, kept apart from {@link suggestions}
+	 * so a name the database records is never confused with one it does not
+	 */
+	readonly builtInSuggestions?: readonly string[];
 }
 
 /** parse a signature-query repl line into a query: `pkg`, `pkg fn`, `pkg::fn`, `pkg@ver`, globs */
@@ -203,6 +246,7 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 	const parameters: string[] = [];
 	let requiredParameters: number | undefined;
 	let callGraph = false;
+	let callGraphMaxNodes: number | undefined = undefined;
 	const positional: string[] = [];
 	for(let i = 0; i < line.length; i++) {
 		const tok = line[i];
@@ -215,6 +259,9 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 			requiredParameters = Number(line[++i]);
 		} else if(tok === '--cg') {
 			callGraph = true;
+		} else if(tok === '--cg-max') {
+			callGraph = true;
+			callGraphMaxNodes = Number(line[++i]);
 		} else if(!tok.startsWith('--')) {
 			positional.push(tok);
 		}
@@ -227,7 +274,8 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 	const paramFilters = {
 		...(parameters.length > 0 ? { parameters } : {}),
 		...(requiredParameters !== undefined && !Number.isNaN(requiredParameters) ? { requiredParameters } : {}),
-		...(callGraph ? { callGraph: true } : {})
+		...(callGraph ? { callGraph: true } : {}),
+		...(callGraphMaxNodes !== undefined && Number.isFinite(callGraphMaxNodes) ? { callGraphMaxNodes } : {})
 	};
 	const hasParamFilter = parameters.length > 0 || (requiredParameters !== undefined && !Number.isNaN(requiredParameters));
 	const [first, second] = positional;
@@ -274,12 +322,16 @@ export const SignatureQueryDefinition = {
 		if(out.message) {
 			const hint = out.suggestions?.length ? ` ${italic('Did you mean:', formatter)} ${out.suggestions.join(', ')}?` : '';
 			result.push(`   ╰ ${color(out.message, Colors.Red, formatter)}${hint}`);
+			if(out.builtInSuggestions?.length) {
+				// no database records these, so they are offered on their own line rather than mixed into the hint
+				result.push(`     ${italic('Only flowR\'s built-in configuration states:', formatter)} ${out.builtInSuggestions.join(', ')}`);
+			}
 		}
 		return true;
 	},
 	fromLine:  signatureQueryLineParser,
 	completer: signatureQueryCompleter,
-	syntax:    '@signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--help]',
+	syntax:    '@signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--cg-max <n>] [--help]',
 	schema:    Joi.object({
 		type:               Joi.string().valid('signature').required().description('The type of the query.'),
 		package:            Joi.string().optional().description('The package to inspect (glob wildcards allowed); omit for a summary of the loaded databases.'),
@@ -287,7 +339,8 @@ export const SignatureQueryDefinition = {
 		version:            Joi.string().optional().description('A version spec: an exact version, a glob (3.*), a semver range (>=3.0.0, 3.x), or a release-date bound (<=2026, >=2021.05 in YYYY.MM.DD).'),
 		parameters:         Joi.array().items(Joi.string()).optional().description('Keep only functions that have a parameter matching every one of these names (glob wildcards allowed, position-independent).'),
 		requiredParameters: Joi.number().integer().min(0).optional().description('Keep only functions with exactly this many required (no-default) parameters, excluding `...`.'),
-		callGraph:          Joi.boolean().optional().description('For a single function, also render its transitive call graph as a mermaid.live link (`--cg`).')
-	}).description('Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count).'),
+		callGraph:          Joi.boolean().optional().description('For a single function, also render its transitive call graph as a mermaid.live link (`--cg`).'),
+		callGraphMaxNodes:  Joi.number().min(1).optional().description(`How many nodes the rendered call graph may hold before the expansion stops (default ${DefaultCallGraphMaxNodes}, \`--cg-max <n>\`).`)
+	}).description('Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count). Names no database records are answered from flowR\'s own built-in configuration instead and marked as such.'),
 	flattenInvolvedNodes: (): NodeId[] => []
 } as const satisfies SupportedQuery<'signature'>;

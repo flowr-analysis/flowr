@@ -4,7 +4,7 @@
  * there does not carry the index encoding.
  */
 import fs from 'fs';
-import type { SigDbPkgMeta } from './schema';
+import type { SigDbPkgMetaIndex } from './schema';
 
 /** a byte range `[startByte, bytes]` in the plain `.ndjson` */
 export type ByteRange = [startByte: number, bytes: number];
@@ -24,11 +24,11 @@ export interface SigDbIndex {
 	/** package name to blob index */
 	pkgs:      Record<string, number>;
 	/** package name to metadata */
-	meta:      Record<string, SigDbPkgMeta>;
+	meta:      SigDbPkgMetaIndex;
 }
 
 /** the on-disk (compact) form of a {@link SigDbIndex}: short keys, `meta` optional (hoisted into a manifest) */
-export interface SigDbIndexWire { n: number; d: ByteRange; b: ByteRange[]; p: Record<string, number>; m?: Record<string, SigDbPkgMeta> }
+export interface SigDbIndexWire { n: number; d: ByteRange; b: ByteRange[]; p: Record<string, number>; m?: SigDbPkgMetaIndex }
 
 /** the on-disk (compact) index of a blob-only shard (no dictionary of its own; it shares a dictionary file) */
 export interface SigShardIndexWire { n: number; b: ByteRange[]; p: Record<string, number> }
@@ -38,7 +38,7 @@ export function encodeIndex(i: SigDbIndex, withMeta = true): SigDbIndexWire {
 	return { n: i.byteCount, d: i.dict, b: i.blobs, p: i.pkgs, ...(withMeta ? { m: i.meta } : {}) };
 }
 /** decode a compact index; `meta` falls back to a hoisted map, and `dict` to empty (a blob-only shard) */
-export function decodeIndex(w: SigDbIndexWire | SigShardIndexWire, meta?: Record<string, SigDbPkgMeta>): SigDbIndex {
+export function decodeIndex(w: SigDbIndexWire | SigShardIndexWire, meta?: SigDbPkgMetaIndex): SigDbIndex {
 	const full = w as SigDbIndexWire;
 	return { byteCount: w.n, dict: full.d ?? [0, 0], blobs: w.b, pkgs: w.p, meta: full.m ?? meta ?? {} };
 }

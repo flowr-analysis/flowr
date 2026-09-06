@@ -47,47 +47,38 @@ describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 	}
 
 	assertMermaidVisualization('x', [
-		/RExpressionList/,
-		/RSymbol/,
+		/RSymbol \(0\)/,
 		/.*/,
-		/n1-e/,
-		/n0.*n1/,
-		/n1-e.*n0/,
-		/style n1.*/
+		/style n0.*/
 	]);
 	assertMermaidVisualization(`x <- true
 if(x) {
     print(x)
 }`, [
-		/RExpressionList/,
-		/RSymbol/,
+		/RSymbol \(1\)/,
 		/.*/,
-		/RSymbol/,
+		/RSymbol \(0\)/,
 		/.*/,
-		/RBinaryOp/,
+		/RBinaryOp \(2\)/,
 		/.*/,
-		/n2-e/,
-		/RIfThenElse/
+		/RSymbol \(3\)/,
+		/.*/,
+		/RSymbol \(7\)/,
+		/.*/,
+		/RFunctionCall \(9\)/,
+		/.*/,
+		/RExpressionList \(10\)/,
+		/RIfThenElse \(11\)/
 	]);
 	assertMermaidVisualization(`x <- true
 if(x) {
     print(x)
 }`, [
-		/RSymbol/,
+		/RSymbol \(7\)/,
 		/.*/,
-		/RFunctionCall/,
+		/RFunctionCall \(9\)/,
 		/.*/,
-		/n9-e/,
-		/RArgument/,
-		/.*/,
-		/RSymbol/,
-		/.*/,
-		/n8-e/,
-		/n6.*n9/,
-		/n7.*n8/,
-		/n8-e.*n7/,
-		/n8.*n6/,
-		/n9-e.*n8-e/
+		/n7.*n9/
 	], {
 		selectedVertices: ['3@print', '3@x']
 	});

@@ -21,7 +21,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	const sid = symbol.info.id;
 
 	return {
-		unknownReferences: [ { nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown } ],
+		unknownReferences: [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }],
 		in:                [],
 		out:               [],
 		environment:       data.environment,
@@ -29,7 +29,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 			tag: VertexType.Use,
 			id:  sid,
 			cds: data.cds
-		}, data.ctx.env.makeCleanEnv()),
+		}, data.ctx.env.cleanEnv),
 		entryPoint: sid,
 		exitPoints: [{ nodeId: sid, type: ExitPointType.Default, cds: data.cds }],
 		hooks:      []

@@ -1,14 +1,12 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { singleCriterionLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
+import type { QueryResults, SupportedQuery } from '../../query';
+import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
@@ -16,7 +14,7 @@ import { LintingResultCertainty } from '../../../linter/linter-format';
 import { Record } from '../../../util/record';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
 import { LinkedInputEntryPoints, LinkedInputObjects, narrowingFunctions } from './input-source-functions';
-import { CallProp, FileInputProps, InputProps } from '../../../dataflow/environments/built-in-props';
+import { CallProp, FileInputProps, InputProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
@@ -27,10 +25,8 @@ export type InputSourcesQueryConfig = InputClassifierConfig;
 export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly type:      'input-sources';
 	/**
-	 * One or more slicing criteria to analyze; each is resolved independently and keyed by its
-	 * criterion string in the result map.  Supplying an array allows batching multiple lookups
-	 * into a single round-trip.
-	 * {@link SlicingCriterion.fromId}
+	 * One or more slicing criteria to analyze, each resolved independently and keyed by its criterion string in the result map;
+	 * an array batches multiple lookups into a single round-trip. {@link SlicingCriterion.fromId}
 	 */
 	readonly criterion: SlicingCriterion | readonly SlicingCriterion[],
 	readonly config?:   InputSourcesQueryConfig
@@ -39,32 +35,26 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 const builtIns = BuiltInIndex.default();
 
 /**
- * Which functions belong to which input type is stated with the functions themselves, in the
- * {@link DefaultBuiltinConfig|built-in configuration}: a function that states its props and carries none of the
- * {@link InputProps} derives its result from its arguments, the others bring in data of their own, and a
- * {@link CallProp.Narrows} one bounds its result no matter what flows in.
- * Add a function there (or override its props with your own built-in definitions) and it shows up here.
+ * Which functions belong to which input type is stated with the functions themselves, in the {@link DefaultBuiltinConfig|built-in configuration}:
+ * a function that states its props and carries none of the {@link InputProps} derives its result from its arguments, the others bring in data of their own, and a {@link SemanticCallTag.Narrows} one bounds its result no matter what flows in. Add a function there (or override its props with your own built-in definitions) and it shows up here.
  */
 export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	/*
-	 * every {@link CallProp.Pure} built-in is in here (a test checks it), but the label alone is too narrow:
-	 * what matters for provenance is that the call invents no data of its own, not that it has no effect at
-	 * all. `x <- z <- 'x'` has to stay constant across the assignments, and `print(x)` hands `x` back, yet
-	 * neither is `Pure` (they rebind a name, they write to the console). So the set is every built-in that
-	 * states its props and claims none of the {@link InputProps}.
+	 * every {@link CallProp.Pure} built-in is in here (a test checks it), but the label alone is too narrow: what matters for provenance is that the call invents no data of its own, not that it has no effect at all -- `x <- z <- 'x'` stays constant across the assignments, and `print(x)` hands `x` back, yet neither is `Pure` (they rebind a name, write to the console).
+	 * So the set is every built-in that states its props and claims none of the {@link InputProps}.
 	 */
 	[InputTraceType.Pure]:   builtIns.without(InputProps),
 	[InputType.File]:        [...ReadFunctions.map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
-	[InputType.TempFile]:    builtIns.with(CallProp.TempFile),
-	[InputType.Glob]:        builtIns.with(CallProp.Glob),
+	[InputType.TempFile]:    builtIns.with(SemanticCallTag.TempFile),
+	[InputType.Glob]:        builtIns.with(SemanticCallTag.Glob),
 	[InputType.Network]:     Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:      Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
-	[InputType.System]:      builtIns.with(CallProp.Process),
+	[InputType.System]:      builtIns.with(SemanticCallTag.Process),
 	[InputType.Ffi]:         builtIns.with(CallProp.Ffi),
 	[InputType.Lang]:        builtIns.with(CallProp.Lang),
 	[InputType.Options]:     builtIns.with(CallProp.Ambient),
-	[InputType.CommandLine]: builtIns.with(CallProp.CommandLine),
-	[InputType.User]:        builtIns.with(CallProp.User),
+	[InputType.CommandLine]: builtIns.with(SemanticCallTag.CommandLine),
+	[InputType.User]:        builtIns.with(SemanticCallTag.User),
 	linkedObjects:           LinkedInputObjects,
 	linkedEntryPoints:       LinkedInputEntryPoints,
 	narrowing:               narrowingFunctions(builtIns)
@@ -73,20 +63,6 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 export interface InputSourcesQueryResult extends BaseQueryResult {
 	/** For each query key, a list of classified input sources (each with id and all traces) */
 	results: Record<string, InputSources>
-}
-
-function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'input-sources'> {
-	const criterion = sliceCriteriaParser(line[0]);
-	if(!criterion || criterion.length !== 1) {
-		output.stderr(output.formatter.format('Invalid input sources query format, a single slicing criterion must be given in the form "(criterion1)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
-	}
-
-	return { query: [{
-		type:      'input-sources',
-		criterion: criterion[0],
-	}], rCode: queryLineCode(line) } ;
 }
 
 export const InputSourcesDefinition = {
@@ -114,7 +90,7 @@ export const InputSourcesDefinition = {
 		}
 		return true;
 	},
-	fromLine:  inputSourcesQueryLineParser,
+	fromLine:  singleCriterionLineParser('input-sources', 'input sources'),
 	completer: criteriaQueryCompleter,
 	syntax:    '@input-sources (<criterion>) <code | file://path>',
 	schema:    Joi.object({
@@ -135,7 +111,7 @@ export const InputSourcesDefinition = {
 			[InputType.User]:        Joi.array().items(Joi.string()).optional().description('Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo).'),
 			linkedObjects:           Joi.array().items(Joi.object({
 				name:       Joi.string().required().description('Name of the object, e.g. input.'),
-				type:       Joi.string().valid(...Record.values<string>(InputType)).required().description('How reads of the object (or of its fields) are classified.'),
+				type:       Joi.string().valid(...Record.values(InputType)).required().description('How reads of the object (or of its fields) are classified.'),
 				withParams: Joi.array().items(Joi.string()).optional().description('Only link the object if the function binding it declares all of these parameters as well.')
 			})).optional().description('Objects a framework provides without a definition in the code, e.g. shiny\'s input.'),
 			linkedEntryPoints: Joi.array().items(Joi.object({

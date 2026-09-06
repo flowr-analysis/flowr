@@ -30,6 +30,7 @@ import type { SigDbSource } from '../../../src/project/plugins/package-version-p
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import type { LibraryExports } from '../../../src/project/sigdb/schema';
+import { applyAssumedPackages, assumedPackagesOf } from './shell';
 
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
 export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean };
@@ -46,12 +47,14 @@ export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly stri
 		has:               pkg => pkg in pkgs,
 		hasVersion:        (pkg, version) => pkg in pkgs && version === '1.0.0',
 		isCranVersion:     () => true,
+		sourceOf:          () => undefined,
 		lookup:            pkg => view(pkg),
 		classOwner:        () => undefined,
 		packagesExporting: name => Object.keys(pkgs).filter(pkg => pkgs[pkg].includes(name)),
 		functions:         () => undefined,
 		functionByName:    () => undefined,
 		transitiveCallees: () => undefined,
+		classes:           () => undefined,
 		dependencies:      () => undefined,
 		packageNames:      () => Object.keys(pkgs),
 		isBaseR:           () => false,
@@ -64,6 +67,7 @@ export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly stri
 	};
 }
 
+type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
 
 /**
  * Asserts correct linting results while ignoring each linting result's {@link LintingRuleResult.involvedId}.
@@ -73,7 +77,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	parser: KnownParser,
 	code: string,
 	ruleName: Name,
-	expected: Omit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
+	expected: DistributiveOmit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
 ) {
@@ -122,13 +126,14 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
 	cleanup: (result: LintingRuleResult<Name> | Result, ast: NormalizedAst) => LintingRuleResult<Name> | Result = (r => r),
 ) {
+	const assumed = assumedPackagesOf(undefined);
 	test(decorateLabelContext(name, ['linter']), async() => {
-		let builder = new FlowrAnalyzerBuilder()
+		let builder = applyAssumedPackages(new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(0)
 			})
 			.setParser(parser)
-			.configure('solver.resolveSource.dropPaths', DropPathsOption.All);
+			.configure('solver.resolveSource.dropPaths', DropPathsOption.All), assumed);
 		// swap in a controlled signature database (or none) so tests do not depend on the bundled collection
 		if(lintingRuleConfig?.sigDb !== undefined) {
 			builder = builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(lintingRuleConfig.sigDb));
@@ -163,7 +168,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		}
 
 		try {
-			assert.deepEqual(results.results.map(r => cleanup(r, ast )), expected.map(r => cleanup(r, ast)), `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
+			assert.deepEqual(results.results.map(r => cleanup(r, ast)), expected.map(r => cleanup(r, ast)), `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		} catch(e) {
 			console.error('dfg:', Dataflow.visualize.mermaid.url((await analyzer.dataflow()).graph));
 			console.error('cfg:', cfgToMermaidUrl(await analyzer.controlflow(), await analyzer.normalize()));

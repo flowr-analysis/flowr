@@ -2,12 +2,13 @@ import type { NormalizerData } from '../../normalizer-data';
 import { assureTokenType } from '../../normalize-meta';
 import { normalizeExpressions } from './normalize-expressions';
 import { log } from '../../../../../../../util/log';
-import { partition } from '../../../../../../../util/collections/arrays';
+import { partitionArray } from '../../../../../../../util/collections/arrays';
 import { RawRType, RType } from '../../../../model/type';
 import type { RNode } from '../../../../model/model';
-import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import type { JsonEntry } from '../../../json/format';
 import type { RProject } from '../../../../model/nodes/r-project';
+import { RComment } from '../../../../model/nodes/r-comment';
 
 
 /**
@@ -31,7 +32,7 @@ export function normalizeRootObjToAst(
 		log.debug('no children found, assume empty input');
 	}
 
-	const [delimiters, nodes] = partition(parsedChildren, x => x.type === RType.Delimiter || x.type === RType.Comment);
+	const [delimiters, nodes] = partitionArray(parsedChildren, x => RDelimiter.is(x) || RComment.is(x));
 
 	return {
 		type:  RType.Project,

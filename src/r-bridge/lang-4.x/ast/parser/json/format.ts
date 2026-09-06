@@ -183,7 +183,7 @@ export function convertPreparedParsedData(roots: readonly CsvEntry[]): JsonEntry
 	};
 
 	// if we don't have children, this is simple
-	if(roots.length <= 0){
+	if(roots.length <= 0) {
 		return {
 			...partialEntry,
 			line1:    1,

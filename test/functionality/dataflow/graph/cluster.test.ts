@@ -1,4 +1,5 @@
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { isArray } from '../../../../src/util/collections/arrays';
 import { type DataflowGraphCluster, type DataflowGraphClusters, findAllClusters } from '../../../../src/dataflow/cluster';
 import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
@@ -44,7 +45,7 @@ describe('Graph Clustering', () => {
 
 				// resolve all criteria
 				const resolved = clusters.map<DataflowGraphCluster>(c => {
-					const { members, hasUnknownSideEffects } = Array.isArray(c) ? {
+					const { members, hasUnknownSideEffects } = isArray<SlicingCriterion>(c) ? {
 						members:               c,
 						hasUnknownSideEffects: false
 					} : c;
@@ -123,7 +124,7 @@ describe('Graph Clustering', () => {
 				['3@x']
 			]);
 			check('sub-function cluster', 'f <- function() { x <- 3\n4 }\nx', [
-				['1@f', '1:3', '1:6', '2:1', '$7' ],
+				['1@f', '1:3', '1:6', '2:1', '$7'],
 				['1@x', '1:21', '1:24'],
 				['3@x']
 			]);
@@ -172,8 +173,9 @@ cat(product)
 			});
 		});
 		describe('unknown side effects', () => {
-			check('unknown side effects should get their own cluster', 'library(dplyr)\nx', [
-				{ members: ['1@library', '1@dplyr'], hasUnknownSideEffects: true },
+			/* a package neither a database nor flowR itself knows: attaching it really is a step into the dark */
+			check('unknown side effects should get their own cluster', 'library(zzznotapackage)\nx', [
+				{ members: ['1@library', '1@zzznotapackage'], hasUnknownSideEffects: true },
 				['2@x']
 			]);
 			check('unknown side effects should be marked as such', 'x <- vx\nrequire(vx)\nx', [

@@ -14,6 +14,7 @@ import { RRange, RVersion } from '../../../src/util/r-version';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
 import { expFn, sigdbAnalyzer } from './sigdb';
 import { SigDatabase } from '../../../src/project/sigdb/reader';
+import { uniqueArray } from '../../../src/util/collections/arrays';
 
 /** one version of a package in a scenario: when it was released, which functions (with which parameters) it exports, and what it depends on */
 export interface ScenarioVersion {
@@ -121,5 +122,5 @@ export async function guessDep(ts: TreeSitterExecutor, scenario: GuessScenario, 
 
 /** the deduplicated `bound` values a given evidence source contributes to a dependency (e.g. every `>=` a signature raised) */
 export function boundsFrom(dep: GuessedDependency | undefined, source: GuessEvidenceSource): string[] {
-	return [...new Set((dep?.evidence ?? []).filter(e => e.source === source).map(e => e.bound).filter((b): b is string => b !== undefined))];
+	return uniqueArray((dep?.evidence ?? []).filter(e => e.source === source).map(e => e.bound).filter((b): b is string => b !== undefined));
 }

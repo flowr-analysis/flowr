@@ -1,4 +1,4 @@
-import { NoEdges, DataflowGraph, UnknownSideEffect } from './graph';
+import { DataflowGraph, UnknownSideEffect, type CallQualifier } from './graph';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
@@ -8,50 +8,33 @@ import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../in
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
-import { FunctionCallVertex, ValueVertex } from './vertex';
+import { DfgVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
-import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 import { isBaseRPackage } from '../../util/r-base-packages';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
  *
  * - {@link Dataflow.visualize} - for visualization helpers (e.g., rendering the DFG as a mermaid graph),
- * - {@link Dataflow.views} - for working with specific views of the dataflow graph (e.g., the call graph),
- * - {@link Dataflow.edge} - for working with the edges in the dataflow graph,
- * - {@link Dataflow.qualify} - for the package-qualified `pkg::fn` identifier of a call from its id and graph,
- * - {@link Dataflow.resolve} - for resolving a name against an environment,
+ * - {@link Dataflow.qualify}/{@link Dataflow.qualifyAll} - for the package-qualified `pkg::fn` identifier of a call
+ * from its id and graph, or of every call of a graph at once,
  * - {@link Dataflow.packagesOf} - for the packages a set of nodes (e.g. a slice) calls into,
  * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
+ *
+ * What it used to re-expose under a second name is imported directly instead: {@link DfEdge} for the edges,
+ * {@link CallGraph} for the call-graph view, {@link Resolve} for name and value resolution, and
+ * {@link DataflowGraph} for the graph itself.
  * @example
  * ```ts
- * Dataflow.origin(graph, id);                       // where the use at `id` comes from
- * Dataflow.edge.includesType(edge, EdgeType.Reads); // the edge helpers
- * Dataflow.visualize.mermaid.url(graph);            // a link to the rendered graph
+ * Dataflow.origin(graph, id);                  // where the use at `id` comes from
+ * DfEdge.includesType(edge, EdgeType.Reads);   // the edge helpers
+ * Dataflow.visualize.mermaid.url(graph);       // a link to the rendered graph
  * ```
  */
 export const Dataflow = {
-	/**
-	 * Maps to flowR's main graph object to store and manipulate the dataflow graph
-	 * @see {@link DataflowGraph}
-	 */
-	graph: DataflowGraph,
 	...GraphHelper,
-	name:  'Dataflow',
-	/**
-	 * Maps to flowR's dataflow edge helper to work with the edges in the dataflow graph
-	 */
-	edge:  DfEdge,
-	/**
-	 * Dispatches to helper objects that relate to (sub-) views of the dataflow graph, e.g. the call graph.
-	 */
-	views: {
-		/**
-		 * Maps to flowR's helper object for the call-graph
-		 */
-		callGraph: CallGraph,
-	},
+	name:   'Dataflow',
 	/**
 	 * Dispatches to helper functions to create new dataflow graphs, e.g. from a pipeline or an empty graph.
 	 */
@@ -66,12 +49,7 @@ export const Dataflow = {
 	 * Returns the origin of a vertex in the dataflow graph
 	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
-	origin:  getOriginInDfg,
-	/**
-	 * Name and value resolution.
-	 * @see {@link Resolve} - the helper object itself, which documents which entry point to reach for
-	 */
-	resolve: Resolve,
+	origin: getOriginInDfg,
 	/**
 	 * The qualified identifier of the call with the given id, or `undefined` if it does not resolve to a package
 	 * export and is not itself already namespaced (with `purrr` loaded, a `map()` call yields
@@ -82,16 +60,20 @@ export const Dataflow = {
 	 * @param id           - The id of the call to qualify
 	 * @param graph        - The graph the call is part of
 	 * @param qualifyBaseR - Whether to also qualify a bare base-R call from the package exporting it
-	 *                       (`sd` yields `stats::sd`), which needs neither a loaded database nor graph edges.
-	 *                       Set this to `false` to only qualify what the origins resolve to (or what is already namespaced).
+	 *                     (`sd` yields `stats::sd`), which needs neither a loaded database nor graph edges.
+	 *                     Set this to `false` to only qualify what the origins resolve to (or what is already namespaced).
 	 */
 	qualify(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
-		const vertex = graph.getVertex(id);
-		return Identifier.toQualified(
-			getOriginInDfg(graph, id),
-			FunctionCallVertex.is(vertex) ? vertex.name : undefined,
-			qualifyBaseR
-		);
+		return graph.qualify(id, qualifyBaseR, resolveQualification);
+	},
+	/**
+	 * The qualified name of every call of the graph, `undefined` for the calls that do not qualify.
+	 * Prefer this over asking call by call: it resolves each call once for both `qualifyBaseR` variants.
+	 * @param graph        - The graph to qualify
+	 * @param qualifyBaseR - Which of the two results to return, see {@link Dataflow.qualify}
+	 */
+	qualifyAll(this: void, graph: DataflowGraph, qualifyBaseR = true): ReadonlyMap<NodeId, Identifier | undefined> {
+		return graph.qualifyAll(qualifyBaseR, resolveQualification);
 	},
 	/**
 	 * The packages the given nodes call into, as {@link Dataflow.qualify} resolves every call among them.
@@ -104,7 +86,7 @@ export const Dataflow = {
 	packagesOf(this: void, nodes: Iterable<NodeId>, graph: DataflowGraph, includeBaseR = false): Set<string> {
 		const packages = new Set<string>();
 		for(const id of nodes) {
-			if(!FunctionCallVertex.is(graph.getVertex(id))) {
+			if(!DfgVertex.isFunctionCall(graph.getVertex(id))) {
 				continue;
 			}
 			const qualified = Dataflow.qualify(id, graph, includeBaseR);
@@ -125,7 +107,7 @@ export const Dataflow = {
 	 */
 	valueIsUsed(this: void, id: NodeId, graph: DataflowGraph): boolean {
 		const consuming = EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy;
-		for(const [, edge] of graph.ingoingEdges(id) ?? NoEdges) {
+		for(const [, edge] of graph.edgesTo(id)) {
 			if(DfEdge.includesType(edge, consuming)) {
 				return true;
 			}
@@ -138,8 +120,8 @@ export const Dataflow = {
 	 * A call among the arguments counts as computed, even one over literals such as `paste("a", "b")`.
 	 */
 	hasComputedArguments(this: void, id: NodeId, graph: DataflowGraph): boolean {
-		for(const [target] of graph.outgoingEdges(id) ?? NoEdges) {
-			if(!NodeId.isBuiltIn(target) && !ValueVertex.is(graph.getVertex(target))) {
+		for(const [target] of graph.edgesFrom(id)) {
+			if(!NodeId.isBuiltIn(target) && !DfgVertex.isValue(graph.getVertex(target))) {
 				return true;
 			}
 		}
@@ -228,26 +210,9 @@ export const Dataflow = {
 		return df as G;
 	},
 
-	/**
-	 * Whether the node is quoted, i.e., affected by a {@link EdgeType.NonStandardEvaluation} edge that actually
-	 * keeps it from being evaluated (as `quote` and `substitute` do).
-	 *
-	 * Loops mark their body as non-standard-evaluated as well, yet that body really is evaluated (and its symbols
-	 * really are read), so such an edge does not quote. Use this instead of testing for the edge type directly
-	 * whenever you want to know whether something is evaluated at all.
-	 * @param id           - The id of the node to check
-	 * @param graph        - The graph the node is part of
-	 * @param withOutgoing - Whether to also consider the outgoing edges of the node (i.e., whether the node itself
-	 *                       quotes something), and not just the ingoing ones (i.e., whether it is quoted)
-	 */
+	/** See {@link DataflowGraph#isQuoted}, which this answers for `graph`. */
 	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
-		/* an nse edge quotes iff it does not originate from a loop marking its body */
-		const quotes = (source: NodeId, e: DfEdge): boolean =>
-			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(graph.idMap?.get(source));
-		if(graph.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
-			return true;
-		}
-		return withOutgoing && (graph.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
+		return graph.isQuoted(id, withOutgoing);
 	},
 
 	/**
@@ -288,9 +253,9 @@ export const Dataflow = {
 	/**
 	 * A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only
 	 * respecting edge direction.
-	 * @param graph      - The dataflow graph to operate on.
-	 * @param start      - The start id of the visitation.
-	 * @param onVertex   - The function to execute for each vertex, if this returns `true` the visitation will stop from this vertex.
+	 * @param graph    - The dataflow graph to operate on.
+	 * @param start    - The start id of the visitation.
+	 * @param onVertex - The function to execute for each vertex, if this returns `true` the visitation will stop from this vertex.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	visitDfg(this: void, graph: DataflowGraph, start: NodeId, onVertex: (vtx: DataflowGraphVertexInfo) => (boolean | void)) {
@@ -327,3 +292,11 @@ export const Dataflow = {
 		return Dataflow.reduceGraph(graph, Dataflow.provenance(id, graph, consider));
 	}
 } as const;
+
+/** both qualifications of a call from a single origin resolution, as the base-R step only adds to what the origins gave */
+const resolveQualification: CallQualifier = (graph, id, vertex) => {
+	const origins = getOriginInDfg(graph, id);
+	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
+	const bare = Identifier.toQualified(origins, name, false);
+	return [bare, bare ?? Identifier.toQualified(origins, name, true)];
+};

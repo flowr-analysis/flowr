@@ -4,7 +4,7 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
-import { assertUnreachable, guard } from '../../util/assert';
+import { guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
 	ReadOnlyFlowrAnalyzerLoadingOrderContext
@@ -23,13 +23,18 @@ import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrManifestFile } from '../plugins/file-plugins/files/flowr-manifest-files';
+import type {
+	FlowrRdFile, FlowrRdIndexFile, FlowrRdMacroFile, FlowrRdMetaFile, FlowrRdTopicIndexFile, RdIndex
+} from '../plugins/file-plugins/files/flowr-rd-file';
+import { FlowrDataListFile, rdIndexOf } from '../plugins/file-plugins/files/flowr-rd-file';
+import type { SysdataObject } from '../plugins/file-plugins/files/flowr-sysdata-file';
+import { FlowrSysdataFile } from '../plugins/file-plugins/files/flowr-sysdata-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
-
+import { resetOnFullInvalidation } from '../cache/flowr-cache';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -47,21 +52,24 @@ export interface RProjectAnalysisRequest {
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest;
 
 export type RoleBasedFiles = {
-	[FileRole.Description]: FlowrDescriptionFile[];
-	[FileRole.News]:        FlowrNewsFile[];
-	[FileRole.Namespace]:   FlowrNamespaceFile[];
-	[FileRole.Manifest]:    FlowrManifestFile[];
+	[FileRole.Description]:   FlowrDescriptionFile[];
+	[FileRole.News]:          FlowrNewsFile[];
+	[FileRole.Namespace]:     FlowrNamespaceFile[];
+	[FileRole.Manifest]:      FlowrManifestFile[];
+	/** what states which manual page documents a name: the `man/` pages and macros, an `INDEX`, and an installed package's `help/AnIndex` or `Meta/Rd.rds` */
+	[FileRole.Documentation]: (FlowrRdFile | FlowrRdIndexFile | FlowrRdMacroFile | FlowrRdTopicIndexFile | FlowrRdMetaFile)[];
 	/* currently no special support */
-	[FileRole.Vignette]:    FlowrFileProvider[];
-	[FileRole.Test]:        FlowrFileProvider[];
-	[FileRole.Install]:     FlowrFileProvider[];
-	[FileRole.License]:     FlowrFileProvider[];
-	[FileRole.VirtualEnv]:  FlowrFileProvider[];
-	[FileRole.Startup]:     FlowrFileProvider[];
-	[FileRole.Environment]: FlowrFileProvider[];
-	[FileRole.Source]:      FlowrFileProvider[];
-	[FileRole.Data]:        FlowrFileProvider[];
-	[FileRole.Other]:       FlowrFileProvider[];
+	[FileRole.Vignette]:      FlowrFileProvider[];
+	[FileRole.Test]:          FlowrFileProvider[];
+	[FileRole.Install]:       FlowrFileProvider[];
+	[FileRole.License]:       FlowrFileProvider[];
+	[FileRole.VirtualEnv]:    FlowrFileProvider[];
+	[FileRole.Startup]:       FlowrFileProvider[];
+	[FileRole.Environment]:   FlowrFileProvider[];
+	[FileRole.Source]:        FlowrFileProvider[];
+	/** a `data/datalist` ({@link FlowrDataListFile}), a package's system data ({@link FlowrSysdataFile}), or any other data file, which has no special support */
+	[FileRole.Data]:          (FlowrDataListFile | FlowrSysdataFile | FlowrFileProvider)[];
+	[FileRole.Other]:         FlowrFileProvider[];
 };
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
@@ -98,6 +106,18 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
 
 	/**
+	 * The project's manual, built from every {@link FileRole.Documentation} file loaded, answering which page
+	 * documents a name. Built on each call rather than kept, so hold on to the result instead of asking per name.
+	 */
+	documentation(): RdIndex;
+
+	/** The R objects `data(dataset)` brings into scope, per the project's `data/datalist`. Empty when no list mentions `dataset`, including projects that ship none. */
+	datasetObjects(dataset: string): readonly string[];
+
+	/** The objects a package's system data (`R/sysdata.rda`/`.rdx`) lazy-loads into its namespace: available package-internally, neither exported nor reachable through `data()`. Empty for a project that ships none. */
+	sysdataObjects(): readonly SysdataObject[];
+
+	/**
 	 * Get all files known to this context.
 	 * @returns An array of all files.
 	 */
@@ -107,7 +127,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * Checks both disk-backed files and inline files.
 	 * However, this will not load new files that have not yet been requested by flowR.
 	 * @param path - The exact path of the file.
-	 * @returns The file if found, otherwise `undefined`.
+	 * @returns    The file if found, otherwise `undefined`.
 	 */
 	getFileByPath(path: string): FlowrFileProvider | undefined;
 	/**
@@ -126,11 +146,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	hasFile(path: string): boolean;
 	/**
 	 * Check if a file exists at the given path, optionally ignoring case.
-	 * @param path - The path to the file.
+	 * @param path       - The path to the file.
 	 * @param ignoreCase - Whether to ignore case when checking for the file.
 	 *
 	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
-	 * @returns The actual path of the file if it exists, otherwise `undefined`.
+	 * @returns          The actual path of the file if it exists, otherwise `undefined`.
 	 */
 	exists(path: string, ignoreCase: boolean): string | undefined;
 	/** The project root folder (common directory of the requested roots), or `undefined` if none was requested. */
@@ -167,6 +187,14 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @returns The number of files currently held by this context.
 	 */
 	getFileCount(): number;
+}
+
+/**
+ * Whether the file system says the path is there. Where there is none, as in a browser, the stub standing
+ * in for `fs` answers every question with itself, so only a real `true` counts as an answer.
+ */
+function onDisk(path: string): boolean {
+	return fs.existsSync(path) === true;
 }
 
 /**
@@ -239,19 +267,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return root === undefined ? filePath : relativeTo(root, filePath);
 	}
 
+	/* only the content of a known file changes the file set, so revisit once we add dedicated FileAdded / FileRemoved events */
 	receive(event: InvalidationEvent): void {
-		const type = event.type;
-		switch(type) {
-			case InvalidationEventType.Full:
-				this.reset();
-				break;
-			case InvalidationEventType.SingleFileInvalidate:
-				// only the content of a known file changed, so the file set stays valid -> nothing to do.
-				// revisit once we add dedicated FileAdded / FileRemoved events.
-				break;
-			default:
-				assertUnreachable(type);
-		}
+		resetOnFullInvalidation(this, event);
 	}
 
 	/**
@@ -338,17 +356,22 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		this.requestedRoots.push(request.content);
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
+			this.addDiscovered(req);
+		}
+	}
 
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		const expandedRequests = active.flatMap(p => p.processor(this.ctx, request));
-		for(const req of expandedRequests) {
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+	/** The registered discovery plugins, or the built-in default when none are registered. */
+	private activeDiscoveryPlugins(): readonly FlowrAnalyzerProjectDiscoveryPlugin[] {
+		return this.discoveryPlugins.length > 0 ? this.discoveryPlugins : [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
+	}
+
+	/** Adds a request a discovery plugin produced: expands it further if it is itself a parse request, otherwise adds the file directly. */
+	private addDiscovered(req: RParseRequest | FlowrFileProvider): void {
+		if(isParseRequest(req)) {
+			this.addRequest(req);
+		} else {
+			this.addFile(req, req.roles);
 		}
 	}
 
@@ -367,23 +390,16 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		this.implicitSourceDirs.add(dir);
-		if(!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+		if(!onDisk(dir) || !fs.statSync(dir).isDirectory()) {
 			return;
 		}
 		const matchers = implicit.map(entry => globMatcher(entry));
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		for(const req of active.flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
 			const filePath = isParseRequest(req) ? (req.request === 'file' ? req.content : undefined) : req.path();
 			if(filePath === undefined || filePath === fileContent || !matchers.some(m => m(filePath))) {
 				continue;
 			}
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+			this.addDiscovered(req);
 		}
 	}
 
@@ -400,7 +416,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]) {
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile | undefined, roles?: readonly FileRole[]) {
+		if(file === undefined) {
+			return;
+		}
 		const f = this.fileLoadPlugins(wrapFile(file, roles));
 
 		f.addOnInvalidate(c => {
@@ -430,7 +449,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public hasFile(path: string): boolean {
-		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path));
+		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && onDisk(path));
 	}
 
 	public exists(p: string, ignoreCase: boolean): string | undefined {
@@ -457,12 +476,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
 				let files: string[] | undefined;
-				if(fs.existsSync(dir)) {
+				if(onDisk(dir)) {
 					files = fs.readdirSync(dir);
 				} else {
 					// try to find a dir in parent
 					const parentDir = path.dirname(dir);
-					if(fs.existsSync(parentDir)) {
+					if(onDisk(parentDir)) {
 						const parentFiles = fs.readdirSync(parentDir);
 						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
 						if(foundDir) {
@@ -508,7 +527,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 		if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
 			fileLog.debug(`File ${path} not found in context, trying to load from disk.`);
-			if(fs.existsSync(path)) {
+			if(onDisk(path)) {
 				return this.addFile(new FlowrTextFile(path));
 			}
 		}
@@ -539,6 +558,32 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 */
 	public computeLoadingOrder(): readonly RParseRequest[] {
 		return this.loadingOrder.getLoadingOrder();
+	}
+
+	public documentation(): RdIndex {
+		return rdIndexOf(this.getFilesByRole(FileRole.Documentation));
+	}
+
+	public datasetObjects(dataset: string): readonly string[] {
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrDataListFile) {
+				const objects = file.objectsOf(dataset);
+				if(objects.length > 0) {
+					return objects;
+				}
+			}
+		}
+		return [];
+	}
+
+	public sysdataObjects(): readonly SysdataObject[] {
+		const objects: SysdataObject[] = [];
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrSysdataFile) {
+				objects.push(...file.content());
+			}
+		}
+		return objects;
 	}
 
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {

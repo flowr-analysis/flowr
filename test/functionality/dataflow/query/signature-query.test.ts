@@ -8,6 +8,8 @@ import { SigDbBuilder, writeSignatureDb } from '../../../../src/project/sigdb/bu
 import { defaultSigDbPaths } from '../../../../src/project/sigdb/manifest';
 import { SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
+import { ArgProp } from '../../../../src/dataflow/environments/built-in-props';
+import { BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
 import { SignatureQueryDefinition, type SignatureQuery } from '../../../../src/queries/catalog/signature-query/signature-query-format';
@@ -28,7 +30,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 		cran:         true,
 		dependencies: [{ name: 'rlang', type: 1 /* Imports */, constraint: '>= 1.0.0' }],
 		functions:    [fn('foo', {
-			params:  [{ name: 'a', missing: true, forced: true }, { name: 'b', default: '2' }],
+			params:  [{ name: 'a', props: ArgProp.NoDefault | ArgProp.Forced }, { name: 'b', default: '2' }],
 			callees: ['bar'],
 			file:    'R/foo.R',
 			line:    5
@@ -38,7 +40,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 		fn('print.myclass', { props: FnProp.Exported | FnProp.S3Method, file: 'R/print.R', line: 8 })]
 	});
 	b.addPackage('base', { latest: '4.5.3', core: true });
-	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 })] });
+	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 }), fn('%*%', { file: 'R/matmul.R', line: 3 })] });
 	// a multi-version CRAN package (dated, so every version is enumerable) for version exact/glob/range tests
 	b.addPackage('multi', { latest: '2.1.0', downloads: 3 });
 	b.addVersion('multi', '1.0.0', { cran: true, date: Date.UTC(2020, 0, 1), functions: [fn('m1')] });
@@ -83,8 +85,8 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			expect(info?.exported).toBe(true);
 			expect(info?.version).toBe('1.0.0');
 			expect(info?.parameters).toEqual([
-				{ name: 'a', required: true, forced: true },
-				{ name: 'b', required: false, forced: false, default: '2' }
+				{ name: 'a', props: ArgProp.NoDefault | ArgProp.Forced },
+				{ name: 'b', props: 0, default: '2' }
 			]);
 			expect(info?.callees).toEqual(['bar']);
 			expect(info?.file).toBe('R/foo.R');
@@ -148,6 +150,34 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			fs.rmSync(dir, { recursive: true, force: true });
 		});
 
+		test('an S4 group member names its group, and the group entry answers for a member of its own', async() => {
+			const b = new SigDbBuilder();
+			b.addPackage('s4pkg', { latest: '1.0.0', downloads: 1 });
+			b.addVersion('s4pkg', '1.0.0', { cran:      true, functions: [
+				fn('Math', { props: FnProp.Exported | FnProp.NoDoc }),
+				fn('sqrt', { props: FnProp.Exported | FnProp.NoDoc }),
+				fn('plain')
+			] });
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-s4-'));
+			await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+			const src = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+			// an entry of its own: the group is named, but nothing was substituted for it
+			expect(signatureFunctionInfo(src, 's4pkg', 'sqrt')?.s4group).toEqual({ group: 'Math' });
+			// no entry of its own, so `Math` answers, under the name that was asked for
+			const via = signatureFunctionInfo(src, 's4pkg', 'sin');
+			expect(via?.name).toBe('sin');
+			// the entry found is the group, so it also reports every member it answers for
+			expect(via?.s4group?.group).toBe('Math');
+			expect(via?.s4group?.viaGroup).toBe(true);
+			expect(via?.s4group?.members).toContain('sin');
+			expect(via?.s4group?.members).toContain('cumsum');
+			expect(signatureFunctionInfo(src, 's4pkg', 'plain')?.s4group).toBeUndefined();
+			// a name in no group finds nothing to fall back to
+			expect(signatureFunctionInfo(src, 's4pkg', 'nowhere')).toBeUndefined();
+			src.close();
+			fs.rmSync(dir, { recursive: true, force: true });
+		});
+
 		test('a CRAN function carries a location and CRAN-mirror source link', () => {
 			const info = signatureFunctionInfo(db, 'mypkg', 'foo');
 			expect(info?.file).toBe('R/foo.R');
@@ -159,6 +189,8 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			expect(info?.file).toBe('R/paste.R');
 			expect(info?.sourceUrl).toBe('https://github.com/wch/r-source/blob/R-4-5-branch/src/library/base/R/paste.R#L10');
 			expect(info?.manUrl).toBe('https://github.com/wch/r-source/blob/R-4-5-branch/src/library/base/man/paste2.Rd');
+			// base R goes to R's own manual: rdrr.io serves an older release, so anything newer is dead there
+			expect(info?.docUrl).toBe('https://stat.ethz.ch/R-manual/R-devel/library/base/html/paste2.html');
 		});
 
 		test('a CRAN function links its help source at the queried version, unlike the rdrr.io link', () => {
@@ -322,6 +354,25 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 		expect(names).toEqual(['print', 'print.myclass']);
 	});
 
+	test(label('a function name that reads like a glob is the function it names', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'base', function: '%*%' }]);
+		expect(res.signature.matches).toBeUndefined();
+		expect(res.signature.function?.name).toBe('%*%');
+		expect(res.signature.function?.line).toBe(3);
+		// `*` is in no package's sources, but flowR models it itself, and that is an exact hit all the same
+		const { res: times } = await runQuery([{ type: 'signature', package: 'base', function: '*' }]);
+		expect(times.signature.matches).toBeUndefined();
+		expect(times.signature.function?.name).toBe('*');
+		expect(times.signature.function?.flowrOnly).toBe(true);
+	});
+
+	test(label('a wildcard name nothing carries verbatim stays a search', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'pas*' }]);
+		expect(res.signature.function).toBeUndefined();
+		// what the database records; the built-in fallback adds `paste`/`paste0` alongside, marked `flowrOnly`
+		expect(res.signature.matches?.filter(m => !m.flowrOnly).map(m => m.name)).toEqual(['paste2']);
+	});
+
 	test(label('a glob package with no function lists matching packages', [], ['other']), async() => {
 		const { res } = await runQuery([{ type: 'signature', package: 'm*' }]);
 		expect(res.signature.matches).toBeUndefined();
@@ -360,7 +411,9 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 
 	test(label('a bare parameter filter searches every package', [], ['other']), async() => {
 		const { res } = await runQuery([{ type: 'signature', package: '*', parameters: ['a'] }]);
-		expect(res.signature.matches?.map(m => `${m.package}::${m.name}`)).toEqual(['mypkg::foo']);
+		// the database's hit first, then the built-ins declaring an `a` parameter (marked, see the fallback tests)
+		expect(res.signature.matches?.filter(m => !m.flowrOnly).map(m => `${m.package}::${m.name}`)).toEqual(['mypkg::foo']);
+		expect(res.signature.matches?.every(m => m.flowrOnly || m.package === 'mypkg')).toBe(true);
 	});
 
 	test(label('an exact version selects that release', [], ['other']), async() => {
@@ -484,6 +537,80 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 		currentDb.close();
 		historyDb.close();
 		fs.rmSync(dir, { recursive: true, force: true });
+	});
+
+	describe('the built-in configuration as a fallback', () => {
+		test(label('a glob search adds what only flowR states, marked as such', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'past*' }]);
+			const matches = res.signature.matches ?? [];
+			// `paste2` is the synthetic database's; `paste`/`paste0` only flowR's built-in configuration states
+			expect(matches.filter(m => !m.flowrOnly).map(m => m.name)).toEqual(['paste2']);
+			const own = matches.filter(m => m.flowrOnly).map(m => m.name);
+			expect(own).toContain('paste');
+			expect(own).toContain('paste0');
+			expect(matches.every(m => m.package === 'base')).toBe(true);
+		});
+
+		test(label('a package no database records is still answered from the built-ins', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature', package: 'ggplot2', function: 'geom_*' }]);
+			const matches = res.signature.matches ?? [];
+			expect(matches.map(m => m.name)).toContain('geom_point');
+			expect(matches.every(m => m.flowrOnly && m.package === 'ggplot2')).toBe(true);
+		});
+
+		test(label('a parameter filter reaches the parameters the built-in declares', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature', package: 'base', function: '+', parameters: ['e1'] }]);
+			const matches = res.signature.matches ?? [];
+			expect(matches.map(m => m.name)).toEqual(['+']);
+			expect(matches[0].flowrOnly).toBe(true);
+			expect(matches[0].matchedParameters).toEqual(['e1']);
+		});
+
+		test(label('a required-parameter filter keeps the fallback out, as flowR states no defaults', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'past*', requiredParameters: 0 }]);
+			expect((res.signature.matches ?? []).some(m => m.flowrOnly)).toBe(false);
+		});
+
+		test(label('an unknown function offers the built-in names apart from the database\'s', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'past' }]);
+			expect(res.signature.suggestions).toContain('paste2');
+			expect(res.signature.builtInSuggestions).toContain('paste');
+			expect(res.signature.builtInSuggestions).not.toContain('paste2');
+		});
+
+		test(label('a language construct is found, with the signature and the primitive label R gives it', [], ['other']), async() => {
+			// `if`, `for` and their kin have no entry in any package's sources, so flowR is the only one that answers
+			for(const name of ['if', 'for', 'while', 'repeat']) {
+				const bare = (await runQuery([{ type: 'signature', package: name }])).res.signature;
+				expect(bare.function?.name, `bare ${name}`).toBe(name);
+				expect(bare.function?.flowrOnly).toBe(true);
+				expect(bare.function?.flowr?.props, `props of ${name}`).toContain('primitive');
+				expect(bare.function?.parameters.length, `formals of ${name}`).toBeGreaterThan(0);
+				const qualified = (await runQuery([{ type: 'signature', package: 'base', function: name }])).res.signature;
+				expect(qualified.function?.name, `base::${name}`).toBe(name);
+			}
+			// the operands R's own `?Control` names, so the signature is researched rather than invented
+			const ifView = (await runQuery([{ type: 'signature', package: 'if' }])).res.signature.function;
+			expect(ifView?.parameters.map(p => p.name)).toEqual(['cond', 'cons.expr', 'alt.expr']);
+			expect(ifView?.parameters.map(p => (p.props & ArgProp.NoDefault) !== 0)).toEqual([true, true, false]);
+		});
+
+		test(label('a glob search reaches the built-ins that state nothing', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'i?' }]);
+			const own = (res.signature.matches ?? []).filter(m => m.flowrOnly).map(m => m.name);
+			expect(own).toContain('if');
+		});
+
+		test(label('the summary reports how many names the fallback covers', [], ['other']), async() => {
+			const { res } = await runQuery([{ type: 'signature' }]);
+			expect(res.signature.builtInCount).toBe(BuiltInIndex.default().entries.length);
+		});
+
+		test(label('the ascii summary marks the fallback hits', [], ['other']), async() => {
+			const { analyzer, res } = await runQuery([{ type: 'signature', package: 'base', function: 'past*' }]);
+			const text = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, [{ type: 'signature' }]);
+			expect(text).toContain('flowR built-in');
+		});
 	});
 }));
 

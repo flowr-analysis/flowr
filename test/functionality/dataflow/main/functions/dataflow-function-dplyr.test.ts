@@ -1,8 +1,10 @@
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+
+assumeLoadedPackages('dplyr');
 
 describe('Dplyr Call Formulas', withTreeSitter(ts => {
 	assertDataflow(label('across with formula fn', ['reflection-"computing-on-the-language"']), ts, 'across(df, ~.x + 1)',

@@ -8,7 +8,9 @@ import type { JsonEntry } from '../../../json/format';
 
 
 /**
- *
+ * Normalizes a `next`, which carries nothing beyond where it is written.
+ * @param data - the normalizer's state
+ * @param obj  - the parsed entry to normalize
  */
 export function normalizeNext(data: NormalizerData, obj: JsonEntry): RNext {
 	expensiveTrace(parseLog, () => `[next] ${JSON.stringify(obj)}`);

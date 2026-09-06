@@ -15,3 +15,22 @@ export function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
 	});
 	serverLog.settings.minLevel = LogLevel.Fatal;
 }
+
+/**
+ * Run `fn` with all flowr logging silenced, restoring the previous level afterwards.
+ * Use this for tests that deliberately trigger an error the logger would report.
+ * @param fn - The function to run without logging
+ */
+export function withoutLogs<T>(fn: () => T): T {
+	const previous = log.settings.minLevel;
+	log.updateSettings(logger => {
+		logger.settings.minLevel = LogLevel.Fatal;
+	});
+	try {
+		return fn();
+	} finally {
+		log.updateSettings(logger => {
+			logger.settings.minLevel = previous;
+		});
+	}
+}

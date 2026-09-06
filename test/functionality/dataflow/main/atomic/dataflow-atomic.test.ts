@@ -259,6 +259,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 		for(const op of AssignmentOperators) {
 			describe(`${op}`, () => {
 				const swapSourceAndTarget = op === '->' || op === '->>';
+				/* `:=` is data.table's, so it is only in scope once that package is attached */
+				const opConfig = op === ':=' ? { assumeLoaded: ['data.table'] } : undefined;
 				const [variableId, constantId] = swapSourceAndTarget ? [1, 0] : [0, 1];
 
 				const args: FunctionArgument[] = [argumentInCall(0), argumentInCall(1)];
@@ -271,7 +273,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 						.calls(2, NodeId.toBuiltIn(op))
 						.defineVariable(variableId, 'x', { definedBy: [constantId, 2] })
 						.reads(2, constantId)
-						.constant(constantId)
+						.constant(constantId),
+					opConfig
 				);
 
 				const variableAssignment = `x ${op} y`;
@@ -293,7 +296,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				assertDataflow(label(`${variableAssignment} (variable assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities]),
 					shell,
 					variableAssignment,
-					dataflowGraph
+					dataflowGraph,
+					opConfig
 				);
 
 				const circularAssignment = `x ${op} x`;
@@ -316,7 +320,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 
 				assertDataflow(label(`${circularAssignment} (circular assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities, 'return-value-of-assignments']),
 					shell, circularAssignment,
-					circularGraph
+					circularGraph,
+					opConfig
 				);
 			});
 		}
@@ -466,8 +471,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.call('3@print', 'print', [argumentInCall('3@x')], { reads: [NodeId.toBuiltIn('print')], returns: ['3@x'] })
 					.calls('3@print', NodeId.toBuiltIn('print'))
 					.reads('3@print', '3@x')
-					.markIdForUnknownSideEffects('3@print')
-				, {
+					.markIdForUnknownSideEffects('3@print'),
+				{
 					resolveIdsAsCriterion: true
 				}
 			);
@@ -539,6 +544,27 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(3)
 					.defineVariable(0, 'a', { definedBy: [9, 10] })
 			);
+			assertDataflow(label('partial assignment reads the previous definition of its target', ['name-normal', 'strings', 'unnamed-arguments', 'call-normal', 'newlines', 'assignment-functions']),
+				shell, 'df <- data.frame(1:5)\nsetNames(df, "id")', emptyGraph()
+					.constant(2)
+					.constant(3)
+					.call(4, ':', [argumentInCall(2), argumentInCall(3)], { returns: [], reads: [2, 3, NodeId.toBuiltIn(':')], onlyBuiltIn: true })
+					.argument(4, [2, 3])
+					.calls(4, NodeId.toBuiltIn(':'))
+					.call(6, 'data.frame', [argumentInCall(4)], { returns: [], reads: [4, NodeId.toBuiltIn('data.frame')], onlyBuiltIn: true })
+					.argument(6, 4)
+					.calls(6, NodeId.toBuiltIn('data.frame'))
+					.call(7, '<-', [argumentInCall(0), argumentInCall(6)], { returns: [0], reads: [6, NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
+					.argument(7, [0, 6])
+					.calls(7, NodeId.toBuiltIn('<-'))
+					.defineVariable(0, 'df', { definedBy: [7, 6] })
+					.constant(11)
+					.call(13, 'setNames', [argumentInCall(9), argumentInCall(11)], { returns: [9], reads: [11, NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
+					.argument(13, [11, 9])
+					.calls(13, NodeId.toBuiltIn('setNames'))
+					.defineVariable(9, 'df', { definedBy: [13, 11] })
+					.reads(9, [13, 0])
+			);
 		});
 	});
 
@@ -595,7 +621,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			);
 		});
 	});
-
 
 	describe('if-then-else', () => {
 		// spacing issues etc. are dealt with within the parser; however, braces are not allowed to introduce scoping artifacts

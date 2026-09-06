@@ -6,6 +6,8 @@
  * without this script noticing.
  */
 import fs from 'fs';
+import { template, writePage } from './html-page';
+import { execSync } from 'child_process';
 import path from 'path';
 import { TreeSitterExecutor } from '../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../src/project/flowr-analyzer-builder';
@@ -15,6 +17,7 @@ import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
 import { LintingRules } from '../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../src/linter/linter-format';
+import { arraySum } from '../src/util/collections/arrays';
 
 /**
  * The samples every tab runs on. Each one is written next to the page as a real `.R` file, so the
@@ -69,7 +72,22 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 	const answers = (result['static-slice'] as { results?: Record<string, { slice?: { result?: Iterable<unknown> } }> } | undefined)?.results ?? {};
 	const ids = Object.values(answers).flatMap(answer => [...(answer?.slice?.result ?? [])]);
 	const map = (await analyzer.normalize()).idMap;
-	return [...new Set(ids.map(id => map?.get(id as never)?.location?.[0]).filter((l): l is number => typeof l === 'number'))].sort((a, b) => a - b);
+	const lines = new Set<number>();
+	for(const id of ids) {
+		const node = map?.get(id as never);
+		const start = node?.location?.[0];
+		if(typeof start !== 'number') {
+			continue;
+		}
+		lines.add(start);
+		/* a kept node that closes with a brace keeps the line that brace sits on, the way the
+		   reconstructed slice prints it; without it the block looks cut off in the highlighting */
+		const full = node?.info?.fullRange;
+		if(full !== undefined && full[2] > full[0] && node?.info?.fullLexeme?.trimEnd().endsWith('}')) {
+			lines.add(full[2]);
+		}
+	}
+	return [...lines].sort((a, b) => a - b);
 }
 
 /** Every dependency, with the line it was found on so the code and the answer can point at each other. */
@@ -214,15 +232,15 @@ async function originLines(code: string): Promise<string[][]> {
 	return merged.map(([criterion, text, line]) => [criterion, text, line]);
 }
 
-/** How one origin reads in a sentence: what it is, and where the reader can look for it. */
+/** What one origin is, in as few words as say it: `calls function (line 3)` rather than a sentence. */
 function phrase(type: OriginType, what: string, line: number | undefined, builtIn: string): string {
-	const where = line !== undefined ? ` on line ${line}` : '';
+	const where = line !== undefined ? ` (line ${line})` : '';
 	switch(type) {
-		case OriginType.ReadVariableOrigin:    return `reads ${what}${line !== undefined ? ` from line ${line}` : ''}`;
+		case OriginType.ReadVariableOrigin:    return `reads ${what}${where}`;
 		case OriginType.WriteVariableOrigin:   return `writes ${what}${where}`;
-		case OriginType.ConstantOrigin:        return `is the constant ${what}`;
-		case OriginType.FunctionCallOrigin:    return `calls the function${where}`;
-		case OriginType.BuiltInFunctionOrigin: return `calls the built-in ${builtIn}`;
+		case OriginType.ConstantOrigin:        return `constant ${what}`;
+		case OriginType.FunctionCallOrigin:    return `calls function${where}`;
+		case OriginType.BuiltInFunctionOrigin: return `calls built-in ${builtIn}`;
 	}
 }
 
@@ -271,7 +289,7 @@ function timings(): { rows: string[][], files: string, lines: string, when: stri
 	const of = (benches: Benchmark[], name: string): number | undefined => benches.find(b => b.name === name)?.value;
 	const sum = (benches: Benchmark[], names: string[]): number | undefined => {
 		const parts = names.map(n => of(benches, n));
-		return parts.every(v => v !== undefined) ? parts.reduce((a, b) => (a) + (b), 0) : undefined;
+		return parts.every(v => v !== undefined) ? arraySum(parts) : undefined;
 	};
 	const Analysis = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
 	const wanted: [string, (b: Benchmark[]) => number | undefined][] = [
@@ -319,6 +337,15 @@ function spark(series: readonly number[]): string {
 interface Benchmark { name: string, value: number, unit: string }
 interface BenchmarkData { entries: Record<string, { commit: { timestamp: string, message: string }, benches: Benchmark[] }[]> }
 
+/** when the page was last updated, taken from the repository so that rebuilding alone does not change it */
+function lastUpdated(): string {
+	try {
+		return execSync('git log -1 --format=%cI', { encoding: 'utf8' }).trim().slice(0, 16).replace('T', ', ');
+	} catch{
+		return new Date().toISOString().slice(0, 16).replace('T', ', ');
+	}
+}
+
 const escape = (text: string): string => text.replace(/[&<>"]/g, c =>
 	({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
 
@@ -360,8 +387,7 @@ async function main(): Promise<void> {
 		signature:    await signatureLines(SignatureSample, 'dplyr', 'filter'),
 	});
 	const target = 'index.html';
-	fs.writeFileSync(target, page);
-	console.log(`  wrote ${target} (${(page.length / 1024).toFixed(1)} kB)`);
+	console.log(`  wrote ${target} (${(writePage(target, page) / 1024).toFixed(1)} kB)`);
 }
 
 interface PageData {
@@ -485,9 +511,8 @@ function render(data: PageData): string {
 		.map(([label, ms, trend]) => `\t\t<span class="timing">${escape(label)}${trend}<b>${escape(ms)} ms</b></span>`)
 		.join('\n');
 
-	const version = (JSON.parse(fs.readFileSync('package.json', 'utf8')) as { version: string }).version;
 	return Template
-		.replace('<!--VERSION-->', `v${version}`)
+		.replace('<!--UPDATED-->', lastUpdated())
 		.replace('<!--TIMES-->', bars)
 		.replace('<!--BENCHFILES-->', measured?.files ?? '')
 		.replace('<!--BENCHLINES-->', measured?.lines ?? '')
@@ -504,6 +529,6 @@ function render(data: PageData): string {
 	;
 }
 
-const Template = fs.readFileSync(path.join('scripts', 'landing-template.html'), 'utf8');
+const Template = template('landing-template.html');
 
 void main();

@@ -3,7 +3,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { SemanticCfgGuidedVisitor } from '../../../src/control-flow/semantic-cfg-guided-visitor';
 import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -30,7 +30,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		it(code, async() => {
 			const context = contextFromInput(code, config);
 			const data = await createDataflowPipeline(ts, { context }).allRemainingSteps();
-			const cfg = extractCfg(data.normalize, context, data.dataflow.graph);
+			const cfg = extractCfg(data.dataflow);
 			const v = visitor(data, cfg, context);
 			v.start();
 			try {
@@ -131,7 +131,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		private lexemes: string[] = [];
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', defaultVisitingType: 'exit', controlFlow, dfg: dataflow.graph, ctx, normalizedAst: normalize });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, ctx, normalizedAst: normalize });
 		}
 
 		protected onNumberConstant(data: { vertex: DataflowGraphVertexValue, node: RNumber }) {

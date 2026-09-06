@@ -7,6 +7,8 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { describe, assert, test } from 'vitest';
 import { SourceRange } from '../../../src/util/range';
 import { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RBinaryOp } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 
 describe('Assign unique Ids and Parents', { concurrent: false }, withShell(shell => {
 	describe('Testing Deterministic Counting of Id Assignment', () => {
@@ -103,10 +105,10 @@ describe('Assign unique Ids and Parents', { concurrent: false }, withShell(shell
 			});
 		}
 		assertIds('Without stop', 'x <- 2', new Set([0, 1, 2, 3]));
-		assertIds('Stop one', 'x <- 2', new Set([0, 2, 3]), n => n.type === RType.Number);
+		assertIds('Stop one', 'x <- 2', new Set([0, 2, 3]), n => RNumber.is(n));
 		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]));
 		// if, TRUE, [when]
-		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set([3, 4, 5, 9, 10, 11]), n => n.type === RType.BinaryOp);
+		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set([3, 4, 5, 9, 10, 11]), n => RBinaryOp.is(n));
 	});
 })
 );

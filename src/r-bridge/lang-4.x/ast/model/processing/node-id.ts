@@ -1,12 +1,16 @@
 import type { AstIdMap } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
-import { FunctionCallVertex, UseVertex } from '../../../../../dataflow/graph/vertex';
+import { DfgVertex } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
 
-/** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
+/**
+ * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
+ * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
+ * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
+ */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
 
 /**
@@ -14,17 +18,16 @@ export type NodeId<T extends string | number = string | number> = T & { __brand?
  */
 export type BuiltIn<T extends string = string> = `built-in:${T}`;
 
-/**
- * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
- * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
- * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
- */
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
 function startsNumeric(id: string): boolean {
 	const c = id.charCodeAt(0);
-	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46 /* . */;
+	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46;
 }
 
+/**
+ * What a {@link NodeId} is: the identity of a node within one analysis, plus the built-in and `pkg::fn`
+ * names encoded as one, and the ways to read a name back out of it.
+ */
 export const NodeId = {
 	name: 'NodeId',
 	/**
@@ -39,6 +42,14 @@ export const NodeId = {
 			}
 		}
 		return id;
+	},
+	/**
+	 * Whether the id belongs to a node the analyzed code writes. flowR wraps a deferred expression
+	 * (`on.exit` and its relatives) in a definition of its own, and that definition carries an id no node
+	 * of the ast does.
+	 */
+	isWritten(this: void, id: NodeId): boolean {
+		return typeof NodeId.normalize(id) === 'number';
 	},
 	/**
 	 * The prefix used for built-in function or operator ids.
@@ -104,35 +115,35 @@ export const NodeId = {
 	 */
 	fromBuiltIn<T extends string>(this: void, id: BuiltIn<T>): T {
 		return id.slice(builtInPrefixLength) as T;
+	},
+	/**
+	 * The lexeme of the {@link RNode|node} the id belongs to, as the analyzed code writes it.
+	 * @see {@link NodeId.recoverContent} - for what a call or a use stands for rather than how it is written
+	 */
+	recoverName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
+		return idMap?.get(id)?.lexeme;
+	},
+	/**
+	 * What the node the id belongs to stands for: the name a call resolved to, the unquoted name of a use, and
+	 * the lexeme of anything else.
+	 * @see {@link NodeId.recoverName} - for the lexeme alone, which needs no graph
+	 */
+	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
+		const vertex = graph.getVertex(id);
+		if(vertex && DfgVertex.isFunctionCall(vertex) && vertex.name) {
+			return Identifier.toString(vertex.name);
+		}
+		const node = graph.idMap?.get(id);
+		if(node === undefined) {
+			return undefined;
+		}
+		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
+		if(DfgVertex.isUse(vertex)) {
+			return removeRQuotes(lexeme);
+		}
+		return lexeme;
 	}
 } as const;
 
 const builtInPrefixLength = NodeId.builtInPrefix.length;
 
-
-/**
- * Recovers the lexeme of a {@link RNode|node} from its id in the {@link AstIdMap|id map}.
- * @see {@link recoverContent} - to recover the content of a node
- */
-export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
-	return idMap?.get(id)?.lexeme;
-}
-
-/**
- * Recovers the content of a {@link RNode|node} from its id in the {@link DataflowGraph|dataflow graph}.
- */
-export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
-	const vertex = graph.getVertex(id);
-	if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
-		return Identifier.toString(vertex.name);
-	}
-	const node = graph.idMap?.get(id);
-	if(node === undefined) {
-		return undefined;
-	}
-	const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-	if(UseVertex.is(vertex)) {
-		return removeRQuotes(lexeme);
-	}
-	return lexeme;
-}

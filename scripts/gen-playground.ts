@@ -8,9 +8,11 @@ import path from 'path';
 import { build, type Plugin } from 'esbuild';
 import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
-import { rSourceUrl, rdrrDocUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
-import { flowrVersion } from '../src/util/version';
+import { rSourceUrl, helpPageUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
+import { template, writePage } from './html-page';
 import { FlowrConfig } from '../src/config';
+import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
+import { Identifier } from '../src/dataflow/environments/identifier';
 
 /* flowR's CLI modules read `process` while they are being imported, so one has to exist */
 const ProcessShim = 'globalThis.process ??= { argv: [], argv0: "browser", env: {}, platform: "browser",'
@@ -21,6 +23,8 @@ const ProcessShim = 'globalThis.process ??= { argv: [], argv0: "browser", env: {
 const Target = path.join('wiki', 'playground');
 /* every node built-in resolves to the same empty module, by absolute path so nested packages find it */
 const empty = path.resolve('scripts', 'playground', 'empty.js');
+/* `path` is the one exception: its arithmetic says nothing about a file system, and flowR needs it */
+const pathShim = path.resolve('scripts', 'playground', 'path-shim.js');
 
 /**
  * Every node built-in becomes an empty module: flowR only reaches for them on paths the browser never
@@ -32,6 +36,9 @@ const stubNodeBuiltins: Plugin = {
 		const known = new Set(builtinModules.flatMap(m => [m, `node:${m}`]));
 		builder.onResolve({ filter: /.*/ }, args => {
 			const bare = args.path.split('/')[0].replace(/^node:/, '');
+			if(bare === 'path') {
+				return { path: pathShim };
+			}
 			return known.has(args.path) || known.has(bare) || known.has(`node:${bare}`)
 				? { path: empty } : undefined;
 		});
@@ -60,11 +67,61 @@ async function baseSignatures(): Promise<string> {
 			const params = fn.signature.map(p => p.default === undefined ? p.name : `${p.name} = ${p.default}`).join(', ');
 			const where = fn.file === undefined ? '' : `${fn.file}:${fn.line}`;
 			const source = fn.file === undefined ? '' : rSourceUrl(pkg, version, fn.file, fn.line);
-			const docs = fn.props.includes('no-doc') ? '' : rdrrDocUrl(pkg, fn.topic ?? fn.name, { base: true, cran: false }) ?? '';
+			const docs = fn.props.includes('no-doc') ? '' : helpPageUrl(pkg, fn.topic ?? fn.name, { base: true, cran: false }) ?? '';
 			rows.push([fn.name, pkg, params, fn.props.filter(p => p !== 'exported').join(' '), where, source, docs].join('\t'));
 		}
 	}
 	return rows.join('\n');
+}
+
+/** how many of the most-downloaded packages ride along, by their exports alone */
+const TopPackages = 150;
+
+/** the most-downloaded packages, most first, as the list the repository keeps of them */
+function topPackages(): string[] {
+	try {
+		return fs.readFileSync(path.join('scripts', 'top-r-downloads.txt'), 'utf8')
+			.split('\n').map(line => line.split(',')[0].trim()).filter(name => name.length > 0).slice(0, TopPackages);
+	} catch{
+		return [];   /* the list is not what the page needs to work */
+	}
+}
+
+/**
+ * The exports of every package the playground may attach, as `package -> [version, release, ...names]`. A browser can open no
+ * database, so without this `library(dplyr)` brings nothing into scope and every call it should resolve
+ * stays unknown. Base R plus the packages flowR carries definitions for is what a script typed into the
+ * page actually loads, and their export lists are small enough to ride along.
+ */
+async function packageExports(): Promise<string> {
+	const db = await openDatabase();
+	if(db === undefined) {
+		return '';
+	}
+	const wanted = new Set(db.packageNames().filter(name => db.isBaseR(name)));
+	/* what a script typed into the page actually loads: base R, what flowR carries definitions for, and
+	   the packages people install most, so `library(readr)` brings its exports into scope like the rest */
+	for(const name of topPackages()) {
+		wanted.add(name);
+	}
+	for(const definition of DefaultBuiltinConfig) {
+		for(const id of definition.names) {
+			const namespace = Identifier.getNamespace(id);
+			if(namespace !== undefined) {
+				wanted.add(String(namespace));
+			}
+		}
+	}
+	const out: Record<string, readonly string[]> = {};
+	for(const pkg of wanted) {
+		const known = db.lookup(pkg);
+		if(known !== undefined && known.exported.length > 0) {
+			/* the version and its release date first: the exports were read from that release, and saying so
+			   is what keeps a query from reporting the package as one no database knows */
+			out[pkg] = [known.version, db.releaseDate(pkg)?.toISOString().slice(0, 10) ?? '', ...known.exported];
+		}
+	}
+	return JSON.stringify(out);
 }
 
 /**
@@ -118,15 +175,21 @@ async function main(): Promise<void> {
 
 	/* the wasm rides along inside the bundle as a data url, so the page has nothing to fetch and works
 	   from a file:// url as well as over GitHub Pages */
-	const page = fs.readFileSync(path.join('scripts', 'playground', 'index.html'), 'utf8');
+	const page = template('playground', 'index.html');
 	const signatures = await baseSignatures();
-	fs.writeFileSync(path.join(Target, 'index.html'), page
+	const exports = await packageExports();
+	/* the script the page opens with, kept as an R file so the documentation links to the same one */
+	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
+	writePage(path.join(Target, 'index.html'), (page
+		/* the text of a script element ends at `</`, and nothing else in it has to be escaped */
+		.replace('<!--SAMPLE-->', sample.replaceAll('</', '<\\/'))
 		.replace('<!--SIGS-->', signatures)
-		.replace('<!--CFGDOCS-->', configDocs())
-		.replace('<!--VERSION-->', `v${flowrVersion().format()}`));
+		.replace('<!--PKGS-->', exports)
+		.replace('<!--CFGDOCS-->', configDocs())));
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
-		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, not committed)`);
+		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `
+		+ `${Math.round(exports.length / 1024)} kB of package exports, not committed)`);
 }
 
 void main();

@@ -1,4 +1,5 @@
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { isArray } from '../../../util/collections/arrays';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -9,8 +10,9 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -18,8 +20,6 @@ import type { BasicQueryData } from '../../base-query-format';
 import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { CfgKind } from '../../../project/cfg-kind';
-import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -110,7 +110,7 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 					...q.fileFilter,
 					filter: promoteCallName(q.fileFilter.filter)
 				},
-				linkTo: q.linkTo ? Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
+				linkTo: q.linkTo ? isArray<LinkTo>(q.linkTo) ? q.linkTo.map(l => ({
 					...l,
 					callName: promoteCallName(l.callName)
 				})) : {
@@ -144,7 +144,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 	const visited = new Set<NodeId>();
 	/* we store the current call name alongside each id */
-	const queue = new ArrayQueue<readonly [string, NodeId]>([[recoverContent(nodeId, graph) ?? '', nodeId]]);
+	const queue = new ArrayQueue<readonly [string, NodeId]>([[NodeId.recoverContent(nodeId, graph) ?? '', nodeId]]);
 
 	while(!queue.isEmpty()) {
 		const [str, id] = queue.dequeue() as readonly [string, NodeId];
@@ -167,11 +167,11 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		}
 		const [info, outgoing] = vertex;
 
-		if(!FunctionCallVertex.is(info)) {
+		if(!DfgVertex.isFunctionCall(info)) {
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
-				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
+				.map(([t]) => [NodeId.recoverContent(t, graph) ?? '', t] as const)
 				.toArray();
 			/** only follow defined-by and reads */
 			for(const e of x) {
@@ -190,7 +190,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		;
 
 		for(const call of out) {
-			queue.enqueue([recoverContent(call, graph) ?? recoverContent(id, graph) ?? '', call]);
+			queue.enqueue([NodeId.recoverContent(call, graph) ?? NodeId.recoverContent(id, graph) ?? '', call]);
 		}
 	}
 
@@ -266,7 +266,7 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
  * 1. Resolve all calls in the DF graph that match the respective {@link DefaultCallContextQueryFormat#callName} regex.
  * 2. If there is an alias attached, consider all call traces.
  * 3. Identify their respective call targets, if {@link DefaultCallContextQueryFormat#callTargets} is set to be non-any.
- *    This happens during the main resolution!
+ * This happens during the main resolution!
  * 4. Attach `linkTo` calls to the respective calls.
  */
 export async function executeCallContextQueries({ analyzer }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
@@ -285,9 +285,9 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = await analyzer.controlflow(undefined, CfgKind.Quick);
+		cfg = await analyzer.controlflow(undefined);
 	}
-	const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
+	const calls = cfg ? new Map(dataflow.graph.verticesOfType(VertexType.FunctionCall) as MapIterator<[NodeId, Required<DataflowGraphVertexFunctionCall>]>) : undefined;
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
 	/* index exact-name queries so each vertex costs one map lookup instead of a predicate check per query */
 	const nonAliasByName = new Map<string, PromotedQuery[]>();
@@ -367,7 +367,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			}
 			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;
 			if(cfg && 'linkTo' in query && query.linkTo !== undefined) {
-				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
+				const linked = isArray<PromotedLinkTo>(query.linkTo) ? query.linkTo : [query.linkTo];
 				for(const link of linked) {
 					/* if we have a linkTo query, we have to find the last call */
 					const linkTos = await identifyLinkToRelation(nodeId, analyzer, link, calls);

@@ -73,16 +73,40 @@ describe('References of an Expression List', withTreeSitter(parser => {
 	});
 
 	describe('Removals', () => {
-		assertReferences('removed definition', 'x <- 1\nrm(x)\ny <- x', { in: ['x'], out: ['x', 'y'], kill: ['x'] });
+		assertReferences('removed definition', 'x <- 1\nrm(x)\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
 		assertReferences('conditional removal', 'x <- 1\nif(c) rm(x)\ny <- x', { in: ['c', 'x'], out: ['x', 'y'], kill: ['x'] });
 		assertReferences('removal revived by a later write', 'x <- 1\nrm(x)\nx <- 2', { out: ['x'] });
-		assertReferences('removal of the whole scope', 'x <- 1\nrm(list = ls())\ny <- x', { in: ['x'], out: ['x', 'y'], kill: ['all'] });
+		assertReferences('removal of the whole scope', 'x <- 1\nrm(list = ls())\ny <- x', { in: ['x'], out: ['y'], kill: ['all'] });
 		assertReferences('whole scope removal with a later write', 'x <- 1\nrm(list = ls())\nx <- 2\nz <- x', { out: ['x', 'z'], kill: ['all'] });
 		assertReferences('unresolvable removal', 'x <- 1\nrm(list = c("x"))\ny <- x', { in: ['x'], out: ['x', 'y'], kill: ['unknown'] });
 		assertReferences('whole scope removal in a branch', 'x <- 1\ny <- 1\nif(c) { rm(list = ls()); y <- 2 }\nz <- x\nw <- y',
 			{ in: ['c', 'x'], out: ['w', 'x', 'y', 'z'], kill: ['all'] });
 		assertReferences('revived in one branch only', 'x <- 1\nrm(x)\nif(c) x <- 2\ny <- x', { in: ['c', 'x'], out: ['x', 'y'], kill: ['x'] });
 		assertReferences('revived in every branch', 'x <- 1\nrm(x)\nif(c) x <- 2 else x <- 3\ny <- x', { in: ['c'], out: ['x', 'y'] });
+		assertReferences('removal in every branch', 'x <- 1\nif(c) rm(x) else rm(x)\ny <- x', { in: ['c', 'x'], out: ['y'], kill: ['x'] });
+		assertReferences('removal in a nested list', 'x <- 1\n{ rm(x) }\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		assertReferences('removal of several definitions', 'x <- 1\ny <- 2\nrm(x, y)\nz <- x', { in: ['x'], out: ['z'], kill: ['x', 'y'] });
+		assertReferences('removal in a repeat body', 'x <- 1\nrepeat { rm(x); break }\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		assertReferences('removal in a tryCatch block', 'x <- 1\ntryCatch(rm(x))\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		assertReferences('removal in a tryCatch finally', 'x <- 1\ntryCatch(1, finally = rm(x))\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		/* the loop may never run, so the removal only happens maybe */
+		assertReferences('removal in a while body', 'x <- 1\nwhile(c) rm(x)\ny <- x', { in: ['c', 'x'], out: ['x', 'y'], kill: ['x'] });
+		/* all verified against R 4.6: the formals after `rm`'s `...` only match by their exact name */
+		assertReferences('a partial formal name lands in the dots', 'x <- 1\nrm(lis = "x")\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		assertReferences('a partial envir name lands in the dots', 'x <- 1\nrm(envi = "x")\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		assertReferences('inherits contributes no name', 'x <- 1\nrm(x, inherits = TRUE)\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		/* `pos = -1` and `envir = as.environment(pos)` are R's defaults, so they keep the removal local */
+		assertReferences('the default position', 'x <- 1\nrm(x, pos = -1)\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		assertReferences('the current environment', 'x <- 1\nrm(x, envir = environment())\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		/* outside a function the global environment is the one we are analyzing */
+		assertReferences('the global environment', 'x <- 1\nrm(x, envir = globalenv())\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		/* outside a function the caller frame is the global one as well */
+		assertReferences('the caller frame', 'x <- 1\nrm(x, envir = parent.frame())\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		/* a frame we cannot identify leaves the one we are analyzing alone */
+		assertReferences('an unknown environment', 'x <- 1\nrm(x, envir = e)\ny <- x', { in: ['e'], out: ['x', 'y'] });
+		assertReferences('a shadowed globalenv', 'globalenv <- function() e\nx <- 1\nrm(x, envir = globalenv())\ny <- x', { out: ['x', 'y'] });
+		/* `rm` acts on the local frame, which never held `x` */
+		assertReferences('removal within local', 'x <- 1\nlocal({ rm(x) })\ny <- x', { in: ['x'], out: ['x', 'y'] });
 	});
 
 	describe('Constructs Evaluated in the Enclosing Scope', () => {

@@ -1,10 +1,11 @@
 import { afterAll, describe, expect, test } from 'vitest';
-import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { signatureParameterNames, type SigParameter } from '../../../src/project/sigdb/decode';
+import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { SigParameter } from '../../../src/project/sigdb/decode';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { cleanupSigTmpDirs, expFn, sigTmpDir, ver, writeAndOpen } from '../_helper/sigdb';
-import { argumentForParameter, matchArgumentsToSignature } from '../../../src/project/sigdb/signature-match';
 import type { FunctionArgument } from '../../../src/dataflow/graph/graph';
+import { ArgProp } from '../../../src/dataflow/environments/built-in-props';
 
 /** minimal named argument (`name = value`); only `name.content` is read by the matcher */
 const named = (name: string): PotentiallyEmptyRArgument => ({ name: { content: name } } as unknown as PotentiallyEmptyRArgument);
@@ -12,7 +13,7 @@ const named = (name: string): PotentiallyEmptyRArgument => ({ name: { content: n
 const pos = (): PotentiallyEmptyRArgument => ({ name: undefined } as unknown as PotentiallyEmptyRArgument);
 
 const match = (args: readonly PotentiallyEmptyRArgument[], params: readonly string[]) =>
-	RFunctionCall.matchArgsToParams(args, params);
+	FunctionSemantics.call.match.toNames(args, params);
 
 describe('RFunctionCall.matchArgumentsToParameters (R argument matching)', () => {
 	test('exact name match', () => {
@@ -92,27 +93,37 @@ describe('RFunctionCall.matchArgumentsToParameters (R argument matching)', () =>
 	});
 });
 
-describe('signatureParameterNames', () => {
-	test('excludes the `...` parameter (keeps the rest, in order)', () => {
-		const names = signatureParameterNames([
-			{ name: 'x', forced: true, optional: false },
-			{ name: '...', forced: false, optional: true },
-			{ name: 'na.rm', forced: false, optional: true }
-		]);
-		expect(names).toEqual(['x', 'na.rm']);
+describe('matching against a signature\'s formals', () => {
+	test('an exactly matched formal no longer makes a prefix ambiguous', () => {
+		const x = named('x'), zz = named('zz1'), xylo = named('xylo'), zz3 = named('zz3');
+		const bound = match([x, zz, xylo, zz3], ['xylo', 'xb', '...']);
+		expect(bound.get('xylo')).toBe(xylo);
+		// `xylo` is taken by name, so `x` prefixes only the still-free `xb`; R binds it there too
+		expect(bound.get('xb')).toBe(x);
+		expect(bound.get('...')).toBe(zz3);
+	});
+
+	test('a prefix that stays ambiguous falls to the dots', () => {
+		const x = named('x');
+		expect(match([x], ['xylo', 'xb', '...']).get('...')).toBe(x);
+	});
+
+	test('keeps `...`, which is what stops positional matching and collects the rest', () => {
+		const names = ['x', '...', 'na.rm'];
+		const one = pos(), na = named('na');
+		const bound = match([one, na], names);
+		expect(bound.get('x')).toBe(one);
+		expect(bound.get('...')).toBe(na);
 	});
 
 	test('feeds the matcher so a call binds to a known signature (pmatch)', () => {
-		const params = signatureParameterNames([
-			{ name: 'x', forced: true, optional: false },
-			{ name: 'na.rm', forced: false, optional: true }
-		]);
+		const params = ['x', 'na.rm'];
 		const naArg = named('na');   // unique prefix of `na.rm`
 		expect(match([pos(), naArg], params).get('na.rm')).toBe(naArg);
 	});
 });
 
-describe('matchArgumentsToSignature / argumentForParameter (pMatch against a sigdb signature)', () => {
+describe('FunctionSemantics.call.match.toSpec against a sigdb signature', () => {
 	// ggplot(data, mapping, ..., environment) -- the parameters as the signature database records them
 	const ggplotSig = [
 		{ name: 'data' }, { name: 'mapping' }, { name: '...' }, { name: 'environment' }
@@ -122,24 +133,24 @@ describe('matchArgumentsToSignature / argumentForParameter (pMatch against a sig
 
 	test('positional: ggplot(mtcars, aes(x)) -> data = mtcars, mapping = aes', () => {
 		const args = [pArg('mtcars'), pArg('aes')];
-		expect(argumentForParameter(args, ggplotSig, 'data')).toEqual(['mtcars']);
-		expect(argumentForParameter(args, ggplotSig, 'mapping')).toEqual(['aes']);
+		expect(FunctionSemantics.call.match.toSpec(args, ggplotSig).get('data')).toEqual(['mtcars']);
+		expect(FunctionSemantics.call.match.toSpec(args, ggplotSig).get('mapping')).toEqual(['aes']);
 	});
 
 	test('named: ggplot(data = mtcars, aes(x)) -> data by name, aes fills mapping positionally', () => {
 		const args = [nArg('data', 'mtcars'), pArg('aes')];
-		const m = matchArgumentsToSignature(args, ggplotSig);
+		const m = FunctionSemantics.call.match.toSpec(args, ggplotSig);
 		expect(m.get('data')).toEqual(['mtcars']);
 		expect(m.get('mapping')).toEqual(['aes']);
 	});
 
 	test('pmatch: ggplot(d = mtcars) -> `d` uniquely resolves to data', () => {
-		expect(argumentForParameter([nArg('d', 'mtcars')], ggplotSig, 'data')).toEqual(['mtcars']);
+		expect(FunctionSemantics.call.match.toSpec([nArg('d', 'mtcars')], ggplotSig).get('data')).toEqual(['mtcars']);
 	});
 
 	test('an overflow argument at the `...` position collects into `...`', () => {
 		const args = [pArg('mtcars'), pArg('aes'), pArg('extra')];   // data, mapping, then `...`
-		expect(matchArgumentsToSignature(args, ggplotSig).get('...')).toEqual(['extra']);
+		expect(FunctionSemantics.call.match.toSpec(args, ggplotSig).get('...')).toEqual(['extra']);
 	});
 });
 
@@ -151,7 +162,7 @@ describe('matching against a real signature-database signature', () => {
 		const b = new SigDbBuilder();
 		b.addPackage('cranpkg', { latest: '1.0.0', downloads: 5 });
 		b.addVersion('cranpkg', '1.0.0', ver([{ ...expFn('cranfn'), params: [
-			{ name: 'x', forced: true }, { name: 'na.rm' }, { name: '...' }
+			{ name: 'x', props: ArgProp.Forced }, { name: 'na.rm' }, { name: '...' }
 		] }]));
 		const db = await writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
 		try {
@@ -160,9 +171,8 @@ describe('matching against a real signature-database signature', () => {
 			if(cranfn === undefined) {
 				return;
 			}
-			// the `...` is dropped, the rest survive the round-trip through the database
-			const params = signatureParameterNames(cranfn.signature);
-			expect(params).toEqual(['x', 'na.rm']);
+			const params = cranfn.signature.map(p => p.name);
+			expect(params).toEqual(['x', 'na.rm', '...']);
 			// cranfn(1, na = TRUE): positional 1 -> x, `na` pmatches -> na.rm
 			const one = pos(), na = named('na');
 			const bound = match([one, na], params);

@@ -1,10 +1,15 @@
 import { beforeAll, describe } from 'vitest';
-import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import { FlowrConfig } from '../../../../src/config';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { withShell } from '../../_helper/shell';
-import { testMappedDataFrameOperations, testInferredDataFrameShape, testInferredDataFrameShapeWithSource } from './data-frame';
+import { assumeLoadedPackages, withShell } from '../../_helper/shell';
+import type { InferenceTestCase } from '../inference';
+import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import { testMappedDataFrameOperations, testInferredDataFrameShape, testInferredDataFrameShapeWithSource, type ExpectedDataFrameShape, type DataFrameTestOptions } from './data-frame';
+
+assumeLoadedPackages('dplyr', 'magrittr', 'tibble');
 
 /** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
 export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
@@ -12,8 +17,11 @@ export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
 const DataFrameTop = { colnames: [[], Top] as [[], typeof Top], cols: PosIntervalTop, rows: PosIntervalTop } as const;
 
 describe('Data Frame Shape Inference', { concurrent: false }, withShell(shell => {
-	let librariesInstalled = false;
-	const skipLibraries = () => !librariesInstalled;
+	let dplyrInstalled = false;
+	let readrInstalled = false;
+	/* one missing package must not switch off the run-and-compare half of every other case */
+	const skipLibraries = () => !dplyrInstalled;
+	const skipReadr = () => !dplyrInstalled || !readrInstalled;
 
 	const sources = {
 		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
@@ -32,19 +40,61 @@ describe('Data Frame Shape Inference', { concurrent: false }, withShell(shell =>
 	}
 
 	beforeAll(async() => {
-		librariesInstalled = await shell.isPackageInstalled('dplyr') && await shell.isPackageInstalled('readr');
+		dplyrInstalled = await shell.isPackageInstalled('dplyr');
+		readrInstalled = await shell.isPackageInstalled('readr');
 		shell.clearEnvironment();
 	});
 
+	/* every case below runs against this suite's shell, so it need not be repeated at each call site */
+	function testShape(code: string, expected: InferenceTestCase<ExpectedDataFrameShape> | SlicingCriteria, options?: DataFrameTestOptions) {
+		testInferredDataFrameShape(shell, code, expected, options);
+	}
+
+	function testShapeFromSource(fileArg: string, textArg: string, getCode: (arg: string) => string, expected: InferenceTestCase<ExpectedDataFrameShape> | SlicingCriteria, options?: DataFrameTestOptions) {
+		testInferredDataFrameShapeWithSource(shell, fileArg, textArg, getCode, expected, options);
+	}
+
 	describe('Control Flow', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'x <- 42',
 			{ '1@x': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		/* every arm of the chain joins at a different time, which must not cost the arms behind the first */
+		testMappedDataFrameOperations(
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+for(i in 1:3) {
+	if(df$id[i] == 1) {
+		df$a[i] <- 1
+	} else if(df$name[i] == 2) {
+		df$a[i] <- 2
+	} else if(df$id[i] == 3) {
+		df$a[i] <- 3
+	}
+}
+			`,
+			{
+				'3@$': [{ operation: 'accessCols', columns: ['id'] }],
+				'5@$': [{ operation: 'accessCols', columns: ['name'] }],
+				'7@$': [{ operation: 'accessCols', columns: ['id'] }]
+			},
+			{ name: 'an if/else if chain within a loop' }
+		);
+
+		/* the `return` only leaves the enclosing function when it happens, so the call still completes */
+		testShape(
+			`
+df <- data.frame(id = 1:5)
+handler(u, { if(u) return()
+	1 })
+print(df)
+			`,
+			{ '4@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] } },
+			{ name: 'a conditional return within an argument', skipRun: true }
+		);
+
+		testShape(
 			`
 df1 <- data.frame(id = 1:5)
 data.frame(id = 1:5) -> df2
@@ -64,8 +114,7 @@ print(df6)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:5)
 assign(paste0("df1"), 42)
@@ -77,8 +126,7 @@ print(df1)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 \`df1\` <- data.frame(id = 1:5)
 'df2' <- data.frame(id = 1:5)
@@ -92,8 +140,7 @@ df <- cbind(df1, df2, df3)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:5)
 df2 <- df1
@@ -105,8 +152,7 @@ df2 <- df1
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, type = c("A", "B", "C"))
 df <- data.frame()
@@ -119,8 +165,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, type = c("A", "B", "C"))
 print(df <- data.frame())
@@ -133,27 +178,23 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- 1:3 |> data.frame(type = c("A", "B", "C"))',
 			{ '1@df': { colnames: [['type'], Top], cols: [2, 2], rows: [3, 3] } },
 			{ minRVersion: MIN_VERSION_PIPE }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- if (runif(1) >= 0.5) data.frame(id = 1:5)',
 			{ '1@df': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- if (runif(1) >= 0.5) data.frame(id = 1:5) else data.frame(id = 1:10, name = "A")',
 			{ '1@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [5, 10] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 if(runif(1) >= 0.5) {
 	df <- data.frame(id = 1:5)
@@ -165,8 +206,7 @@ print(df)
 			{ '6@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [5, 10] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 i <- 5
 df <- if (i == 0) {
@@ -183,8 +223,7 @@ print(df)
 			{ '11@df': { colnames: [[], ['id', 'name']], cols: [1, 2], rows: [3, 10] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 for (i in 1:5) {
@@ -196,8 +235,7 @@ print(df)
 			{ '6@df': { colnames: [['id'], Top], cols: [1, 2], rows: [10, 10] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 while (nrow(df) < 10) {
@@ -208,8 +246,7 @@ print(df)
 			{ '5@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 repeat {
@@ -223,8 +260,7 @@ print(df)
 			{ '8@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 repeat {
@@ -238,8 +274,7 @@ print(df)
 			{ '8@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 while (nrow(df) < 10) {
@@ -254,8 +289,7 @@ print(df)
 			{ '9@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [5, Infinity] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 while (nrow(df) < 10) {
@@ -270,8 +304,7 @@ print(df)
 			{ '9@df': { colnames: [['id'], Top], cols: [1, Infinity], rows: [5, Infinity] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 while (ncol(df) < 2) {
@@ -287,8 +320,7 @@ print(df)
 			{ '10@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [5, Infinity] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 while (nrow(df) < 10) {
@@ -304,8 +336,7 @@ print(df)
 			{ '10@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 while (TRUE) {
@@ -318,8 +349,7 @@ print(df)
 			{ '7@df': { colnames: [['id'], Top], cols: [1, 2], rows: [10, 10] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 repeat {
@@ -332,8 +362,7 @@ print(df)
 			{ skipRun: true }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 load('object_file')
@@ -346,8 +375,7 @@ print(df)
 			{ skipRun: true }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 eval(parse(text="df <- 12"))
@@ -359,8 +387,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = 6:10)
 eval(parse(text="df$level <- df$score^2"))
@@ -373,8 +400,7 @@ print(df)
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 if (2 < 1) {
 	df1 <- data.frame(id = 1:5)
@@ -388,27 +414,413 @@ print(df1)
 		});
 	});
 
+	/** The inference steps into what a program defines, unless `abstractInterpretation.followCalls` is off. */
+	describe('Interprocedural', () => {
+		const intraprocedural = FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.abstractInterpretation.followCalls = false;
+		});
+
+		const returnsAShape = `
+select_first <- function(x) x[, "a", drop = FALSE]
+df <- data.frame(a = 1:3, b = 4:6)
+result <- select_first(df)
+print(result)
+		`;
+
+		testShape(
+			returnsAShape,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a call is worth what the function it calls returns' }
+		);
+
+		testShape(
+			returnsAShape,
+			{ '4@result': undefined },
+			{ name: 'and is worth nothing without following the call', config: intraprocedural, skipRun: true }
+		);
+
+		/* whatever the call reaches, `followCalls` decides whether the traversal steps into it at all */
+		describe('and nothing is stepped into with followCalls off', () => {
+			const cases: Record<string, string> = {
+				'a filter on a parameter': 'keep <- function(x) x[x$a < 2, ]\ndf <- data.frame(a = 1:5)\nresult <- keep(df)',
+				'a frame of its own':      'make <- function() data.frame(a = 1:3)\ndf <- data.frame(b = 1)\nresult <- make()',
+				'an explicit return':      'first <- function(x) {\n\treturn(x[, "a", drop = FALSE])\n}\ndf <- data.frame(a = 1:3)\nresult <- first(df)',
+				'a parameter default':     'head_of <- function(x = data.frame(a = 1:9)) head(x, 3)\ndf <- data.frame(b = 1)\nresult <- head_of()',
+				'a recursion':             'shrink <- function(x) if(nrow(x) <= 1) x else shrink(head(x, nrow(x) - 1))\ndf <- data.frame(a = 1:3)\nresult <- shrink(df)'
+			};
+
+			for(const [name, code] of Object.entries(cases)) {
+				const at = `${code.trim().split('\n').length}@result`;
+				testShape(code, { [at]: undefined }, { name, config: intraprocedural, skipRun: true });
+			}
+		});
+
+		testShape(
+			`
+first_two <- function(x) head(x, 2)
+df1 <- data.frame(a = 1:3)
+df2 <- data.frame(b = 1:5, c = 2:6)
+r1 <- first_two(df1)
+r2 <- first_two(df2)
+print(r1)
+print(r2)
+			`,
+			{
+				'6@r1': { colnames: [['a'], []], cols: [1, 1], rows: [2, 2] },
+				'7@r2': { colnames: [['b', 'c'], []], cols: [2, 2], rows: [2, 2] }
+			},
+			{ name: 'every call site hands over its own arguments' }
+		);
+
+		/* what a function does to a frame it is handed is seen at the call site */
+		testShape(
+			`
+add_column <- function(x) { x$extra <- 1
+	x }
+df <- data.frame(a = 1:3)
+result <- add_column(df)
+print(result)
+			`,
+			{ '5@result': { colnames: [['a', 'extra'], []], cols: [2, 2], rows: [3, 3] } },
+			{ name: 'a function that changes a frame is followed into' }
+		);
+
+		/* the functions a call may dispatch to are all of them, so the shape is what either one leaves */
+		testShape(
+			`
+if(u) { pick <- function(x) x[, "a", drop = FALSE] } else { pick <- function(x) x[, c("a", "b"), drop = FALSE] }
+df <- data.frame(a = 1:3, b = 4:6)
+result <- pick(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], ['b']], cols: [1, 2], rows: [3, 3] } },
+			{ name: 'a call with several definitions joins what each one leaves', skipRun: true }
+		);
+
+		/* a call two levels deep is stepped into as well */
+		testShape(
+			`
+inner <- function(x) head(x, 2)
+outer <- function(x) inner(x)
+df <- data.frame(a = 1:5)
+result <- outer(df)
+print(result)
+			`,
+			{ '5@result': { colnames: [['a'], []], cols: [1, 1], rows: [2, 2] } },
+			{ name: 'a call within a called function is followed too' }
+		);
+
+		/* a frame the function makes itself owes nothing to the call site */
+		testShape(
+			`
+make <- function() data.frame(a = 1:3, b = 4:6)
+result <- make()
+print(result)
+			`,
+			{ '3@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [3, 3] } },
+			{ name: 'a function that creates a frame of its own' }
+		);
+
+		/* an explicit return leaves with the shape it names */
+		testShape(
+			`
+first_col <- function(x) {
+	return(x[, "a", drop = FALSE])
+}
+df <- data.frame(a = 1:4, b = 5:8)
+result <- first_col(df)
+print(result)
+			`,
+			{ '6@result': { colnames: [['a'], []], cols: [1, 1], rows: [4, 4] } },
+			{ name: 'a function that leaves through an explicit return' }
+		);
+
+		/* both arms of the function are exits, so the call is worth either of them */
+		testShape(
+			`
+pick <- function(x, wide) if(wide) x else x[, "a", drop = FALSE]
+df <- data.frame(a = 1:3, b = 4:6)
+result <- pick(df, u)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], ['b']], cols: [1, 2], rows: [3, 3] } },
+			{ name: 'a function with two exits is worth either of them', skipRun: true }
+		);
+
+		/* a parameter the call passes nothing for is worth what its default names */
+		testShape(
+			`
+head_of <- function(x = data.frame(a = 1:9)) head(x, 3)
+result <- head_of()
+print(result)
+			`,
+			{ '3@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a parameter falls back to its default' }
+		);
+
+		/* an argument the call does pass wins over the default */
+		testShape(
+			`
+head_of <- function(x = data.frame(a = 1:9)) head(x, 3)
+df <- data.frame(b = 1:5, c = 6:10)
+result <- head_of(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['b', 'c'], []], cols: [2, 2], rows: [3, 3] } },
+			{ name: 'an argument wins over the default' }
+		);
+
+		/* a default that names an earlier parameter follows it */
+		testShape(
+			`
+narrow <- function(x, y = x[, "a", drop = FALSE]) y
+df <- data.frame(a = 1:3, b = 4:6)
+result <- narrow(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a default that reads another parameter' }
+		);
+
+		/* the argument is matched by name, not by where it stands */
+		testShape(
+			`
+take <- function(n, x) head(x, n)
+df <- data.frame(a = 1:10, b = 1:10)
+result <- take(x = df, n = 2)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [2, 2] } },
+			{ name: 'an argument is handed over by name' }
+		);
+
+		/* the frame reaches the function through a pipe */
+		testShape(
+			`
+drop_b <- function(x) x[, "a", drop = FALSE]
+df <- data.frame(a = 1:3, b = 4:6)
+result <- df |> drop_b()
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a frame handed over through a pipe', minRVersion: MIN_VERSION_PIPE }
+		);
+
+		/* a closure sees what the function around it was handed */
+		testShape(
+			`
+outer <- function(x) {
+	inner <- function() x[, "a", drop = FALSE]
+	inner()
+}
+df <- data.frame(a = 1:3, b = 4:6)
+result <- outer(df)
+print(result)
+			`,
+			{ '7@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a closure reads what encloses it' }
+		);
+
+		/* the same function called over and over says the same thing */
+		testShape(
+			`
+add_row <- function(x) rbind(x, data.frame(a = 1))
+df <- data.frame(a = 1:2)
+for(i in 1:3) {
+	df <- add_row(df)
+}
+print(df)
+			`,
+			['6@df'],
+			{ name: 'a call within a loop still terminates' }
+		);
+
+		/* the function filters the rows of the frame it is handed, and the call is worth the result */
+		testShape(
+			`
+keep_small <- function(x) x[x$a < 2, ]
+df <- data.frame(a = 1:5, b = 6:10)
+result <- keep_small(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 5] } },
+			{ name: 'a filter on a parameter, read back at the call site' }
+		);
+
+		/* the same, with the verb the tidyverse uses for it */
+		testShape(
+			`
+keep_small <- function(x) dplyr::filter(x, a < 2)
+df <- data.frame(a = 1:5, b = 6:10)
+result <- keep_small(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 5] } },
+			{ name: 'a dplyr filter on a parameter, read back at the call site', skipRun: skipLibraries }
+		);
+
+		/* what the function narrows the frame to is what the call is worth, columns and rows alike */
+		testShape(
+			`
+narrow <- function(x) {
+	kept <- x[x$a > 1, c("a", "b")]
+	kept
+}
+df <- data.frame(a = 1:4, b = 5:8, c = 9:12)
+result <- narrow(df)
+print(result)
+			`,
+			{ '6@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 4] } },
+			{ name: 'a function that narrows both ways' }
+		);
+
+		/* the result of one call is filtered again by the next */
+		testShape(
+			`
+keep_small <- function(x) x[x$a < 3, ]
+first_col <- function(x) x[, "a", drop = FALSE]
+df <- data.frame(a = 1:5, b = 6:10)
+result <- first_col(keep_small(df))
+print(result)
+			`,
+			{ '5@result': { colnames: [['a'], []], cols: [1, 1], rows: [0, 5] } },
+			{ name: 'the result of one call is handed to the next' }
+		);
+
+		/* a way out that leaves something else than a frame is a way out all the same */
+		testShape(
+			`
+pick <- function(x, u) if(u) x else 42
+df <- data.frame(a = 1:3)
+result <- pick(df, v)
+print(result)
+			`,
+			{ '4@result': undefined },
+			{ name: 'a function that does not always leave a frame behind', skipRun: true }
+		);
+
+		/* the same, where the two ways out are a return and the end of the body */
+		testShape(
+			`
+pick <- function(x, u) {
+	if(u) {
+		return(x)
+	}
+	42
+}
+df <- data.frame(a = 1:3)
+result <- pick(df, v)
+print(result)
+			`,
+			{ '9@result': undefined },
+			{ name: 'a function that returns a frame on one way out only', skipRun: true }
+		);
+
+		/* one of the definitions the call may reach leaves something else behind */
+		testShape(
+			`
+if(u) { f <- function(x) x } else { f <- function(x) 42 }
+df <- data.frame(a = 1:3)
+result <- f(df)
+print(result)
+			`,
+			{ '4@result': undefined },
+			{ name: 'one of the definitions does not leave a frame behind', skipRun: true }
+		);
+
+		/*
+		 * A definition that calls itself is run until what it leaves behind and what its parameters are worth
+		 * both stop moving, so what it settles on holds for any number of steps. Each of these runs in R too.
+		 */
+		testShape(
+			`
+shrink <- function(x) if(nrow(x) <= 1) x else shrink(head(x, nrow(x) - 1))
+df <- data.frame(a = 1:3)
+result <- shrink(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [0, 3] } },
+			{ name: 'a recursion that drops rows keeps the columns it started with' }
+		);
+
+		testShape(
+			`
+drop_rows <- function(x) if(nrow(x) <= 1) x else drop_rows(x[-1, ])
+df <- data.frame(a = 1:4, b = 5:8)
+result <- drop_rows(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 4] } },
+			{ name: 'a recursion that shrinks its frame' }
+		);
+
+		/* adding a column at a time: the count cannot be pinned down, so it is bounded from below only */
+		testShape(
+			`
+widen <- function(x, n) if(n <= 0) x else widen(cbind(x, data.frame(extra = 1)), n - 1)
+df <- data.frame(a = 1:3)
+result <- widen(df, 3)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], Top], cols: [1, PosIntervalTop[1]], rows: [3, 3] } },
+			{ name: 'a recursion that widens its frame' }
+		);
+
+		/* doubling the rows every step, which is what the widening of the row count is for */
+		testShape(
+			`
+grow <- function(x) if(nrow(x) > 10) x else grow(rbind(x, x))
+df <- data.frame(a = 1)
+result <- grow(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [1, PosIntervalTop[1]] } },
+			{ name: 'a recursion that grows its frame' }
+		);
+
+		/* two functions that call each other, one dropping rows and the other columns */
+		testShape(
+			`
+even <- function(x, n) if(n <= 0) x else odd(head(x, nrow(x) - 1), n - 1)
+odd <- function(x, n) if(n <= 0) x else even(x[, -1, drop = FALSE], n - 1)
+df <- data.frame(a = 1:4, b = 5:8, c = 9:12)
+result <- even(df, 3)
+print(result)
+			`,
+			{ '5@result': { colnames: [[], ['a', 'b', 'c']], cols: [0, 3], rows: [0, 4] } },
+			{ name: 'two functions that call each other still settle' }
+		);
+
+		/* the recursion never reaches a base case, so no shape ever comes back out of it */
+		testShape(
+			`
+forever <- function(x) forever(x)
+df <- data.frame(a = 1:3)
+result <- forever(df)
+print(result)
+			`,
+			{ '4@result': { colnames: Bottom, cols: Bottom, rows: Bottom } },
+			{ name: 'a recursion without a base case still terminates', skipRun: true }
+		);
+	});
+
 	describe('Create', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95), check.names = FALSE)',
 			{ '1@df': { colnames: [['id', 'age', 'score'], []], cols: [3, 3], rows: [5, 5] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame("id" = c(1, 2, 3, 5, 6, 7), `category` = c("A", "B", "A", "A", "B", "B"))',
 			{ '1@df': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(1:5, c("A", "B", "C", "D", "E"), TRUE)',
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [5, 5] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 a = 1; b = "A"
 df <- data.frame(id = c(a, a), name = b)
@@ -416,112 +828,94 @@ df <- data.frame(id = c(a, a), name = b)
 			{ '2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [2, 2] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(c(1, 2, 3:5, c(6, 7, c(8, 9))), c("a", "b", "c"))',
 			{ '1@df': { colnames: [[], Top], cols: [2, 2], rows: [9, 9] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(1)',
 			{ '1@df': { colnames: [[], Top], cols: [1, 1], rows: [1, 1] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame()',
 			{ '1@df': { colnames: [[], []], cols: [0, 0], rows: [0, 0] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(id = c(), name = c())',
 			{ '1@df': { colnames: [[], []], cols: [0, 0], rows: [0, 0] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(id = NULL)',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(data.frame(1:3))',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(list(id = 1:3))',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(id = list(num = 1:3, name = 3:1))',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(`:D` = 1:3)',
 			{ '1@df': { colnames: [[], Top], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(id = 1:3, id = 4:6, name = c("A", "B", "C"))',
 			{ '1@df': { colnames: [['name'], Top], cols: [3, 3], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(id = 1:3, name = 6:8, row.names = "id")',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(`:D` = 1:3, check.names = FALSE)',
 			{ '1@df': { colnames: [[':D'], []], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- data.frame(1:3, fix.empty.names = FALSE)',
 			{ '1@df': { colnames: [[], Top], cols: [1, 1], rows: [3, 3] } }
 		);
 	});
 
 	describe('Convert', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(data.frame(1:3))',
 			{ '1@df': { colnames: [[], Top], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(list(id = 1:3))',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(c(1, 2, 3))',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(1)',
 			{ '1@df': DataFrameTop }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:3, label = c("A", "B", "C"))
 df2 <- as.data.frame(df1)
@@ -532,220 +926,192 @@ df2 <- as.data.frame(df1)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), optional = TRUE)',
 			{ '1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), cut.names = 3)',
 			{ '1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), col.names = c("col1", "col2"))',
 			{ '1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), fix.empty.names = FALSE)',
 			{ '1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- as.data.frame(optional = TRUE, fix.empty.names = FALSE, x = data.frame(id = 1:3, name = 4:6))',
 			{ '1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 	});
 
 	describe('Read', () => {
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source})`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source}, nrows = 1)`,
 			{ '1@df': DataFrameTop },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source}, nrows = -1)`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"b.csv"', `text = "${getFileContent('b.csv')}"`,
 			source => `df <- read.csv(${source}, quote = "'")`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"b.csv"', `text = "${getFileContent('b.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"c.csv"', `text = "${getFileContent('c.csv')}"`,
 			source => `df <- read.csv(${source}, comment.char = "#", check.names = FALSE)`,
 			{ '1@df': { colnames: [['', 'id,number', '"unique" name'], []], cols: [3, 3], rows: [5, 5] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"c.csv"', `text = "${getFileContent('c.csv')}"`,
 			source => `df <- read.csv(${source}, header = FALSE, skip = 4)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [5, 5] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.csv2(${source}, header = FALSE)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [4, 4] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.delim(${source}, header = FALSE, sep = ",")`,
 			{ '1@df': { colnames: [[], Top], cols: [2, 2], rows: [4, 4] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.delim2(${source}, header = FALSE, sep = ";")`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [4, 4] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"e.csv"', `text = "${getFileContent('e.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE)`,
 			{ '1@df': { colnames: [['first', 'last', 'state', 'phone'], []], cols: [4, 4], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"f.csv"', `text = "${getFileContent('f.csv')}"`,
 			source => `df <- read.delim(${source})`,
 			{ '1@df': { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"g.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source})`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
 			{ files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"a.csv"', `"${getFileContent('a.csv')}"`,
 			source => `df <- readr::read_csv(${source})`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"b.csv"', `"${getFileContent('b.csv')}"`,
 			source => `df <- readr::read_csv(${source}, quote = "'")`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, comment = "#")`,
 			{ '1@df': { colnames: [['id,number', '"unique" name'], Top], cols: [3, 3], rows: [5, 5] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, col_names = FALSE, skip = 4)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [5, 5] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_csv2(${source}, col_names = FALSE)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [4, 4] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ",", col_names = FALSE)`,
 			{ '1@df': { colnames: [[], Top], cols: [2, 2], rows: [4, 4] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ";", col_names = FALSE)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [4, 4] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"e.csv"', `"${getFileContent('e.csv')}"`,
 			source => `df <- readr::read_table(${source})`,
 			{ '1@df': { colnames: [['first', 'last', 'state', 'phone'], []], cols: [4, 4], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
-		testInferredDataFrameShapeWithSource(
-			shell,
+		testShapeFromSource(
 			'"f.csv"', `"${getFileContent('f.csv')}"`,
 			source => `df <- readr::read_tsv(${source})`,
 			{ '1@df': { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 	});
 
@@ -834,8 +1200,7 @@ df[c(1, 3), 1:2]
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df["id"]
@@ -843,8 +1208,7 @@ result <- df["id"]
 			{ '2@result': { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1]
@@ -852,8 +1216,7 @@ result <- df[1]
 			{ '2@result': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, 1]
@@ -861,8 +1224,7 @@ result <- df[1, 1]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[, 1]
@@ -870,8 +1232,7 @@ result <- df[, 1]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, ]
@@ -879,8 +1240,7 @@ result <- df[1, ]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [1, 1] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1, name = "A")
 result <- df[, 1]
@@ -888,8 +1248,7 @@ result <- df[, 1]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, c("id", "name")]
@@ -897,8 +1256,7 @@ result <- df[1, c("id", "name")]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [1, 1] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, c(1, 2)]
@@ -906,8 +1264,7 @@ result <- df[1, c(1, 2)]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [1, 1] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1:2, c(1, 2)]
@@ -915,8 +1272,7 @@ result <- df[1:2, c(1, 2)]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [2, 2] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[, 1:2]
@@ -924,8 +1280,7 @@ result <- df[, 1:2]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1:2, ]
@@ -933,8 +1288,7 @@ result <- df[1:2, ]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [2, 2] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(1, 2), 1]
@@ -942,8 +1296,7 @@ result <- df[c(1, 2), 1]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[["id"]]
@@ -951,8 +1304,7 @@ result <- df[["id"]]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[[1]]
@@ -960,8 +1312,7 @@ result <- df[[1]]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[[1, "id"]]
@@ -969,8 +1320,7 @@ result <- df[[1, "id"]]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[[1, 1]]
@@ -978,8 +1328,7 @@ result <- df[[1, 1]]
 			{ '2@result': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df["id", drop = TRUE]
@@ -987,8 +1336,7 @@ result <- df["id", drop = TRUE]
 			{ '2@result': { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[, "id", drop = FALSE]
@@ -996,8 +1344,7 @@ result <- df[, "id", drop = FALSE]
 			{ '2@result': { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[-1, "id", drop = FALSE]
@@ -1005,8 +1352,7 @@ result <- df[-1, "id", drop = FALSE]
 			{ '2@result': { colnames: [['id'], []], cols: [1, 1], rows: [2, 2] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(-1, -2), -1, drop = FALSE]
@@ -1014,8 +1360,7 @@ result <- df[c(-1, -2), -1, drop = FALSE]
 			{ '2@result': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [1, 1] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- df[, -1]
@@ -1023,8 +1368,7 @@ result <- df[, -1]
 			{ '2@result': { colnames: [[], ['id', 'name', 'score']], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- df[sample(1:3, 1)]
@@ -1032,8 +1376,7 @@ result <- df[sample(1:3, 1)]
 			{ '2@result': { colnames: [[], ['id', 'name', 'score']], cols: [0, 3], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- df[sample(1:3, 1), , drop = FALSE]
@@ -1041,8 +1384,7 @@ result <- df[sample(1:3, 1), , drop = FALSE]
 			{ '2@result': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [0, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[]
@@ -1050,8 +1392,7 @@ result <- df[]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[,]
@@ -1059,8 +1400,7 @@ result <- df[,]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[0]
@@ -1068,8 +1408,7 @@ result <- df[0]
 			{ '2@result': { colnames: [[], []], cols: [0, 0], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[0, 1, drop = FALSE]
@@ -1077,8 +1416,7 @@ result <- df[0, 1, drop = FALSE]
 			{ '2@result': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [0, 0] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[0, 0]
@@ -1086,8 +1424,7 @@ result <- df[0, 0]
 			{ '2@result': { colnames: [[], []], cols: [0, 0], rows: [0, 0] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(TRUE, FALSE)]
@@ -1095,8 +1432,7 @@ result <- df[c(TRUE, FALSE)]
 			{ '2@result': { colnames: [[], ['id', 'name']], cols: [0, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[TRUE]
@@ -1104,8 +1440,7 @@ result <- df[TRUE]
 			{ '2@result': { colnames: [[], ['id', 'name']], cols: [0, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(TRUE, FALSE), ]
@@ -1113,8 +1448,7 @@ result <- df[c(TRUE, FALSE), ]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [0, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[df$id == 2, ]
@@ -1122,8 +1456,7 @@ result <- df[df$id == 2, ]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [0, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[df$id == 2, "name", drop = FALSE]
@@ -1139,8 +1472,7 @@ df[["nam", exact = FALSE]]
 			{ '2@[[': [{ operation: 'accessCols', columns: undefined }] }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c("id", "id")]
@@ -1148,8 +1480,7 @@ result <- df[c("id", "id")]
 			{ '2@result': { colnames: [[], Top], cols: [2, 2], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(1, 1, 1)]
@@ -1157,8 +1488,7 @@ result <- df[c(1, 1, 1)]
 			{ '2@result': { colnames: [[], Top], cols: [3, 3], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(1, 1), ]
@@ -1166,8 +1496,7 @@ result <- df[c(1, 1), ]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [2, 2] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(1, 1, 1, 1, 1), ]
@@ -1175,21 +1504,18 @@ result <- df[c(1, 1, 1, 1, 1), ]
 			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'result <- data.frame(id = 1:3, name = 4:6)["id"]',
 			{ '1@result': { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'result <- cbind(data.frame(id = 1:3), name = 4:6)[2]',
 			{ '1@result': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [3, 3] } }
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 df <- data.frame(id = 1:3)
 result <- df[1, ]
@@ -1197,8 +1523,7 @@ result <- df[1, ]
 				['2@result']
 			);
 
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- df[sample(1:3, 1), sample(1:3, 1)]
@@ -1206,8 +1531,7 @@ result <- df[sample(1:3, 1), sample(1:3, 1)]
 				['2@result']
 			);
 
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- df[rep("id", times = 12)]
@@ -1215,8 +1539,7 @@ result <- df[rep("id", times = 12)]
 				['2@result']
 			);
 
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- df[rep(1, times = 12), ]
@@ -1227,8 +1550,7 @@ result <- df[rep(1, times = 12), ]
 	});
 
 	describe('Col/Row Assignment', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df$id <- 4:6
@@ -1240,8 +1562,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df$\`name\` <- "A"
@@ -1253,8 +1574,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df$"name" <- letters[1:3]
@@ -1266,8 +1586,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df$name <- NULL
@@ -1279,8 +1598,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df$name[3] <- "A"
@@ -1292,8 +1610,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df$name[[3]] <- "A"
@@ -1305,8 +1622,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df["id"] <- 4:6
@@ -1318,8 +1634,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[["name"]] <- letters[1:3]
@@ -1331,8 +1646,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[1] <- c("A", "B", "C")
@@ -1344,8 +1658,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[[2]] <- "A"
@@ -1357,8 +1670,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[, "name"] <- "A"
@@ -1370,8 +1682,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[4, ] <- 4
@@ -1383,8 +1694,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[4, "id"] <- 4
@@ -1396,8 +1706,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[[4, "id"]] <- 4
@@ -1409,8 +1718,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[4, 1] <- 4
@@ -1422,8 +1730,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[[4, 1]] <- 4
@@ -1435,8 +1742,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[1, c("id", "name")] <- c(42, "A")
@@ -1448,8 +1754,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[, c("score", "level")] <- 100
@@ -1461,8 +1766,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[4, c(1, 2)] <- 100
@@ -1474,8 +1778,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[1:2, c(1, 3)] <- 1
@@ -1487,8 +1790,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[3:5, 1:3] <- 1
@@ -1500,8 +1802,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[, 1:3] <- "A"
@@ -1513,8 +1814,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[1:8, ] <- 0
@@ -1526,8 +1826,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[c(1, 4), 1] <- 42
@@ -1539,8 +1838,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[-1, "id"] <- 8:9
@@ -1552,8 +1850,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[c(-1, -2), -1] <- 1
@@ -1565,8 +1862,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[, -5] <- "A"
@@ -1578,8 +1874,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[sample(1:10)] <- "A"
@@ -1591,8 +1886,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[sample(1:10), ] <- "A"
@@ -1604,8 +1898,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[] <- NULL
@@ -1617,8 +1910,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[,] <- 0
@@ -1630,8 +1922,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 df[c("name", "score")] <- NULL
@@ -1643,8 +1934,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[2] <- NULL
@@ -1656,8 +1946,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[c(TRUE, FALSE)] <- 3:1
@@ -1669,8 +1958,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[TRUE] <- 42
@@ -1682,8 +1970,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[c(TRUE, FALSE), ] <- 1
@@ -1695,8 +1982,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[df$id == 2, ] <- c(5, "A")
@@ -1708,8 +1994,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[["name"]][3] <- "A"
@@ -1721,8 +2006,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df[[1]][3] <- "A"
@@ -1735,8 +2019,7 @@ print(df)
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 null <- \\() NULL
 df <- data.frame(id = 1:3, name = 4:6)
@@ -1747,8 +2030,7 @@ print(df)
 				{ minRVersion: MIN_VERSION_LAMBDA }
 			);
 
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 null <- \\() NULL
 df <- data.frame(id = 1:3, name = 4:6)
@@ -1759,8 +2041,7 @@ print(df)
 				{ minRVersion: MIN_VERSION_LAMBDA }
 			);
 
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 null <- \\() NULL
 df <- data.frame(id = 1:3, name = 4:6)
@@ -1774,8 +2055,7 @@ print(df)
 	});
 
 	describe('Set Names', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(1:5, 6:10)
 colnames(df) <- c("id", "name")
@@ -1787,8 +2067,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(1:5, 6:10)
 names(df) <- c("id", "name")
@@ -1800,8 +2079,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 colnames(df) <- runif(2)
@@ -1813,8 +2091,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 colnames(df) <- NULL
@@ -1826,8 +2103,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 colnames(df) <- "col"
@@ -1839,8 +2115,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10, score = 11:15)
 colnames(df) <- c("col1", "col2")
@@ -1852,8 +2127,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 colnames(df)[1] <- "test"
@@ -1865,8 +2139,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10, score = 11:15)
 colnames(df)[1:2] <- "test"
@@ -1878,8 +2151,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 colnames(df)[-1] <- "test"
@@ -1891,8 +2163,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 rownames(df) <- c("row1", "row2", "row3")
@@ -1904,8 +2175,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 rownames(df) <- runif(3)
@@ -1917,8 +2187,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 dimnames(df) <- list(c("row1", "row2", "row3"), c("col1", "col2"))
@@ -1930,8 +2199,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 dimnames(df)[[1]] <- c("row1", "row2", "row3")
@@ -1943,8 +2211,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 dimnames(df)[[2]] <- c("col1", "col2")
@@ -1956,8 +2223,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 dimnames(df)[1:2] <- list(c("row1", "row2", "row3"), c("col1", "col2"))
@@ -1969,8 +2235,7 @@ print(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 dimnames(df)[-1] <- list(c("col1", "col2"))
@@ -1984,8 +2249,7 @@ print(df)
 	});
 
 	describe('Col/Row Bind', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- cbind(df, name = 6:10, label = c("A", "B", "C", "D", "E"))
@@ -1996,8 +2260,7 @@ df <- cbind(df, name = 6:10, label = c("A", "B", "C", "D", "E"))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- cbind(df, 6:10, c("A", "B", "C", "D", "E"))
@@ -2008,8 +2271,7 @@ df <- cbind(df, 6:10, c("A", "B", "C", "D", "E"))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- cbind(df, name = "A")
@@ -2020,8 +2282,7 @@ df <- cbind(df, name = "A")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- cbind(df, runif(5))
@@ -2032,8 +2293,7 @@ df <- cbind(df, runif(5))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:5)
 df2 <- data.frame(name = 6:10)
@@ -2048,8 +2308,7 @@ df <- cbind(df1, df2, df3)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:5)
 df2 <- data.frame(name = 6:10)
@@ -2062,8 +2321,7 @@ df <- cbind(df1, df2, label = c("A", "B", "C", "D", "E"))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- cbind(df, label = list(name = 6:10))
@@ -2074,8 +2332,7 @@ df <- cbind(df, label = list(name = 6:10))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- cbind(df)
@@ -2086,8 +2343,7 @@ df <- cbind(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- cbind(6:10, df)
@@ -2098,20 +2354,17 @@ df <- cbind(6:10, df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- cbind(name = c("A", "B", "C"), value = "X", data.frame(id = 1:3, score = c(90, 75, 80)))',
 			{ '1@df': { colnames: [['name', 'value', 'id', 'score'], []], cols: [4, 4], rows: [3, 3] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- cbind(id = 1:3, name = 4:6)',
 			{ '1@df': undefined }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1, name = "A", score = 20)
 df <- rbind(df, c(2, "B", 30), c(4, "C", 25))
@@ -2122,8 +2375,7 @@ df <- rbind(df, c(2, "B", 30), c(4, "C", 25))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 6:8)
 df <- rbind(df, row4 = c(4, 9), row5 = c(5, 10))
@@ -2134,8 +2386,7 @@ df <- rbind(df, row4 = c(4, 9), row5 = c(5, 10))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- rbind(df, 6, 7, 8, 9, 10)
@@ -2146,8 +2397,7 @@ df <- rbind(df, 6, 7, 8, 9, 10)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- rbind(df, runif(5))
@@ -2158,8 +2408,7 @@ df <- rbind(df, runif(5))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:3, name = c("A", "B", "C"), score = c(20, 30, 25))
 df2 <- data.frame(id = 4, name = "D", score = 20)
@@ -2174,8 +2423,7 @@ df <- rbind(df1, df2, df3)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:3, name = c("A", "B", "C"), score = c(20, 30, 25))
 df2 <- data.frame(id = 4, name = "D", score = 20)
@@ -2188,8 +2436,7 @@ df <- rbind(df1, df2, label = c(5, "E", 40))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- rbind(df, list(id = 6:10))
@@ -2200,8 +2447,7 @@ df <- rbind(df, list(id = 6:10))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- rbind(df)
@@ -2212,8 +2458,7 @@ df <- rbind(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- rbind(6, df)
@@ -2224,14 +2469,12 @@ df <- rbind(6, df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- rbind(1:2, "X", data.frame(id = 1:3, score = c(90, 75, 80)), c("A", "B"))',
 			{ '1@df': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [6, 6] } }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame()
 df <- rbind(df, data.frame(id = 1:5, name = "A"))
@@ -2242,8 +2485,7 @@ df <- rbind(df, data.frame(id = 1:5, name = "A"))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = c(), name = c())
 df <- rbind(df, data.frame(score = 1:5, age = "A"))
@@ -2254,8 +2496,7 @@ df <- rbind(df, data.frame(score = 1:5, age = "A"))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame()
 df <- rbind(df, 12)
@@ -2266,242 +2507,137 @@ df <- rbind(df, 12)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- rbind(1:3, 4:6)',
 			{ '1@df': undefined }
 		);
 	});
 
 	describe('Head/Tail', () => {
-		testInferredDataFrameShape(
-			shell,
-			`
+		const headTailFns = ['head', 'tail'] as const;
+
+		/* the same frame either end, `head` and `tail` symmetrically */
+		function testHeadTail(code: (fn: typeof headTailFns[number]) => string, before: ExpectedDataFrameShape, after: Record<typeof headTailFns[number], ExpectedDataFrameShape>, options?: DataFrameTestOptions) {
+			for(const fn of headTailFns) {
+				testShape(code(fn), { '1@df': before, '2@df': after[fn] }, options);
+			}
+		}
+
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:50, name = 51:100)
-df <- head(df, n = 12)
+df <- ${fn}(df, n = 12)
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [12, 12] }
+				head: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [12, 12] },
+				tail: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [12, 12] }
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:5, name = 6:10)
-df <- head(df, n = 12)
+df <- ${fn}(df, n = 12)
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }
+				head: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] },
+				tail: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
-df <- head(df, n = 3)
+df <- ${fn}(df, n = 3)
 			`,
+			{ colnames: [['id'], ['name']], cols: [1, 2], rows: [3, 5] },
 			{
-				'1@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [3, 5] },
-				'2@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [3, 3] }
+				head: { colnames: [['id'], ['name']], cols: [1, 2], rows: [3, 3] },
+				tail: { colnames: [['id'], ['name']], cols: [1, 2], rows: [3, 3] }
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:50, name = 51:100)
-df <- head(df)
+df <- ${fn}(df)
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [6, 6] }
+				head: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [6, 6] },
+				tail: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [6, 6] }
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:50, name = 51:100)
-df <- head(df, c(2, 1))
+df <- ${fn}(df, c(2, 1))
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [2, 2] }
+				head: { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [2, 2] },
+				tail: { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [2, 2] }
 			},
 			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:50, name = 51:100)
-df <- head(n = -2, x = df)
+df <- ${fn}(n = -2, x = df)
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [48, 48] }
+				head: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [48, 48] },
+				tail: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [48, 48] }
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:50, name = 51:100)
-df <- head(df, n = -c(2, 1))
+df <- ${fn}(df, n = -c(2, 1))
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] }
+				head: { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] },
+				tail: { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] }
 			},
 			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:50, name = 51:100)
-df <- head(df, n = c(-2, 1))
+df <- ${fn}(df, n = c(-2, 1))
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] }
+				head: { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] },
+				tail: { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] }
 			},
 			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testHeadTail(
+			fn => `
 df <- data.frame(id = 1:50, name = 51:100)
-df <- head(df, sample(1:50, 1))
+df <- ${fn}(df, sample(1:50, 1))
 			`,
+			{ colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
 			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [0, 50] }
-			},
-			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:50, name = 51:100)
-df <- tail(df, n = 12)
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [12, 12] }
-			}
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:5, name = 6:10)
-df <- tail(df, n = 12)
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }
-			}
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
-df <- tail(df, n = 3)
-			`,
-			{
-				'1@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [3, 5] },
-				'2@df': { colnames: [['id'], ['name']], cols: [1, 2], rows: [3, 3] }
-			}
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:50, name = 51:100)
-df <- tail(df)
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [6, 6] }
-			}
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:50, name = 51:100)
-df <- tail(df, c(2, 1))
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [2, 2] }
-			},
-			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:50, name = 51:100)
-df <- tail(n = -2, x = df)
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [48, 48] }
-			}
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:50, name = 51:100)
-df <- tail(df, n = -c(2, 1))
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] }
-			},
-			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:50, name = 51:100)
-df <- tail(df, n = c(-2, 1))
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [48, 48] }
-			},
-			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df <- data.frame(id = 1:50, name = 51:100)
-df <- tail(df, sample(1:50, 1))
-			`,
-			{
-				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [50, 50] },
-				'2@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [0, 50] }
+				head: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [0, 50] },
+				tail: { colnames: [['id', 'name'], []], cols: [2, 2], rows: [0, 50] }
 			},
 			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 	});
 
 	describe('Subset', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, TRUE)
@@ -2512,8 +2648,7 @@ df <- subset(df, TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, FALSE)
@@ -2524,8 +2659,7 @@ df <- subset(df, FALSE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, id > 1)
@@ -2536,8 +2670,7 @@ df <- subset(df, id > 1)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, c(TRUE, FALSE))
@@ -2548,8 +2681,7 @@ df <- subset(df, c(TRUE, FALSE))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df)
@@ -2560,8 +2692,7 @@ df <- subset(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = id)
@@ -2572,8 +2703,7 @@ df <- subset(df, select = id)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = "id")
@@ -2584,8 +2714,7 @@ df <- subset(df, select = "id")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = 1)
@@ -2596,8 +2725,7 @@ df <- subset(df, select = 1)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(id, label))
@@ -2608,8 +2736,7 @@ df <- subset(df, select = c(id, label))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c("id", "name"))
@@ -2620,8 +2747,7 @@ df <- subset(df, select = c("id", "name"))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = 1:2)
@@ -2632,8 +2758,7 @@ df <- subset(df, select = 1:2)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(id, 2))
@@ -2644,8 +2769,7 @@ df <- subset(df, select = c(id, 2))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3)
 df <- subset(df, select = c(id, 1))
@@ -2656,8 +2780,7 @@ df <- subset(df, select = c(id, 1))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = id:name)
@@ -2668,8 +2791,7 @@ df <- subset(df, select = id:name)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = sample(1:3, 2))
@@ -2680,8 +2802,7 @@ df <- subset(df, select = sample(1:3, 2))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, TRUE, select = c(id, name))
@@ -2692,8 +2813,7 @@ df <- subset(df, TRUE, select = c(id, name))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, FALSE, id)
@@ -2704,8 +2824,7 @@ df <- subset(df, FALSE, id)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, id == 2, -label)
@@ -2716,8 +2835,7 @@ df <- subset(df, id == 2, -label)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, id > 1, select = c(-name, -label))
@@ -2728,8 +2846,7 @@ df <- subset(df, id > 1, select = c(-name, -label))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = -c(id, name))
@@ -2740,8 +2857,7 @@ df <- subset(df, select = -c(id, name))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = -c(1, 2))
@@ -2752,8 +2868,7 @@ df <- subset(df, select = -c(1, 2))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = -1)
@@ -2764,8 +2879,7 @@ df <- subset(df, select = -1)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(TRUE, FALSE))
@@ -2776,8 +2890,7 @@ df <- subset(df, select = c(TRUE, FALSE))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, TRUE, TRUE)
@@ -2788,8 +2901,7 @@ df <- subset(df, TRUE, TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(id, id))
@@ -2799,8 +2911,7 @@ df <- subset(df, select = c(id, id))
 				'2@df': { colnames: [[], Top], cols: [2, 2], rows: [3, 3] }
 			}
 		);
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(1, 1, 1))
@@ -2811,8 +2922,7 @@ df <- subset(df, select = c(1, 1, 1))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = id, drop = TRUE)
@@ -2823,8 +2933,7 @@ df <- subset(df, select = id, drop = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(id, name), drop = TRUE)
@@ -2884,8 +2993,7 @@ result <- subset(df, select = 1:2)
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, select = rep("id", times = 12))
@@ -2893,8 +3001,7 @@ result <- subset(df, select = rep("id", times = 12))
 				['2@result']
 			);
 
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, select = -c(3, 4, 5))
@@ -2902,8 +3009,7 @@ result <- subset(df, select = -c(3, 4, 5))
 				['2@result']
 			);
 
-			testInferredDataFrameShape(
-				shell,
+			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- subset(TRUE, FALSE, x = df)
@@ -2914,8 +3020,7 @@ result <- subset(TRUE, FALSE, x = df)
 	});
 
 	describe('Filter', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, TRUE)
@@ -2927,8 +3032,7 @@ df <- dplyr::filter(df, TRUE)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, FALSE)
@@ -2940,8 +3044,7 @@ df <- dplyr::filter(df, FALSE)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, id == 2)
@@ -2953,8 +3056,7 @@ df <- dplyr::filter(df, id == 2)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, TRUE, TRUE)
@@ -2966,8 +3068,7 @@ df <- dplyr::filter(df, TRUE, TRUE)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, TRUE, FALSE, TRUE)
@@ -2979,8 +3080,7 @@ df <- dplyr::filter(df, TRUE, FALSE, TRUE)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df)
@@ -2992,8 +3092,7 @@ df <- dplyr::filter(df)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, FALSE, .preserve = TRUE)
@@ -3015,8 +3114,7 @@ result <- dplyr::filter(df, id != 2, is.numeric(name))
 	});
 
 	describe('Select', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, name)
@@ -3028,8 +3126,7 @@ df <- dplyr::select(df, id, name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, "id", "name")
@@ -3041,8 +3138,7 @@ df <- dplyr::select(df, "id", "name")
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, 1, 3)
@@ -3054,8 +3150,7 @@ df <- dplyr::select(df, 1, 3)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c(id, name))
@@ -3067,8 +3162,7 @@ df <- dplyr::select(df, c(id, name))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c("id", "name"))
@@ -3080,8 +3174,7 @@ df <- dplyr::select(df, c("id", "name"))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, 1:2)
@@ -3093,8 +3186,7 @@ df <- dplyr::select(df, 1:2)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id:name)
@@ -3106,8 +3198,7 @@ df <- dplyr::select(df, id:name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, sample(1:3, 2))
@@ -3119,8 +3210,7 @@ df <- dplyr::select(df, sample(1:3, 2))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df)
@@ -3132,8 +3222,7 @@ df <- dplyr::select(df)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -name)
@@ -3145,8 +3234,7 @@ df <- dplyr::select(df, -name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -name, -label)
@@ -3158,8 +3246,7 @@ df <- dplyr::select(df, -name, -label)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, -name)
@@ -3171,8 +3258,7 @@ df <- dplyr::select(df, id, -name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c(-id, -name))
@@ -3184,8 +3270,7 @@ df <- dplyr::select(df, c(-id, -name))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -c(id, name))
@@ -3197,8 +3282,7 @@ df <- dplyr::select(df, -c(id, name))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -c(1, 2))
@@ -3210,8 +3294,7 @@ df <- dplyr::select(df, -c(1, 2))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, "name", -2)
@@ -3223,8 +3306,7 @@ df <- dplyr::select(df, id, "name", -2)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, nr = id)
@@ -3236,8 +3318,7 @@ df <- dplyr::select(df, nr = id)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, \`id\`, "id")
@@ -3249,8 +3330,7 @@ df <- dplyr::select(df, id, \`id\`, "id")
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, 1, 1, 1)
@@ -3262,8 +3342,7 @@ df <- dplyr::select(df, 1, 1, 1)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, !name)
@@ -3275,8 +3354,7 @@ df <- dplyr::select(df, !name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id | 2)
@@ -3288,8 +3366,7 @@ df <- dplyr::select(df, id | 2)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c(id, name) & 1:3)
@@ -3301,8 +3378,7 @@ df <- dplyr::select(df, c(id, name) & 1:3)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, contains("a"))
@@ -3340,8 +3416,7 @@ result <- dplyr::select(df, 1:2)
 	});
 
 	describe('Transform', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- transform(df, id = letters[1:5])
@@ -3352,8 +3427,7 @@ df <- transform(df, id = letters[1:5])
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- transform(df, "name" = letters[1:5])
@@ -3364,8 +3438,7 @@ df <- transform(df, "name" = letters[1:5])
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = 31:35)
 df <- transform(df, name = letters[id], level = score^2)
@@ -3376,8 +3449,7 @@ df <- transform(df, name = letters[id], level = score^2)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df)
@@ -3388,8 +3460,7 @@ df <- transform(df)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df, \`:D\` = 11:15)
@@ -3400,8 +3471,7 @@ df <- transform(df, \`:D\` = 11:15)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df, score = 31:35, \`score\` = 36:40)
@@ -3412,8 +3482,7 @@ df <- transform(df, score = 31:35, \`score\` = 36:40)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df, name = NULL)
@@ -3424,8 +3493,7 @@ df <- transform(df, name = NULL)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df, "A")
@@ -3470,8 +3538,7 @@ df <- transform(df, score = id, level = score / max(score))
 	});
 
 	describe('Mutate', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- dplyr::mutate(df, id = letters[1:5])
@@ -3483,8 +3550,7 @@ df <- dplyr::mutate(df, id = letters[1:5])
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- dplyr::mutate(df, "name" = letters[1:5])
@@ -3496,8 +3562,7 @@ df <- dplyr::mutate(df, "name" = letters[1:5])
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5)
 df <- dplyr::mutate(df, 6:10, 11:15)
@@ -3509,8 +3574,7 @@ df <- dplyr::mutate(df, 6:10, 11:15)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = 31:35)
 df <- dplyr::mutate(df, name = letters[id], level = score^2)
@@ -3522,8 +3586,7 @@ df <- dplyr::mutate(df, name = letters[id], level = score^2)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df)
@@ -3535,8 +3598,7 @@ df <- dplyr::mutate(df)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df, \`:D\` = 11:15)
@@ -3548,8 +3610,7 @@ df <- dplyr::mutate(df, \`:D\` = 11:15)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df, score = 31:35, \`score\` = 36:40)
@@ -3561,8 +3622,7 @@ df <- dplyr::mutate(df, score = 31:35, \`score\` = 36:40)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df, name = NULL)
@@ -3574,8 +3634,7 @@ df <- dplyr::mutate(df, name = NULL)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df, new = NULL)
@@ -3587,8 +3646,7 @@ df <- dplyr::mutate(df, new = NULL)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df, new = -id, new = NULL)
@@ -3600,8 +3658,7 @@ df <- dplyr::mutate(df, new = -id, new = NULL)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df, label = "A", .before = NULL)
@@ -3631,8 +3688,7 @@ df <- dplyr::mutate(df, score = id, level = score / max(score))
 	});
 
 	describe('Group By', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, id)
@@ -3644,8 +3700,7 @@ df <- dplyr::group_by(df, id)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, \`id\`)
@@ -3657,8 +3712,7 @@ df <- dplyr::group_by(df, \`id\`)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = c("A", "A", "B", "A", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, id, name)
@@ -3670,8 +3724,7 @@ df <- dplyr::group_by(df, id, name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df)
@@ -3683,8 +3736,7 @@ df <- dplyr::group_by(df)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10, score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, id + name)
@@ -3696,8 +3748,7 @@ df <- dplyr::group_by(df, id + name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, name = 6:10, score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, group = id + name)
@@ -3709,8 +3760,7 @@ df <- dplyr::group_by(df, group = id + name)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, id, .add = TRUE)
@@ -3722,8 +3772,7 @@ df <- dplyr::group_by(df, id, .add = TRUE)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- dplyr::summarize(df, mean = mean(score), sum = sum(score))
@@ -3735,8 +3784,7 @@ df <- dplyr::summarize(df, mean = mean(score), sum = sum(score))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
@@ -3749,8 +3797,7 @@ df <- group_by(df, category) |> summarize(mean = mean(score), sum = sum(score))
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
@@ -3763,8 +3810,7 @@ df <- group_by(df, id, category) |> summarize(mean = mean(score), sum = sum(scor
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- dplyr::summarize(df, 1)
@@ -3776,8 +3822,7 @@ df <- dplyr::summarize(df, 1)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- dplyr::summarize(df)
@@ -3789,8 +3834,7 @@ df <- dplyr::summarize(df)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
@@ -3803,8 +3847,7 @@ df <- group_by(df, category) |> summarize()
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- dplyr::summarize(df, mean = mean(score), sum = sum(score), .groups = "drop")
@@ -3816,8 +3859,7 @@ df <- dplyr::summarize(df, mean = mean(score), sum = sum(score), .groups = "drop
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
@@ -3830,8 +3872,7 @@ df <- filter(df, FALSE) |> group_by(category) |> summarize(score = mean(score))
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
@@ -3870,946 +3911,269 @@ df <- dplyr::summarize(df, level = score / max(score), sum = sum(level))
 	});
 
 	describe('Join', () => {
-		testInferredDataFrameShape(
-			shell,
-			`
+		const joinFns = ['inner_join', 'left_join', 'right_join', 'full_join'] as const;
+
+		/* the same setup joined every which way: `df1`/`df2` never change, only what the join keeps of `df` does */
+		function testJoin(code: (fn: typeof joinFns[number]) => string, df1: ExpectedDataFrameShape, df2: ExpectedDataFrameShape, df: Record<typeof joinFns[number], ExpectedDataFrameShape>) {
+			for(const fn of joinFns) {
+				testShape(code(fn), { '1@df1': df1, '2@df2': df2, '3@df': df[fn] }, { skipRun: skipLibraries });
+			}
+		}
+
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, by = "id")
+df <- dplyr::${fn}(df1, df2, by = "id")
 			`,
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 6] },
+				right_join: { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 6] },
+				full_join:  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df <- dplyr::inner_join(df1, df2, by = "id")
+df <- dplyr::${fn}(df1, df2, by = "id")
 			`,
+			{ colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
 			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] },
+				right_join: { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 6] },
+				full_join:  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
-df <- dplyr::inner_join(df1, df2)
+df <- dplyr::${fn}(df1, df2)
 			`,
+			{ colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
 			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] },
+				right_join: { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 6] },
+				full_join:  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, "id")
+df <- dplyr::${fn}(df1, df2, "id")
 			`,
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 6] },
+				right_join: { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 6] },
+				full_join:  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
 df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
-df <- dplyr::inner_join(df1, df2, "id")
+df <- dplyr::${fn}(df1, df2, "id")
 			`,
+			{ colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] },
 			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 10] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 10] },
+				left_join:  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 10] },
+				right_join: { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [10, 10] },
+				full_join:  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [10, 14] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, by = c("id", "name"))
+df <- dplyr::${fn}(df1, df2, by = c("id", "name"))
 			`,
+			{ colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
+			{ colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [4, 6] },
+				right_join: { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 6] },
+				full_join:  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2)
+df <- dplyr::${fn}(df1, df2)
 			`,
+			{ colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
+			{ colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [4, 6] },
+				right_join: { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 6] },
+				full_join:  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, "id")
+df <- dplyr::${fn}(df1, df2, "id")
 			`,
+			{ colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
+			{ colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 6] },
+				right_join: { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 6] },
+				full_join:  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, list(x = "id", y = "nr"))
+df <- dplyr::${fn}(df1, df2, list(x = "id", y = "nr"))
 			`,
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [0, 24] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [[], Top], cols: [2, 4], rows: [0, 24] },
+				left_join:  { colnames: [[], Top], cols: [2, 4], rows: [4, 24] },
+				right_join: { colnames: [[], Top], cols: [2, 4], rows: [6, 24] },
+				full_join:  { colnames: [[], Top], cols: [2, 4], rows: [6, 24] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, dplyr::join_by(id == nr))
+df <- dplyr::${fn}(df1, df2, dplyr::join_by(id == nr))
 			`,
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [0, 24] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [[], Top], cols: [2, 4], rows: [0, 24] },
+				left_join:  { colnames: [[], Top], cols: [2, 4], rows: [4, 24] },
+				right_join: { colnames: [[], Top], cols: [2, 4], rows: [6, 24] },
+				full_join:  { colnames: [[], Top], cols: [2, 4], rows: [6, 24] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, dplyr::join_by(score >= level))
+df <- dplyr::${fn}(df1, df2, dplyr::join_by(score >= level))
 			`,
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['id', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [0, 24] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [[], Top], cols: [3, 5], rows: [0, 24] },
+				left_join:  { colnames: [[], Top], cols: [3, 5], rows: [4, 24] },
+				right_join: { colnames: [[], Top], cols: [3, 5], rows: [6, 24] },
+				full_join:  { colnames: [[], Top], cols: [3, 5], rows: [6, 24] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, dplyr::join_by(id <= nr))
+df <- dplyr::${fn}(df1, df2, dplyr::join_by(id <= nr))
 			`,
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['nr', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [0, 24] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [[], Top], cols: [3, 5], rows: [0, 24] },
+				left_join:  { colnames: [[], Top], cols: [3, 5], rows: [4, 24] },
+				right_join: { colnames: [[], Top], cols: [3, 5], rows: [6, 24] },
+				full_join:  { colnames: [[], Top], cols: [3, 5], rows: [6, 24] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, "id", suffix = c(".df1", ".df2"))
+df <- dplyr::${fn}(df1, df2, "id", suffix = c(".df1", ".df2"))
 			`,
+			{ colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
+			{ colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] },
+				left_join:  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 6] },
+				right_join: { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 6] },
+				full_join:  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 10] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, "id", keep = TRUE)
+df <- dplyr::${fn}(df1, df2, "id", keep = TRUE)
 			`,
+			{ colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
+			{ colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  DataFrameTop
-			},
-			{ skipRun: skipLibraries }
+				inner_join: DataFrameTop,
+				left_join:  DataFrameTop,
+				right_join: DataFrameTop,
+				full_join:  DataFrameTop
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		testJoin(
+			fn => `
 df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
-df <- dplyr::inner_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
+df <- dplyr::${fn}(df1, df2, by = sample(colnames(df1)[1:3], 2))
 			`,
+			{ colnames: [['id', 'name', 'category', 'score'], []], cols: [4, 4], rows: [4, 4] },
+			{ colnames: [['id', 'name', 'category', 'amount'], []], cols: [4, 4], rows: [6, 6] },
 			{
-				'1@df1': { colnames: [['id', 'name', 'category', 'score'], []], cols: [4, 4], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category', 'amount'], []], cols: [4, 4], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [4, 8], rows: [0, 24] }
-			},
-			{ skipRun: skipLibraries }
+				inner_join: { colnames: [[], Top], cols: [4, 8], rows: [0, 24] },
+				left_join:  { colnames: [[], Top], cols: [4, 8], rows: [4, 24] },
+				right_join: { colnames: [[], Top], cols: [4, 8], rows: [6, 24] },
+				full_join:  { colnames: [[], Top], cols: [4, 8], rows: [6, 24] }
+			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
-			`
+		for(const fn of joinFns) {
+			testMappedDataFrameOperations(
+				`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, by = "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df <- dplyr::left_join(df1, df2, by = "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
-df <- dplyr::left_join(df1, df2)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
-df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
-df <- dplyr::left_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, by = c("id", "name"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, list(x = "id", y = "nr"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [4, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, dplyr::join_by(id == nr))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [4, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, dplyr::join_by(score >= level))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [4, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, dplyr::join_by(id <= nr))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [4, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, "id", suffix = c(".df1", ".df2"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, "id", keep = TRUE)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  DataFrameTop
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
-df <- dplyr::left_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'category', 'score'], []], cols: [4, 4], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category', 'amount'], []], cols: [4, 4], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [4, 8], rows: [4, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, by = "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df <- dplyr::right_join(df1, df2, by = "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
-df <- dplyr::right_join(df1, df2)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
-df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
-df <- dplyr::right_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [10, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, by = c("id", "name"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, list(x = "id", y = "nr"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, dplyr::join_by(id == nr))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, dplyr::join_by(score >= level))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, dplyr::join_by(id <= nr))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, "id", suffix = c(".df1", ".df2"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 6] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, "id", keep = TRUE)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  DataFrameTop
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
-df <- dplyr::right_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'category', 'score'], []], cols: [4, 4], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category', 'amount'], []], cols: [4, 4], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [4, 8], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, by = "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df <- dplyr::full_join(df1, df2, by = "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
-df <- dplyr::full_join(df1, df2)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
-df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
-df <- dplyr::full_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] },
-				'3@df':  { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [10, 14] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, by = c("id", "name"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, "id")
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, list(x = "id", y = "nr"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, dplyr::join_by(id == nr))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [2, 4], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, dplyr::join_by(score >= level))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, dplyr::join_by(id <= nr))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['nr', 'level', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [3, 5], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, "id", suffix = c(".df1", ".df2"))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] },
-				'3@df':  { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [6, 10] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, "id", keep = TRUE)
-			`,
-			{
-				'1@df1': { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] },
-				'3@df':  DataFrameTop
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testInferredDataFrameShape(
-			shell,
-			`
-df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
-df <- dplyr::full_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
-			`,
-			{
-				'1@df1': { colnames: [['id', 'name', 'category', 'score'], []], cols: [4, 4], rows: [4, 4] },
-				'2@df2': { colnames: [['id', 'name', 'category', 'amount'], []], cols: [4, 4], rows: [6, 6] },
-				'3@df':  { colnames: [[], Top], cols: [4, 8], rows: [6, 24] }
-			},
-			{ skipRun: skipLibraries }
-		);
-
-		testMappedDataFrameOperations(
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::inner_join(df1, df2, by = "id")
-			`,
-			{ '3@inner_join': [{ operation: 'accessCols', columns: ['id'] }] }
-		);
-
-		testMappedDataFrameOperations(
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, by = "id")
-			`,
-			{ '3@left_join': [{ operation: 'accessCols', columns: ['id'] }] }
-		);
-
-		testMappedDataFrameOperations(
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::right_join(df1, df2, by = "id")
-			`,
-			{ '3@right_join': [{ operation: 'accessCols', columns: ['id'] }] }
-		);
-
-		testMappedDataFrameOperations(
-			`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::full_join(df1, df2, by = "id")
-			`,
-			{ '3@full_join': [{ operation: 'accessCols', columns: ['id'] }] }
-		);
+df <- dplyr::${fn}(df1, df2, by = "id")
+				`,
+				{ [`3@${fn}`]: [{ operation: 'accessCols' as const, columns: ['id'] }] }
+			);
+		}
 	});
 
 	describe('Merge', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -4822,8 +4186,7 @@ df <- merge(df1, df2, by = "id")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
@@ -4836,8 +4199,7 @@ df <- merge(df1, df2, by = "id")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
@@ -4850,8 +4212,7 @@ df <- merge(df1, df2)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
@@ -4864,8 +4225,7 @@ df <- merge(df1, df2, "id")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
@@ -4878,8 +4238,7 @@ df <- merge(df1, df2, 1)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
@@ -4892,8 +4251,7 @@ df <- merge(df1, df2, by = c("id", "name"))
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
@@ -4906,8 +4264,7 @@ df <- merge(df1, df2, by = 1:2)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
@@ -4920,8 +4277,7 @@ df <- merge(df1, df2)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(name = "A", category = c("A", "B", "B", "A", "C", "B"))
@@ -4934,8 +4290,7 @@ df <- merge(df1, df2)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -4948,8 +4303,7 @@ df <- merge(df1, df2, by = c())
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 lst <- list(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
@@ -4961,8 +4315,7 @@ df <- merge(df1, lst, by = "id")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
 df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
@@ -4976,8 +4329,7 @@ df <- merge(df1, df2, "id")
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 lst <- list(id = 3:8, category = c("A", "B", "B", "A", "C", "B"))
@@ -4989,8 +4341,7 @@ df <- merge(df1, lst, by = "id", all = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
@@ -5003,8 +4354,7 @@ df <- merge(df1, df2, "id")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(nr = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
@@ -5017,8 +4367,7 @@ df <- merge(df1, df2, by.x = "id", by.y = "nr")
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
@@ -5031,8 +4380,7 @@ df <- merge(df1, df2, "id", all.x = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
@@ -5045,8 +4393,7 @@ df <- merge(df1, df2, "id", all.x = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 7:10, score = c(80, 75, 90, 70))
@@ -5059,8 +4406,7 @@ df <- merge(df1, df2, "id", all.x = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -5073,8 +4419,7 @@ df <- merge(df1, df2, "id", all.y = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 3:8, category = c("A", "B", "B", "A", "C", "B"))
@@ -5087,8 +4432,7 @@ df <- merge(df1, df2, "id", all.y = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
@@ -5101,8 +4445,7 @@ df <- merge(df1, df2, "id", all.y = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -5115,8 +4458,7 @@ df <- merge(df1, df2, "id", all = runif(1) >= 0.5)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -5129,8 +4471,7 @@ df <- merge(df1, df2, "id", all = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 3:8, category = c("A", "B", "B", "A", "C", "B"))
@@ -5143,8 +4484,7 @@ df <- merge(df1, df2, "id", all = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
@@ -5157,8 +4497,7 @@ df <- merge(df1, df2, "id", all = TRUE)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
@@ -5191,8 +4530,7 @@ df <- merge(df1, df2, by = c("id", "name"))
 	});
 
 	describe('Rearrange', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::relocate(df, category)
@@ -5204,8 +4542,7 @@ df <- dplyr::relocate(df, category)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::relocate(df, score, .before = category)
@@ -5217,8 +4554,7 @@ df <- dplyr::relocate(df, score, .before = category)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::relocate(df, label = category)
@@ -5230,8 +4566,7 @@ df <- dplyr::relocate(df, label = category)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::arrange(df, -score, id)
@@ -5243,8 +4578,7 @@ df <- dplyr::arrange(df, -score, id)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::arrange(df, desc(score))
@@ -5258,15 +4592,13 @@ df <- dplyr::arrange(df, desc(score))
 	});
 
 	describe('Other', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			'df <- dplyr::tibble(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95))',
 			{ '1@df': DataFrameTop },
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
 df <- aggregate(df, list(group = df$id), mean)
@@ -5277,8 +4609,7 @@ df <- aggregate(df, list(group = df$id), mean)
 			}
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:5, score = 31:35)
 df <- within(df, {
@@ -5295,8 +4626,7 @@ print(df)
 	});
 
 	describe('General', () => {
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 library(dplyr)
 
@@ -5318,8 +4648,7 @@ print(df3$level)
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 library(dplyr)
 
@@ -5349,8 +4678,7 @@ result <- result %>% arrange(desc(avg_score))
 			{ skipRun: skipLibraries }
 		);
 
-		testInferredDataFrameShape(
-			shell,
+		testShape(
 			`
 df <- data.frame(id = 1:3, age = c(25, 30, 40))
 df <- df |> subset(age < 30)

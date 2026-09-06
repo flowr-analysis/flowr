@@ -1,4 +1,5 @@
 import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty, LintingResultCertainty } from '../linter-format';
+import { isArray } from '../../util/collections/arrays';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -9,13 +10,13 @@ import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { CallProp } from '../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 
 const defaultConsider: readonly ConsiderSpec[] = [
 	{ pattern: '^eval$', allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true },
-	...BuiltInIndex.default().with(CallProp.Process).map(n => ({ pattern: `^${Identifier.getName(n)}$` }))
+	...BuiltInIndex.default().with(SemanticCallTag.Process).map(n => ({ pattern: `^${Identifier.quote(Identifier.getName(n))}$` }))
 ];
 
 const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
@@ -31,29 +32,25 @@ export interface PipeCommandFunctionSpec {
 	disallowedValues?: string | RegExp
 }
 
-export interface ConsiderSpec {
-	pattern:            string | RegExp
-	allowedInputTypes?: InputType[]
-	allowedValues?:     string | RegExp
-	disallowedValues?:  string | RegExp
-	resolveSourceArgs?: boolean
+const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
+	{ pattern: '^pdf$',        argIdx: 0, argName: 'file' },
+	{ pattern: '^postscript$', argIdx: 0, argName: 'file' }
+];
+
+function normalizePatternList(cfg: string | string[] | undefined, defaults: readonly string[]): RegExp[] {
+	if(cfg === undefined) {
+		return Array.from(defaults, s => new RegExp(s));
+	}
+	if(Array.isArray(cfg)) {
+		const arr = cfg.length === 0 ? Array.from(defaults) : cfg;
+		return Array.from(new Set(arr), s => new RegExp(s));
+	}
+	return [new RegExp(cfg)];
 }
 
-function normalizePatternList(cfg: string | string[] | ConsiderSpec | ConsiderSpec[] | undefined): { pattern: RegExp, allowedInputTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp, resolveSourceArgs?: boolean }[] {
-	const raw = (cfg === undefined ? defaultConsider : Array.isArray(cfg) ? (cfg.length === 0 ? defaultConsider : cfg) : [cfg])
-		.map(s => typeof s === 'string' ? { pattern: s } : s);
-	return raw.map(s => ({
-		pattern:           typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
-		allowedInputTypes: s.allowedInputTypes ?? [],
-		allowedValues:     typeof s.allowedValues === 'string' ? new RegExp(s.allowedValues) : s.allowedValues,
-		disallowedValues:  typeof s.disallowedValues === 'string' ? new RegExp(s.disallowedValues) : s.disallowedValues,
-		resolveSourceArgs: s.resolveSourceArgs
-	}));
-}
-
-function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string, allowedValues?: RegExp, disallowedValues?: RegExp }> {
+function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | readonly PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string, allowedValues?: RegExp, disallowedValues?: RegExp }> {
 	const raw = cfg === undefined ? defaultPipeCommandFunctions
-		: Array.isArray(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
+		: isArray<PipeCommandFunctionSpec>(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
 			: [cfg];
 	return raw.map(s => ({
 		pattern:          typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
@@ -146,9 +143,9 @@ export interface ProblematicInputsResult extends LintingResult {
 }
 
 export interface ProblematicInputsConfig extends MergeableRecord {
-	consider?:             string | string[] | ConsiderSpec | ConsiderSpec[]
+	consider?:             string | readonly string[] | ConsiderSpec | ConsiderSpec[]
 	inputFns?:             InputClassifierConfig
-	pipeCommandFunctions?: PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
+	pipeCommandFunctions?: PipeCommandFunctionSpec | readonly PipeCommandFunctionSpec[]
 }
 
 export const PROBLEMATIC_INPUTS = {

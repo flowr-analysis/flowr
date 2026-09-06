@@ -37,9 +37,9 @@ export const RProject = {
 	name: 'RProject',
 	/**
 	 * Visits all nodes in the project by visiting the root of each file.
-	 * @param project          - The project to visit file by file
-	 * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
-	 * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
+	 * @param project - The project to visit file by file
+	 * @param onVisit - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
+	 * @param onExit  - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
 	 */
 	visitAst<OtherInfo>(this: void, project: RProject<OtherInfo>, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>) {
 		return RNode.visitAst(project.files.map(f => f.root), onVisit, onExit);
@@ -71,6 +71,7 @@ export const RProject = {
 	},
 	/**
 	 * Type guard for RProject nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<OtherInfo = NoInfo>(this: void, node: unknown): node is RProject<OtherInfo> {
 		return typeof node === 'object' && node !== null && 'type' in node && node.type === RType.Project;

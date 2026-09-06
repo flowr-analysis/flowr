@@ -1,28 +1,51 @@
+/**
+ * `Dataflow` spreads {@link GraphHelper} in, and it is built on this file, so the diff pieces are reached
+ * through the helper itself here; going through `Dataflow` would be a cycle.
+ * @lintIgnore use-instead
+ */
 import { FunctionArgument, type OutgoingEdges, UnknownSideEffect } from './graph';
+import { GraphHelper } from './graph-helper';
 import { type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
-import { DfEdge } from './edge';
-import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { ControlFlowEdgeTypes, DfEdge } from './edge';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
 import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
-import { GraphDiff } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
-import { FunctionDefinitionVertex, FunctionCallVertex } from './vertex';
+import { DfgVertex } from './vertex';
 
 
 /**
  * This is the underlying function to calculate the difference based on a given context.
- * Use {@link Dataflow.diff} to calculate the diff of two graphs.
+ * Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs.
  */
 export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
-	GraphDiff.outgoingEdges(ctx, diffEdges);
+	GraphHelper.diff.outgoingEdges(ctx, diffEdges, ctx.config.compareControlFlow ? undefined : withoutControlFlow);
+}
+
+/**
+ * Narrow a vertex' outgoing edges to their dataflow part, dropping the control flow the
+ * {@link ControlFlowGraph} projects out of the very same graph.
+ * Comparing control flow is the job of the control flow diff, so a dataflow comparison would only be
+ * duplicating it (and would force every expected graph to spell the control flow out again).
+ */
+function withoutControlFlow(edges: OutgoingEdges): OutgoingEdges | undefined {
+	let result: OutgoingEdges | undefined = undefined;
+	for(const [target, edge] of edges) {
+		if(DfEdge.isOnlyControlFlow(edge)) {
+			continue;
+		}
+		result ??= new Map();
+		result.set(target, DfEdge.includesType(edge, ControlFlowEdgeTypes) ? DfEdge.without(edge, ControlFlowEdgeTypes) : edge);
+	}
+	return result;
 }
 
 function diffRootVertices(ctx: GraphDiffContext): void {
@@ -112,8 +135,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 
 		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
 		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			const lname = (lInfo.name as string | undefined) ?? recoverName(id, ctx.left.idMap) ?? '??';
-			const rname = (rInfo.name as string | undefined) ?? recoverName(id, ctx.right.idMap) ?? '??';
+			const lname = (lInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.left.idMap) ?? '??';
+			const rname = (rInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.right.idMap) ?? '??';
 			if(lname !== rname) {
 				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lname)} vs ${ctx.rightname}: ${String(rname)}`, {
 					tag: 'vertex',
@@ -147,8 +170,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 				position: `${ctx.position}Vertex ${id} differs in environment. `
 			});
 		}
-		if(FunctionCallVertex.is(lInfo)) {
-			if(!FunctionCallVertex.is(rInfo)) {
+		if(DfgVertex.isFunctionCall(lInfo)) {
+			if(!DfgVertex.isFunctionCall(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`);
 			} else {
 				if(lInfo.onlyBuiltin !== rInfo.onlyBuiltin) {
@@ -166,8 +189,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			}
 		}
 
-		if(FunctionDefinitionVertex.is(lInfo)) {
-			if(!FunctionDefinitionVertex.is(rInfo)) {
+		if(DfgVertex.isFunctionDefinition(lInfo)) {
+			if(!DfgVertex.isFunctionDefinition(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id });
 			} else {
 				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints, (a, b) => {
@@ -323,5 +346,5 @@ function diffEdge(edge: DfEdge, otherEdge: DfEdge, ctx: GraphDiffContext, id: No
  * Compares two sets of outgoing edges and reports differences.
  */
 export function diffEdges(ctx: GraphDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
-	GraphDiff.edges(ctx, id, lEdges, rEdges, diffEdge);
+	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffEdge);
 }

@@ -12,7 +12,7 @@ export interface SoftwareHasTestsResult extends LintingResult {
 
 export interface SoftwareHasTestsConfig extends MergeableRecord {
 	/** Additional test function patterns beyond the defaults */
-	readonly additionalTestFunctions: FunctionInfo[]
+	readonly additionalTestFunctions: readonly FunctionInfo[]
 }
 
 export interface SoftwareHasTestsMetadata extends MergeableRecord {

@@ -1,22 +1,23 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[src/documentation/wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts)' on 2026-08-16, 08:17:29 UTC (v2.13.16, R v4.6.1), so please do not edit it directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-09-03, 22:43:52 UTC (v2.15.8, R v4.5.0), please do not edit directly._
 
 
-This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L264"><code><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></code></a>).
+This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L188"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) page.
-In case you want to manually build such a graph (e.g., for testing), you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L46"><code><span title="This DataflowGraphBuilder extends DataflowGraph with builder methods to easily and compactly add vertices and edges to a dataflow graph. Its usage thus simplifies writing tests for dataflow graphs.">DataflowGraphBuilder</span></code></a>.
+In case you want to manually build such a graph (e.g., for testing), you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L45"><code><span title="This DataflowGraphBuilder extends DataflowGraph with builder methods to easily and compactly add vertices and edges to a dataflow graph. Its usage thus simplifies writing tests for dataflow graphs.">DataflowGraphBuilder</span></code></a>.
 In summary, we discuss the following topics in this wiki page:
 
 - [Reading the Visualization](#reading-the-visualization)
 - [Vertices](#vertices)
 - [Edges](#edges)
-- [Control Dependencies](#control-dependencies)
+- [Branches](#branches)
 - [Dataflow Information](#dataflow-information)
 	- [Unknown Side Effects](#unknown-side-effects)
 - [Perspectives on the Dataflow Graph](#perspectives)
     - [Call Graph Perspective](#perspectives-cg)
 - [Working with the Dataflow Graph](#dfg-working)
+	- [Matching Arguments to Parameters](#dfg-matching-arguments)
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L181"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a>) returned by _flowR_ 
+Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L224"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a>) returned by _flowR_ 
 contains things besides the graph, like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
 
@@ -27,7 +28,7 @@ Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-
 > There is also a simplified version available with <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the simplified dataflow graph (aliases: :ds*, :dfs*)">`:dataflowsimple*`</span> that does not show everything but is easier to read.
 > For small graphs, you can also use <span title="Description (Repl Command): Returns an ASCII representation of the dataflow graph (aliases: :df!)">`:dataflowascii`</span> to print the graph as ASCII art.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L707"><code><span title="Constructs a dataflow graph instance from the given JSON data and returns the result. This can be useful for data sent by the flowR server when analyzing it further.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L727"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
 >
 > Also, check out the [flowr-analysis/sample-analyzer-df-diff](https://github.com/flowr-analysis/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -50,7 +51,6 @@ With this code, the corresponding dataflow graph looks like this:
 flowchart LR
     1{{"`*#91;RNumber#93;* **3**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -63,7 +63,6 @@ flowchart LR
       *2.6* (**id: 4**)`"])
     5{{"`*#91;RNumber#93;* **1**
       *2.10* (**id: 5**)`"}}
-   %% No edges found for 5
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.6-10* (**id: 6**)
     arg: (4, 5)`"]]
@@ -77,36 +76,49 @@ flowchart LR
     arg: (3, 6)`"]]
     8(["`*#91;RSymbol#93;* **y**
       *3.1* (**id: 8**)`"])
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
     4 -->|"reads"| 0
+    4 -.->|"flow"| 5
+    linkStyle 8 stroke:gray,color:gray;
+    5 -.->|"flow"| 6
+    linkStyle 9 stroke:gray,color:gray;
     6 -->|"reads, arg"| 4
     6 -->|"reads, arg"| 5
+    6 -.->|"flow"| 3
+    linkStyle 12 stroke:gray,color:gray;
     6 -.->|"reads, calls"| built-in:_
-    linkStyle 8 stroke:gray;
+    linkStyle 13 stroke:gray;
+    3 -->|"defined-by, flow"| 7
     3 -->|"defined-by"| 6
-    3 -->|"defined-by"| 7
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 3
     7 -.->|"reads, calls"| built-in:_-
-    linkStyle 13 stroke:gray;
+    linkStyle 18 stroke:gray;
+    7 -.->|"flow"| 8
+    linkStyle 19 stroke:gray,color:gray;
     8 -->|"reads"| 3
 ```
 
 	
-(The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G&nbsp;=&nbsp;(V,&nbsp;E), 
 differentiating between 5 types of vertices&nbsp;V and
-9 types of edges&nbsp;E allowing each vertex to have a single, and each edge to have multiple distinct types.
-Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a 10th edge type, 
-although they are explicitly no data dependency and relate to the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph). 
+11 types of edges&nbsp;E allowing each vertex to have a single, and each edge to have multiple distinct types.
+Two of these edge types carry the control flow rather than the data: the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) is a view on them.
+Additionally, every vertex lists the [control dependencies](#branches) it runs under, which is the same
+information a control edge carries, collected for the whole path that leads to the vertex.
 
 
 <details><summary>Simplified Version of the graph</summary>
@@ -119,7 +131,6 @@ although they are explicitly no data dependency and relate to the [Control Flow 
 flowchart LR
     1{{"`**3** (L. 1)
 *RNumber*`"}}
-   %% No edges found for 1
     0["`**x** (L. 1)
 *RSymbol*`"]
     2[["`base#58;#58;**#60;#45;** (L. 1)
@@ -131,7 +142,6 @@ flowchart LR
 *RSymbol*`"])
     5{{"`**1** (L. 2)
 *RNumber*`"}}
-   %% No edges found for 5
     6[["`base#58;#58;**#43;** (L. 2)
 *RBinaryOp*`"]]
     built-in:_["`Built-In:
@@ -143,8 +153,8 @@ flowchart LR
 *RBinaryOp*`"]]
     8(["`**y** (L. 3)
 *RSymbol*`"])
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
@@ -154,8 +164,8 @@ flowchart LR
     6 -->|"reads, arg"| 5
     6 -.->|"reads, calls"| built-in:_
     linkStyle 8 stroke:gray;
+    3 -->|"defined-by, flow"| 7
     3 -->|"defined-by"| 6
-    3 -->|"defined-by"| 7
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 3
     7 -.->|"reads, calls"| built-in:_-
@@ -164,7 +174,7 @@ flowchart LR
 ```
 
 	
-(The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -196,12 +206,12 @@ class DataflowGraphVertexInfo{
     <<type>>
 }
 style DataflowGraphVertexInfo opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L185" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph. See; #60;code#62;DataflowGraphVertices#60;/code#62;; for an id#45;based mapping."
+click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L192" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph. See; #60;code#62;DataflowGraphVertices#60;/code#62;; for an id#45;based mapping."
 class DataflowGraphVertexArgument{
     <<type>>
 }
 style DataflowGraphVertexArgument opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L177" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
+click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L184" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
 class DataflowGraphVertexUse{
     <<interface>>
     tag#58; VertexType.Use
@@ -224,7 +234,7 @@ class DataflowGraphVertexVariableDefinition{
     par#58; true
     source#58; #123;#125;
 }
-click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L130" "Arguments required to construct a vertex which represents the definition of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
+click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L137" "Arguments required to construct a vertex which represents the definition of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionDefinition{
     <<interface>>
     tag#58; VertexType.FunctionDefinition
@@ -235,7 +245,7 @@ class DataflowGraphVertexFunctionDefinition{
     mode#58; #123;#125;
     returnEnvState#58; REnvironmentInformation
 }
-click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L144" "Arguments required to construct a vertex which represents the definition of a function in the; #60;code#62;dataflow graph#60;/code#62;; ."
+click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L151" "Arguments required to construct a vertex which represents the definition of a function in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionCall{
     <<interface>>
     tag#58; VertexType.FunctionCall
@@ -245,6 +255,7 @@ class DataflowGraphVertexFunctionCall{
     environment#58; REnvironmentInformation
     origin#58; #123;#125; | #34;unnamed#34;
     newEnvParent#58; REnvironmentInformation
+    classDecl#58; ClassDeclaration
 }
 click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L94" "Arguments required to construct a vertex which represents the call to a function in the; #60;code#62;dataflow graph#60;/code#62;; . This describes all kinds of function calls, including calls to built#45;ins and control#45;flow structures such as #96;if#96; or #96;for#96; (they are treated as function calls in R)."
 class DataflowGraphVertexValue{
@@ -271,7 +282,7 @@ DataflowGraphVertexBase <|-- DataflowGraphVertexValue
 </details>
 
 The following edges types exist, internally we use bitmasks to represent multiple types in a compact form, so you 
-should use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L76"><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></a> object and its methods to work with them:
+should use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L109"><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></a> object and its methods to work with them:
 
 1. [`Reads` (1)](#1-reads-edge)
 1. [`DefinedBy` (2)](#2-definedby-edge)
@@ -282,6 +293,8 @@ should use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/da
 1. [`Argument` (64)](#7-argument-edge)
 1. [`SideEffectOnCall` (128)](#8-sideeffectoncall-edge)
 1. [`NonStandardEvaluation` (256)](#9-nonstandardevaluation-edge)
+1. [`FlowEdge` (4096)](#10-flowedge-edge)
+1. [`ControlEdge` (8192)](#11-controledge-edge)
 
 
 <details><summary>Class Diagram</summary>
@@ -308,8 +321,10 @@ class EdgeType{
     Argument#58; EdgeType.Argument
     SideEffectOnCall#58; EdgeType.SideEffectOnCall
     NonStandardEvaluation#58; EdgeType.NonStandardEvaluation
+    FlowEdge#58; EdgeType.FlowEdge
+    ControlEdge#58; EdgeType.ControlEdge
 }
-click EdgeType href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L15" "Represents the relationship between the source and the target vertex in the dataflow graph. The actual value is represented as a bitmask, so please refer to; #60;code#62;DfEdge#60;/code#62;; for helpful functions."
+click EdgeType href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L27" "Represents the relationship between the source and the target vertex in the dataflow graph. The actual value is represented as a bitmask, so please refer to; #60;code#62;DfEdge#60;/code#62;; for helpful functions."
 ```
 
 
@@ -323,16 +338,16 @@ The following sections present details on the different types of vertices and ed
 > [!NOTE]
 > Every dataflow vertex holds an `id` which links it to the respective node in the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST).
 > So if you want more information about the respective vertex, you can usually access more information
-> using the <code><a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L264"><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></a>::idMap</code> linked to the dataflow graph:
+> using the <code><a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L188"><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></a>::idMap</code> linked to the dataflow graph:
 > 
 > ```ts
 > const node = graph.idMap.get(id);
 > ```
 > 
-> In case you just need the name (`lexeme`) of the respective vertex, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L117"><code><span title="Recovers the lexeme of a node from its id in the id map .">recoverName</span></code></a> can help you out:
+> In case you just need the name (`lexeme`) of the respective vertex, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L466"><code><span title="A helper function to retrieve the lexeme of a given node, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a> can help you out:
 > 
 > ```ts
-> const name = recoverName(id, graph.idMap);
+> const name = RNode.lexeme(graph.idMap?.get(id));
 > ```
 > 
 >
@@ -360,7 +375,7 @@ flowchart LR
 ```
 
 	
-(The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -389,19 +404,18 @@ flowchart TD
 Within the shape, in square brackets, you can find the syntactic type of the vertex
 which is linked to the node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST).
 For more information on valid types and what to do with them, please refer to the [normalized AST wiki page](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
-and the corresponding helper objects (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L19"><code><span title="Helper for working with RNumber AST nodes.">RNumber</span></code></a>).
+and the corresponding helper objects (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L20"><code><span title="Helper for working with RNumber AST nodes.">RNumber</span></code></a>).
 
 <h3 id="vtx-lexeme">Lexeme</h3>
 
 Also in the first line, next to the [syntactic type](#vtx-synt-type), you can find the lexeme of the vertex (if it has one, e.g., for a variable definition or use).
 This usually represents the textual source string of the respective vertex, and is also linked to the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST).
 For a clearer hierarchy, the lexeme is rendered in **bold** while the [syntactic type](#vtx-synt-type) is de-emphasized in _italics_ (mermaid markdown labels do not support a per-token font color, so a true gray tone would require styling the whole node). Only the token the source actually wrote is bold: when a call is shown with a package-qualified name that flowR *added* (e.g. the code wrote `acf` but it is displayed as `stats::acf`), the added `stats::` prefix stays non-bold, whereas a namespace written verbatim in the source is part of the lexeme and is bold as a whole.
-You can access the lexeme too with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L453"><code><span title="A helper function to retrieve the lexeme of a given node, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a>.
+You can access the lexeme too with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L466"><code><span title="A helper function to retrieve the lexeme of a given node, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a>.
 
 <h3 id="vtx-id">Vertex Id</h3>
 
-In the second line, you will usually find the id (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L28"><code>NodeId</code></a>) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form `*location* (**id: <id>**)` with the id in **bold** &mdash;
-alongside its [control dependencies](#control-dependencies) if it has any. This id links the vertex to the respective node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (and all other perspectives created by flowR).
+In the second line, you will usually find the id (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L31"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a>) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form `*location* (**id: <id>**)` with the id in **bold**. This id links the vertex to the respective node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (and all other perspectives created by flowR).
 To give you an example, have a look at the following graph:
 
 
@@ -412,37 +426,41 @@ To give you an example, have a look at the following graph:
 flowchart LR
     0(["`*#91;RSymbol#93;* **u**
       *1.4* (**id: 0**)`"])
-   %% No edges found for 0
     1(["`*#91;RSymbol#93;* **a**
       *1.7* (**id: 1**, 3+)`"])
     style 1 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
-   %% No edges found for 1
     3[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-7* (**id: 3**)
     arg: (0, 1, #91;empty#93;)`"]]
     built-in:if["`Built-In:
 if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"branch (when: true)"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    0 -.->|"branch (when: false)"| 3
+    linkStyle 1 stroke:gray,color:gray;
+    1 -.->|"flow"| 3
+    linkStyle 2 stroke:gray,color:gray;
     3 -->|"returns, arg"| 1
     3 -->|"reads, arg"| 0
     3 -.->|"reads, calls"| built-in:if
-    linkStyle 2 stroke:gray;
+    linkStyle 5 stroke:gray;
 ```
 
 	
-(The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
-The `3+` tells you that `a` has a [control dependency](#control-dependencies) on the vertex with id `3`, the `if`,
+The `3+` tells you that `a` has a [control dependency](#branches) on the vertex with id `3`, the `if`,
 which only triggers when the condition is `true`; a `-` suffix marks the `false` case.
 
 Other vertices are named by their id too: `v: <id>` is the value of a definition, `links: <id>` the AST vertices that
 contributed to the vertex. Mermaid rejects some characters in an id, so a space or a bracket shows as `_`
-(see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/mermaid.ts#L66"><code><span title="Escapes a string or number to be used as a mermaid node id.">Mermaid::<b>escapeId</b></span></code></a>); a path keeps its `/` and `.`.
+(see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/mermaid.ts#L68"><code><span title="Escapes a string or number to be used as a mermaid node id.">Mermaid::<b>escapeId</b></span></code></a>); a path keeps its `/` and `.`.
 
 <h3 id="vtx-location">Location</h3>
 
-The second line also indicates the compressed <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L67"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element.">SourceRange</span></code></a> of the vertex (directly before the [id](#vtx-id)) in the format `startLine.startCharacter - endLine.endCharacter`. If the range reads `1.7`,
+The second line also indicates the compressed <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L31"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> of the vertex (directly before the [id](#vtx-id)) in the format `startLine.startCharacter - endLine.endCharacter`. If the range reads `1.7`,
 this is short for `1.7-1.7`, likewise, `1.7-9` is short for `1.7-1.9`. So, `1.7-9` describes something starting
 in the first line at the seventh character and ending in the first line at the ninth character.
 
@@ -485,7 +503,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -518,6 +536,7 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
     * Marker vertex for a value in the dataflow of the program.
     * For user-code constants (numbers, strings, logicals) the value is recovered by looking up the
     * {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}:
+    * @see {@link ValueVertex.is} - to check if a vertex is a value vertex
     * @example
     * ```ts
     * const node = graph.idMap.get(value.id)
@@ -525,7 +544,6 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
     *
     * For built-in constants whose id is not in the {@link AstIdMap} (e.g. `T` resolving to `built-in:T`),
     * the abstract {@link Value} is stored directly in the {@link DataflowGraphVertexValue#value|value} field.
-    * @see {@link ValueVertex.is} - to check if a vertex is a value vertex
     */
    export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
        readonly tag:          VertexType.Value
@@ -611,20 +629,22 @@ In the following graph, the original type printed by mermaid is still `RSymbol` 
 flowchart LR
     0(["`*#91;RSymbol#93;* **df**
       *1.1-2* (**id: 0**, )`"])
-   %% No edges found for 0
     1{{"`*#91;RSymbol#93;* **column**
       *1.4-9* (**id: 1**)`"}}
-   %% No edges found for 1
     3[["`*#91;RAccess#93;* base#58;#58;**$**
       *1.1-9* (**id: 3**)
     arg: (0, 1)`"]]
     built-in:_["`Built-In:
 $`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -.->|"flow"| 3
+    linkStyle 1 stroke:gray,color:gray;
     3 -->|"reads, returns, arg"| 0
     3 -->|"reads, arg"| 1
     3 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
+    linkStyle 4 stroke:gray;
 ```
 
 	
@@ -632,7 +652,7 @@ $`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -675,7 +695,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -775,7 +795,7 @@ you can see from the implementation.
 > 
 > 
 > ```ts
-> const name = recoverName(id, graph.idMap);
+> const name = RNode.lexeme(graph.idMap?.get(id));
 > ```
 > 
 > 				
@@ -797,16 +817,17 @@ In the following graph, the original type printed by mermaid is still `RString` 
 flowchart LR
     1(["`*#91;RString#93;* **#34;x#34;**
       *1.5-7* (**id: 1**)`"])
-   %% No edges found for 1
     3[["`*#91;RFunctionCall#93;* base#58;#58;**get**
       *1.1-8* (**id: 3**)
     arg: (1)`"]]
     built-in:get["`Built-In:
 get`"]
     style built-in:get stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
     3 -->|"reads, returns, arg"| 1
     3 -.->|"reads, calls"| built-in:get
-    linkStyle 1 stroke:gray;
+    linkStyle 2 stroke:gray;
 ```
 
 	
@@ -814,7 +835,7 @@ get`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -845,7 +866,6 @@ In the following graph, the `x` is read from the definition `x <- 1`.
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -862,16 +882,22 @@ flowchart LR
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
     4 -->|"reads"| 0
+    4 -.->|"flow"| 6
+    linkStyle 8 stroke:gray,color:gray;
     6 -->|"reads, returns, arg"| 4
     6 -.->|"reads, calls"| built-in:print
-    linkStyle 7 stroke:gray;
+    linkStyle 10 stroke:gray;
 ```
 
 	
@@ -879,7 +905,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+The analysis required _11.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 
@@ -909,7 +935,6 @@ In general, there may be many such edges, identifying every possible definition 
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -920,10 +945,8 @@ flowchart LR
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **u**
       *2.4* (**id: 3**)`"])
-   %% No edges found for 3
     5{{"`*#91;RNumber#93;* **2**
       *2.12* (**id: 5**)`"}}
-   %% No edges found for 5
     4["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**, 8+, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -943,33 +966,45 @@ if`"]
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
-    4 -->|"defined-by"| 5
-    4 -->|"defined-by"| 6
-    4 -->|"CD-True"| 8
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 3
+    linkStyle 6 stroke:gray,color:gray;
+    3 -.->|"branch (when: true)"| 5
     linkStyle 7 stroke:gray,color:gray;
+    3 -.->|"branch (when: false)"| 8
+    linkStyle 8 stroke:gray,color:gray;
+    5 -.->|"flow"| 4
+    linkStyle 9 stroke:gray,color:gray;
+    4 -->|"defined-by, flow"| 6
+    4 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 4
     6 -.->|"reads, calls"| built-in:_-
-    linkStyle 10 stroke:gray;
-    6 -->|"CD-True"| 8
-    linkStyle 11 stroke:gray,color:gray;
+    linkStyle 14 stroke:gray;
+    6 -.->|"flow"| 8
+    linkStyle 15 stroke:gray,color:gray;
     8 -->|"returns, arg"| 6
     8 -->|"reads, arg"| 3
     8 -.->|"reads, calls"| built-in:if
-    linkStyle 14 stroke:gray;
+    linkStyle 18 stroke:gray;
+    8 -.->|"flow"| 10
+    linkStyle 19 stroke:gray,color:gray;
     10 -->|"reads"| 4
-    linkStyle 15 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 20 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     10 -->|"reads"| 0
-    linkStyle 16 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 21 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    10 -.->|"flow"| 12
+    linkStyle 22 stroke:gray,color:gray;
     12 -->|"reads, returns, arg"| 10
     12 -.->|"reads, calls"| built-in:print
-    linkStyle 18 stroke:gray;
+    linkStyle 24 stroke:gray;
 ```
 
 	
@@ -977,7 +1012,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
+The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
 We encountered unknown side effects (with ids: 12 (linked)) during the analysis.
 
 
@@ -1005,7 +1040,6 @@ print(x)
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1018,10 +1052,8 @@ flowchart LR
       *2.5* (**id: 3**, v: 4)`"]
     4(["`*#91;RSymbol#93;* **v**
       *2.10* (**id: 4**)`"])
-   %% No edges found for 4
     6{{"`*#91;RNumber#93;* **2**
       *2.18* (**id: 6**)`"}}
-   %% No edges found for 6
     5["`*#91;RSymbol#93;* **x**
       *2.13* (**id: 5**, 9+, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1041,35 +1073,49 @@ for`"]
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
     3 -->|"defined-by"| 4
-    5 -->|"defined-by"| 6
-    5 -->|"defined-by"| 7
-    5 -->|"CD-True"| 9
+    3 -.->|"branch (when: true)"| 6
     linkStyle 8 stroke:gray,color:gray;
+    3 -.->|"branch (when: false)"| 9
+    linkStyle 9 stroke:gray,color:gray;
+    4 -.->|"flow"| 3
+    linkStyle 10 stroke:gray,color:gray;
+    6 -.->|"flow"| 5
+    linkStyle 11 stroke:gray,color:gray;
+    5 -->|"defined-by, flow"| 7
+    5 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 5
     7 -.->|"reads, calls"| built-in:_-
-    linkStyle 11 stroke:gray;
-    7 -->|"CD-True"| 9
-    linkStyle 12 stroke:gray,color:gray;
+    linkStyle 16 stroke:gray;
+    7 -.->|"flow"| 3
+    linkStyle 17 stroke:gray,color:gray;
     9 -->|"arg"| 3
     9 -->|"reads, arg"| 4
     9 -->|"arg, non-standard-evaluation"| 7
     9 -.->|"reads, calls"| built-in:for
-    linkStyle 16 stroke:gray;
+    linkStyle 21 stroke:gray;
+    9 -.->|"flow"| 11
+    linkStyle 22 stroke:gray,color:gray;
     11 -->|"reads"| 0
-    linkStyle 17 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 23 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     11 -->|"reads"| 5
-    linkStyle 18 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 24 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    11 -.->|"flow"| 13
+    linkStyle 25 stroke:gray,color:gray;
     13 -->|"reads, returns, arg"| 11
     13 -.->|"reads, calls"| built-in:print
-    linkStyle 20 stroke:gray;
+    linkStyle 27 stroke:gray;
 ```
 
 	
@@ -1077,7 +1123,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered unknown side effects (with ids: 13 (linked)) during the analysis.
 
 
@@ -1113,7 +1159,6 @@ flowchart LR
 subgraph "flow-5" [function 5]
     2{{"`*#91;RNumber#93;* **2**
       *1.23* (**id: 2**)`"}}
-   %% No edges found for 2
     1["`*#91;RSymbol#93;* **x**
       *1.17* (**id: 1**, v: 2)`"]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
@@ -1123,7 +1168,6 @@ subgraph "flow-5" [function 5]
 #60;#60;#45;`"]
     style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 5
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1134,7 +1178,6 @@ end
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     8{{"`*#91;RNumber#93;* **2**
       *2.6* (**id: 8**)`"}}
-   %% No edges found for 8
     7["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 7**, v: 8)`"]
     9[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1142,7 +1185,6 @@ end
     arg: (7, 8)`"]]
     10(["`*#91;RSymbol#93;* **u**
       *3.4* (**id: 10**)`"])
-   %% No edges found for 10
     %% Environment of 12 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -1164,43 +1206,61 @@ if`"]
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    2 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -->|"defined-by, flow"| 3
     1 -->|"defined-by"| 2
-    1 -->|"defined-by"| 3
     1 -->|"side-effect-on-call"| 12
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
     3 -.->|"reads, calls"| built-in:__-
-    linkStyle 5 stroke:gray;
+    linkStyle 6 stroke:gray;
 5 -.-|function| flow-5
 
+    5 -.->|"flow"| 0
+    linkStyle 8 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 6
     0 -->|"defined-by"| 5
-    0 -->|"defined-by"| 6
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 0
     6 -.->|"reads, calls"| built-in:_-
-    linkStyle 11 stroke:gray;
+    linkStyle 13 stroke:gray;
+    6 -.->|"flow"| 8
+    linkStyle 14 stroke:gray,color:gray;
+    8 -.->|"flow"| 7
+    linkStyle 15 stroke:gray,color:gray;
+    7 -->|"defined-by, flow"| 9
     7 -->|"defined-by"| 8
-    7 -->|"defined-by"| 9
     9 -->|"reads, arg"| 8
     9 -->|"returns, arg"| 7
     9 -.->|"reads, calls"| built-in:_-
-    linkStyle 16 stroke:gray;
+    linkStyle 20 stroke:gray;
+    9 -.->|"flow"| 10
+    linkStyle 21 stroke:gray,color:gray;
+    10 -.->|"branch (when: true)"| 12
+    linkStyle 22 stroke:gray,color:gray;
+    10 -.->|"branch (when: false)"| 14
+    linkStyle 23 stroke:gray,color:gray;
     12 -->|"reads"| 0
+    12 -.->|"flow"| 14
+    linkStyle 25 stroke:gray,color:gray;
     12 -->|"returns"| 3
     12 -->|"calls"| 5
-    12 -->|"CD-True"| 14
-    linkStyle 20 stroke:gray,color:gray;
     14 -->|"returns, arg"| 12
     14 -->|"reads, arg"| 10
     14 -.->|"reads, calls"| built-in:if
-    linkStyle 23 stroke:gray;
+    linkStyle 30 stroke:gray;
+    14 -.->|"flow"| 16
+    linkStyle 31 stroke:gray,color:gray;
     16 -->|"reads"| 7
-    linkStyle 24 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 32 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     16 -->|"reads"| 1
-    linkStyle 25 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 33 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    16 -.->|"flow"| 18
+    linkStyle 34 stroke:gray,color:gray;
     18 -->|"reads, returns, arg"| 16
     18 -.->|"reads, calls"| built-in:print
-    linkStyle 27 stroke:gray;
+    linkStyle 36 stroke:gray;
 ```
 
 	
@@ -1208,7 +1268,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered unknown side effects (with ids: 18 (linked)) during the analysis.
 
 
@@ -1232,7 +1292,7 @@ print(x)
 > 
 > 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 > 	as there are some edge-cases that require special attention.
-> 	In general, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (which is also available as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L69"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function explained below in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) will help you to get the information you need.
+> 	In general, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (which is also available as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L52"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function explained below in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) will help you to get the information you need.
 > 	
 
 
@@ -1264,7 +1324,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -1283,7 +1343,8 @@ Describes any kind of function call, including unnamed calls and those that happ
 In general the vertex provides you with information about
 the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
 
-Whenever flowR can determine which package a call resolves to &mdash; via a loaded `library()`/`::`, or via the always-available base-R packages taken from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. `acf` is shown as `stats::acf`). To obtain this qualified identifier programmatically, prefer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L88"><code><span title="The qualified identifier of the call with the given id, or undefined if it does not resolve to a package export and is not itself already namespaced (with purrr loaded, a map() call yields Identifier.make('map', 'purrr'); an explicit pkg::fn() call yields pkg::fn unchanged). This is the compact form of Identifier.toQualified , reconstructing both the origins and the call's name from the graph.">Dataflow::<b>qualify</b></span></code></a> which, given only a call's id and its graph, reconstructs the `pkg::fn` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of `Identifier.toQualified` (see the `origin` property below and the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) for where the base-R knowledge comes from).
+Whenever flowR can determine which package a call resolves to &mdash; via a loaded `library()`/`::`, or via the always-available base-R packages taken from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. `acf` is shown as `stats::acf`). To obtain this qualified identifier programmatically, prefer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L66"><code><span title="The qualified identifier of the call with the given id, or undefined if it does not resolve to a package export and is not itself already namespaced (with purrr loaded, a map() call yields Identifier.make('map', 'purrr'); an explicit pkg::fn() call yields pkg::fn unchanged). This is the compact form of Identifier.toQualified , reconstructing both the origins and the call's name from the graph.">Dataflow::<b>qualify</b></span></code></a> which, given only a call's id and its graph, reconstructs the `pkg::fn` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of `Identifier.toQualified` (see the `origin` property below and the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) for where the base-R knowledge comes from).
+The graph caches what it resolved, with and without the base-R step, and drops the cache whenever it changes, so asking twice costs a map lookup. If you want the qualified name of every call, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L75"><code><span title="The qualified name of every call of the graph, undefined for the calls that do not qualify. Prefer this over asking call by call: it resolves each call once for both qualifyBaseR variants.">Dataflow::<b>qualifyAll</b></span></code></a>: it walks the call vertices once and pays the (expensive) origin resolution once per call instead of once per ask.
 
 However, the implementation reveals that it may hold an additional `onlyBuiltin` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being `false` even though all calls resolve to builtins).
@@ -1331,6 +1392,13 @@ and it should not be relied on as it may under-approximate the actual calling ta
         * argument can be statically resolved (tracked env variable or `emptyenv()`-family call).
         */
        newEnvParent?: REnvironmentInformation
+       /**
+        * For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`,
+        * `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and
+        * whether it can be instantiated. Filled from the {@link ClassDeclarationConfig} the built-in declares,
+        * so no argument's meaning is guessed. See {@link declaredClasses} to collect these across a graph.
+        */
+       classDecl?:    ClassDeclaration
    }
    ```
    
@@ -1387,21 +1455,18 @@ and it should not be relied on as it may under-approximate the actual calling ta
     </details>
 
 The related function argument references are defined like this:
- * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L64)   
+ * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L41)   
    Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
    See the
    <code>FunctionArgument</code>
    helper functions to check for the specific types.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L64">src/dataflow/graph/graph.ts#L64</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L41">src/dataflow/graph/graph.ts#L41</a></summary>
    
    
    ```ts
    /**
     * Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
     * See the {@link FunctionArgument} helper functions to check for the specific types.
-    * @see {@link FunctionArgument.isNamed|`FunctionArgument.isNamed`} - to check for named arguments
-    * @see {@link FunctionArgument.isPositional|`FunctionArgument.isPositional`} - to check for positional arguments
-    * @see {@link FunctionArgument.isEmpty|`FunctionArgument.isEmpty`} - to check for empty arguments
     */
    export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
    ```
@@ -1411,25 +1476,15 @@ The related function argument references are defined like this:
    
     <details><summary>View more (NamedFunctionArgument, PositionalFunctionArgument)</summary>
 
-   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L40)**   
-     A reference with a name, e.g. `a` and `b` in the following function call:
-     
-     ```r
-     foo(a = 3, b = 2)
-     ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L40">src/dataflow/graph/graph.ts#L40</a></summary>
+   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L27)**   
+     A reference with a name, e.g. `a` and `b` in `foo(a = 3, b = 2)`, see
+     <code>PositionalFunctionArgument</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L27">src/dataflow/graph/graph.ts#L27</a></summary>
      
      
      ```ts
-     /**
-      * A reference with a name, e.g. `a` and `b` in the following function call:
-      *
-      * ```r
-      * foo(a = 3, b = 2)
-      * ```
-      * @see #isNamedArgument
-      * @see PositionalFunctionArgument
-      */
+     /** A reference with a name, e.g. `a` and `b` in `foo(a = 3, b = 2)`, see {@link PositionalFunctionArgument}. */
      export interface NamedFunctionArgument extends IdentifierReference {
          readonly name:    string
          readonly valueId: NodeId | undefined
@@ -1441,7 +1496,7 @@ The related function argument references are defined like this:
      
       <details><summary>View more (IdentifierReference)</summary>
 
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L418)**   
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L653)**   
        An identifier reference points to a variable like `a` in `b <- a`.
        Without any surrounding code, `a` will produce the identifier reference `a`.
        Similarly, `b` will create a reference (although it will be an
@@ -1460,7 +1515,7 @@ The related function argument references are defined like this:
        or
        <code>unknown (`unknownReferences`)</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L418">src/dataflow/environments/identifier.ts#L418</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L653">src/dataflow/environments/identifier.ts#L653</a></summary>
        
        
        ```ts
@@ -1500,24 +1555,15 @@ The related function argument references are defined like this:
        
 
       </details>
-   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L53)**   
-     A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
-     
-     ```r
-     foo(3, 2)
-     ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L53">src/dataflow/graph/graph.ts#L53</a></summary>
+   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L33)**   
+     A reference without a name, e.g. the references to `3` and `2` in `foo(3, 2)`, see
+     <code>NamedFunctionArgument</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L33">src/dataflow/graph/graph.ts#L33</a></summary>
      
      
      ```ts
-     /**
-      * A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
-      *
-      * ```r
-      * foo(3, 2)
-      * ```
-      * @see NamedFunctionArgument
-      */
+     /** A reference without a name, e.g. the references to `3` and `2` in `foo(3, 2)`, see {@link NamedFunctionArgument}. */
      export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
          readonly name?: undefined
      }
@@ -1530,7 +1576,7 @@ The related function argument references are defined like this:
     </details>
 
 There is another element of potential interest to you, the `origin` property which records how flowR created the respective function call.
-These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L299"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
+These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L331"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
 The entry `function` signals that flowR used a processor for a user-defined function defined within the source code, `unnamed` signals that the function as an anonymous function definition.
 However, in general, flowR may use any fitting handler as an origin (see the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enum for a *complete* list). For example, within a access definition, flowR will correspondingly redefine the meaning of `:=` to that of the `table:assign`. 
 
@@ -1548,19 +1594,24 @@ To get a better understanding, let's look at a simple function call without any 
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
       *1.5* (**id: 1**)`"])
-   %% No edges found for 1
     3{{"`*#91;RNumber#93;* **3**
       *1.7* (**id: 3**)`"}}
-   %% No edges found for 3
     6{{"`*#91;RNumber#93;* **3**
       *1.11* (**id: 6**)`"}}
-   %% No edges found for 6
     7(["`*#91;RArgument#93;* **y**
       *1.9* (**id: 7**)`"])
     8[["`*#91;RFunctionCall#93;* **foo**
       *1.1-13* (**id: 8**)
     arg: (1, 3, y (7), #91;empty#93;)`"]]
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
+    3 -.->|"flow"| 6
+    linkStyle 1 stroke:gray,color:gray;
+    6 -.->|"flow"| 7
+    linkStyle 2 stroke:gray,color:gray;
     7 -->|"reads"| 6
+    7 -.->|"flow"| 8
+    linkStyle 4 stroke:gray,color:gray;
     8 -->|"reads, arg"| 1
     8 -->|"arg"| 3
     8 -->|"arg"| 7
@@ -1571,7 +1622,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
+The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -1624,11 +1675,12 @@ as the `type` of these references is a bit-mask, encoding one of the following r
 | 128 | BuiltInFunction |
 | 256 | S3MethodPrefix |
 | 512 | S7MethodPrefix |
+| 1024 | NonFunction |
 
 In other words, we classify the references as Argument, Argument, Argument, and the (special) empty argument type (`<>`).
 For more information on the types of references, please consult the implementation.
 
- * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L364)**   
+ * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L594)**   
    Each reference has exactly one reference type, stored as the respective number.
    However, when checking, we may want to allow for one of several types,
    allowing the combination of the respective bitmasks.
@@ -1638,7 +1690,7 @@ For more information on the types of references, please consult the implementati
    .
    In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
    while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L364">src/dataflow/environments/identifier.ts#L364</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L594">src/dataflow/environments/identifier.ts#L594</a></summary>
    
    
    ```ts
@@ -1674,7 +1726,12 @@ For more information on the types of references, please consult the implementati
        /** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
        S3MethodPrefix = 1 << 8,
        /** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-       S7MethodPrefix = 1 << 9
+       S7MethodPrefix = 1 << 9,
+       /**
+        * Only ever a lookup target, never the type of a definition: everything a value position may see.
+        * `id` in `id > 2` names data, so a function `id` in scope is not what the comparison reads.
+        */
+       NonFunction = 1 << 10
    }
    ```
    
@@ -1708,7 +1765,6 @@ For more information on the types of references, please consult the implementati
 > flowchart LR
 >     1{{"`*#91;RNumber#93;* **2**
 >       *1.6* (**id: 1**)`"}}
->    %% No edges found for 1
 >     0["`*#91;RSymbol#93;* **x**
 >       *1.1* (**id: 0**, v: 1)`"]
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1717,12 +1773,14 @@ For more information on the types of references, please consult the implementati
 >     built-in:_-["`Built-In:
 > #60;#45;`"]
 >     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     1 -.->|"flow"| 0
+>     linkStyle 0 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 2
 >     0 -->|"defined-by"| 1
->     0 -->|"defined-by"| 2
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
 >     2 -.->|"reads, calls"| built-in:_-
->     linkStyle 4 stroke:gray;
+>     linkStyle 5 stroke:gray;
 > ```
 > 
 > 	
@@ -1730,7 +1788,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -1748,7 +1806,7 @@ For more information on the types of references, please consult the implementati
 > global beyond the scope of the given script. _flowR_ generally (theoretically at least) does not know if the call really refers to a built-in variable or function,
 > as any code that is not part of the analysis could cause the semantics to change. 
 > However, it is (in most cases) safe to assume we call a builtin if there is a builtin function with the given name and if there is no [`calls`](#calls) edge attached to a call.
-> If you want to check the resolve targets, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L47"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>.
+> If you want to check the resolve targets, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L75"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>.
 > 
 > 
 > </details>
@@ -1776,7 +1834,6 @@ For more information on the types of references, please consult the implementati
 >    %% No edges found for 1
 >     style 1 stroke:purple,stroke-width:4px; 
 > end
->    %% No edges found for 3
 >     0["`*#91;RSymbol#93;* **foo**
 >       *1.1-3* (**id: 0**, v: 3)`"]
 >     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1793,18 +1850,22 @@ For more information on the types of references, please consult the implementati
 >       *2.1-5* (**id: 6**)`"]]
 > 3 -.-|function| flow-3
 > 
+>     3 -.->|"flow"| 0
+>     linkStyle 1 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 4
 >     0 -->|"defined-by"| 3
->     0 -->|"defined-by"| 4
 >     4 -->|"reads, arg"| 3
 >     4 -->|"returns, arg"| 0
 >     4 -.->|"reads, calls"| built-in:_-
->     linkStyle 5 stroke:gray;
+>     linkStyle 6 stroke:gray;
+>     4 -.->|"flow"| 6
+>     linkStyle 7 stroke:gray,color:gray;
 >     6 -->|"reads"| 0
->     linkStyle 6 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
->     6 -->|"returns"| 1
->     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
->     6 -->|"calls"| 3
 >     linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     6 -->|"returns"| 1
+>     linkStyle 9 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     6 -->|"calls"| 3
+>     linkStyle 10 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 > ```
 > 
 > 	
@@ -1812,7 +1873,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
+> The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -1827,7 +1888,7 @@ For more information on the types of references, please consult the implementati
 > 
 > 
 > 
-> Now, there are several edges, 8 to be precise, although we are primarily interested in the 3
+> Now, there are several edges, 10 to be precise, although we are primarily interested in the 3
 > edges going out from the call vertex `6`.
 > The [`reads`](#reads) edge signals all definitions which are read by the `foo` identifier (similar to a [use vertex](#use-vertex)).
 > While it seems to be somewhat redundant given the [`calls`](#calls) edge that identifies the called [function definition](#function-definition-vertex),
@@ -1852,7 +1913,6 @@ For more information on the types of references, please consult the implementati
 >    %% No edges found for 1
 >     style 1 stroke:purple,stroke-width:4px; 
 > end
->    %% No edges found for 3
 >     0["`*#91;RSymbol#93;* **f**
 >       *1.1* (**id: 0**, v: 3)`"]
 >     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1878,24 +1938,32 @@ For more information on the types of references, please consult the implementati
 >     style 9 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
 > 3 -.-|function| flow-3
 > 
+>     3 -.->|"flow"| 0
+>     linkStyle 1 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 4
 >     0 -->|"defined-by"| 3
->     0 -->|"defined-by"| 4
 >     4 -->|"reads, arg"| 3
 >     4 -->|"returns, arg"| 0
 >     4 -.->|"reads, calls"| built-in:_-
->     linkStyle 5 stroke:gray;
+>     linkStyle 6 stroke:gray;
+>     4 -.->|"flow"| 6
+>     linkStyle 7 stroke:gray,color:gray;
 >     6 -->|"reads"| 0
+>     6 -.->|"flow"| 5
+>     linkStyle 9 stroke:gray,color:gray;
+>     5 -->|"defined-by, flow"| 7
 >     5 -->|"defined-by"| 6
->     5 -->|"defined-by"| 7
 >     7 -->|"reads, arg"| 6
 >     7 -->|"returns, arg"| 5
 >     7 -.->|"reads, calls"| built-in:_-
->     linkStyle 11 stroke:gray;
+>     linkStyle 14 stroke:gray;
+>     7 -.->|"flow"| 9
+>     linkStyle 15 stroke:gray,color:gray;
 >     9 -->|"reads"| 5
->     linkStyle 12 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     linkStyle 16 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 >     9 -->|"returns"| 1
 >     9 -->|"calls"| 3
->     linkStyle 14 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     linkStyle 18 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 > ```
 > 
 > 	
@@ -1903,7 +1971,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
+> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -1939,10 +2007,8 @@ For more information on the types of references, please consult the implementati
 > subgraph "flow-19" [function 19]
 >     3(["`*#91;RSymbol#93;* **u**
 >       *2.5* (**id: 3**)`"])
->    %% No edges found for 3
 >     5{{"`*#91;RNumber#93;* **3**
 >       *2.15* (**id: 5**)`"}}
->    %% No edges found for 5
 >     7[["`*#91;RFunctionCall#93;* base#58;#58;**return**
 >       *2.8-16* (**id: 7**, 9+)
 >     arg: (5)`"]]
@@ -1957,10 +2023,8 @@ For more information on the types of references, please consult the implementati
 >     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     10(["`*#91;RSymbol#93;* **v**
 >       *3.5* (**id: 10**, 9-)`"])
->    %% No edges found for 10
 >     12{{"`*#91;RNumber#93;* **2**
 >       *3.15* (**id: 12**)`"}}
->    %% No edges found for 12
 >     14[["`*#91;RFunctionCall#93;* base#58;#58;**return**
 >       *3.8-16* (**id: 14**, 16+, 9-)
 >     arg: (12)`"]]
@@ -1969,7 +2033,6 @@ For more information on the types of references, please consult the implementati
 >     arg: (10, 14, #91;empty#93;)`"]]
 >     17{{"`*#91;RNumber#93;* **1**
 >       *4.2* (**id: 17**, 9-, 16-)`"}}
->    %% No edges found for 17
 >     18[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
 >       *1.17* (**id: 18**)
 >     arg: (9, 16, 17)`"]]
@@ -1980,7 +2043,6 @@ For more information on the types of references, please consult the implementati
 >     style 10 stroke:purple,stroke-width:4px; 
 >     style 17 stroke:purple,stroke-width:4px; 
 > end
->    %% No edges found for 19
 >     0["`*#91;RSymbol#93;* **f**
 >       *1.1* (**id: 0**, v: 19)`"]
 >     20[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -1995,43 +2057,57 @@ For more information on the types of references, please consult the implementati
 >     %%   f: {**f** (id: 0, type: Function, def. @20)}
 >     22[["`*#91;RFunctionCall#93;* **f**
 >       *6.1-3* (**id: 22**)`"]]
+>     3 -.->|"branch (when: true)"| 5
+>     linkStyle 0 stroke:gray,color:gray;
+>     3 -.->|"branch (when: false)"| 9
+>     linkStyle 1 stroke:gray,color:gray;
+>     5 -.->|"flow"| 7
+>     linkStyle 2 stroke:gray,color:gray;
 >     7 -->|"returns, arg"| 5
 >     7 -.->|"reads, calls"| built-in:return
->     linkStyle 1 stroke:gray;
->     7 -->|"CD-True"| 9
->     linkStyle 2 stroke:gray,color:gray;
+>     linkStyle 4 stroke:gray;
 >     9 -->|"returns, arg"| 7
 >     9 -->|"reads, arg"| 3
 >     9 -.->|"reads, calls"| built-in:if
->     linkStyle 5 stroke:gray;
+>     linkStyle 7 stroke:gray;
+>     9 -.->|"flow"| 10
+>     linkStyle 8 stroke:gray,color:gray;
+>     10 -.->|"branch (when: true)"| 12
+>     linkStyle 9 stroke:gray,color:gray;
+>     10 -.->|"branch (when: false)"| 16
+>     linkStyle 10 stroke:gray,color:gray;
+>     12 -.->|"flow"| 14
+>     linkStyle 11 stroke:gray,color:gray;
 >     14 -->|"returns, arg"| 12
 >     14 -.->|"reads, calls"| built-in:return
->     linkStyle 7 stroke:gray;
->     14 -->|"CD-True"| 16
->     linkStyle 8 stroke:gray,color:gray;
->     14 -->|"CD-False"| 9
->     linkStyle 9 stroke:gray,color:gray;
+>     linkStyle 13 stroke:gray;
 >     16 -->|"returns, arg"| 14
 >     16 -->|"reads, arg"| 10
 >     16 -.->|"reads, calls"| built-in:if
->     linkStyle 12 stroke:gray;
->     16 -->|"CD-False"| 9
->     linkStyle 13 stroke:gray,color:gray;
+>     linkStyle 16 stroke:gray;
+>     16 -.->|"flow"| 17
+>     linkStyle 17 stroke:gray,color:gray;
+>     17 -.->|"flow"| 18
+>     linkStyle 18 stroke:gray,color:gray;
 >     18 -->|"arg"| 9
 >     18 -->|"arg"| 16
 >     18 -->|"returns, arg"| 17
 >     18 -.->|"reads, calls"| built-in:_
->     linkStyle 17 stroke:gray;
+>     linkStyle 22 stroke:gray;
 >     18 -->|"returns"| 7
 >     18 -->|"returns"| 14
 > 19 -.-|function| flow-19
 > 
+>     19 -.->|"flow"| 0
+>     linkStyle 26 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 20
 >     0 -->|"defined-by"| 19
->     0 -->|"defined-by"| 20
 >     20 -->|"reads, arg"| 19
 >     20 -->|"returns, arg"| 0
 >     20 -.->|"reads, calls"| built-in:_-
->     linkStyle 25 stroke:gray;
+>     linkStyle 31 stroke:gray;
+>     20 -.->|"flow"| 22
+>     linkStyle 32 stroke:gray,color:gray;
 >     22 -->|"reads"| 0
 >     22 -->|"returns"| 7
 >     22 -->|"returns"| 14
@@ -2044,7 +2120,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
+> The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2100,7 +2176,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">Dataflow Graph of the R Code</summary>
 > 
-> The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
+> The analysis required _1.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2109,7 +2185,6 @@ For more information on the types of references, please consult the implementati
 > flowchart LR
 >     1{{"`*#91;RNumber#93;* **2**
 >       *1.6* (**id: 1**)`"}}
->    %% No edges found for 1
 >     0["`*#91;RSymbol#93;* **x**
 >       *1.1* (**id: 0**, v: 1)`"]
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2120,7 +2195,6 @@ For more information on the types of references, please consult the implementati
 >     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     3(["`*#91;RSymbol#93;* **u**
 >       *2.4* (**id: 3**)`"])
->    %% No edges found for 3
 >     5(["`*#91;RSymbol#93;* **#96;#42;#96;**
 >       *2.15-17* (**id: 5**, 8+)`"])
 >     built-in:_["`Built-In:
@@ -2139,7 +2213,6 @@ For more information on the types of references, please consult the implementati
 >     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     10{{"`*#91;RNumber#93;* **3**
 >       *3.6* (**id: 10**)`"}}
->    %% No edges found for 10
 >     9["`*#91;RSymbol#93;* **x**
 >       *3.1* (**id: 9**, v: 10)`"]
 >     %% Environment of 11 [level: 0]:
@@ -2150,42 +2223,54 @@ For more information on the types of references, please consult the implementati
 >     11[["`*#91;RBinaryOp#93;* **#60;#45;**
 >       *3.1-6* (**id: 11**)
 >     arg: (9, 10)`"]]
+>     1 -.->|"flow"| 0
+>     linkStyle 0 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 2
 >     0 -->|"defined-by"| 1
->     0 -->|"defined-by"| 2
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
 >     2 -.->|"reads, calls"| built-in:_-
->     linkStyle 4 stroke:gray;
->     5 -.->|"reads"| built-in:_
 >     linkStyle 5 stroke:gray;
->     5 -->|"CD-True"| 8
+>     2 -.->|"flow"| 3
 >     linkStyle 6 stroke:gray,color:gray;
->     4 -->|"defined-by"| 5
->     4 -->|"defined-by"| 6
->     4 -->|"CD-True"| 8
+>     3 -.->|"branch (when: true)"| 5
+>     linkStyle 7 stroke:gray,color:gray;
+>     3 -.->|"branch (when: false)"| 8
+>     linkStyle 8 stroke:gray,color:gray;
+>     5 -.->|"flow"| 4
 >     linkStyle 9 stroke:gray,color:gray;
+>     5 -.->|"reads"| built-in:_
+>     linkStyle 10 stroke:gray;
+>     4 -->|"defined-by, flow"| 6
+>     4 -->|"defined-by"| 5
 >     6 -->|"reads, arg"| 5
 >     6 -->|"returns, arg"| 4
 >     6 -.->|"reads, calls"| built-in:_-
->     linkStyle 12 stroke:gray;
->     6 -->|"CD-True"| 8
->     linkStyle 13 stroke:gray,color:gray;
+>     linkStyle 15 stroke:gray;
+>     6 -.->|"flow"| 8
+>     linkStyle 16 stroke:gray,color:gray;
 >     8 -->|"returns, arg"| 6
 >     8 -->|"reads, arg"| 3
 >     8 -.->|"reads, calls"| built-in:if
->     linkStyle 16 stroke:gray;
->     9 -->|"defined-by"| 10
->     linkStyle 17 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
->     9 -->|"defined-by"| 11
+>     linkStyle 19 stroke:gray;
+>     8 -.->|"flow"| 9
+>     linkStyle 20 stroke:gray,color:gray;
+>     10 -.->|"flow"| 9
+>     linkStyle 21 stroke:gray,color:gray;
+>     10 -.->|"flow"| 11
+>     linkStyle 22 stroke:gray,color:gray;
+>     9 -->|"defined-by, flow"| 11
+>     9 -->|"defined-by, flow"| 10
+>     linkStyle 24 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 >     9 -->|"reads"| 0
->     linkStyle 19 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     linkStyle 25 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 >     11 -->|"reads, arg"| 10
 >     11 -->|"returns, arg"| 9
 >     11 -->|"reads"| 4
 >     11 -.->|"reads, calls"| built-in:_-
->     linkStyle 23 stroke:gray;
+>     linkStyle 29 stroke:gray;
 >     11 -.->|"calls"| built-in:_
->     linkStyle 24 stroke:gray;
+>     linkStyle 30 stroke:gray;
 > ```
 > 
 > 	
@@ -2210,15 +2295,15 @@ For more information on the types of references, please consult the implementati
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
-> _Built-in Environment (1297 entries)_
+> _Built-in Environment (645 entries)_
 > 
 > </details>
 > 
-> Great, you should see a definition of `<-` which is constraint by the [control dependency](#control-dependencies) to the `if`.
-> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L318"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
+> Great, you should see a definition of `<-` which is constraint by the [control dependency](#branches) to the `if`.
+> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L252"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
 > the following target ids: { `built-in:*`, `built-in:<-`, `4` }.
 > This way we know that the call may refer to the built-in assignment operator or to the multiplication.
-> Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L47"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
+> Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L75"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
 > { `4`, `built-in:<-` } (however, the latter will not trace aliases).
 > 
 > 	
@@ -2228,7 +2313,7 @@ For more information on the types of references, please consult the implementati
 > </details>
 > 
 > 
-> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L318"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> function to find all possible definitions of a function call,
+> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L252"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> function to find all possible definitions of a function call,
 > as explained in the [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) section.
 
 
@@ -2245,24 +2330,29 @@ Even **control structures** like `if(p) a else b` are desugared into function ca
 flowchart LR
     0(["`*#91;RSymbol#93;* **p**
       *1.4* (**id: 0**)`"])
-   %% No edges found for 0
     1(["`*#91;RSymbol#93;* **a**
       *1.7* (**id: 1**, 5+)`"])
-   %% No edges found for 1
     3(["`*#91;RSymbol#93;* **b**
       *1.14* (**id: 3**, 5-)`"])
-   %% No edges found for 3
     5[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-14* (**id: 5**)
     arg: (0, 1, 3)`"]]
     built-in:if["`Built-In:
 if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"branch (when: true)"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    0 -.->|"branch (when: false)"| 3
+    linkStyle 1 stroke:gray,color:gray;
+    1 -.->|"flow"| 5
+    linkStyle 2 stroke:gray,color:gray;
+    3 -.->|"flow"| 5
+    linkStyle 3 stroke:gray,color:gray;
     5 -->|"returns, arg"| 1
     5 -->|"returns, arg"| 3
     5 -->|"reads, arg"| 0
     5 -.->|"reads, calls"| built-in:if
-    linkStyle 3 stroke:gray;
+    linkStyle 7 stroke:gray;
 ```
 
 	
@@ -2270,7 +2360,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -2306,7 +2396,6 @@ subgraph "flow-4" [function 4]
    %% No edges found for 2
     style 2 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 4
     5[["`*#91;RExpressionList#93;* base#58;#58;**(**
       *1.1* (**id: 5**)
     arg: (4)`"]]
@@ -2317,13 +2406,17 @@ end
       *1.1-16* (**id: 6**)`"]]
 4 -.-|function| flow-4
 
+    4 -.->|"flow"| 5
+    linkStyle 1 stroke:gray,color:gray;
     5 -->|"returns, arg"| 4
+    5 -.->|"flow"| 6
+    linkStyle 3 stroke:gray,color:gray;
     5 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
+    linkStyle 4 stroke:gray;
     6 -->|"reads"| 5
     6 -->|"returns"| 2
     6 -->|"calls"| 4
-    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
 	
@@ -2331,7 +2424,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
+The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2373,7 +2466,6 @@ subgraph "flow-4" [function 4]
    %% No edges found for 2
     style 2 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 4
     6[["`*#91;RFunctionCall#93;* base#58;#58;**return**
       *1.19-38* (**id: 6**)
     arg: (4)`"]]
@@ -2381,7 +2473,6 @@ end
 return`"]
     style built-in:return stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 8
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 8)`"]
     9[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2404,24 +2495,32 @@ end
       *2.1-7* (**id: 12**)`"]]
 4 -.-|function| flow-4
 
+    4 -.->|"flow"| 6
+    linkStyle 1 stroke:gray,color:gray;
     6 -->|"returns, arg"| 4
     6 -.->|"reads, calls"| built-in:return
-    linkStyle 2 stroke:gray;
+    linkStyle 3 stroke:gray;
 8 -.-|function| flow-8
 
+    8 -.->|"flow"| 0
+    linkStyle 5 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 9
     0 -->|"defined-by"| 8
-    0 -->|"defined-by"| 9
     9 -->|"reads, arg"| 8
     9 -->|"returns, arg"| 0
     9 -.->|"reads, calls"| built-in:_-
-    linkStyle 8 stroke:gray;
+    linkStyle 10 stroke:gray;
+    9 -.->|"flow"| 11
+    linkStyle 11 stroke:gray,color:gray;
+    11 -.->|"flow"| 12
+    linkStyle 12 stroke:gray,color:gray;
     11 -->|"reads"| 0
     11 -->|"returns"| 6
     11 -->|"calls"| 8
     12 -->|"reads"| 11
     12 -->|"returns"| 2
     12 -->|"calls"| 4
-    linkStyle 14 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 18 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
 	
@@ -2429,7 +2528,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
+The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2482,7 +2581,6 @@ flowchart LR
 subgraph "flow-5" [function 5]
     2{{"`*#91;RNumber#93;* **3**
       *1.23* (**id: 2**)`"}}
-   %% No edges found for 2
     1["`*#91;RSymbol#93;* **x**
       *1.17* (**id: 1**, v: 2)`"]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
@@ -2492,7 +2590,6 @@ subgraph "flow-5" [function 5]
 #60;#60;#45;`"]
     style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 5
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2507,22 +2604,28 @@ end
     %%   f: {**f** (id: 0, type: Function, def. @6)}
     8[["`*#91;RFunctionCall#93;* **f**
       *2.2-4* (**id: 8**)`"]]
+    2 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -->|"defined-by, flow"| 3
     1 -->|"defined-by"| 2
-    1 -->|"defined-by"| 3
     1 -->|"side-effect-on-call"| 8
-    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
     3 -.->|"reads, calls"| built-in:__-
-    linkStyle 5 stroke:gray;
+    linkStyle 6 stroke:gray;
 5 -.-|function| flow-5
 
+    5 -.->|"flow"| 0
+    linkStyle 8 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 6
     0 -->|"defined-by"| 5
-    0 -->|"defined-by"| 6
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 0
     6 -.->|"reads, calls"| built-in:_-
-    linkStyle 11 stroke:gray;
+    linkStyle 13 stroke:gray;
+    6 -.->|"flow"| 8
+    linkStyle 14 stroke:gray,color:gray;
     8 -->|"reads"| 0
     8 -->|"returns"| 3
     8 -->|"calls"| 5
@@ -2533,7 +2636,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2570,7 +2673,6 @@ Type: `vdef` (this is the bit-flag value, e.g., when looking at the serializatio
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2579,12 +2681,14 @@ flowchart LR
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
 ```
 
 	
@@ -2592,7 +2696,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2620,7 +2724,6 @@ Defined variables most commonly occur in the context of an assignment, for examp
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.7* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
@@ -2629,12 +2732,14 @@ flowchart LR
     built-in:__-["`Built-In:
 #60;#60;#45;`"]
     style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:__-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
 ```
 
 	
@@ -2642,7 +2747,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2660,11 +2765,11 @@ x <<- 1
 
 The implementation is relatively sparse and similar to the other marker vertices:
 
- * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L130)**   
+ * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L137)**   
    Arguments required to construct a vertex which represents the definition of a variable in the
    <code>dataflow graph</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L130">src/dataflow/graph/vertex.ts#L130</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L137">src/dataflow/graph/vertex.ts#L137</a></summary>
    
    
    ```ts
@@ -2749,7 +2854,6 @@ Of course, there are not just operators that define variables, but also function
 flowchart LR
     3{{"`*#91;RNumber#93;* **1**
       *1.13* (**id: 3**)`"}}
-   %% No edges found for 3
     1["`*#91;RString#93;* **#34;x#34;**
       *1.8-10* (**id: 1**, v: 3)`"]
     5[["`*#91;RFunctionCall#93;* base#58;#58;**assign**
@@ -2760,12 +2864,16 @@ assign`"]
     style built-in:assign stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 6**)`"])
+    3 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -->|"defined-by, flow"| 5
     1 -->|"defined-by"| 3
-    1 -->|"defined-by"| 5
     5 -->|"reads, arg"| 3
     5 -->|"returns, arg"| 1
     5 -.->|"reads, calls"| built-in:assign
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    5 -.->|"flow"| 6
+    linkStyle 6 stroke:gray,color:gray;
     6 -->|"reads"| 1
 ```
 
@@ -2774,7 +2882,7 @@ assign`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2788,7 +2896,7 @@ x
 </details>
 
 
-The example may be misleading as the visualization uses `recoverName` to print the lexeme of the variable. However, this actually defines the variable `x` (without the quotes) as you can see with the [`reads`](#reads) edge.
+The example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable `x` (without the quotes) as you can see with the [`reads`](#reads) edge.
 
 </details>
 
@@ -2805,7 +2913,6 @@ Please be aware, that the name of the symbol defined may differ from what you re
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.8* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **#96;x#96;**
       *1.1-3* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2816,12 +2923,16 @@ flowchart LR
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 3
+    linkStyle 6 stroke:gray,color:gray;
     3 -->|"reads"| 0
 ```
 
@@ -2830,7 +2941,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2857,7 +2968,6 @@ x
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.8* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RString#93;* **#34;x#34;**
       *1.1-3* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2868,12 +2978,16 @@ flowchart LR
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 3
+    linkStyle 6 stroke:gray,color:gray;
     3 -->|"reads"| 0
 ```
 
@@ -2913,7 +3027,6 @@ Definitions may be constrained by conditionals (_flowR_ takes care of calculatin
 flowchart LR
     1{{"`*#91;RNumber#93;* **0**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2924,10 +3037,8 @@ flowchart LR
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **u**
       *2.4* (**id: 3**)`"])
-   %% No edges found for 3
     5{{"`*#91;RNumber#93;* **1**
       *2.12* (**id: 5**)`"}}
-   %% No edges found for 5
     4["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**, 12+, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2935,7 +3046,6 @@ flowchart LR
     arg: (4, 5)`"]]
     9{{"`*#91;RNumber#93;* **2**
       *2.24* (**id: 9**)`"}}
-   %% No edges found for 9
     8["`*#91;RSymbol#93;* **x**
       *2.19* (**id: 8**, 12-, v: 9)`"]
     10[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2949,37 +3059,47 @@ if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     13(["`*#91;RSymbol#93;* **x**
       *3.1* (**id: 13**)`"])
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
-    4 -->|"defined-by"| 5
-    4 -->|"defined-by"| 6
-    4 -->|"CD-True"| 12
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 3
+    linkStyle 6 stroke:gray,color:gray;
+    3 -.->|"branch (when: true)"| 5
     linkStyle 7 stroke:gray,color:gray;
+    3 -.->|"branch (when: false)"| 9
+    linkStyle 8 stroke:gray,color:gray;
+    5 -.->|"flow"| 4
+    linkStyle 9 stroke:gray,color:gray;
+    4 -->|"defined-by, flow"| 6
+    4 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 4
     6 -.->|"reads, calls"| built-in:_-
-    linkStyle 10 stroke:gray;
-    6 -->|"CD-True"| 12
-    linkStyle 11 stroke:gray,color:gray;
+    linkStyle 14 stroke:gray;
+    6 -.->|"flow"| 12
+    linkStyle 15 stroke:gray,color:gray;
+    9 -.->|"flow"| 8
+    linkStyle 16 stroke:gray,color:gray;
+    8 -->|"defined-by, flow"| 10
     8 -->|"defined-by"| 9
-    8 -->|"defined-by"| 10
-    8 -->|"CD-False"| 12
-    linkStyle 14 stroke:gray,color:gray;
     10 -->|"reads, arg"| 9
     10 -->|"returns, arg"| 8
     10 -.->|"reads, calls"| built-in:_-
-    linkStyle 17 stroke:gray;
-    10 -->|"CD-False"| 12
-    linkStyle 18 stroke:gray,color:gray;
+    linkStyle 21 stroke:gray;
+    10 -.->|"flow"| 12
+    linkStyle 22 stroke:gray,color:gray;
     12 -->|"returns, arg"| 6
     12 -->|"returns, arg"| 10
     12 -->|"reads, arg"| 3
     12 -.->|"reads, calls"| built-in:if
-    linkStyle 22 stroke:gray;
+    linkStyle 26 stroke:gray;
+    12 -.->|"flow"| 13
+    linkStyle 27 stroke:gray,color:gray;
     13 -->|"reads"| 4
     13 -->|"reads"| 8
 ```
@@ -2989,7 +3109,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -3013,7 +3133,7 @@ In this case, the definition of `x` is constrained by the conditional, which is 
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (1297 entries)_
+_Built-in Environment (645 entries)_
 
 </details>
 
@@ -3058,7 +3178,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -3076,11 +3196,11 @@ function() 1
 Defining a function does do a lot of things:  1) it creates a new scope,  2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body,  3) it may access the enclosing environments and the callstack.
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
 
- * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L144)**   
+ * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L151)**   
    Arguments required to construct a vertex which represents the definition of a function in the
    <code>dataflow graph</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L144">src/dataflow/graph/vertex.ts#L144</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L151">src/dataflow/graph/vertex.ts#L151</a></summary>
    
    
    ```ts
@@ -3171,20 +3291,20 @@ The vertex object in the dataflow graph stores multiple things, including all ex
 
     </details>
 The subflow is defined like this:
- * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L29)   
+ * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L24)   
    Describes the information we store per function body.
    The
-   <code>DataflowFunctionFlowInformation#exitPoints</code>
-   are stored within the enclosing
+   <code>DataflowInformation#exitPoints</code>
+   this type omits are stored within the enclosing
    <code>DataflowGraphVertexFunctionDefinition</code>
    vertex.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L29">src/dataflow/graph/graph.ts#L29</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L24">src/dataflow/graph/graph.ts#L24</a></summary>
    
    
    ```ts
    /**
     * Describes the information we store per function body.
-    * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
+    * The {@link DataflowInformation#exitPoints} this type omits are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
     */
    export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
    ```
@@ -3195,7 +3315,7 @@ The subflow is defined like this:
     <details><summary>View more (Omit, DataflowInformation, 'graph' | 'exitPoints')</summary>
 
 
-   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L181)**   
+   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L224)**   
      The dataflow information is one of the fundamental structures we have in the dataflow analysis.
      It is continuously updated during the dataflow analysis
      and holds its current state for the respective subtree processed.
@@ -3204,7 +3324,7 @@ The subflow is defined like this:
      You may initialize a new dataflow information with
      <code>DataflowInformation.initialize</code>
      .
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L181">src/dataflow/info.ts#L181</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L224">src/dataflow/info.ts#L224</a></summary>
      
      
      ```ts
@@ -3246,6 +3366,11 @@ The subflow is defined like this:
           * @see {@link KillReference}
           */
          kill?:             readonly KillReference[]
+         /**
+          * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+          * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+          */
+         cutShort?:         DataflowBudgetExhaustion
      }
      ```
      
@@ -3254,9 +3379,9 @@ The subflow is defined like this:
      
       <details><summary>View more (DataflowCfgInformation)</summary>
 
-     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L158)**   
+     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L187)**   
        The control flow information for the current DataflowInformation.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L158">src/dataflow/info.ts#L158</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L187">src/dataflow/info.ts#L187</a></summary>
        
        
        ```ts
@@ -3264,6 +3389,20 @@ The subflow is defined like this:
        export interface DataflowCfgInformation {
            /** The entry node into the subgraph */
            entryPoint: NodeId,
+           /**
+            * The node control flow enters this subtree at.
+            * Control flow is modeled in post-order (operands are evaluated before the operator that consumes them),
+            * so for compound constructs this is not the {@link DataflowCfgInformation#entryPoint|entryPoint}
+            * (which names the value-producing node) but the first node that is actually evaluated.
+            * Left `undefined` whenever both coincide, which is the case for all leaves.
+            */
+           cfgEntry?:  NodeId,
+           /**
+            * The node control flow leaves this subtree at, joining the branches of the construct if it has any.
+            * Left `undefined` whenever the {@link DataflowCfgInformation#exitPoints|exitPoints} already name it,
+            * which is the case whenever the construct has a single point of exit.
+            */
+           cfgExit?:   NodeId,
            /**
             * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
             * This also tracks (local knowledge of) exceptions thrown within the structure.
@@ -3284,10 +3423,10 @@ The subflow is defined like this:
 
     </details>
 And if you are interested in the exit points, they are defined like this:
- * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L99)**   
+ * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L128)**   
    An exit point describes the position which ends the current control flow structure.
    This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L99">src/dataflow/info.ts#L99</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L128">src/dataflow/info.ts#L128</a></summary>
    
    
    ```ts
@@ -3296,7 +3435,7 @@ And if you are interested in the exit points, they are defined like this:
     * This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
     * @see {@link ExitPointType} - for the different types of exit points
     * @see {@link addNonDefaultExitPoints} - to easily modify lists of exit points
-    * @see {@link alwaysExits} - to check whether a list of control dependencies always triggers an exit
+    * @see {@link ControlFlow#alwaysExits|ControlFlow.alwaysExits()} - to check whether a subtree always jumps away
     * @see {@link filterOutLoopExitPoints} - to remove loop exit points from a list
     */
    export interface ExitPoint {
@@ -3356,7 +3495,6 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >    %% No edges found for 4
 >     style 4 stroke:purple,stroke-width:4px; 
 > end
->    %% No edges found for 6
 >     3["`*#91;RSymbol#93;* **g**
 >       *1.19* (**id: 3**, v: 6)`"]
 >     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -3374,7 +3512,6 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     style 7 stroke:purple,stroke-width:4px; 
 >     style 8 stroke:purple,stroke-width:4px; 
 > end
->    %% No edges found for 9
 >     0["`*#91;RSymbol#93;* **f**
 >       *1.1* (**id: 0**, v: 9)`"]
 >     10[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -3385,23 +3522,29 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 > 6 -.-|function| flow-6
 > 
+>     6 -.->|"flow"| 3
+>     linkStyle 1 stroke:gray,color:gray;
+>     3 -->|"defined-by, flow"| 7
 >     3 -->|"defined-by"| 6
->     3 -->|"defined-by"| 7
 >     7 -->|"reads, arg"| 6
 >     7 -->|"returns, arg"| 3
 >     7 -.->|"reads, calls"| built-in:_-
->     linkStyle 5 stroke:gray;
+>     linkStyle 6 stroke:gray;
+>     7 -.->|"flow"| 8
+>     linkStyle 7 stroke:gray,color:gray;
 >     8 -->|"returns, arg"| 7
 >     8 -.->|"reads, calls"| built-in:_
->     linkStyle 7 stroke:gray;
+>     linkStyle 9 stroke:gray;
 > 9 -.-|function| flow-9
 > 
+>     9 -.->|"flow"| 0
+>     linkStyle 11 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 10
 >     0 -->|"defined-by"| 9
->     0 -->|"defined-by"| 10
 >     10 -->|"reads, arg"| 9
 >     10 -->|"returns, arg"| 0
 >     10 -.->|"reads, calls"| built-in:_-
->     linkStyle 13 stroke:gray;
+>     linkStyle 16 stroke:gray;
 > ```
 > 
 > 	
@@ -3409,7 +3552,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _8.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
+> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -3456,12 +3599,10 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > subgraph "flow-10" [function 10]
 >     1["`*#91;RSymbol#93;* **x**
 >       *1.15* (**id: 1**, v: )`"]
->    %% No edges found for 1
 >     3["`*#91;RSymbol#93;* **y**
 >       *1.18-22* (**id: 3**, v: 4)`"]
 >     4{{"`*#91;RNumber#93;* **3**
 >       *1.22* (**id: 4**)`"}}
->    %% No edges found for 4
 >     6(["`*#91;RSymbol#93;* **x**
 >       *1.25* (**id: 6**)`"])
 >     7(["`*#91;RSymbol#93;* **y**
@@ -3474,7 +3615,6 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     style 8 stroke:purple,stroke-width:4px; 
 > end
->    %% No edges found for 10
 >     0["`*#91;RSymbol#93;* **f**
 >       *1.1* (**id: 0**, v: 10)`"]
 >     11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -3483,21 +3623,33 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     built-in:_-["`Built-In:
 > #60;#45;`"]
 >     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     1 -.->|"flow"| 4
+>     linkStyle 0 stroke:gray,color:gray;
 >     3 -->|"defined-by"| 4
+>     3 -.->|"flow"| 6
+>     linkStyle 2 stroke:gray,color:gray;
+>     4 -.->|"flow"| 3
+>     linkStyle 3 stroke:gray,color:gray;
 >     6 -->|"reads"| 1
+>     6 -.->|"flow"| 7
+>     linkStyle 5 stroke:gray,color:gray;
 >     7 -->|"reads"| 3
+>     7 -.->|"flow"| 8
+>     linkStyle 7 stroke:gray,color:gray;
 >     8 -->|"reads, arg"| 6
 >     8 -->|"reads, arg"| 7
 >     8 -.->|"reads, calls"| built-in:_
->     linkStyle 5 stroke:gray;
+>     linkStyle 10 stroke:gray;
 > 10 -.-|function| flow-10
 > 
+>     10 -.->|"flow"| 0
+>     linkStyle 12 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 11
 >     0 -->|"defined-by"| 10
->     0 -->|"defined-by"| 11
 >     11 -->|"reads, arg"| 10
 >     11 -->|"returns, arg"| 0
 >     11 -.->|"reads, calls"| built-in:_-
->     linkStyle 11 stroke:gray;
+>     linkStyle 17 stroke:gray;
 > ```
 > 
 > 	
@@ -3505,7 +3657,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
+> The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -3568,7 +3720,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > ```
 > 	
-> (The analysis required _0.4 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis required _0.6 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 	
@@ -3590,7 +3742,7 @@ Last but not least, please keep in mind that R offers another way of writing ano
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -3603,12 +3755,10 @@ flowchart LR
 subgraph "flow-6" [function 6]
     0["`*#91;RSymbol#93;* **x**
       *1.3* (**id: 0**, v: )`"]
-   %% No edges found for 0
     2(["`*#91;RSymbol#93;* **x**
       *1.6* (**id: 2**)`"])
     3{{"`*#91;RNumber#93;* **1**
       *1.10* (**id: 3**)`"}}
-   %% No edges found for 3
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.6-10* (**id: 4**)
     arg: (2, 3)`"]]
@@ -3618,11 +3768,17 @@ subgraph "flow-6" [function 6]
     style 4 stroke:purple,stroke-width:4px; 
 end
    %% No edges found for 6
+    0 -.->|"flow"| 2
+    linkStyle 0 stroke:gray,color:gray;
     2 -->|"reads"| 0
+    2 -.->|"flow"| 3
+    linkStyle 2 stroke:gray,color:gray;
+    3 -.->|"flow"| 4
+    linkStyle 3 stroke:gray,color:gray;
     4 -->|"reads, arg"| 2
     4 -->|"reads, arg"| 3
     4 -.->|"reads, calls"| built-in:_
-    linkStyle 3 stroke:gray;
+    linkStyle 6 stroke:gray;
 6 -.-|function| flow-6
 ```
 
@@ -3651,6 +3807,8 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 1. [`Argument` (64)](#7-argument-edge)
 1. [`SideEffectOnCall` (128)](#8-sideeffectoncall-edge)
 1. [`NonStandardEvaluation` (256)](#9-nonstandardevaluation-edge)
+1. [`FlowEdge` (4096)](#10-flowedge-edge)
+1. [`ControlEdge` (8192)](#11-controledge-edge)
 
 <a id='reads'></a>
 <a id='reads-edge'> </a>
@@ -3668,7 +3826,6 @@ Type: `1` (this is the bit-flag value, e.g., when looking at the serialization)
 flowchart LR
     1{{"`*#91;RNumber#93;* **2**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -3685,17 +3842,23 @@ flowchart LR
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
     4 -->|"reads"| 0
-    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    4 -.->|"flow"| 6
+    linkStyle 8 stroke:gray,color:gray;
     6 -->|"reads, returns, arg"| 4
     6 -.->|"reads, calls"| built-in:print
-    linkStyle 7 stroke:gray;
+    linkStyle 10 stroke:gray;
 ```
 
 	
@@ -3726,9 +3889,9 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > A [`reads`](#reads) edge is not a transitive closure and only links the "directly read" definition(s).
 > Our abstract domains resolving transitive [`reads`](#reads) edges (and for that matter, following [`returns`](#returns) as well)
-> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L318"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a>,
-> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L187"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
-> Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
+> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L252"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a>,
+> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L270"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
+> Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
 > 
 > 
 > <details><summary>Example: Multi-Level Reads</summary>
@@ -3741,7 +3904,6 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > flowchart LR
 >     1{{"`*#91;RNumber#93;* **3**
 >       *1.6* (**id: 1**)`"}}
->    %% No edges found for 1
 >     0["`*#91;RSymbol#93;* **x**
 >       *1.1* (**id: 0**, v: 1)`"]
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -3765,26 +3927,36 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     built-in:print["`Built-In:
 > print`"]
 >     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     1 -.->|"flow"| 0
+>     linkStyle 0 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 2
 >     0 -->|"defined-by"| 1
->     0 -->|"defined-by"| 2
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
 >     2 -.->|"reads, calls"| built-in:_-
->     linkStyle 4 stroke:gray;
+>     linkStyle 5 stroke:gray;
+>     2 -.->|"flow"| 4
+>     linkStyle 6 stroke:gray,color:gray;
 >     4 -->|"reads"| 0
->     linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     4 -.->|"flow"| 3
+>     linkStyle 8 stroke:gray,color:gray;
+>     3 -->|"defined-by, flow"| 5
 >     3 -->|"defined-by"| 4
->     3 -->|"defined-by"| 5
 >     5 -->|"reads, arg"| 4
 >     5 -->|"returns, arg"| 3
 >     5 -.->|"reads, calls"| built-in:_-
->     linkStyle 10 stroke:gray;
->     7 -->|"reads"| 3
->     linkStyle 11 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
->     9 -->|"reads, returns, arg"| 7
->     linkStyle 12 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
->     9 -.->|"reads, calls"| built-in:print
 >     linkStyle 13 stroke:gray;
+>     5 -.->|"flow"| 7
+>     linkStyle 14 stroke:gray,color:gray;
+>     7 -->|"reads"| 3
+>     linkStyle 15 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     7 -.->|"flow"| 9
+>     linkStyle 16 stroke:gray,color:gray;
+>     9 -->|"reads, returns, arg"| 7
+>     linkStyle 17 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     9 -.->|"reads, calls"| built-in:print
+>     linkStyle 18 stroke:gray;
 > ```
 > 
 > 	
@@ -3792,7 +3964,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
+> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
 > We encountered unknown side effects (with ids: 9 (linked)) during the analysis.
 > 
 > 
@@ -3825,12 +3997,10 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >       *1.5* (**id: 0**, v: 1)`"]
 >     1(["`*#91;RSymbol#93;* **v**
 >       *1.10* (**id: 1**)`"])
->    %% No edges found for 1
 >     3(["`*#91;RSymbol#93;* **x**
 >       *1.18* (**id: 3**, 8+)`"])
 >     4{{"`*#91;RNumber#93;* **1**
 >       *1.22* (**id: 4**)`"}}
->    %% No edges found for 4
 >     5[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
 >       *1.18-22* (**id: 5**, 8+)
 >     arg: (3, 4)`"]]
@@ -3852,31 +4022,37 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > for`"]
 >     style built-in:for stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     0 -->|"defined-by"| 1
->     3 -->|"reads"| 2
->     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
->     3 -->|"CD-True"| 8
+>     0 -.->|"branch (when: true)"| 3
+>     linkStyle 1 stroke:gray,color:gray;
+>     0 -.->|"branch (when: false)"| 8
 >     linkStyle 2 stroke:gray,color:gray;
+>     1 -.->|"flow"| 0
+>     linkStyle 3 stroke:gray,color:gray;
+>     3 -.->|"flow"| 4
+>     linkStyle 4 stroke:gray,color:gray;
+>     3 -->|"reads"| 2
+>     linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     4 -.->|"flow"| 5
+>     linkStyle 6 stroke:gray,color:gray;
 >     5 -->|"reads, arg"| 3
 >     5 -->|"reads, arg"| 4
->     5 -.->|"reads, calls"| built-in:_
->     linkStyle 5 stroke:gray;
->     5 -->|"CD-True"| 8
->     linkStyle 6 stroke:gray,color:gray;
->     2 -->|"defined-by"| 5
->     2 -->|"defined-by"| 6
->     2 -->|"CD-True"| 8
+>     5 -.->|"flow"| 2
 >     linkStyle 9 stroke:gray,color:gray;
+>     5 -.->|"reads, calls"| built-in:_
+>     linkStyle 10 stroke:gray;
+>     2 -->|"defined-by, flow"| 6
+>     2 -->|"defined-by"| 5
 >     6 -->|"reads, arg"| 5
 >     6 -->|"returns, arg"| 2
 >     6 -.->|"reads, calls"| built-in:_-
->     linkStyle 12 stroke:gray;
->     6 -->|"CD-True"| 8
->     linkStyle 13 stroke:gray,color:gray;
+>     linkStyle 15 stroke:gray;
+>     6 -.->|"flow"| 0
+>     linkStyle 16 stroke:gray,color:gray;
 >     8 -->|"arg"| 0
 >     8 -->|"reads, arg"| 1
 >     8 -->|"arg, non-standard-evaluation"| 6
 >     8 -.->|"reads, calls"| built-in:for
->     linkStyle 17 stroke:gray;
+>     linkStyle 20 stroke:gray;
 > ```
 > 
 > 	
@@ -3903,7 +4079,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 
 
 Reads edges may point to built-in definitions as well, to signal that something relates to a built-in element of flowR.
-Their targets are not part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L264"><code><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></code></a> but only markers to signal that the respective definition is a built-in.
+Their targets are not part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L188"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a> but only markers to signal that the respective definition is a built-in.
 
  
 Please refer to the explanation of the respective vertices for more information.
@@ -3932,7 +4108,6 @@ subgraph "flow-4" [function 4]
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 4
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 4)`"]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -3951,14 +4126,18 @@ end
     linkStyle 0 stroke:gray;
 4 -.-|function| flow-4
 
+    4 -.->|"flow"| 0
+    linkStyle 2 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 5
     0 -->|"defined-by"| 4
-    0 -->|"defined-by"| 5
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 0
     5 -.->|"reads, calls"| built-in:_-
-    linkStyle 6 stroke:gray;
+    linkStyle 7 stroke:gray;
+    5 -.->|"flow"| 7
+    linkStyle 8 stroke:gray,color:gray;
     7 -->|"reads"| 0
-    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 9 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     7 -->|"calls"| 4
 ```
 
@@ -3997,7 +4176,6 @@ flowchart LR
 subgraph "flow-9" [function 9]
     1["`*#91;RSymbol#93;* **x**
       *1.15* (**id: 1**, v: )`"]
-   %% No edges found for 1
     3["`*#91;RSymbol#93;* **y**
       *1.18-20* (**id: 3**, v: 4)`"]
     4(["`*#91;RSymbol#93;* **x**
@@ -4009,7 +4187,6 @@ subgraph "flow-9" [function 9]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 8 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 9
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 9)`"]
     10[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4018,19 +4195,27 @@ end
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 4
+    linkStyle 0 stroke:gray,color:gray;
     3 -->|"defined-by"| 4
+    3 -.->|"flow"| 8
+    linkStyle 2 stroke:gray,color:gray;
+    4 -.->|"flow"| 3
+    linkStyle 3 stroke:gray,color:gray;
     4 -->|"reads"| 1
-    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     8 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
+    linkStyle 5 stroke:gray;
 9 -.-|function| flow-9
 
+    9 -.->|"flow"| 0
+    linkStyle 7 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 10
     0 -->|"defined-by"| 9
-    0 -->|"defined-by"| 10
     10 -->|"reads, arg"| 9
     10 -->|"returns, arg"| 0
     10 -.->|"reads, calls"| built-in:_-
-    linkStyle 8 stroke:gray;
+    linkStyle 12 stroke:gray;
 ```
 
 	
@@ -4038,7 +4223,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4073,7 +4258,6 @@ Type: `2` (this is the bit-flag value, e.g., when looking at the serialization)
 flowchart LR
     1(["`*#91;RSymbol#93;* **y**
       *1.6* (**id: 1**)`"])
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4082,14 +4266,16 @@ flowchart LR
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    0 -->|"defined-by"| 1
-    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    0 -->|"defined-by"| 2
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    0 -->|"defined-by"| 1
+    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
 ```
 
 	
@@ -4097,7 +4283,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4124,7 +4310,6 @@ The source vertex is usually a [`variable definition`](#variable-definition-vert
 flowchart LR
     0{{"`*#91;RNumber#93;* **3**
       *1.1* (**id: 0**)`"}}
-   %% No edges found for 0
     1["`*#91;RSymbol#93;* **x**
       *1.6* (**id: 1**, v: 0)`"]
     2[["`*#91;RBinaryOp#93;* **#45;#62;**
@@ -4133,12 +4318,14 @@ flowchart LR
     built-in:-_["`Built-In:
 #45;#62;`"]
     style built-in:-_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -->|"defined-by, flow"| 2
     1 -->|"defined-by"| 0
-    1 -->|"defined-by"| 2
     2 -->|"reads, arg"| 0
     2 -->|"returns, arg"| 1
     2 -.->|"reads, calls"| built-in:-_
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
 ```
 
 	
@@ -4146,7 +4333,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4181,7 +4368,6 @@ However, nested definitions can carry it (in the nested case, `x` is defined by 
 flowchart LR
     2(["`*#91;RSymbol#93;* **z**
       *1.11* (**id: 2**)`"])
-   %% No edges found for 2
     1["`*#91;RSymbol#93;* **y**
       *1.6* (**id: 1**, v: 2)`"]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4195,21 +4381,25 @@ flowchart LR
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-11* (**id: 4**)
     arg: (0, 3)`"]]
-    1 -->|"defined-by"| 2
-    1 -->|"defined-by"| 3
+    2 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -->|"defined-by, flow"| 3
     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    1 -->|"defined-by"| 2
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
+    3 -.->|"flow"| 0
+    linkStyle 5 stroke:gray,color:gray;
     3 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 6 stroke:gray;
+    0 -->|"defined-by, flow"| 4
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     0 -->|"defined-by"| 3
-    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    0 -->|"defined-by"| 4
-    linkStyle 6 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
     4 -.->|"reads, calls"| built-in:_-
-    linkStyle 9 stroke:gray;
+    linkStyle 11 stroke:gray;
 ```
 
 	
@@ -4217,7 +4407,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4242,10 +4432,8 @@ Nested definitions can carry the [`defined-by`](#defined-by) edge as well.
 flowchart LR
     1(["`*#91;RSymbol#93;* **y**
       *1.6* (**id: 1**)`"])
-   %% No edges found for 1
     2(["`*#91;RSymbol#93;* **z**
       *1.10* (**id: 2**)`"])
-   %% No edges found for 2
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.6-10* (**id: 3**)
     arg: (1, 2)`"]]
@@ -4260,17 +4448,23 @@ flowchart LR
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 2
+    linkStyle 0 stroke:gray,color:gray;
+    2 -.->|"flow"| 3
+    linkStyle 1 stroke:gray,color:gray;
     3 -->|"reads, arg"| 1
     3 -->|"reads, arg"| 2
+    3 -.->|"flow"| 0
+    linkStyle 4 stroke:gray,color:gray;
     3 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
+    linkStyle 5 stroke:gray;
+    0 -->|"defined-by, flow"| 4
     0 -->|"defined-by"| 3
-    linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    0 -->|"defined-by"| 4
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
     4 -.->|"reads, calls"| built-in:_-
-    linkStyle 7 stroke:gray;
+    linkStyle 10 stroke:gray;
 ```
 
 	
@@ -4278,7 +4472,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4321,7 +4515,6 @@ subgraph "flow-4" [function 4]
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 4
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 4)`"]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4340,15 +4533,19 @@ end
     linkStyle 0 stroke:gray;
 4 -.-|function| flow-4
 
+    4 -.->|"flow"| 0
+    linkStyle 2 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 5
     0 -->|"defined-by"| 4
-    0 -->|"defined-by"| 5
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 0
     5 -.->|"reads, calls"| built-in:_-
-    linkStyle 6 stroke:gray;
+    linkStyle 7 stroke:gray;
+    5 -.->|"flow"| 7
+    linkStyle 8 stroke:gray,color:gray;
     7 -->|"reads"| 0
     7 -->|"calls"| 4
-    linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 10 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
 	
@@ -4356,7 +4553,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _9.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4372,8 +4569,8 @@ foo()
 
 
 Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
-		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
-		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L342"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
+		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
+		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L357"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
 		
 
 
@@ -4401,7 +4598,6 @@ subgraph "flow-3" [function 3]
    %% No edges found for 1
     style 1 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 3
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4418,16 +4614,20 @@ end
       *2.1-5* (**id: 6**)`"]]
 3 -.-|function| flow-3
 
+    3 -.->|"flow"| 0
+    linkStyle 1 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 4
     0 -->|"defined-by"| 3
-    0 -->|"defined-by"| 4
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -.->|"reads, calls"| built-in:_-
-    linkStyle 5 stroke:gray;
+    linkStyle 6 stroke:gray;
+    4 -.->|"flow"| 6
+    linkStyle 7 stroke:gray,color:gray;
     6 -->|"reads"| 0
     6 -->|"returns"| 1
-    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 9 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     6 -->|"calls"| 3
 ```
 
@@ -4467,20 +4667,22 @@ For contrast, compare this to a use of, for example, `+`:
 flowchart LR
     0{{"`*#91;RNumber#93;* **1**
       *1.1* (**id: 0**)`"}}
-   %% No edges found for 0
     1{{"`*#91;RNumber#93;* **1**
       *1.5* (**id: 1**)`"}}
-   %% No edges found for 1
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
     built-in:_["`Built-In:
 #43;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -.->|"flow"| 2
+    linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
     2 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
+    linkStyle 4 stroke:gray;
 ```
 
 	
@@ -4488,7 +4690,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -4527,10 +4729,8 @@ flowchart LR
 subgraph "flow-16" ["function() #123; if(u) #123; return(3); 2 #125; else 42 #125; (L. 1)"]
     3(["`**u** (L. 1)
 *RSymbol*`"])
-   %% No edges found for 3
     7{{"`**3** (L. 1)
 *RNumber*`"}}
-   %% No edges found for 7
     9[["`base#58;#58;**return** (L. 1)
 *RFunctionCall*`"]]
     built-in:return["`Built-In:
@@ -4543,7 +4743,6 @@ return`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     12{{"`**42** (L. 1)
 *RNumber*`"}}
-   %% No edges found for 12
     14[["`base#58;#58;**if** (L. 1)
 *RIfThenElse*`"]]
     built-in:if["`Built-In:
@@ -4554,7 +4753,6 @@ if`"]
     style 12 stroke:purple,stroke-width:4px; 
     style 3 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 16
     0["`**f** (L. 1)
 *RSymbol*`"]
     17[["`base#58;#58;**#60;#45;** (L. 1)
@@ -4568,34 +4766,30 @@ end
     linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     9 -.->|"reads, calls"| built-in:return
     linkStyle 1 stroke:gray;
-    9 -->|"CD-True"| 14
-    linkStyle 2 stroke:gray,color:gray;
     11 -->|"returns, arg"| 9
-    linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     11 -.->|"reads, calls"| built-in:_
-    linkStyle 4 stroke:gray;
-    11 -->|"CD-True"| 14
-    linkStyle 5 stroke:gray,color:gray;
+    linkStyle 3 stroke:gray;
     14 -->|"returns, arg"| 11
-    linkStyle 6 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     14 -->|"returns, arg"| 12
-    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     14 -->|"reads, arg"| 3
     14 -.->|"reads, calls"| built-in:if
-    linkStyle 9 stroke:gray;
+    linkStyle 7 stroke:gray;
     15 -->|"returns, arg"| 14
-    linkStyle 10 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     15 -.->|"reads, calls"| built-in:_
-    linkStyle 11 stroke:gray;
+    linkStyle 9 stroke:gray;
     15 -->|"returns"| 9
 16 -.-|function| flow-16
 
+    0 -->|"defined-by, flow"| 17
     0 -->|"defined-by"| 16
-    0 -->|"defined-by"| 17
     17 -->|"reads, arg"| 16
     17 -->|"returns, arg"| 0
     17 -.->|"reads, calls"| built-in:_-
-    linkStyle 18 stroke:gray;
+    linkStyle 16 stroke:gray;
     19 -->|"reads"| 0
     19 -->|"returns"| 9
     19 -->|"returns"| 14
@@ -4607,7 +4801,7 @@ end
 
 <summary style="color:gray">R Code of the (simplified) Dataflow Graph</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {19->15, 15->14, 14->12, 14->11, 11->9, 9->7}.
+The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {19->15, 15->14, 14->12, 14->11, 11->9, 9->7}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4666,7 +4860,6 @@ subgraph "flow-6" [function 6]
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 6
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4677,7 +4870,6 @@ end
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10{{"`*#91;RNumber#93;* **1**
       *2.5* (**id: 10**)`"}}
-   %% No edges found for 10
     11(["`*#91;RArgument#93;* **x**
       *2.3* (**id: 11**)`"])
     %% Environment of 12 [level: 0]:
@@ -4687,21 +4879,31 @@ end
     12[["`*#91;RFunctionCall#93;* **f**
       *2.1-6* (**id: 12**)
     arg: (x (11))`"]]
+    1 -.->|"flow"| 5
+    linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 11
-    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -.->|"reads, calls"| built-in:_
-    linkStyle 1 stroke:gray;
+    linkStyle 2 stroke:gray;
 6 -.-|function| flow-6
 
+    6 -.->|"flow"| 0
+    linkStyle 4 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 7
     0 -->|"defined-by"| 6
-    0 -->|"defined-by"| 7
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 0
     7 -.->|"reads, calls"| built-in:_-
-    linkStyle 7 stroke:gray;
+    linkStyle 9 stroke:gray;
+    7 -.->|"flow"| 10
+    linkStyle 10 stroke:gray,color:gray;
+    10 -.->|"flow"| 11
+    linkStyle 11 stroke:gray,color:gray;
     11 -->|"reads"| 10
+    11 -.->|"flow"| 12
+    linkStyle 13 stroke:gray,color:gray;
     11 -->|"def-on-call"| 1
-    linkStyle 9 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 14 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     12 -->|"arg"| 11
     12 -->|"reads"| 0
     12 -->|"calls"| 6
@@ -4712,7 +4914,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4749,7 +4951,7 @@ f()
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
+The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4763,7 +4965,6 @@ subgraph "flow-3" [function 3]
     1(["`*#91;RSymbol#93;* **x**
       *1.17* (**id: 1**)`"])
 end
-   %% No edges found for 3
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4774,7 +4975,6 @@ end
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6{{"`*#91;RNumber#93;* **3**
       *2.6* (**id: 6**)`"}}
-   %% No edges found for 6
     5["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 5**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4791,21 +4991,29 @@ end
     linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 3 -.-|function| flow-3
 
+    3 -.->|"flow"| 0
+    linkStyle 2 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 4
     0 -->|"defined-by"| 3
-    0 -->|"defined-by"| 4
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
     4 -.->|"reads, calls"| built-in:_-
-    linkStyle 6 stroke:gray;
+    linkStyle 7 stroke:gray;
+    4 -.->|"flow"| 6
+    linkStyle 8 stroke:gray,color:gray;
+    6 -.->|"flow"| 5
+    linkStyle 9 stroke:gray,color:gray;
+    5 -->|"defined-by, flow"| 7
     5 -->|"defined-by"| 6
-    5 -->|"defined-by"| 7
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 5
     7 -.->|"reads, calls"| built-in:_-
-    linkStyle 11 stroke:gray;
+    linkStyle 14 stroke:gray;
+    7 -.->|"flow"| 9
+    linkStyle 15 stroke:gray,color:gray;
     9 -->|"reads"| 0
     9 -->|"def-on-call"| 5
-    linkStyle 13 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 17 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     9 -->|"returns"| 1
     9 -->|"calls"| 3
 ```
@@ -4851,7 +5059,6 @@ subgraph "flow-6" [function 6]
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 6
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4862,7 +5069,6 @@ end
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10{{"`*#91;RNumber#93;* **1**
       *2.5* (**id: 10**)`"}}
-   %% No edges found for 10
     11(["`*#91;RArgument#93;* **x**
       *2.3* (**id: 11**)`"])
     %% Environment of 12 [level: 0]:
@@ -4872,21 +5078,31 @@ end
     12[["`*#91;RFunctionCall#93;* **f**
       *2.1-6* (**id: 12**)
     arg: (x (11))`"]]
+    1 -.->|"flow"| 5
+    linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 11
-    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -.->|"reads, calls"| built-in:_
-    linkStyle 1 stroke:gray;
+    linkStyle 2 stroke:gray;
 6 -.-|function| flow-6
 
+    6 -.->|"flow"| 0
+    linkStyle 4 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 7
     0 -->|"defined-by"| 6
-    0 -->|"defined-by"| 7
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 0
     7 -.->|"reads, calls"| built-in:_-
-    linkStyle 7 stroke:gray;
+    linkStyle 9 stroke:gray;
+    7 -.->|"flow"| 10
+    linkStyle 10 stroke:gray,color:gray;
+    10 -.->|"flow"| 11
+    linkStyle 11 stroke:gray,color:gray;
     11 -->|"reads"| 10
+    11 -.->|"flow"| 12
+    linkStyle 13 stroke:gray,color:gray;
     11 -->|"def-on-call"| 1
-    linkStyle 9 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 14 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     12 -->|"arg"| 11
     12 -->|"reads"| 0
     12 -->|"calls"| 6
@@ -4897,7 +5113,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4934,17 +5150,19 @@ Type: `64` (this is the bit-flag value, e.g., when looking at the serialization)
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
       *1.3* (**id: 1**)`"])
-   %% No edges found for 1
     3(["`*#91;RSymbol#93;* **y**
       *1.5* (**id: 3**)`"])
-   %% No edges found for 3
     5[["`*#91;RFunctionCall#93;* base#58;#58;**f**
       *1.1-6* (**id: 5**)
     arg: (1, 3)`"]]
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
+    3 -.->|"flow"| 5
+    linkStyle 1 stroke:gray,color:gray;
     5 -->|"reads, arg"| 1
-    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"reads, arg"| 3
-    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
 	
@@ -4952,7 +5170,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4997,7 +5215,6 @@ flowchart LR
 subgraph "flow-7" [function 7]
     4{{"`*#91;RNumber#93;* **2**
       *1.25* (**id: 4**)`"}}
-   %% No edges found for 4
     3["`*#91;RSymbol#93;* **x**
       *1.19* (**id: 3**, v: 4)`"]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
@@ -5013,7 +5230,6 @@ subgraph "flow-7" [function 7]
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 7
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 7)`"]
     8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -5028,25 +5244,33 @@ end
     %%   f: {**f** (id: 0, type: Function, def. @8)}
     10[["`*#91;RFunctionCall#93;* **f**
       *2.1-3* (**id: 10**)`"]]
+    4 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
+    3 -->|"defined-by, flow"| 5
     3 -->|"defined-by"| 4
-    3 -->|"defined-by"| 5
     3 -->|"side-effect-on-call"| 10
-    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 3
     5 -.->|"reads, calls"| built-in:__-
-    linkStyle 5 stroke:gray;
+    linkStyle 6 stroke:gray;
+    5 -.->|"flow"| 6
+    linkStyle 7 stroke:gray,color:gray;
     6 -->|"returns, arg"| 5
     6 -.->|"reads, calls"| built-in:_
-    linkStyle 7 stroke:gray;
+    linkStyle 9 stroke:gray;
 7 -.-|function| flow-7
 
+    7 -.->|"flow"| 0
+    linkStyle 11 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 8
     0 -->|"defined-by"| 7
-    0 -->|"defined-by"| 8
     8 -->|"reads, arg"| 7
     8 -->|"returns, arg"| 0
     8 -.->|"reads, calls"| built-in:_-
-    linkStyle 13 stroke:gray;
+    linkStyle 16 stroke:gray;
+    8 -.->|"flow"| 10
+    linkStyle 17 stroke:gray,color:gray;
     10 -->|"reads"| 0
     10 -->|"returns"| 5
     10 -->|"calls"| 7
@@ -5057,7 +5281,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5092,17 +5316,18 @@ Type: `256` (this is the bit-flag value, e.g., when looking at the serialization
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
       *1.7* (**id: 1**)`"])
-   %% No edges found for 1
     3[["`*#91;RFunctionCall#93;* base#58;#58;**quote**
       *1.1-8* (**id: 3**)
     arg: (1)`"]]
     built-in:quote["`Built-In:
 quote`"]
     style built-in:quote stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
     3 -->|"arg, non-standard-evaluation"| 1
-    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     3 -.->|"reads, calls"| built-in:quote
-    linkStyle 1 stroke:gray;
+    linkStyle 2 stroke:gray;
 ```
 
 	
@@ -5110,7 +5335,7 @@ quote`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5151,10 +5376,8 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 >       *1.5* (**id: 0**, v: 1)`"]
 >     1(["`*#91;RSymbol#93;* **v**
 >       *1.10* (**id: 1**)`"])
->    %% No edges found for 1
 >     2(["`*#91;RSymbol#93;* **b**
 >       *1.13* (**id: 2**, 4+)`"])
->    %% No edges found for 2
 >     4[["`*#91;RForLoop#93;* base#58;#58;**for**
 >       *1.1-13* (**id: 4**)
 >     arg: (0, 1, 2)`"]]
@@ -5162,12 +5385,20 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > for`"]
 >     style built-in:for stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     0 -->|"defined-by"| 1
+>     0 -.->|"branch (when: true)"| 2
+>     linkStyle 1 stroke:gray,color:gray;
+>     0 -.->|"branch (when: false)"| 4
+>     linkStyle 2 stroke:gray,color:gray;
+>     1 -.->|"flow"| 0
+>     linkStyle 3 stroke:gray,color:gray;
+>     2 -.->|"flow"| 0
+>     linkStyle 4 stroke:gray,color:gray;
 >     4 -->|"arg"| 0
 >     4 -->|"reads, arg"| 1
 >     4 -->|"arg, non-standard-evaluation"| 2
->     linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 >     4 -.->|"reads, calls"| built-in:for
->     linkStyle 4 stroke:gray;
+>     linkStyle 8 stroke:gray;
 > ```
 > 
 > 	
@@ -5201,21 +5432,25 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > flowchart LR
 >     0{{"`*#91;RLogical#93;* **TRUE**
 >       *1.7-10* (**id: 0**)`"}}
->    %% No edges found for 0
 >     1(["`*#91;RSymbol#93;* **b**
 >       *1.13* (**id: 1**, 3+)`"])
->    %% No edges found for 1
 >     3[["`*#91;RWhileLoop#93;* base#58;#58;**while**
 >       *1.1-13* (**id: 3**)
 >     arg: (0, 1)`"]]
 >     built-in:while["`Built-In:
 > while`"]
 >     style built-in:while stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     0 -.->|"branch (when: true)"| 1
+>     linkStyle 0 stroke:gray,color:gray;
+>     0 -.->|"branch (when: false)"| 3
+>     linkStyle 1 stroke:gray,color:gray;
+>     1 -.->|"flow"| 0
+>     linkStyle 2 stroke:gray,color:gray;
 >     3 -->|"reads, arg"| 0
 >     3 -->|"arg, non-standard-evaluation"| 1
->     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 >     3 -.->|"reads, calls"| built-in:while
->     linkStyle 2 stroke:gray;
+>     linkStyle 5 stroke:gray;
 > ```
 > 
 > 	
@@ -5223,7 +5458,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
+> The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -5240,9 +5475,9 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > </details>
 > 
 > Three helpers decide what such a mark means once the graph is complete:
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L41"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L79"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/nse.ts#L46"><code><span title="The parts of a call R does not evaluate the standard way.">Nse</span></code></a> models the escapes a quoting function offers (rlang's `!!` and `bquote`'s `.(x)`), and
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L78"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.  Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so: a name it reads may read any definition of that name, and a name it writes may be read by any use of it. Tha...">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L56"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L102"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/nse.ts#L98"><code><span title="The parts of a call R does not evaluate the standard way.">Nse</span></code></a> models the escapes a quoting function offers (rlang's `!!` and `bquote`'s `.(x)`), and
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L77"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.  Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so: a name it reads may read any definition of that name, and a name it writes may be read by any use of it. Tha...">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
 > 				
 
 
@@ -5262,10 +5497,8 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
       *1.7* (**id: 1**)`"])
-   %% No edges found for 1
     2(["`*#91;RSymbol#93;* **y**
       *1.11* (**id: 2**)`"])
-   %% No edges found for 2
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.7-11* (**id: 3**)
     arg: (1, 2)`"]]
@@ -5275,16 +5508,22 @@ flowchart LR
     built-in:quote["`Built-In:
 quote`"]
     style built-in:quote stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 2
+    linkStyle 0 stroke:gray,color:gray;
+    2 -.->|"flow"| 3
+    linkStyle 1 stroke:gray,color:gray;
     3 -->|"reads, arg"| 1
     3 -->|"reads, arg"| 2
+    3 -.->|"flow"| 5
+    linkStyle 4 stroke:gray,color:gray;
     5 -->|"arg, non-standard-evaluation"| 3
-    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"non-standard-evaluation"| 1
-    linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 6 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"non-standard-evaluation"| 2
-    linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -.->|"reads, calls"| built-in:quote
-    linkStyle 5 stroke:gray;
+    linkStyle 8 stroke:gray;
 ```
 
 	
@@ -5292,7 +5531,7 @@ quote`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5311,12 +5550,160 @@ This works, even if we have a larger expression in `quote`.
 
 </details>
 	
+<a id='flows-to'></a>
+<a id='flowdependency-edge'> </a>
+<a id='4096-vertex'> </a>
+### 10) FlowDependency Edge
 
-<h2 id="control-dependencies">Control Dependencies</h2>
+Type: `4096` (this is the bit-flag value, e.g., when looking at the serialization)
 
-Each vertex may have a list of active control dependencies.
-They hold the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L10"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.">NodeId</span></code></a> of all nodes that effect if the current vertex is part of the execution or not,
-and a boolean flag `when` to indicate if the control dependency is active when the condition is `true` or `false`.
+
+
+
+
+
+```mermaid
+flowchart LR
+    1{{"`*#91;RNumber#93;* **1**
+      *1.6* (**id: 1**)`"}}
+    0["`*#91;RSymbol#93;* **x**
+      *1.1* (**id: 0**, v: 1)`"]
+    2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *1.1-6* (**id: 2**)
+    arg: (0, 1)`"]]
+    built-in:_-["`Built-In:
+#60;#45;`"]
+    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    4{{"`*#91;RNumber#93;* **2**
+      *2.6* (**id: 4**)`"}}
+    3["`*#91;RSymbol#93;* **y**
+      *2.1* (**id: 3**, v: 4)`"]
+    5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *2.1-6* (**id: 5**)
+    arg: (3, 4)`"]]
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
+    0 -->|"defined-by"| 1
+    2 -->|"reads, arg"| 1
+    2 -->|"returns, arg"| 0
+    2 -.->|"reads, calls"| built-in:_-
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
+    4 -.->|"flow"| 3
+    linkStyle 7 stroke:gray,color:gray;
+    3 -->|"defined-by, flow"| 5
+    3 -->|"defined-by"| 4
+    5 -->|"reads, arg"| 4
+    5 -->|"returns, arg"| 3
+    5 -.->|"reads, calls"| built-in:_-
+    linkStyle 12 stroke:gray;
+```
+
+	
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
+We encountered no unknown side effects during the analysis.
+
+
+```r
+x <- 1
+y <- 2
+```
+
+
+
+</details>
+
+
+
+
+Marks that the source is evaluated before the target, which is what the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) is a view on.
+The dataflow analysis records the control flow while it walks the program, so these edges (together with the
+[`branches-to`](#branches-to) edges) already carry the program's control flow and no separate extraction is needed.
+		
+
+
+	
+<a id='branches-to'></a>
+<a id='controldependency-edge'> </a>
+<a id='8192-vertex'> </a>
+### 11) ControlDependency Edge
+
+Type: `8192` (this is the bit-flag value, e.g., when looking at the serialization)
+
+
+
+
+
+
+```mermaid
+flowchart LR
+    0(["`*#91;RSymbol#93;* **u**
+      *1.4* (**id: 0**)`"])
+    1{{"`*#91;RNumber#93;* **1**
+      *1.7* (**id: 1**, 5+)`"}}
+    3{{"`*#91;RNumber#93;* **2**
+      *1.14* (**id: 3**, 5-)`"}}
+    5[["`*#91;RIfThenElse#93;* base#58;#58;**if**
+      *1.1-14* (**id: 5**)
+    arg: (0, 1, 3)`"]]
+    built-in:if["`Built-In:
+if`"]
+    style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"branch (when: true)"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    0 -.->|"branch (when: false)"| 3
+    linkStyle 1 stroke:gray,color:gray;
+    1 -.->|"flow"| 5
+    linkStyle 2 stroke:gray,color:gray;
+    3 -.->|"flow"| 5
+    linkStyle 3 stroke:gray,color:gray;
+    5 -->|"returns, arg"| 1
+    5 -->|"returns, arg"| 3
+    5 -->|"reads, arg"| 0
+    5 -.->|"reads, calls"| built-in:if
+    linkStyle 7 stroke:gray;
+```
+
+	
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
+We encountered no unknown side effects during the analysis.
+
+
+```r
+if(u) 1 else 2
+```
+
+
+
+</details>
+
+
+
+
+The counterpart of the [`flows-to`](#flows-to) edge for everything that only happens under a condition:
+the edge names the vertex that decides (e.g. an `if`) and whether it is the branch taken when that decision holds.
+		
+
+
+	
+
+<h2 id="branches">Branches</h2>
+
+A <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L21"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> names the node that decides whether something is evaluated, together with a
+`when` flag for the outcome it takes, e.g. `{ id: <the if>, when: true }`.
+
+Each vertex lists the ones it runs under in its `cds`, and the control flow puts the very same objects on its
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L61"><code><span title="Like EdgeType.FlowEdge , pointing the way execution goes, but only taken when the condition the edge names evaluates to the value it names (e.g. one branch of an if-else).">EdgeType::<b>ControlEdge</b></span></code></a> edges, so the two never drift apart.
 
 As an example, consider the following dataflow graph:
 
@@ -5328,24 +5715,29 @@ As an example, consider the following dataflow graph:
 flowchart LR
     0(["`*#91;RSymbol#93;* **p**
       *1.4* (**id: 0**)`"])
-   %% No edges found for 0
     1(["`*#91;RSymbol#93;* **a**
       *1.7* (**id: 1**, 5+)`"])
-   %% No edges found for 1
     3(["`*#91;RSymbol#93;* **b**
       *1.14* (**id: 3**, 5-)`"])
-   %% No edges found for 3
     5[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-14* (**id: 5**)
     arg: (0, 1, 3)`"]]
     built-in:if["`Built-In:
 if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"branch (when: true)"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    0 -.->|"branch (when: false)"| 3
+    linkStyle 1 stroke:gray,color:gray;
+    1 -.->|"flow"| 5
+    linkStyle 2 stroke:gray,color:gray;
+    3 -.->|"flow"| 5
+    linkStyle 3 stroke:gray,color:gray;
     5 -->|"returns, arg"| 1
     5 -->|"returns, arg"| 3
     5 -->|"reads, arg"| 0
     5 -.->|"reads, calls"| built-in:if
-    linkStyle 3 stroke:gray;
+    linkStyle 7 stroke:gray;
 ```
 
 	
@@ -5353,7 +5745,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -5367,10 +5759,13 @@ if(p) a else b
 
 
 
-Whenever we visualize a graph, we represent the control dependencies as grayed out edges with a `CD` prefix, followed
-by the `when` flag.
-In the above example, both `a` and `b` depend on the `if`. Please note that they are _not_ linked to the result of
-the condition itself as this is the more general linkage point (and harmonizes with other control structures, especially those which are user-defined).
+Control flow is drawn dashed and gray, and such an edge reads `branch` (it is a `branches-to` edge, called
+`branch on ... if T` in the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)).
+It starts at the condition, since that is what has to run first, and its label says which decision it belongs to,
+so `p` leads to `a` when the `if` is `true` and to `b` when it is `false`.
+Both `a` and `b` therefore depend on the `if` and not on the result of the condition itself, as the `if` is the more
+general linkage point (and harmonizes with other control structures, especially those which are user-defined).
+See the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) for the view these edges make up.
 
 
 <details><summary>Example: Multiple Vertices (Assignment)</summary>
@@ -5383,10 +5778,8 @@ the condition itself as this is the more general linkage point (and harmonizes w
 flowchart LR
     0(["`*#91;RSymbol#93;* **p**
       *1.4* (**id: 0**)`"])
-   %% No edges found for 0
     2{{"`*#91;RNumber#93;* **1**
       *1.12* (**id: 2**)`"}}
-   %% No edges found for 2
     1["`*#91;RSymbol#93;* **a**
       *1.7* (**id: 1**, 5+, v: 2)`"]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -5401,20 +5794,24 @@ flowchart LR
     built-in:if["`Built-In:
 if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    1 -->|"defined-by"| 2
-    1 -->|"defined-by"| 3
-    1 -->|"CD-True"| 5
+    0 -.->|"branch (when: true)"| 2
+    linkStyle 0 stroke:gray,color:gray;
+    0 -.->|"branch (when: false)"| 5
+    linkStyle 1 stroke:gray,color:gray;
+    2 -.->|"flow"| 1
     linkStyle 2 stroke:gray,color:gray;
+    1 -->|"defined-by, flow"| 3
+    1 -->|"defined-by"| 2
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
     3 -.->|"reads, calls"| built-in:_-
-    linkStyle 5 stroke:gray;
-    3 -->|"CD-True"| 5
-    linkStyle 6 stroke:gray,color:gray;
+    linkStyle 7 stroke:gray;
+    3 -.->|"flow"| 5
+    linkStyle 8 stroke:gray,color:gray;
     5 -->|"returns, arg"| 3
     5 -->|"reads, arg"| 0
     5 -.->|"reads, calls"| built-in:if
-    linkStyle 9 stroke:gray;
+    linkStyle 11 stroke:gray;
 ```
 
 	
@@ -5422,7 +5819,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -5448,13 +5845,10 @@ if(p) a <- 1
 flowchart LR
     0(["`*#91;RSymbol#93;* **p**
       *1.4* (**id: 0**)`"])
-   %% No edges found for 0
     1{{"`*#91;RNumber#93;* **3**
       *1.7* (**id: 1**)`"}}
-   %% No edges found for 1
     2{{"`*#91;RNumber#93;* **2**
       *1.11* (**id: 2**)`"}}
-   %% No edges found for 2
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.7-11* (**id: 3**, 5+)
     arg: (1, 2)`"]]
@@ -5467,16 +5861,24 @@ flowchart LR
     built-in:if["`Built-In:
 if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"branch (when: true)"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    0 -.->|"branch (when: false)"| 5
+    linkStyle 1 stroke:gray,color:gray;
+    1 -.->|"flow"| 2
+    linkStyle 2 stroke:gray,color:gray;
+    2 -.->|"flow"| 3
+    linkStyle 3 stroke:gray,color:gray;
     3 -->|"reads, arg"| 1
     3 -->|"reads, arg"| 2
     3 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
-    3 -->|"CD-True"| 5
-    linkStyle 3 stroke:gray,color:gray;
+    linkStyle 6 stroke:gray;
+    3 -.->|"flow"| 5
+    linkStyle 7 stroke:gray,color:gray;
     5 -->|"returns, arg"| 3
     5 -->|"reads, arg"| 0
     5 -.->|"reads, calls"| built-in:if
-    linkStyle 6 stroke:gray;
+    linkStyle 10 stroke:gray;
 ```
 
 	
@@ -5484,7 +5886,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -5510,16 +5912,12 @@ if(p) 3 + 2
 flowchart LR
     0(["`*#91;RSymbol#93;* **x**
       *1.4* (**id: 0**)`"])
-   %% No edges found for 0
     3(["`*#91;RSymbol#93;* **y**
       *1.12* (**id: 3**, 12+)`"])
-   %% No edges found for 3
     4(["`*#91;RSymbol#93;* **a**
       *1.15* (**id: 4**, 8+, 12+)`"])
-   %% No edges found for 4
     6(["`*#91;RSymbol#93;* **b**
       *1.22* (**id: 6**, 8-, 12+)`"])
-   %% No edges found for 6
     8[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.9-22* (**id: 8**, 12+)
     arg: (3, 4, 6)`"]]
@@ -5540,27 +5938,39 @@ c`"]
     12[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-31* (**id: 12**)
     arg: (0, 9, 10)`"]]
+    0 -.->|"branch (when: true)"| 3
+    linkStyle 0 stroke:gray,color:gray;
+    0 -.->|"branch (when: false)"| 10
+    linkStyle 1 stroke:gray,color:gray;
+    3 -.->|"branch (when: true)"| 4
+    linkStyle 2 stroke:gray,color:gray;
+    3 -.->|"branch (when: false)"| 6
+    linkStyle 3 stroke:gray,color:gray;
+    4 -.->|"flow"| 8
+    linkStyle 4 stroke:gray,color:gray;
+    6 -.->|"flow"| 8
+    linkStyle 5 stroke:gray,color:gray;
     8 -->|"returns, arg"| 4
     8 -->|"returns, arg"| 6
     8 -->|"reads, arg"| 3
     8 -.->|"reads, calls"| built-in:if
-    linkStyle 3 stroke:gray;
-    8 -->|"CD-True"| 12
-    linkStyle 4 stroke:gray,color:gray;
+    linkStyle 9 stroke:gray;
+    8 -.->|"flow"| 9
+    linkStyle 10 stroke:gray,color:gray;
     9 -->|"returns, arg"| 8
     9 -.->|"reads, calls"| built-in:_
-    linkStyle 6 stroke:gray;
-    9 -->|"CD-True"| 12
-    linkStyle 7 stroke:gray,color:gray;
+    linkStyle 12 stroke:gray;
+    9 -.->|"flow"| 12
+    linkStyle 13 stroke:gray,color:gray;
     10 -.->|"reads"| built-in:c
-    linkStyle 8 stroke:gray;
-    10 -->|"CD-False"| 12
-    linkStyle 9 stroke:gray,color:gray;
+    linkStyle 14 stroke:gray;
+    10 -.->|"flow"| 12
+    linkStyle 15 stroke:gray,color:gray;
     12 -->|"returns, arg"| 9
     12 -->|"returns, arg"| 10
     12 -->|"reads, arg"| 0
     12 -.->|"reads, calls"| built-in:if
-    linkStyle 13 stroke:gray;
+    linkStyle 19 stroke:gray;
 ```
 
 	
@@ -5592,35 +6002,16 @@ for a given piece of R code (in this case `x <- 1; x + 1`) as follows:
 
 
 ```ts
-
-const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1
-x + 1')).build();
+const analyzer = await new FlowrAnalyzerBuilder().build();
+analyzer.addRequest('x <- 1\nx + 1');
 const result = await analyzer.dataflow();
+analyzer.close();
 ```
 
-
-<details>
-
-<summary style="color:gray">Transpiled Code</summary>
-
-The actual code we are using in case the example above gets oudated:
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L889">src/documentation/wiki-dataflow-graph.ts#L889</a></i>
 
 
-```ts
-async function dummyDataflow() {
-    const analyzer = await new flowr_analyzer_builder_1.FlowrAnalyzerBuilder().build();
-    analyzer.addRequest('x <- 1\nx + 1');
-    const result = await analyzer.dataflow();
-    analyzer.close();
-    return result;
-}
-```
-
-
-</details>
-
-
-Now, you can find the dataflow _information_ with `result.dataflow`. More specifically, the graph is stored in `result.dataflow.graph` and looks like this:
+The call returns the dataflow _information_, with the graph in `result.graph`, which looks like this:
 
 
 
@@ -5629,7 +6020,6 @@ Now, you can find the dataflow _information_ with `result.dataflow`. More specif
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -5642,24 +6032,31 @@ flowchart LR
       *2.1* (**id: 3**)`"])
     4{{"`*#91;RNumber#93;* **1**
       *2.5* (**id: 4**)`"}}
-   %% No edges found for 4
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.1-5* (**id: 5**)
     arg: (3, 4)`"]]
     built-in:_["`Built-In:
 #43;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 3
+    linkStyle 6 stroke:gray,color:gray;
     3 -->|"reads"| 0
+    3 -.->|"flow"| 4
+    linkStyle 8 stroke:gray,color:gray;
+    4 -.->|"flow"| 5
+    linkStyle 9 stroke:gray,color:gray;
     5 -->|"reads, arg"| 3
     5 -->|"reads, arg"| 4
     5 -.->|"reads, calls"| built-in:_
-    linkStyle 8 stroke:gray;
+    linkStyle 12 stroke:gray;
 ```
 
 	
@@ -5673,7 +6070,7 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":1697,"parent":{"id":0,"builtInEnv":true,"memory":[["NULL",[{"type":64,"definedAt":"built-in:NULL","value":null,"name":["NULL","base"],"nodeId":"built-in:NULL"}]],["NA",[{"type":64,"definedAt":"built-in:NA","value":null,"name":["NA","base"],"nodeId":"built-in:NA"}]],["NA_integer_",[{"type":64,"definedAt":"built-in:NA_integer_","value":null,"name":["NA_integer_","base"],"nodeId":"built-in:NA_integer_"}]],["NA_real_",[{"type":64,"definedAt":"built-in:NA_real_","value":null,"name":["NA_real_","base"],"nodeId":"built-in:NA_real_"}]],["NA_complex_",[{"type":64,"definedAt":"built-in:NA_complex_","value":null,"name":["NA_complex_","base"],"nodeId":"built-in:NA_complex_"}]],["NA_character_",[{"type":64,"definedAt":"built-in:NA_character_","value":null,"name":["NA_character_","base"],"nodeId":"built-in:NA_character_"}]],["NaN",[{"type":64,"definedAt":"built-in:NaN","value":null,"name":["NaN","base"],"nodeId":"built-in:NaN"}]],[".GlobalEnv",[{"type":64,"definedAt":"built-in:.GlobalEnv","value":null,"name":[".GlobalEnv","base"],"nodeId":"built-in:.GlobalEnv"}]],[".BaseNamespaceEnv",[{"type":64,"definedAt":"built-in:.BaseNamespaceEnv","value":null,"name":[".BaseNamespaceEnv","base"],"nodeId":"built-in:.BaseNamespaceEnv"}]],[".BaseEnv",[{"type":64,"definedAt":"built-in:.BaseEnv","value":null,"name":[".BaseEnv","base"],"nodeId":"built-in:.BaseEnv"}]],["TRUE",[{"type":64,"definedAt":"built-in:TRUE","value":true,"name":["TRUE","base"],"nodeId":"built-in:TRUE"}]],["T",[{"type":64,"definedAt":"built-in:T","value":true,"name":["T","base"],"nodeId":"built-in:T"}]],["FALSE",[{"type":64,"definedAt":"built-in:FALSE","value":false,"name":["FALSE","base"],"nodeId":"built-in:FALSE"}]],["F",[{"type":64,"definedAt":"built-in:F","value":false,"name":["F","base"],"nodeId":"built-in:F"}]],["Inf",[{"type":64,"definedAt":"built-in:Inf","value":null,"name":["Inf","base"],"nodeId":"built-in:Inf"}]],["-Inf",[{"type":64,"definedAt":"built-in:-Inf","value":null,"name":["-Inf","base"],"nodeId":"built-in:-Inf"}]],["pi",[{"type":64,"definedAt":"built-in:pi","value":3.141592653589793,"name":["pi","base"],"nodeId":"built-in:pi"}]],["LETTERS",[{"type":64,"definedAt":"built-in:LETTERS","value":["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"],"name":["LETTERS","base"],"nodeId":"built-in:LETTERS"}]],["letters",[{"type":64,"definedAt":"built-in:letters","value":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"],"name":["letters","base"],"nodeId":"built-in:letters"}]],["month.abb",[{"type":64,"definedAt":"built-in:month.abb","value":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"name":["month.abb","base"],"nodeId":"built-in:month.abb"}]],["month.name",[{"type":64,"definedAt":"built-in:month.name","value":["January","February","March","April","May","June","July","August","September","October","November","December"],"name":["month.name","base"],"nodeId":"built-in:month.name"}]],["~",[{"type":128,"definedAt":"built-in:~","config":{"markArgsAsMasked":"all"},"name":["~","base"],"nodeId":"built-in:~"}]],["filter",[{"type":128,"definedAt":"built-in:filter","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["filter","dplyr"],"nodeId":"built-in:filter"}]],["subset",[{"type":128,"definedAt":"built-in:subset","config":{"markArgsAsMasked":"all-but-first","props":17},"name":["subset","base"],"nodeId":"built-in:subset"}]],["transform",[{"type":128,"definedAt":"built-in:transform","config":{"markArgsAsMasked":"all-but-first","props":17},"name":["transform","base"],"nodeId":"built-in:transform"}]],["filter_out",[{"type":128,"definedAt":"built-in:filter_out","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["filter_out","janitor"],"nodeId":"built-in:filter_out"}]],["mutate",[{"type":128,"definedAt":"built-in:mutate","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["mutate","dplyr"],"nodeId":"built-in:mutate"}]],["transmute",[{"type":128,"definedAt":"built-in:transmute","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["transmute","dplyr"],"nodeId":"built-in:transmute"}]],["summarise",[{"type":128,"definedAt":"built-in:summarise","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["summarise","dplyr"],"nodeId":"built-in:summarise"}]],["summarize",[{"type":128,"definedAt":"built-in:summarize","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["summarize","dplyr"],"nodeId":"built-in:summarize"}]],["arrange",[{"type":128,"definedAt":"built-in:arrange","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["arrange","dplyr"],"nodeId":"built-in:arrange"}]],["group_by",[{"type":128,"definedAt":"built-in:group_by","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["group_by","dplyr"],"nodeId":"built-in:group_by"}]],["distinct",[{"type":128,"definedAt":"built-in:distinct","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["distinct","dplyr"],"nodeId":"built-in:distinct"}]],["count",[{"type":128,"definedAt":"built-in:count","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["count","dplyr"],"nodeId":"built-in:count"}]],["tally",[{"type":128,"definedAt":"built-in:tally","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["tally","dplyr"],"nodeId":"built-in:tally"}]],["reframe",[{"type":128,"definedAt":"built-in:reframe","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["reframe","dplyr"],"nodeId":"built-in:reframe"}]],["slice",[{"type":128,"definedAt":"built-in:slice","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice","dplyr"],"nodeId":"built-in:slice"}]],["slice_head",[{"type":128,"definedAt":"built-in:slice_head","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_head","dplyr"],"nodeId":"built-in:slice_head"}]],["slice_tail",[{"type":128,"definedAt":"built-in:slice_tail","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_tail","dplyr"],"nodeId":"built-in:slice_tail"}]],["slice_min",[{"type":128,"definedAt":"built-in:slice_min","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_min","dplyr"],"nodeId":"built-in:slice_min"}]],["slice_max",[{"type":128,"definedAt":"built-in:slice_max","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_max","dplyr"],"nodeId":"built-in:slice_max"}]],["slice_sample",[{"type":128,"definedAt":"built-in:slice_sample","config":{"markArgsAsMasked":"all-but-first","props":256},"name":["slice_sample","dplyr"],"nodeId":"built-in:slice_sample"}]],["pull",[{"type":128,"definedAt":"built-in:pull","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["pull","dplyr"],"nodeId":"built-in:pull"}]],["rename",[{"type":128,"definedAt":"built-in:rename","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["rename","dplyr"],"nodeId":"built-in:rename"}]],["relocate",[{"type":128,"definedAt":"built-in:relocate","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["relocate","dplyr"],"nodeId":"built-in:relocate"}]],["select",[{"type":128,"definedAt":"built-in:select","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["select","dplyr"],"nodeId":"built-in:select"}]],["group_split",[{"type":128,"definedAt":"built-in:group_split","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["group_split","dplyr"],"nodeId":"built-in:group_split"}]],["add_count",[{"type":128,"definedAt":"built-in:add_count","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["add_count","dplyr"],"nodeId":"built-in:add_count"}]],["add_tally",[{"type":128,"definedAt":"built-in:add_tally","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["add_tally","dplyr"],"nodeId":"built-in:add_tally"}]],["nest_by",[{"type":128,"definedAt":"built-in:nest_by","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["nest_by","dplyr"],"nodeId":"built-in:nest_by"}]],["rowwise",[{"type":128,"definedAt":"built-in:rowwise","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["rowwise","dplyr"],"nodeId":"built-in:rowwise"}]],["with_groups",[{"type":128,"definedAt":"built-in:with_groups","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["with_groups","dplyr"],"nodeId":"built-in:with_groups"}]],["pivot_longer",[{"type":128,"definedAt":"built-in:pivot_longer","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["pivot_longer","tidyr"],"nodeId":"built-in:pivot_longer"}]],["pivot_wider",[{"type":128,"definedAt":"built-in:pivot_wider","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["pivot_wider","tidyr"],"nodeId":"built-in:pivot_wider"}]],["gather",[{"type":128,"definedAt":"built-in:gather","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["gather","tidyr"],"nodeId":"built-in:gather"}]],["spread",[{"type":128,"definedAt":"built-in:spread","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["spread","tidyr"],"nodeId":"built-in:spread"}]],["separate",[{"type":128,"definedAt":"built-in:separate","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate","tidyr"],"nodeId":"built-in:separate"}]],["separate_rows",[{"type":128,"definedAt":"built-in:separate_rows","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_rows","tidyr"],"nodeId":"built-in:separate_rows"}]],["separate_wider_delim",[{"type":128,"definedAt":"built-in:separate_wider_delim","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_wider_delim","tidyr"],"nodeId":"built-in:separate_wider_delim"}]],["separate_wider_regex",[{"type":128,"definedAt":"built-in:separate_wider_regex","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_wider_regex","tidyr"],"nodeId":"built-in:separate_wider_regex"}]],["separate_wider_position",[{"type":128,"definedAt":"built-in:separate_wider_position","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_wider_position","tidyr"],"nodeId":"built-in:separate_wider_position"}]],["unite",[{"type":128,"definedAt":"built-in:unite","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unite","tidyr"],"nodeId":"built-in:unite"}]],["extract",[{"type":128,"definedAt":"built-in:extract","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["extract","tidyr"],"nodeId":"built-in:extract"}]],["nest",[{"type":128,"definedAt":"built-in:nest","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["nest","tidyr"],"nodeId":"built-in:nest"}]],["unnest",[{"type":128,"definedAt":"built-in:unnest","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unnest","tidyr"],"nodeId":"built-in:unnest"}]],["unnest_longer",[{"type":128,"definedAt":"built-in:unnest_longer","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unnest_longer","tidyr"],"nodeId":"built-in:unnest_longer"}]],["unnest_wider",[{"type":128,"definedAt":"built-in:unnest_wider","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unnest_wider","tidyr"],"nodeId":"built-in:unnest_wider"}]],["hoist",[{"type":128,"definedAt":"built-in:hoist","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["hoist","tidyr"],"nodeId":"built-in:hoist"}]],["chop",[{"type":128,"definedAt":"built-in:chop","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["chop","tidyr"],"nodeId":"built-in:chop"}]],["unchop",[{"type":128,"definedAt":"built-in:unchop","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unchop","tidyr"],"nodeId":"built-in:unchop"}]],["pack",[{"type":128,"definedAt":"built-in:pack","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["pack","tidyr"],"nodeId":"built-in:pack"}]],["unpack",[{"type":128,"definedAt":"built-in:unpack","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unpack","tidyr"],"nodeId":"built-in:unpack"}]],["drop_na",[{"type":128,"definedAt":"built-in:drop_na","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["drop_na","tidyr"],"nodeId":"built-in:drop_na"}]],["fill",[{"type":128,"definedAt":"built-in:fill","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["fill","tidyr"],"nodeId":"built-in:fill"}]],["replace_na",[{"type":128,"definedAt":"built-in:replace_na","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["replace_na","tidyr"],"nodeId":"built-in:replace_na"}]],["complete",[{"type":128,"definedAt":"built-in:complete","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["complete","tidyr"],"nodeId":"built-in:complete"}]],["expand",[{"type":128,"definedAt":"built-in:expand","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["expand","tidyr"],"nodeId":"built-in:expand"}]],["uncount",[{"type":128,"definedAt":"built-in:uncount","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["uncount","tidyr"],"nodeId":"built-in:uncount"}]],["separate_longer_delim",[{"type":128,"definedAt":"built-in:separate_longer_delim","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_longer_delim","tidyr"],"nodeId":"built-in:separate_longer_delim"}]],["separate_longer_position",[{"type":128,"definedAt":"built-in:separate_longer_position","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_longer_position","tidyr"],"nodeId":"built-in:separate_longer_position"}]],["aes",[{"type":128,"definedAt":"built-in:aes","config":{"markArgsAsMasked":"all"},"name":["aes","ggplot2"],"nodeId":"built-in:aes"}]],["vars",[{"type":128,"definedAt":"built-in:vars","config":{"markArgsAsMasked":"all"},"name":["vars","ggplot2"],"nodeId":"built-in:vars"}]],["join_by",[{"type":128,"definedAt":"built-in:join_by","config":{"markArgsAsMasked":"all"},"name":["join_by","dplyr"],"nodeId":"built-in:join_by"}]],["tibble",[{"type":128,"definedAt":"built-in:tibble","config":{"markArgsAsMasked":"all"},"name":["tibble","tibble"],"nodeId":"built-in:tibble"}]],["tribble",[{"type":128,"definedAt":"built-in:tribble","config":{"markArgsAsMasked":"all"},"name":["tribble","tibble"],"nodeId":"built-in:tribble"}]],["+",[{"type":128,"definedAt":"built-in:+","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["+","base"],"nodeId":"built-in:+"}]],["-",[{"type":128,"definedAt":"built-in:-","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["-","base"],"nodeId":"built-in:-"}]],["*",[{"type":128,"definedAt":"built-in:*","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["*","base"],"nodeId":"built-in:*"}]],["/",[{"type":128,"definedAt":"built-in:/","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["/","base"],"nodeId":"built-in:/"}]],["^",[{"type":128,"definedAt":"built-in:^","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["^","base"],"nodeId":"built-in:^"}]],["%%",[{"type":128,"definedAt":"built-in:%%","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["%%","base"],"nodeId":"built-in:%%"}]],["%/%",[{"type":128,"definedAt":"built-in:%/%","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["%/%","base"],"nodeId":"built-in:%/%"}]],["**",[{"type":128,"definedAt":"built-in:**","config":{"props":1,"sig":[["e1",2],["e2",2]]},"name":["**","base"],"nodeId":"built-in:**"}]],["==",[{"type":128,"definedAt":"built-in:==","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["==","base"],"nodeId":"built-in:=="}]],["!=",[{"type":128,"definedAt":"built-in:!=","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["!=","base"],"nodeId":"built-in:!="}]],[">",[{"type":128,"definedAt":"built-in:>","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":[">","base"],"nodeId":"built-in:>"}]],["<",[{"type":128,"definedAt":"built-in:<","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["<","base"],"nodeId":"built-in:<"}]],[">=",[{"type":128,"definedAt":"built-in:>=","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":[">=","base"],"nodeId":"built-in:>="}]],["<=",[{"type":128,"definedAt":"built-in:<=","config":{"props":17,"sig":[["e1",2],["e2",2]]},"name":["<=","base"],"nodeId":"built-in:<="}]],["%*%",[{"type":128,"definedAt":"built-in:%*%","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["%*%","base"],"nodeId":"built-in:%*%"}]],["%in%",[{"type":128,"definedAt":"built-in:%in%","config":{"props":1,"sig":[["x",2],["table",2]]},"name":["%in%","base"],"nodeId":"built-in:%in%"}]],[":",[{"type":128,"definedAt":"built-in::","config":{"props":1,"sig":[["from",2],["to",2]]},"name":[":","base"],"nodeId":"built-in::"}]],["!",[{"type":128,"definedAt":"built-in:!","config":{"props":17,"sig":[["x",2]]},"name":["!","base"],"nodeId":"built-in:!"}]],["?",[{"type":128,"definedAt":"built-in:?","config":{"sig":[["e1",128],["e2",128]]},"name":["?","utils"],"nodeId":"built-in:?"}]],["length",[{"type":128,"definedAt":"built-in:length","config":{"props":4194321,"sig":[["x",4]]},"name":["length","base"],"nodeId":"built-in:length"}]],["dim",[{"type":128,"definedAt":"built-in:dim","config":{"props":4194321,"sig":[["x",4]]},"name":["dim","base"],"nodeId":"built-in:dim"}]],["is.matrix",[{"type":128,"definedAt":"built-in:is.matrix","config":{"props":4194321,"sig":[["x",4]]},"name":["is.matrix","base"],"nodeId":"built-in:is.matrix"}]],["is.numeric",[{"type":128,"definedAt":"built-in:is.numeric","config":{"props":4194321,"sig":[["x",4]]},"name":["is.numeric","base"],"nodeId":"built-in:is.numeric"}]],["lengths",[{"type":128,"definedAt":"built-in:lengths","config":{"props":4194305,"sig":[["x",4]]},"name":["lengths","base"],"nodeId":"built-in:lengths"}]],["nrow",[{"type":128,"definedAt":"built-in:nrow","config":{"props":4194305,"sig":[["x",4]]},"name":["nrow","base"],"nodeId":"built-in:nrow"}]],["ncol",[{"type":128,"definedAt":"built-in:ncol","config":{"props":4194305,"sig":[["x",4]]},"name":["ncol","base"],"nodeId":"built-in:ncol"}]],["NROW",[{"type":128,"definedAt":"built-in:NROW","config":{"props":4194305,"sig":[["x",4]]},"name":["NROW","base"],"nodeId":"built-in:NROW"}]],["NCOL",[{"type":128,"definedAt":"built-in:NCOL","config":{"props":4194305,"sig":[["x",4]]},"name":["NCOL","base"],"nodeId":"built-in:NCOL"}]],["is.null",[{"type":128,"definedAt":"built-in:is.null","config":{"props":4194305,"sig":[["x",4]]},"name":["is.null","base"],"nodeId":"built-in:is.null"}]],["is.factor",[{"type":128,"definedAt":"built-in:is.factor","config":{"props":4194305,"sig":[["x",4]]},"name":["is.factor","base"],"nodeId":"built-in:is.factor"}]],["is.vector",[{"type":128,"definedAt":"built-in:is.vector","config":{"props":4194305,"sig":[["x",4]]},"name":["is.vector","base"],"nodeId":"built-in:is.vector"}]],["is.data.frame",[{"type":128,"definedAt":"built-in:is.data.frame","config":{"props":4194305,"sig":[["x",4]]},"name":["is.data.frame","base"],"nodeId":"built-in:is.data.frame"}]],["is.character",[{"type":128,"definedAt":"built-in:is.character","config":{"props":4194305,"sig":[["x",4]]},"name":["is.character","base"],"nodeId":"built-in:is.character"}]],["is.logical",[{"type":128,"definedAt":"built-in:is.logical","config":{"props":4194305,"sig":[["x",4]]},"name":["is.logical","base"],"nodeId":"built-in:is.logical"}]],["is.function",[{"type":128,"definedAt":"built-in:is.function","config":{"props":4194305,"sig":[["x",4]]},"name":["is.function","base"],"nodeId":"built-in:is.function"}]],["is.list",[{"type":128,"definedAt":"built-in:is.list","config":{"props":4194305,"sig":[["x",4]]},"name":["is.list","base"],"nodeId":"built-in:is.list"}]],["dimnames",[{"type":128,"definedAt":"built-in:dimnames","config":{"props":17,"sig":[["x",4]]},"name":["dimnames","base"],"nodeId":"built-in:dimnames"}]],["names",[{"type":128,"definedAt":"built-in:names","config":{"props":17,"sig":[["x",4]]},"name":["names","base"],"nodeId":"built-in:names"}]],["rownames",[{"type":128,"definedAt":"built-in:rownames","config":{"props":1,"sig":[["x",4]]},"name":["rownames","base"],"nodeId":"built-in:rownames"}]],["colnames",[{"type":128,"definedAt":"built-in:colnames","config":{"props":1,"sig":[["x",4]]},"name":["colnames","base"],"nodeId":"built-in:colnames"}]],["class",[{"type":128,"definedAt":"built-in:class","config":{"props":1,"sig":[["x",4]]},"name":["class","base"],"nodeId":"built-in:class"}]],["nchar",[{"type":128,"definedAt":"built-in:nchar","config":{"props":4194305,"sig":[["x",4]]},"name":["nchar","base"],"nodeId":"built-in:nchar"}]],["missing",[{"type":128,"definedAt":"built-in:missing","config":{"props":1,"sig":[["x",512]]},"name":["missing","base"],"nodeId":"built-in:missing"}]],["sum",[{"type":128,"definedAt":"built-in:sum","config":{"props":17,"sig":[["...",2]]},"name":["sum","base"],"nodeId":"built-in:sum"}]],["prod",[{"type":128,"definedAt":"built-in:prod","config":{"props":17,"sig":[["...",2]]},"name":["prod","base"],"nodeId":"built-in:prod"}]],["min",[{"type":128,"definedAt":"built-in:min","config":{"props":17,"sig":[["...",2]]},"name":["min","base"],"nodeId":"built-in:min"}]],["max",[{"type":128,"definedAt":"built-in:max","config":{"props":17,"sig":[["...",2]]},"name":["max","base"],"nodeId":"built-in:max"}]],["range",[{"type":128,"definedAt":"built-in:range","config":{"props":17,"sig":[["...",2]]},"name":["range","base"],"nodeId":"built-in:range"}]],["cbind",[{"type":128,"definedAt":"built-in:cbind","config":{"props":17,"sig":[["...",2]]},"name":["cbind","base"],"nodeId":"built-in:cbind"}]],["rbind",[{"type":128,"definedAt":"built-in:rbind","config":{"props":17,"sig":[["...",2]]},"name":["rbind","base"],"nodeId":"built-in:rbind"}]],["pmin",[{"type":128,"definedAt":"built-in:pmin","config":{"props":1,"sig":[["...",2]]},"name":["pmin","base"],"nodeId":"built-in:pmin"}]],["pmax",[{"type":128,"definedAt":"built-in:pmax","config":{"props":1,"sig":[["...",2]]},"name":["pmax","base"],"nodeId":"built-in:pmax"}]],["data.frame",[{"type":128,"definedAt":"built-in:data.frame","config":{"props":1,"sig":[["...",2]]},"name":["data.frame","base"],"nodeId":"built-in:data.frame"}]],["order",[{"type":128,"definedAt":"built-in:order","config":{"props":1,"sig":[["...",2]]},"name":["order","base"],"nodeId":"built-in:order"}]],["any",[{"type":128,"definedAt":"built-in:any","config":{"props":1,"sig":[["...",2]]},"name":["any","base"],"nodeId":"built-in:any"}]],["paste",[{"type":128,"definedAt":"built-in:paste","config":{"props":1,"sig":[["...",2],["sep",2]]},"name":["paste","base"],"nodeId":"built-in:paste"}]],["paste0",[{"type":128,"definedAt":"built-in:paste0","config":{"props":1,"sig":[["...",2],["sep",2]]},"name":["paste0","base"],"nodeId":"built-in:paste0"}]],["file.path",[{"type":128,"definedAt":"built-in:file.path","config":{"props":1,"sig":[["...",2],["fsep",2]]},"name":["file.path","base"],"nodeId":"built-in:file.path"}]],["here",[{"type":128,"definedAt":"built-in:here","config":{"libFn":true,"props":1,"sig":[["...",2]]},"name":["here","here"],"nodeId":"built-in:here"}]],["mean",[{"type":128,"definedAt":"built-in:mean","config":{"props":17,"sig":[["x",2]]},"name":["mean","base"],"nodeId":"built-in:mean"}]],["cumsum",[{"type":128,"definedAt":"built-in:cumsum","config":{"props":17,"sig":[["x",2]]},"name":["cumsum","base"],"nodeId":"built-in:cumsum"}]],["cumprod",[{"type":128,"definedAt":"built-in:cumprod","config":{"props":17,"sig":[["x",2]]},"name":["cumprod","base"],"nodeId":"built-in:cumprod"}]],["cummax",[{"type":128,"definedAt":"built-in:cummax","config":{"props":17,"sig":[["x",2]]},"name":["cummax","base"],"nodeId":"built-in:cummax"}]],["cummin",[{"type":128,"definedAt":"built-in:cummin","config":{"props":17,"sig":[["x",2]]},"name":["cummin","base"],"nodeId":"built-in:cummin"}]],["diff",[{"type":128,"definedAt":"built-in:diff","config":{"props":17,"sig":[["x",2]]},"name":["diff","base"],"nodeId":"built-in:diff"}]],["sort",[{"type":128,"definedAt":"built-in:sort","config":{"props":17,"sig":[["x",2]]},"name":["sort","base"],"nodeId":"built-in:sort"}]],["rev",[{"type":128,"definedAt":"built-in:rev","config":{"props":17,"sig":[["x",2]]},"name":["rev","base"],"nodeId":"built-in:rev"}]],["unique",[{"type":128,"definedAt":"built-in:unique","config":{"props":17,"sig":[["x",2]]},"name":["unique","base"],"nodeId":"built-in:unique"}]],["duplicated",[{"type":128,"definedAt":"built-in:duplicated","config":{"props":17,"sig":[["x",2]]},"name":["duplicated","base"],"nodeId":"built-in:duplicated"}]],["t",[{"type":128,"definedAt":"built-in:t","config":{"props":17,"sig":[["x",2]]},"name":["t","base"],"nodeId":"built-in:t"}]],["as.character",[{"type":128,"definedAt":"built-in:as.character","config":{"props":17,"sig":[["x",2]]},"name":["as.character","base"],"nodeId":"built-in:as.character"}]],["as.integer",[{"type":128,"definedAt":"built-in:as.integer","config":{"props":17,"sig":[["x",2]]},"name":["as.integer","base"],"nodeId":"built-in:as.integer"}]],["as.logical",[{"type":128,"definedAt":"built-in:as.logical","config":{"props":17,"sig":[["x",2]]},"name":["as.logical","base"],"nodeId":"built-in:as.logical"}]],["as.numeric",[{"type":128,"definedAt":"built-in:as.numeric","config":{"props":17,"sig":[["x",2]]},"name":["as.numeric","base"],"nodeId":"built-in:as.numeric"}]],["as.matrix",[{"type":128,"definedAt":"built-in:as.matrix","config":{"props":17,"sig":[["x",2]]},"name":["as.matrix","base"],"nodeId":"built-in:as.matrix"}]],["as.data.frame",[{"type":128,"definedAt":"built-in:as.data.frame","config":{"props":17,"sig":[["x",2]]},"name":["as.data.frame","base"],"nodeId":"built-in:as.data.frame"}]],["as.raw",[{"type":128,"definedAt":"built-in:as.raw","config":{"props":17,"sig":[["x",2]]},"name":["as.raw","base"],"nodeId":"built-in:as.raw"}]],["as.list",[{"type":128,"definedAt":"built-in:as.list","config":{"props":17,"sig":[["x",2]]},"name":["as.list","base"],"nodeId":"built-in:as.list"}]],["as.array",[{"type":128,"definedAt":"built-in:as.array","config":{"props":17,"sig":[["x",2]]},"name":["as.array","base"],"nodeId":"built-in:as.array"}]],["as.double",[{"type":128,"definedAt":"built-in:as.double","config":{"props":17,"sig":[["x",2]]},"name":["as.double","base"],"nodeId":"built-in:as.double"}]],["as.complex",[{"type":128,"definedAt":"built-in:as.complex","config":{"props":17,"sig":[["x",2]]},"name":["as.complex","base"],"nodeId":"built-in:as.complex"}]],["head",[{"type":128,"definedAt":"built-in:head","config":{"props":17,"sig":[["x",2]]},"name":["head","utils"],"nodeId":"built-in:head"}]],["tail",[{"type":128,"definedAt":"built-in:tail","config":{"props":17,"sig":[["x",2]]},"name":["tail","utils"],"nodeId":"built-in:tail"}]],["median",[{"type":128,"definedAt":"built-in:median","config":{"props":17,"sig":[["x",2]]},"name":["median","stats"],"nodeId":"built-in:median"}]],["quantile",[{"type":128,"definedAt":"built-in:quantile","config":{"props":17,"sig":[["x",2]]},"name":["quantile","stats"],"nodeId":"built-in:quantile"}]],["as.factor",[{"type":128,"definedAt":"built-in:as.factor","config":{"props":1,"sig":[["x",2]]},"name":["as.factor","base"],"nodeId":"built-in:as.factor"}]],["factor",[{"type":128,"definedAt":"built-in:factor","config":{"props":1,"sig":[["x",2]]},"name":["factor","base"],"nodeId":"built-in:factor"}]],["var",[{"type":128,"definedAt":"built-in:var","config":{"props":1,"sig":[["x",2]]},"name":["var","stats"],"nodeId":"built-in:var"}]],["sd",[{"type":128,"definedAt":"built-in:sd","config":{"props":1,"sig":[["x",2]]},"name":["sd","stats"],"nodeId":"built-in:sd"}]],["is.na",[{"type":128,"definedAt":"built-in:is.na","config":{"props":4194321,"sig":[["x",2]]},"name":["is.na","base"],"nodeId":"built-in:is.na"}]],["is.finite",[{"type":128,"definedAt":"built-in:is.finite","config":{"props":4194321,"sig":[["x",2]]},"name":["is.finite","base"],"nodeId":"built-in:is.finite"}]],["is.infinite",[{"type":128,"definedAt":"built-in:is.infinite","config":{"props":4194321,"sig":[["x",2]]},"name":["is.infinite","base"],"nodeId":"built-in:is.infinite"}]],["is.nan",[{"type":128,"definedAt":"built-in:is.nan","config":{"props":4194321,"sig":[["x",2]]},"name":["is.nan","base"],"nodeId":"built-in:is.nan"}]],["nzchar",[{"type":128,"definedAt":"built-in:nzchar","config":{"props":4194305,"sig":[["x",2]]},"name":["nzchar","base"],"nodeId":"built-in:nzchar"}]],["sqrt",[{"type":128,"definedAt":"built-in:sqrt","config":{"props":17,"sig":[["x",2]]},"name":["sqrt","base"],"nodeId":"built-in:sqrt"}]],["abs",[{"type":128,"definedAt":"built-in:abs","config":{"props":17,"sig":[["x",2]]},"name":["abs","base"],"nodeId":"built-in:abs"}]],["floor",[{"type":128,"definedAt":"built-in:floor","config":{"props":17,"sig":[["x",2]]},"name":["floor","base"],"nodeId":"built-in:floor"}]],["ceiling",[{"type":128,"definedAt":"built-in:ceiling","config":{"props":17,"sig":[["x",2]]},"name":["ceiling","base"],"nodeId":"built-in:ceiling"}]],["trunc",[{"type":128,"definedAt":"built-in:trunc","config":{"props":17,"sig":[["x",2]]},"name":["trunc","base"],"nodeId":"built-in:trunc"}]],["exp",[{"type":128,"definedAt":"built-in:exp","config":{"props":17,"sig":[["x",2]]},"name":["exp","base"],"nodeId":"built-in:exp"}]],["sign",[{"type":128,"definedAt":"built-in:sign","config":{"props":1,"sig":[["x",2]]},"name":["sign","base"],"nodeId":"built-in:sign"}]],["expm1",[{"type":128,"definedAt":"built-in:expm1","config":{"props":1,"sig":[["x",2]]},"name":["expm1","base"],"nodeId":"built-in:expm1"}]],["log2",[{"type":128,"definedAt":"built-in:log2","config":{"props":1,"sig":[["x",2]]},"name":["log2","base"],"nodeId":"built-in:log2"}]],["log10",[{"type":128,"definedAt":"built-in:log10","config":{"props":1,"sig":[["x",2]]},"name":["log10","base"],"nodeId":"built-in:log10"}]],["log1p",[{"type":128,"definedAt":"built-in:log1p","config":{"props":1,"sig":[["x",2]]},"name":["log1p","base"],"nodeId":"built-in:log1p"}]],["sin",[{"type":128,"definedAt":"built-in:sin","config":{"props":1,"sig":[["x",2]]},"name":["sin","base"],"nodeId":"built-in:sin"}]],["cos",[{"type":128,"definedAt":"built-in:cos","config":{"props":1,"sig":[["x",2]]},"name":["cos","base"],"nodeId":"built-in:cos"}]],["tan",[{"type":128,"definedAt":"built-in:tan","config":{"props":1,"sig":[["x",2]]},"name":["tan","base"],"nodeId":"built-in:tan"}]],["asin",[{"type":128,"definedAt":"built-in:asin","config":{"props":1,"sig":[["x",2]]},"name":["asin","base"],"nodeId":"built-in:asin"}]],["acos",[{"type":128,"definedAt":"built-in:acos","config":{"props":1,"sig":[["x",2]]},"name":["acos","base"],"nodeId":"built-in:acos"}]],["atan",[{"type":128,"definedAt":"built-in:atan","config":{"props":1,"sig":[["x",2]]},"name":["atan","base"],"nodeId":"built-in:atan"}]],["sinh",[{"type":128,"definedAt":"built-in:sinh","config":{"props":1,"sig":[["x",2]]},"name":["sinh","base"],"nodeId":"built-in:sinh"}]],["cosh",[{"type":128,"definedAt":"built-in:cosh","config":{"props":1,"sig":[["x",2]]},"name":["cosh","base"],"nodeId":"built-in:cosh"}]],["tanh",[{"type":128,"definedAt":"built-in:tanh","config":{"props":1,"sig":[["x",2]]},"name":["tanh","base"],"nodeId":"built-in:tanh"}]],["asinh",[{"type":128,"definedAt":"built-in:asinh","config":{"props":1,"sig":[["x",2]]},"name":["asinh","base"],"nodeId":"built-in:asinh"}]],["acosh",[{"type":128,"definedAt":"built-in:acosh","config":{"props":1,"sig":[["x",2]]},"name":["acosh","base"],"nodeId":"built-in:acosh"}]],["atanh",[{"type":128,"definedAt":"built-in:atanh","config":{"props":1,"sig":[["x",2]]},"name":["atanh","base"],"nodeId":"built-in:atanh"}]],["round",[{"type":128,"definedAt":"built-in:round","config":{"props":17,"sig":[["x",2],["digits",2]]},"name":["round","base"],"nodeId":"built-in:round"}]],["signif",[{"type":128,"definedAt":"built-in:signif","config":{"props":17,"sig":[["x",2],["digits",2]]},"name":["signif","base"],"nodeId":"built-in:signif"}]],["log",[{"type":128,"definedAt":"built-in:log","config":{"props":17,"sig":[["x",2],["base",2]]},"name":["log","base"],"nodeId":"built-in:log"}]],["tolower",[{"type":128,"definedAt":"built-in:tolower","config":{"props":1,"sig":[["x",2]]},"name":["tolower","base"],"nodeId":"built-in:tolower"}]],["toupper",[{"type":128,"definedAt":"built-in:toupper","config":{"props":1,"sig":[["x",2]]},"name":["toupper","base"],"nodeId":"built-in:toupper"}]],["trimws",[{"type":128,"definedAt":"built-in:trimws","config":{"props":1,"sig":[["x",2]]},"name":["trimws","base"],"nodeId":"built-in:trimws"}]],["basename",[{"type":128,"definedAt":"built-in:basename","config":{"props":1,"sig":[["path",2]]},"name":["basename","base"],"nodeId":"built-in:basename"}]],["dirname",[{"type":128,"definedAt":"built-in:dirname","config":{"props":1,"sig":[["path",2]]},"name":["dirname","base"],"nodeId":"built-in:dirname"}]],["Re",[{"type":128,"definedAt":"built-in:Re","config":{"props":1,"sig":[["z",2]]},"name":["Re","base"],"nodeId":"built-in:Re"}]],["Im",[{"type":128,"definedAt":"built-in:Im","config":{"props":1,"sig":[["z",2]]},"name":["Im","base"],"nodeId":"built-in:Im"}]],["Mod",[{"type":128,"definedAt":"built-in:Mod","config":{"props":1,"sig":[["z",2]]},"name":["Mod","base"],"nodeId":"built-in:Mod"}]],["Arg",[{"type":128,"definedAt":"built-in:Arg","config":{"props":1,"sig":[["z",2]]},"name":["Arg","base"],"nodeId":"built-in:Arg"}]],["Conj",[{"type":128,"definedAt":"built-in:Conj","config":{"props":1,"sig":[["z",2]]},"name":["Conj","base"],"nodeId":"built-in:Conj"}]],["numeric",[{"type":128,"definedAt":"built-in:numeric","config":{"props":1,"sig":[["length",2]]},"name":["numeric","base"],"nodeId":"built-in:numeric"}]],["character",[{"type":128,"definedAt":"built-in:character","config":{"props":1,"sig":[["length",2]]},"name":["character","base"],"nodeId":"built-in:character"}]],["logical",[{"type":128,"definedAt":"built-in:logical","config":{"props":1,"sig":[["length",2]]},"name":["logical","base"],"nodeId":"built-in:logical"}]],["integer",[{"type":128,"definedAt":"built-in:integer","config":{"props":1,"sig":[["length",2]]},"name":["integer","base"],"nodeId":"built-in:integer"}]],["double",[{"type":128,"definedAt":"built-in:double","config":{"props":1,"sig":[["length",2]]},"name":["double","base"],"nodeId":"built-in:double"}]],["raw",[{"type":128,"definedAt":"built-in:raw","config":{"props":1,"sig":[["length",2]]},"name":["raw","base"],"nodeId":"built-in:raw"}]],["na.omit",[{"type":128,"definedAt":"built-in:na.omit","config":{"props":17,"sig":[["object",2]]},"name":["na.omit","stats"],"nodeId":"built-in:na.omit"}]],["xor",[{"type":128,"definedAt":"built-in:xor","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["xor","base"],"nodeId":"built-in:xor"}]],["crossprod",[{"type":128,"definedAt":"built-in:crossprod","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["crossprod","base"],"nodeId":"built-in:crossprod"}]],["tcrossprod",[{"type":128,"definedAt":"built-in:tcrossprod","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["tcrossprod","base"],"nodeId":"built-in:tcrossprod"}]],["intersect",[{"type":128,"definedAt":"built-in:intersect","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["intersect","base"],"nodeId":"built-in:intersect"}]],["union",[{"type":128,"definedAt":"built-in:union","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["union","base"],"nodeId":"built-in:union"}]],["setdiff",[{"type":128,"definedAt":"built-in:setdiff","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["setdiff","base"],"nodeId":"built-in:setdiff"}]],["match",[{"type":128,"definedAt":"built-in:match","config":{"props":4194305,"sig":[["x",2],["table",2]]},"name":["match","base"],"nodeId":"built-in:match"}]],["pmatch",[{"type":128,"definedAt":"built-in:pmatch","config":{"props":4194305,"sig":[["x",2],["table",2]]},"name":["pmatch","base"],"nodeId":"built-in:pmatch"}]],["charmatch",[{"type":128,"definedAt":"built-in:charmatch","config":{"props":4194305,"sig":[["x",2],["table",2]]},"name":["charmatch","base"],"nodeId":"built-in:charmatch"}]],["is.element",[{"type":128,"definedAt":"built-in:is.element","config":{"props":4194305,"sig":[["el",2],["set",2]]},"name":["is.element","base"],"nodeId":"built-in:is.element"}]],["match.arg",[{"type":128,"definedAt":"built-in:match.arg","config":{"props":4194305,"sig":[["arg",2],["choices",1024]]},"name":["match.arg","base"],"nodeId":"built-in:match.arg"}]],["atan2",[{"type":128,"definedAt":"built-in:atan2","config":{"props":1,"sig":[["y",2],["x",2]]},"name":["atan2","base"],"nodeId":"built-in:atan2"}]],["bitwAnd",[{"type":128,"definedAt":"built-in:bitwAnd","config":{"props":1,"sig":[["a",2],["b",2]]},"name":["bitwAnd","base"],"nodeId":"built-in:bitwAnd"}]],["bitwOr",[{"type":128,"definedAt":"built-in:bitwOr","config":{"props":1,"sig":[["a",2],["b",2]]},"name":["bitwOr","base"],"nodeId":"built-in:bitwOr"}]],["bitwXor",[{"type":128,"definedAt":"built-in:bitwXor","config":{"props":1,"sig":[["a",2],["b",2]]},"name":["bitwXor","base"],"nodeId":"built-in:bitwXor"}]],["bitwShiftL",[{"type":128,"definedAt":"built-in:bitwShiftL","config":{"props":1,"sig":[["a",2],["n",2]]},"name":["bitwShiftL","base"],"nodeId":"built-in:bitwShiftL"}]],["bitwShiftR",[{"type":128,"definedAt":"built-in:bitwShiftR","config":{"props":1,"sig":[["a",2],["n",2]]},"name":["bitwShiftR","base"],"nodeId":"built-in:bitwShiftR"}]],["bitwNot",[{"type":128,"definedAt":"built-in:bitwNot","config":{"props":1,"sig":[["a",2]]},"name":["bitwNot","base"],"nodeId":"built-in:bitwNot"}]],["grepl",[{"type":128,"definedAt":"built-in:grepl","config":{"props":4194305,"sig":[["pattern",2],["x",2]]},"name":["grepl","base"],"nodeId":"built-in:grepl"}]],["startsWith",[{"type":128,"definedAt":"built-in:startsWith","config":{"props":4194305,"sig":[["x",2],["prefix",2]]},"name":["startsWith","base"],"nodeId":"built-in:startsWith"}]],["endsWith",[{"type":128,"definedAt":"built-in:endsWith","config":{"props":4194305,"sig":[["x",2],["suffix",2]]},"name":["endsWith","base"],"nodeId":"built-in:endsWith"}]],["seq",[{"type":128,"definedAt":"built-in:seq","config":{"props":17},"name":["seq","base"],"nodeId":"built-in:seq"}]],["solve",[{"type":128,"definedAt":"built-in:solve","config":{"props":17},"name":["solve","base"],"nodeId":"built-in:solve"}]],["aperm",[{"type":128,"definedAt":"built-in:aperm","config":{"props":17},"name":["aperm","base"],"nodeId":"built-in:aperm"}]],["format",[{"type":128,"definedAt":"built-in:format","config":{"props":17},"name":["format","base"],"nodeId":"built-in:format"}]],["rep",[{"type":128,"definedAt":"built-in:rep","config":{"props":1},"name":["rep","base"],"nodeId":"built-in:rep"}]],["rep.int",[{"type":128,"definedAt":"built-in:rep.int","config":{"props":1},"name":["rep.int","base"],"nodeId":"built-in:rep.int"}]],["seq.int",[{"type":128,"definedAt":"built-in:seq.int","config":{"props":1},"name":["seq.int","base"],"nodeId":"built-in:seq.int"}]],["append",[{"type":128,"definedAt":"built-in:append","config":{"props":1},"name":["append","base"],"nodeId":"built-in:append"}]],["complex",[{"type":128,"definedAt":"built-in:complex","config":{"props":1},"name":["complex","base"],"nodeId":"built-in:complex"}]],["matrix",[{"type":128,"definedAt":"built-in:matrix","config":{"props":1},"name":["matrix","base"],"nodeId":"built-in:matrix"}]],["array",[{"type":128,"definedAt":"built-in:array","config":{"props":1},"name":["array","base"],"nodeId":"built-in:array"}]],["table",[{"type":128,"definedAt":"built-in:table","config":{"props":1},"name":["table","base"],"nodeId":"built-in:table"}]],["prop.table",[{"type":128,"definedAt":"built-in:prop.table","config":{"props":1},"name":["prop.table","base"],"nodeId":"built-in:prop.table"}]],["colSums",[{"type":128,"definedAt":"built-in:colSums","config":{"props":1},"name":["colSums","base"],"nodeId":"built-in:colSums"}]],["rowSums",[{"type":128,"definedAt":"built-in:rowSums","config":{"props":1},"name":["rowSums","base"],"nodeId":"built-in:rowSums"}]],["colMeans",[{"type":128,"definedAt":"built-in:colMeans","config":{"props":1},"name":["colMeans","base"],"nodeId":"built-in:colMeans"}]],["rowMeans",[{"type":128,"definedAt":"built-in:rowMeans","config":{"props":1},"name":["rowMeans","base"],"nodeId":"built-in:rowMeans"}]],["det",[{"type":128,"definedAt":"built-in:det","config":{"props":1},"name":["det","base"],"nodeId":"built-in:det"}]],["eigen",[{"type":128,"definedAt":"built-in:eigen","config":{"props":1},"name":["eigen","base"],"nodeId":"built-in:eigen"}]],["grep",[{"type":128,"definedAt":"built-in:grep","config":{"props":1},"name":["grep","base"],"nodeId":"built-in:grep"}]],["sub",[{"type":128,"definedAt":"built-in:sub","config":{"props":1},"name":["sub","base"],"nodeId":"built-in:sub"}]],["gsub",[{"type":128,"definedAt":"built-in:gsub","config":{"props":1},"name":["gsub","base"],"nodeId":"built-in:gsub"}]],["substr",[{"type":128,"definedAt":"built-in:substr","config":{"props":1},"name":["substr","base"],"nodeId":"built-in:substr"}]],["substring",[{"type":128,"definedAt":"built-in:substring","config":{"props":1},"name":["substring","base"],"nodeId":"built-in:substring"}]],["strsplit",[{"type":128,"definedAt":"built-in:strsplit","config":{"props":1},"name":["strsplit","base"],"nodeId":"built-in:strsplit"}]],["strrep",[{"type":128,"definedAt":"built-in:strrep","config":{"props":1},"name":["strrep","base"],"nodeId":"built-in:strrep"}]],["chartr",[{"type":128,"definedAt":"built-in:chartr","config":{"props":1},"name":["chartr","base"],"nodeId":"built-in:chartr"}]],["strtoi",[{"type":128,"definedAt":"built-in:strtoi","config":{"props":1},"name":["strtoi","base"],"nodeId":"built-in:strtoi"}]],["regexpr",[{"type":128,"definedAt":"built-in:regexpr","config":{"props":1},"name":["regexpr","base"],"nodeId":"built-in:regexpr"}]],["gregexpr",[{"type":128,"definedAt":"built-in:gregexpr","config":{"props":1},"name":["gregexpr","base"],"nodeId":"built-in:gregexpr"}]],["regexec",[{"type":128,"definedAt":"built-in:regexec","config":{"props":1},"name":["regexec","base"],"nodeId":"built-in:regexec"}]],["sprintf",[{"type":128,"definedAt":"built-in:sprintf","config":{"props":1},"name":["sprintf","base"],"nodeId":"built-in:sprintf"}]],["formatC",[{"type":128,"definedAt":"built-in:formatC","config":{"props":1},"name":["formatC","base"],"nodeId":"built-in:formatC"}]],["regmatches",[{"type":128,"definedAt":"built-in:regmatches","config":{"props":1},"name":["regmatches","base"],"nodeId":"built-in:regmatches"}]],["cor",[{"type":128,"definedAt":"built-in:cor","config":{"props":1},"name":["cor","stats"],"nodeId":"built-in:cor"}]],["cov",[{"type":128,"definedAt":"built-in:cov","config":{"props":1},"name":["cov","stats"],"nodeId":"built-in:cov"}]],["xtabs",[{"type":128,"definedAt":"built-in:xtabs","config":{"props":1},"name":["xtabs","stats"],"nodeId":"built-in:xtabs"}]],["which",[{"type":128,"definedAt":"built-in:which","config":{"props":4194305},"name":["which","base"],"nodeId":"built-in:which"}]],["which.max",[{"type":128,"definedAt":"built-in:which.max","config":{"props":4194305},"name":["which.max","base"],"nodeId":"built-in:which.max"}]],["which.min",[{"type":128,"definedAt":"built-in:which.min","config":{"props":4194305},"name":["which.min","base"],"nodeId":"built-in:which.min"}]],["seq_len",[{"type":128,"definedAt":"built-in:seq_len","config":{"props":4194305},"name":["seq_len","base"],"nodeId":"built-in:seq_len"}]],["seq_along",[{"type":128,"definedAt":"built-in:seq_along","config":{"props":4194305},"name":["seq_along","base"],"nodeId":"built-in:seq_along"}]],["png",[{"type":128,"definedAt":"built-in:png","config":{"props":1180680,"sig":[["filename",16]]},"name":["png","grDevices"],"nodeId":"built-in:png"}]],["jpeg",[{"type":128,"definedAt":"built-in:jpeg","config":{"props":1180680,"sig":[["filename",16]]},"name":["jpeg","grDevices"],"nodeId":"built-in:jpeg"}]],["bmp",[{"type":128,"definedAt":"built-in:bmp","config":{"props":1180680,"sig":[["filename",16]]},"name":["bmp","grDevices"],"nodeId":"built-in:bmp"}]],["tiff",[{"type":128,"definedAt":"built-in:tiff","config":{"props":1180680,"sig":[["filename",16]]},"name":["tiff","grDevices"],"nodeId":"built-in:tiff"}]],["svg",[{"type":128,"definedAt":"built-in:svg","config":{"props":1180680,"sig":[["filename",16]]},"name":["svg","grDevices"],"nodeId":"built-in:svg"}]],["cairo_pdf",[{"type":128,"definedAt":"built-in:cairo_pdf","config":{"props":1180680,"sig":[["filename",16]]},"name":["cairo_pdf","grDevices"],"nodeId":"built-in:cairo_pdf"}]],["raster_pdf",[{"type":128,"definedAt":"built-in:raster_pdf","config":{"props":1180680,"sig":[["filename",16]]},"name":["raster_pdf","rasterpdf"],"nodeId":"built-in:raster_pdf"}]],["agg_png",[{"type":128,"definedAt":"built-in:agg_png","config":{"props":1180680,"sig":[["filename",16]]},"name":["agg_png","ragg"],"nodeId":"built-in:agg_png"}]],["agg_jpeg",[{"type":128,"definedAt":"built-in:agg_jpeg","config":{"props":1180680,"sig":[["filename",16]]},"name":["agg_jpeg","ragg"],"nodeId":"built-in:agg_jpeg"}]],["agg_tiff",[{"type":128,"definedAt":"built-in:agg_tiff","config":{"props":1180680,"sig":[["filename",16]]},"name":["agg_tiff","ragg"],"nodeId":"built-in:agg_tiff"}]],["agg_ppm",[{"type":128,"definedAt":"built-in:agg_ppm","config":{"props":1180680,"sig":[["filename",16]]},"name":["agg_ppm","ragg"],"nodeId":"built-in:agg_ppm"}]],["agg_webp",[{"type":128,"definedAt":"built-in:agg_webp","config":{"props":1180680,"sig":[["filename",16]]},"name":["agg_webp","ragg"],"nodeId":"built-in:agg_webp"}]],["pdf",[{"type":128,"definedAt":"built-in:pdf","config":{"props":1180680,"sig":[["file",16]]},"name":["pdf","grDevices"],"nodeId":"built-in:pdf"}]],["postscript",[{"type":128,"definedAt":"built-in:postscript","config":{"props":1180680,"sig":[["file",16]]},"name":["postscript","grDevices"],"nodeId":"built-in:postscript"}]],["xfig",[{"type":128,"definedAt":"built-in:xfig","config":{"props":1180680,"sig":[["file",16]]},"name":["xfig","grDevices"],"nodeId":"built-in:xfig"}]],["bitmap",[{"type":128,"definedAt":"built-in:bitmap","config":{"props":1180680,"sig":[["file",16]]},"name":["bitmap","grDevices"],"nodeId":"built-in:bitmap"}]],["pictex",[{"type":128,"definedAt":"built-in:pictex","config":{"props":1180680,"sig":[["file",16]]},"name":["pictex","grDevices"],"nodeId":"built-in:pictex"}]],["X11",[{"type":128,"definedAt":"built-in:X11","config":{"props":131072},"name":["X11","grDevices"],"nodeId":"built-in:X11"}]],["windows",[{"type":128,"definedAt":"built-in:windows","config":{"props":131072},"name":["windows","grDevices"],"nodeId":"built-in:windows"}]],["quartz",[{"type":128,"definedAt":"built-in:quartz","config":{"props":131072},"name":["quartz","grDevices"],"nodeId":"built-in:quartz"}]],["dev.new",[{"type":128,"definedAt":"built-in:dev.new","config":{"props":131072},"name":["dev.new","grDevices"],"nodeId":"built-in:dev.new"}]],["trellis.device",[{"type":128,"definedAt":"built-in:trellis.device","config":{"props":131072},"name":["trellis.device","lattice"],"nodeId":"built-in:trellis.device"}]],["image_graph",[{"type":128,"definedAt":"built-in:image_graph","config":{"props":131072},"name":["image_graph","magick"],"nodeId":"built-in:image_graph"}]],["image_draw",[{"type":128,"definedAt":"built-in:image_draw","config":{"props":131072},"name":["image_draw","magick"],"nodeId":"built-in:image_draw"}]],["read.csv",[{"type":128,"definedAt":"built-in:read.csv","config":{"props":525312,"sig":[["file",16]]},"name":["read.csv","utils"],"nodeId":"built-in:read.csv"}]],["scan",[{"type":128,"definedAt":"built-in:scan","config":{"props":590848,"sig":[["file",16]]},"name":["scan","base"],"nodeId":"built-in:scan"}]],["file",[{"type":128,"definedAt":"built-in:file","config":{"props":1573888,"sig":[["description",16]]},"name":["file","base"],"nodeId":"built-in:file"}]],["gzfile",[{"type":128,"definedAt":"built-in:gzfile","config":{"props":1573888,"sig":[["description",16]]},"name":["gzfile","base"],"nodeId":"built-in:gzfile"}]],["bzfile",[{"type":128,"definedAt":"built-in:bzfile","config":{"props":1573888,"sig":[["description",16]]},"name":["bzfile","base"],"nodeId":"built-in:bzfile"}]],["xzfile",[{"type":128,"definedAt":"built-in:xzfile","config":{"props":1573888,"sig":[["description",16]]},"name":["xzfile","base"],"nodeId":"built-in:xzfile"}]],["unz",[{"type":128,"definedAt":"built-in:unz","config":{"props":1573888,"sig":[["description",16]]},"name":["unz","base"],"nodeId":"built-in:unz"}]],["fifo",[{"type":128,"definedAt":"built-in:fifo","config":{"props":1573888,"sig":[["description",16]]},"name":["fifo","base"],"nodeId":"built-in:fifo"}]],["url",[{"type":128,"definedAt":"built-in:url","config":{"props":528384,"sig":[["description",16]]},"name":["url","base"],"nodeId":"built-in:url"}]],["socketConnection",[{"type":128,"definedAt":"built-in:socketConnection","config":{"props":528384,"sig":[["host",16]]},"name":["socketConnection","base"],"nodeId":"built-in:socketConnection"}]],["readLines",[{"type":128,"definedAt":"built-in:readLines","config":{"props":525312,"sig":[["con",16]]},"name":["readLines","base"],"nodeId":"built-in:readLines"}]],["readBin",[{"type":128,"definedAt":"built-in:readBin","config":{"props":525312,"sig":[["con",16]]},"name":["readBin","base"],"nodeId":"built-in:readBin"}]],["readChar",[{"type":128,"definedAt":"built-in:readChar","config":{"props":525312,"sig":[["con",16]]},"name":["readChar","base"],"nodeId":"built-in:readChar"}]],["readRDS",[{"type":128,"definedAt":"built-in:readRDS","config":{"props":525312,"sig":[["file",16]]},"name":["readRDS","base"],"nodeId":"built-in:readRDS"}]],["writeLines",[{"type":128,"definedAt":"built-in:writeLines","config":{"props":3146760,"sig":[["text",2],["con",16]]},"name":["writeLines","base"],"nodeId":"built-in:writeLines"}]],["writeBin",[{"type":128,"definedAt":"built-in:writeBin","config":{"props":1049608,"sig":[["object",2],["con",16]]},"name":["writeBin","base"],"nodeId":"built-in:writeBin"}]],["writeChar",[{"type":128,"definedAt":"built-in:writeChar","config":{"props":1049608,"sig":[["object",2],["con",16]]},"name":["writeChar","base"],"nodeId":"built-in:writeChar"}]],["saveRDS",[{"type":128,"definedAt":"built-in:saveRDS","config":{"props":1049608,"sig":[["object",2],["file",16]]},"name":["saveRDS","base"],"nodeId":"built-in:saveRDS"}]],["save",[{"type":128,"definedAt":"built-in:save","config":{"props":1049608,"sig":[["...",2],["file",16]]},"name":["save","base"],"nodeId":"built-in:save"}]],["save.image",[{"type":128,"definedAt":"built-in:save.image","config":{"props":1049608,"sig":[["file",16]]},"name":["save.image","base"],"nodeId":"built-in:save.image"}]],["dput",[{"type":128,"definedAt":"built-in:dput","config":{"props":3146760,"sig":[["x",2],["file",16]]},"name":["dput","base"],"nodeId":"built-in:dput"}]],["write",[{"type":128,"definedAt":"built-in:write","config":{"props":3146760,"sig":[["x",2],["file",16]]},"name":["write","base"],"nodeId":"built-in:write"}]],["write.dcf",[{"type":128,"definedAt":"built-in:write.dcf","config":{"props":1049608,"sig":[["x",2],["file",16]]},"name":["write.dcf","base"],"nodeId":"built-in:write.dcf"}]],["write.table",[{"type":128,"definedAt":"built-in:write.table","config":{"props":1049608,"sig":[["x",2],["file",16]]},"name":["write.table","utils"],"nodeId":"built-in:write.table"}]],["write.csv",[{"type":128,"definedAt":"built-in:write.csv","config":{"props":1049608,"sig":[["x",2],["file",16]]},"name":["write.csv","utils"],"nodeId":"built-in:write.csv"}]],["write.csv2",[{"type":128,"definedAt":"built-in:write.csv2","config":{"props":1049608,"sig":[["x",2],["file",16]]},"name":["write.csv2","utils"],"nodeId":"built-in:write.csv2"}]],["read.table",[{"type":128,"definedAt":"built-in:read.table","config":{"props":525312,"sig":[["file",16]]},"name":["read.table","utils"],"nodeId":"built-in:read.table"}]],["read.delim",[{"type":128,"definedAt":"built-in:read.delim","config":{"props":525312,"sig":[["file",16]]},"name":["read.delim","utils"],"nodeId":"built-in:read.delim"}]],["read.csv2",[{"type":128,"definedAt":"built-in:read.csv2","config":{"props":525312,"sig":[["file",16]]},"name":["read.csv2","utils"],"nodeId":"built-in:read.csv2"}]],["read.delim2",[{"type":128,"definedAt":"built-in:read.delim2","config":{"props":525312,"sig":[["file",16]]},"name":["read.delim2","utils"],"nodeId":"built-in:read.delim2"}]],["download.file",[{"type":128,"definedAt":"built-in:download.file","config":{"props":1053696,"sig":[["url",16],["destfile",16]]},"name":["download.file","utils"],"nodeId":"built-in:download.file"}]],["jitter",[{"type":128,"definedAt":"built-in:jitter","config":{"props":256},"name":["jitter","stats"],"nodeId":"built-in:jitter"}]],["simulate",[{"type":128,"definedAt":"built-in:simulate","config":{"props":272},"name":["simulate","stats"],"nodeId":"built-in:simulate"}]],["sample",[{"type":128,"definedAt":"built-in:sample","config":{"props":256},"name":["sample","base"],"nodeId":"built-in:sample"}]],["sample.int",[{"type":128,"definedAt":"built-in:sample.int","config":{"props":256},"name":["sample.int","base"],"nodeId":"built-in:sample.int"}]],["runif",[{"type":128,"definedAt":"built-in:runif","config":{"props":256},"name":["runif","stats"],"nodeId":"built-in:runif"}]],["rnorm",[{"type":128,"definedAt":"built-in:rnorm","config":{"props":256},"name":["rnorm","stats"],"nodeId":"built-in:rnorm"}]],["rbinom",[{"type":128,"definedAt":"built-in:rbinom","config":{"props":256},"name":["rbinom","stats"],"nodeId":"built-in:rbinom"}]],["rpois",[{"type":128,"definedAt":"built-in:rpois","config":{"props":256},"name":["rpois","stats"],"nodeId":"built-in:rpois"}]],["rexp",[{"type":128,"definedAt":"built-in:rexp","config":{"props":256},"name":["rexp","stats"],"nodeId":"built-in:rexp"}]],["rgamma",[{"type":128,"definedAt":"built-in:rgamma","config":{"props":256},"name":["rgamma","stats"],"nodeId":"built-in:rgamma"}]],["rbeta",[{"type":128,"definedAt":"built-in:rbeta","config":{"props":256},"name":["rbeta","stats"],"nodeId":"built-in:rbeta"}]],["rcauchy",[{"type":128,"definedAt":"built-in:rcauchy","config":{"props":256},"name":["rcauchy","stats"],"nodeId":"built-in:rcauchy"}]],["rchisq",[{"type":128,"definedAt":"built-in:rchisq","config":{"props":256},"name":["rchisq","stats"],"nodeId":"built-in:rchisq"}]],["rgeom",[{"type":128,"definedAt":"built-in:rgeom","config":{"props":256},"name":["rgeom","stats"],"nodeId":"built-in:rgeom"}]],["rhyper",[{"type":128,"definedAt":"built-in:rhyper","config":{"props":256},"name":["rhyper","stats"],"nodeId":"built-in:rhyper"}]],["rlnorm",[{"type":128,"definedAt":"built-in:rlnorm","config":{"props":256},"name":["rlnorm","stats"],"nodeId":"built-in:rlnorm"}]],["rlogis",[{"type":128,"definedAt":"built-in:rlogis","config":{"props":256},"name":["rlogis","stats"],"nodeId":"built-in:rlogis"}]],["rmultinom",[{"type":128,"definedAt":"built-in:rmultinom","config":{"props":256},"name":["rmultinom","stats"],"nodeId":"built-in:rmultinom"}]],["rnbinom",[{"type":128,"definedAt":"built-in:rnbinom","config":{"props":256},"name":["rnbinom","stats"],"nodeId":"built-in:rnbinom"}]],["rsignrank",[{"type":128,"definedAt":"built-in:rsignrank","config":{"props":256},"name":["rsignrank","stats"],"nodeId":"built-in:rsignrank"}]],["rt",[{"type":128,"definedAt":"built-in:rt","config":{"props":256},"name":["rt","stats"],"nodeId":"built-in:rt"}]],["rf",[{"type":128,"definedAt":"built-in:rf","config":{"props":256},"name":["rf","stats"],"nodeId":"built-in:rf"}]],["rweibull",[{"type":128,"definedAt":"built-in:rweibull","config":{"props":256},"name":["rweibull","stats"],"nodeId":"built-in:rweibull"}]],["rwilcox",[{"type":128,"definedAt":"built-in:rwilcox","config":{"props":256},"name":["rwilcox","stats"],"nodeId":"built-in:rwilcox"}]],["arima.sim",[{"type":128,"definedAt":"built-in:arima.sim","config":{"props":256},"name":["arima.sim","stats"],"nodeId":"built-in:arima.sim"}]],["kmeans",[{"type":128,"definedAt":"built-in:kmeans","config":{"props":256},"name":["kmeans","stats"],"nodeId":"built-in:kmeans"}]],["expression",[{"type":128,"definedAt":"built-in:expression","config":{"props":32768},"name":["expression","base"],"nodeId":"built-in:expression"}]],["rm",[{"type":128,"definedAt":"built-in:rm","config":{"props":72},"name":["rm","base"],"nodeId":"built-in:rm"}]],["options",[{"type":128,"definedAt":"built-in:options","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":8389128},"name":["options","base"],"nodeId":"built-in:options"}]],["Sys.setenv",[{"type":128,"definedAt":"built-in:Sys.setenv","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":8388616},"name":["Sys.setenv","base"],"nodeId":"built-in:Sys.setenv"}]],["Sys.unsetenv",[{"type":128,"definedAt":"built-in:Sys.unsetenv","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":8388616},"name":["Sys.unsetenv","base"],"nodeId":"built-in:Sys.unsetenv"}]],["Sys.setlocale",[{"type":128,"definedAt":"built-in:Sys.setlocale","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":8388616},"name":["Sys.setlocale","base"],"nodeId":"built-in:Sys.setlocale"}]],["Sys.putenv",[{"type":128,"definedAt":"built-in:Sys.putenv","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":8388616},"name":["Sys.putenv","base"],"nodeId":"built-in:Sys.putenv"}]],["Sys.setLanguage",[{"type":128,"definedAt":"built-in:Sys.setLanguage","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":8388616},"name":["Sys.setLanguage","base"],"nodeId":"built-in:Sys.setLanguage"}]],["mapply",[{"type":128,"definedAt":"built-in:mapply","config":{"indexOfFunction":0,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["FUN",256]]},"name":["mapply","base"],"nodeId":"built-in:mapply"}]],["Mapply",[{"type":128,"definedAt":"built-in:Mapply","config":{"indexOfFunction":0,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["FUN",256]]},"name":["Mapply","functools"],"nodeId":"built-in:Mapply"}]],["lapply",[{"type":128,"definedAt":"built-in:lapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["FUN",256]]},"name":["lapply","base"],"nodeId":"built-in:lapply"}]],["sapply",[{"type":128,"definedAt":"built-in:sapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["FUN",256]]},"name":["sapply","base"],"nodeId":"built-in:sapply"}]],["vapply",[{"type":128,"definedAt":"built-in:vapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["FUN",256]]},"name":["vapply","base"],"nodeId":"built-in:vapply"}]],["Lapply",[{"type":128,"definedAt":"built-in:Lapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Lapply","functools"],"nodeId":"built-in:Lapply"}]],["Sapply",[{"type":128,"definedAt":"built-in:Sapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Sapply","functools"],"nodeId":"built-in:Sapply"}]],["Vapply",[{"type":128,"definedAt":"built-in:Vapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Vapply","functools"],"nodeId":"built-in:Vapply"}]],["apply",[{"type":128,"definedAt":"built-in:apply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["apply","base"],"nodeId":"built-in:apply"}]],["tapply",[{"type":128,"definedAt":"built-in:tapply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["tapply","base"],"nodeId":"built-in:tapply"}]],["Tapply",[{"type":128,"definedAt":"built-in:Tapply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Tapply","functools"],"nodeId":"built-in:Tapply"}]],["Map",[{"type":128,"definedAt":"built-in:Map","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256]]},"name":["Map","base"],"nodeId":"built-in:Map"}]],["Filter",[{"type":128,"definedAt":"built-in:Filter","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256]]},"name":["Filter","base"],"nodeId":"built-in:Filter"}]],["Find",[{"type":128,"definedAt":"built-in:Find","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256]]},"name":["Find","base"],"nodeId":"built-in:Find"}]],["Position",[{"type":128,"definedAt":"built-in:Position","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256]]},"name":["Position","base"],"nodeId":"built-in:Position"}]],["Reduce",[{"type":128,"definedAt":"built-in:Reduce","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256]]},"name":["Reduce","base"],"nodeId":"built-in:Reduce"}]],["rapply",[{"type":128,"definedAt":"built-in:rapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2},"name":["rapply","base"],"nodeId":"built-in:rapply"}]],["print",[{"type":128,"definedAt":"built-in:print","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":2097176,"sig":[["x",65]]},"name":["print","base"],"nodeId":"built-in:print"}]],["message",[{"type":128,"definedAt":"built-in:message","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":2097160,"sig":[["...",65]]},"name":["message","base"],"nodeId":"built-in:message"}]],["warning",[{"type":128,"definedAt":"built-in:warning","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":2097160,"sig":[["...",65]]},"name":["warning","base"],"nodeId":"built-in:warning"}]],["warn",[{"type":128,"definedAt":"built-in:warn","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":2097160,"sig":[["...",65]]},"name":["warn","R.utils"],"nodeId":"built-in:warn"}]],["info",[{"type":128,"definedAt":"built-in:info","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":2097160,"sig":[["...",65]]},"name":["info","msgr"],"nodeId":"built-in:info"}]],["invisible",[{"type":128,"definedAt":"built-in:invisible","config":{"forceArgs":"all","keepArgumentOut":true,"props":9,"sig":[["x",65]]},"name":["invisible","base"],"nodeId":"built-in:invisible"}]],["force",[{"type":128,"definedAt":"built-in:force","config":{"forceArgs":"all","keepArgumentOut":true,"props":1,"sig":[["x",65]]},"name":["force","base"],"nodeId":"built-in:force"}]],["identity",[{"type":128,"definedAt":"built-in:identity","config":{"forceArgs":"all","keepArgumentOut":true,"props":1,"sig":[["x",65]]},"name":["identity","base"],"nodeId":"built-in:identity"}]],["plot",[{"type":128,"definedAt":"built-in:plot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["plot","base",false],"nodeId":"built-in:plot"}]],["image",[{"type":128,"definedAt":"built-in:image","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["image","graphics",false],"nodeId":"built-in:image"}]],["boxplot",[{"type":128,"definedAt":"built-in:boxplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["boxplot","graphics",false],"nodeId":"built-in:boxplot"}]],["sunflowerplot",[{"type":128,"definedAt":"built-in:sunflowerplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["sunflowerplot","graphics",false],"nodeId":"built-in:sunflowerplot"}]],["barplot",[{"type":128,"definedAt":"built-in:barplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["barplot","graphics",false],"nodeId":"built-in:barplot"}]],["hist",[{"type":128,"definedAt":"built-in:hist","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["hist","graphics",false],"nodeId":"built-in:hist"}]],["density",[{"type":128,"definedAt":"built-in:density","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["density","stats",false],"nodeId":"built-in:density"}]],["contour",[{"type":128,"definedAt":"built-in:contour","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["contour","graphics",false],"nodeId":"built-in:contour"}]],["persp",[{"type":128,"definedAt":"built-in:persp","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["persp","graphics",false],"nodeId":"built-in:persp"}]],["mosaicplot",[{"type":128,"definedAt":"built-in:mosaicplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["mosaicplot","graphics",false],"nodeId":"built-in:mosaicplot"}]],["stripchart",[{"type":128,"definedAt":"built-in:stripchart","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["stripchart","graphics",false],"nodeId":"built-in:stripchart"}]],["spineplot",[{"type":128,"definedAt":"built-in:spineplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["spineplot","graphics",false],"nodeId":"built-in:spineplot"}]],["pairs",[{"type":128,"definedAt":"built-in:pairs","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["pairs","graphics",false],"nodeId":"built-in:pairs"}]],["plot.new",[{"type":128,"definedAt":"built-in:plot.new","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plot.new","graphics",false],"nodeId":"built-in:plot.new"}]],["xspline",[{"type":128,"definedAt":"built-in:xspline","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["xspline","graphics",false],"nodeId":"built-in:xspline"}]],["map",[{"type":128,"definedAt":"built-in:map","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map","purrr"],"nodeId":"built-in:map"}]],["curve",[{"type":128,"definedAt":"built-in:curve","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["curve","graphics",false],"nodeId":"built-in:curve"}]],["dotchart",[{"type":128,"definedAt":"built-in:dotchart","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["dotchart","graphics",false],"nodeId":"built-in:dotchart"}]],["matplot",[{"type":128,"definedAt":"built-in:matplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["matplot","graphics",false],"nodeId":"built-in:matplot"}]],["stem",[{"type":128,"definedAt":"built-in:stem","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["stem","graphics",false],"nodeId":"built-in:stem"}]],["smoothScatter",[{"type":128,"definedAt":"built-in:smoothScatter","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["smoothScatter","graphics",false],"nodeId":"built-in:smoothScatter"}]],["XYPlot",[{"type":128,"definedAt":"built-in:XYPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"XYPlot","nodeId":"built-in:XYPlot"}]],["xyplot",[{"type":128,"definedAt":"built-in:xyplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["xyplot","lattice",false],"nodeId":"built-in:xyplot"}]],["stripplot",[{"type":128,"definedAt":"built-in:stripplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["stripplot","lattice",false],"nodeId":"built-in:stripplot"}]],["bwplot",[{"type":128,"definedAt":"built-in:bwplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["bwplot","lattice",false],"nodeId":"built-in:bwplot"}]],["dotPlot",[{"type":128,"definedAt":"built-in:dotPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"dotPlot","nodeId":"built-in:dotPlot"}]],["dotplot",[{"type":128,"definedAt":"built-in:dotplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["dotplot","lattice",false],"nodeId":"built-in:dotplot"}]],["histPlot",[{"type":128,"definedAt":"built-in:histPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"histPlot","nodeId":"built-in:histPlot"}]],["densityPlot",[{"type":128,"definedAt":"built-in:densityPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"densityPlot","nodeId":"built-in:densityPlot"}]],["qPlot",[{"type":128,"definedAt":"built-in:qPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"qPlot","nodeId":"built-in:qPlot"}]],["qqplot",[{"type":128,"definedAt":"built-in:qqplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["qqplot","stats",false],"nodeId":"built-in:qqplot"}]],["qqPlot",[{"type":128,"definedAt":"built-in:qqPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"qqPlot","nodeId":"built-in:qqPlot"}]],["boxPlot",[{"type":128,"definedAt":"built-in:boxPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"boxPlot","nodeId":"built-in:boxPlot"}]],["bxp",[{"type":128,"definedAt":"built-in:bxp","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["bxp","graphics",false],"nodeId":"built-in:bxp"}]],["assocplot",[{"type":128,"definedAt":"built-in:assocplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["assocplot","graphics",false],"nodeId":"built-in:assocplot"}]],["fourfoldplot",[{"type":128,"definedAt":"built-in:fourfoldplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fourfoldplot","graphics",false],"nodeId":"built-in:fourfoldplot"}]],["plot.xy",[{"type":128,"definedAt":"built-in:plot.xy","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plot.xy","graphics",false],"nodeId":"built-in:plot.xy"}]],["plot.formula",[{"type":128,"definedAt":"built-in:plot.formula","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plot.formula","graphics",false],"nodeId":"built-in:plot.formula"}]],["plot.default",[{"type":128,"definedAt":"built-in:plot.default","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plot.default","graphics",false],"nodeId":"built-in:plot.default"}]],["plot.design",[{"type":128,"definedAt":"built-in:plot.design","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plot.design","graphics",false],"nodeId":"built-in:plot.design"}]],["stars",[{"type":128,"definedAt":"built-in:stars","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["stars","graphics",false],"nodeId":"built-in:stars"}]],["cotabplot",[{"type":128,"definedAt":"built-in:cotabplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"cotabplot","nodeId":"built-in:cotabplot"}]],["pheatmap",[{"type":128,"definedAt":"built-in:pheatmap","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["pheatmap","pheatmap",false],"nodeId":"built-in:pheatmap"}]],["Plotranges",[{"type":128,"definedAt":"built-in:Plotranges","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"Plotranges","nodeId":"built-in:Plotranges"}]],["regressogram",[{"type":128,"definedAt":"built-in:regressogram","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"regressogram","nodeId":"built-in:regressogram"}]],["bootcurve",[{"type":128,"definedAt":"built-in:bootcurve","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"bootcurve","nodeId":"built-in:bootcurve"}]],["meanplot",[{"type":128,"definedAt":"built-in:meanplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"meanplot","nodeId":"built-in:meanplot"}]],["vioplot",[{"type":128,"definedAt":"built-in:vioplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["vioplot","vioplot",false],"nodeId":"built-in:vioplot"}]],["copolot",[{"type":128,"definedAt":"built-in:copolot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"copolot","nodeId":"built-in:copolot"}]],["histogram",[{"type":128,"definedAt":"built-in:histogram","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["histogram","lattice",false],"nodeId":"built-in:histogram"}]],["splom",[{"type":128,"definedAt":"built-in:splom","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["splom","lattice",false],"nodeId":"built-in:splom"}]],["leaflet",[{"type":128,"definedAt":"built-in:leaflet","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["leaflet","leaflet",false],"nodeId":"built-in:leaflet"}]],["tm_shape",[{"type":128,"definedAt":"built-in:tm_shape","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["tm_shape","tmap",false],"nodeId":"built-in:tm_shape"}]],["plot_ly",[{"type":128,"definedAt":"built-in:plot_ly","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plot_ly","plotly",false],"nodeId":"built-in:plot_ly"}]],["plotProfLik",[{"type":128,"definedAt":"built-in:plotProfLik","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"plotProfLik","nodeId":"built-in:plotProfLik"}]],["plotSimulatedResiduals",[{"type":128,"definedAt":"built-in:plotSimulatedResiduals","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plotSimulatedResiduals","DHARMa",false],"nodeId":"built-in:plotSimulatedResiduals"}]],["plotmeans",[{"type":128,"definedAt":"built-in:plotmeans","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"plotmeans","nodeId":"built-in:plotmeans"}]],["overplot",[{"type":128,"definedAt":"built-in:overplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"overplot","nodeId":"built-in:overplot"}]],["residplot",[{"type":128,"definedAt":"built-in:residplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"residplot","nodeId":"built-in:residplot"}]],["heatmap.2",[{"type":128,"definedAt":"built-in:heatmap.2","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["heatmap.2","gplots",false],"nodeId":"built-in:heatmap.2"}]],["lmplot2",[{"type":128,"definedAt":"built-in:lmplot2","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"lmplot2","nodeId":"built-in:lmplot2"}]],["sinkplot",[{"type":128,"definedAt":"built-in:sinkplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"sinkplot","nodeId":"built-in:sinkplot"}]],["textplot",[{"type":128,"definedAt":"built-in:textplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["textplot","gplots",false],"nodeId":"built-in:textplot"}]],["boxplot2",[{"type":128,"definedAt":"built-in:boxplot2","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["boxplot2","gplots",false],"nodeId":"built-in:boxplot2"}]],["profLikCI",[{"type":128,"definedAt":"built-in:profLikCI","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"profLikCI","nodeId":"built-in:profLikCI"}]],["tinyplot",[{"type":128,"definedAt":"built-in:tinyplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["tinyplot","tinyplot",false],"nodeId":"built-in:tinyplot"}]],["plt",[{"type":128,"definedAt":"built-in:plt","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plt","tinyplot",false],"nodeId":"built-in:plt"}]],["ggplot",[{"type":128,"definedAt":"built-in:ggplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["ggplot","ggplot2",false],"nodeId":"built-in:ggplot"}]],["ggplotly",[{"type":128,"definedAt":"built-in:ggplotly","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["ggplotly","plotly",false],"nodeId":"built-in:ggplotly"}]],["ggMarginal",[{"type":128,"definedAt":"built-in:ggMarginal","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["ggMarginal","ggExtra",false],"nodeId":"built-in:ggMarginal"}]],["ggcorrplot",[{"type":128,"definedAt":"built-in:ggcorrplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["ggcorrplot","ggcorrplot",false],"nodeId":"built-in:ggcorrplot"}]],["ggseasonplot",[{"type":128,"definedAt":"built-in:ggseasonplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["ggseasonplot","forecast",false],"nodeId":"built-in:ggseasonplot"}]],["ggdendrogram",[{"type":128,"definedAt":"built-in:ggdendrogram","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["ggdendrogram","ggdendro",false],"nodeId":"built-in:ggdendrogram"}]],["qmap",[{"type":128,"definedAt":"built-in:qmap","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["qmap","ggmap",false],"nodeId":"built-in:qmap"}]],["qplot",[{"type":128,"definedAt":"built-in:qplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["qplot","ggplot2",false],"nodeId":"built-in:qplot"}]],["quickplot",[{"type":128,"definedAt":"built-in:quickplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["quickplot","ggplot2",false],"nodeId":"built-in:quickplot"}]],["autoplot",[{"type":128,"definedAt":"built-in:autoplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["autoplot","ggplot2",false],"nodeId":"built-in:autoplot"}]],["grid.arrange",[{"type":128,"definedAt":"built-in:grid.arrange","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["grid.arrange","gridExtra",false],"nodeId":"built-in:grid.arrange"}]],["fviz_pca_biplot",[{"type":128,"definedAt":"built-in:fviz_pca_biplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_pca_biplot","factoextra",false],"nodeId":"built-in:fviz_pca_biplot"}]],["fviz_pca",[{"type":128,"definedAt":"built-in:fviz_pca","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_pca","factoextra",false],"nodeId":"built-in:fviz_pca"}]],["fviz_pca_ind",[{"type":128,"definedAt":"built-in:fviz_pca_ind","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_pca_ind","factoextra",false],"nodeId":"built-in:fviz_pca_ind"}]],["fviz_pca_var",[{"type":128,"definedAt":"built-in:fviz_pca_var","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_pca_var","factoextra",false],"nodeId":"built-in:fviz_pca_var"}]],["fviz_screeplot",[{"type":128,"definedAt":"built-in:fviz_screeplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_screeplot","factoextra",false],"nodeId":"built-in:fviz_screeplot"}]],["fviz_mca_biplot",[{"type":128,"definedAt":"built-in:fviz_mca_biplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_mca_biplot","factoextra",false],"nodeId":"built-in:fviz_mca_biplot"}]],["fviz_mca",[{"type":128,"definedAt":"built-in:fviz_mca","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_mca","factoextra",false],"nodeId":"built-in:fviz_mca"}]],["fviz_mca_ind",[{"type":128,"definedAt":"built-in:fviz_mca_ind","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_mca_ind","factoextra",false],"nodeId":"built-in:fviz_mca_ind"}]],["fviz_mca_var",[{"type":128,"definedAt":"built-in:fviz_mca_var","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_mca_var","factoextra",false],"nodeId":"built-in:fviz_mca_var"}]],["fviz_cluster",[{"type":128,"definedAt":"built-in:fviz_cluster","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_cluster","factoextra",false],"nodeId":"built-in:fviz_cluster"}]],["fviz_dend",[{"type":128,"definedAt":"built-in:fviz_dend","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["fviz_dend","factoextra",false],"nodeId":"built-in:fviz_dend"}]],["ggsurvplot",[{"type":128,"definedAt":"built-in:ggsurvplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["ggsurvplot","survminer",false],"nodeId":"built-in:ggsurvplot"}]],["points",[{"type":128,"definedAt":"built-in:points","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["points","graphics",false],"nodeId":"built-in:points"}]],["lines",[{"type":128,"definedAt":"built-in:lines","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["lines","graphics",false],"nodeId":"built-in:lines"}]],["text",[{"type":128,"definedAt":"built-in:text","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["text","graphics",false],"nodeId":"built-in:text"}]],["qqnorm",[{"type":128,"definedAt":"built-in:qqnorm","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131088},"name":["qqnorm","stats",false],"nodeId":"built-in:qqnorm"}]],["abline",[{"type":128,"definedAt":"built-in:abline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["abline","graphics",false],"nodeId":"built-in:abline"}]],["mtext",[{"type":128,"definedAt":"built-in:mtext","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["mtext","graphics",false],"nodeId":"built-in:mtext"}]],["legend",[{"type":128,"definedAt":"built-in:legend","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["legend","graphics",false],"nodeId":"built-in:legend"}]],["title",[{"type":128,"definedAt":"built-in:title","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["title","graphics",false],"nodeId":"built-in:title"}]],["axis",[{"type":128,"definedAt":"built-in:axis","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["axis","graphics",false],"nodeId":"built-in:axis"}]],["polygon",[{"type":128,"definedAt":"built-in:polygon","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["polygon","graphics",false],"nodeId":"built-in:polygon"}]],["polypath",[{"type":128,"definedAt":"built-in:polypath","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["polypath","graphics",false],"nodeId":"built-in:polypath"}]],["pie",[{"type":128,"definedAt":"built-in:pie","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["pie","graphics",false],"nodeId":"built-in:pie"}]],["rect",[{"type":128,"definedAt":"built-in:rect","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["rect","graphics",false],"nodeId":"built-in:rect"}]],["segments",[{"type":128,"definedAt":"built-in:segments","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["segments","graphics",false],"nodeId":"built-in:segments"}]],["arrows",[{"type":128,"definedAt":"built-in:arrows","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["arrows","graphics",false],"nodeId":"built-in:arrows"}]],["symbols",[{"type":128,"definedAt":"built-in:symbols","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["symbols","graphics",false],"nodeId":"built-in:symbols"}]],["qqline",[{"type":128,"definedAt":"built-in:qqline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["qqline","stats",false],"nodeId":"built-in:qqline"}]],["rasterImage",[{"type":128,"definedAt":"built-in:rasterImage","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["rasterImage","graphics",false],"nodeId":"built-in:rasterImage"}]],["tiplabels",[{"type":128,"definedAt":"built-in:tiplabels","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"tiplabels","nodeId":"built-in:tiplabels"}]],["rug",[{"type":128,"definedAt":"built-in:rug","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["rug","graphics",false],"nodeId":"built-in:rug"}]],["grid",[{"type":128,"definedAt":"built-in:grid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["grid","graphics",false],"nodeId":"built-in:grid"}]],["box",[{"type":128,"definedAt":"built-in:box","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["box","graphics",false],"nodeId":"built-in:box"}]],["clip",[{"type":128,"definedAt":"built-in:clip","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["clip","graphics",false],"nodeId":"built-in:clip"}]],["matpoints",[{"type":128,"definedAt":"built-in:matpoints","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["matpoints","graphics",false],"nodeId":"built-in:matpoints"}]],["matlines",[{"type":128,"definedAt":"built-in:matlines","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["matlines","graphics",false],"nodeId":"built-in:matlines"}]],["geom_count",[{"type":128,"definedAt":"built-in:geom_count","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_count","nodeId":"built-in:geom_count"}]],["geom_bin_2d",[{"type":128,"definedAt":"built-in:geom_bin_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_bin_2d","nodeId":"built-in:geom_bin_2d"}]],["geom_spoke",[{"type":128,"definedAt":"built-in:geom_spoke","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_spoke","nodeId":"built-in:geom_spoke"}]],["geom_tile",[{"type":128,"definedAt":"built-in:geom_tile","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_tile","nodeId":"built-in:geom_tile"}]],["geom_rect",[{"type":128,"definedAt":"built-in:geom_rect","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_rect","nodeId":"built-in:geom_rect"}]],["geom_function",[{"type":128,"definedAt":"built-in:geom_function","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_function","nodeId":"built-in:geom_function"}]],["geom_crossbar",[{"type":128,"definedAt":"built-in:geom_crossbar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_crossbar","nodeId":"built-in:geom_crossbar"}]],["geom_density2d",[{"type":128,"definedAt":"built-in:geom_density2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_density2d","nodeId":"built-in:geom_density2d"}]],["geom_abline",[{"type":128,"definedAt":"built-in:geom_abline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_abline","nodeId":"built-in:geom_abline"}]],["geom_errorbar",[{"type":128,"definedAt":"built-in:geom_errorbar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_errorbar","nodeId":"built-in:geom_errorbar"}]],["geom_errorbarh",[{"type":128,"definedAt":"built-in:geom_errorbarh","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_errorbarh","nodeId":"built-in:geom_errorbarh"}]],["geom_jitter",[{"type":128,"definedAt":"built-in:geom_jitter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_jitter","nodeId":"built-in:geom_jitter"}]],["geom_line",[{"type":128,"definedAt":"built-in:geom_line","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_line","nodeId":"built-in:geom_line"}]],["geom_density",[{"type":128,"definedAt":"built-in:geom_density","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_density","nodeId":"built-in:geom_density"}]],["geom_quantile",[{"type":128,"definedAt":"built-in:geom_quantile","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_quantile","nodeId":"built-in:geom_quantile"}]],["geom_qq",[{"type":128,"definedAt":"built-in:geom_qq","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_qq","nodeId":"built-in:geom_qq"}]],["geom_qq_line",[{"type":128,"definedAt":"built-in:geom_qq_line","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_qq_line","nodeId":"built-in:geom_qq_line"}]],["geom_segment",[{"type":128,"definedAt":"built-in:geom_segment","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_segment","nodeId":"built-in:geom_segment"}]],["geom_label",[{"type":128,"definedAt":"built-in:geom_label","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_label","nodeId":"built-in:geom_label"}]],["geom_density_2d",[{"type":128,"definedAt":"built-in:geom_density_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_density_2d","nodeId":"built-in:geom_density_2d"}]],["geom_violin",[{"type":128,"definedAt":"built-in:geom_violin","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_violin","nodeId":"built-in:geom_violin"}]],["geom_contour",[{"type":128,"definedAt":"built-in:geom_contour","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_contour","nodeId":"built-in:geom_contour"}]],["geom_boxplot",[{"type":128,"definedAt":"built-in:geom_boxplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_boxplot","nodeId":"built-in:geom_boxplot"}]],["geom_col",[{"type":128,"definedAt":"built-in:geom_col","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_col","nodeId":"built-in:geom_col"}]],["geom_blank",[{"type":128,"definedAt":"built-in:geom_blank","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_blank","nodeId":"built-in:geom_blank"}]],["geom_histogram",[{"type":128,"definedAt":"built-in:geom_histogram","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_histogram","nodeId":"built-in:geom_histogram"}]],["geom_hline",[{"type":128,"definedAt":"built-in:geom_hline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_hline","nodeId":"built-in:geom_hline"}]],["geom_area",[{"type":128,"definedAt":"built-in:geom_area","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_area","nodeId":"built-in:geom_area"}]],["geom_sf_text",[{"type":128,"definedAt":"built-in:geom_sf_text","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_sf_text","nodeId":"built-in:geom_sf_text"}]],["geom_smooth",[{"type":128,"definedAt":"built-in:geom_smooth","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_smooth","nodeId":"built-in:geom_smooth"}]],["geom_text",[{"type":128,"definedAt":"built-in:geom_text","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_text","nodeId":"built-in:geom_text"}]],["geom_density2d_filled",[{"type":128,"definedAt":"built-in:geom_density2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_density2d_filled","nodeId":"built-in:geom_density2d_filled"}]],["geom_ribbon",[{"type":128,"definedAt":"built-in:geom_ribbon","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_ribbon","nodeId":"built-in:geom_ribbon"}]],["geom_sf",[{"type":128,"definedAt":"built-in:geom_sf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_sf","nodeId":"built-in:geom_sf"}]],["geom_dotplot",[{"type":128,"definedAt":"built-in:geom_dotplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_dotplot","nodeId":"built-in:geom_dotplot"}]],["geom_freqpoly",[{"type":128,"definedAt":"built-in:geom_freqpoly","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_freqpoly","nodeId":"built-in:geom_freqpoly"}]],["geom_step",[{"type":128,"definedAt":"built-in:geom_step","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_step","nodeId":"built-in:geom_step"}]],["geom_map",[{"type":128,"definedAt":"built-in:geom_map","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_map","nodeId":"built-in:geom_map"}]],["geom_bin2d",[{"type":128,"definedAt":"built-in:geom_bin2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_bin2d","nodeId":"built-in:geom_bin2d"}]],["geom_rug",[{"type":128,"definedAt":"built-in:geom_rug","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_rug","nodeId":"built-in:geom_rug"}]],["geom_raster",[{"type":128,"definedAt":"built-in:geom_raster","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_raster","nodeId":"built-in:geom_raster"}]],["geom_pointrange",[{"type":128,"definedAt":"built-in:geom_pointrange","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_pointrange","nodeId":"built-in:geom_pointrange"}]],["geom_point",[{"type":128,"definedAt":"built-in:geom_point","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_point","nodeId":"built-in:geom_point"}]],["geom_hex",[{"type":128,"definedAt":"built-in:geom_hex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_hex","nodeId":"built-in:geom_hex"}]],["geom_contour_filled",[{"type":128,"definedAt":"built-in:geom_contour_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_contour_filled","nodeId":"built-in:geom_contour_filled"}]],["geom_bar",[{"type":128,"definedAt":"built-in:geom_bar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_bar","nodeId":"built-in:geom_bar"}]],["geom_vline",[{"type":128,"definedAt":"built-in:geom_vline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_vline","nodeId":"built-in:geom_vline"}]],["geom_linerange",[{"type":128,"definedAt":"built-in:geom_linerange","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_linerange","nodeId":"built-in:geom_linerange"}]],["geom_curve",[{"type":128,"definedAt":"built-in:geom_curve","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_curve","nodeId":"built-in:geom_curve"}]],["geom_path",[{"type":128,"definedAt":"built-in:geom_path","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_path","nodeId":"built-in:geom_path"}]],["geom_polygon",[{"type":128,"definedAt":"built-in:geom_polygon","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_polygon","nodeId":"built-in:geom_polygon"}]],["geom_sf_label",[{"type":128,"definedAt":"built-in:geom_sf_label","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_sf_label","nodeId":"built-in:geom_sf_label"}]],["geom_density_2d_filled",[{"type":128,"definedAt":"built-in:geom_density_2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_density_2d_filled","nodeId":"built-in:geom_density_2d_filled"}]],["geom_dumbbell",[{"type":128,"definedAt":"built-in:geom_dumbbell","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_dumbbell","nodeId":"built-in:geom_dumbbell"}]],["geom_encircle",[{"type":128,"definedAt":"built-in:geom_encircle","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"geom_encircle","nodeId":"built-in:geom_encircle"}]],["stat_count",[{"type":128,"definedAt":"built-in:stat_count","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_count","nodeId":"built-in:stat_count"}]],["stat_density",[{"type":128,"definedAt":"built-in:stat_density","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_density","nodeId":"built-in:stat_density"}]],["stat_bin_hex",[{"type":128,"definedAt":"built-in:stat_bin_hex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_bin_hex","nodeId":"built-in:stat_bin_hex"}]],["stat_bin_2d",[{"type":128,"definedAt":"built-in:stat_bin_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_bin_2d","nodeId":"built-in:stat_bin_2d"}]],["stat_summary_bin",[{"type":128,"definedAt":"built-in:stat_summary_bin","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_summary_bin","nodeId":"built-in:stat_summary_bin"}]],["stat_identity",[{"type":128,"definedAt":"built-in:stat_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_identity","nodeId":"built-in:stat_identity"}]],["stat_qq",[{"type":128,"definedAt":"built-in:stat_qq","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_qq","nodeId":"built-in:stat_qq"}]],["stat_binhex",[{"type":128,"definedAt":"built-in:stat_binhex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_binhex","nodeId":"built-in:stat_binhex"}]],["stat_boxplot",[{"type":128,"definedAt":"built-in:stat_boxplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_boxplot","nodeId":"built-in:stat_boxplot"}]],["stat_function",[{"type":128,"definedAt":"built-in:stat_function","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_function","nodeId":"built-in:stat_function"}]],["stat_align",[{"type":128,"definedAt":"built-in:stat_align","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_align","nodeId":"built-in:stat_align"}]],["stat_contour_filled",[{"type":128,"definedAt":"built-in:stat_contour_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_contour_filled","nodeId":"built-in:stat_contour_filled"}]],["stat_summary_2d",[{"type":128,"definedAt":"built-in:stat_summary_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_summary_2d","nodeId":"built-in:stat_summary_2d"}]],["stat_qq_line",[{"type":128,"definedAt":"built-in:stat_qq_line","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_qq_line","nodeId":"built-in:stat_qq_line"}]],["stat_contour",[{"type":128,"definedAt":"built-in:stat_contour","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_contour","nodeId":"built-in:stat_contour"}]],["stat_ydensity",[{"type":128,"definedAt":"built-in:stat_ydensity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_ydensity","nodeId":"built-in:stat_ydensity"}]],["stat_summary_hex",[{"type":128,"definedAt":"built-in:stat_summary_hex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_summary_hex","nodeId":"built-in:stat_summary_hex"}]],["stat_summary2d",[{"type":128,"definedAt":"built-in:stat_summary2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_summary2d","nodeId":"built-in:stat_summary2d"}]],["stat_sf_coordinates",[{"type":128,"definedAt":"built-in:stat_sf_coordinates","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_sf_coordinates","nodeId":"built-in:stat_sf_coordinates"}]],["stat_density_2d_filled",[{"type":128,"definedAt":"built-in:stat_density_2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_density_2d_filled","nodeId":"built-in:stat_density_2d_filled"}]],["stat_smooth",[{"type":128,"definedAt":"built-in:stat_smooth","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_smooth","nodeId":"built-in:stat_smooth"}]],["stat_density2d",[{"type":128,"definedAt":"built-in:stat_density2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_density2d","nodeId":"built-in:stat_density2d"}]],["stat_ecdf",[{"type":128,"definedAt":"built-in:stat_ecdf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_ecdf","nodeId":"built-in:stat_ecdf"}]],["stat_sf",[{"type":128,"definedAt":"built-in:stat_sf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_sf","nodeId":"built-in:stat_sf"}]],["stat_quantile",[{"type":128,"definedAt":"built-in:stat_quantile","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_quantile","nodeId":"built-in:stat_quantile"}]],["stat_unique",[{"type":128,"definedAt":"built-in:stat_unique","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_unique","nodeId":"built-in:stat_unique"}]],["stat_density_2d",[{"type":128,"definedAt":"built-in:stat_density_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_density_2d","nodeId":"built-in:stat_density_2d"}]],["stat_ellipse",[{"type":128,"definedAt":"built-in:stat_ellipse","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_ellipse","nodeId":"built-in:stat_ellipse"}]],["stat_summary",[{"type":128,"definedAt":"built-in:stat_summary","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_summary","nodeId":"built-in:stat_summary"}]],["stat_density2d_filled",[{"type":128,"definedAt":"built-in:stat_density2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_density2d_filled","nodeId":"built-in:stat_density2d_filled"}]],["stat_bin",[{"type":128,"definedAt":"built-in:stat_bin","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_bin","nodeId":"built-in:stat_bin"}]],["stat_sum",[{"type":128,"definedAt":"built-in:stat_sum","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_sum","nodeId":"built-in:stat_sum"}]],["stat_spoke",[{"type":128,"definedAt":"built-in:stat_spoke","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_spoke","nodeId":"built-in:stat_spoke"}]],["stat_bin2d",[{"type":128,"definedAt":"built-in:stat_bin2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"stat_bin2d","nodeId":"built-in:stat_bin2d"}]],["labs",[{"type":128,"definedAt":"built-in:labs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"labs","nodeId":"built-in:labs"}]],["theme_void",[{"type":128,"definedAt":"built-in:theme_void","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_void","nodeId":"built-in:theme_void"}]],["theme_test",[{"type":128,"definedAt":"built-in:theme_test","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_test","nodeId":"built-in:theme_test"}]],["theme_minimal",[{"type":128,"definedAt":"built-in:theme_minimal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_minimal","nodeId":"built-in:theme_minimal"}]],["theme_light",[{"type":128,"definedAt":"built-in:theme_light","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_light","nodeId":"built-in:theme_light"}]],["theme",[{"type":128,"definedAt":"built-in:theme","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme","nodeId":"built-in:theme"}]],["theme_get",[{"type":128,"definedAt":"built-in:theme_get","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_get","nodeId":"built-in:theme_get"}]],["theme_gray",[{"type":128,"definedAt":"built-in:theme_gray","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_gray","nodeId":"built-in:theme_gray"}]],["theme_dark",[{"type":128,"definedAt":"built-in:theme_dark","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_dark","nodeId":"built-in:theme_dark"}]],["theme_classic",[{"type":128,"definedAt":"built-in:theme_classic","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_classic","nodeId":"built-in:theme_classic"}]],["theme_linedraw",[{"type":128,"definedAt":"built-in:theme_linedraw","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_linedraw","nodeId":"built-in:theme_linedraw"}]],["theme_update",[{"type":128,"definedAt":"built-in:theme_update","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_update","nodeId":"built-in:theme_update"}]],["theme_replace",[{"type":128,"definedAt":"built-in:theme_replace","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_replace","nodeId":"built-in:theme_replace"}]],["theme_grey",[{"type":128,"definedAt":"built-in:theme_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_grey","nodeId":"built-in:theme_grey"}]],["theme_bw",[{"type":128,"definedAt":"built-in:theme_bw","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_bw","nodeId":"built-in:theme_bw"}]],["theme_tufte",[{"type":128,"definedAt":"built-in:theme_tufte","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_tufte","nodeId":"built-in:theme_tufte"}]],["theme_survminer",[{"type":128,"definedAt":"built-in:theme_survminer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_survminer","nodeId":"built-in:theme_survminer"}]],["facet_null",[{"type":128,"definedAt":"built-in:facet_null","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"facet_null","nodeId":"built-in:facet_null"}]],["facet_grid",[{"type":128,"definedAt":"built-in:facet_grid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"facet_grid","nodeId":"built-in:facet_grid"}]],["facet_wrap",[{"type":128,"definedAt":"built-in:facet_wrap","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"facet_wrap","nodeId":"built-in:facet_wrap"}]],["xlab",[{"type":128,"definedAt":"built-in:xlab","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"xlab","nodeId":"built-in:xlab"}]],["xlim",[{"type":128,"definedAt":"built-in:xlim","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"xlim","nodeId":"built-in:xlim"}]],["ylab",[{"type":128,"definedAt":"built-in:ylab","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"ylab","nodeId":"built-in:ylab"}]],["ylim",[{"type":128,"definedAt":"built-in:ylim","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"ylim","nodeId":"built-in:ylim"}]],["scale_linewidth_ordinal",[{"type":128,"definedAt":"built-in:scale_linewidth_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_ordinal","nodeId":"built-in:scale_linewidth_ordinal"}]],["scale_fill_steps",[{"type":128,"definedAt":"built-in:scale_fill_steps","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_steps","nodeId":"built-in:scale_fill_steps"}]],["scale_color_gradient2",[{"type":128,"definedAt":"built-in:scale_color_gradient2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_gradient2","nodeId":"built-in:scale_color_gradient2"}]],["scale_size_manual",[{"type":128,"definedAt":"built-in:scale_size_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_manual","nodeId":"built-in:scale_size_manual"}]],["scale_colour_discrete",[{"type":128,"definedAt":"built-in:scale_colour_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_discrete","nodeId":"built-in:scale_colour_discrete"}]],["scale_color_identity",[{"type":128,"definedAt":"built-in:scale_color_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_identity","nodeId":"built-in:scale_color_identity"}]],["scale_fill_fermenter",[{"type":128,"definedAt":"built-in:scale_fill_fermenter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_fermenter","nodeId":"built-in:scale_fill_fermenter"}]],["scale_alpha_manual",[{"type":128,"definedAt":"built-in:scale_alpha_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_manual","nodeId":"built-in:scale_alpha_manual"}]],["scale_fill_gradient",[{"type":128,"definedAt":"built-in:scale_fill_gradient","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_gradient","nodeId":"built-in:scale_fill_gradient"}]],["scale_size_date",[{"type":128,"definedAt":"built-in:scale_size_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_date","nodeId":"built-in:scale_size_date"}]],["scale_fill_viridis_b",[{"type":128,"definedAt":"built-in:scale_fill_viridis_b","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_viridis_b","nodeId":"built-in:scale_fill_viridis_b"}]],["scale_x_time",[{"type":128,"definedAt":"built-in:scale_x_time","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_time","nodeId":"built-in:scale_x_time"}]],["scale_linetype_manual",[{"type":128,"definedAt":"built-in:scale_linetype_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linetype_manual","nodeId":"built-in:scale_linetype_manual"}]],["scale_alpha_binned",[{"type":128,"definedAt":"built-in:scale_alpha_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_binned","nodeId":"built-in:scale_alpha_binned"}]],["scale_color_grey",[{"type":128,"definedAt":"built-in:scale_color_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_grey","nodeId":"built-in:scale_color_grey"}]],["scale_colour_gradient",[{"type":128,"definedAt":"built-in:scale_colour_gradient","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_gradient","nodeId":"built-in:scale_colour_gradient"}]],["scale_linewidth_date",[{"type":128,"definedAt":"built-in:scale_linewidth_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_date","nodeId":"built-in:scale_linewidth_date"}]],["scale_color_steps2",[{"type":128,"definedAt":"built-in:scale_color_steps2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_steps2","nodeId":"built-in:scale_color_steps2"}]],["scale_color_viridis_b",[{"type":128,"definedAt":"built-in:scale_color_viridis_b","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_viridis_b","nodeId":"built-in:scale_color_viridis_b"}]],["scale_size_binned",[{"type":128,"definedAt":"built-in:scale_size_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_binned","nodeId":"built-in:scale_size_binned"}]],["scale_colour_gradientn",[{"type":128,"definedAt":"built-in:scale_colour_gradientn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_gradientn","nodeId":"built-in:scale_colour_gradientn"}]],["scale_linewidth_manual",[{"type":128,"definedAt":"built-in:scale_linewidth_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_manual","nodeId":"built-in:scale_linewidth_manual"}]],["scale_fill_viridis_c",[{"type":128,"definedAt":"built-in:scale_fill_viridis_c","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_viridis_c","nodeId":"built-in:scale_fill_viridis_c"}]],["scale_fill_manual",[{"type":128,"definedAt":"built-in:scale_fill_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_manual","nodeId":"built-in:scale_fill_manual"}]],["scale_color_viridis_c",[{"type":128,"definedAt":"built-in:scale_color_viridis_c","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_viridis_c","nodeId":"built-in:scale_color_viridis_c"}]],["scale_fill_discrete",[{"type":128,"definedAt":"built-in:scale_fill_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_discrete","nodeId":"built-in:scale_fill_discrete"}]],["scale_size_discrete",[{"type":128,"definedAt":"built-in:scale_size_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_discrete","nodeId":"built-in:scale_size_discrete"}]],["scale_fill_binned",[{"type":128,"definedAt":"built-in:scale_fill_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_binned","nodeId":"built-in:scale_fill_binned"}]],["scale_fill_viridis_d",[{"type":128,"definedAt":"built-in:scale_fill_viridis_d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_viridis_d","nodeId":"built-in:scale_fill_viridis_d"}]],["scale_colour_fermenter",[{"type":128,"definedAt":"built-in:scale_colour_fermenter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_fermenter","nodeId":"built-in:scale_colour_fermenter"}]],["scale_color_viridis_d",[{"type":128,"definedAt":"built-in:scale_color_viridis_d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_viridis_d","nodeId":"built-in:scale_color_viridis_d"}]],["scale_x_datetime",[{"type":128,"definedAt":"built-in:scale_x_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_datetime","nodeId":"built-in:scale_x_datetime"}]],["scale_size_identity",[{"type":128,"definedAt":"built-in:scale_size_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_identity","nodeId":"built-in:scale_size_identity"}]],["scale_linewidth_identity",[{"type":128,"definedAt":"built-in:scale_linewidth_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_identity","nodeId":"built-in:scale_linewidth_identity"}]],["scale_shape_ordinal",[{"type":128,"definedAt":"built-in:scale_shape_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_ordinal","nodeId":"built-in:scale_shape_ordinal"}]],["scale_linewidth_discrete",[{"type":128,"definedAt":"built-in:scale_linewidth_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_discrete","nodeId":"built-in:scale_linewidth_discrete"}]],["scale_fill_ordinal",[{"type":128,"definedAt":"built-in:scale_fill_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_ordinal","nodeId":"built-in:scale_fill_ordinal"}]],["scale_y_time",[{"type":128,"definedAt":"built-in:scale_y_time","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_time","nodeId":"built-in:scale_y_time"}]],["scale_color_ordinal",[{"type":128,"definedAt":"built-in:scale_color_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_ordinal","nodeId":"built-in:scale_color_ordinal"}]],["scale_size_ordinal",[{"type":128,"definedAt":"built-in:scale_size_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_ordinal","nodeId":"built-in:scale_size_ordinal"}]],["scale_colour_distiller",[{"type":128,"definedAt":"built-in:scale_colour_distiller","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_distiller","nodeId":"built-in:scale_colour_distiller"}]],["scale_linewidth_datetime",[{"type":128,"definedAt":"built-in:scale_linewidth_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_datetime","nodeId":"built-in:scale_linewidth_datetime"}]],["scale_alpha_identity",[{"type":128,"definedAt":"built-in:scale_alpha_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_identity","nodeId":"built-in:scale_alpha_identity"}]],["scale_color_steps",[{"type":128,"definedAt":"built-in:scale_color_steps","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_steps","nodeId":"built-in:scale_color_steps"}]],["scale_alpha_discrete",[{"type":128,"definedAt":"built-in:scale_alpha_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_discrete","nodeId":"built-in:scale_alpha_discrete"}]],["scale_fill_date",[{"type":128,"definedAt":"built-in:scale_fill_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_date","nodeId":"built-in:scale_fill_date"}]],["scale_x_reverse",[{"type":128,"definedAt":"built-in:scale_x_reverse","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_reverse","nodeId":"built-in:scale_x_reverse"}]],["scale_fill_gradientn",[{"type":128,"definedAt":"built-in:scale_fill_gradientn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_gradientn","nodeId":"built-in:scale_fill_gradientn"}]],["scale_size_datetime",[{"type":128,"definedAt":"built-in:scale_size_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_datetime","nodeId":"built-in:scale_size_datetime"}]],["scale_y_continuous",[{"type":128,"definedAt":"built-in:scale_y_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_continuous","nodeId":"built-in:scale_y_continuous"}]],["scale_colour_steps",[{"type":128,"definedAt":"built-in:scale_colour_steps","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_steps","nodeId":"built-in:scale_colour_steps"}]],["scale_color_distiller",[{"type":128,"definedAt":"built-in:scale_color_distiller","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_distiller","nodeId":"built-in:scale_color_distiller"}]],["scale_colour_ordinal",[{"type":128,"definedAt":"built-in:scale_colour_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_ordinal","nodeId":"built-in:scale_colour_ordinal"}]],["scale_y_datetime",[{"type":128,"definedAt":"built-in:scale_y_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_datetime","nodeId":"built-in:scale_y_datetime"}]],["scale_linetype_discrete",[{"type":128,"definedAt":"built-in:scale_linetype_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linetype_discrete","nodeId":"built-in:scale_linetype_discrete"}]],["scale_colour_viridis_b",[{"type":128,"definedAt":"built-in:scale_colour_viridis_b","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_viridis_b","nodeId":"built-in:scale_colour_viridis_b"}]],["scale_alpha_datetime",[{"type":128,"definedAt":"built-in:scale_alpha_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_datetime","nodeId":"built-in:scale_alpha_datetime"}]],["scale_continuous_identity",[{"type":128,"definedAt":"built-in:scale_continuous_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_continuous_identity","nodeId":"built-in:scale_continuous_identity"}]],["scale_fill_brewer",[{"type":128,"definedAt":"built-in:scale_fill_brewer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_brewer","nodeId":"built-in:scale_fill_brewer"}]],["scale_shape_identity",[{"type":128,"definedAt":"built-in:scale_shape_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_identity","nodeId":"built-in:scale_shape_identity"}]],["scale_color_discrete",[{"type":128,"definedAt":"built-in:scale_color_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_discrete","nodeId":"built-in:scale_color_discrete"}]],["scale_colour_viridis_c",[{"type":128,"definedAt":"built-in:scale_colour_viridis_c","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_viridis_c","nodeId":"built-in:scale_colour_viridis_c"}]],["scale_linetype_identity",[{"type":128,"definedAt":"built-in:scale_linetype_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linetype_identity","nodeId":"built-in:scale_linetype_identity"}]],["scale_colour_hue",[{"type":128,"definedAt":"built-in:scale_colour_hue","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_hue","nodeId":"built-in:scale_colour_hue"}]],["scale_linewidth_binned",[{"type":128,"definedAt":"built-in:scale_linewidth_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_binned","nodeId":"built-in:scale_linewidth_binned"}]],["scale_color_hue",[{"type":128,"definedAt":"built-in:scale_color_hue","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_hue","nodeId":"built-in:scale_color_hue"}]],["scale_shape_continuous",[{"type":128,"definedAt":"built-in:scale_shape_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_continuous","nodeId":"built-in:scale_shape_continuous"}]],["scale_colour_viridis_d",[{"type":128,"definedAt":"built-in:scale_colour_viridis_d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_viridis_d","nodeId":"built-in:scale_colour_viridis_d"}]],["scale_size_continuous",[{"type":128,"definedAt":"built-in:scale_size_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_continuous","nodeId":"built-in:scale_size_continuous"}]],["scale_color_manual",[{"type":128,"definedAt":"built-in:scale_color_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_manual","nodeId":"built-in:scale_color_manual"}]],["scale_alpha_date",[{"type":128,"definedAt":"built-in:scale_alpha_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_date","nodeId":"built-in:scale_alpha_date"}]],["scale_y_sqrt",[{"type":128,"definedAt":"built-in:scale_y_sqrt","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_sqrt","nodeId":"built-in:scale_y_sqrt"}]],["scale_shape_binned",[{"type":128,"definedAt":"built-in:scale_shape_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_binned","nodeId":"built-in:scale_shape_binned"}]],["scale_size",[{"type":128,"definedAt":"built-in:scale_size","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size","nodeId":"built-in:scale_size"}]],["scale_color_fermenter",[{"type":128,"definedAt":"built-in:scale_color_fermenter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_fermenter","nodeId":"built-in:scale_color_fermenter"}]],["scale_color_stepsn",[{"type":128,"definedAt":"built-in:scale_color_stepsn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_stepsn","nodeId":"built-in:scale_color_stepsn"}]],["scale_size_area",[{"type":128,"definedAt":"built-in:scale_size_area","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_area","nodeId":"built-in:scale_size_area"}]],["scale_y_binned",[{"type":128,"definedAt":"built-in:scale_y_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_binned","nodeId":"built-in:scale_y_binned"}]],["scale_y_discrete",[{"type":128,"definedAt":"built-in:scale_y_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_discrete","nodeId":"built-in:scale_y_discrete"}]],["scale_alpha_continuous",[{"type":128,"definedAt":"built-in:scale_alpha_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_continuous","nodeId":"built-in:scale_alpha_continuous"}]],["scale_fill_continuous",[{"type":128,"definedAt":"built-in:scale_fill_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_continuous","nodeId":"built-in:scale_fill_continuous"}]],["scale_linetype_continuous",[{"type":128,"definedAt":"built-in:scale_linetype_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linetype_continuous","nodeId":"built-in:scale_linetype_continuous"}]],["scale_colour_steps2",[{"type":128,"definedAt":"built-in:scale_colour_steps2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_steps2","nodeId":"built-in:scale_colour_steps2"}]],["scale_colour_datetime",[{"type":128,"definedAt":"built-in:scale_colour_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_datetime","nodeId":"built-in:scale_colour_datetime"}]],["scale_colour_grey",[{"type":128,"definedAt":"built-in:scale_colour_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_grey","nodeId":"built-in:scale_colour_grey"}]],["scale_x_log10",[{"type":128,"definedAt":"built-in:scale_x_log10","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_log10","nodeId":"built-in:scale_x_log10"}]],["scale_x_discrete",[{"type":128,"definedAt":"built-in:scale_x_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_discrete","nodeId":"built-in:scale_x_discrete"}]],["scale_color_continuous",[{"type":128,"definedAt":"built-in:scale_color_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_continuous","nodeId":"built-in:scale_color_continuous"}]],["scale_type",[{"type":128,"definedAt":"built-in:scale_type","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_type","nodeId":"built-in:scale_type"}]],["scale_y_reverse",[{"type":128,"definedAt":"built-in:scale_y_reverse","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_reverse","nodeId":"built-in:scale_y_reverse"}]],["scale_colour_gradient2",[{"type":128,"definedAt":"built-in:scale_colour_gradient2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_gradient2","nodeId":"built-in:scale_colour_gradient2"}]],["scale_color_datetime",[{"type":128,"definedAt":"built-in:scale_color_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_datetime","nodeId":"built-in:scale_color_datetime"}]],["scale_color_date",[{"type":128,"definedAt":"built-in:scale_color_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_date","nodeId":"built-in:scale_color_date"}]],["scale_x_continuous",[{"type":128,"definedAt":"built-in:scale_x_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_continuous","nodeId":"built-in:scale_x_continuous"}]],["scale_colour_manual",[{"type":128,"definedAt":"built-in:scale_colour_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_manual","nodeId":"built-in:scale_colour_manual"}]],["scale_fill_gradient2",[{"type":128,"definedAt":"built-in:scale_fill_gradient2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_gradient2","nodeId":"built-in:scale_fill_gradient2"}]],["scale_fill_grey",[{"type":128,"definedAt":"built-in:scale_fill_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_grey","nodeId":"built-in:scale_fill_grey"}]],["scale_colour_stepsn",[{"type":128,"definedAt":"built-in:scale_colour_stepsn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_stepsn","nodeId":"built-in:scale_colour_stepsn"}]],["scale_colour_binned",[{"type":128,"definedAt":"built-in:scale_colour_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_binned","nodeId":"built-in:scale_colour_binned"}]],["scale_color_binned",[{"type":128,"definedAt":"built-in:scale_color_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_binned","nodeId":"built-in:scale_color_binned"}]],["scale_color_gradientn",[{"type":128,"definedAt":"built-in:scale_color_gradientn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_gradientn","nodeId":"built-in:scale_color_gradientn"}]],["scale_colour_date",[{"type":128,"definedAt":"built-in:scale_colour_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_date","nodeId":"built-in:scale_colour_date"}]],["scale_fill_distiller",[{"type":128,"definedAt":"built-in:scale_fill_distiller","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_distiller","nodeId":"built-in:scale_fill_distiller"}]],["scale_color_gradient",[{"type":128,"definedAt":"built-in:scale_color_gradient","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_gradient","nodeId":"built-in:scale_color_gradient"}]],["scale_linewidth_continuous",[{"type":128,"definedAt":"built-in:scale_linewidth_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth_continuous","nodeId":"built-in:scale_linewidth_continuous"}]],["scale_shape",[{"type":128,"definedAt":"built-in:scale_shape","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape","nodeId":"built-in:scale_shape"}]],["scale_fill_hue",[{"type":128,"definedAt":"built-in:scale_fill_hue","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_hue","nodeId":"built-in:scale_fill_hue"}]],["scale_linetype",[{"type":128,"definedAt":"built-in:scale_linetype","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linetype","nodeId":"built-in:scale_linetype"}]],["scale_colour_identity",[{"type":128,"definedAt":"built-in:scale_colour_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_identity","nodeId":"built-in:scale_colour_identity"}]],["scale_discrete_manual",[{"type":128,"definedAt":"built-in:scale_discrete_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_discrete_manual","nodeId":"built-in:scale_discrete_manual"}]],["scale_fill_identity",[{"type":128,"definedAt":"built-in:scale_fill_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_identity","nodeId":"built-in:scale_fill_identity"}]],["scale_y_log10",[{"type":128,"definedAt":"built-in:scale_y_log10","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_log10","nodeId":"built-in:scale_y_log10"}]],["scale_linetype_binned",[{"type":128,"definedAt":"built-in:scale_linetype_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linetype_binned","nodeId":"built-in:scale_linetype_binned"}]],["scale_size_binned_area",[{"type":128,"definedAt":"built-in:scale_size_binned_area","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_size_binned_area","nodeId":"built-in:scale_size_binned_area"}]],["scale_y_date",[{"type":128,"definedAt":"built-in:scale_y_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_y_date","nodeId":"built-in:scale_y_date"}]],["scale_x_binned",[{"type":128,"definedAt":"built-in:scale_x_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_binned","nodeId":"built-in:scale_x_binned"}]],["scale_shape_discrete",[{"type":128,"definedAt":"built-in:scale_shape_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_discrete","nodeId":"built-in:scale_shape_discrete"}]],["scale_colour_brewer",[{"type":128,"definedAt":"built-in:scale_colour_brewer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_brewer","nodeId":"built-in:scale_colour_brewer"}]],["scale_x_date",[{"type":128,"definedAt":"built-in:scale_x_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_date","nodeId":"built-in:scale_x_date"}]],["scale_discrete_identity",[{"type":128,"definedAt":"built-in:scale_discrete_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_discrete_identity","nodeId":"built-in:scale_discrete_identity"}]],["scale_alpha",[{"type":128,"definedAt":"built-in:scale_alpha","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha","nodeId":"built-in:scale_alpha"}]],["scale_fill_steps2",[{"type":128,"definedAt":"built-in:scale_fill_steps2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_steps2","nodeId":"built-in:scale_fill_steps2"}]],["scale_color_brewer",[{"type":128,"definedAt":"built-in:scale_color_brewer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_brewer","nodeId":"built-in:scale_color_brewer"}]],["scale_fill_datetime",[{"type":128,"definedAt":"built-in:scale_fill_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_datetime","nodeId":"built-in:scale_fill_datetime"}]],["scale_shape_manual",[{"type":128,"definedAt":"built-in:scale_shape_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_manual","nodeId":"built-in:scale_shape_manual"}]],["scale_colour_continuous",[{"type":128,"definedAt":"built-in:scale_colour_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_continuous","nodeId":"built-in:scale_colour_continuous"}]],["scale_alpha_ordinal",[{"type":128,"definedAt":"built-in:scale_alpha_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_alpha_ordinal","nodeId":"built-in:scale_alpha_ordinal"}]],["scale_linewidth",[{"type":128,"definedAt":"built-in:scale_linewidth","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linewidth","nodeId":"built-in:scale_linewidth"}]],["scale_x_sqrt",[{"type":128,"definedAt":"built-in:scale_x_sqrt","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_x_sqrt","nodeId":"built-in:scale_x_sqrt"}]],["scale_fill_stepsn",[{"type":128,"definedAt":"built-in:scale_fill_stepsn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_stepsn","nodeId":"built-in:scale_fill_stepsn"}]],["scale_radius",[{"type":128,"definedAt":"built-in:scale_radius","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_radius","nodeId":"built-in:scale_radius"}]],["rotateTextX",[{"type":128,"definedAt":"built-in:rotateTextX","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"rotateTextX","nodeId":"built-in:rotateTextX"}]],["removeGridX",[{"type":128,"definedAt":"built-in:removeGridX","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"removeGridX","nodeId":"built-in:removeGridX"}]],["removeGridY",[{"type":128,"definedAt":"built-in:removeGridY","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"removeGridY","nodeId":"built-in:removeGridY"}]],["removeGrid",[{"type":128,"definedAt":"built-in:removeGrid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"removeGrid","nodeId":"built-in:removeGrid"}]],["coord_trans",[{"type":128,"definedAt":"built-in:coord_trans","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_trans","nodeId":"built-in:coord_trans"}]],["coord_sf",[{"type":128,"definedAt":"built-in:coord_sf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_sf","nodeId":"built-in:coord_sf"}]],["coord_cartesian",[{"type":128,"definedAt":"built-in:coord_cartesian","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_cartesian","nodeId":"built-in:coord_cartesian"}]],["coord_fixed",[{"type":128,"definedAt":"built-in:coord_fixed","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_fixed","nodeId":"built-in:coord_fixed"}]],["coord_flip",[{"type":128,"definedAt":"built-in:coord_flip","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_flip","nodeId":"built-in:coord_flip"}]],["coord_quickmap",[{"type":128,"definedAt":"built-in:coord_quickmap","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_quickmap","nodeId":"built-in:coord_quickmap"}]],["coord_equal",[{"type":128,"definedAt":"built-in:coord_equal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_equal","nodeId":"built-in:coord_equal"}]],["coord_map",[{"type":128,"definedAt":"built-in:coord_map","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_map","nodeId":"built-in:coord_map"}]],["coord_polar",[{"type":128,"definedAt":"built-in:coord_polar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_polar","nodeId":"built-in:coord_polar"}]],["coord_munch",[{"type":128,"definedAt":"built-in:coord_munch","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_munch","nodeId":"built-in:coord_munch"}]],["coord_radial",[{"type":128,"definedAt":"built-in:coord_radial","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"coord_radial","nodeId":"built-in:coord_radial"}]],["annotate",[{"type":128,"definedAt":"built-in:annotate","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"annotate","nodeId":"built-in:annotate"}]],["annotation_custom",[{"type":128,"definedAt":"built-in:annotation_custom","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"annotation_custom","nodeId":"built-in:annotation_custom"}]],["annotation_raster",[{"type":128,"definedAt":"built-in:annotation_raster","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"annotation_raster","nodeId":"built-in:annotation_raster"}]],["annotation_map",[{"type":128,"definedAt":"built-in:annotation_map","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"annotation_map","nodeId":"built-in:annotation_map"}]],["annotation_logticks",[{"type":128,"definedAt":"built-in:annotation_logticks","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"annotation_logticks","nodeId":"built-in:annotation_logticks"}]],["borders",[{"type":128,"definedAt":"built-in:borders","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"borders","nodeId":"built-in:borders"}]],["ggtitle",[{"type":128,"definedAt":"built-in:ggtitle","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"ggtitle","nodeId":"built-in:ggtitle"}]],["expansion",[{"type":128,"definedAt":"built-in:expansion","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"expansion","nodeId":"built-in:expansion"}]],["expand_limits",[{"type":128,"definedAt":"built-in:expand_limits","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"expand_limits","nodeId":"built-in:expand_limits"}]],["expand_scale",[{"type":128,"definedAt":"built-in:expand_scale","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"expand_scale","nodeId":"built-in:expand_scale"}]],["guides",[{"type":128,"definedAt":"built-in:guides","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"guides","nodeId":"built-in:guides"}]],["wrap_by",[{"type":128,"definedAt":"built-in:wrap_by","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"wrap_by","nodeId":"built-in:wrap_by"}]],["theme_solid",[{"type":128,"definedAt":"built-in:theme_solid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_solid","nodeId":"built-in:theme_solid"}]],["theme_hc",[{"type":128,"definedAt":"built-in:theme_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_hc","nodeId":"built-in:theme_hc"}]],["theme_excel_new",[{"type":128,"definedAt":"built-in:theme_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_excel_new","nodeId":"built-in:theme_excel_new"}]],["theme_few",[{"type":128,"definedAt":"built-in:theme_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_few","nodeId":"built-in:theme_few"}]],["theme_clean",[{"type":128,"definedAt":"built-in:theme_clean","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_clean","nodeId":"built-in:theme_clean"}]],["theme_wsj",[{"type":128,"definedAt":"built-in:theme_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_wsj","nodeId":"built-in:theme_wsj"}]],["theme_calc",[{"type":128,"definedAt":"built-in:theme_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_calc","nodeId":"built-in:theme_calc"}]],["theme_par",[{"type":128,"definedAt":"built-in:theme_par","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_par","nodeId":"built-in:theme_par"}]],["theme_igray",[{"type":128,"definedAt":"built-in:theme_igray","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_igray","nodeId":"built-in:theme_igray"}]],["theme_solarized_2",[{"type":128,"definedAt":"built-in:theme_solarized_2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_solarized_2","nodeId":"built-in:theme_solarized_2"}]],["theme_excel",[{"type":128,"definedAt":"built-in:theme_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_excel","nodeId":"built-in:theme_excel"}]],["theme_economist",[{"type":128,"definedAt":"built-in:theme_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_economist","nodeId":"built-in:theme_economist"}]],["theme_stata",[{"type":128,"definedAt":"built-in:theme_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_stata","nodeId":"built-in:theme_stata"}]],["theme_map",[{"type":128,"definedAt":"built-in:theme_map","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_map","nodeId":"built-in:theme_map"}]],["theme_fivethirtyeight",[{"type":128,"definedAt":"built-in:theme_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_fivethirtyeight","nodeId":"built-in:theme_fivethirtyeight"}]],["theme_economist_white",[{"type":128,"definedAt":"built-in:theme_economist_white","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_economist_white","nodeId":"built-in:theme_economist_white"}]],["theme_base",[{"type":128,"definedAt":"built-in:theme_base","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_base","nodeId":"built-in:theme_base"}]],["theme_foundation",[{"type":128,"definedAt":"built-in:theme_foundation","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_foundation","nodeId":"built-in:theme_foundation"}]],["theme_gdocs",[{"type":128,"definedAt":"built-in:theme_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_gdocs","nodeId":"built-in:theme_gdocs"}]],["theme_pander",[{"type":128,"definedAt":"built-in:theme_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_pander","nodeId":"built-in:theme_pander"}]],["theme_solarized",[{"type":128,"definedAt":"built-in:theme_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"theme_solarized","nodeId":"built-in:theme_solarized"}]],["scale_shape_tableau",[{"type":128,"definedAt":"built-in:scale_shape_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_tableau","nodeId":"built-in:scale_shape_tableau"}]],["scale_fill_pander",[{"type":128,"definedAt":"built-in:scale_fill_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_pander","nodeId":"built-in:scale_fill_pander"}]],["scale_shape_few",[{"type":128,"definedAt":"built-in:scale_shape_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_few","nodeId":"built-in:scale_shape_few"}]],["scale_colour_excel_new",[{"type":128,"definedAt":"built-in:scale_colour_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_excel_new","nodeId":"built-in:scale_colour_excel_new"}]],["scale_colour_hc",[{"type":128,"definedAt":"built-in:scale_colour_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_hc","nodeId":"built-in:scale_colour_hc"}]],["scale_fill_ptol",[{"type":128,"definedAt":"built-in:scale_fill_ptol","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_ptol","nodeId":"built-in:scale_fill_ptol"}]],["scale_fill_gradient2_tableau",[{"type":128,"definedAt":"built-in:scale_fill_gradient2_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_gradient2_tableau","nodeId":"built-in:scale_fill_gradient2_tableau"}]],["scale_shape_calc",[{"type":128,"definedAt":"built-in:scale_shape_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_calc","nodeId":"built-in:scale_shape_calc"}]],["scale_fill_stata",[{"type":128,"definedAt":"built-in:scale_fill_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_stata","nodeId":"built-in:scale_fill_stata"}]],["scale_colour_tableau",[{"type":128,"definedAt":"built-in:scale_colour_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_tableau","nodeId":"built-in:scale_colour_tableau"}]],["scale_colour_colorblind",[{"type":128,"definedAt":"built-in:scale_colour_colorblind","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_colorblind","nodeId":"built-in:scale_colour_colorblind"}]],["scale_color_stata",[{"type":128,"definedAt":"built-in:scale_color_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_stata","nodeId":"built-in:scale_color_stata"}]],["scale_colour_economist",[{"type":128,"definedAt":"built-in:scale_colour_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_economist","nodeId":"built-in:scale_colour_economist"}]],["scale_fill_calc",[{"type":128,"definedAt":"built-in:scale_fill_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_calc","nodeId":"built-in:scale_fill_calc"}]],["scale_fill_gradient_tableau",[{"type":128,"definedAt":"built-in:scale_fill_gradient_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_gradient_tableau","nodeId":"built-in:scale_fill_gradient_tableau"}]],["scale_shape_cleveland",[{"type":128,"definedAt":"built-in:scale_shape_cleveland","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_cleveland","nodeId":"built-in:scale_shape_cleveland"}]],["scale_color_pander",[{"type":128,"definedAt":"built-in:scale_color_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_pander","nodeId":"built-in:scale_color_pander"}]],["scale_colour_pander",[{"type":128,"definedAt":"built-in:scale_colour_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_pander","nodeId":"built-in:scale_colour_pander"}]],["scale_color_fivethirtyeight",[{"type":128,"definedAt":"built-in:scale_color_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_fivethirtyeight","nodeId":"built-in:scale_color_fivethirtyeight"}]],["scale_color_wsj",[{"type":128,"definedAt":"built-in:scale_color_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_wsj","nodeId":"built-in:scale_color_wsj"}]],["scale_shape_stata",[{"type":128,"definedAt":"built-in:scale_shape_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_stata","nodeId":"built-in:scale_shape_stata"}]],["scale_colour_gdocs",[{"type":128,"definedAt":"built-in:scale_colour_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_gdocs","nodeId":"built-in:scale_colour_gdocs"}]],["scale_color_continuous_tableau",[{"type":128,"definedAt":"built-in:scale_color_continuous_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_continuous_tableau","nodeId":"built-in:scale_color_continuous_tableau"}]],["scale_fill_excel",[{"type":128,"definedAt":"built-in:scale_fill_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_excel","nodeId":"built-in:scale_fill_excel"}]],["scale_color_few",[{"type":128,"definedAt":"built-in:scale_color_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_few","nodeId":"built-in:scale_color_few"}]],["scale_linetype_stata",[{"type":128,"definedAt":"built-in:scale_linetype_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_linetype_stata","nodeId":"built-in:scale_linetype_stata"}]],["scale_shape_tremmel",[{"type":128,"definedAt":"built-in:scale_shape_tremmel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_tremmel","nodeId":"built-in:scale_shape_tremmel"}]],["scale_color_tableau",[{"type":128,"definedAt":"built-in:scale_color_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_tableau","nodeId":"built-in:scale_color_tableau"}]],["scale_color_colorblind",[{"type":128,"definedAt":"built-in:scale_color_colorblind","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_colorblind","nodeId":"built-in:scale_color_colorblind"}]],["scale_fill_colorblind",[{"type":128,"definedAt":"built-in:scale_fill_colorblind","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_colorblind","nodeId":"built-in:scale_fill_colorblind"}]],["scale_colour_stata",[{"type":128,"definedAt":"built-in:scale_colour_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_stata","nodeId":"built-in:scale_colour_stata"}]],["scale_fill_wsj",[{"type":128,"definedAt":"built-in:scale_fill_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_wsj","nodeId":"built-in:scale_fill_wsj"}]],["scale_colour_calc",[{"type":128,"definedAt":"built-in:scale_colour_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_calc","nodeId":"built-in:scale_colour_calc"}]],["scale_colour_fivethirtyeight",[{"type":128,"definedAt":"built-in:scale_colour_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_fivethirtyeight","nodeId":"built-in:scale_colour_fivethirtyeight"}]],["scale_fill_hc",[{"type":128,"definedAt":"built-in:scale_fill_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_hc","nodeId":"built-in:scale_fill_hc"}]],["scale_shape_circlefill",[{"type":128,"definedAt":"built-in:scale_shape_circlefill","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_shape_circlefill","nodeId":"built-in:scale_shape_circlefill"}]],["scale_fill_excel_new",[{"type":128,"definedAt":"built-in:scale_fill_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_excel_new","nodeId":"built-in:scale_fill_excel_new"}]],["scale_color_solarized",[{"type":128,"definedAt":"built-in:scale_color_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_solarized","nodeId":"built-in:scale_color_solarized"}]],["scale_color_excel",[{"type":128,"definedAt":"built-in:scale_color_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_excel","nodeId":"built-in:scale_color_excel"}]],["scale_colour_excel",[{"type":128,"definedAt":"built-in:scale_colour_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_excel","nodeId":"built-in:scale_colour_excel"}]],["scale_fill_tableau",[{"type":128,"definedAt":"built-in:scale_fill_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_tableau","nodeId":"built-in:scale_fill_tableau"}]],["scale_colour_ptol",[{"type":128,"definedAt":"built-in:scale_colour_ptol","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_ptol","nodeId":"built-in:scale_colour_ptol"}]],["scale_colour_canva",[{"type":128,"definedAt":"built-in:scale_colour_canva","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_canva","nodeId":"built-in:scale_colour_canva"}]],["scale_color_gradient2_tableau",[{"type":128,"definedAt":"built-in:scale_color_gradient2_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_gradient2_tableau","nodeId":"built-in:scale_color_gradient2_tableau"}]],["scale_colour_solarized",[{"type":128,"definedAt":"built-in:scale_colour_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_solarized","nodeId":"built-in:scale_colour_solarized"}]],["scale_colour_gradient2_tableau",[{"type":128,"definedAt":"built-in:scale_colour_gradient2_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_gradient2_tableau","nodeId":"built-in:scale_colour_gradient2_tableau"}]],["scale_fill_canva",[{"type":128,"definedAt":"built-in:scale_fill_canva","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_canva","nodeId":"built-in:scale_fill_canva"}]],["scale_color_ptol",[{"type":128,"definedAt":"built-in:scale_color_ptol","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_ptol","nodeId":"built-in:scale_color_ptol"}]],["scale_color_excel_new",[{"type":128,"definedAt":"built-in:scale_color_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_excel_new","nodeId":"built-in:scale_color_excel_new"}]],["scale_color_economist",[{"type":128,"definedAt":"built-in:scale_color_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_economist","nodeId":"built-in:scale_color_economist"}]],["scale_fill_economist",[{"type":128,"definedAt":"built-in:scale_fill_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_economist","nodeId":"built-in:scale_fill_economist"}]],["scale_fill_fivethirtyeight",[{"type":128,"definedAt":"built-in:scale_fill_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_fivethirtyeight","nodeId":"built-in:scale_fill_fivethirtyeight"}]],["scale_colour_gradient_tableau",[{"type":128,"definedAt":"built-in:scale_colour_gradient_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_gradient_tableau","nodeId":"built-in:scale_colour_gradient_tableau"}]],["scale_colour_few",[{"type":128,"definedAt":"built-in:scale_colour_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_few","nodeId":"built-in:scale_colour_few"}]],["scale_color_calc",[{"type":128,"definedAt":"built-in:scale_color_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_calc","nodeId":"built-in:scale_color_calc"}]],["scale_fill_few",[{"type":128,"definedAt":"built-in:scale_fill_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_few","nodeId":"built-in:scale_fill_few"}]],["scale_fill_gdocs",[{"type":128,"definedAt":"built-in:scale_fill_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_gdocs","nodeId":"built-in:scale_fill_gdocs"}]],["scale_color_hc",[{"type":128,"definedAt":"built-in:scale_color_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_hc","nodeId":"built-in:scale_color_hc"}]],["scale_color_gdocs",[{"type":128,"definedAt":"built-in:scale_color_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_gdocs","nodeId":"built-in:scale_color_gdocs"}]],["scale_color_canva",[{"type":128,"definedAt":"built-in:scale_color_canva","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_canva","nodeId":"built-in:scale_color_canva"}]],["scale_color_gradient_tableau",[{"type":128,"definedAt":"built-in:scale_color_gradient_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_color_gradient_tableau","nodeId":"built-in:scale_color_gradient_tableau"}]],["scale_fill_solarized",[{"type":128,"definedAt":"built-in:scale_fill_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_solarized","nodeId":"built-in:scale_fill_solarized"}]],["scale_fill_continuous_tableau",[{"type":128,"definedAt":"built-in:scale_fill_continuous_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_fill_continuous_tableau","nodeId":"built-in:scale_fill_continuous_tableau"}]],["scale_colour_wsj",[{"type":128,"definedAt":"built-in:scale_colour_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"scale_colour_wsj","nodeId":"built-in:scale_colour_wsj"}]],["gradient_color",[{"type":128,"definedAt":"built-in:gradient_color","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"gradient_color","nodeId":"built-in:gradient_color"}]],["ggsurvplot_add_all",[{"type":128,"definedAt":"built-in:ggsurvplot_add_all","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"ggsurvplot_add_all","nodeId":"built-in:ggsurvplot_add_all"}]],["plotCI",[{"type":128,"definedAt":"built-in:plotCI","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"plotCI","nodeId":"built-in:plotCI"}]],["bandplot",[{"type":128,"definedAt":"built-in:bandplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"bandplot","nodeId":"built-in:bandplot"}]],["barplot2",[{"type":128,"definedAt":"built-in:barplot2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"barplot2","nodeId":"built-in:barplot2"}]],["bubbleplot",[{"type":128,"definedAt":"built-in:bubbleplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"bubbleplot","nodeId":"built-in:bubbleplot"}]],["ggdraw",[{"type":128,"definedAt":"built-in:ggdraw","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"ggdraw","nodeId":"built-in:ggdraw"}]],["last_plot",[{"type":128,"definedAt":"built-in:last_plot","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":"last_plot","nodeId":"built-in:last_plot"}]],["tinyplot_add",[{"type":128,"definedAt":"built-in:tinyplot_add","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["tinyplot_add","tinyplot",false],"nodeId":"built-in:tinyplot_add"}]],["plt_add",[{"type":128,"definedAt":"built-in:plt_add","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["plt_add","tinyplot",false],"nodeId":"built-in:plt_add"}]],["image_capture",[{"type":128,"definedAt":"built-in:image_capture","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["image_capture","magick"],"nodeId":"built-in:image_capture"}]],["dev.capture",[{"type":128,"definedAt":"built-in:dev.capture","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":131072},"name":["dev.capture","grDevices"],"nodeId":"built-in:dev.capture"}]],["image_write",[{"type":128,"definedAt":"built-in:image_write","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":1180672,"sig":[["image",2],["path",16]]},"name":["image_write","magick"],"nodeId":"built-in:image_write"}]],["dev.off",[{"type":128,"definedAt":"built-in:dev.off","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":17957888},"name":["dev.off","grDevices"],"nodeId":"built-in:dev.off"}]],["graphics.off",[{"type":128,"definedAt":"built-in:graphics.off","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":17957888},"name":["graphics.off","grDevices"],"nodeId":"built-in:graphics.off"}]],["(",[{"type":128,"definedAt":"built-in:(","config":{"keepArgumentOut":true,"props":1,"sig":[["x",1]]},"name":"(","nodeId":"built-in:("}]],["load_all",[{"type":128,"definedAt":"built-in:load_all","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":64},"name":["load_all","devtools"],"nodeId":"built-in:load_all"}]],["setwd",[{"type":128,"definedAt":"built-in:setwd","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":8389128},"name":["setwd","base"],"nodeId":"built-in:setwd"}]],["set.seed",[{"type":128,"definedAt":"built-in:set.seed","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":8388872},"name":["set.seed","base"],"nodeId":"built-in:set.seed"}]],["body",[{"type":128,"definedAt":"built-in:body","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":32768},"name":["body","base"],"nodeId":"built-in:body"}]],["formals",[{"type":128,"definedAt":"built-in:formals","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":32768},"name":["formals","base"],"nodeId":"built-in:formals"}]],["environment",[{"type":128,"definedAt":"built-in:environment","config":{"hasUnknownSideEffects":true,"forceArgs":[true]},"name":["environment","base"],"nodeId":"built-in:environment"}]],[".Call",[{"type":128,"definedAt":"built-in:.Call","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":16384},"name":[".Call","base"],"nodeId":"built-in:.Call"}]],[".External",[{"type":128,"definedAt":"built-in:.External","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":16384},"name":[".External","base"],"nodeId":"built-in:.External"}]],[".C",[{"type":128,"definedAt":"built-in:.C","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":16384},"name":[".C","base"],"nodeId":"built-in:.C"}]],[".Fortran",[{"type":128,"definedAt":"built-in:.Fortran","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":16384},"name":[".Fortran","base"],"nodeId":"built-in:.Fortran"}]],["eval",[{"type":128,"definedAt":"built-in:eval","config":{"includeFunctionCall":true,"supportFunctionCall":false,"keepEnvironment":true},"name":["eval","base"],"nodeId":"built-in:eval"}]],["evalText",[{"type":128,"definedAt":"built-in:evalText","config":{"includeFunctionCall":true,"supportFunctionCall":true,"keepEnvironment":true},"name":["evalText","SoDA"],"nodeId":"built-in:evalText"}]],["cat",[{"type":128,"definedAt":"built-in:cat","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":3146760,"sig":[["...",66],["file",16]]},"name":["cat","base"],"nodeId":"built-in:cat"}]],["switch",[{"type":128,"definedAt":"built-in:switch","config":{"forceArgs":[true],"useAsProcessor":"builtin:switch","props":1},"name":["switch","base"],"nodeId":"built-in:switch"}]],["return",[{"type":128,"definedAt":"built-in:return","config":{"cfg":1,"keepArgumentOut":true,"useAsProcessor":"builtin:return","props":1,"sig":[["value",1]]},"name":"return","nodeId":"built-in:return"}]],["stop",[{"type":128,"definedAt":"built-in:stop","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop","base"],"nodeId":"built-in:stop"}]],["abort",[{"type":128,"definedAt":"built-in:abort","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["abort","rlang"],"nodeId":"built-in:abort"}]],["cli_abort",[{"type":128,"definedAt":"built-in:cli_abort","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["cli_abort","cli"],"nodeId":"built-in:cli_abort"}]],["throw",[{"type":128,"definedAt":"built-in:throw","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["throw","R.oo"],"nodeId":"built-in:throw"}]],["stop_bad_type",[{"type":128,"definedAt":"built-in:stop_bad_type","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop_bad_type","purrr"],"nodeId":"built-in:stop_bad_type"}]],["stop_bad_element_type",[{"type":128,"definedAt":"built-in:stop_bad_element_type","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop_bad_element_type","purrr"],"nodeId":"built-in:stop_bad_element_type"}]],["stop_bad_element_length",[{"type":128,"definedAt":"built-in:stop_bad_element_length","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop_bad_element_length","purrr"],"nodeId":"built-in:stop_bad_element_length"}]],["try",[{"type":128,"definedAt":"built-in:try","config":{"block":"expr","handlers":{}},"name":["try","base"],"nodeId":"built-in:try"}]],["tryCatch",[{"type":128,"definedAt":"built-in:tryCatch","config":{"block":"expr","handlers":{"error":"error","finally":"finally"}},"name":["tryCatch","base"],"nodeId":"built-in:tryCatch"}]],["tryCatchLog",[{"type":128,"definedAt":"built-in:tryCatchLog","config":{"block":"expr","handlers":{"error":"error","finally":"finally"}},"name":["tryCatchLog","tryCatchLog"],"nodeId":"built-in:tryCatchLog"}]],["stopifnot",[{"type":128,"definedAt":"built-in:stopifnot","config":{"props":12},"name":["stopifnot","base"],"nodeId":"built-in:stopifnot"}]],["assert_that",[{"type":128,"definedAt":"built-in:assert_that","config":{"props":12},"name":["assert_that","assertthat"],"nodeId":"built-in:assert_that"}]],["break",[{"type":128,"definedAt":"built-in:break","config":{"useAsProcessor":"builtin:break","cfg":2},"name":"break","nodeId":"built-in:break"}]],["next",[{"type":128,"definedAt":"built-in:next","config":{"cfg":3},"name":"next","nodeId":"built-in:next"}]],["{",[{"type":128,"definedAt":"built-in:{","config":{},"name":"{","nodeId":"built-in:{"}]],["source",[{"type":128,"definedAt":"built-in:source","config":{"includeFunctionCall":true,"forceFollow":false},"name":["source","base"],"nodeId":"built-in:source"}]],["[",[{"type":128,"definedAt":"built-in:[","config":{"treatIndicesAsString":false,"props":17},"name":"[","nodeId":"built-in:["}]],["[[",[{"type":128,"definedAt":"built-in:[[","config":{"treatIndicesAsString":false,"resolveField":true,"props":17},"name":"[[","nodeId":"built-in:[["}]],["$",[{"type":128,"definedAt":"built-in:$","config":{"treatIndicesAsString":true,"resolveField":true,"props":17},"name":"$","nodeId":"built-in:$"}]],["@",[{"type":128,"definedAt":"built-in:@","config":{"treatIndicesAsString":true,"resolveField":true,"props":1},"name":"@","nodeId":"built-in:@"}]],["::",[{"type":128,"definedAt":"built-in:::","config":{"internal":false},"name":"::","nodeId":"built-in:::"}]],[":::",[{"type":128,"definedAt":"built-in::::","config":{"internal":true},"name":":::","nodeId":"built-in::::"}]],["if",[{"type":128,"definedAt":"built-in:if","config":{},"name":"if","nodeId":"built-in:if"}]],["ifelse",[{"type":128,"definedAt":"built-in:ifelse","config":{"args":{"cond":"test","yes":"yes","no":"no"},"props":1},"name":["ifelse","base"],"nodeId":"built-in:ifelse"}]],["fifelse",[{"type":128,"definedAt":"built-in:fifelse","config":{"args":{"cond":"test","yes":"yes","no":"no"},"props":1},"name":["fifelse","data.table"],"nodeId":"built-in:fifelse"}]],["IfElse",[{"type":128,"definedAt":"built-in:IfElse","config":{"args":{"cond":"test","yes":"yes","no":"no"},"props":1},"name":"IfElse","nodeId":"built-in:IfElse"}]],["if_else",[{"type":128,"definedAt":"built-in:if_else","config":{"args":{"cond":"condition","yes":"true","no":"false"},"props":1},"name":["if_else","dplyr"],"nodeId":"built-in:if_else"}]],["get",[{"type":128,"definedAt":"built-in:get","config":{"props":1,"sig":[["x",2],["pos",8],["envir",2],["mode",8],["inherits",8]]},"name":["get","base"],"nodeId":"built-in:get"}]],["library",[{"type":128,"definedAt":"built-in:library","config":{"props":72},"name":["library","base"],"nodeId":"built-in:library"}]],["require",[{"type":128,"definedAt":"built-in:require","config":{"props":72},"name":["require","base"],"nodeId":"built-in:require"}]],["attachNamespace",[{"type":128,"definedAt":"built-in:attachNamespace","config":{"characterOnly":true,"props":72},"name":["attachNamespace","base"],"nodeId":"built-in:attachNamespace"}]],["requireNamespace",[{"type":128,"definedAt":"built-in:requireNamespace","config":{"namespaceOnly":true,"characterOnly":true,"props":72},"name":["requireNamespace","base"],"nodeId":"built-in:requireNamespace"}]],["loadNamespace",[{"type":128,"definedAt":"built-in:loadNamespace","config":{"namespaceOnly":true,"characterOnly":true,"props":72},"name":["loadNamespace","base"],"nodeId":"built-in:loadNamespace"}]],["from",[{"type":128,"definedAt":"built-in:from","config":{"fromImports":true,"props":64},"name":["from","import"],"nodeId":"built-in:from"}]],["use",[{"type":128,"definedAt":"built-in:use","config":{"boxUse":true,"props":64},"name":["use","base"],"nodeId":"built-in:use"}]],["<-",[{"type":128,"definedAt":"built-in:<-","config":{"canBeReplacement":true,"props":72},"name":"<-","nodeId":"built-in:<-"}]],["=",[{"type":128,"definedAt":"built-in:=","config":{"canBeReplacement":true,"props":72},"name":"=","nodeId":"built-in:="}]],[":=",[{"type":128,"definedAt":"built-in::=","config":{"props":72},"name":[":=","data.table"],"nodeId":"built-in::="}]],["assign",[{"type":128,"definedAt":"built-in:assign","config":{"targetVariable":true,"mayHaveMoreArgs":true,"environmentArg":"envir","props":72,"sig":[["x",2],["value",2],["pos",8],["envir",32],["inherits",8]]},"name":["assign","base"],"nodeId":"built-in:assign"}]],["setValidity",[{"type":128,"definedAt":"built-in:setValidity","config":{"targetVariable":true,"mayHaveMoreArgs":true,"environmentArg":"envir","props":72},"name":["setValidity","methods"],"nodeId":"built-in:setValidity"}]],["setMethod",[{"type":128,"definedAt":"built-in:setMethod","config":{"targetVariable":true,"canBeReplacement":false,"target":{"idx":0,"name":"f"},"source":{"idx":2,"name":"definition"},"modesForFn":["s4"]},"name":["setMethod","methods"],"nodeId":"built-in:setMethod"}]],["delayedAssign",[{"type":128,"definedAt":"built-in:delayedAssign","config":{"quoteSource":true,"targetVariable":true,"props":72},"name":["delayedAssign","base"],"nodeId":"built-in:delayedAssign"}]],["<<-",[{"type":128,"definedAt":"built-in:<<-","config":{"superAssignment":true,"canBeReplacement":true,"props":72},"name":"<<-","nodeId":"built-in:<<-"}]],["->",[{"type":128,"definedAt":"built-in:->","config":{"swapSourceAndTarget":true,"canBeReplacement":true,"props":72},"name":"->","nodeId":"built-in:->"}]],["->>",[{"type":128,"definedAt":"built-in:->>","config":{"superAssignment":true,"swapSourceAndTarget":true,"canBeReplacement":true,"props":72},"name":"->>","nodeId":"built-in:->>"}]],["data",[{"type":128,"definedAt":"built-in:data","config":{"superAssignment":true},"name":["data","utils"],"nodeId":"built-in:data"}]],["getHdata",[{"type":128,"definedAt":"built-in:getHdata","config":{"superAssignment":true},"name":["getHdata","Hmisc"],"nodeId":"built-in:getHdata"}]],["&&",[{"type":128,"definedAt":"built-in:&&","config":{"lazy":true,"evalRhsWhen":true,"props":1},"name":["&&","base"],"nodeId":"built-in:&&"}]],["||",[{"type":128,"definedAt":"built-in:||","config":{"lazy":true,"evalRhsWhen":false,"props":1},"name":["||","base"],"nodeId":"built-in:||"}]],["&",[{"type":128,"definedAt":"built-in:&","config":{"lazy":false,"props":17},"name":["&","base"],"nodeId":"built-in:&"}]],["|",[{"type":128,"definedAt":"built-in:|","config":{"lazy":false,"props":17},"name":["|","base"],"nodeId":"built-in:|"}]],["|>",[{"type":128,"definedAt":"built-in:|>","config":{"pipePlaceholderName":"_","assignLhs":false,"returnLhs":false},"name":"|>","nodeId":"built-in:|>"}]],["%>%",[{"type":128,"definedAt":"built-in:%>%","config":{"pipePlaceholderName":".","assignLhs":false,"returnLhs":false,"rhsMightBeSymbol":true},"name":["%>%","magrittr"],"nodeId":"built-in:%>%"}]],["%!>%",[{"type":128,"definedAt":"built-in:%!>%","config":{"pipePlaceholderName":".","assignLhs":false,"returnLhs":false,"rhsMightBeSymbol":true},"name":"%!>%","nodeId":"built-in:%!>%"}]],["%<>%",[{"type":128,"definedAt":"built-in:%<>%","config":{"pipePlaceholderName":".","assignLhs":true,"returnLhs":false,"rhsMightBeSymbol":true},"name":["%<>%","magrittr"],"nodeId":"built-in:%<>%"}]],["%T>%",[{"type":128,"definedAt":"built-in:%T>%","config":{"pipePlaceholderName":".","assignLhs":false,"returnLhs":true,"rhsMightBeSymbol":true},"name":["%T>%","magrittr"],"nodeId":"built-in:%T>%"}]],["map_lgl",[{"type":128,"definedAt":"built-in:map_lgl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_lgl","purrr"],"nodeId":"built-in:map_lgl"}]],["map_int",[{"type":128,"definedAt":"built-in:map_int","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_int","purrr"],"nodeId":"built-in:map_int"}]],["map_dbl",[{"type":128,"definedAt":"built-in:map_dbl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_dbl","purrr"],"nodeId":"built-in:map_dbl"}]],["map_chr",[{"type":128,"definedAt":"built-in:map_chr","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_chr","purrr"],"nodeId":"built-in:map_chr"}]],["pmap",[{"type":128,"definedAt":"built-in:pmap","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap","purrr"],"nodeId":"built-in:pmap"}]],["pmap_lgl",[{"type":128,"definedAt":"built-in:pmap_lgl","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_lgl","purrr"],"nodeId":"built-in:pmap_lgl"}]],["pmap_int",[{"type":128,"definedAt":"built-in:pmap_int","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_int","purrr"],"nodeId":"built-in:pmap_int"}]],["pmap_dbl",[{"type":128,"definedAt":"built-in:pmap_dbl","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_dbl","purrr"],"nodeId":"built-in:pmap_dbl"}]],["pmap_chr",[{"type":128,"definedAt":"built-in:pmap_chr","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_chr","purrr"],"nodeId":"built-in:pmap_chr"}]],["map2",[{"type":128,"definedAt":"built-in:map2","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2","purrr"],"nodeId":"built-in:map2"}]],["map2_lgl",[{"type":128,"definedAt":"built-in:map2_lgl","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_lgl","purrr"],"nodeId":"built-in:map2_lgl"}]],["map2_int",[{"type":128,"definedAt":"built-in:map2_int","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_int","purrr"],"nodeId":"built-in:map2_int"}]],["map2_dbl",[{"type":128,"definedAt":"built-in:map2_dbl","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_dbl","purrr"],"nodeId":"built-in:map2_dbl"}]],["map2_chr",[{"type":128,"definedAt":"built-in:map2_chr","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_chr","purrr"],"nodeId":"built-in:map2_chr"}]],["modify",[{"type":128,"definedAt":"built-in:modify","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["modify","purrr"],"nodeId":"built-in:modify"}]],["imodify",[{"type":128,"definedAt":"built-in:imodify","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imodify","purrr"],"nodeId":"built-in:imodify"}]],["imap",[{"type":128,"definedAt":"built-in:imap","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap","purrr"],"nodeId":"built-in:imap"}]],["imap_lgl",[{"type":128,"definedAt":"built-in:imap_lgl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_lgl","purrr"],"nodeId":"built-in:imap_lgl"}]],["imap_int",[{"type":128,"definedAt":"built-in:imap_int","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_int","purrr"],"nodeId":"built-in:imap_int"}]],["imap_dbl",[{"type":128,"definedAt":"built-in:imap_dbl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_dbl","purrr"],"nodeId":"built-in:imap_dbl"}]],["imap_chr",[{"type":128,"definedAt":"built-in:imap_chr","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_chr","purrr"],"nodeId":"built-in:imap_chr"}]],["imap_vec",[{"type":128,"definedAt":"built-in:imap_vec","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_vec","purrr"],"nodeId":"built-in:imap_vec"}]],["lmap",[{"type":128,"definedAt":"built-in:lmap","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["lmap","purrr"],"nodeId":"built-in:lmap"}]],["modify2",[{"type":128,"definedAt":"built-in:modify2","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[]},"name":["modify2","purrr"],"nodeId":"built-in:modify2"}]],["map_at",[{"type":128,"definedAt":"built-in:map_at","config":{"args":{".x":{"index":0,"name":".x"},".at":{"index":1,"name":".at"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map_at","purrr"],"nodeId":"built-in:map_at"}]],["modify_at",[{"type":128,"definedAt":"built-in:modify_at","config":{"args":{".x":{"index":0,"name":".x"},".at":{"index":1,"name":".at"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["modify_at","purrr"],"nodeId":"built-in:modify_at"}]],["lmap_at",[{"type":128,"definedAt":"built-in:lmap_at","config":{"args":{".x":{"index":0,"name":".x"},".at":{"index":1,"name":".at"}},".f":{"index":2,"name":".f"},"ignore":[]},"name":["lmap_at","purrr"],"nodeId":"built-in:lmap_at"}]],["map_if",[{"type":128,"definedAt":"built-in:map_if","config":{"args":{".x":{"index":0,"name":".x"},".p":{"index":1,"name":".p"}},".f":{"index":2,"name":".f"},"ignore":[".else"]},"name":["map_if","purrr"],"nodeId":"built-in:map_if"}]],["modify_if",[{"type":128,"definedAt":"built-in:modify_if","config":{"args":{".x":{"index":0,"name":".x"},".p":{"index":1,"name":".p"}},".f":{"index":2,"name":".f"},"ignore":[".else"]},"name":["modify_if","purrr"],"nodeId":"built-in:modify_if"}]],["lmap_if",[{"type":128,"definedAt":"built-in:lmap_if","config":{"args":{".x":{"index":0,"name":".x"},".p":{"index":1,"name":".p"}},".f":{"index":2,"name":".f"},"ignore":[".else"]},"name":["lmap_if","purrr"],"nodeId":"built-in:lmap_if"}]],["walk",[{"type":128,"definedAt":"built-in:walk","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"],"returnArg":".x"},"name":["walk","purrr"],"nodeId":"built-in:walk"}]],["iwalk",[{"type":128,"definedAt":"built-in:iwalk","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[],"returnArg":".x"},"name":["iwalk","purrr"],"nodeId":"built-in:iwalk"}]],["pwalk",[{"type":128,"definedAt":"built-in:pwalk","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"],"returnArg":".l"},"name":["pwalk","purrr"],"nodeId":"built-in:pwalk"}]],["walk2",[{"type":128,"definedAt":"built-in:walk2","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"],"returnArg":".x"},"name":["walk2","purrr"],"nodeId":"built-in:walk2"}]],["map_vec",[{"type":128,"definedAt":"built-in:map_vec","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress",".ptype"]},"name":["map_vec","purrr"],"nodeId":"built-in:map_vec"}]],["pmap_vec",[{"type":128,"definedAt":"built-in:pmap_vec","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress",".ptype"]},"name":["pmap_vec","purrr"],"nodeId":"built-in:pmap_vec"}]],["map_depth",[{"type":128,"definedAt":"built-in:map_depth","config":{"args":{".x":{"index":0,"name":".x"},".depth":{"index":2,"name":".depth"}},".f":{"index":2,"name":".f"},"ignore":[".ragged",".is_node"]},"name":["map_depth","purrr"],"nodeId":"built-in:map_depth"}]],["modify_depth",[{"type":128,"definedAt":"built-in:modify_depth","config":{"args":{".x":{"index":0,"name":".x"},".depth":{"index":2,"name":".depth"}},".f":{"index":2,"name":".f"},"ignore":[".ragged",".is_node"]},"name":["modify_depth","purrr"],"nodeId":"built-in:modify_depth"}]],["map2_vec",[{"type":128,"definedAt":"built-in:map2_vec","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress",".ptype"]},"name":["map2_vec","purrr"],"nodeId":"built-in:map2_vec"}]],["across",[{"type":128,"definedAt":"built-in:across","config":{"args":{".x":{"index":0,"name":".cols"}},".f":{"index":1,"name":".fns"},"ignore":[".names",".unpack"]},"name":["across","dplyr"],"nodeId":"built-in:across"}]],["rename_with",[{"type":128,"definedAt":"built-in:rename_with","config":{"args":{".x":{"index":0,"name":".data"}},".f":{"index":1,"name":".fn"},"ignore":[".cols"]},"name":["rename_with","dplyr"],"nodeId":"built-in:rename_with"}]],["function",[{"type":128,"definedAt":"built-in:function","config":{},"name":"function","nodeId":"built-in:function"}]],["\\",[{"type":128,"definedAt":"built-in:\\","config":{},"name":"\\","nodeId":"built-in:\\"}]],["quote",[{"type":128,"definedAt":"built-in:quote","config":{"quoteArgumentsWithIndex":0,"keepEnvironment":true,"props":32768,"sig":[["expr",128]]},"name":["quote","base"],"nodeId":"built-in:quote"}]],["bquote",[{"type":128,"definedAt":"built-in:bquote","config":{"quoteArgumentsWithIndex":0,"unquote":"bquote","keepEnvironment":true,"props":32768,"sig":[["expr",128]]},"name":["bquote","base"],"nodeId":"built-in:bquote"}]],["substitute",[{"type":128,"definedAt":"built-in:substitute","config":{"quoteArgumentsWithIndex":0,"envArgIndex":1,"keepEnvironment":true,"props":32768,"sig":[["expr",128],["env",2]]},"name":["substitute","base"],"nodeId":"built-in:substitute"}]],["quo",[{"type":128,"definedAt":"built-in:quo","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":32768},"name":["quo","rlang"],"nodeId":"built-in:quo"}]],["quos",[{"type":128,"definedAt":"built-in:quos","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":32768},"name":["quos","rlang"],"nodeId":"built-in:quos"}]],["expr",[{"type":128,"definedAt":"built-in:expr","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":32768},"name":["expr","rlang"],"nodeId":"built-in:expr"}]],["exprs",[{"type":128,"definedAt":"built-in:exprs","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":32768},"name":["exprs","rlang"],"nodeId":"built-in:exprs"}]],["exec",[{"type":128,"definedAt":"built-in:exec","config":{"indexOfFunction":0,"nameOfFunctionArgument":".fn","unquoteFunction":true,"hasUnknownSideEffects":true,"libFn":true,"props":2,"sig":[[".fn",256],["...",2]]},"name":["exec","rlang"],"nodeId":"built-in:exec"}]],["invoke",[{"type":128,"definedAt":"built-in:invoke","config":{"indexOfFunction":0,"nameOfFunctionArgument":".f","unquoteFunction":true,"hasUnknownSideEffects":true,"libFn":true,"props":2,"sig":[[".f",256],["...",2]]},"name":["invoke","purrr"],"nodeId":"built-in:invoke"}]],["invoke_map",[{"type":128,"definedAt":"built-in:invoke_map","config":{"indexOfFunction":0,"nameOfFunctionArgument":".f","unquoteFunction":true,"hasUnknownSideEffects":true,"libFn":true,"props":2,"sig":[[".f",256],["...",2]]},"name":["invoke_map","purrr"],"nodeId":"built-in:invoke_map"}]],["glue",[{"type":128,"definedAt":"built-in:glue","config":{"props":2},"name":["glue","glue"],"nodeId":"built-in:glue"}]],["glue_safe",[{"type":128,"definedAt":"built-in:glue_safe","config":{"props":2},"name":["glue_safe","glue"],"nodeId":"built-in:glue_safe"}]],["glue_collapse",[{"type":128,"definedAt":"built-in:glue_collapse","config":{"props":2},"name":["glue_collapse","glue"],"nodeId":"built-in:glue_collapse"}]],["str_glue",[{"type":128,"definedAt":"built-in:str_glue","config":{"props":2},"name":["str_glue","stringr"],"nodeId":"built-in:str_glue"}]],["cli_text",[{"type":128,"definedAt":"built-in:cli_text","config":{"markup":true,"props":2},"name":["cli_text","cli"],"nodeId":"built-in:cli_text"}]],["cli_alert",[{"type":128,"definedAt":"built-in:cli_alert","config":{"markup":true,"props":2},"name":["cli_alert","cli"],"nodeId":"built-in:cli_alert"}]],["cli_alert_info",[{"type":128,"definedAt":"built-in:cli_alert_info","config":{"markup":true,"props":2},"name":["cli_alert_info","cli"],"nodeId":"built-in:cli_alert_info"}]],["cli_alert_success",[{"type":128,"definedAt":"built-in:cli_alert_success","config":{"markup":true,"props":2},"name":["cli_alert_success","cli"],"nodeId":"built-in:cli_alert_success"}]],["cli_alert_warning",[{"type":128,"definedAt":"built-in:cli_alert_warning","config":{"markup":true,"props":2},"name":["cli_alert_warning","cli"],"nodeId":"built-in:cli_alert_warning"}]],["cli_alert_danger",[{"type":128,"definedAt":"built-in:cli_alert_danger","config":{"markup":true,"props":2},"name":["cli_alert_danger","cli"],"nodeId":"built-in:cli_alert_danger"}]],["cli_h1",[{"type":128,"definedAt":"built-in:cli_h1","config":{"markup":true,"props":2},"name":["cli_h1","cli"],"nodeId":"built-in:cli_h1"}]],["cli_h2",[{"type":128,"definedAt":"built-in:cli_h2","config":{"markup":true,"props":2},"name":["cli_h2","cli"],"nodeId":"built-in:cli_h2"}]],["cli_h3",[{"type":128,"definedAt":"built-in:cli_h3","config":{"markup":true,"props":2},"name":["cli_h3","cli"],"nodeId":"built-in:cli_h3"}]],["cli_li",[{"type":128,"definedAt":"built-in:cli_li","config":{"markup":true,"props":2},"name":["cli_li","cli"],"nodeId":"built-in:cli_li"}]],["cli_bullets",[{"type":128,"definedAt":"built-in:cli_bullets","config":{"markup":true,"props":2},"name":["cli_bullets","cli"],"nodeId":"built-in:cli_bullets"}]],["cli_inform",[{"type":128,"definedAt":"built-in:cli_inform","config":{"markup":true,"props":2},"name":["cli_inform","cli"],"nodeId":"built-in:cli_inform"}]],["cli_warn",[{"type":128,"definedAt":"built-in:cli_warn","config":{"markup":true,"props":2},"name":["cli_warn","cli"],"nodeId":"built-in:cli_warn"}]],["format_inline",[{"type":128,"definedAt":"built-in:format_inline","config":{"markup":true,"props":2},"name":["format_inline","cli"],"nodeId":"built-in:format_inline"}]],["cli_verbatim",[{"type":128,"definedAt":"built-in:cli_verbatim","config":{"markup":true,"props":2},"name":["cli_verbatim","cli"],"nodeId":"built-in:cli_verbatim"}]],["str_interp",[{"type":128,"definedAt":"built-in:str_interp","config":{"open":"${","props":2},"name":["str_interp","stringr"],"nodeId":"built-in:str_interp"}]],["local",[{"type":128,"definedAt":"built-in:local","config":{"args":{"env":"envir","expr":"expr"}},"name":["local","base"],"nodeId":"built-in:local"}]],["with",[{"type":128,"definedAt":"built-in:with","config":{"props":16},"name":["with","base"],"nodeId":"built-in:with"}]],["within",[{"type":128,"definedAt":"built-in:within","config":{"props":16},"name":["within","base"],"nodeId":"built-in:within"}]],["new.env",[{"type":128,"definedAt":"built-in:new.env","config":{},"name":["new.env","base"],"nodeId":"built-in:new.env"}]],["new_environment",[{"type":128,"definedAt":"built-in:new_environment","config":{},"name":["new_environment","rlang"],"nodeId":"built-in:new_environment"}]],["R6Class",[{"type":128,"definedAt":"built-in:R6Class","config":{},"name":["R6Class","R6"],"nodeId":"built-in:R6Class"}]],["setRefClass",[{"type":128,"definedAt":"built-in:setRefClass","config":{},"name":["setRefClass","methods"],"nodeId":"built-in:setRefClass"}]],["globalenv",[{"type":128,"definedAt":"built-in:globalenv","config":{},"name":["globalenv","base"],"nodeId":"built-in:globalenv"}]],["baseenv",[{"type":128,"definedAt":"built-in:baseenv","config":{},"name":["baseenv","base"],"nodeId":"built-in:baseenv"}]],["emptyenv",[{"type":128,"definedAt":"built-in:emptyenv","config":{},"name":["emptyenv","base"],"nodeId":"built-in:emptyenv"}]],["parent.env",[{"type":128,"definedAt":"built-in:parent.env","config":{},"name":["parent.env","base"],"nodeId":"built-in:parent.env"}]],["parent.frame",[{"type":128,"definedAt":"built-in:parent.frame","config":{},"name":["parent.frame","base"],"nodeId":"built-in:parent.frame"}]],["environmentName",[{"type":128,"definedAt":"built-in:environmentName","config":{},"name":["environmentName","base"],"nodeId":"built-in:environmentName"}]],["as.environment",[{"type":128,"definedAt":"built-in:as.environment","config":{},"name":["as.environment","base"],"nodeId":"built-in:as.environment"}]],["pos.to.env",[{"type":128,"definedAt":"built-in:pos.to.env","config":{},"name":["pos.to.env","base"],"nodeId":"built-in:pos.to.env"}]],["sys.frame",[{"type":128,"definedAt":"built-in:sys.frame","config":{},"name":["sys.frame","base"],"nodeId":"built-in:sys.frame"}]],["sys.frames",[{"type":128,"definedAt":"built-in:sys.frames","config":{},"name":["sys.frames","base"],"nodeId":"built-in:sys.frames"}]],["topenv",[{"type":128,"definedAt":"built-in:topenv","config":{},"name":["topenv","base"],"nodeId":"built-in:topenv"}]],["load",[{"type":128,"definedAt":"built-in:load","config":{"props":525384,"sig":[["file",16]]},"name":["load","base"],"nodeId":"built-in:load"}]],["attach",[{"type":128,"definedAt":"built-in:attach","config":{},"name":["attach","base"],"nodeId":"built-in:attach"}]],["for",[{"type":128,"definedAt":"built-in:for","config":{},"name":"for","nodeId":"built-in:for"}]],["repeat",[{"type":128,"definedAt":"built-in:repeat","config":{},"name":"repeat","nodeId":"built-in:repeat"}]],["while",[{"type":128,"definedAt":"built-in:while","config":{},"name":"while","nodeId":"built-in:while"}]],["do.call",[{"type":128,"definedAt":"built-in:do.call","config":{"indexOfFunction":0,"unquoteFunction":true,"props":2,"sig":[["what",256],["args",2]]},"name":["do.call","base"],"nodeId":"built-in:do.call"}]],["UseMethod",[{"type":128,"definedAt":"built-in:UseMethod","config":{"args":{"generic":"generic","object":"object"},"props":16},"name":["UseMethod","base"],"nodeId":"built-in:UseMethod"}]],["NextMethod",[{"type":128,"definedAt":"built-in:NextMethod","config":{"args":{"generic":"generic","object":"object"},"inferFromClosure":true,"props":16},"name":["NextMethod","base"],"nodeId":"built-in:NextMethod"}]],["new_generic",[{"type":128,"definedAt":"built-in:new_generic","config":{"args":{"name":"name","dispatchArg":"dispatch_args","fun":"fun"}},"name":["new_generic","S7"],"nodeId":"built-in:new_generic"}]],["setGeneric",[{"type":128,"definedAt":"built-in:setGeneric","config":{"args":{"name":"name","fun":"fun"},"props":16},"name":["setGeneric","methods"],"nodeId":"built-in:setGeneric"}]],["S7_dispatch",[{"type":128,"definedAt":"built-in:S7_dispatch","config":{"libFn":true},"name":["S7_dispatch","S7"],"nodeId":"built-in:S7_dispatch"}]],["make_constructor",[{"type":128,"definedAt":"built-in:make_constructor","config":{"mode":["s7"]},"name":["make_constructor","ggplot2"],"nodeId":"built-in:make_constructor"}]],["new_class",[{"type":128,"definedAt":"built-in:new_class","config":{"mode":["s7"]},"name":["new_class","S7"],"nodeId":"built-in:new_class"}]],["setClass",[{"type":128,"definedAt":"built-in:setClass","config":{"mode":["s4"]},"name":["setClass","methods"],"nodeId":"built-in:setClass"}]],["Negate",[{"type":128,"definedAt":"built-in:Negate","config":{"wrapIndex":0,"props":1,"sig":[["f",256]]},"name":["Negate","base"],"nodeId":"built-in:Negate"}]],["Vectorize",[{"type":128,"definedAt":"built-in:Vectorize","config":{"wrapIndex":0,"props":1,"sig":[["FUN",256]]},"name":["Vectorize","base"],"nodeId":"built-in:Vectorize"}]],["partial",[{"type":128,"definedAt":"built-in:partial","config":{"wrapIndex":0,"wrapName":".f"},"name":["partial","purrr"],"nodeId":"built-in:partial"}]],[".Primitive",[{"type":128,"definedAt":"built-in:.Primitive","config":{"indexOfFunction":0,"unquoteFunction":true,"resolveInEnvironment":"global"},"name":[".Primitive","base"],"nodeId":"built-in:.Primitive"}]],[".Internal",[{"type":128,"definedAt":"built-in:.Internal","config":{"indexOfFunction":0,"unquoteFunction":true,"resolveInEnvironment":"global"},"name":[".Internal","base"],"nodeId":"built-in:.Internal"}]],["interference",[{"type":128,"definedAt":"built-in:interference","config":{"unquoteFunction":true,"nameOfFunctionArgument":"propensity_integrand","libFn":true},"name":["interference","inferference"],"nodeId":"built-in:interference"}]],["ddply",[{"type":128,"definedAt":"built-in:ddply","config":{"unquoteFunction":true,"indexOfFunction":2,"nameOfFunctionArgument":".fun","libFn":true},"name":["ddply","plyr"],"nodeId":"built-in:ddply"}]],["list",[{"type":128,"definedAt":"built-in:list","config":{"props":1,"sig":[["...",2]]},"name":["list","base"],"nodeId":"built-in:list"}]],["Recall",[{"type":128,"definedAt":"built-in:Recall","config":{"libFn":true},"name":["Recall","base"],"nodeId":"built-in:Recall"}]],["sys.function",[{"type":128,"definedAt":"built-in:sys.function","config":{"libFn":true,"unknownOnNonZeroArg":true,"props":32768},"name":["sys.function","base"],"nodeId":"built-in:sys.function"}]],["c",[{"type":128,"definedAt":"built-in:c","config":{"props":17,"sig":[["...",2]]},"name":["c","base"],"nodeId":"built-in:c"}]],["cmpfun",[{"type":128,"definedAt":"built-in:cmpfun","config":{"sig":[["f",1]]},"name":["cmpfun","compiler"],"nodeId":"built-in:cmpfun"}]],["compile",[{"type":128,"definedAt":"built-in:compile","config":{"sig":[["e",1]]},"name":["compile","compiler"],"nodeId":"built-in:compile"}]],["loadcmp",[{"type":128,"definedAt":"built-in:loadcmp","config":{"hasUnknownSideEffects":true},"name":["loadcmp","compiler"],"nodeId":"built-in:loadcmp"}]],["setnames",[{"type":128,"definedAt":"built-in:setnames","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setnames","data.table"],"nodeId":"built-in:setnames"}]],["setNames",[{"type":128,"definedAt":"built-in:setNames","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setNames","base"],"nodeId":"built-in:setNames"}]],["setkey",[{"type":128,"definedAt":"built-in:setkey","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setkey","data.table"],"nodeId":"built-in:setkey"}]],["setkeyv",[{"type":128,"definedAt":"built-in:setkeyv","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setkeyv","data.table"],"nodeId":"built-in:setkeyv"}]],["setindex",[{"type":128,"definedAt":"built-in:setindex","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setindex","data.table"],"nodeId":"built-in:setindex"}]],["setindexv",[{"type":128,"definedAt":"built-in:setindexv","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setindexv","data.table"],"nodeId":"built-in:setindexv"}]],["setattr",[{"type":128,"definedAt":"built-in:setattr","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setattr","data.table"],"nodeId":"built-in:setattr"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in:sys.on.exit","config":{"hasUnknownSideEffects":true},"name":["sys.on.exit","base"],"nodeId":"built-in:sys.on.exit"}]],["asNamespace",[{"type":128,"definedAt":"built-in:asNamespace","config":{"hasUnknownSideEffects":true},"name":["asNamespace","base"],"nodeId":"built-in:asNamespace"}]],["unname",[{"type":128,"definedAt":"built-in:unname","config":{"hasUnknownSideEffects":true},"name":["unname","base"],"nodeId":"built-in:unname"}]],["dir.create",[{"type":128,"definedAt":"built-in:dir.create","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["dir.create","base"],"nodeId":"built-in:dir.create"}]],["dir_create",[{"type":128,"definedAt":"built-in:dir_create","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["dir_create","fs"],"nodeId":"built-in:dir_create"}]],["Sys.chmod",[{"type":128,"definedAt":"built-in:Sys.chmod","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["Sys.chmod","base"],"nodeId":"built-in:Sys.chmod"}]],["unlink",[{"type":128,"definedAt":"built-in:unlink","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["unlink","base"],"nodeId":"built-in:unlink"}]],["file.remove",[{"type":128,"definedAt":"built-in:file.remove","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["file.remove","base"],"nodeId":"built-in:file.remove"}]],["file.rename",[{"type":128,"definedAt":"built-in:file.rename","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["file.rename","base"],"nodeId":"built-in:file.rename"}]],["file.copy",[{"type":128,"definedAt":"built-in:file.copy","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["file.copy","base"],"nodeId":"built-in:file.copy"}]],["file.link",[{"type":128,"definedAt":"built-in:file.link","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["file.link","base"],"nodeId":"built-in:file.link"}]],["file.append",[{"type":128,"definedAt":"built-in:file.append","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["file.append","base"],"nodeId":"built-in:file.append"}]],["Sys.junction",[{"type":128,"definedAt":"built-in:Sys.junction","config":{"hasUnknownSideEffects":true,"props":1049600},"name":["Sys.junction","base"],"nodeId":"built-in:Sys.junction"}]],["sink",[{"type":128,"definedAt":"built-in:sink","config":{"hasUnknownSideEffects":true,"props":1049608,"sig":[["file",16]]},"name":["sink","base"],"nodeId":"built-in:sink"}]],["par",[{"type":128,"definedAt":"built-in:par","config":{"hasUnknownSideEffects":true,"props":131072},"name":["par","graphics"],"nodeId":"built-in:par"}]],["tpar",[{"type":128,"definedAt":"built-in:tpar","config":{"hasUnknownSideEffects":true,"props":131072},"name":["tpar","tinyplot"],"nodeId":"built-in:tpar"}]],["tinytheme",[{"type":128,"definedAt":"built-in:tinytheme","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["tinytheme","tinyplot"],"nodeId":"built-in:tinytheme"}]],["theme_set",[{"type":128,"definedAt":"built-in:theme_set","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["theme_set","ggplot2"],"nodeId":"built-in:theme_set"}]],["context",[{"type":128,"definedAt":"built-in:context","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["context","testthat"],"nodeId":"built-in:context"}]],["library.dynam",[{"type":128,"definedAt":"built-in:library.dynam","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["library.dynam","base"],"nodeId":"built-in:library.dynam"}]],["install_local",[{"type":128,"definedAt":"built-in:install_local","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["install_local","devtools"],"nodeId":"built-in:install_local"}]],["install.packages",[{"type":128,"definedAt":"built-in:install.packages","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install.packages","utils"],"nodeId":"built-in:install.packages"}]],["install",[{"type":128,"definedAt":"built-in:install","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install","devtools"],"nodeId":"built-in:install"}]],["install_github",[{"type":128,"definedAt":"built-in:install_github","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install_github","devtools"],"nodeId":"built-in:install_github"}]],["install_gitlab",[{"type":128,"definedAt":"built-in:install_gitlab","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install_gitlab","devtools"],"nodeId":"built-in:install_gitlab"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in:install_bitbucket","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install_bitbucket","devtools"],"nodeId":"built-in:install_bitbucket"}]],["install_url",[{"type":128,"definedAt":"built-in:install_url","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install_url","devtools"],"nodeId":"built-in:install_url"}]],["install_git",[{"type":128,"definedAt":"built-in:install_git","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install_git","devtools"],"nodeId":"built-in:install_git"}]],["install_svn",[{"type":128,"definedAt":"built-in:install_svn","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install_svn","devtools"],"nodeId":"built-in:install_svn"}]],["install_version",[{"type":128,"definedAt":"built-in:install_version","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["install_version","devtools"],"nodeId":"built-in:install_version"}]],["update_packages",[{"type":128,"definedAt":"built-in:update_packages","config":{"hasUnknownSideEffects":true,"libFn":true,"props":1053704},"name":["update_packages","devtools"],"nodeId":"built-in:update_packages"}]],["on.exit",[{"type":128,"definedAt":"built-in:on.exit","config":{"hook":"fn-exit","args":{"expr":{"idx":0,"name":"expr"},"add":{"idx":1,"name":"add","default":false},"after":{"idx":2,"name":"after","default":true}}},"name":["on.exit","base"],"nodeId":"built-in:on.exit"}]],["on_load",[{"type":128,"definedAt":"built-in:on_load","config":{"libFn":true,"props":74,"sig":[["expr",64],["env",2],["ns",2]]},"name":["on_load","rlang"],"nodeId":"built-in:on_load"}]],["on_package_load",[{"type":128,"definedAt":"built-in:on_package_load","config":{"libFn":true,"props":74,"sig":[["pkg",2],["expr",64],["env",2]]},"name":["on_package_load","rlang"],"nodeId":"built-in:on_package_load"}]],["run_on_load",[{"type":128,"definedAt":"built-in:run_on_load","config":{"libFn":true,"props":74,"sig":[["ns",2]]},"name":["run_on_load","rlang"],"nodeId":"built-in:run_on_load"}]],["parse",[{"type":128,"definedAt":"built-in:parse","config":{"forceArgs":"all","props":1},"name":["parse","base"],"nodeId":"built-in:parse"}]],["list.files",[{"type":128,"definedAt":"built-in:list.files","config":{"forceArgs":"all","props":34079744,"sig":[["path",16]]},"name":["list.files","base"],"nodeId":"built-in:list.files"}]],["dir",[{"type":128,"definedAt":"built-in:dir","config":{"forceArgs":"all","props":34079744,"sig":[["path",16]]},"name":["dir","base"],"nodeId":"built-in:dir"}]],["list.dirs",[{"type":128,"definedAt":"built-in:list.dirs","config":{"forceArgs":"all","props":34079744,"sig":[["path",16]]},"name":["list.dirs","base"],"nodeId":"built-in:list.dirs"}]],["Sys.glob",[{"type":128,"definedAt":"built-in:Sys.glob","config":{"forceArgs":"all","props":34079744,"sig":[["paths",16]]},"name":["Sys.glob","base"],"nodeId":"built-in:Sys.glob"}]],["as.expression",[{"type":128,"definedAt":"built-in:as.expression","config":{"forceArgs":"all","props":32784},"name":["as.expression","base"],"nodeId":"built-in:as.expression"}]],["enquote",[{"type":128,"definedAt":"built-in:enquote","config":{"forceArgs":"all","props":32768},"name":["enquote","base"],"nodeId":"built-in:enquote"}]],["call",[{"type":128,"definedAt":"built-in:call","config":{"forceArgs":"all","props":32768},"name":["call","base"],"nodeId":"built-in:call"}]],["as.call",[{"type":128,"definedAt":"built-in:as.call","config":{"forceArgs":"all","props":32768},"name":["as.call","base"],"nodeId":"built-in:as.call"}]],["as.name",[{"type":128,"definedAt":"built-in:as.name","config":{"forceArgs":"all","props":32768},"name":["as.name","base"],"nodeId":"built-in:as.name"}]],["as.symbol",[{"type":128,"definedAt":"built-in:as.symbol","config":{"forceArgs":"all","props":32768},"name":["as.symbol","base"],"nodeId":"built-in:as.symbol"}]],["as.language",[{"type":128,"definedAt":"built-in:as.language","config":{"forceArgs":"all","props":32768},"name":["as.language","base"],"nodeId":"built-in:as.language"}]],["match.call",[{"type":128,"definedAt":"built-in:match.call","config":{"forceArgs":"all","props":32768},"name":["match.call","base"],"nodeId":"built-in:match.call"}]],["sys.call",[{"type":128,"definedAt":"built-in:sys.call","config":{"forceArgs":"all","props":32768},"name":["sys.call","base"],"nodeId":"built-in:sys.call"}]],["args",[{"type":128,"definedAt":"built-in:args","config":{"forceArgs":"all","props":32768},"name":["args","base"],"nodeId":"built-in:args"}]],["deparse",[{"type":128,"definedAt":"built-in:deparse","config":{"forceArgs":"all","props":32768},"name":["deparse","base"],"nodeId":"built-in:deparse"}]],["deparse1",[{"type":128,"definedAt":"built-in:deparse1","config":{"forceArgs":"all","props":32768},"name":["deparse1","base"],"nodeId":"built-in:deparse1"}]],["alist",[{"type":128,"definedAt":"built-in:alist","config":{"props":32768,"sig":[["...",128]]},"name":["alist","base"],"nodeId":"built-in:alist"}]],["evalq",[{"type":128,"definedAt":"built-in:evalq","config":{"props":32768,"sig":[["expr",128],["envir",2]]},"name":["evalq","base"],"nodeId":"built-in:evalq"}]],["enexpr",[{"type":128,"definedAt":"built-in:enexpr","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["enexpr","rlang"],"nodeId":"built-in:enexpr"}]],["enexprs",[{"type":128,"definedAt":"built-in:enexprs","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["enexprs","rlang"],"nodeId":"built-in:enexprs"}]],["inject",[{"type":128,"definedAt":"built-in:inject","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["inject","rlang"],"nodeId":"built-in:inject"}]],["enquo",[{"type":128,"definedAt":"built-in:enquo","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["enquo","rlang"],"nodeId":"built-in:enquo"}]],["enquos",[{"type":128,"definedAt":"built-in:enquos","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["enquos","rlang"],"nodeId":"built-in:enquos"}]],["enquo0",[{"type":128,"definedAt":"built-in:enquo0","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["enquo0","rlang"],"nodeId":"built-in:enquo0"}]],["enquos0",[{"type":128,"definedAt":"built-in:enquos0","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["enquos0","rlang"],"nodeId":"built-in:enquos0"}]],["ensym",[{"type":128,"definedAt":"built-in:ensym","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["ensym","rlang"],"nodeId":"built-in:ensym"}]],["ensyms",[{"type":128,"definedAt":"built-in:ensyms","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["ensyms","rlang"],"nodeId":"built-in:ensyms"}]],["new_formula",[{"type":128,"definedAt":"built-in:new_formula","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["new_formula","rlang"],"nodeId":"built-in:new_formula"}]],["f_rhs",[{"type":128,"definedAt":"built-in:f_rhs","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["f_rhs","rlang"],"nodeId":"built-in:f_rhs"}]],["f_lhs",[{"type":128,"definedAt":"built-in:f_lhs","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["f_lhs","rlang"],"nodeId":"built-in:f_lhs"}]],["fn_body",[{"type":128,"definedAt":"built-in:fn_body","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["fn_body","rlang"],"nodeId":"built-in:fn_body"}]],["fn_fmls",[{"type":128,"definedAt":"built-in:fn_fmls","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["fn_fmls","rlang"],"nodeId":"built-in:fn_fmls"}]],["fn_fmls_names",[{"type":128,"definedAt":"built-in:fn_fmls_names","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["fn_fmls_names","rlang"],"nodeId":"built-in:fn_fmls_names"}]],["call2",[{"type":128,"definedAt":"built-in:call2","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["call2","rlang"],"nodeId":"built-in:call2"}]],["sym",[{"type":128,"definedAt":"built-in:sym","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["sym","rlang"],"nodeId":"built-in:sym"}]],["syms",[{"type":128,"definedAt":"built-in:syms","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["syms","rlang"],"nodeId":"built-in:syms"}]],["quo_name",[{"type":128,"definedAt":"built-in:quo_name","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["quo_name","rlang"],"nodeId":"built-in:quo_name"}]],["as_name",[{"type":128,"definedAt":"built-in:as_name","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["as_name","rlang"],"nodeId":"built-in:as_name"}]],["as_label",[{"type":128,"definedAt":"built-in:as_label","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["as_label","rlang"],"nodeId":"built-in:as_label"}]],["as_string",[{"type":128,"definedAt":"built-in:as_string","config":{"forceArgs":"all","libFn":true,"props":32768},"name":["as_string","rlang"],"nodeId":"built-in:as_string"}]],["dyn.load",[{"type":128,"definedAt":"built-in:dyn.load","config":{"forceArgs":"all","props":16384},"name":["dyn.load","base"],"nodeId":"built-in:dyn.load"}]],["getNativeSymbolInfo",[{"type":128,"definedAt":"built-in:getNativeSymbolInfo","config":{"forceArgs":"all","props":16384},"name":["getNativeSymbolInfo","base"],"nodeId":"built-in:getNativeSymbolInfo"}]],["sourceCpp",[{"type":128,"definedAt":"built-in:sourceCpp","config":{"forceArgs":"all","libFn":true,"props":541696,"sig":[["file",16]]},"name":["sourceCpp","Rcpp"],"nodeId":"built-in:sourceCpp"}]],["getOption",[{"type":128,"definedAt":"built-in:getOption","config":{"forceArgs":"all","props":512},"name":["getOption","base"],"nodeId":"built-in:getOption"}]],["Sys.getenv",[{"type":128,"definedAt":"built-in:Sys.getenv","config":{"forceArgs":"all","props":512},"name":["Sys.getenv","base"],"nodeId":"built-in:Sys.getenv"}]],["Sys.info",[{"type":128,"definedAt":"built-in:Sys.info","config":{"forceArgs":"all","props":512},"name":["Sys.info","base"],"nodeId":"built-in:Sys.info"}]],["Sys.getpid",[{"type":128,"definedAt":"built-in:Sys.getpid","config":{"forceArgs":"all","props":512},"name":["Sys.getpid","base"],"nodeId":"built-in:Sys.getpid"}]],["getwd",[{"type":128,"definedAt":"built-in:getwd","config":{"forceArgs":"all","props":512},"name":["getwd","base"],"nodeId":"built-in:getwd"}]],["getRversion",[{"type":128,"definedAt":"built-in:getRversion","config":{"forceArgs":"all","props":512},"name":["getRversion","base"],"nodeId":"built-in:getRversion"}]],["R.Version",[{"type":128,"definedAt":"built-in:R.Version","config":{"forceArgs":"all","props":512},"name":["R.Version","base"],"nodeId":"built-in:R.Version"}]],["Sys.time",[{"type":128,"definedAt":"built-in:Sys.time","config":{"forceArgs":"all","props":512},"name":["Sys.time","base"],"nodeId":"built-in:Sys.time"}]],["Sys.Date",[{"type":128,"definedAt":"built-in:Sys.Date","config":{"forceArgs":"all","props":512},"name":["Sys.Date","base"],"nodeId":"built-in:Sys.Date"}]],["Sys.timezone",[{"type":128,"definedAt":"built-in:Sys.timezone","config":{"forceArgs":"all","props":512},"name":["Sys.timezone","base"],"nodeId":"built-in:Sys.timezone"}]],["date",[{"type":128,"definedAt":"built-in:date","config":{"forceArgs":"all","props":512},"name":["date","base"],"nodeId":"built-in:date"}]],["proc.time",[{"type":128,"definedAt":"built-in:proc.time","config":{"forceArgs":"all","props":512},"name":["proc.time","base"],"nodeId":"built-in:proc.time"}]],["interactive",[{"type":128,"definedAt":"built-in:interactive","config":{"forceArgs":"all","props":512},"name":["interactive","base"],"nodeId":"built-in:interactive"}]],["commandArgs",[{"type":128,"definedAt":"built-in:commandArgs","config":{"forceArgs":"all","props":67109376},"name":["commandArgs","base"],"nodeId":"built-in:commandArgs"}]],["system",[{"type":128,"definedAt":"built-in:system","config":{"forceArgs":"all","props":8192},"name":["system","base"],"nodeId":"built-in:system"}]],["system2",[{"type":128,"definedAt":"built-in:system2","config":{"forceArgs":"all","props":8192},"name":["system2","base"],"nodeId":"built-in:system2"}]],["pipe",[{"type":128,"definedAt":"built-in:pipe","config":{"forceArgs":"all","props":8192},"name":["pipe","base"],"nodeId":"built-in:pipe"}]],["shell",[{"type":128,"definedAt":"built-in:shell","config":{"forceArgs":"all","props":8192},"name":["shell","base"],"nodeId":"built-in:shell"}]],["shell.exec",[{"type":128,"definedAt":"built-in:shell.exec","config":{"forceArgs":"all","props":8192},"name":["shell.exec","base"],"nodeId":"built-in:shell.exec"}]],["runjs",[{"type":128,"definedAt":"built-in:runjs","config":{"forceArgs":"all","libFn":true,"props":8192},"name":["runjs","shinyjs"],"nodeId":"built-in:runjs"}]],["readline",[{"type":128,"definedAt":"built-in:readline","config":{"forceArgs":"all","props":65536},"name":["readline","base"],"nodeId":"built-in:readline"}]],["file.choose",[{"type":128,"definedAt":"built-in:file.choose","config":{"forceArgs":"all","props":65536},"name":["file.choose","base"],"nodeId":"built-in:file.choose"}]],["askYesNo",[{"type":128,"definedAt":"built-in:askYesNo","config":{"forceArgs":"all","props":65536},"name":["askYesNo","utils"],"nodeId":"built-in:askYesNo"}]],["choose.files",[{"type":128,"definedAt":"built-in:choose.files","config":{"forceArgs":"all","props":65536},"name":["choose.files","utils"],"nodeId":"built-in:choose.files"}]],["choose.dir",[{"type":128,"definedAt":"built-in:choose.dir","config":{"forceArgs":"all","props":65536},"name":["choose.dir","utils"],"nodeId":"built-in:choose.dir"}]],["menu",[{"type":128,"definedAt":"built-in:menu","config":{"forceArgs":"all","props":65536},"name":["menu","utils"],"nodeId":"built-in:menu"}]],["select.list",[{"type":128,"definedAt":"built-in:select.list","config":{"forceArgs":"all","props":65536},"name":["select.list","utils"],"nodeId":"built-in:select.list"}]],["winDialogString",[{"type":128,"definedAt":"built-in:winDialogString","config":{"forceArgs":"all","props":65536},"name":["winDialogString","utils"],"nodeId":"built-in:winDialogString"}]],["winDialog",[{"type":128,"definedAt":"built-in:winDialog","config":{"forceArgs":"all","props":65536},"name":["winDialog","utils"],"nodeId":"built-in:winDialog"}]],["showPrompt",[{"type":128,"definedAt":"built-in:showPrompt","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["showPrompt","rstudioapi"],"nodeId":"built-in:showPrompt"}]],["askForPassword",[{"type":128,"definedAt":"built-in:askForPassword","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["askForPassword","rstudioapi"],"nodeId":"built-in:askForPassword"}]],["selectDirectory",[{"type":128,"definedAt":"built-in:selectDirectory","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["selectDirectory","rstudioapi"],"nodeId":"built-in:selectDirectory"}]],["selectFile",[{"type":128,"definedAt":"built-in:selectFile","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["selectFile","rstudioapi"],"nodeId":"built-in:selectFile"}]],["showQuestion",[{"type":128,"definedAt":"built-in:showQuestion","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["showQuestion","rstudioapi"],"nodeId":"built-in:showQuestion"}]],["dlgInput",[{"type":128,"definedAt":"built-in:dlgInput","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["dlgInput","svDialogs"],"nodeId":"built-in:dlgInput"}]],["dlgOpen",[{"type":128,"definedAt":"built-in:dlgOpen","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["dlgOpen","svDialogs"],"nodeId":"built-in:dlgOpen"}]],["dlgList",[{"type":128,"definedAt":"built-in:dlgList","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["dlgList","svDialogs"],"nodeId":"built-in:dlgList"}]],["dlgSave",[{"type":128,"definedAt":"built-in:dlgSave","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["dlgSave","svDialogs"],"nodeId":"built-in:dlgSave"}]],["dlgDir",[{"type":128,"definedAt":"built-in:dlgDir","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["dlgDir","svDialogs"],"nodeId":"built-in:dlgDir"}]],["tk_choose.files",[{"type":128,"definedAt":"built-in:tk_choose.files","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["tk_choose.files","tcltk"],"nodeId":"built-in:tk_choose.files"}]],["tk_choose.dir",[{"type":128,"definedAt":"built-in:tk_choose.dir","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["tk_choose.dir","tcltk"],"nodeId":"built-in:tk_choose.dir"}]],["parseQueryString",[{"type":128,"definedAt":"built-in:parseQueryString","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["parseQueryString","shiny"],"nodeId":"built-in:parseQueryString"}]],["getQueryString",[{"type":128,"definedAt":"built-in:getQueryString","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["getQueryString","shiny"],"nodeId":"built-in:getQueryString"}]],["getUrlHash",[{"type":128,"definedAt":"built-in:getUrlHash","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["getUrlHash","shiny"],"nodeId":"built-in:getUrlHash"}]],["restoreInput",[{"type":128,"definedAt":"built-in:restoreInput","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["restoreInput","shiny"],"nodeId":"built-in:restoreInput"}]],["parseFilePaths",[{"type":128,"definedAt":"built-in:parseFilePaths","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["parseFilePaths","shinyFiles"],"nodeId":"built-in:parseFilePaths"}]],["parseDirPath",[{"type":128,"definedAt":"built-in:parseDirPath","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["parseDirPath","shinyFiles"],"nodeId":"built-in:parseDirPath"}]],["parseSavePath",[{"type":128,"definedAt":"built-in:parseSavePath","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["parseSavePath","shinyFiles"],"nodeId":"built-in:parseSavePath"}]],["shinyFileChoose",[{"type":128,"definedAt":"built-in:shinyFileChoose","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["shinyFileChoose","shinyFiles"],"nodeId":"built-in:shinyFileChoose"}]],["shinyDirChoose",[{"type":128,"definedAt":"built-in:shinyDirChoose","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["shinyDirChoose","shinyFiles"],"nodeId":"built-in:shinyDirChoose"}]],["shinyFileSave",[{"type":128,"definedAt":"built-in:shinyFileSave","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["shinyFileSave","shinyFiles"],"nodeId":"built-in:shinyFileSave"}]],["get_data",[{"type":128,"definedAt":"built-in:get_data","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["get_data","cohortBuilder"],"nodeId":"built-in:get_data"}]],["sum_up",[{"type":128,"definedAt":"built-in:sum_up","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["sum_up","cohortBuilder"],"nodeId":"built-in:sum_up"}]],["attrition",[{"type":128,"definedAt":"built-in:attrition","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["attrition","cohortBuilder"],"nodeId":"built-in:attrition"}]],["get_state",[{"type":128,"definedAt":"built-in:get_state","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["get_state","cohortBuilder"],"nodeId":"built-in:get_state"}]],["code",[{"type":128,"definedAt":"built-in:code","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["code","cohortBuilder"],"nodeId":"built-in:code"}]],["stat",[{"type":128,"definedAt":"built-in:stat","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["stat","cohortBuilder"],"nodeId":"built-in:stat"}]],["cb_server",[{"type":128,"definedAt":"built-in:cb_server","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["cb_server","shinyCohortBuilder"],"nodeId":"built-in:cb_server"}]],["cb_ui",[{"type":128,"definedAt":"built-in:cb_ui","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["cb_ui","shinyCohortBuilder"],"nodeId":"built-in:cb_ui"}]],["cb_chat_server",[{"type":128,"definedAt":"built-in:cb_chat_server","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["cb_chat_server","shinyCohortBuilder"],"nodeId":"built-in:cb_chat_server"}]],["cb_chat_ui",[{"type":128,"definedAt":"built-in:cb_chat_ui","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["cb_chat_ui","shinyCohortBuilder"],"nodeId":"built-in:cb_chat_ui"}]],["gui",[{"type":128,"definedAt":"built-in:gui","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["gui","shinyCohortBuilder"],"nodeId":"built-in:gui"}]],["demo_app",[{"type":128,"definedAt":"built-in:demo_app","config":{"forceArgs":"all","libFn":true,"props":65536},"name":["demo_app","shinyCohortBuilder"],"nodeId":"built-in:demo_app"}]],["tempfile",[{"type":128,"definedAt":"built-in:tempfile","config":{"forceArgs":"all","props":2048},"name":["tempfile","base"],"nodeId":"built-in:tempfile"}]],["tempdir",[{"type":128,"definedAt":"built-in:tempdir","config":{"forceArgs":"all","props":2048},"name":["tempdir","base"],"nodeId":"built-in:tempdir"}]],["file_temp",[{"type":128,"definedAt":"built-in:file_temp","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["file_temp","fs"],"nodeId":"built-in:file_temp"}]],["dir_temp",[{"type":128,"definedAt":"built-in:dir_temp","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["dir_temp","fs"],"nodeId":"built-in:dir_temp"}]],["local_tempfile",[{"type":128,"definedAt":"built-in:local_tempfile","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["local_tempfile","withr"],"nodeId":"built-in:local_tempfile"}]],["with_tempfile",[{"type":128,"definedAt":"built-in:with_tempfile","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["with_tempfile","withr"],"nodeId":"built-in:with_tempfile"}]],["local_tempdir",[{"type":128,"definedAt":"built-in:local_tempdir","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["local_tempdir","withr"],"nodeId":"built-in:local_tempdir"}]],["with_tempdir",[{"type":128,"definedAt":"built-in:with_tempdir","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["with_tempdir","withr"],"nodeId":"built-in:with_tempdir"}]],["reactive",[{"type":128,"definedAt":"built-in:reactive","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactive","shiny"],"nodeId":"built-in:reactive"}]],["eventReactive",[{"type":128,"definedAt":"built-in:eventReactive","config":{"forceArgs":"all","libFn":true,"props":2},"name":["eventReactive","shiny"],"nodeId":"built-in:eventReactive"}]],["bindEvent",[{"type":128,"definedAt":"built-in:bindEvent","config":{"forceArgs":"all","libFn":true,"props":2},"name":["bindEvent","shiny"],"nodeId":"built-in:bindEvent"}]],["bindCache",[{"type":128,"definedAt":"built-in:bindCache","config":{"forceArgs":"all","libFn":true,"props":2},"name":["bindCache","shiny"],"nodeId":"built-in:bindCache"}]],["isolate",[{"type":128,"definedAt":"built-in:isolate","config":{"forceArgs":"all","libFn":true,"props":2},"name":["isolate","shiny"],"nodeId":"built-in:isolate"}]],["req",[{"type":128,"definedAt":"built-in:req","config":{"forceArgs":"all","libFn":true,"props":2},"name":["req","shiny"],"nodeId":"built-in:req"}]],["debounce",[{"type":128,"definedAt":"built-in:debounce","config":{"forceArgs":"all","libFn":true,"props":2},"name":["debounce","shiny"],"nodeId":"built-in:debounce"}]],["throttle",[{"type":128,"definedAt":"built-in:throttle","config":{"forceArgs":"all","libFn":true,"props":2},"name":["throttle","shiny"],"nodeId":"built-in:throttle"}]],["reactiveVal",[{"type":128,"definedAt":"built-in:reactiveVal","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactiveVal","shiny"],"nodeId":"built-in:reactiveVal"}]],["reactiveValues",[{"type":128,"definedAt":"built-in:reactiveValues","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactiveValues","shiny"],"nodeId":"built-in:reactiveValues"}]],["reactiveValuesToList",[{"type":128,"definedAt":"built-in:reactiveValuesToList","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactiveValuesToList","shiny"],"nodeId":"built-in:reactiveValuesToList"}]],["freezeReactiveVal",[{"type":128,"definedAt":"built-in:freezeReactiveVal","config":{"forceArgs":"all","libFn":true,"props":2},"name":["freezeReactiveVal","shiny"],"nodeId":"built-in:freezeReactiveVal"}]],["cohort",[{"type":128,"definedAt":"built-in:cohort","config":{"forceArgs":"all","libFn":true,"props":1},"name":["cohort","cohortBuilder"],"nodeId":"built-in:cohort"}]],["set_source",[{"type":128,"definedAt":"built-in:set_source","config":{"forceArgs":"all","libFn":true,"props":1},"name":["set_source","cohortBuilder"],"nodeId":"built-in:set_source"}]],["add_source",[{"type":128,"definedAt":"built-in:add_source","config":{"forceArgs":"all","libFn":true,"props":1},"name":["add_source","cohortBuilder"],"nodeId":"built-in:add_source"}]],["update_source",[{"type":128,"definedAt":"built-in:update_source","config":{"forceArgs":"all","libFn":true,"props":1},"name":["update_source","cohortBuilder"],"nodeId":"built-in:update_source"}]],["add_filter",[{"type":128,"definedAt":"built-in:add_filter","config":{"forceArgs":"all","libFn":true,"props":1},"name":["add_filter","cohortBuilder"],"nodeId":"built-in:add_filter"}]],["update_filter",[{"type":128,"definedAt":"built-in:update_filter","config":{"forceArgs":"all","libFn":true,"props":1},"name":["update_filter","cohortBuilder"],"nodeId":"built-in:update_filter"}]],["rm_filter",[{"type":128,"definedAt":"built-in:rm_filter","config":{"forceArgs":"all","libFn":true,"props":1},"name":["rm_filter","cohortBuilder"],"nodeId":"built-in:rm_filter"}]],["bind_key",[{"type":128,"definedAt":"built-in:bind_key","config":{"forceArgs":"all","libFn":true,"props":1},"name":["bind_key","cohortBuilder"],"nodeId":"built-in:bind_key"}]],["bind_keys",[{"type":128,"definedAt":"built-in:bind_keys","config":{"forceArgs":"all","libFn":true,"props":1},"name":["bind_keys","cohortBuilder"],"nodeId":"built-in:bind_keys"}]],["as.tblist",[{"type":128,"definedAt":"built-in:as.tblist","config":{"forceArgs":"all","libFn":true,"props":1},"name":["as.tblist","cohortBuilder"],"nodeId":"built-in:as.tblist"}]],["tblist",[{"type":128,"definedAt":"built-in:tblist","config":{"forceArgs":"all","libFn":true,"props":1},"name":["tblist","cohortBuilder"],"nodeId":"built-in:tblist"}]],["step",[{"type":128,"definedAt":"built-in:step","config":{"forceArgs":"all","libFn":true,"props":1},"name":["step","cohortBuilder"],"nodeId":"built-in:step"}]],["add_step",[{"type":128,"definedAt":"built-in:add_step","config":{"forceArgs":"all","libFn":true,"props":1},"name":["add_step","cohortBuilder"],"nodeId":"built-in:add_step"}]],["rm_step",[{"type":128,"definedAt":"built-in:rm_step","config":{"forceArgs":"all","libFn":true,"props":1},"name":["rm_step","cohortBuilder"],"nodeId":"built-in:rm_step"}]],["run",[{"type":128,"definedAt":"built-in:run","config":{"forceArgs":"all","libFn":true,"props":1},"name":["run","cohortBuilder"],"nodeId":"built-in:run"}]],["restore",[{"type":128,"definedAt":"built-in:restore","config":{"forceArgs":"all","libFn":true,"props":1},"name":["restore","cohortBuilder"],"nodeId":"built-in:restore"}]],["[<-",[{"type":128,"definedAt":"built-in:[<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"[","nodeId":"built-in:[<-"}]],["[<<-",[{"type":128,"definedAt":"built-in:[<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"[","nodeId":"built-in:[<<-"}]],["[[<-",[{"type":128,"definedAt":"built-in:[[<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"[[","nodeId":"built-in:[[<-"}]],["[[<<-",[{"type":128,"definedAt":"built-in:[[<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"[[","nodeId":"built-in:[[<<-"}]],["names<-",[{"type":128,"definedAt":"built-in:names<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["names","base"],"nodeId":"built-in:names<-"}]],["names<<-",[{"type":128,"definedAt":"built-in:names<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["names","base"],"nodeId":"built-in:names<<-"}]],["dimnames<-",[{"type":128,"definedAt":"built-in:dimnames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["dimnames","base"],"nodeId":"built-in:dimnames<-"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in:dimnames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["dimnames","base"],"nodeId":"built-in:dimnames<<-"}]],["attributes<-",[{"type":128,"definedAt":"built-in:attributes<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["attributes","base"],"nodeId":"built-in:attributes<-"}]],["attributes<<-",[{"type":128,"definedAt":"built-in:attributes<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["attributes","base"],"nodeId":"built-in:attributes<<-"}]],["attr<-",[{"type":128,"definedAt":"built-in:attr<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["attr","base"],"nodeId":"built-in:attr<-"}]],["attr<<-",[{"type":128,"definedAt":"built-in:attr<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["attr","base"],"nodeId":"built-in:attr<<-"}]],["class<-",[{"type":128,"definedAt":"built-in:class<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["class","base"],"nodeId":"built-in:class<-"}]],["class<<-",[{"type":128,"definedAt":"built-in:class<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["class","base"],"nodeId":"built-in:class<<-"}]],["levels<-",[{"type":128,"definedAt":"built-in:levels<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["levels","base"],"nodeId":"built-in:levels<-"}]],["levels<<-",[{"type":128,"definedAt":"built-in:levels<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["levels","base"],"nodeId":"built-in:levels<<-"}]],["rownames<-",[{"type":128,"definedAt":"built-in:rownames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["rownames","base"],"nodeId":"built-in:rownames<-"}]],["rownames<<-",[{"type":128,"definedAt":"built-in:rownames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["rownames","base"],"nodeId":"built-in:rownames<<-"}]],["colnames<-",[{"type":128,"definedAt":"built-in:colnames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["colnames","base"],"nodeId":"built-in:colnames<-"}]],["colnames<<-",[{"type":128,"definedAt":"built-in:colnames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["colnames","base"],"nodeId":"built-in:colnames<<-"}]],["body<-",[{"type":128,"definedAt":"built-in:body<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["body","base"],"nodeId":"built-in:body<-"}]],["body<<-",[{"type":128,"definedAt":"built-in:body<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["body","base"],"nodeId":"built-in:body<<-"}]],["environment<-",[{"type":128,"definedAt":"built-in:environment<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["environment","base"],"nodeId":"built-in:environment<-"}]],["environment<<-",[{"type":128,"definedAt":"built-in:environment<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["environment","base"],"nodeId":"built-in:environment<<-"}]],["formals<-",[{"type":128,"definedAt":"built-in:formals<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["formals","base"],"nodeId":"built-in:formals<-"}]],["formals<<-",[{"type":128,"definedAt":"built-in:formals<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["formals","base"],"nodeId":"built-in:formals<<-"}]],["length<-",[{"type":128,"definedAt":"built-in:length<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["length","base"],"nodeId":"built-in:length<-"}]],["length<<-",[{"type":128,"definedAt":"built-in:length<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["length","base"],"nodeId":"built-in:length<<-"}]],["dim<-",[{"type":128,"definedAt":"built-in:dim<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["dim","base"],"nodeId":"built-in:dim<-"}]],["dim<<-",[{"type":128,"definedAt":"built-in:dim<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["dim","base"],"nodeId":"built-in:dim<<-"}]],["method<-",[{"type":128,"definedAt":"built-in:method<-","config":{"readIndices":true,"constructName":"s7","assignmentOperator":"<-","makeMaybe":true},"name":["method","S7"],"nodeId":"built-in:method<-"}]],["method<<-",[{"type":128,"definedAt":"built-in:method<<-","config":{"readIndices":true,"constructName":"s7","assignmentOperator":"<<-","makeMaybe":true},"name":["method","S7"],"nodeId":"built-in:method<<-"}]],["$<-",[{"type":128,"definedAt":"built-in:$<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"$","nodeId":"built-in:$<-"}]],["$<<-",[{"type":128,"definedAt":"built-in:$<<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"$","nodeId":"built-in:$<<-"}]],["@<-",[{"type":128,"definedAt":"built-in:@<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"@","nodeId":"built-in:@<-"}]],["@<<-",[{"type":128,"definedAt":"built-in:@<<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"@","nodeId":"built-in:@<<-"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]]],"_unknownSideEffects":[]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{"timing":1}}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":1274,"parent":{"id":0,"builtInEnv":true,"memory":[["NULL",[{"type":64,"definedAt":"built-in:NULL","value":null,"name":["NULL","base"],"nodeId":"built-in:NULL"}]],["NA",[{"type":64,"definedAt":"built-in:NA","value":{},"name":["NA","base"],"nodeId":"built-in:NA"}]],["NA_integer_",[{"type":64,"definedAt":"built-in:NA_integer_","value":{},"name":["NA_integer_","base"],"nodeId":"built-in:NA_integer_"}]],["NA_real_",[{"type":64,"definedAt":"built-in:NA_real_","value":{},"name":["NA_real_","base"],"nodeId":"built-in:NA_real_"}]],["NA_complex_",[{"type":64,"definedAt":"built-in:NA_complex_","value":{},"name":["NA_complex_","base"],"nodeId":"built-in:NA_complex_"}]],["NA_character_",[{"type":64,"definedAt":"built-in:NA_character_","value":{},"name":["NA_character_","base"],"nodeId":"built-in:NA_character_"}]],["NaN",[{"type":64,"definedAt":"built-in:NaN","value":null,"name":["NaN","base"],"nodeId":"built-in:NaN"}]],[".GlobalEnv",[{"type":64,"definedAt":"built-in:.GlobalEnv","value":{},"name":[".GlobalEnv","base"],"nodeId":"built-in:.GlobalEnv"}]],[".BaseNamespaceEnv",[{"type":64,"definedAt":"built-in:.BaseNamespaceEnv","value":{},"name":[".BaseNamespaceEnv","base"],"nodeId":"built-in:.BaseNamespaceEnv"}]],[".BaseEnv",[{"type":64,"definedAt":"built-in:.BaseEnv","value":{},"name":[".BaseEnv","base"],"nodeId":"built-in:.BaseEnv"}]],["TRUE",[{"type":64,"definedAt":"built-in:TRUE","value":true,"name":["TRUE","base"],"nodeId":"built-in:TRUE"}]],["T",[{"type":64,"definedAt":"built-in:T","value":true,"name":["T","base"],"nodeId":"built-in:T"}]],["FALSE",[{"type":64,"definedAt":"built-in:FALSE","value":false,"name":["FALSE","base"],"nodeId":"built-in:FALSE"}]],["F",[{"type":64,"definedAt":"built-in:F","value":false,"name":["F","base"],"nodeId":"built-in:F"}]],["Inf",[{"type":64,"definedAt":"built-in:Inf","value":null,"name":["Inf","base"],"nodeId":"built-in:Inf"}]],["-Inf",[{"type":64,"definedAt":"built-in:-Inf","value":null,"name":["-Inf","base"],"nodeId":"built-in:-Inf"}]],["pi",[{"type":64,"definedAt":"built-in:pi","value":3.141592653589793,"name":["pi","base"],"nodeId":"built-in:pi"}]],["LETTERS",[{"type":64,"definedAt":"built-in:LETTERS","value":["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"],"name":["LETTERS","base"],"nodeId":"built-in:LETTERS"}]],["letters",[{"type":64,"definedAt":"built-in:letters","value":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"],"name":["letters","base"],"nodeId":"built-in:letters"}]],["month.abb",[{"type":64,"definedAt":"built-in:month.abb","value":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"name":["month.abb","base"],"nodeId":"built-in:month.abb"}]],["month.name",[{"type":64,"definedAt":"built-in:month.name","value":["January","February","March","April","May","June","July","August","September","October","November","December"],"name":["month.name","base"],"nodeId":"built-in:month.name"}]],["~",[{"type":128,"definedAt":"built-in:~","config":{"markArgsAsMasked":"all","sig":[["y",0],["model",2]],"props":16384},"name":["~","base"],"nodeId":"built-in:~"}]],["subset",[{"type":128,"definedAt":"built-in:subset","config":{"markArgsAsMasked":"all-but-first","props":17,"sig":[["x",8],["...",8]]},"name":["subset","base"],"nodeId":"built-in:subset"}]],["transform",[{"type":128,"definedAt":"built-in:transform","config":{"markArgsAsMasked":"all-but-first","props":17,"sig":[["x",8],["...",8]]},"name":["transform","base"],"nodeId":"built-in:transform"}]],["+",[{"type":128,"definedAt":"built-in:+","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["+","base"],"nodeId":"built-in:+"}]],["-",[{"type":128,"definedAt":"built-in:-","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["-","base"],"nodeId":"built-in:-"}]],["*",[{"type":128,"definedAt":"built-in:*","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["*","base"],"nodeId":"built-in:*"}]],["/",[{"type":128,"definedAt":"built-in:/","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["/","base"],"nodeId":"built-in:/"}]],["^",[{"type":128,"definedAt":"built-in:^","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["^","base"],"nodeId":"built-in:^"}]],["%%",[{"type":128,"definedAt":"built-in:%%","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["%%","base"],"nodeId":"built-in:%%"}]],["%/%",[{"type":128,"definedAt":"built-in:%/%","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["%/%","base"],"nodeId":"built-in:%/%"}]],["**",[{"type":128,"definedAt":"built-in:**","config":{"props":1,"sig":[["e1",4105],["e2",4105]]},"name":["**","base"],"nodeId":"built-in:**"}]],["==",[{"type":128,"definedAt":"built-in:==","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["==","base"],"nodeId":"built-in:=="}]],["!=",[{"type":128,"definedAt":"built-in:!=","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["!=","base"],"nodeId":"built-in:!="}]],[">",[{"type":128,"definedAt":"built-in:>","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":[">","base"],"nodeId":"built-in:>"}]],["<",[{"type":128,"definedAt":"built-in:<","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["<","base"],"nodeId":"built-in:<"}]],[">=",[{"type":128,"definedAt":"built-in:>=","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":[">=","base"],"nodeId":"built-in:>="}]],["<=",[{"type":128,"definedAt":"built-in:<=","config":{"props":16401,"sig":[["e1",4105],["e2",4105]]},"name":["<=","base"],"nodeId":"built-in:<="}]],["%*%",[{"type":128,"definedAt":"built-in:%*%","config":{"props":16385,"sig":[["x",9],["y",9]]},"name":["%*%","base"],"nodeId":"built-in:%*%"}]],["%in%",[{"type":128,"definedAt":"built-in:%in%","config":{"props":1,"sig":[["x",9],["table",9]]},"name":["%in%","base"],"nodeId":"built-in:%in%"}]],[":",[{"type":128,"definedAt":"built-in::","config":{"props":16385,"sig":[["from",4105],["to",4105]]},"name":[":","base"],"nodeId":"built-in::"}]],["!",[{"type":128,"definedAt":"built-in:!","config":{"props":16401,"sig":[["x",4105]]},"name":["!","base"],"nodeId":"built-in:!"}]],["?",[{"type":128,"definedAt":"built-in:?","config":{"sig":[["e1",256],["e2",256]]},"name":["?","utils"],"nodeId":"built-in:?"}]],["length",[{"type":128,"definedAt":"built-in:length","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",17]]},"name":["length","base"],"nodeId":"built-in:length"}]],["dim",[{"type":128,"definedAt":"built-in:dim","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",17]]},"name":["dim","base"],"nodeId":"built-in:dim"}]],["is.matrix",[{"type":128,"definedAt":"built-in:is.matrix","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.matrix","base"],"nodeId":"built-in:is.matrix"}]],["is.numeric",[{"type":128,"definedAt":"built-in:is.numeric","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.numeric","base"],"nodeId":"built-in:is.numeric"}]],["lengths",[{"type":128,"definedAt":"built-in:lengths","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17],["use.names",33]]},"name":["lengths","base"],"nodeId":"built-in:lengths"}]],["is.null",[{"type":128,"definedAt":"built-in:is.null","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.null","base"],"nodeId":"built-in:is.null"}]],["is.vector",[{"type":128,"definedAt":"built-in:is.vector","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.vector","base"],"nodeId":"built-in:is.vector"}]],["is.character",[{"type":128,"definedAt":"built-in:is.character","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.character","base"],"nodeId":"built-in:is.character"}]],["is.logical",[{"type":128,"definedAt":"built-in:is.logical","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.logical","base"],"nodeId":"built-in:is.logical"}]],["is.function",[{"type":128,"definedAt":"built-in:is.function","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.function","base"],"nodeId":"built-in:is.function"}]],["is.list",[{"type":128,"definedAt":"built-in:is.list","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.list","base"],"nodeId":"built-in:is.list"}]],["nrow",[{"type":128,"definedAt":"built-in:nrow","config":{"props":1,"tags":["narrows-args"],"sig":[["x",17]]},"name":["nrow","base"],"nodeId":"built-in:nrow"}]],["ncol",[{"type":128,"definedAt":"built-in:ncol","config":{"props":1,"tags":["narrows-args"],"sig":[["x",17]]},"name":["ncol","base"],"nodeId":"built-in:ncol"}]],["NROW",[{"type":128,"definedAt":"built-in:NROW","config":{"props":1,"tags":["narrows-args"],"sig":[["x",17]]},"name":["NROW","base"],"nodeId":"built-in:NROW"}]],["NCOL",[{"type":128,"definedAt":"built-in:NCOL","config":{"props":1,"tags":["narrows-args"],"sig":[["x",17]]},"name":["NCOL","base"],"nodeId":"built-in:NCOL"}]],["is.factor",[{"type":128,"definedAt":"built-in:is.factor","config":{"props":1,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.factor","base"],"nodeId":"built-in:is.factor"}]],["is.data.frame",[{"type":128,"definedAt":"built-in:is.data.frame","config":{"props":1,"tags":["narrows-args"],"sig":[["x",17]]},"name":["is.data.frame","base"],"nodeId":"built-in:is.data.frame"}]],["dimnames",[{"type":128,"definedAt":"built-in:dimnames","config":{"props":16401,"sig":[["x",17]]},"name":["dimnames","base"],"nodeId":"built-in:dimnames"}]],["names",[{"type":128,"definedAt":"built-in:names","config":{"props":16401,"sig":[["x",17]]},"name":["names","base"],"nodeId":"built-in:names"}]],["class",[{"type":128,"definedAt":"built-in:class","config":{"props":16385,"sig":[["x",17]]},"name":["class","base"],"nodeId":"built-in:class"}]],["rownames",[{"type":128,"definedAt":"built-in:rownames","config":{"props":1,"sig":[["x",17]]},"name":["rownames","base"],"nodeId":"built-in:rownames"}]],["colnames",[{"type":128,"definedAt":"built-in:colnames","config":{"props":1,"sig":[["x",17]]},"name":["colnames","base"],"nodeId":"built-in:colnames"}]],["nchar",[{"type":128,"definedAt":"built-in:nchar","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",17],["type",9],["allowNA",33],["keepNA",33]]},"name":["nchar","base"],"nodeId":"built-in:nchar"}]],["missing",[{"type":128,"definedAt":"built-in:missing","config":{"props":16385,"sig":[["x",1024]]},"name":["missing","base"],"nodeId":"built-in:missing"}]],["hasArg",[{"type":128,"definedAt":"built-in:hasArg","config":{"props":1,"sig":[["name",1024]]},"name":["hasArg","methods"],"nodeId":"built-in:hasArg"}]],["sum",[{"type":128,"definedAt":"built-in:sum","config":{"props":16401,"sig":[["...",9]]},"name":["sum","base"],"nodeId":"built-in:sum"}]],["prod",[{"type":128,"definedAt":"built-in:prod","config":{"props":16401,"sig":[["...",9]]},"name":["prod","base"],"nodeId":"built-in:prod"}]],["min",[{"type":128,"definedAt":"built-in:min","config":{"props":16401,"sig":[["...",9]]},"name":["min","base"],"nodeId":"built-in:min"}]],["max",[{"type":128,"definedAt":"built-in:max","config":{"props":16401,"sig":[["...",9]]},"name":["max","base"],"nodeId":"built-in:max"}]],["range",[{"type":128,"definedAt":"built-in:range","config":{"props":16401,"sig":[["...",9]]},"name":["range","base"],"nodeId":"built-in:range"}]],["cbind",[{"type":128,"definedAt":"built-in:cbind","config":{"props":16401,"sig":[["...",9]]},"name":["cbind","base"],"nodeId":"built-in:cbind"}]],["rbind",[{"type":128,"definedAt":"built-in:rbind","config":{"props":16401,"sig":[["...",9]]},"name":["rbind","base"],"nodeId":"built-in:rbind"}]],["pmin",[{"type":128,"definedAt":"built-in:pmin","config":{"props":16385,"sig":[["...",9]]},"name":["pmin","base"],"nodeId":"built-in:pmin"}]],["pmax",[{"type":128,"definedAt":"built-in:pmax","config":{"props":16385,"sig":[["...",9]]},"name":["pmax","base"],"nodeId":"built-in:pmax"}]],["order",[{"type":128,"definedAt":"built-in:order","config":{"props":16385,"sig":[["...",9]]},"name":["order","base"],"nodeId":"built-in:order"}]],["any",[{"type":128,"definedAt":"built-in:any","config":{"props":16385,"sig":[["...",9]]},"name":["any","base"],"nodeId":"built-in:any"}]],["data.frame",[{"type":128,"definedAt":"built-in:data.frame","config":{"props":1,"sig":[["...",9]]},"name":["data.frame","base"],"nodeId":"built-in:data.frame"}]],["paste",[{"type":128,"definedAt":"built-in:paste","config":{"props":16385,"sig":[["...",9],["sep",9]]},"name":["paste","base"],"nodeId":"built-in:paste"}]],["paste0",[{"type":128,"definedAt":"built-in:paste0","config":{"props":16385,"sig":[["...",9],["sep",9]]},"name":["paste0","base"],"nodeId":"built-in:paste0"}]],["file.path",[{"type":128,"definedAt":"built-in:file.path","config":{"props":16385,"sig":[["...",9],["fsep",9]]},"name":["file.path","base"],"nodeId":"built-in:file.path"}]],["cumsum",[{"type":128,"definedAt":"built-in:cumsum","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["cumsum","base"],"nodeId":"built-in:cumsum"}]],["cumprod",[{"type":128,"definedAt":"built-in:cumprod","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["cumprod","base"],"nodeId":"built-in:cumprod"}]],["cummax",[{"type":128,"definedAt":"built-in:cummax","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["cummax","base"],"nodeId":"built-in:cummax"}]],["cummin",[{"type":128,"definedAt":"built-in:cummin","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["cummin","base"],"nodeId":"built-in:cummin"}]],["as.character",[{"type":128,"definedAt":"built-in:as.character","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["as.character","base"],"nodeId":"built-in:as.character"}]],["as.integer",[{"type":128,"definedAt":"built-in:as.integer","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["as.integer","base"],"nodeId":"built-in:as.integer"}]],["as.logical",[{"type":128,"definedAt":"built-in:as.logical","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["as.logical","base"],"nodeId":"built-in:as.logical"}]],["as.numeric",[{"type":128,"definedAt":"built-in:as.numeric","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["as.numeric","base"],"nodeId":"built-in:as.numeric"}]],["as.raw",[{"type":128,"definedAt":"built-in:as.raw","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["as.raw","base"],"nodeId":"built-in:as.raw"}]],["as.double",[{"type":128,"definedAt":"built-in:as.double","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["as.double","base"],"nodeId":"built-in:as.double"}]],["as.complex",[{"type":128,"definedAt":"built-in:as.complex","config":{"props":16401,"sig":[["x",9],["...",9]]},"name":["as.complex","base"],"nodeId":"built-in:as.complex"}]],["mean",[{"type":128,"definedAt":"built-in:mean","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["mean","base"],"nodeId":"built-in:mean"}]],["diff",[{"type":128,"definedAt":"built-in:diff","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["diff","base"],"nodeId":"built-in:diff"}]],["sort",[{"type":128,"definedAt":"built-in:sort","config":{"props":17,"sig":[["x",9],["decreasing",33],["...",9]]},"name":["sort","base"],"nodeId":"built-in:sort"}]],["rev",[{"type":128,"definedAt":"built-in:rev","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["rev","base"],"nodeId":"built-in:rev"}]],["unique",[{"type":128,"definedAt":"built-in:unique","config":{"props":17,"sig":[["x",9],["incomparables",9],["...",9]]},"name":["unique","base"],"nodeId":"built-in:unique"}]],["duplicated",[{"type":128,"definedAt":"built-in:duplicated","config":{"props":17,"sig":[["x",9],["incomparables",9],["...",9]]},"name":["duplicated","base"],"nodeId":"built-in:duplicated"}]],["t",[{"type":128,"definedAt":"built-in:t","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["t","base"],"nodeId":"built-in:t"}]],["as.matrix",[{"type":128,"definedAt":"built-in:as.matrix","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["as.matrix","base"],"nodeId":"built-in:as.matrix"}]],["as.data.frame",[{"type":128,"definedAt":"built-in:as.data.frame","config":{"props":17,"sig":[["x",9],["row.names",9],["optional",33],["...",9]]},"name":["as.data.frame","base"],"nodeId":"built-in:as.data.frame"}]],["as.list",[{"type":128,"definedAt":"built-in:as.list","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["as.list","base"],"nodeId":"built-in:as.list"}]],["as.array",[{"type":128,"definedAt":"built-in:as.array","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["as.array","base"],"nodeId":"built-in:as.array"}]],["head",[{"type":128,"definedAt":"built-in:head","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["head","utils"],"nodeId":"built-in:head"}]],["tail",[{"type":128,"definedAt":"built-in:tail","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["tail","utils"],"nodeId":"built-in:tail"}]],["median",[{"type":128,"definedAt":"built-in:median","config":{"props":17,"sig":[["x",9],["na.rm",33],["...",9]]},"name":["median","stats"],"nodeId":"built-in:median"}]],["quantile",[{"type":128,"definedAt":"built-in:quantile","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["quantile","stats"],"nodeId":"built-in:quantile"}]],["as.factor",[{"type":128,"definedAt":"built-in:as.factor","config":{"props":1,"sig":[["x",9],["...",9]]},"name":["as.factor","base"],"nodeId":"built-in:as.factor"}]],["factor",[{"type":128,"definedAt":"built-in:factor","config":{"props":1,"sig":[["x",9],["...",9]]},"name":["factor","base"],"nodeId":"built-in:factor"}]],["var",[{"type":128,"definedAt":"built-in:var","config":{"props":1,"sig":[["x",9],["...",9]]},"name":["var","stats"],"nodeId":"built-in:var"}]],["sd",[{"type":128,"definedAt":"built-in:sd","config":{"props":1,"sig":[["x",9],["...",9]]},"name":["sd","stats"],"nodeId":"built-in:sd"}]],["is.na",[{"type":128,"definedAt":"built-in:is.na","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",9]]},"name":["is.na","base"],"nodeId":"built-in:is.na"}]],["is.finite",[{"type":128,"definedAt":"built-in:is.finite","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",9]]},"name":["is.finite","base"],"nodeId":"built-in:is.finite"}]],["is.infinite",[{"type":128,"definedAt":"built-in:is.infinite","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",9]]},"name":["is.infinite","base"],"nodeId":"built-in:is.infinite"}]],["is.nan",[{"type":128,"definedAt":"built-in:is.nan","config":{"props":16401,"tags":["narrows-args"],"sig":[["x",9]]},"name":["is.nan","base"],"nodeId":"built-in:is.nan"}]],["nzchar",[{"type":128,"definedAt":"built-in:nzchar","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",9]]},"name":["nzchar","base"],"nodeId":"built-in:nzchar"}]],["sqrt",[{"type":128,"definedAt":"built-in:sqrt","config":{"props":16401,"sig":[["x",9]]},"name":["sqrt","base"],"nodeId":"built-in:sqrt"}]],["abs",[{"type":128,"definedAt":"built-in:abs","config":{"props":16401,"sig":[["x",9]]},"name":["abs","base"],"nodeId":"built-in:abs"}]],["floor",[{"type":128,"definedAt":"built-in:floor","config":{"props":16401,"sig":[["x",9]]},"name":["floor","base"],"nodeId":"built-in:floor"}]],["ceiling",[{"type":128,"definedAt":"built-in:ceiling","config":{"props":16401,"sig":[["x",9]]},"name":["ceiling","base"],"nodeId":"built-in:ceiling"}]],["trunc",[{"type":128,"definedAt":"built-in:trunc","config":{"props":16401,"sig":[["x",9]]},"name":["trunc","base"],"nodeId":"built-in:trunc"}]],["exp",[{"type":128,"definedAt":"built-in:exp","config":{"props":16401,"sig":[["x",9]]},"name":["exp","base"],"nodeId":"built-in:exp"}]],["sign",[{"type":128,"definedAt":"built-in:sign","config":{"props":16385,"sig":[["x",9]]},"name":["sign","base"],"nodeId":"built-in:sign"}]],["expm1",[{"type":128,"definedAt":"built-in:expm1","config":{"props":16385,"sig":[["x",9]]},"name":["expm1","base"],"nodeId":"built-in:expm1"}]],["log2",[{"type":128,"definedAt":"built-in:log2","config":{"props":16385,"sig":[["x",9]]},"name":["log2","base"],"nodeId":"built-in:log2"}]],["log10",[{"type":128,"definedAt":"built-in:log10","config":{"props":16385,"sig":[["x",9]]},"name":["log10","base"],"nodeId":"built-in:log10"}]],["log1p",[{"type":128,"definedAt":"built-in:log1p","config":{"props":16385,"sig":[["x",9]]},"name":["log1p","base"],"nodeId":"built-in:log1p"}]],["sin",[{"type":128,"definedAt":"built-in:sin","config":{"props":16385,"sig":[["x",9]]},"name":["sin","base"],"nodeId":"built-in:sin"}]],["cos",[{"type":128,"definedAt":"built-in:cos","config":{"props":16385,"sig":[["x",9]]},"name":["cos","base"],"nodeId":"built-in:cos"}]],["tan",[{"type":128,"definedAt":"built-in:tan","config":{"props":16385,"sig":[["x",9]]},"name":["tan","base"],"nodeId":"built-in:tan"}]],["asin",[{"type":128,"definedAt":"built-in:asin","config":{"props":16385,"sig":[["x",9]]},"name":["asin","base"],"nodeId":"built-in:asin"}]],["acos",[{"type":128,"definedAt":"built-in:acos","config":{"props":16385,"sig":[["x",9]]},"name":["acos","base"],"nodeId":"built-in:acos"}]],["atan",[{"type":128,"definedAt":"built-in:atan","config":{"props":16385,"sig":[["x",9]]},"name":["atan","base"],"nodeId":"built-in:atan"}]],["sinh",[{"type":128,"definedAt":"built-in:sinh","config":{"props":16385,"sig":[["x",9]]},"name":["sinh","base"],"nodeId":"built-in:sinh"}]],["cosh",[{"type":128,"definedAt":"built-in:cosh","config":{"props":16385,"sig":[["x",9]]},"name":["cosh","base"],"nodeId":"built-in:cosh"}]],["tanh",[{"type":128,"definedAt":"built-in:tanh","config":{"props":16385,"sig":[["x",9]]},"name":["tanh","base"],"nodeId":"built-in:tanh"}]],["asinh",[{"type":128,"definedAt":"built-in:asinh","config":{"props":16385,"sig":[["x",9]]},"name":["asinh","base"],"nodeId":"built-in:asinh"}]],["acosh",[{"type":128,"definedAt":"built-in:acosh","config":{"props":16385,"sig":[["x",9]]},"name":["acosh","base"],"nodeId":"built-in:acosh"}]],["atanh",[{"type":128,"definedAt":"built-in:atanh","config":{"props":16385,"sig":[["x",9]]},"name":["atanh","base"],"nodeId":"built-in:atanh"}]],["round",[{"type":128,"definedAt":"built-in:round","config":{"props":16401,"sig":[["x",9],["digits",9]]},"name":["round","base"],"nodeId":"built-in:round"}]],["signif",[{"type":128,"definedAt":"built-in:signif","config":{"props":16401,"sig":[["x",9],["digits",9]]},"name":["signif","base"],"nodeId":"built-in:signif"}]],["log",[{"type":128,"definedAt":"built-in:log","config":{"props":16401,"sig":[["x",9],["base",9]]},"name":["log","base"],"nodeId":"built-in:log"}]],["tolower",[{"type":128,"definedAt":"built-in:tolower","config":{"props":16385,"sig":[["x",9]]},"name":["tolower","base"],"nodeId":"built-in:tolower"}]],["toupper",[{"type":128,"definedAt":"built-in:toupper","config":{"props":16385,"sig":[["x",9]]},"name":["toupper","base"],"nodeId":"built-in:toupper"}]],["trimws",[{"type":128,"definedAt":"built-in:trimws","config":{"props":1,"sig":[["x",9],["which",33],["whitespace",9]]},"name":["trimws","base"],"nodeId":"built-in:trimws"}]],["basename",[{"type":128,"definedAt":"built-in:basename","config":{"props":16385,"sig":[["path",9]]},"name":["basename","base"],"nodeId":"built-in:basename"}]],["dirname",[{"type":128,"definedAt":"built-in:dirname","config":{"props":16385,"sig":[["path",9]]},"name":["dirname","base"],"nodeId":"built-in:dirname"}]],["Re",[{"type":128,"definedAt":"built-in:Re","config":{"props":16385,"sig":[["z",9]]},"name":["Re","base"],"nodeId":"built-in:Re"}]],["Im",[{"type":128,"definedAt":"built-in:Im","config":{"props":16385,"sig":[["z",9]]},"name":["Im","base"],"nodeId":"built-in:Im"}]],["Mod",[{"type":128,"definedAt":"built-in:Mod","config":{"props":16385,"sig":[["z",9]]},"name":["Mod","base"],"nodeId":"built-in:Mod"}]],["Arg",[{"type":128,"definedAt":"built-in:Arg","config":{"props":16385,"sig":[["z",9]]},"name":["Arg","base"],"nodeId":"built-in:Arg"}]],["Conj",[{"type":128,"definedAt":"built-in:Conj","config":{"props":16385,"sig":[["z",9]]},"name":["Conj","base"],"nodeId":"built-in:Conj"}]],["numeric",[{"type":128,"definedAt":"built-in:numeric","config":{"props":16385,"sig":[["length",9]]},"name":["numeric","base"],"nodeId":"built-in:numeric"}]],["character",[{"type":128,"definedAt":"built-in:character","config":{"props":16385,"sig":[["length",9]]},"name":["character","base"],"nodeId":"built-in:character"}]],["logical",[{"type":128,"definedAt":"built-in:logical","config":{"props":16385,"sig":[["length",9]]},"name":["logical","base"],"nodeId":"built-in:logical"}]],["integer",[{"type":128,"definedAt":"built-in:integer","config":{"props":16385,"sig":[["length",9]]},"name":["integer","base"],"nodeId":"built-in:integer"}]],["double",[{"type":128,"definedAt":"built-in:double","config":{"props":16385,"sig":[["length",9]]},"name":["double","base"],"nodeId":"built-in:double"}]],["raw",[{"type":128,"definedAt":"built-in:raw","config":{"props":16385,"sig":[["length",9]]},"name":["raw","base"],"nodeId":"built-in:raw"}]],["na.omit",[{"type":128,"definedAt":"built-in:na.omit","config":{"props":17,"sig":[["object",9],["...",9]]},"name":["na.omit","stats"],"nodeId":"built-in:na.omit"}]],["crossprod",[{"type":128,"definedAt":"built-in:crossprod","config":{"props":16385,"sig":[["x",9],["y",9]]},"name":["crossprod","base"],"nodeId":"built-in:crossprod"}]],["tcrossprod",[{"type":128,"definedAt":"built-in:tcrossprod","config":{"props":16385,"sig":[["x",9],["y",9]]},"name":["tcrossprod","base"],"nodeId":"built-in:tcrossprod"}]],["xor",[{"type":128,"definedAt":"built-in:xor","config":{"props":1,"sig":[["x",9],["y",9]]},"name":["xor","base"],"nodeId":"built-in:xor"}]],["intersect",[{"type":128,"definedAt":"built-in:intersect","config":{"props":1,"sig":[["x",9],["y",9]]},"name":["intersect","base"],"nodeId":"built-in:intersect"}]],["union",[{"type":128,"definedAt":"built-in:union","config":{"props":1,"sig":[["x",9],["y",9]]},"name":["union","base"],"nodeId":"built-in:union"}]],["setdiff",[{"type":128,"definedAt":"built-in:setdiff","config":{"props":1,"sig":[["x",9],["y",9]]},"name":["setdiff","base"],"nodeId":"built-in:setdiff"}]],["match",[{"type":128,"definedAt":"built-in:match","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",9],["table",9],["nomatch",9],["incomparables",9]]},"name":["match","base"],"nodeId":"built-in:match"}]],["pmatch",[{"type":128,"definedAt":"built-in:pmatch","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",9],["table",9]]},"name":["pmatch","base"],"nodeId":"built-in:pmatch"}]],["charmatch",[{"type":128,"definedAt":"built-in:charmatch","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",9],["table",9]]},"name":["charmatch","base"],"nodeId":"built-in:charmatch"}]],["is.element",[{"type":128,"definedAt":"built-in:is.element","config":{"props":1,"tags":["narrows-args"],"sig":[["el",9],["set",9]]},"name":["is.element","base"],"nodeId":"built-in:is.element"}]],["match.arg",[{"type":128,"definedAt":"built-in:match.arg","config":{"props":1,"tags":["narrows-args"],"sig":[["arg",9],["choices",2049]]},"name":["match.arg","base"],"nodeId":"built-in:match.arg"}]],["atan2",[{"type":128,"definedAt":"built-in:atan2","config":{"props":16385,"sig":[["y",9],["x",9]]},"name":["atan2","base"],"nodeId":"built-in:atan2"}]],["bitwAnd",[{"type":128,"definedAt":"built-in:bitwAnd","config":{"props":16385,"sig":[["a",9],["b",9]]},"name":["bitwAnd","base"],"nodeId":"built-in:bitwAnd"}]],["bitwOr",[{"type":128,"definedAt":"built-in:bitwOr","config":{"props":16385,"sig":[["a",9],["b",9]]},"name":["bitwOr","base"],"nodeId":"built-in:bitwOr"}]],["bitwXor",[{"type":128,"definedAt":"built-in:bitwXor","config":{"props":16385,"sig":[["a",9],["b",9]]},"name":["bitwXor","base"],"nodeId":"built-in:bitwXor"}]],["bitwShiftL",[{"type":128,"definedAt":"built-in:bitwShiftL","config":{"props":16385,"sig":[["a",9],["n",9]]},"name":["bitwShiftL","base"],"nodeId":"built-in:bitwShiftL"}]],["bitwShiftR",[{"type":128,"definedAt":"built-in:bitwShiftR","config":{"props":16385,"sig":[["a",9],["n",9]]},"name":["bitwShiftR","base"],"nodeId":"built-in:bitwShiftR"}]],["bitwNot",[{"type":128,"definedAt":"built-in:bitwNot","config":{"props":16385,"sig":[["a",9]]},"name":["bitwNot","base"],"nodeId":"built-in:bitwNot"}]],["grepl",[{"type":128,"definedAt":"built-in:grepl","config":{"props":16385,"tags":["narrows-args"],"sig":[["pattern",9],["x",9],["ignore.case",33],["perl",33],["fixed",33],["useBytes",33]]},"name":["grepl","base"],"nodeId":"built-in:grepl"}]],["startsWith",[{"type":128,"definedAt":"built-in:startsWith","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",9],["prefix",9]]},"name":["startsWith","base"],"nodeId":"built-in:startsWith"}]],["endsWith",[{"type":128,"definedAt":"built-in:endsWith","config":{"props":16385,"tags":["narrows-args"],"sig":[["x",9],["suffix",9]]},"name":["endsWith","base"],"nodeId":"built-in:endsWith"}]],["seq",[{"type":128,"definedAt":"built-in:seq","config":{"props":17},"name":["seq","base"],"nodeId":"built-in:seq"}]],["solve",[{"type":128,"definedAt":"built-in:solve","config":{"props":17},"name":["solve","base"],"nodeId":"built-in:solve"}]],["aperm",[{"type":128,"definedAt":"built-in:aperm","config":{"props":17},"name":["aperm","base"],"nodeId":"built-in:aperm"}]],["format",[{"type":128,"definedAt":"built-in:format","config":{"props":17,"sig":[["x",9],["...",9]]},"name":["format","base"],"nodeId":"built-in:format"}]],["rep",[{"type":128,"definedAt":"built-in:rep","config":{"props":16385},"name":["rep","base"],"nodeId":"built-in:rep"}]],["rep.int",[{"type":128,"definedAt":"built-in:rep.int","config":{"props":16385},"name":["rep.int","base"],"nodeId":"built-in:rep.int"}]],["seq.int",[{"type":128,"definedAt":"built-in:seq.int","config":{"props":16385},"name":["seq.int","base"],"nodeId":"built-in:seq.int"}]],["complex",[{"type":128,"definedAt":"built-in:complex","config":{"props":16385},"name":["complex","base"],"nodeId":"built-in:complex"}]],["matrix",[{"type":128,"definedAt":"built-in:matrix","config":{"props":16385,"sig":[["data",9],["nrow",9],["ncol",9],["byrow",33],["dimnames",9]]},"name":["matrix","base"],"nodeId":"built-in:matrix"}]],["array",[{"type":128,"definedAt":"built-in:array","config":{"props":16385},"name":["array","base"],"nodeId":"built-in:array"}]],["colSums",[{"type":128,"definedAt":"built-in:colSums","config":{"props":16385},"name":["colSums","base"],"nodeId":"built-in:colSums"}]],["rowSums",[{"type":128,"definedAt":"built-in:rowSums","config":{"props":16385},"name":["rowSums","base"],"nodeId":"built-in:rowSums"}]],["colMeans",[{"type":128,"definedAt":"built-in:colMeans","config":{"props":16385},"name":["colMeans","base"],"nodeId":"built-in:colMeans"}]],["rowMeans",[{"type":128,"definedAt":"built-in:rowMeans","config":{"props":16385},"name":["rowMeans","base"],"nodeId":"built-in:rowMeans"}]],["eigen",[{"type":128,"definedAt":"built-in:eigen","config":{"props":16385},"name":["eigen","base"],"nodeId":"built-in:eigen"}]],["grep",[{"type":128,"definedAt":"built-in:grep","config":{"props":16385,"sig":[["pattern",9],["x",9],["ignore.case",33],["perl",33],["value",33],["fixed",33],["useBytes",33],["invert",33]]},"name":["grep","base"],"nodeId":"built-in:grep"}]],["sub",[{"type":128,"definedAt":"built-in:sub","config":{"props":16385,"sig":[["pattern",9],["replacement",9],["x",9],["ignore.case",33],["perl",33],["fixed",33],["useBytes",33]]},"name":["sub","base"],"nodeId":"built-in:sub"}]],["gsub",[{"type":128,"definedAt":"built-in:gsub","config":{"props":16385,"sig":[["pattern",9],["replacement",9],["x",9],["ignore.case",33],["perl",33],["fixed",33],["useBytes",33]]},"name":["gsub","base"],"nodeId":"built-in:gsub"}]],["substr",[{"type":128,"definedAt":"built-in:substr","config":{"props":16385,"sig":[["x",9],["start",9],["stop",9]]},"name":["substr","base"],"nodeId":"built-in:substr"}]],["substring",[{"type":128,"definedAt":"built-in:substring","config":{"props":16385,"sig":[["text",9],["first",9],["last",9]]},"name":["substring","base"],"nodeId":"built-in:substring"}]],["strsplit",[{"type":128,"definedAt":"built-in:strsplit","config":{"props":16385,"sig":[["x",9],["split",9],["fixed",33],["perl",33],["useBytes",33]]},"name":["strsplit","base"],"nodeId":"built-in:strsplit"}]],["strrep",[{"type":128,"definedAt":"built-in:strrep","config":{"props":16385},"name":["strrep","base"],"nodeId":"built-in:strrep"}]],["chartr",[{"type":128,"definedAt":"built-in:chartr","config":{"props":16385},"name":["chartr","base"],"nodeId":"built-in:chartr"}]],["strtoi",[{"type":128,"definedAt":"built-in:strtoi","config":{"props":16385,"sig":[["x",9],["base",9]]},"name":["strtoi","base"],"nodeId":"built-in:strtoi"}]],["regexpr",[{"type":128,"definedAt":"built-in:regexpr","config":{"props":16385},"name":["regexpr","base"],"nodeId":"built-in:regexpr"}]],["gregexpr",[{"type":128,"definedAt":"built-in:gregexpr","config":{"props":16385},"name":["gregexpr","base"],"nodeId":"built-in:gregexpr"}]],["regexec",[{"type":128,"definedAt":"built-in:regexec","config":{"props":16385},"name":["regexec","base"],"nodeId":"built-in:regexec"}]],["sprintf",[{"type":128,"definedAt":"built-in:sprintf","config":{"props":16385,"sig":[["fmt",9],["...",9]]},"name":["sprintf","base"],"nodeId":"built-in:sprintf"}]],["formatC",[{"type":128,"definedAt":"built-in:formatC","config":{"props":16385},"name":["formatC","base"],"nodeId":"built-in:formatC"}]],["append",[{"type":128,"definedAt":"built-in:append","config":{"props":1},"name":["append","base"],"nodeId":"built-in:append"}]],["table",[{"type":128,"definedAt":"built-in:table","config":{"props":1},"name":["table","base"],"nodeId":"built-in:table"}]],["prop.table",[{"type":128,"definedAt":"built-in:prop.table","config":{"props":1},"name":["prop.table","base"],"nodeId":"built-in:prop.table"}]],["det",[{"type":128,"definedAt":"built-in:det","config":{"props":1},"name":["det","base"],"nodeId":"built-in:det"}]],["regmatches",[{"type":128,"definedAt":"built-in:regmatches","config":{"props":1},"name":["regmatches","base"],"nodeId":"built-in:regmatches"}]],["cor",[{"type":128,"definedAt":"built-in:cor","config":{"props":1},"name":["cor","stats"],"nodeId":"built-in:cor"}]],["cov",[{"type":128,"definedAt":"built-in:cov","config":{"props":1},"name":["cov","stats"],"nodeId":"built-in:cov"}]],["xtabs",[{"type":128,"definedAt":"built-in:xtabs","config":{"props":1},"name":["xtabs","stats"],"nodeId":"built-in:xtabs"}]],["anova",[{"type":128,"definedAt":"built-in:anova","config":{"props":17,"tags":["statistics"]},"name":["anova","stats"],"nodeId":"built-in:anova"}]],["ansari.test",[{"type":128,"definedAt":"built-in:ansari.test","config":{"props":17,"tags":["statistics"]},"name":["ansari.test","stats"],"nodeId":"built-in:ansari.test"}]],["bartlett.test",[{"type":128,"definedAt":"built-in:bartlett.test","config":{"props":17,"tags":["statistics"]},"name":["bartlett.test","stats"],"nodeId":"built-in:bartlett.test"}]],["cor.test",[{"type":128,"definedAt":"built-in:cor.test","config":{"props":17,"tags":["statistics"]},"name":["cor.test","stats"],"nodeId":"built-in:cor.test"}]],["fligner.test",[{"type":128,"definedAt":"built-in:fligner.test","config":{"props":17,"tags":["statistics"]},"name":["fligner.test","stats"],"nodeId":"built-in:fligner.test"}]],["friedman.test",[{"type":128,"definedAt":"built-in:friedman.test","config":{"props":17,"tags":["statistics"]},"name":["friedman.test","stats"],"nodeId":"built-in:friedman.test"}]],["kruskal.test",[{"type":128,"definedAt":"built-in:kruskal.test","config":{"props":17,"tags":["statistics"]},"name":["kruskal.test","stats"],"nodeId":"built-in:kruskal.test"}]],["ks.test",[{"type":128,"definedAt":"built-in:ks.test","config":{"props":17,"tags":["statistics"]},"name":["ks.test","stats"],"nodeId":"built-in:ks.test"}]],["mauchly.test",[{"type":128,"definedAt":"built-in:mauchly.test","config":{"props":17,"tags":["statistics"]},"name":["mauchly.test","stats"],"nodeId":"built-in:mauchly.test"}]],["mood.test",[{"type":128,"definedAt":"built-in:mood.test","config":{"props":17,"tags":["statistics"]},"name":["mood.test","stats"],"nodeId":"built-in:mood.test"}]],["quade.test",[{"type":128,"definedAt":"built-in:quade.test","config":{"props":17,"tags":["statistics"]},"name":["quade.test","stats"],"nodeId":"built-in:quade.test"}]],["t.test",[{"type":128,"definedAt":"built-in:t.test","config":{"props":17,"tags":["statistics"]},"name":["t.test","stats"],"nodeId":"built-in:t.test"}]],["TukeyHSD",[{"type":128,"definedAt":"built-in:TukeyHSD","config":{"props":17,"tags":["statistics"]},"name":["TukeyHSD","stats"],"nodeId":"built-in:TukeyHSD"}]],["var.test",[{"type":128,"definedAt":"built-in:var.test","config":{"props":17,"tags":["statistics"]},"name":["var.test","stats"],"nodeId":"built-in:var.test"}]],["wilcox.test",[{"type":128,"definedAt":"built-in:wilcox.test","config":{"props":17,"tags":["statistics"]},"name":["wilcox.test","stats"],"nodeId":"built-in:wilcox.test"}]],["aov",[{"type":128,"definedAt":"built-in:aov","config":{"props":1,"tags":["statistics"]},"name":["aov","stats"],"nodeId":"built-in:aov"}]],["binom.test",[{"type":128,"definedAt":"built-in:binom.test","config":{"props":1,"tags":["statistics"]},"name":["binom.test","stats"],"nodeId":"built-in:binom.test"}]],["Box.test",[{"type":128,"definedAt":"built-in:Box.test","config":{"props":1,"tags":["statistics"]},"name":["Box.test","stats"],"nodeId":"built-in:Box.test"}]],["chisq.test",[{"type":128,"definedAt":"built-in:chisq.test","config":{"props":1,"tags":["statistics"]},"name":["chisq.test","stats"],"nodeId":"built-in:chisq.test"}]],["fisher.test",[{"type":128,"definedAt":"built-in:fisher.test","config":{"props":1,"tags":["statistics"]},"name":["fisher.test","stats"],"nodeId":"built-in:fisher.test"}]],["manova",[{"type":128,"definedAt":"built-in:manova","config":{"props":1,"tags":["statistics"]},"name":["manova","stats"],"nodeId":"built-in:manova"}]],["mantelhaen.test",[{"type":128,"definedAt":"built-in:mantelhaen.test","config":{"props":1,"tags":["statistics"]},"name":["mantelhaen.test","stats"],"nodeId":"built-in:mantelhaen.test"}]],["mcnemar.test",[{"type":128,"definedAt":"built-in:mcnemar.test","config":{"props":1,"tags":["statistics"]},"name":["mcnemar.test","stats"],"nodeId":"built-in:mcnemar.test"}]],["oneway.test",[{"type":128,"definedAt":"built-in:oneway.test","config":{"props":1,"tags":["statistics"]},"name":["oneway.test","stats"],"nodeId":"built-in:oneway.test"}]],["pairwise.prop.test",[{"type":128,"definedAt":"built-in:pairwise.prop.test","config":{"props":1,"tags":["statistics"]},"name":["pairwise.prop.test","stats"],"nodeId":"built-in:pairwise.prop.test"}]],["pairwise.t.test",[{"type":128,"definedAt":"built-in:pairwise.t.test","config":{"props":1,"tags":["statistics"]},"name":["pairwise.t.test","stats"],"nodeId":"built-in:pairwise.t.test"}]],["pairwise.wilcox.test",[{"type":128,"definedAt":"built-in:pairwise.wilcox.test","config":{"props":1,"tags":["statistics"]},"name":["pairwise.wilcox.test","stats"],"nodeId":"built-in:pairwise.wilcox.test"}]],["poisson.test",[{"type":128,"definedAt":"built-in:poisson.test","config":{"props":1,"tags":["statistics"]},"name":["poisson.test","stats"],"nodeId":"built-in:poisson.test"}]],["PP.test",[{"type":128,"definedAt":"built-in:PP.test","config":{"props":1,"tags":["statistics"]},"name":["PP.test","stats"],"nodeId":"built-in:PP.test"}]],["prop.test",[{"type":128,"definedAt":"built-in:prop.test","config":{"props":1,"tags":["statistics"]},"name":["prop.test","stats"],"nodeId":"built-in:prop.test"}]],["prop.trend.test",[{"type":128,"definedAt":"built-in:prop.trend.test","config":{"props":1,"tags":["statistics"]},"name":["prop.trend.test","stats"],"nodeId":"built-in:prop.trend.test"}]],["shapiro.test",[{"type":128,"definedAt":"built-in:shapiro.test","config":{"props":1,"tags":["statistics"]},"name":["shapiro.test","stats"],"nodeId":"built-in:shapiro.test"}]],["which",[{"type":128,"definedAt":"built-in:which","config":{"props":16385,"tags":["narrows-args"]},"name":["which","base"],"nodeId":"built-in:which"}]],["which.max",[{"type":128,"definedAt":"built-in:which.max","config":{"props":16385,"tags":["narrows-args"]},"name":["which.max","base"],"nodeId":"built-in:which.max"}]],["which.min",[{"type":128,"definedAt":"built-in:which.min","config":{"props":16385,"tags":["narrows-args"]},"name":["which.min","base"],"nodeId":"built-in:which.min"}]],["seq_len",[{"type":128,"definedAt":"built-in:seq_len","config":{"props":16385,"tags":["narrows-args"]},"name":["seq_len","base"],"nodeId":"built-in:seq_len"}]],["seq_along",[{"type":128,"definedAt":"built-in:seq_along","config":{"props":16385,"tags":["narrows-args"]},"name":["seq_along","base"],"nodeId":"built-in:seq_along"}]],["png",[{"type":128,"definedAt":"built-in:png","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",65],["width",9],["height",9],["...",9]]},"name":["png","grDevices"],"nodeId":"built-in:png"}]],["jpeg",[{"type":128,"definedAt":"built-in:jpeg","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",65],["width",9],["height",9],["...",9]]},"name":["jpeg","grDevices"],"nodeId":"built-in:jpeg"}]],["bmp",[{"type":128,"definedAt":"built-in:bmp","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",65],["width",9],["height",9],["...",9]]},"name":["bmp","grDevices"],"nodeId":"built-in:bmp"}]],["tiff",[{"type":128,"definedAt":"built-in:tiff","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",65],["width",9],["height",9],["...",9]]},"name":["tiff","grDevices"],"nodeId":"built-in:tiff"}]],["svg",[{"type":128,"definedAt":"built-in:svg","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",65],["width",9],["height",9],["...",9]]},"name":["svg","grDevices"],"nodeId":"built-in:svg"}]],["cairo_pdf",[{"type":128,"definedAt":"built-in:cairo_pdf","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",65],["width",9],["height",9],["...",9]]},"name":["cairo_pdf","grDevices"],"nodeId":"built-in:cairo_pdf"}]],["pdf",[{"type":128,"definedAt":"built-in:pdf","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",65],["type",9],["height",9],["width",9],["...",9]]},"name":["pdf","grDevices"],"nodeId":"built-in:pdf"}]],["postscript",[{"type":128,"definedAt":"built-in:postscript","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",65],["type",9],["height",9],["width",9],["...",9]]},"name":["postscript","grDevices"],"nodeId":"built-in:postscript"}]],["xfig",[{"type":128,"definedAt":"built-in:xfig","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",65],["type",9],["height",9],["width",9],["...",9]]},"name":["xfig","grDevices"],"nodeId":"built-in:xfig"}]],["bitmap",[{"type":128,"definedAt":"built-in:bitmap","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",65],["type",9],["height",9],["width",9],["...",9]]},"name":["bitmap","grDevices"],"nodeId":"built-in:bitmap"}]],["pictex",[{"type":128,"definedAt":"built-in:pictex","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",65],["type",9],["height",9],["width",9],["...",9]]},"name":["pictex","grDevices"],"nodeId":"built-in:pictex"}]],["X11",[{"type":128,"definedAt":"built-in:X11","config":{"tags":["draws-graphics"]},"name":["X11","grDevices"],"nodeId":"built-in:X11"}]],["windows",[{"type":128,"definedAt":"built-in:windows","config":{"tags":["draws-graphics"]},"name":["windows","grDevices"],"nodeId":"built-in:windows"}]],["quartz",[{"type":128,"definedAt":"built-in:quartz","config":{"tags":["draws-graphics"]},"name":["quartz","grDevices"],"nodeId":"built-in:quartz"}]],["dev.new",[{"type":128,"definedAt":"built-in:dev.new","config":{"tags":["draws-graphics"]},"name":["dev.new","grDevices"],"nodeId":"built-in:dev.new"}]],["read.csv",[{"type":128,"definedAt":"built-in:read.csv","config":{"tags":["file","reads"],"sig":[["file",65],["header",33],["sep",9],["quote",9],["dec",9],["fill",33],["comment.char",9],["...",9]]},"name":["read.csv","utils"],"nodeId":"built-in:read.csv"}]],["scan",[{"type":128,"definedAt":"built-in:scan","config":{"tags":["file","reads","asks-user"],"sig":[["file",65]],"props":16384},"name":["scan","base"],"nodeId":"built-in:scan"}]],["read.dcf",[{"type":128,"definedAt":"built-in:read.dcf","config":{"tags":["file","reads"],"sig":[["file",65],["...",9]],"props":16384},"name":["read.dcf","base"],"nodeId":"built-in:read.dcf"}]],["read.fwf",[{"type":128,"definedAt":"built-in:read.fwf","config":{"tags":["file","reads"],"sig":[["file",65],["...",9]]},"name":["read.fwf","utils"],"nodeId":"built-in:read.fwf"}]],["readRenviron",[{"type":128,"definedAt":"built-in:readRenviron","config":{"tags":["file","reads"],"sig":[["path",65],["...",9]],"props":16384},"name":["readRenviron","base"],"nodeId":"built-in:readRenviron"}]],["read.ftable",[{"type":128,"definedAt":"built-in:read.ftable","config":{"tags":["file","reads"],"sig":[["file",65],["...",9]]},"name":["read.ftable","stats"],"nodeId":"built-in:read.ftable"}]],["dump",[{"type":128,"definedAt":"built-in:dump","config":{"tags":["file","writes"],"sig":[["list",9],["file",65],["...",9]],"props":16384},"name":["dump","base"],"nodeId":"built-in:dump"}]],["file",[{"type":128,"definedAt":"built-in:file","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",65]],"props":16384},"name":["file","base"],"nodeId":"built-in:file"}]],["gzfile",[{"type":128,"definedAt":"built-in:gzfile","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",65]],"props":16384},"name":["gzfile","base"],"nodeId":"built-in:gzfile"}]],["bzfile",[{"type":128,"definedAt":"built-in:bzfile","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",65]],"props":16384},"name":["bzfile","base"],"nodeId":"built-in:bzfile"}]],["xzfile",[{"type":128,"definedAt":"built-in:xzfile","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",65]],"props":16384},"name":["xzfile","base"],"nodeId":"built-in:xzfile"}]],["unz",[{"type":128,"definedAt":"built-in:unz","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",65]],"props":16384},"name":["unz","base"],"nodeId":"built-in:unz"}]],["fifo",[{"type":128,"definedAt":"built-in:fifo","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",65]],"props":16384},"name":["fifo","base"],"nodeId":"built-in:fifo"}]],["url",[{"type":128,"definedAt":"built-in:url","config":{"tags":["opens-handle","network","reads"],"sig":[["description",65]],"props":16384},"name":["url","base"],"nodeId":"built-in:url"}]],["socketConnection",[{"type":128,"definedAt":"built-in:socketConnection","config":{"tags":["opens-handle","network","reads"],"sig":[["host",65]],"props":16384},"name":["socketConnection","base"],"nodeId":"built-in:socketConnection"}]],["serverSocket",[{"type":128,"definedAt":"built-in:serverSocket","config":{"tags":["opens-handle","network","reads"],"sig":[["host",65]],"props":16384},"name":["serverSocket","base"],"nodeId":"built-in:serverSocket"}]],["textConnection",[{"type":128,"definedAt":"built-in:textConnection","config":{"tags":["opens-handle"],"sig":[["object",9]],"props":16384},"name":["textConnection","base"],"nodeId":"built-in:textConnection"}]],["rawConnection",[{"type":128,"definedAt":"built-in:rawConnection","config":{"tags":["opens-handle"],"sig":[["object",9]],"props":16384},"name":["rawConnection","base"],"nodeId":"built-in:rawConnection"}]],["close",[{"type":128,"definedAt":"built-in:close","config":{"props":24,"tags":["closes-handle"],"sig":[["con",8193],["...",9]]},"name":["close","base"],"nodeId":"built-in:close"}]],["closeAllConnections",[{"type":128,"definedAt":"built-in:closeAllConnections","config":{"props":8,"tags":["closes-handle"]},"name":["closeAllConnections","base"],"nodeId":"built-in:closeAllConnections"}]],["readLines",[{"type":128,"definedAt":"built-in:readLines","config":{"tags":["file","reads"],"sig":[["con",65],["n",9],["ok",33],["warn",33],["encoding",9],["skipNul",33]],"props":16384},"name":["readLines","base"],"nodeId":"built-in:readLines"}]],["readBin",[{"type":128,"definedAt":"built-in:readBin","config":{"tags":["file","reads"],"sig":[["con",65]],"props":16384},"name":["readBin","base"],"nodeId":"built-in:readBin"}]],["readChar",[{"type":128,"definedAt":"built-in:readChar","config":{"tags":["file","reads"],"sig":[["con",65]],"props":16384},"name":["readChar","base"],"nodeId":"built-in:readChar"}]],["readRDS",[{"type":128,"definedAt":"built-in:readRDS","config":{"tags":["file","reads"],"sig":[["file",65]],"props":16384},"name":["readRDS","base"],"nodeId":"built-in:readRDS"}]],["writeLines",[{"type":128,"definedAt":"built-in:writeLines","config":{"props":16392,"tags":["file","writes","prints"],"sig":[["text",9],["con",65],["sep",9],["useBytes",33]]},"name":["writeLines","base"],"nodeId":"built-in:writeLines"}]],["writeBin",[{"type":128,"definedAt":"built-in:writeBin","config":{"props":16392,"tags":["file","writes"],"sig":[["object",9],["con",65]]},"name":["writeBin","base"],"nodeId":"built-in:writeBin"}]],["writeChar",[{"type":128,"definedAt":"built-in:writeChar","config":{"props":16392,"tags":["file","writes"],"sig":[["object",9],["con",65]]},"name":["writeChar","base"],"nodeId":"built-in:writeChar"}]],["saveRDS",[{"type":128,"definedAt":"built-in:saveRDS","config":{"props":16392,"tags":["file","writes"],"sig":[["object",9],["file",65]]},"name":["saveRDS","base"],"nodeId":"built-in:saveRDS"}]],["save",[{"type":128,"definedAt":"built-in:save","config":{"props":16392,"tags":["file","writes"],"sig":[["...",9],["list",9],["file",65]]},"name":["save","base"],"nodeId":"built-in:save"}]],["save.image",[{"type":128,"definedAt":"built-in:save.image","config":{"props":8,"tags":["file","writes"],"sig":[["file",65]]},"name":["save.image","base"],"nodeId":"built-in:save.image"}]],["dput",[{"type":128,"definedAt":"built-in:dput","config":{"props":16392,"tags":["file","writes","prints"],"sig":[["x",9],["file",65]]},"name":["dput","base"],"nodeId":"built-in:dput"}]],["write",[{"type":128,"definedAt":"built-in:write","config":{"props":8,"tags":["file","writes","prints"],"sig":[["x",9],["file",65]]},"name":["write","base"],"nodeId":"built-in:write"}]],["write.dcf",[{"type":128,"definedAt":"built-in:write.dcf","config":{"props":8,"tags":["file","writes"],"sig":[["x",9],["file",65]]},"name":["write.dcf","base"],"nodeId":"built-in:write.dcf"}]],["write.table",[{"type":128,"definedAt":"built-in:write.table","config":{"props":8,"tags":["file","writes"],"sig":[["x",9],["file",65],["append",33],["quote",33],["sep",9]]},"name":["write.table","utils"],"nodeId":"built-in:write.table"}]],["write.csv",[{"type":128,"definedAt":"built-in:write.csv","config":{"props":8,"tags":["file","writes"],"sig":[["x",9],["file",65]]},"name":["write.csv","utils"],"nodeId":"built-in:write.csv"}]],["write.csv2",[{"type":128,"definedAt":"built-in:write.csv2","config":{"props":8,"tags":["file","writes"],"sig":[["x",9],["file",65]]},"name":["write.csv2","utils"],"nodeId":"built-in:write.csv2"}]],["read.table",[{"type":128,"definedAt":"built-in:read.table","config":{"tags":["file","reads"],"sig":[["file",65]]},"name":["read.table","utils"],"nodeId":"built-in:read.table"}]],["read.delim",[{"type":128,"definedAt":"built-in:read.delim","config":{"tags":["file","reads"],"sig":[["file",65]]},"name":["read.delim","utils"],"nodeId":"built-in:read.delim"}]],["read.csv2",[{"type":128,"definedAt":"built-in:read.csv2","config":{"tags":["file","reads"],"sig":[["file",65]]},"name":["read.csv2","utils"],"nodeId":"built-in:read.csv2"}]],["read.delim2",[{"type":128,"definedAt":"built-in:read.delim2","config":{"tags":["file","reads"],"sig":[["file",65]]},"name":["read.delim2","utils"],"nodeId":"built-in:read.delim2"}]],["download.file",[{"type":128,"definedAt":"built-in:download.file","config":{"tags":["network","file","writes"],"sig":[["url",65],["destfile",65],["method",9],["quiet",33],["mode",9],["cacheOK",33],["extra",9],["headers",9],["...",9]]},"name":["download.file","utils"],"nodeId":"built-in:download.file"}]],["jitter",[{"type":128,"definedAt":"built-in:jitter","config":{"tags":["random"],"sig":[["x",2],["factor",0],["amount",0]]},"name":["jitter","base"],"nodeId":"built-in:jitter"}]],["simulate",[{"type":128,"definedAt":"built-in:simulate","config":{"tags":["random"],"props":16},"name":["simulate","stats"],"nodeId":"built-in:simulate"}]],["sample.int",[{"type":128,"definedAt":"built-in:sample.int","config":{"tags":["random"],"props":16384},"name":["sample.int","base"],"nodeId":"built-in:sample.int"}]],["sample",[{"type":128,"definedAt":"built-in:sample","config":{"tags":["random"]},"name":["sample","base"],"nodeId":"built-in:sample"}]],["runif",[{"type":128,"definedAt":"built-in:runif","config":{"tags":["random"]},"name":["runif","stats"],"nodeId":"built-in:runif"}]],["rnorm",[{"type":128,"definedAt":"built-in:rnorm","config":{"tags":["random"]},"name":["rnorm","stats"],"nodeId":"built-in:rnorm"}]],["rbinom",[{"type":128,"definedAt":"built-in:rbinom","config":{"tags":["random"]},"name":["rbinom","stats"],"nodeId":"built-in:rbinom"}]],["rpois",[{"type":128,"definedAt":"built-in:rpois","config":{"tags":["random"]},"name":["rpois","stats"],"nodeId":"built-in:rpois"}]],["rexp",[{"type":128,"definedAt":"built-in:rexp","config":{"tags":["random"]},"name":["rexp","stats"],"nodeId":"built-in:rexp"}]],["rgamma",[{"type":128,"definedAt":"built-in:rgamma","config":{"tags":["random"]},"name":["rgamma","stats"],"nodeId":"built-in:rgamma"}]],["rbeta",[{"type":128,"definedAt":"built-in:rbeta","config":{"tags":["random"]},"name":["rbeta","stats"],"nodeId":"built-in:rbeta"}]],["rcauchy",[{"type":128,"definedAt":"built-in:rcauchy","config":{"tags":["random"]},"name":["rcauchy","stats"],"nodeId":"built-in:rcauchy"}]],["rchisq",[{"type":128,"definedAt":"built-in:rchisq","config":{"tags":["random"]},"name":["rchisq","stats"],"nodeId":"built-in:rchisq"}]],["rgeom",[{"type":128,"definedAt":"built-in:rgeom","config":{"tags":["random"]},"name":["rgeom","stats"],"nodeId":"built-in:rgeom"}]],["rhyper",[{"type":128,"definedAt":"built-in:rhyper","config":{"tags":["random"]},"name":["rhyper","stats"],"nodeId":"built-in:rhyper"}]],["rlnorm",[{"type":128,"definedAt":"built-in:rlnorm","config":{"tags":["random"]},"name":["rlnorm","stats"],"nodeId":"built-in:rlnorm"}]],["rlogis",[{"type":128,"definedAt":"built-in:rlogis","config":{"tags":["random"]},"name":["rlogis","stats"],"nodeId":"built-in:rlogis"}]],["rmultinom",[{"type":128,"definedAt":"built-in:rmultinom","config":{"tags":["random"]},"name":["rmultinom","stats"],"nodeId":"built-in:rmultinom"}]],["rnbinom",[{"type":128,"definedAt":"built-in:rnbinom","config":{"tags":["random"]},"name":["rnbinom","stats"],"nodeId":"built-in:rnbinom"}]],["rsignrank",[{"type":128,"definedAt":"built-in:rsignrank","config":{"tags":["random"]},"name":["rsignrank","stats"],"nodeId":"built-in:rsignrank"}]],["rt",[{"type":128,"definedAt":"built-in:rt","config":{"tags":["random"]},"name":["rt","stats"],"nodeId":"built-in:rt"}]],["rf",[{"type":128,"definedAt":"built-in:rf","config":{"tags":["random"]},"name":["rf","stats"],"nodeId":"built-in:rf"}]],["rweibull",[{"type":128,"definedAt":"built-in:rweibull","config":{"tags":["random"]},"name":["rweibull","stats"],"nodeId":"built-in:rweibull"}]],["rwilcox",[{"type":128,"definedAt":"built-in:rwilcox","config":{"tags":["random"]},"name":["rwilcox","stats"],"nodeId":"built-in:rwilcox"}]],["arima.sim",[{"type":128,"definedAt":"built-in:arima.sim","config":{"tags":["random"]},"name":["arima.sim","stats"],"nodeId":"built-in:arima.sim"}]],["kmeans",[{"type":128,"definedAt":"built-in:kmeans","config":{"tags":["random"]},"name":["kmeans","stats"],"nodeId":"built-in:kmeans"}]],["expression",[{"type":128,"definedAt":"built-in:expression","config":{"props":18432,"sig":[["...",0]]},"name":["expression","base"],"nodeId":"built-in:expression"}]],["rm",[{"type":128,"definedAt":"built-in:rm","config":{"props":16456,"sig":[["...",0],["list",0],["pos",0],["envir",0],["inherits",0]]},"name":["rm","base"],"nodeId":"built-in:rm"}]],["options",[{"type":128,"definedAt":"built-in:options","config":{"hasUnknownSideEffects":true,"props":17160,"sig":[["...",1]]},"name":["options","base"],"nodeId":"built-in:options"}]],["Sys.setenv",[{"type":128,"definedAt":"built-in:Sys.setenv","config":{"hasUnknownSideEffects":true,"props":16904,"sig":[["...",1]]},"name":["Sys.setenv","base"],"nodeId":"built-in:Sys.setenv"}]],["Sys.unsetenv",[{"type":128,"definedAt":"built-in:Sys.unsetenv","config":{"hasUnknownSideEffects":true,"props":16904,"sig":[["...",1]]},"name":["Sys.unsetenv","base"],"nodeId":"built-in:Sys.unsetenv"}]],["Sys.setlocale",[{"type":128,"definedAt":"built-in:Sys.setlocale","config":{"hasUnknownSideEffects":true,"props":16904,"sig":[["...",1]]},"name":["Sys.setlocale","base"],"nodeId":"built-in:Sys.setlocale"}]],["Sys.putenv",[{"type":128,"definedAt":"built-in:Sys.putenv","config":{"hasUnknownSideEffects":true,"props":520,"sig":[["...",1]]},"name":["Sys.putenv","base"],"nodeId":"built-in:Sys.putenv"}]],["Sys.setLanguage",[{"type":128,"definedAt":"built-in:Sys.setLanguage","config":{"hasUnknownSideEffects":true,"props":520,"sig":[["...",1]]},"name":["Sys.setLanguage","base"],"nodeId":"built-in:Sys.setLanguage"}]],["mapply",[{"type":128,"definedAt":"built-in:mapply","config":{"indexOfFunction":0,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":16386,"sig":[["FUN",512],["...",8]]},"name":["mapply","base"],"nodeId":"built-in:mapply"}]],["lapply",[{"type":128,"definedAt":"built-in:lapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":16386,"sig":[["X",8],["FUN",512],["...",8]]},"name":["lapply","base"],"nodeId":"built-in:lapply"}]],["vapply",[{"type":128,"definedAt":"built-in:vapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":16386,"sig":[["X",8],["FUN",512],["FUN.VALUE",16],["...",8]]},"name":["vapply","base"],"nodeId":"built-in:vapply"}]],["sapply",[{"type":128,"definedAt":"built-in:sapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",8],["FUN",512],["...",8]]},"name":["sapply","base"],"nodeId":"built-in:sapply"}]],["apply",[{"type":128,"definedAt":"built-in:apply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["...",0]]},"name":["apply","base"],"nodeId":"built-in:apply"}]],["tapply",[{"type":128,"definedAt":"built-in:tapply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["...",0]]},"name":["tapply","base"],"nodeId":"built-in:tapply"}]],["Map",[{"type":128,"definedAt":"built-in:Map","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",512],["...",8]]},"name":["Map","base"],"nodeId":"built-in:Map"}]],["Filter",[{"type":128,"definedAt":"built-in:Filter","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",512],["x",8]]},"name":["Filter","base"],"nodeId":"built-in:Filter"}]],["Find",[{"type":128,"definedAt":"built-in:Find","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",512],["x",8],["right",32],["nomatch",8]]},"name":["Find","base"],"nodeId":"built-in:Find"}]],["Position",[{"type":128,"definedAt":"built-in:Position","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",512],["x",8],["right",32],["nomatch",8]]},"name":["Position","base"],"nodeId":"built-in:Position"}]],["Reduce",[{"type":128,"definedAt":"built-in:Reduce","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",512]]},"name":["Reduce","base"],"nodeId":"built-in:Reduce"}]],["rapply",[{"type":128,"definedAt":"built-in:rapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":16386,"sig":[["object",2],["f",2],["classes",0],["deflt",0],["how",0],["...",0]]},"name":["rapply","base"],"nodeId":"built-in:rapply"}]],["print",[{"type":128,"definedAt":"built-in:print","config":{"keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":24,"tags":["prints"],"sig":[["x",5],["...",9]]},"name":["print","base"],"nodeId":"built-in:print"}]],["warning",[{"type":128,"definedAt":"built-in:warning","config":{"keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":16392,"tags":["prints"],"sig":[["...",5]]},"name":["warning","base"],"nodeId":"built-in:warning"}]],["message",[{"type":128,"definedAt":"built-in:message","config":{"keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":8,"tags":["prints"],"sig":[["...",5]]},"name":["message","base"],"nodeId":"built-in:message"}]],["invisible",[{"type":128,"definedAt":"built-in:invisible","config":{"keepArgumentOut":true,"props":16393,"sig":[["x",5]]},"name":["invisible","base"],"nodeId":"built-in:invisible"}]],["force",[{"type":128,"definedAt":"built-in:force","config":{"keepArgumentOut":true,"props":1,"sig":[["x",5]]},"name":["force","base"],"nodeId":"built-in:force"}]],["identity",[{"type":128,"definedAt":"built-in:identity","config":{"keepArgumentOut":true,"props":1,"sig":[["x",5]]},"name":["identity","base"],"nodeId":"built-in:identity"}]],["plot",[{"type":128,"definedAt":"built-in:plot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["plot","base",false],"nodeId":"built-in:plot"}]],["image",[{"type":128,"definedAt":"built-in:image","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["image","graphics",false],"nodeId":"built-in:image"}]],["boxplot",[{"type":128,"definedAt":"built-in:boxplot","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["boxplot","graphics",false],"nodeId":"built-in:boxplot"}]],["sunflowerplot",[{"type":128,"definedAt":"built-in:sunflowerplot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["sunflowerplot","graphics",false],"nodeId":"built-in:sunflowerplot"}]],["barplot",[{"type":128,"definedAt":"built-in:barplot","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["barplot","graphics",false],"nodeId":"built-in:barplot"}]],["hist",[{"type":128,"definedAt":"built-in:hist","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["hist","graphics",false],"nodeId":"built-in:hist"}]],["density",[{"type":128,"definedAt":"built-in:density","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["density","stats",false],"nodeId":"built-in:density"}]],["contour",[{"type":128,"definedAt":"built-in:contour","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["contour","graphics",false],"nodeId":"built-in:contour"}]],["persp",[{"type":128,"definedAt":"built-in:persp","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["persp","graphics",false],"nodeId":"built-in:persp"}]],["mosaicplot",[{"type":128,"definedAt":"built-in:mosaicplot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["mosaicplot","graphics",false],"nodeId":"built-in:mosaicplot"}]],["stripchart",[{"type":128,"definedAt":"built-in:stripchart","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["stripchart","graphics",false],"nodeId":"built-in:stripchart"}]],["spineplot",[{"type":128,"definedAt":"built-in:spineplot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["spineplot","graphics",false],"nodeId":"built-in:spineplot"}]],["pairs",[{"type":128,"definedAt":"built-in:pairs","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["pairs","graphics",false],"nodeId":"built-in:pairs"}]],["plot.new",[{"type":128,"definedAt":"built-in:plot.new","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["plot.new","graphics",false],"nodeId":"built-in:plot.new"}]],["xspline",[{"type":128,"definedAt":"built-in:xspline","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["xspline","graphics",false],"nodeId":"built-in:xspline"}]],["curve",[{"type":128,"definedAt":"built-in:curve","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["curve","graphics",false],"nodeId":"built-in:curve"}]],["dotchart",[{"type":128,"definedAt":"built-in:dotchart","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["dotchart","graphics",false],"nodeId":"built-in:dotchart"}]],["matplot",[{"type":128,"definedAt":"built-in:matplot","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["matplot","graphics",false],"nodeId":"built-in:matplot"}]],["stem",[{"type":128,"definedAt":"built-in:stem","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["stem","graphics",false],"nodeId":"built-in:stem"}]],["smoothScatter",[{"type":128,"definedAt":"built-in:smoothScatter","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["smoothScatter","graphics",false],"nodeId":"built-in:smoothScatter"}]],["qqplot",[{"type":128,"definedAt":"built-in:qqplot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["qqplot","stats",false],"nodeId":"built-in:qqplot"}]],["bxp",[{"type":128,"definedAt":"built-in:bxp","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["bxp","graphics",false],"nodeId":"built-in:bxp"}]],["assocplot",[{"type":128,"definedAt":"built-in:assocplot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["assocplot","graphics",false],"nodeId":"built-in:assocplot"}]],["fourfoldplot",[{"type":128,"definedAt":"built-in:fourfoldplot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["fourfoldplot","graphics",false],"nodeId":"built-in:fourfoldplot"}]],["plot.xy",[{"type":128,"definedAt":"built-in:plot.xy","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["plot.xy","graphics",false],"nodeId":"built-in:plot.xy"}]],["plot.formula",[{"type":128,"definedAt":"built-in:plot.formula","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["plot.formula","graphics",false],"nodeId":"built-in:plot.formula"}]],["plot.default",[{"type":128,"definedAt":"built-in:plot.default","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["plot.default","graphics",false],"nodeId":"built-in:plot.default"}]],["plot.design",[{"type":128,"definedAt":"built-in:plot.design","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["plot.design","graphics",false],"nodeId":"built-in:plot.design"}]],["stars",[{"type":128,"definedAt":"built-in:stars","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["stars","graphics",false],"nodeId":"built-in:stars"}]],["coplot",[{"type":128,"definedAt":"built-in:coplot","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["coplot","graphics",false],"nodeId":"built-in:coplot"}]],["points",[{"type":128,"definedAt":"built-in:points","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["points","graphics",false],"nodeId":"built-in:points"}]],["lines",[{"type":128,"definedAt":"built-in:lines","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["lines","graphics",false],"nodeId":"built-in:lines"}]],["text",[{"type":128,"definedAt":"built-in:text","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["text","graphics",false],"nodeId":"built-in:text"}]],["qqnorm",[{"type":128,"definedAt":"built-in:qqnorm","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]],"props":16},"name":["qqnorm","stats",false],"nodeId":"built-in:qqnorm"}]],["abline",[{"type":128,"definedAt":"built-in:abline","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["abline","graphics",false],"nodeId":"built-in:abline"}]],["mtext",[{"type":128,"definedAt":"built-in:mtext","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["mtext","graphics",false],"nodeId":"built-in:mtext"}]],["legend",[{"type":128,"definedAt":"built-in:legend","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["legend","graphics",false],"nodeId":"built-in:legend"}]],["title",[{"type":128,"definedAt":"built-in:title","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["title","graphics",false],"nodeId":"built-in:title"}]],["axis",[{"type":128,"definedAt":"built-in:axis","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["axis","graphics",false],"nodeId":"built-in:axis"}]],["polygon",[{"type":128,"definedAt":"built-in:polygon","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["polygon","graphics",false],"nodeId":"built-in:polygon"}]],["polypath",[{"type":128,"definedAt":"built-in:polypath","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["polypath","graphics",false],"nodeId":"built-in:polypath"}]],["pie",[{"type":128,"definedAt":"built-in:pie","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["pie","graphics",false],"nodeId":"built-in:pie"}]],["rect",[{"type":128,"definedAt":"built-in:rect","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["rect","graphics",false],"nodeId":"built-in:rect"}]],["segments",[{"type":128,"definedAt":"built-in:segments","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["segments","graphics",false],"nodeId":"built-in:segments"}]],["arrows",[{"type":128,"definedAt":"built-in:arrows","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["arrows","graphics",false],"nodeId":"built-in:arrows"}]],["symbols",[{"type":128,"definedAt":"built-in:symbols","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["symbols","graphics",false],"nodeId":"built-in:symbols"}]],["qqline",[{"type":128,"definedAt":"built-in:qqline","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["qqline","stats",false],"nodeId":"built-in:qqline"}]],["rasterImage",[{"type":128,"definedAt":"built-in:rasterImage","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["rasterImage","graphics",false],"nodeId":"built-in:rasterImage"}]],["rug",[{"type":128,"definedAt":"built-in:rug","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["rug","graphics",false],"nodeId":"built-in:rug"}]],["grid",[{"type":128,"definedAt":"built-in:grid","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["grid","graphics",false],"nodeId":"built-in:grid"}]],["box",[{"type":128,"definedAt":"built-in:box","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["box","graphics",false],"nodeId":"built-in:box"}]],["clip",[{"type":128,"definedAt":"built-in:clip","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["clip","graphics",false],"nodeId":"built-in:clip"}]],["matpoints",[{"type":128,"definedAt":"built-in:matpoints","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["matpoints","graphics",false],"nodeId":"built-in:matpoints"}]],["matlines",[{"type":128,"definedAt":"built-in:matlines","config":{"treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["matlines","graphics",false],"nodeId":"built-in:matlines"}]],["dev.capture",[{"type":128,"definedAt":"built-in:dev.capture","config":{"libFn":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"sig":[["...",1]]},"name":["dev.capture","grDevices"],"nodeId":"built-in:dev.capture"}]],["dev.off",[{"type":128,"definedAt":"built-in:dev.off","config":{"libFn":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics","closes-handle","file","writes"],"sig":[["...",1]]},"name":["dev.off","grDevices"],"nodeId":"built-in:dev.off"}]],["graphics.off",[{"type":128,"definedAt":"built-in:graphics.off","config":{"libFn":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics","closes-handle","file","writes"],"sig":[["...",1]]},"name":["graphics.off","grDevices"],"nodeId":"built-in:graphics.off"}]],["(",[{"type":128,"definedAt":"built-in:(","config":{"keepArgumentOut":true,"props":16385,"sig":[["x",4]]},"name":"(","nodeId":"built-in:("}]],["setwd",[{"type":128,"definedAt":"built-in:setwd","config":{"hasUnknownSideEffects":true,"props":17160,"sig":[["dir",9]]},"name":["setwd","base"],"nodeId":"built-in:setwd"}]],["set.seed",[{"type":128,"definedAt":"built-in:set.seed","config":{"hasUnknownSideEffects":true,"props":16904,"tags":["random"],"sig":[["seed",9]]},"name":["set.seed","base"],"nodeId":"built-in:set.seed"}]],["body",[{"type":128,"definedAt":"built-in:body","config":{"hasUnknownSideEffects":true,"props":18432,"sig":[["fun",9]]},"name":["body","base"],"nodeId":"built-in:body"}]],["formals",[{"type":128,"definedAt":"built-in:formals","config":{"hasUnknownSideEffects":true,"props":18432,"sig":[["fun",9]]},"name":["formals","base"],"nodeId":"built-in:formals"}]],["environment",[{"type":128,"definedAt":"built-in:environment","config":{"hasUnknownSideEffects":true,"frame":8,"sig":[["fun",8193]],"props":16384},"name":["environment","base"],"nodeId":"built-in:environment"}]],[".Call",[{"type":128,"definedAt":"built-in:.Call","config":{"hasUnknownSideEffects":true,"sig":[[".NAME",9]],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":17408},"name":[".Call","base"],"nodeId":"built-in:.Call"}]],[".External",[{"type":128,"definedAt":"built-in:.External","config":{"hasUnknownSideEffects":true,"sig":[[".NAME",9]],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":17408},"name":[".External","base"],"nodeId":"built-in:.External"}]],[".C",[{"type":128,"definedAt":"built-in:.C","config":{"hasUnknownSideEffects":true,"sig":[[".NAME",9]],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":17408},"name":[".C","base"],"nodeId":"built-in:.C"}]],[".Fortran",[{"type":128,"definedAt":"built-in:.Fortran","config":{"hasUnknownSideEffects":true,"sig":[[".NAME",9]],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":17408},"name":[".Fortran","base"],"nodeId":"built-in:.Fortran"}]],["eval",[{"type":128,"definedAt":"built-in:eval","config":{"includeFunctionCall":true,"supportFunctionCall":false,"keepEnvironment":true,"tags":["eval"],"sig":[["expr",32777],["envir",9],["enclos",9]],"props":16384},"name":["eval","base"],"nodeId":"built-in:eval"}]],["cat",[{"type":128,"definedAt":"built-in:cat","config":{"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":16392,"tags":["file","writes","prints"],"sig":[["...",9],["file",65]]},"name":["cat","base"],"nodeId":"built-in:cat"}]],["switch",[{"type":128,"definedAt":"built-in:switch","config":{"alternativeArgsFrom":1,"useAsProcessor":"builtin:switch","props":16385,"sig":[["EXPR",9]]},"name":["switch","base"],"nodeId":"built-in:switch"}]],["return",[{"type":128,"definedAt":"built-in:return","config":{"cfg":1,"keepArgumentOut":true,"useAsProcessor":"builtin:return","props":16385,"sig":[["value",4]]},"name":"return","nodeId":"built-in:return"}]],["stop",[{"type":128,"definedAt":"built-in:stop","config":{"useAsProcessor":"builtin:stop","cfg":4,"props":16388,"sig":[["...",1]]},"name":["stop","base"],"nodeId":"built-in:stop"}]],["try",[{"type":128,"definedAt":"built-in:try","config":{"block":"expr","handlers":{},"sig":[["expr",9]],"props":16384},"name":["try","base"],"nodeId":"built-in:try"}]],["tryCatch",[{"type":128,"definedAt":"built-in:tryCatch","config":{"block":"expr","handlers":{"error":"error","finally":"finally"},"sig":[["expr",9],["error",512],["finally",256]],"props":16384},"name":["tryCatch","base"],"nodeId":"built-in:tryCatch"}]],["stopifnot",[{"type":128,"definedAt":"built-in:stopifnot","config":{"props":12,"sig":[["...",0],["exprs",2],["exprObject",2],["local",0]]},"name":["stopifnot","base"],"nodeId":"built-in:stopifnot"}]],["break",[{"type":128,"definedAt":"built-in:break","config":{"useAsProcessor":"builtin:break","cfg":2,"props":16384},"name":"break","nodeId":"built-in:break"}]],["next",[{"type":128,"definedAt":"built-in:next","config":{"cfg":3,"props":16384},"name":"next","nodeId":"built-in:next"}]],["{",[{"type":128,"definedAt":"built-in:{","config":{"sig":[["...",0]],"props":16384},"name":"{","nodeId":"built-in:{"}]],["source",[{"type":128,"definedAt":"built-in:source","config":{"includeFunctionCall":true,"forceFollow":false,"props":16392,"tags":["file","reads"],"sig":[["file",65],["local",33],["echo",33]]},"name":["source","base"],"nodeId":"built-in:source"}]],["sys.source",[{"type":128,"definedAt":"built-in:sys.source","config":{"hasUnknownSideEffects":true,"props":8,"tags":["file","reads"],"sig":[["file",65],["envir",129]]},"name":["sys.source","base"],"nodeId":"built-in:sys.source"}]],["[",[{"type":128,"definedAt":"built-in:[","config":{"treatIndicesAsString":false,"props":16401,"sig":[["x",8],["...",8]]},"name":"[","nodeId":"built-in:["}]],["[[",[{"type":128,"definedAt":"built-in:[[","config":{"treatIndicesAsString":false,"resolveField":true,"props":16401,"sig":[["x",8],["...",8]]},"name":"[[","nodeId":"built-in:[["}]],["$",[{"type":128,"definedAt":"built-in:$","config":{"treatIndicesAsString":true,"resolveField":true,"props":16401,"sig":[["x",8],["name",256]]},"name":"$","nodeId":"built-in:$"}]],["@",[{"type":128,"definedAt":"built-in:@","config":{"treatIndicesAsString":true,"resolveField":true,"props":16385,"sig":[["x",8],["name",256]]},"name":"@","nodeId":"built-in:@"}]],["::",[{"type":128,"definedAt":"built-in:::","config":{"internal":false,"sig":[["pkg",2],["name",2]],"props":16384},"name":"::","nodeId":"built-in:::"}]],[":::",[{"type":128,"definedAt":"built-in::::","config":{"internal":true,"sig":[["pkg",2],["name",2]],"props":16384},"name":":::","nodeId":"built-in::::"}]],["if",[{"type":128,"definedAt":"built-in:if","config":{"sig":[["cond",2],["cons.expr",2],["alt.expr",0]],"props":16384},"name":"if","nodeId":"built-in:if"}]],["ifelse",[{"type":128,"definedAt":"built-in:ifelse","config":{"args":{"cond":"test","yes":"yes","no":"no"},"props":1,"sig":[["test",2],["yes",2],["no",2]]},"name":["ifelse","base"],"nodeId":"built-in:ifelse"}]],["get",[{"type":128,"definedAt":"built-in:get","config":{"props":16385,"tags":["eval"],"sig":[["x",32777],["pos",32],["envir",9],["mode",33],["inherits",33]]},"name":["get","base"],"nodeId":"built-in:get"}]],["get0",[{"type":128,"definedAt":"built-in:get0","config":{"props":16385,"tags":["eval"],"sig":[["x",32777],["envir",9],["mode",33],["inherits",33],["ifnotfound",9]]},"name":["get0","base"],"nodeId":"built-in:get0"}]],["match.fun",[{"type":128,"definedAt":"built-in:match.fun","config":{"props":1,"tags":["eval"],"sig":[["FUN",32777],["descend",32]]},"name":["match.fun","base"],"nodeId":"built-in:match.fun"}]],["require",[{"type":128,"definedAt":"built-in:require","config":{"props":16456,"sig":[["package",2],["...",0]]},"name":["require","base"],"nodeId":"built-in:require"}]],["library",[{"type":128,"definedAt":"built-in:library","config":{"props":72,"sig":[["package",2],["...",0]]},"name":["library","base"],"nodeId":"built-in:library"}]],["attachNamespace",[{"type":128,"definedAt":"built-in:attachNamespace","config":{"characterOnly":true,"props":16456,"sig":[["ns",2],["pos",0],["depends",0],["exclude",2],["include.only",2]]},"name":["attachNamespace","base"],"nodeId":"built-in:attachNamespace"}]],["requireNamespace",[{"type":128,"definedAt":"built-in:requireNamespace","config":{"namespaceOnly":true,"characterOnly":true,"props":16456,"sig":[["package",2],["...",0]]},"name":["requireNamespace","base"],"nodeId":"built-in:requireNamespace"}]],["loadNamespace",[{"type":128,"definedAt":"built-in:loadNamespace","config":{"namespaceOnly":true,"characterOnly":true,"props":16456,"sig":[["package",2],["...",0]]},"name":["loadNamespace","base"],"nodeId":"built-in:loadNamespace"}]],["use",[{"type":128,"definedAt":"built-in:use","config":{"boxUse":true,"props":64,"sig":[["package",2],["include.only",2]]},"name":["use","base"],"nodeId":"built-in:use"}]],["<-",[{"type":128,"definedAt":"built-in:<-","config":{"canBeReplacement":true,"props":16456,"sig":[["x",2],["value",2]]},"name":"<-","nodeId":"built-in:<-"}]],["=",[{"type":128,"definedAt":"built-in:=","config":{"canBeReplacement":true,"props":16456,"sig":[["x",2],["value",2]]},"name":"=","nodeId":"built-in:="}]],["assign",[{"type":128,"definedAt":"built-in:assign","config":{"targetVariable":true,"mayHaveMoreArgs":true,"environmentArg":"envir","props":16456,"sig":[["x",8],["value",8],["pos",32],["envir",128],["inherits",32]]},"name":["assign","base"],"nodeId":"built-in:assign"}]],["setValidity",[{"type":128,"definedAt":"built-in:setValidity","config":{"assignment":{"targetVariable":true,"mayHaveMoreArgs":true,"environmentArg":"envir"},"classDecl":{"system":"s4","nameArg":{"idx":0,"name":"Class"},"relation":"validity"},"props":72,"sig":[["Class",2],["method",2],["where",0]]},"name":["setValidity","methods"],"nodeId":"built-in:setValidity"}]],["setIs",[{"type":128,"definedAt":"built-in:setIs","config":{"classDecl":{"system":"s4","nameArg":{"idx":0,"name":"class1"},"containsArg":{"idx":1,"name":"class2"},"relation":"is"},"props":72,"sig":[["class1",2],["class2",2],["test",0],["coerce",0],["replace",0],["by",0],["where",0],["classDef",0],["extensionObject",0],["doComplete",0]]},"name":["setIs","methods"],"nodeId":"built-in:setIs"}]],["setMethod",[{"type":128,"definedAt":"built-in:setMethod","config":{"assignmentLike":{"targetVariable":true,"canBeReplacement":false,"target":{"idx":0,"name":"f"},"source":{"idx":2,"name":"definition"},"modesForFn":["s4"]},"genericArg":{"idx":0,"name":"f"},"classArgs":[{"idx":1,"name":"signature"}],"sig":[["f",2],["signature",0],["definition",2],["where",0],["valueClass",0],["sealed",0]]},"name":["setMethod","methods"],"nodeId":"built-in:setMethod"}]],["delayedAssign",[{"type":128,"definedAt":"built-in:delayedAssign","config":{"quoteSource":true,"targetVariable":true,"props":16456,"sig":[["x",2],["value",2],["eval.env",0],["assign.env",0]]},"name":["delayedAssign","base"],"nodeId":"built-in:delayedAssign"}]],["<<-",[{"type":128,"definedAt":"built-in:<<-","config":{"superAssignment":true,"canBeReplacement":true,"props":16456,"sig":[["x",2],["value",2]]},"name":"<<-","nodeId":"built-in:<<-"}]],["->",[{"type":128,"definedAt":"built-in:->","config":{"swapSourceAndTarget":true,"canBeReplacement":true,"props":72,"sig":[["value",2],["x",2]]},"name":"->","nodeId":"built-in:->"}]],["->>",[{"type":128,"definedAt":"built-in:->>","config":{"superAssignment":true,"swapSourceAndTarget":true,"canBeReplacement":true,"props":72,"sig":[["value",2],["x",2]]},"name":"->>","nodeId":"built-in:->>"}]],["data",[{"type":128,"definedAt":"built-in:data","config":{"superAssignment":true,"sig":[["...",0],["list",0],["package",0],["lib.loc",0],["verbose",0],["envir",0],["overwrite",0]]},"name":["data","utils"],"nodeId":"built-in:data"}]],["&&",[{"type":128,"definedAt":"built-in:&&","config":{"lazy":true,"evalRhsWhen":true,"props":16385,"sig":[["x",2],["y",2]]},"name":["&&","base"],"nodeId":"built-in:&&"}]],["||",[{"type":128,"definedAt":"built-in:||","config":{"lazy":true,"evalRhsWhen":false,"props":16385,"sig":[["x",2],["y",2]]},"name":["||","base"],"nodeId":"built-in:||"}]],["&",[{"type":128,"definedAt":"built-in:&","config":{"lazy":false,"props":16401,"sig":[["e1",2],["e2",2]]},"name":["&","base"],"nodeId":"built-in:&"}]],["|",[{"type":128,"definedAt":"built-in:|","config":{"lazy":false,"props":16401,"sig":[["e1",2],["e2",2]]},"name":["|","base"],"nodeId":"built-in:|"}]],["|>",[{"type":128,"definedAt":"built-in:|>","config":{"pipePlaceholderName":"_","assignLhs":false,"returnLhs":false,"sig":[["lhs",8],["rhs",4]]},"name":"|>","nodeId":"built-in:|>"}]],["%!>%",[{"type":128,"definedAt":"built-in:%!>%","config":{"pipePlaceholderName":".","assignLhs":false,"returnLhs":false,"rhsMightBeSymbol":true,"sig":[["lhs",8],["rhs",4]]},"name":"%!>%","nodeId":"built-in:%!>%"}]],["function",[{"type":128,"definedAt":"built-in:function","config":{"sig":[["arglist",0],["expr",2]],"props":16384},"name":"function","nodeId":"built-in:function"}]],["\\",[{"type":128,"definedAt":"built-in:\\","config":{"sig":[["arglist",0],["expr",2]]},"name":"\\","nodeId":"built-in:\\"}]],["quote",[{"type":128,"definedAt":"built-in:quote","config":{"quoteArgumentsWithIndex":0,"keepEnvironment":true,"props":18432,"sig":[["expr",256]]},"name":["quote","base"],"nodeId":"built-in:quote"}]],["bquote",[{"type":128,"definedAt":"built-in:bquote","config":{"quoteArgumentsWithIndex":0,"unquote":"bquote","keepEnvironment":true,"props":2048,"sig":[["expr",256]]},"name":["bquote","base"],"nodeId":"built-in:bquote"}]],["substitute",[{"type":128,"definedAt":"built-in:substitute","config":{"quoteArgumentsWithIndex":0,"envArgIndex":1,"keepEnvironment":true,"props":18432,"sig":[["expr",256],["env",8]]},"name":["substitute","base"],"nodeId":"built-in:substitute"}]],["local",[{"type":128,"definedAt":"built-in:local","config":{"args":{"env":"envir","expr":"expr"},"sig":[["expr",5]]},"name":["local","base"],"nodeId":"built-in:local"}]],["with",[{"type":128,"definedAt":"built-in:with","config":{"sig":[["data",2],["expr",2],["...",0]],"props":16},"name":["with","base"],"nodeId":"built-in:with"}]],["within",[{"type":128,"definedAt":"built-in:within","config":{"sig":[["data",2],["expr",2],["...",0]],"props":16},"name":["within","base"],"nodeId":"built-in:within"}]],["new.env",[{"type":128,"definedAt":"built-in:new.env","config":{"sig":[["hash",0],["parent",0],["size",0]],"props":16384},"name":["new.env","base"],"nodeId":"built-in:new.env"}]],["setRefClass",[{"type":128,"definedAt":"built-in:setRefClass","config":{"classDecl":{"system":"rc","nameArg":{"idx":0,"name":"Class"},"containsArg":{"idx":2,"name":"contains"},"memberArgs":[{"idx":1,"name":"fields","typed":true},{"idx":3,"name":"methods","methods":true}]},"sig":[["Class",2],["fields",0],["contains",0],["methods",0],["where",0],["inheritPackage",0],["...",0]]},"name":["setRefClass","methods"],"nodeId":"built-in:setRefClass"}]],["globalenv",[{"type":128,"definedAt":"built-in:globalenv","config":{"props":16384},"name":["globalenv","base"],"nodeId":"built-in:globalenv"}]],["baseenv",[{"type":128,"definedAt":"built-in:baseenv","config":{"props":16384},"name":["baseenv","base"],"nodeId":"built-in:baseenv"}]],["emptyenv",[{"type":128,"definedAt":"built-in:emptyenv","config":{"props":16384},"name":["emptyenv","base"],"nodeId":"built-in:emptyenv"}]],["parent.env",[{"type":128,"definedAt":"built-in:parent.env","config":{"props":16384},"name":["parent.env","base"],"nodeId":"built-in:parent.env"}]],["parent.frame",[{"type":128,"definedAt":"built-in:parent.frame","config":{"props":16384},"name":["parent.frame","base"],"nodeId":"built-in:parent.frame"}]],["environmentName",[{"type":128,"definedAt":"built-in:environmentName","config":{"props":16384},"name":["environmentName","base"],"nodeId":"built-in:environmentName"}]],["as.environment",[{"type":128,"definedAt":"built-in:as.environment","config":{"props":16384},"name":["as.environment","base"],"nodeId":"built-in:as.environment"}]],["pos.to.env",[{"type":128,"definedAt":"built-in:pos.to.env","config":{"props":16384},"name":["pos.to.env","base"],"nodeId":"built-in:pos.to.env"}]],["topenv",[{"type":128,"definedAt":"built-in:topenv","config":{"props":16384},"name":["topenv","base"],"nodeId":"built-in:topenv"}]],["sys.frame",[{"type":128,"definedAt":"built-in:sys.frame","config":{"frame":8,"props":16384},"name":["sys.frame","base"],"nodeId":"built-in:sys.frame"}]],["sys.frames",[{"type":128,"definedAt":"built-in:sys.frames","config":{"frame":8,"props":16384},"name":["sys.frames","base"],"nodeId":"built-in:sys.frames"}]],["load",[{"type":128,"definedAt":"built-in:load","config":{"props":16456,"tags":["file","reads"],"sig":[["file",64]]},"name":["load","base"],"nodeId":"built-in:load"}]],["attach",[{"type":128,"definedAt":"built-in:attach","config":{"sig":[["what",2],["pos",0],["name",0],["warn.conflicts",0]],"props":16384},"name":["attach","base"],"nodeId":"built-in:attach"}]],["for",[{"type":128,"definedAt":"built-in:for","config":{"sig":[["var",2],["seq",2],["expr",2]],"props":16384},"name":"for","nodeId":"built-in:for"}]],["repeat",[{"type":128,"definedAt":"built-in:repeat","config":{"sig":[["expr",2]],"props":16384},"name":"repeat","nodeId":"built-in:repeat"}]],["while",[{"type":128,"definedAt":"built-in:while","config":{"sig":[["cond",2],["expr",2]],"props":16384},"name":"while","nodeId":"built-in:while"}]],["do.call",[{"type":128,"definedAt":"built-in:do.call","config":{"indexOfFunction":0,"unquoteFunction":true,"props":16386,"tags":["eval"],"sig":[["what",33281],["args",9]]},"name":["do.call","base"],"nodeId":"built-in:do.call"}]],["UseMethod",[{"type":128,"definedAt":"built-in:UseMethod","config":{"args":{"generic":"generic","object":"object"},"props":16400,"sig":[["generic",2],["object",2]]},"name":["UseMethod","base"],"nodeId":"built-in:UseMethod"}]],["NextMethod",[{"type":128,"definedAt":"built-in:NextMethod","config":{"args":{"generic":"generic","object":"object"},"inferFromClosure":true,"props":16400,"sig":[["generic",0],["object",0],["...",0]]},"name":["NextMethod","base"],"nodeId":"built-in:NextMethod"}]],["setGeneric",[{"type":128,"definedAt":"built-in:setGeneric","config":{"args":{"name":"name","fun":"fun"},"binds":true,"sig":[["name",2],["def",0],["group",0],["valueClass",0],["where",0],["package",0],["signature",0],["useAsDefault",0],["genericFunction",0],["simpleInheritanceOnly",0]],"props":16},"name":["setGeneric","methods"],"nodeId":"built-in:setGeneric"}]],["new",[{"type":128,"definedAt":"built-in:new","config":{"classArgs":[{"idx":0,"name":"Class"}],"sig":[["Class",2],["...",0]]},"name":["new","methods"],"nodeId":"built-in:new"}]],["getClass",[{"type":128,"definedAt":"built-in:getClass","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["getClass","methods"],"nodeId":"built-in:getClass"}]],["getClassDef",[{"type":128,"definedAt":"built-in:getClassDef","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["getClassDef","methods"],"nodeId":"built-in:getClassDef"}]],["getSlots",[{"type":128,"definedAt":"built-in:getSlots","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["getSlots","methods"],"nodeId":"built-in:getSlots"}]],["slotNames",[{"type":128,"definedAt":"built-in:slotNames","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["slotNames","methods"],"nodeId":"built-in:slotNames"}]],["isVirtualClass",[{"type":128,"definedAt":"built-in:isVirtualClass","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["isVirtualClass","methods"],"nodeId":"built-in:isVirtualClass"}]],["removeClass",[{"type":128,"definedAt":"built-in:removeClass","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["removeClass","methods"],"nodeId":"built-in:removeClass"}]],["resetClass",[{"type":128,"definedAt":"built-in:resetClass","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["resetClass","methods"],"nodeId":"built-in:resetClass"}]],["getValidity",[{"type":128,"definedAt":"built-in:getValidity","config":{"classArgs":[{"idx":0,"name":"Class"}]},"name":["getValidity","methods"],"nodeId":"built-in:getValidity"}]],["as",[{"type":128,"definedAt":"built-in:as","config":{"classArgs":[{"idx":1,"name":"Class"}],"sig":[["object",2],["Class",2],["strict",0],["ext",0]]},"name":["as","methods"],"nodeId":"built-in:as"}]],["is",[{"type":128,"definedAt":"built-in:is","config":{"classArgs":[{"idx":1,"name":"class2"}],"sig":[["object",2],["class2",2]]},"name":["is","methods"],"nodeId":"built-in:is"}]],["setAs",[{"type":128,"definedAt":"built-in:setAs","config":{"classArgs":[{"idx":0,"name":"from"}],"registersArg":{"idx":1,"name":"to"},"sig":[["from",2],["to",2],["def",2],["replace",0],["where",0]]},"name":["setAs","methods"],"nodeId":"built-in:setAs"}]],["existsMethod",[{"type":128,"definedAt":"built-in:existsMethod","config":{"genericArg":{"idx":0,"name":"f"},"classArgs":[{"idx":1,"name":"signature"}],"sig":[["f",2],["signature",0],["...",0]]},"name":["existsMethod","methods"],"nodeId":"built-in:existsMethod"}]],["hasMethod",[{"type":128,"definedAt":"built-in:hasMethod","config":{"genericArg":{"idx":0,"name":"f"},"classArgs":[{"idx":1,"name":"signature"}],"sig":[["f",2],["signature",0],["...",0]]},"name":["hasMethod","methods"],"nodeId":"built-in:hasMethod"}]],["getMethod",[{"type":128,"definedAt":"built-in:getMethod","config":{"genericArg":{"idx":0,"name":"f"},"classArgs":[{"idx":1,"name":"signature"}],"sig":[["f",2],["signature",0],["...",0]]},"name":["getMethod","methods"],"nodeId":"built-in:getMethod"}]],["selectMethod",[{"type":128,"definedAt":"built-in:selectMethod","config":{"genericArg":{"idx":0,"name":"f"},"classArgs":[{"idx":1,"name":"signature"}],"sig":[["f",2],["signature",0],["...",0]]},"name":["selectMethod","methods"],"nodeId":"built-in:selectMethod"}]],["removeMethod",[{"type":128,"definedAt":"built-in:removeMethod","config":{"genericArg":{"idx":0,"name":"f"},"classArgs":[{"idx":1,"name":"signature"}],"sig":[["f",2],["signature",0],["...",0]]},"name":["removeMethod","methods"],"nodeId":"built-in:removeMethod"}]],["setClass",[{"type":128,"definedAt":"built-in:setClass","config":{"mode":["s4"],"classDecl":{"system":"s4","nameArg":{"idx":0,"name":"Class"},"containsArg":{"name":"contains"},"memberArgs":[{"idx":1,"name":"representation","typed":true},{"name":"slots","typed":true}],"prototypeArg":{"idx":2,"name":"prototype"}},"sig":[["Class",2],["representation",0],["prototype",0],["contains",0],["validity",0],["access",0],["where",0],["version",0],["sealed",0],["package",0],["S3methods",0],["slots",2]]},"name":["setClass","methods"],"nodeId":"built-in:setClass"}]],["setClassUnion",[{"type":128,"definedAt":"built-in:setClassUnion","config":{"mode":["s4"],"classDecl":{"system":"s4","nameArg":{"idx":0,"name":"name"},"unionArg":{"idx":1,"name":"members"}},"sig":[["name",2],["members",0],["where",0]]},"name":["setClassUnion","methods"],"nodeId":"built-in:setClassUnion"}]],["Negate",[{"type":128,"definedAt":"built-in:Negate","config":{"wrapIndex":0,"props":1,"sig":[["f",512]]},"name":["Negate","base"],"nodeId":"built-in:Negate"}]],["Vectorize",[{"type":128,"definedAt":"built-in:Vectorize","config":{"wrapIndex":0,"props":1,"sig":[["FUN",512]]},"name":["Vectorize","base"],"nodeId":"built-in:Vectorize"}]],[".Primitive",[{"type":128,"definedAt":"built-in:.Primitive","config":{"indexOfFunction":0,"unquoteFunction":true,"resolveInEnvironment":"global","props":16384},"name":[".Primitive","base"],"nodeId":"built-in:.Primitive"}]],[".Internal",[{"type":128,"definedAt":"built-in:.Internal","config":{"indexOfFunction":0,"unquoteFunction":true,"resolveInEnvironment":"global","props":16384},"name":[".Internal","base"],"nodeId":"built-in:.Internal"}]],["list",[{"type":128,"definedAt":"built-in:list","config":{"props":16385,"sig":[["...",8]]},"name":["list","base"],"nodeId":"built-in:list"}]],["Recall",[{"type":128,"definedAt":"built-in:Recall","config":{"libFn":true,"sig":[["...",0]],"props":16384},"name":["Recall","base"],"nodeId":"built-in:Recall"}]],["sys.function",[{"type":128,"definedAt":"built-in:sys.function","config":{"libFn":true,"unknownOnNonZeroArg":true,"props":18432,"frame":256,"sig":[["which",0]]},"name":["sys.function","base"],"nodeId":"built-in:sys.function"}]],["c",[{"type":128,"definedAt":"built-in:c","config":{"props":16401,"sig":[["...",8]]},"name":["c","base"],"nodeId":"built-in:c"}]],["setNames",[{"type":128,"definedAt":"built-in:setNames","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true,"readTarget":true,"sig":[["object",0],["nm",2]]},"name":["setNames","base"],"nodeId":"built-in:setNames"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in:sys.on.exit","config":{"hasUnknownSideEffects":true,"props":16384},"name":["sys.on.exit","base"],"nodeId":"built-in:sys.on.exit"}]],["asNamespace",[{"type":128,"definedAt":"built-in:asNamespace","config":{"hasUnknownSideEffects":true},"name":["asNamespace","base"],"nodeId":"built-in:asNamespace"}]],["unname",[{"type":128,"definedAt":"built-in:unname","config":{"hasUnknownSideEffects":true},"name":["unname","base"],"nodeId":"built-in:unname"}]],["dir.create",[{"type":128,"definedAt":"built-in:dir.create","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["dir.create","base"],"nodeId":"built-in:dir.create"}]],["Sys.chmod",[{"type":128,"definedAt":"built-in:Sys.chmod","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["Sys.chmod","base"],"nodeId":"built-in:Sys.chmod"}]],["unlink",[{"type":128,"definedAt":"built-in:unlink","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["unlink","base"],"nodeId":"built-in:unlink"}]],["file.remove",[{"type":128,"definedAt":"built-in:file.remove","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["file.remove","base"],"nodeId":"built-in:file.remove"}]],["file.rename",[{"type":128,"definedAt":"built-in:file.rename","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["file.rename","base"],"nodeId":"built-in:file.rename"}]],["file.copy",[{"type":128,"definedAt":"built-in:file.copy","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["file.copy","base"],"nodeId":"built-in:file.copy"}]],["file.link",[{"type":128,"definedAt":"built-in:file.link","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["file.link","base"],"nodeId":"built-in:file.link"}]],["file.append",[{"type":128,"definedAt":"built-in:file.append","config":{"hasUnknownSideEffects":true,"tags":["file","writes"],"props":16384},"name":["file.append","base"],"nodeId":"built-in:file.append"}]],["Sys.junction",[{"type":128,"definedAt":"built-in:Sys.junction","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["Sys.junction","base"],"nodeId":"built-in:Sys.junction"}]],["sink",[{"type":128,"definedAt":"built-in:sink","config":{"hasUnknownSideEffects":true,"props":16392,"tags":["file","writes"],"sig":[["file",64]]},"name":["sink","base"],"nodeId":"built-in:sink"}]],["par",[{"type":128,"definedAt":"built-in:par","config":{"hasUnknownSideEffects":true,"tags":["draws-graphics"],"sig":[["...",0],["no.readonly",0]]},"name":["par","graphics"],"nodeId":"built-in:par"}]],["library.dynam",[{"type":128,"definedAt":"built-in:library.dynam","config":{"hasUnknownSideEffects":true,"libFn":true,"sig":[["chname",2],["package",2],["lib.loc",2],["verbose",0],["file.ext",0],["...",0]]},"name":["library.dynam","base"],"nodeId":"built-in:library.dynam"}]],["install.packages",[{"type":128,"definedAt":"built-in:install.packages","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install.packages","utils"],"nodeId":"built-in:install.packages"}]],["on.exit",[{"type":128,"definedAt":"built-in:on.exit","config":{"hook":"fn-exit","args":{"expr":{"idx":0,"name":"expr"},"add":{"idx":1,"name":"add","default":false},"after":{"idx":2,"name":"after","default":true}},"sig":[["expr",0],["add",0],["after",0]],"props":16384},"name":["on.exit","base"],"nodeId":"built-in:on.exit"}]],["parse",[{"type":128,"definedAt":"built-in:parse","config":{"props":16385,"sig":[["...",1]]},"name":["parse","base"],"nodeId":"built-in:parse"}]],["list.files",[{"type":128,"definedAt":"built-in:list.files","config":{"tags":["file","reads","glob"],"sig":[["path",65]],"props":16384},"name":["list.files","base"],"nodeId":"built-in:list.files"}]],["dir",[{"type":128,"definedAt":"built-in:dir","config":{"tags":["file","reads","glob"],"sig":[["path",65]],"props":16384},"name":["dir","base"],"nodeId":"built-in:dir"}]],["list.dirs",[{"type":128,"definedAt":"built-in:list.dirs","config":{"tags":["file","reads","glob"],"sig":[["path",65]],"props":16384},"name":["list.dirs","base"],"nodeId":"built-in:list.dirs"}]],["Sys.glob",[{"type":128,"definedAt":"built-in:Sys.glob","config":{"tags":["file","reads","glob"],"sig":[["paths",65]],"props":16384},"name":["Sys.glob","base"],"nodeId":"built-in:Sys.glob"}]],["as.expression",[{"type":128,"definedAt":"built-in:as.expression","config":{"props":2064,"sig":[["...",1]]},"name":["as.expression","base"],"nodeId":"built-in:as.expression"}]],["call",[{"type":128,"definedAt":"built-in:call","config":{"props":18432,"sig":[["...",1]]},"name":["call","base"],"nodeId":"built-in:call"}]],["as.call",[{"type":128,"definedAt":"built-in:as.call","config":{"props":18432,"sig":[["...",1]]},"name":["as.call","base"],"nodeId":"built-in:as.call"}]],["as.name",[{"type":128,"definedAt":"built-in:as.name","config":{"props":18432,"sig":[["...",1]]},"name":["as.name","base"],"nodeId":"built-in:as.name"}]],["as.symbol",[{"type":128,"definedAt":"built-in:as.symbol","config":{"props":18432,"sig":[["...",1]]},"name":["as.symbol","base"],"nodeId":"built-in:as.symbol"}]],["args",[{"type":128,"definedAt":"built-in:args","config":{"props":18432,"sig":[["...",1]]},"name":["args","base"],"nodeId":"built-in:args"}]],["deparse",[{"type":128,"definedAt":"built-in:deparse","config":{"props":18432,"sig":[["...",1]]},"name":["deparse","base"],"nodeId":"built-in:deparse"}]],["enquote",[{"type":128,"definedAt":"built-in:enquote","config":{"props":2048,"sig":[["...",1]]},"name":["enquote","base"],"nodeId":"built-in:enquote"}]],["as.language",[{"type":128,"definedAt":"built-in:as.language","config":{"props":2048,"sig":[["...",1]]},"name":["as.language","base"],"nodeId":"built-in:as.language"}]],["deparse1",[{"type":128,"definedAt":"built-in:deparse1","config":{"props":2048,"sig":[["...",1]]},"name":["deparse1","base"],"nodeId":"built-in:deparse1"}]],["match.call",[{"type":128,"definedAt":"built-in:match.call","config":{"props":18432,"frame":256,"sig":[["...",1]]},"name":["match.call","base"],"nodeId":"built-in:match.call"}]],["sys.call",[{"type":128,"definedAt":"built-in:sys.call","config":{"props":18432,"frame":256,"sig":[["...",1]]},"name":["sys.call","base"],"nodeId":"built-in:sys.call"}]],["sys.calls",[{"type":128,"definedAt":"built-in:sys.calls","config":{"props":18432,"frame":256,"sig":[["...",1]]},"name":["sys.calls","base"],"nodeId":"built-in:sys.calls"}]],["nargs",[{"type":128,"definedAt":"built-in:nargs","config":{"props":18432,"frame":1024,"sig":[["...",1]]},"name":["nargs","base"],"nodeId":"built-in:nargs"}]],["sys.nframe",[{"type":128,"definedAt":"built-in:sys.nframe","config":{"props":18432,"frame":1024,"sig":[["...",1]]},"name":["sys.nframe","base"],"nodeId":"built-in:sys.nframe"}]],["alist",[{"type":128,"definedAt":"built-in:alist","config":{"props":2048,"sig":[["...",256]]},"name":["alist","base"],"nodeId":"built-in:alist"}]],["evalq",[{"type":128,"definedAt":"built-in:evalq","config":{"props":18432,"tags":["eval"],"sig":[["expr",33024],["envir",9]]},"name":["evalq","base"],"nodeId":"built-in:evalq"}]],["eval.parent",[{"type":128,"definedAt":"built-in:eval.parent","config":{"props":2048,"tags":["eval"],"sig":[["expr",32777],["n",9]]},"name":["eval.parent","base"],"nodeId":"built-in:eval.parent"}]],["dyn.load",[{"type":128,"definedAt":"built-in:dyn.load","config":{"props":17408,"sig":[["...",1]]},"name":["dyn.load","base"],"nodeId":"built-in:dyn.load"}]],["getNativeSymbolInfo",[{"type":128,"definedAt":"built-in:getNativeSymbolInfo","config":{"props":17408,"sig":[["...",1]]},"name":["getNativeSymbolInfo","base"],"nodeId":"built-in:getNativeSymbolInfo"}]],["getOption",[{"type":128,"definedAt":"built-in:getOption","config":{"props":16640,"sig":[["...",1]]},"name":["getOption","base"],"nodeId":"built-in:getOption"}]],["Sys.getenv",[{"type":128,"definedAt":"built-in:Sys.getenv","config":{"props":16640,"sig":[["...",1]]},"name":["Sys.getenv","base"],"nodeId":"built-in:Sys.getenv"}]],["Sys.info",[{"type":128,"definedAt":"built-in:Sys.info","config":{"props":16640,"sig":[["...",1]]},"name":["Sys.info","base"],"nodeId":"built-in:Sys.info"}]],["Sys.getpid",[{"type":128,"definedAt":"built-in:Sys.getpid","config":{"props":16640,"sig":[["...",1]]},"name":["Sys.getpid","base"],"nodeId":"built-in:Sys.getpid"}]],["getwd",[{"type":128,"definedAt":"built-in:getwd","config":{"props":16640,"sig":[["...",1]]},"name":["getwd","base"],"nodeId":"built-in:getwd"}]],["R.Version",[{"type":128,"definedAt":"built-in:R.Version","config":{"props":16640,"sig":[["...",1]]},"name":["R.Version","base"],"nodeId":"built-in:R.Version"}]],["Sys.time",[{"type":128,"definedAt":"built-in:Sys.time","config":{"props":16640,"sig":[["...",1]]},"name":["Sys.time","base"],"nodeId":"built-in:Sys.time"}]],["Sys.timezone",[{"type":128,"definedAt":"built-in:Sys.timezone","config":{"props":16640,"sig":[["...",1]]},"name":["Sys.timezone","base"],"nodeId":"built-in:Sys.timezone"}]],["date",[{"type":128,"definedAt":"built-in:date","config":{"props":16640,"sig":[["...",1]]},"name":["date","base"],"nodeId":"built-in:date"}]],["proc.time",[{"type":128,"definedAt":"built-in:proc.time","config":{"props":16640,"sig":[["...",1]]},"name":["proc.time","base"],"nodeId":"built-in:proc.time"}]],["interactive",[{"type":128,"definedAt":"built-in:interactive","config":{"props":16640,"sig":[["...",1]]},"name":["interactive","base"],"nodeId":"built-in:interactive"}]],["getRversion",[{"type":128,"definedAt":"built-in:getRversion","config":{"props":256,"sig":[["...",1]]},"name":["getRversion","base"],"nodeId":"built-in:getRversion"}]],["Sys.Date",[{"type":128,"definedAt":"built-in:Sys.Date","config":{"props":256,"sig":[["...",1]]},"name":["Sys.Date","base"],"nodeId":"built-in:Sys.Date"}]],["commandArgs",[{"type":128,"definedAt":"built-in:commandArgs","config":{"props":16640,"tags":["command-line"],"sig":[["...",1]]},"name":["commandArgs","base"],"nodeId":"built-in:commandArgs"}]],["system",[{"type":128,"definedAt":"built-in:system","config":{"tags":["process"],"sig":[["command",32777],["intern",33],["ignore.stdout",33],["ignore.stderr",33],["wait",33],["input",9],["show.output.on.console",32],["minimized",32],["invisible",32],["timeout",9]],"props":16384},"name":["system","base"],"nodeId":"built-in:system"}]],["system2",[{"type":128,"definedAt":"built-in:system2","config":{"tags":["process"],"sig":[["command",32777],["args",32777],["stdout",9],["stderr",9],["stdin",8],["input",9],["env",9],["wait",33],["minimized",32],["invisible",32],["timeout",9]],"props":16384},"name":["system2","base"],"nodeId":"built-in:system2"}]],["shell",[{"type":128,"definedAt":"built-in:shell","config":{"tags":["process"],"sig":[["cmd",32777],["shell",9],["flag",9],["intern",33],["wait",33],["translate",33],["mustWork",32],["...",9]]},"name":["shell","base"],"nodeId":"built-in:shell"}]],["shell.exec",[{"type":128,"definedAt":"built-in:shell.exec","config":{"tags":["process"],"sig":[["file",32833]]},"name":["shell.exec","base"],"nodeId":"built-in:shell.exec"}]],["pipe",[{"type":128,"definedAt":"built-in:pipe","config":{"tags":["opens-handle","process"],"sig":[["description",32833],["open",33],["encoding",9]],"props":16384},"name":["pipe","base"],"nodeId":"built-in:pipe"}]],["readline",[{"type":128,"definedAt":"built-in:readline","config":{"tags":["asks-user"],"sig":[["...",1]],"props":16384},"name":["readline","base"],"nodeId":"built-in:readline"}]],["file.choose",[{"type":128,"definedAt":"built-in:file.choose","config":{"tags":["asks-user"],"sig":[["...",1]],"props":16384},"name":["file.choose","base"],"nodeId":"built-in:file.choose"}]],["askYesNo",[{"type":128,"definedAt":"built-in:askYesNo","config":{"tags":["asks-user"],"sig":[["...",1]]},"name":["askYesNo","utils"],"nodeId":"built-in:askYesNo"}]],["choose.files",[{"type":128,"definedAt":"built-in:choose.files","config":{"tags":["asks-user"],"sig":[["...",1]]},"name":["choose.files","utils"],"nodeId":"built-in:choose.files"}]],["choose.dir",[{"type":128,"definedAt":"built-in:choose.dir","config":{"tags":["asks-user"],"sig":[["...",1]]},"name":["choose.dir","utils"],"nodeId":"built-in:choose.dir"}]],["menu",[{"type":128,"definedAt":"built-in:menu","config":{"tags":["asks-user"],"sig":[["...",1]]},"name":["menu","utils"],"nodeId":"built-in:menu"}]],["select.list",[{"type":128,"definedAt":"built-in:select.list","config":{"tags":["asks-user"],"sig":[["...",1]]},"name":["select.list","utils"],"nodeId":"built-in:select.list"}]],["winDialogString",[{"type":128,"definedAt":"built-in:winDialogString","config":{"tags":["asks-user"],"sig":[["...",1]]},"name":["winDialogString","utils"],"nodeId":"built-in:winDialogString"}]],["winDialog",[{"type":128,"definedAt":"built-in:winDialog","config":{"tags":["asks-user"],"sig":[["...",1]]},"name":["winDialog","utils"],"nodeId":"built-in:winDialog"}]],["tempfile",[{"type":128,"definedAt":"built-in:tempfile","config":{"tags":["temp-file"],"sig":[["...",1]],"props":16384},"name":["tempfile","base"],"nodeId":"built-in:tempfile"}]],["tempdir",[{"type":128,"definedAt":"built-in:tempdir","config":{"tags":["temp-file"],"sig":[["...",1]],"props":16384},"name":["tempdir","base"],"nodeId":"built-in:tempdir"}]],["[<-",[{"type":128,"definedAt":"built-in:[<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"[","nodeId":"built-in:[<-"}]],["[<<-",[{"type":128,"definedAt":"built-in:[<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"[","nodeId":"built-in:[<<-"}]],["[[<-",[{"type":128,"definedAt":"built-in:[[<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"[[","nodeId":"built-in:[[<-"}]],["[[<<-",[{"type":128,"definedAt":"built-in:[[<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"[[","nodeId":"built-in:[[<<-"}]],["names<-",[{"type":128,"definedAt":"built-in:names<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["names","base"],"nodeId":"built-in:names<-"}]],["names<<-",[{"type":128,"definedAt":"built-in:names<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["names","base"],"nodeId":"built-in:names<<-"}]],["dimnames<-",[{"type":128,"definedAt":"built-in:dimnames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["dimnames","base"],"nodeId":"built-in:dimnames<-"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in:dimnames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["dimnames","base"],"nodeId":"built-in:dimnames<<-"}]],["attributes<-",[{"type":128,"definedAt":"built-in:attributes<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["attributes","base"],"nodeId":"built-in:attributes<-"}]],["attributes<<-",[{"type":128,"definedAt":"built-in:attributes<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["attributes","base"],"nodeId":"built-in:attributes<<-"}]],["attr<-",[{"type":128,"definedAt":"built-in:attr<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["attr","base"],"nodeId":"built-in:attr<-"}]],["attr<<-",[{"type":128,"definedAt":"built-in:attr<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["attr","base"],"nodeId":"built-in:attr<<-"}]],["class<-",[{"type":128,"definedAt":"built-in:class<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["class","base"],"nodeId":"built-in:class<-"}]],["class<<-",[{"type":128,"definedAt":"built-in:class<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["class","base"],"nodeId":"built-in:class<<-"}]],["levels<-",[{"type":128,"definedAt":"built-in:levels<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["levels","base"],"nodeId":"built-in:levels<-"}]],["levels<<-",[{"type":128,"definedAt":"built-in:levels<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["levels","base"],"nodeId":"built-in:levels<<-"}]],["rownames<-",[{"type":128,"definedAt":"built-in:rownames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["rownames","base"],"nodeId":"built-in:rownames<-"}]],["rownames<<-",[{"type":128,"definedAt":"built-in:rownames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["rownames","base"],"nodeId":"built-in:rownames<<-"}]],["colnames<-",[{"type":128,"definedAt":"built-in:colnames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["colnames","base"],"nodeId":"built-in:colnames<-"}]],["colnames<<-",[{"type":128,"definedAt":"built-in:colnames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["colnames","base"],"nodeId":"built-in:colnames<<-"}]],["body<-",[{"type":128,"definedAt":"built-in:body<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["body","base"],"nodeId":"built-in:body<-"}]],["body<<-",[{"type":128,"definedAt":"built-in:body<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["body","base"],"nodeId":"built-in:body<<-"}]],["environment<-",[{"type":128,"definedAt":"built-in:environment<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["environment","base"],"nodeId":"built-in:environment<-"}]],["environment<<-",[{"type":128,"definedAt":"built-in:environment<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["environment","base"],"nodeId":"built-in:environment<<-"}]],["formals<-",[{"type":128,"definedAt":"built-in:formals<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["formals","base"],"nodeId":"built-in:formals<-"}]],["formals<<-",[{"type":128,"definedAt":"built-in:formals<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["formals","base"],"nodeId":"built-in:formals<<-"}]],["length<-",[{"type":128,"definedAt":"built-in:length<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["length","base"],"nodeId":"built-in:length<-"}]],["length<<-",[{"type":128,"definedAt":"built-in:length<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["length","base"],"nodeId":"built-in:length<<-"}]],["dim<-",[{"type":128,"definedAt":"built-in:dim<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["dim","base"],"nodeId":"built-in:dim<-"}]],["dim<<-",[{"type":128,"definedAt":"built-in:dim<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["dim","base"],"nodeId":"built-in:dim<<-"}]],["$<-",[{"type":128,"definedAt":"built-in:$<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"$","nodeId":"built-in:$<-"}]],["$<<-",[{"type":128,"definedAt":"built-in:$<<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"$","nodeId":"built-in:$<<-"}]],["@<-",[{"type":128,"definedAt":"built-in:@<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"@","nodeId":"built-in:@<-"}]],["@<<-",[{"type":128,"definedAt":"built-in:@<<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"@","nodeId":"built-in:@<<-"}]],["filter",[{"type":128,"definedAt":"built-in:filter","config":{"props":1,"sig":[["x",9],["filter",9],["method",33],["sides",9],["circular",33],["init",9]]},"name":["filter","stats"],"nodeId":"built-in:filter"}]],["step",[{"type":128,"definedAt":"built-in:step","config":{"tags":["prints"],"sig":[["object",9],["scope",9],["scale",9],["direction",33],["trace",33],["steps",9],["k",9]]},"name":["step","stats"],"nodeId":"built-in:step"}]],["`%@%`",[{"type":128,"definedAt":"built-in:`%@%`","config":{"tags":["deprecated"]},"name":"`%@%`","nodeId":"built-in:`%@%`"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{"timing":0}}
 ```
 
 
@@ -5681,7 +6078,7 @@ _As the information is pretty long, we inhibit pretty printing and syntax highli
 
 You may be interested in its implementation:
 
- * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L181)**   
+ * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L224)**   
    The dataflow information is one of the fundamental structures we have in the dataflow analysis.
    It is continuously updated during the dataflow analysis
    and holds its current state for the respective subtree processed.
@@ -5690,7 +6087,7 @@ You may be interested in its implementation:
    You may initialize a new dataflow information with
    <code>DataflowInformation.initialize</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L181">src/dataflow/info.ts#L181</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L224">src/dataflow/info.ts#L224</a></summary>
    
    
    ```ts
@@ -5732,6 +6129,11 @@ You may be interested in its implementation:
         * @see {@link KillReference}
         */
        kill?:             readonly KillReference[]
+       /**
+        * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+        * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+        */
+       cutShort?:         DataflowBudgetExhaustion
    }
    ```
    
@@ -5740,9 +6142,9 @@ You may be interested in its implementation:
    
     <details><summary>View more (DataflowCfgInformation)</summary>
 
-   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L158)**   
+   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L187)**   
      The control flow information for the current DataflowInformation.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L158">src/dataflow/info.ts#L158</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L187">src/dataflow/info.ts#L187</a></summary>
      
      
      ```ts
@@ -5750,6 +6152,20 @@ You may be interested in its implementation:
      export interface DataflowCfgInformation {
          /** The entry node into the subgraph */
          entryPoint: NodeId,
+         /**
+          * The node control flow enters this subtree at.
+          * Control flow is modeled in post-order (operands are evaluated before the operator that consumes them),
+          * so for compound constructs this is not the {@link DataflowCfgInformation#entryPoint|entryPoint}
+          * (which names the value-producing node) but the first node that is actually evaluated.
+          * Left `undefined` whenever both coincide, which is the case for all leaves.
+          */
+         cfgEntry?:  NodeId,
+         /**
+          * The node control flow leaves this subtree at, joining the branches of the construct if it has any.
+          * Left `undefined` whenever the {@link DataflowCfgInformation#exitPoints|exitPoints} already name it,
+          * which is the case whenever the construct has a single point of exit.
+          */
+         cfgExit?:   NodeId,
          /**
           * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
           * This also tracks (local knowledge of) exceptions thrown within the structure.
@@ -5767,7 +6183,7 @@ You may be interested in its implementation:
 
     </details>
 
-Let's start by looking at the properties of the dataflow information object: `unknownReferences`, `in`, `out`, `environment`, `graph`, `entryPoint`, `exitPoints`, `hooks`, `kill`, `cfgQuick`, `.meta`.
+Let's start by looking at the properties of the dataflow information object: `unknownReferences`, `in`, `out`, `environment`, `graph`, `entryPoint`, `cfgEntry`, `cfgExit`, `exitPoints`, `hooks`, `kill`, `.meta`.
 
 
 
@@ -5788,7 +6204,7 @@ A summarized version of the produced environment looks like this:
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (1297 entries)_
+_Built-in Environment (645 entries)_
 
 </details>
 
@@ -5808,8 +6224,9 @@ Attaching inside a function propagates to the caller (R attaches globally), and 
 Last but not least, the information contains the single **entry point** (2) and a set of **exit points** ([5]). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 
-Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L149"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
-It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L137"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
+Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L178"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
+It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L157"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
+A definition that such a removal undid is dropped from the outgoing references, so `x <- 1; rm(x)` has an empty **out** set (a conditional removal keeps the now maybe-defined `x`).
 
 ### Unknown Side Effects
 
@@ -5825,7 +6242,6 @@ In the following graph, _flowR_ realizes that it is unable to correctly handle t
 flowchart LR
     1{{"`*#91;RString#93;* **#34;file#34;**
       *1.6-11* (**id: 1**)`"}}
-   %% No edges found for 1
     3[["`*#91;RFunctionCall#93;* base#58;#58;**load**
       *1.1-12* (**id: 3**)
     arg: (1)`"]]
@@ -5835,10 +6251,8 @@ load`"]
     style built-in:load stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     5(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 5**)`"])
-   %% No edges found for 5
     6(["`*#91;RSymbol#93;* **y**
       *2.11* (**id: 6**)`"])
-   %% No edges found for 6
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.7-11* (**id: 7**)
     arg: (5, 6)`"]]
@@ -5851,16 +6265,26 @@ load`"]
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
     3 -->|"arg"| 1
     3 -.->|"reads, calls"| built-in:load
-    linkStyle 1 stroke:gray;
+    linkStyle 2 stroke:gray;
+    3 -.->|"flow"| 5
+    linkStyle 3 stroke:gray,color:gray;
+    5 -.->|"flow"| 6
+    linkStyle 4 stroke:gray,color:gray;
+    6 -.->|"flow"| 7
+    linkStyle 5 stroke:gray,color:gray;
     7 -->|"reads, arg"| 5
     7 -->|"reads, arg"| 6
     7 -.->|"reads, calls"| built-in:_
-    linkStyle 4 stroke:gray;
+    linkStyle 8 stroke:gray;
+    7 -.->|"flow"| 9
+    linkStyle 9 stroke:gray,color:gray;
     9 -->|"reads, returns, arg"| 7
     9 -.->|"reads, calls"| built-in:print
-    linkStyle 6 stroke:gray;
+    linkStyle 11 stroke:gray;
 ```
 
 	
@@ -5887,7 +6311,7 @@ In general, as we cannot handle these correctly, we leave it up to other analyse
 as they see fit.
 
 The `load` call above degrades to an unknown side effect only because the file could not be found.
-When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L210"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L40"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
+When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L289"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L40"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
 You can disable this and always treat `load` as an unknown side effect with the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Whether load calls should be ignored, causing {@link processLoadCall}&#39;s behavior to be skipped.">ignoreLoadCalls</a> configuration option.
 
 #### Linked Unknown Side Effects
@@ -5916,7 +6340,6 @@ plot`"]
     style built-in:plot stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     5(["`*#91;RSymbol#93;* **data2**
       *2.8-12* (**id: 5**)`"])
-   %% No edges found for 5
     7[["`*#91;RFunctionCall#93;* graphics#58;#58;**points**
       *2.1-13* (**id: 7**)
     arg: (5)`"]]
@@ -5925,12 +6348,18 @@ points`"]
     style built-in:points stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"reads"| built-in:data
     linkStyle 0 stroke:gray;
+    1 -.->|"flow"| 3
+    linkStyle 1 stroke:gray,color:gray;
     3 -->|"reads, arg"| 1
     3 -.->|"reads, calls"| built-in:plot
-    linkStyle 2 stroke:gray;
+    linkStyle 3 stroke:gray;
+    3 -.->|"flow"| 5
+    linkStyle 4 stroke:gray,color:gray;
+    5 -.->|"flow"| 7
+    linkStyle 5 stroke:gray,color:gray;
     7 -->|"reads, arg"| 5
     7 -.->|"reads, calls"| built-in:points
-    linkStyle 4 stroke:gray;
+    linkStyle 7 stroke:gray;
     7 -->|"reads"| 3
 ```
 
@@ -5939,7 +6368,7 @@ points`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _5.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
 
@@ -5962,14 +6391,14 @@ Additionally, we express this by a [`reads`](#reads) edge.
 
 For certain questions, handling the *full* dataflow graph may be too complex or unnecessary, given that you might have to consider edge interactions, or trace
 transitive relationships by yourself.
-Perspectives are simplified views on the dataflow graph, tailored to specific questions, which still comply with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L264"><code><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></code></a> interface
+Perspectives are simplified views on the dataflow graph, tailored to specific questions, which still comply with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L188"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a> interface
 so you can use them as drop-in replacements for the full dataflow graph. Although, please be aware that this does not mean that every function will work correctly&mdash;a
 call graph will no longer contain information on variables, for example.
 
 <h3 id="perspectives-cg">Call Graphs</h3>
 
 These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L27"><code><span title="A call graph is a dataflow graph where all vertices are function calls. You can create a call graph from a dataflow graph using CallGraph.compute . If you want to extract a sub call graph, use CallGraph.computeSubCallGraph .">CallGraph</span></code></a> type.
-It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L342"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
+It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L357"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
 These graphs only contain function definitions and function calls as vertices, and [`calls`](#calls) edges.
 Consider the following example:
 
@@ -6028,7 +6457,7 @@ function`"]
 
 <summary style="color:gray">R Code of the Call Graph</summary>
 
-The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -6086,7 +6515,7 @@ assign`"]
 
 <summary style="color:gray">R Code of the Call Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -6111,7 +6540,6 @@ Here, `unknown` is a function call, while it is a symbol in the full dataflow gr
 flowchart LR
     1(["`*#91;RSymbol#93;* **unknown**
       *1.10-16* (**id: 1**)`"])
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **alias**
       *1.1-5* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -6126,12 +6554,16 @@ flowchart LR
     %%   alias: {**alias** (id: 0, type: Unknown, def. @2)}
     4[["`*#91;RFunctionCall#93;* **alias**
       *2.1-7* (**id: 4**)`"]]
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
     4 -->|"reads"| 0
 ```
 
@@ -6140,7 +6572,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -6158,26 +6590,27 @@ alias()
 
 <h2 id="dfg-working">Working with the Dataflow Graph</h2>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L181"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L224"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
-Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L34"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.views - for working with specific views of the dataflow graph (e.g., the call graph), - Dataflow.edge - for working with the edges in the dataflow graph, - Dataflow.qualify - for the package-qualified pkg::fn identifier of a call ...">Dataflow</span></code></a> helper object!
+Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/gas.ts#L30"><code><span title="Gas key for dataflow extraction. Unlike the keys above it is *armed* once per run (see ReadOnlyFlowrAnalyzerGasContext.budget ) and counted as the fold goes.">Dataflow</span></code></a> helper object!
 
 * The **[Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **[Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L117"><code><span title="Recovers the lexeme of a node from its id in the id map .">recoverName</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L124"><code><span title="Recovers the content of a node from its id in the dataflow graph .">recoverContent</span></code></a> to get the name or content of a vertex in the dataflow graph
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L162"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L119"><code><span title="Gets the definitions / aliases of a node This function is called by the built-in-assignment processor so that we can track assignments inside the environment. The returned ids are stored in the sourceIds value field of their InGraphIdentifierDefinition. This enables us later, in the trackAliasInEnvironments function, to get all the aliases of an identifier.">getAliases</span></code></a> to get all (potentially currently) aliases of a given definition
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/identify-link-to-last-call-relation.ts#L101"><code><span title="Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.">getValueOfArgument</span></code></a> to get the (syntactical) value of an argument in a function call 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
+* The [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) is a view on this graph, so <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L509"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). Edges are in flow order: an edge from a to b means that b is evaluated after a. Reading them backwards (what leads into a vertex) goes through a reverse index built on the first such read. There are two very simple visitors to ...">ControlFlowGraph</span></code></a> answers what runs before what without a second analysis
 
-FlowR also provides various helper objects (with the same name as the corresponding type) to help you work with the dataflow graph:
+Everything else lives on a helper object named after the thing it works on:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L76"><code><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></code></a> to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L42"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> to get helpful functions wrt. identifiers
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L70"><code><span title="Helper functions to work with FunctionArgument s.">FunctionArgument</span></code></a> to get helpful functions wrt. function arguments
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L29"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Reachable as Dataflow.resolve as well. Take the narrowest entry point that answers your question, they differ a lot in cost: - Resolve.byName walks the environment layers once and answers repeat questions from the layer's own  lookup cache. Use it whenever the ReferenceTyp...">Resolve</span></code></a> (also reachable as `Dataflow.resolve`) to resolve a name against an environment or a node to its value.
-  The entry points differ a lot in cost, so take the narrowest one that answers your question: `byName` walks the environment layers once and is served from the layer cache,
-  `byNameAndType` additionally filters and merges the definitions of every layer it passes, and `toValue` as well as the `argument` family run the evaluator on top of a resolution.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/gas.ts#L30"><code><span title="Gas key for dataflow extraction. Unlike the keys above it is *armed* once per run (see ReadOnlyFlowrAnalyzerGasContext.budget ) and counted as the fold goes.">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L52"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L109"><code><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></code></a> for edges, e.g. `DfEdge.includesType(edge, EdgeType.Reads)` (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L279"><code><span title="Helper object to provide helper functions for RNodes . For the individual type checks, please consult the individual vertices, e.g. RPipe.is . Some vertices also have a RPipe.availableFromRVersion property that indicates from which R version they are available, so you can check for that as well if needed.">RNode</span></code></a> for the nodes behind the vertices, e.g. `RNode.lexeme(graph.idMap?.get(id))` for what a vertex is written as
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L49"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> for identifiers, e.g. `Identifier.toString(vertex.name)`
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L44"><code><span title="Helper functions to work with FunctionArgument s. EmptyArgument marks an empty argument.">FunctionArgument</span></code></a> for the arguments of a call, e.g. `FunctionArgument.isNotEmpty(arg)`
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L37"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a> for everything that resolves, with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L45"><code><span title="Where to resolve, put together from a finished analysis: its graph, its id map and the configuration the analyzer was built with. Hand what this returns to Resolve.toValue and its kin, or to NodeValue , rather than assembling a ResolveInfo by hand.">Resolve::<b>infoOf</b></span></code></a> stating *where* to resolve, straight from an analyzer. Take the narrowest entry point:
+  <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L58"><code><span title="Every definition the identifier may refer to, whatever its type.">Resolve::<b>byName</b></span></code></a> walks the environment layers once, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L60"><code><span title="The definitions the identifier may refer to that fit the wanted ReferenceType .">Resolve::<b>byNameAndType</b></span></code></a> merges the definitions of every layer it passes,
+  and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L68"><code><span title="The value(s) the node may hold, tracking aliases as the configuration allows.">Resolve::<b>toValue</b></span></code></a> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L72"><code><span title="The same, for the arguments of a call.">Resolve::<b>argument</b></span></code></a> run the evaluator on top of a resolution (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L49"><code><span title="R's argument matching, as matchArgumentsToParameters implements it. Pick by what you hold: - toNames - AST arguments and the formal names - toSpec - graph arguments and the formals (a spec or a database signature) - onCallAndLink - as toSpec, and **adds the argument edges to the graph* - toDefinition - only the call, the formals are looked up for you - findWithProps - graph arguments and a built-i...">MatchArgs</span></code></a> (reached as `FunctionSemantics.call.match`) to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+
+These are the ones this page needs; the [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) page lists every helper object flowR has, grouped by what it is about.
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) page.
@@ -6187,14 +6620,31 @@ If you are interested in which features we support and which features are still 
 FlowR supports a [configurable](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value) and backed by two important functions:
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L162"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L638"><code><span title="An environment describes a ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; during serialization use builtInEnvJsonReplacer to avoid inlining it.">REnvironmentInformation</span></code></a>)
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L160"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L658"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
 value resolution depending on if the environment is provided.
-The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L162"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
+The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L160"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)).
 
-Additionally, to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L162"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a>, we offer the aforementioned <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/identify-link-to-last-call-relation.ts#L101"><code><span title="Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.">getValueOfArgument</span></code></a> to retrieve the value of an argument in a function call.
+Additionally, to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L160"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a>, we offer the aforementioned <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/identify-link-to-last-call-relation.ts#L103"><code><span title="Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.">getValueOfArgument</span></code></a> to retrieve the value of an argument in a function call.
 Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](https://github.com/flowr-analysis/flowr/issues/new/choose) to request support for resolving
 multiple arguments at once.
+
+<h3 id="dfg-matching-arguments">Matching Arguments to Parameters</h3>
+
+R does not bind a call's arguments to the formals left to right. An exactly named argument takes its formal, then a
+uniquely abbreviated one does (`pmatch`), then the rest fill what is still free until `...`, and whatever is
+left over goes to `...`. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/arg-matching.ts#L24"><code><span title="Bind the arguments of a call to the formal parameters of the called function, following R's argument matching rules (see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching): 1. every named argument that *exactly* matches a formal takes it, 2. every remaining named argument that is a *unique prefix* of a still-free formal takes it (pmatch),  judged against the formals step 1 left ...">matchArgumentsToParameters</span></code></a> is that algorithm, and
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L49"><code><span title="R's argument matching, as matchArgumentsToParameters implements it. Pick by what you hold: - toNames - AST arguments and the formal names - toSpec - graph arguments and the formals (a spec or a database signature) - onCallAndLink - as toSpec, and **adds the argument edges to the graph* - toDefinition - only the call, the formals are looked up for you - findWithProps - graph arguments and a built-i...">MatchArgs</span></code></a> is how you ask for it:
+
+| Use case | member |
+|----------|--------|
+| AST arguments and the formal names | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L59"><code><span title="Binds a call's AST args to the formal paramNames. An empty argument (f(1, ,3)) takes its formal but never appears here. Arguments falling to ... share that key, so only the last survives; use MatchArgs.toSpec to keep them all.">MatchArgs::<b>toNames</b></span></code></a> |
+| graph arguments and the formals (a spec, or a database signature) | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L70"><code><span title="Binds a call's graph args against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. Name '...' in a specification unless the function really has none, as that is what collects arguments finding no formal of their own.">MatchArgs::<b>toSpec</b></span></code></a> |
+| graph arguments and the callee's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L10"><code><span title="Represents a parameter of a function definition in R.">RParameter</span></code></a>s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L105"><code><span title="Binds a call's graph args to the params of the definition it calls **and mutates graph**, adding an EdgeType.DefinesOnCall and a EdgeType.DefinedByOnCall edge per bound pair. It is the only member here that writes anything.">MatchArgs::<b>onCallAndLink</b></span></code></a> |
+| only the call, the formals are looked up for you | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L141"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> |
+
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L141"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> takes the formals from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L16"><code><span title="  function(<parameters>) <body>   or:   \\(<parameters>) <body>  ">RFunctionDefinition</span></code></a> the call
+resolves to in user code, and from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) otherwise.
 
 <h3 id="dfg-assess-edge">Assessing Edges</h3>
 
@@ -6210,17 +6660,18 @@ Consider the following example:
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
       *1.7* (**id: 1**)`"])
-   %% No edges found for 1
     3[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *1.1-8* (**id: 3**)
     arg: (1)`"]]
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
     3 -->|"reads, returns, arg"| 1
-    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     3 -.->|"reads, calls"| built-in:print
-    linkStyle 1 stroke:gray;
+    linkStyle 2 stroke:gray;
 ```
 
 	
@@ -6228,7 +6679,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
 
@@ -6244,18 +6695,18 @@ print(x)
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
 `73`&mdash;which is usually not very helpful.
-You can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L98"><code><span title="Takes joint edge types and splits them into their individual components.">DfEdge::<b>splitTypes</b></span></code></a> to get the individual bitmasks of all included types, and 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L125"><code><span title="Check if the given-edge type has any of the given types. As types are bitmasks, you can combine multiple types with a bitwise OR (|).">DfEdge::<b>includesType</b></span></code></a> to check whether a specific type (or one of a collection of types) is included in the edge.
+You can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L131"><code><span title="Takes joint edge types and splits them into their individual components.">DfEdge::<b>splitTypes</b></span></code></a> to get the individual bitmasks of all included types, and 
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L158"><code><span title="Check if the given-edge type has any of the given types. As types are bitmasks, you can combine multiple types with a bitwise OR (|).">DfEdge::<b>includesType</b></span></code></a> to check whether a specific type (or one of a collection of types) is included in the edge.
 
 <h3 id="dfg-handling-origins">Handling Origins</h3>
 
 If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
 that are called by an invocation, and more.
-For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (this is also accessible with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L69"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function provides you with a collection of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L78"><code>Origin</code></a> objects:
+For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (this is also accessible with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L52"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function provides you with a collection of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73"><code>Origin</code></a> objects:
 
- * [Origin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L78)   
+ * [Origin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73)   
  
-   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L78">src/dataflow/origin/dfg-get-origin.ts#L78</a></summary>
+   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73">src/dataflow/origin/dfg-get-origin.ts#L73</a></summary>
    
    
    ```ts
@@ -6267,10 +6718,10 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
    
     <details><summary>View more (SimpleOrigin, FunctionCallOrigin, BuiltInFunctionOrigin)</summary>
 
-   * **[SimpleOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L35)**   
+   * **[SimpleOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31)**   
      An origin that indicates that the definition is read, written, or simply a constant.
      These origins only reference the 'direct' dependencies. There is no transitivity.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L35">src/dataflow/origin/dfg-get-origin.ts#L35</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31">src/dataflow/origin/dfg-get-origin.ts#L31</a></summary>
      
      
      ```ts
@@ -6296,9 +6747,9 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      
      </details>
      
-   * **[FunctionCallOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L17)**   
+   * **[FunctionCallOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13)**   
    
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L17">src/dataflow/origin/dfg-get-origin.ts#L17</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13">src/dataflow/origin/dfg-get-origin.ts#L13</a></summary>
      
      
      ```ts
@@ -6310,9 +6761,9 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      
       <details><summary>View more (OriginType)</summary>
 
-     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14)**   
+     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10)**   
      
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14">src/dataflow/origin/dfg-get-origin.ts#L14</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10">src/dataflow/origin/dfg-get-origin.ts#L10</a></summary>
        
        
        ```ts
@@ -6330,9 +6781,9 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
        
 
       </details>
-   * **[BuiltInFunctionOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L18)**   
+   * **[BuiltInFunctionOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14)**   
    
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L18">src/dataflow/origin/dfg-get-origin.ts#L18</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14">src/dataflow/origin/dfg-get-origin.ts#L14</a></summary>
      
      
      ```ts
@@ -6344,9 +6795,9 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      
       <details><summary>View more (OriginType)</summary>
 
-     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14)**   
+     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10)**   
      
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14">src/dataflow/origin/dfg-get-origin.ts#L14</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10">src/dataflow/origin/dfg-get-origin.ts#L10</a></summary>
        
        
        ```ts
@@ -6369,14 +6820,14 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
 
 Their respective uses are documented alongside their implementation:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L18"><code>BuiltInFunctionOrigin</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14"><code>BuiltInFunctionOrigin</code></a>\
 This is similar to a
 <code>FunctionCallOrigin</code>
 , but used for built-in functions that have no direct correspondence in the dataflow graph.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L17"><code>FunctionCallOrigin</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13"><code>FunctionCallOrigin</code></a>\
 Determines the (transitive) origin of a function call (i.e., all anonymous function definitions within the program that
 can be called).
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L35"><code><span title="An origin that indicates that the definition is read, written, or simply a constant. These origins only reference the 'direct' dependencies. There is no transitivity.">SimpleOrigin</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31"><code><span title="An origin that indicates that the definition is read, written, or simply a constant. These origins only reference the 'direct' dependencies. There is no transitivity.">SimpleOrigin</span></code></a>\
 An origin that indicates that the definition is read, written, or simply a constant.
 These origins only reference the 'direct' dependencies. There is no transitivity.
 

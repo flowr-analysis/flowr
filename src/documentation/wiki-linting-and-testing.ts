@@ -10,24 +10,12 @@ import {
 } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
 import { getCliLongOptionOf } from './doc-util/doc-cli-option';
-import replacementPatterns from '@eagleoutice/eslint-config-flowr/patterns';
 import { DfEdge } from '../dataflow/graph/edge';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 
-
-/** the default patterns of `flowr/replacement-pattern`, rendered so the wiki cannot drift from the configuration */
-/** two of the default patterns, kept generated so the wiki cannot drift from the configuration */
-function patternExamples(): string {
-	const shown = ['edge-is-only-type', 'vertex-is'];
-	const cell = (text: string): string => text.replaceAll('|', '\\|');
-	const rows = replacementPatterns.filter(p => p.id !== undefined && shown.includes(p.id)).map(
-		p => `| \`${p.id as string}\` | ${cell(p.message ?? '')} | \`${cell(p.replace)}\` |`
-	);
-	return ['| id | what it says | replacement |', '| :-- | :-- | :-- |', ...rows].join('\n');
-}
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
@@ -310,10 +298,7 @@ Never reported are the references that make the replacement exist: the wiring in
 Some replacements are a shape of code rather than a renamed function, such as \`edge.types === EdgeType.Reads\`, which
 reads like "has this type" (${ctx.linkO(DfEdge, 'includesType')}) but holds only if it is the *only* type
 (${ctx.linkO(DfEdge, 'isOnlyType')}). These are matched with [esquery](https://github.com/estools/esquery) selectors,
-the language \`no-restricted-syntax\` uses. Two of the ${replacementPatterns.length} that ship, the rest are in
-[\`patterns.ts\`](${FlowrGithubBaseRef}/flowr-lint/blob/main/patterns.ts):
-
-${patternExamples()}
+the language \`no-restricted-syntax\` uses.
 
 The [flowr-lint README](${FlowrGithubBaseRef}/flowr-lint#flowrreplacement-pattern) documents the fields of a pattern,
 and \`npx eslint\` names the id of whichever one fires.

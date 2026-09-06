@@ -192,14 +192,14 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 	});
 }));
 
-function createImportedFunctions(a: [string, string[]][]): string[]{
+function createImportedFunctions(a: [string, string[]][]): string[] {
 	let res: string[] = [];
-	for(const [dependency, functions] of a){
+	for(const [dependency, functions] of a) {
 		res = res.concat(functions.map(f => Package.functionIdentifier(dependency, f)));
 	}
 	return res;
 }
 
-function compare<T>(s1: Set<T>, s2: Set<T>){
+function compare<T>(s1: Set<T>, s2: Set<T>) {
 	return s1.difference(s2).size === 0 && s2.difference(s1).size === 0;
 }

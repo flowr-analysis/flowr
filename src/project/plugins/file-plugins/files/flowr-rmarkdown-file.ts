@@ -23,6 +23,7 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	/**
 	 * Prefer the static {@link FlowrRMarkdownFile.from} method
 	 * @param file - the file to load as R Markdown
+	 * @param ctx  - the analyzer context the chunks are read with
 	 */
 	constructor(file: FlowrFileProvider<string>, ctx: FlowrAnalyzerContext) {
 		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
@@ -64,8 +65,8 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	}
 
 	/**
- 	* Postprocess blocks with options like child='other.Rmd'
-  */
+	 * Postprocess blocks with options like child='other.Rmd'
+	 */
 	private postProcessCodeBlocks() {
 		guard(this.data !== undefined);
 
@@ -106,7 +107,16 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		return this.included;
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile, ctx: FlowrAnalyzerContext): FlowrRMarkdownFile {
+	/**
+	 * Lifts a file to a {@link FlowrRMarkdownFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already an R Markdown file
+	 * @param ctx  - The analyzer context the chunks are read with
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile, ctx: FlowrAnalyzerContext, role?: FileRole): FlowrRMarkdownFile {
+		if(role) {
+			file.assignRole(role);
+		}
 		return file instanceof FlowrRMarkdownFile ? file : new FlowrRMarkdownFile(file, ctx);
 	}
 }
@@ -173,7 +183,7 @@ export function globalChunkOptions(frontmatter: object): CodeBlockOptions {
 /**
  * Parse the contents of a RMarkdown file into complete code and blocks
  * @param raw - the raw file content
- * @returns Rmd Info
+ * @returns   Rmd Info
  */
 export function parseRMarkdownFile(raw: string): RmdInfo {
 	// Read and Parse Markdown

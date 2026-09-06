@@ -18,7 +18,7 @@ describe('Dataflow Plot Dependencies', { concurrent: false }, withShell(shell =>
 			.constant('1@2')
 			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true, origin: [BuiltInProcName.Assignment], reads: [NodeId.toBuiltIn('<-'), 1] })
 			.calls('1@<-', NodeId.toBuiltIn('<-'))
-			.reads('2@x', '1@x')
+			.nse('2@rm', '2@x')
 			.use('3@x'),
 		{
 			resolveIdsAsCriterion: true

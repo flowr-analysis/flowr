@@ -4,7 +4,7 @@ import { FlowrConfig } from '../../../src/config';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
 
 function contextWith(...packages: Package[]): FlowrAnalyzerContext {
-	const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+	const ctx = new FlowrAnalyzerContext(FlowrConfig.default());
 	for(const p of packages) {
 		ctx.deps.addDependency(p);
 	}

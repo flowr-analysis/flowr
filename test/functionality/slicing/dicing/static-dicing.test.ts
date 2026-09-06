@@ -7,9 +7,10 @@ describe('Static Dicing', withTreeSitter(shell => {
 			shell, 'a <- 3\nb <- 4\nc <- a + b', ['1@a'], ['3@c'],
 			'a <- 3\nc <- a + b');
 
+		/* the operation stays whole, as `c <- b` would compute something the program never does */
 		assertDiced('only b contribution when dicing from b to c',
 			shell, 'a <- 3\nb <- 4\nc <- a + b', ['2@b'], ['3@c'],
-			'b <- 4\nc <- b');
+			'b <- 4\nc <- a + b');
 
 		assertDiced('unrelated start yields empty result',
 			shell, 'a <- 3\nb <- 4\nc <- b + 1', ['1@a'], ['3@c'],

@@ -1,28 +1,13 @@
 import { executeQueriesOfSameType } from '../../query';
-import {
-	DefaultDependencyCategories,
-	type DefaultDependencyCategoryName,
-	type DependenciesQuery,
-	type DependenciesQueryResult,
-	type DependencyCategoryName,
-	type DependencyInfo,
-	getAllCategories,
-	Constant,
-	Unknown
-} from './dependencies-query-format';
+import { DefaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
-import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
-import {
-	type DependencyInfoLinkAttachedInfo,
-	DependencyInfoLinkConstraint,
-	type FunctionInfo
-} from './function-info/function-info';
+import { type DependencyInfoLinkAttachedInfo, DependencyInfoLinkConstraint, type FunctionInfo } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../../dataflow/info';
@@ -34,7 +19,7 @@ import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
-
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * Executes a dependencies query.
@@ -71,7 +56,7 @@ export async function executeDependenciesQuery({
 	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c, v]) => {
 		return [c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)];
 	}));
-	if(query.additionalCategories !== undefined){
+	if(query.additionalCategories !== undefined) {
 		for(const [category, value] of Object.entries(query.additionalCategories)) {
 			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
 			const custom = getFunctionsToCheck(undefined, category, undefined, false, value.functions);
@@ -119,7 +104,7 @@ function makeCallContextQuery(this: void, [kind, functions]: [DependencyCategory
 	}));
 }
 
-function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: object })[] | undefined): NodeId[] | undefined{
+function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: object })[] | undefined): NodeId[] | undefined {
 	if(!linkedIds) {
 		return undefined;
 	}
@@ -129,28 +114,52 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
+/**
+ * The entry to use for a call, out of everything the category declares under that name: several packages may
+ * export the same function with different arguments, so the entry of the package the call resolves to wins.
+ * A call qualified to a package no entry declares is none of them, an unqualified call that cannot be pinned
+ * down goes to the entry of a package the project loads, and only then to the first one able to apply.
+ */
+function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: string | undefined, isLoaded: (pkg: string) => boolean): FunctionInfo | undefined {
+	if(callNamespace !== undefined) {
+		return candidates.find(c => c.package === callNamespace) ?? candidates.find(c => c.package === undefined);
+	} else if(candidates.length === 1) {
+		return candidates[0];
+	}
+	return candidates.find(c => c.package !== undefined && isLoaded(c.package)) ?? candidates[0];
+}
+
 function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
 	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const vars = config.solver.variables;
-	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
+	const functionMap = new Map<string, FunctionInfo[]>();
+	for(const f of functions) {
+		const known = functionMap.get(f.name);
+		if(known) {
+			known.push(f);
+		} else {
+			functionMap.set(f.name, [f]);
+		}
+	}
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	const finalResults: DependencyInfo[] = [];
 	const ictx = data.analyzer.inspectContext();
 	const d = ictx.deps;
+	/* only asked when a name is declared by more than one package, keeping the resolution it may trigger off the common path */
+	let loadedPackages: ReadonlySet<string> | undefined;
+	const isLoadedPackage = (pkg: string) => (loadedPackages ??= new Set(d.getDependencies().map(p => p.name))).has(pkg);
 	const dfg = dataflow.graph;
 	for(const [name, results] of kindEntries) {
 		for(const { id, linkedIds } of results) {
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
-			const info = functionMap.get(name) as FunctionInfo;
 
 			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
-
-			if(info.package !== undefined) {
-				const callNamespace = Identifier.getNamespace(functionName);
-				if(callNamespace !== undefined && callNamespace !== info.package) {
-					continue;
-				}
+			/* aliased into a const the nested checks can capture, as a hoisted declaration would not see the narrowing */
+			const picked = pickFunctionInfo(functionMap.get(name) as readonly FunctionInfo[], Identifier.getNamespace(functionName), isLoadedPackage);
+			if(picked === undefined) {
+				continue;
 			}
+			const info = picked;
 
 			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
 			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
@@ -261,7 +270,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			return undefined;
 		}
 		let get = normalize.idMap.get(id);
-		if(get?.type === RType.Argument) {
+		if(RArgument.is(get)) {
 			get = get.value;
 		}
 		return RNode.lexeme(get);
@@ -285,7 +294,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 		}
 		// collect this one!
 		const vertex = data.dataflow.graph.getVertex(linkedId.id);
-		if(!FunctionCallVertex.is(vertex)) {
+		if(!DfgVertex.isFunctionCall(vertex)) {
 			continue;
 		}
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
@@ -303,7 +312,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 	return map.size ? map : undefined;
 }
 
-function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
+function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: readonly DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	// "If unset or empty, all function types are searched for."
 	if(enabled !== undefined && (enabled?.length === 0 || !enabled.includes(functionFlag))) {
 		return [];

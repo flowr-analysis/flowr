@@ -43,6 +43,25 @@ export interface InvalidationEventReceiver<Content extends StringableContent = S
 }
 
 /**
+ * The {@link InvalidationEventReceiver.receive} of every context that only caches project-wide state: a full
+ * invalidation drops it, a single changed file leaves it valid.
+ * @param target - The receiver whose state is dropped.
+ * @param event  - The invalidation to handle.
+ */
+export function resetOnFullInvalidation(target: { reset(): void }, event: InvalidationEvent): void {
+	const type = event.type;
+	switch(type) {
+		case InvalidationEventType.Full:
+			target.reset();
+			break;
+		case InvalidationEventType.SingleFileInvalidate:
+			break;
+		default:
+			assertUnreachable(type);
+	}
+}
+
+/**
  * Central class for caching analysis results in FlowR.
  */
 export abstract class FlowrCache<Cache> implements InvalidationEventReceiver {

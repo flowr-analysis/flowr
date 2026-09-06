@@ -1,7 +1,8 @@
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import { RemoteFlowrFilePathBaseRef, FlowrSiteBaseRef } from './doc-util/doc-files';
 import { minimumNodeMajor } from '../util/node-version';
+import { linkToPlayground } from './doc-util/doc-playground';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Setup
@@ -14,7 +15,8 @@ export class WikiSetup extends DocMaker<'wiki/Setup.md'> {
 	public text({ ctx }: DocMakerArgs): string {
 		return `
 There are several ways to use _flowR_.
-You can download and build it from source, download the accompanying ${ctx.linkPage('flowr:docker', 'docker image')},
+Want to try it without installing anything? Run code straight away in the ${linkToPlayground('Playground', {})}, or search what _flowR_ knows about R packages in the [Signature Database](${FlowrSiteBaseRef}/wiki/sigdb/).
+Otherwise, you can download and build it from source, download the accompanying ${ctx.linkPage('flowr:docker', 'docker image')},
 or use its ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} and ${ctx.linkPage('flowr:rstudio-addin', 'RStudio Addin')}.
 
 - [🗒️ Using the Visual Studio Code Extension](#-using-the-visual-studio-code-extension)
@@ -24,7 +26,7 @@ or use its ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} and $
 - [📜 Developing for _flowR_](#-developing-for-flowr)
 
 
-If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a 
+If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a
 look at the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md).
 
 ## 🗒️ Using the Visual Studio Code Extension
@@ -111,7 +113,30 @@ For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](${Remo
 
 ### 📦 The Signature Database
 
-_flowR_ resolves \`library(pkg)\`/\`pkg::fn\` calls from a downloaded signature database (\`flowr-sigdb\`); no shards are committed (only the \`sigdb.remote.json\` pointer), everything else is fetched on demand &mdash; see the ${ctx.linkPage('wiki/Signature Database')} page.
+_flowR_ knows the exported functions of thousands of R packages, resolving \`library(pkg)\`/\`pkg::fn\` calls from a downloaded signature database (\`flowr-sigdb\`); no shards are committed (only the \`sigdb.remote.json\` pointer), everything else is fetched on demand. Search it live at [flowr-analysis.github.io/flowr/wiki/sigdb](${FlowrSiteBaseRef}/wiki/sigdb/), try _flowR_ itself in the ${linkToPlayground('Playground', {})} without installing anything, or see the ${ctx.linkPage('wiki/Signature Database')} page for how the database works.
+
+### 📦 Using _flowR_ as a Dependency in Another Project
+
+_flowR_ is published as \`@eagleoutice/flowr\`, but you may want an unreleased branch or a local build instead. Plain \`npm install /path/to/flowr\` (or \`npm link\`) looks like it works, but skips resolving _flowR_'s own dependencies, so the bundled WASM parser fails at runtime with an \`ENOENT\` on \`tree-sitter.wasm\`. Package a tarball instead, which installs like any normal package:
+
+\`\`\`shell
+npm run build:dev
+npm run pack-library
+\`\`\`
+
+This produces \`eagleoutice-flowr-<version>.tgz\` in the repository root. Install it in your project:
+
+\`\`\`shell
+npm install /path/to/flowr/eagleoutice-flowr-<version>.tgz
+\`\`\`
+
+You can also depend on a Git branch directly:
+
+\`\`\`shell
+npm install github:flowr-analysis/flowr#your-branch-name
+\`\`\`
+
+npm clones the repository and runs its \`prepare\` script (\`build:dev\`) before installing it, so it arrives fully built with its own dependencies resolved. Some package managers (npm's own script-approval prompt included, plus pnpm and Yarn PnP) block install/lifecycle scripts by default; approve _flowR_'s if the install warns that they were skipped.
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, _flowR_ is only tested with R versions \`4.x\` and \`3.6.x\`.

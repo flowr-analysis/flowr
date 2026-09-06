@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-23, 13:40:42 UTC (v2.14.3), please do not edit directly._
 <h2 id="Signature Query">Signature Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Inspects the signature database: packages, function signatures, source and documentation links.\
 _This query is requested with the type `signature`._\
-Run in the REPL: `:query @signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--help]`
+Run in the REPL: `:query @signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--cg-max <n>] [--help]`
 
 
 This query is the read-side interface to flowR's [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database)&mdash;the very same database
@@ -59,11 +59,11 @@ Query: **signature** (8 ms)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _source_  R/lead-lag.R:74  [https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74](https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _docs_    [rdrr.io](https://rdrr.io/cran/dplyr/man/lead-lag.html)  [man v1.2.1](https://github.com/cran/dplyr/blob/1.2.1/man/lead-lag.Rd)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _calls_ (6): -, <, abort, shift, check_number_whole, check_dots_empty0\
-_All queries together required ≈8 ms (1ms accuracy, total 8 ms)_
+_All queries together required ≈8 ms (1ms accuracy, total 9 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _8.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _8.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -108,31 +108,26 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       "parameters": [
         {
           "name": "x",
-          "required": true,
-          "forced": false
+          "props": 2
         },
         {
           "name": "n",
-          "required": false,
-          "forced": false,
+          "props": 0,
           "default": "1L"
         },
         {
           "name": "default",
-          "required": false,
-          "forced": false,
+          "props": 0,
           "default": "NULL"
         },
         {
           "name": "order_by",
-          "required": false,
-          "forced": false,
+          "props": 0,
           "default": "NULL"
         },
         {
           "name": "...",
-          "required": true,
-          "forced": false
+          "props": 2
         }
       ],
       "callees": [

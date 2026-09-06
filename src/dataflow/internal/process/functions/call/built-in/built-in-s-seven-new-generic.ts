@@ -6,12 +6,10 @@ import type {
 	PotentiallyEmptyRArgument,
 	RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveFunctionArgument } from './built-in-apply';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -23,10 +21,13 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { isValue } from '../../../../../eval/values/r-value';
-import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
+import { argFor, linkS4Declaration, linkS4Generic } from './built-in-s-four';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
+
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -34,7 +35,9 @@ interface S7GenericDispatchConfig {
 		name:        string,
 		dispatchArg: string | undefined,
 		fun:         string
-	}
+	},
+	/** the call binds the generic under the name it is given, as `setGeneric` does (S7 hands its generic back instead) */
+	binds?: boolean
 }
 
 /**
@@ -59,20 +62,12 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const n = NodeValue.of(genName.info.id, data);
-	const accessedIdentifiers: string[] = [];
-	if(n.type === 'set') {
-		for(const elem of n.elements) {
-			if(elem.type === 'string' && isValue(elem.value)) {
-				accessedIdentifiers.push(elem.value.str);
-			}
-		}
-	}
+	const accessedIdentifiers = NodeValue.knownStringsOf(genName.info.id, data);
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s7 new_generic non-resolvable skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -88,13 +83,16 @@ export function processS7NewGeneric<OtherInfo>(
 		effectiveArgs.push(newFun[0]);
 		funArg = newFun[1];
 	}
-	const info = processKnownFunctionCall({ name, forceArgs: 'all', args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
+	const info = processKnownFunctionCall({ name, sig: FunctionSemantics.call.signature.every, args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
 
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
-	if(FunctionDefinitionVertex.is(fArg)) {
+	if(DfgVertex.isFunctionDefinition(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
+	}
+	if(config.binds) {
+		linkS4Generic(info, rootId, accessedIdentifiers, data);
 	}
 	return info;
 }
@@ -110,21 +108,45 @@ export function processMakeConstructor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config?: { readonly mode?: readonly ('s7' | 's3' | 's4')[], readonly wrapIndex?: number, readonly wrapName?: string }
+	config?: {
+		readonly mode?:      readonly ('s7' | 's3' | 's4')[],
+		readonly wrapIndex?: number,
+		readonly wrapName?:  string,
+		/** what the call declares about a class, see {@link classDeclarationOf} */
+		readonly classDecl?: ClassDeclarationConfig
+	}
 ): DataflowInformation {
 	// synthesise `function(...) S7_dispatch()` and make the call return it
 	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
-	const info = processKnownFunctionCall({ name, forceArgs: 'all', args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
+	const info = processKnownFunctionCall({ name, sig: FunctionSemantics.call.signature.every, args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
-	if(FunctionDefinitionVertex.is(fArg) && config?.mode) {
+	if(DfgVertex.isFunctionDefinition(fArg) && config?.mode) {
 		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	if(config?.wrapIndex !== undefined) {
 		linkWrappedFunction(info, args, config.wrapIndex, config.wrapName, data);
 	}
+	attachClassDeclaration(info, rootId, args, config?.classDecl);
+	linkS4Declaration(info, rootId, data);
 	return info;
+}
+
+/** Records on the call vertex what a class-declaring call states, see {@link DataflowGraphVertexFunctionCall.classDecl}. */
+export function attachClassDeclaration<OtherInfo>(
+	info:   DataflowInformation,
+	rootId: NodeId,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	config: ClassDeclarationConfig | undefined
+): void {
+	if(config === undefined) {
+		return;
+	}
+	const vertex = info.graph.getVertex(rootId);
+	if(DfgVertex.isFunctionCall(vertex)) {
+		vertex.classDecl = FunctionSemantics.classes.of(config, args);
+	}
 }
 
 /** Mark the wrapped function of an eager higher-order wrapper (`Negate`/`Vectorize`/`partial`) as called. */
@@ -135,32 +157,16 @@ function linkWrappedFunction<OtherInfo>(
 	wrapName: string | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): void {
-	let wrapped: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
-	if(wrapName !== undefined) {
-		wrapped = args.find(a => a !== EmptyArgument && a.name?.content === wrapName);
-	}
+	const wrapped = argFor(args, { name: wrapName, idx: wrapIndex });
 	if(wrapped === undefined) {
-		let pos = 0;
-		for(const a of args) {
-			if(a === EmptyArgument || a.name) {
-				continue;
-			}
-			if(pos === wrapIndex) {
-				wrapped = a;
-				break;
-			}
-			pos++;
-		}
-	}
-	if(wrapped === undefined || wrapped === EmptyArgument || !wrapped.value) {
 		return;
 	}
-	const resolved = resolveFunctionArgument(wrapped.value, data, {});
+	const resolved = resolveFunctionArgument(wrapped, data, {});
 	if(resolved === undefined || resolved.anonymous) {
 		return;
 	}
 	const vertex = info.graph.getVertex(resolved.functionId);
-	if(!UseVertex.is(vertex)) {
+	if(!DfgVertex.isUse(vertex)) {
 		return;
 	}
 	info.graph.updateToFunctionCall({

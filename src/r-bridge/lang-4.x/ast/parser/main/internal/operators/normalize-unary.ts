@@ -9,6 +9,7 @@ import { RType } from '../../../../model/type';
 import type { RNode } from '../../../../model/model';
 import type { RUnaryOp } from '../../../../model/nodes/r-unary-op';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 
 /**
@@ -16,7 +17,7 @@ import type { NamedJsonEntry } from '../../../json/format';
  * @param data     - The data used by the parser (see {@link NormalizerData})
  * @param operator - The operator token
  * @param operand  - The operand of the unary operator
- * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
+ * @returns        The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
 export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [NamedJsonEntry, NamedJsonEntry]): RNode | undefined {
 	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`);
@@ -31,7 +32,7 @@ export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [Na
 function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: NamedJsonEntry): RUnaryOp {
 	const parsedOperand = normalizeSingleNode(data, operand);
 
-	guard(parsedOperand.type !== RType.Delimiter, 'unexpected under-sided unary op');
+	guard(!RDelimiter.is(parsedOperand), 'unexpected under-sided unary op');
 
 	const operationName = retrieveOpName(operator);
 	const { location, content } = retrieveMetaStructure(operator.content);

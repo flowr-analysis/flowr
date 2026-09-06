@@ -1,25 +1,17 @@
 import type { DataflowProcessorInformation } from '../processor';
-import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
+import { FunctionSemantics } from '../fn/function-semantics';
+import type { DataflowInformation, ExitPoint } from '../info';
+import { ExitPointType } from '../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
-import {
-	processAssignment,
-	processAssignmentLike,
-	processDefineArgument
-} from '../internal/process/functions/call/built-in/built-in-assignment';
+import { processAssignment, processAssignmentLike, processDefineArgument } from '../internal/process/functions/call/built-in/built-in-assignment';
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-special-bin-op';
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe';
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import {
-	type BrandedIdentifier,
-	Identifier,
-	type IdentifierDefinition,
-	type IdentifierReference,
-	ReferenceType
-} from './identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
@@ -27,13 +19,13 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
-import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
@@ -46,9 +38,9 @@ import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
 import { resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
-import { resolveAsStringFn } from '../eval/resolve/resolve-strings';
+import { StringFold } from '../eval/resolve/resolve-strings';
 import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
-import { resolveAsNumeric } from '../eval/resolve/resolve-numbers';
+import { NumericFold } from '../eval/resolve/resolve-numbers';
 import { BuiltInEvalName } from './built-in-eval-name';
 import type { VariableResolve } from '../../config';
 import type {
@@ -70,13 +62,18 @@ import { BuiltInProcName } from './built-in-proc-name';
 import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
 import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
 import { processClassGenerator } from '../internal/process/functions/call/built-in/built-in-class-generator';
+import { processClassRelation } from '../internal/process/functions/call/built-in/built-in-class-relation';
+import { processS4Use } from '../internal/process/functions/call/built-in/built-in-s-four';
 import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
-import { ArgProp, FnSig, type BuiltInFnInfo } from './built-in-props';
+import { ArgProp, type BuiltInFnInfo, type FnSig } from './built-in-props';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { AttachedBasePackageSet } from '../../util/r-base-packages';
+import { cleanEnvOf } from './scoping';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -108,8 +105,10 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
-export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, BuiltInFnInfo {
+export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	readonly cfg?:                   ExitPointType,
+	/** see {@link ProcessKnownFunctionCallInput#alternativeArgsFrom} */
+	readonly alternativeArgsFrom?:   number,
 	readonly readAllArguments?:      boolean,
 	/**
 	 * Propagate the `out` references produced by the arguments instead of dropping them.
@@ -139,28 +138,57 @@ export interface BuiltInEvalHandlerArgs extends ResolveInfo {
 }
 export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
+/**
+ * The symbols handed to an {@link ArgProp.Atomic} argument directly: only data works there, so `id` in `id > 2`
+ * names a variable and not a function `id` that happens to be in scope, even though `>` may dispatch on the
+ * operand's class. Anything bubbling up from a nested call is left alone, that call decided it already.
+ */
+function dataArgumentSymbols<OtherInfo>(
+	args: readonly (RNodeWithParent | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[],
+	sig: FnSig | undefined
+): ReadonlySet<NodeId> | undefined {
+	const layout = sig === undefined ? undefined : FunctionSemantics.call.signature.layout(sig);
+	if(layout === undefined || (layout.any & ArgProp.Atomic) === 0) {
+		return undefined;
+	}
+	let symbols: Set<NodeId> | undefined;
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		const prop = FunctionSemantics.call.signature.propAt(layout, i);
+		if(RArgument.isEmpty(arg) || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
+			continue;
+		}
+		const value: RNodeWithParent | undefined = RArgument.is(arg) ? arg.value : arg;
+		if(value !== undefined && RSymbol.is(value)) {
+			(symbols ??= new Set()).add(value.info.id);
+		}
+	}
+	return symbols;
+}
+
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
-	const layout = sig !== undefined ? FnSig.layout(sig) : undefined;
+	const layout = sig !== undefined ? FunctionSemantics.call.signature.layout(sig) : undefined;
 	if(layout !== undefined) {
-		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (FnSig.propAt(layout, i) & ArgProp.Forced) !== 0) : undefined;
-		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FnSig.posWith(layout, args.length, ArgProp.Nse) : undefined;
+		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FunctionSemantics.call.signature.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
 	const nsePositions = nsePositionsOf(nse, args.length);
 	let lastEnv = data.environment;
 	const { information: res, processedArguments } = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs, origin:    useAsProcessor,
+		name, args, rootId, data, sig, alternativeArgsFrom,
+		origin:      useAsProcessor,
+		nonFunction: dataArgumentSymbols(args, sig),
 		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
-		patchData: nsePositions === undefined ? undefined : (d, index) => {
+		patchData:   nsePositions === undefined ? undefined : (d, index) => {
 			if(nsePositions.has(index)) {
 				lastEnv = d.environment;
-				return { ...d, environment: d.ctx.env.makeCleanEnv() };
+				return { ...d, environment: cleanEnvOf(d.environment) };
 			}
 			return { ...d, environment: lastEnv };
 		}
@@ -186,7 +214,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 			}
 		}
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
-		for(const i of FnSig.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
+		for(const i of FunctionSemantics.call.signature.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
 			const arg = processedArguments[i];
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
@@ -232,7 +260,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 
 	if(cfg !== undefined) {
-		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.cds });
+		/* the call jumps, so it never falls through to whatever follows it */
+		const exitPoints = (res.exitPoints as ExitPoint[]).filter(e => e.type !== ExitPointType.Default || e.nodeId !== rootId);
+		exitPoints.push({ type: cfg, nodeId: rootId, cds: data.cds });
+		(res as unknown as { exitPoints: ExitPoint[] }).exitPoints = exitPoints;
 	}
 
 	return res;
@@ -282,9 +313,10 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, markArgsAsNSE: nse, markArgsAsMasked: masked }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs' | 'markArgsAsNSE' | 'markArgsAsMasked'>
+	{ useAsProcessor = BuiltInProcName.Default, markArgsAsNSE: nse, markArgsAsMasked: masked, sig }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig'>
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	const { information, processedArguments } = processKnownFunctionCall({
+		name, args, rootId, data, sig, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig) });
 	const g = information.graph;
 	for(const arg of processedArguments) {
 		if(arg) {
@@ -335,6 +367,8 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Attach]:             processAttach,
 	[BuiltInProcName.NewEnv]:             processNewEnv,
 	[BuiltInProcName.ClassGenerator]:     processClassGenerator,
+	[BuiltInProcName.ClassRelation]:      processClassRelation,
+	[BuiltInProcName.S4Use]:              processS4Use,
 	[BuiltInProcName.StackEnv]:           processStackEnv,
 	[BuiltInProcName.With]:               processWithEnv,
 	[BuiltInProcName.Vector]:             processVector,
@@ -348,16 +382,24 @@ export const BuiltInProcessorMapper = {
 export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.Vector]:     resolveAsVector,
 	[BuiltInEvalName.Seq]:        resolveAsSeq,
-	[BuiltInEvalName.Numeric]:    resolveAsNumeric,
+	[BuiltInEvalName.Numeric]:    NumericFold.call,
 	[BuiltInEvalName.Comparison]: resolveAsComparison,
 	[BuiltInEvalName.Logical]:    resolveAsLogical,
-	[BuiltInEvalName.StringFn]:   resolveAsStringFn,
+	[BuiltInEvalName.StringFn]:   StringFold.call,
 	[BuiltInEvalName.Group]:      resolveAsGroup
 } as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
 export type BuiltInMemory = Map<BrandedIdentifier, IdentifierDefinition[]>;
+
+/**
+ * Whether a definition registered under `namespace` belongs in the always-on built-in environment: only base
+ * and the attached base packages are on R's search path at startup without a `library()` call.
+ */
+function attachedByDefault(namespace: string | undefined): boolean {
+	return namespace === undefined || AttachedBasePackageSet.has(namespace);
+}
 
 export class BuiltIns {
 	/**
@@ -375,14 +417,14 @@ export class BuiltIns {
 				name,
 				nodeId:    id
 			}];
-			this.set(n, d, assumePrimitive);
+			this.set(n, d, assumePrimitive, Identifier.getNamespace(name));
 		}
 	}
 
 	/**
 	 * Register a built-in function (like `print` or `c`) to the given {@link BuiltIns}
 	 */
-	registerBuiltInFunctions<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper>({ names, processor, config, assumePrimitive, evalHandler }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+	registerBuiltInFunctions<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper>({ names, processor, config, assumePrimitive, evalHandler }: BuiltInFunctionDefinition<BuiltInProcessor>): void {
 		guard(processor !== undefined, () => `Processor for ${JSON.stringify(names)} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 		const mappedProcessor = BuiltInProcessorMapper[processor];
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
@@ -402,7 +444,7 @@ export class BuiltIns {
 				name,
 				nodeId:      id
 			}];
-			this.set(n, d, assumePrimitive);
+			this.set(n, d, assumePrimitive, Identifier.getNamespace(name));
 		}
 	}
 
@@ -429,7 +471,7 @@ export class BuiltIns {
 					cds:    undefined,
 					nodeId: id
 				}];
-				this.set(effectiveName, d, assumePrimitive);
+				this.set(effectiveName, d, assumePrimitive, Identifier.getNamespace(assignment));
 			}
 		}
 	}
@@ -463,10 +505,31 @@ export class BuiltIns {
 	 */
 	emptyBuiltInMemory: BuiltInMemory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
-	set(identifier: BrandedIdentifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+	/**
+	 * What the configuration states about the exports of packages R does not attach on startup, by package and
+	 * then bare name; not in {@link builtInMemory}, they enter an analysis only once attached, see {@link BuiltIns.forPackage}.
+	 */
+	packageMemory: Map<string, BuiltInMemory> = new Map<string, BuiltInMemory>();
+
+	/**
+	 * Registers `definition` under `identifier`. A `namespace` R does not attach by default lands in
+	 * {@link packageMemory} instead of the always-on environment.
+	 */
+	set(identifier: BrandedIdentifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined, namespace?: string): void {
+		if(!attachedByDefault(namespace)) {
+			const pkg = this.packageMemory.get(namespace as string) ?? new Map<BrandedIdentifier, IdentifierDefinition[]>();
+			pkg.set(identifier, definition);
+			this.packageMemory.set(namespace as string, pkg);
+			return;
+		}
 		this.builtInMemory.set(identifier, definition);
 		if(includeInEmptyMemory) {
 			this.emptyBuiltInMemory.set(identifier, definition);
 		}
+	}
+
+	/** What flowR states about `pkg`'s exports, `undefined` when it states nothing (attaching brings these into scope). */
+	forPackage(pkg: string): BuiltInMemory | undefined {
+		return this.packageMemory.get(pkg);
 	}
 }

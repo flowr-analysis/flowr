@@ -373,7 +373,8 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 			function groupedCase(name: string, extraCaps: SupportedFlowrCapabilityId[], code: string, criterion: SlicingCriterion, expected: string, out: string) {
 				assertSliced(label(name, [...caps, ...extraCaps]), shell, code, [criterion], expected, { expectedOutput: out, expectedSliceOutput: out });
 			}
-			groupedCase('Parenthesized if condition', ['if', 'logical'], 'a <- TRUE\nif((a)) { v <- 1 } else { v <- 2 }\nv', '3@v', 'a <- TRUE\nif((a)) { v <- 1 } else\n{ v <- 2 }\nv', '[1] 1');
+			/* the grouped condition folds to `TRUE`, so the slice keeps the branch it decides on and nothing of the other */
+			groupedCase('Parenthesized if condition', ['if', 'logical'], 'a <- TRUE\nif((a)) { v <- 1 } else { v <- 2 }\nv', '3@v', 'v <- 1\nv', '[1] 1');
 			groupedCase('Parenthesized while condition', ['while-loop', ...OperatorDatabase['<'].capabilities, ...OperatorDatabase['+'].capabilities], 'i <- 0\nwhile((i < 2)) { i <- i + 1 }\nv <- i\nv', '4@v', 'i <- 0\nwhile((i < 2)) i <- i + 1\nv <- i\nv', '[1] 2');
 			groupedCase('Parenthesized for vector', ['for-loop', ...OperatorDatabase[':'].capabilities, ...OperatorDatabase['+'].capabilities], 's <- 0\nfor(i in (1:3)) { s <- s + i }\nv <- s\nv', '4@v', 's <- 0\nfor(i in (1:3)) s <- s + i\nv <- s\nv', '[1] 6');
 			groupedCase('Braced for vector', ['for-loop', ...OperatorDatabase[':'].capabilities, ...OperatorDatabase['+'].capabilities], 's <- 0\nfor(i in { 1:3 }) { s <- s + i }\nv <- s\nv', '4@v', 's <- 0\nfor(i in {1:3}) s <- s + i\nv <- s\nv', '[1] 6');

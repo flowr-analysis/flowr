@@ -1,19 +1,144 @@
 import type { FlowrCapability } from '../r-bridge/data/types';
 import { flowrCapabilities } from '../r-bridge/data/data';
-import { joinWithLast } from '../util/text/strings';
-import { prefixLines } from './doc-util/doc-general';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
+import path from 'path';
 import type { SerializedTestLabel, TestLabel } from '../../test/functionality/_helper/label';
-import { block } from './doc-util/doc-structure';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { FlowrGithubGroupName, flowrSourceFileUrl } from './doc-util/doc-files';
+import { Playground } from '../util/text/playground-link';
 
 const detailedInfoFile = 'coverage/flowr-test-details.json';
+const testSourceFolder = 'test/functionality';
+/** how many tests we link as a demonstration of a single capability */
+const maxSignatureTests = 3;
+
+interface SignatureTest {
+	readonly name:    string;
+	readonly file:    string;
+	readonly line:    number;
+	/** how many capabilities the test claims, as one that claims few of them demonstrates each of them better */
+	readonly claimed: number;
+}
+
+/** the labeled tests of flowR, located in their sources so that we can link to the line they start at */
+interface TestSourceIndex {
+	readonly byCapability: Map<string, SignatureTest[]>;
+	readonly byName:       Map<string, SignatureTest[]>;
+}
 
 interface CapabilityInformation {
 	readonly parser: KnownParser;
 	readonly info:   Map<string, TestLabel[]> | undefined
+	readonly tests:  TestSourceIndex
+}
+
+/**
+ * matches `label('name', ['id', ...])`, the way a test claims the capabilities it demonstrates.
+ * The array may contain a nested access like `OperatorDatabase['<-'].capabilities`, so we allow one level of brackets.
+ */
+const labelCallRegex = /\blabel\(\s*(['"`])((?:\\.|(?!\1)[^])*?)\1\s*,\s*\[((?:[^[\]]|\[[^[\]]*\])*)\]/g;
+const capabilityIdRegex = /(['"])([A-Za-z0-9:_-]+)\1/g;
+
+function pushTest(map: Map<string, SignatureTest[]>, key: string, test: SignatureTest): void {
+	const existing = map.get(key) ?? [];
+	existing.push(test);
+	map.set(key, existing);
+}
+
+function indexTestSources(): TestSourceIndex {
+	const byCapability = new Map<string, SignatureTest[]>();
+	const byName = new Map<string, SignatureTest[]>();
+	if(!fs.existsSync(testSourceFolder)) {
+		return { byCapability, byName };
+	}
+	const files = fs.readdirSync(testSourceFolder, { recursive: true, encoding: 'utf-8' }).filter(f => f.endsWith('.ts')).sort();
+	for(const file of files) {
+		const content = fs.readFileSync(path.join(testSourceFolder, file), 'utf-8');
+		for(const match of content.matchAll(labelCallRegex)) {
+			const ids = [...match[3].matchAll(capabilityIdRegex)].map(([,, id]) => id);
+			const test: SignatureTest = {
+				name:    match[2],
+				file:    `${testSourceFolder}/${file.split(path.sep).join('/')}`,
+				line:    content.slice(0, match.index).split('\n').length,
+				claimed: ids.length
+			};
+			pushTest(byName, test.name.toLowerCase(), test);
+			for(const id of ids) {
+				pushTest(byCapability, id, test);
+			}
+		}
+	}
+	return { byCapability, byName };
+}
+
+/** the tests that claim the fewest capabilities, as those demonstrate the one at hand rather than a mix */
+function pickSignatureTests(tests: readonly SignatureTest[]): SignatureTest[] {
+	const unique = [...new Map(tests.map(t => [`${t.file}:${t.line}`, t])).values()];
+	const literal = unique.filter(t => !t.name.includes('${'));
+	return (literal.length > 0 ? literal : unique)
+		.sort((a, b) => a.claimed - b.claimed || a.name.length - b.name.length || a.file.localeCompare(b.file) || a.line - b.line)
+		.slice(0, maxSignatureTests);
+}
+
+/**
+ * A capability may be claimed by a spread (e.g., `OperatorDatabase['<-'].capabilities`) which we can not
+ * read from the sources, so we fall back to the recorded test runs and locate those tests by their name.
+ */
+function signatureTestsFor(info: CapabilityInformation, capability: FlowrCapability): SignatureTest[] {
+	const direct = info.tests.byCapability.get(capability.id);
+	if(direct) {
+		return pickSignatureTests(direct);
+	}
+	const byName: SignatureTest[] = [];
+	for(const { name } of info.info?.get(capability.id) ?? []) {
+		const locations = info.tests.byName.get(name);
+		if(locations && locations.length === 1) {
+			byName.push(locations[0]);
+		}
+	}
+	return pickSignatureTests(byName);
+}
+
+function capabilitySearchUrl(id: string): string {
+	return `https://github.com/search?q=${encodeURIComponent(`repo:${FlowrGithubGroupName}/flowr "'${id}'"`)}&type=code`;
+}
+
+const supportedLabel = {
+	not:       'not supported',
+	partially: 'partially supported',
+	fully:     'fully supported'
+} as const;
+
+function escapeHtml(text: string): string {
+	return text.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+}
+
+/**
+ * The markdown a capability writes within a line, which is code spans, links and emphasis. A code span is put
+ * aside while the rest is converted, as the `_` of a name like `new_environment` is no emphasis of its own.
+ */
+function inlineMarkdown(text: string): string {
+	const spans: string[] = [];
+	return escapeHtml(text)
+		.replace(/`([^`]+)`/g, (_, code: string) => `\0${spans.push(`<code>${code}</code>`) - 1}\0`)
+		.replace(/\[([^\]]+)]\(([^)]+)\)/g, (_, label: string, href: string) => `<a href="${href}">${label}</a>`)
+		.replace(/(^|\s)_([^_\n]+)_/g, (_, before: string, italic: string) => `${before}<em>${italic}</em>`)
+		.replace(/\0(\d+)\0/g, (_, at: string) => spans[Number(at)]);
+}
+
+/** an R example is shown as it is written and opens in the playground, everything around it stays text */
+function exampleHtml(markdown: string): string {
+	/* splitting on the fence alternates between the text around an example and the example itself */
+	return markdown.split('```').map((block, at) => {
+		const fenced = at % 2 === 1 ? /^(\w*)\n([\s\S]*?)\n?$/.exec(block) : null;
+		if(fenced !== null) {
+			const run = fenced[1] === 'r' ? `<a class="try" href="${Playground.link({ code: fenced[2] })}">explore in the playground</a>` : '';
+			return `<pre><code>${escapeHtml(fenced[2])}</code></pre>${run}`;
+		}
+		return block.split('\n').filter(l => l.trim().length > 0)
+			.map(line => /^\s*[-*]\s/.test(line) ? `<li>${inlineMarkdown(line.replace(/^\s*[-*]\s/, ''))}</li>` : `<p>${inlineMarkdown(line)}</p>`)
+			.join('\n').replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
+	}).join('\n');
 }
 
 function obtainDetailedInfos(): Map<string, TestLabel[]> | undefined {
@@ -34,74 +159,33 @@ function obtainDetailedInfos(): Map<string, TestLabel[]> | undefined {
 	return out;
 }
 
-const supportedSymbolMap: Map<string, string> = new Map([
-	['not',       '🔴'],
-	['partially', '🔶'],
-	['fully',     '🟩']
-]);
-
-function getTestDetails(info: CapabilityInformation, capability: FlowrCapability) {
-	if(!info.info) {
-		return '';
-	}
-	const totalTests = info.info.get(capability.id);
-	const uniqueTests = totalTests?.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-	if(!uniqueTests || uniqueTests.length === 0) {
+/** how many tests claim the capability, linking to all of them, and in which contexts they check it */
+function testDetails(info: CapabilityInformation, capability: FlowrCapability): string {
+	const unique = info.info?.get(capability.id)?.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+	if(unique === undefined || unique.length === 0) {
 		return '';
 	}
 	const grouped = new Map<string, number>();
-	for(const { context } of uniqueTests) {
+	for(const { context } of unique) {
 		for(const c of context) {
 			grouped.set(c, (grouped.get(c) ?? 0) + 1);
 		}
 	}
+	/* both desugar contexts check the same thing on the two engines, so they are one number */
 	if(grouped.get('desugar-tree-sitter') !== undefined && grouped.get('desugar-tree-sitter') === grouped.get('desugar-shell')) {
 		grouped.set('desugar', grouped.get('desugar-tree-sitter') ?? 0);
 		grouped.delete('desugar-shell');
 		grouped.delete('desugar-tree-sitter');
 	}
-	grouped.delete('other'); // opinionated view on the categories
-	const output = grouped.get('output');
-	grouped.delete('output');
-	const testString: string[] = [`${uniqueTests.length} test${uniqueTests.length !== 1 ? 's' : ''}`];
-	// sort by count
-	const sorted = [...grouped.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-	for(const [context, count] of sorted) {
-		testString.push(`${context}: ${count}`);
-	}
-	if(output) {
-		testString.push(`and backed with output: ${output}`);
-	}
-	return ` (${testString.join(', ')})`;
+	grouped.delete('other');
+	const contexts = [...grouped.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([context, count]) => `${context}: ${count}`);
+	return `<a class="tests" href="${capabilitySearchUrl(capability.id)}" title="${escapeHtml(contexts.join(', '))}">${unique.length} test${unique.length === 1 ? '' : 's'}</a>`;
 }
 
-function escapeId(id: string): string {
-	return id.replace(/[^a-zA-Z0-9]/g, '_');
-}
-
-async function printSingleCapability(info: CapabilityInformation, depth: number, index: number, capability: FlowrCapability): Promise<string> {
-	const indent = '    '.repeat(depth);
-	const indexStr = index.toString().padStart(2, ' ');
-	const nextLineIndent = '  '.repeat(depth + indexStr.length);
-	const mainLine = `${indent}${indexStr}. <a id='${capability.id}'></a>**${capability.name}** <a href="#${escapeId(capability.id)}">🔗</a>${getTestDetails(info, capability)}`;
-	let nextLine = '';
-
-	if(capability.supported) {
-		nextLine += `${supportedSymbolMap.get(capability.supported)} `;
-	}
-	if(capability.description) {
-		nextLine += capability.description;
-	}
-	if(capability.url) {
-		nextLine += '\\\nSee ' + joinWithLast(capability.url.map(({ name, href }) => `[${name}](${href})`)) + ' for more info.';
-	}
-	nextLine += ' (internal ID: `' + capability.id + '`)';
-	if(capability.example) {
-		nextLine += `\n${prefixLines(
-			typeof capability.example === 'string' ? capability.example : await capability.example(info.parser),
-			nextLineIndent + '> ')}`;
-	}
-	return nextLine ? `${mainLine}\\\n${nextLineIndent}${nextLine}` : mainLine;
+function signatureTestsHtml(info: CapabilityInformation, capability: FlowrCapability): string {
+	const tests = signatureTestsFor(info, capability);
+	return tests.length === 0 ? ''
+		: `<p class="proof">Signature tests: ${tests.map(t => `<a href="${flowrSourceFileUrl(t.file)}#L${t.line}">${escapeHtml(t.name.length > 72 ? t.name.slice(0, 69) + '...' : t.name)}</a>`).join(', ')}</p>`;
 }
 
 interface ChildrenSummary {
@@ -115,11 +199,11 @@ function summarizeChildren(capabilities: readonly FlowrCapability[]): ChildrenSu
 	const summary: ChildrenSummary = { total: 0, fully: 0, partially: 0, not: 0 };
 	for(const capability of capabilities) {
 		if(capability.capabilities) {
-			const childSummary = summarizeChildren(capability.capabilities);
-			summary.fully += childSummary.fully;
-			summary.partially += childSummary.partially;
-			summary.not += childSummary.not;
-			summary.total += childSummary.total;
+			const child = summarizeChildren(capability.capabilities);
+			summary.fully += child.fully;
+			summary.partially += child.partially;
+			summary.not += child.not;
+			summary.total += child.total;
 		}
 		if(capability.supported) {
 			summary[capability.supported]++;
@@ -129,66 +213,55 @@ function summarizeChildren(capabilities: readonly FlowrCapability[]): ChildrenSu
 	return summary;
 }
 
-function printSummary(sum: ChildrenSummary): string {
-	return `${sum.fully} fully, ${sum.partially} partially, ${sum.not} not supported`;
-}
-
-async function printAsMarkdown(info: CapabilityInformation, capabilities: readonly FlowrCapability[], depth = 0, lines: string[] = []): Promise<string> {
-	for(let i = 0; i < capabilities.length; i++) {
-		const capability = capabilities[i];
-		const result = await printSingleCapability(info, depth, i + 1, capability);
-		lines.push(result);
-		if(capability.capabilities) {
-			const summary = summarizeChildren(capability.capabilities);
-			lines.push(`\n\n${'    '.repeat(depth + 1)}<details open><summary>${summary.total} child${summary.total === 1 ? '' : 'ren'} (${printSummary(summary)})</summary>\n\n`);
-			await printAsMarkdown(info, capability.capabilities, depth + 1, lines);
-			lines.push(`\n\n${'    '.repeat(depth + 1)}</details>\n\n`);
-			if(depth === 0) {
-				lines.push('\n\n' + '    '.repeat(depth + 1) + '-'.repeat(42) + '\n\n');
-			}
-		}
+async function capabilityHtml(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
+	const support = capability.supported;
+	const parts = [
+		`<div class="head"><span class="name" id="${capability.id}">${escapeHtml(capability.name)}</span>`,
+		`<a class="anchor" href="#${capability.id}" title="link to this capability">#</a>`,
+		`<code class="cid" title="the id a labeled test uses">${escapeHtml(capability.id)}</code>`,
+		testDetails(info, capability),
+		'</div>'
+	];
+	if(capability.description) {
+		parts.push(`<p class="desc">${inlineMarkdown(capability.description)}</p>`);
 	}
-	return lines.join('\n');
+	if(capability.url) {
+		parts.push(`<p class="see">See ${capability.url.map(({ name, href }) => `<a href="${href}">${escapeHtml(name)}</a>`).join(', ')} for more info.</p>`);
+	}
+	parts.push(signatureTestsHtml(info, capability));
+	if(capability.example) {
+		parts.push(`<div class="example">${exampleHtml(typeof capability.example === 'string' ? capability.example : await capability.example(info.parser))}</div>`);
+	}
+	if(capability.capabilities) {
+		const summary = summarizeChildren(capability.capabilities);
+		parts.push(`<details open><summary>${summary.total} child${summary.total === 1 ? '' : 'ren'}: ${summary.fully} fully, ${summary.partially} partially, ${summary.not} not supported</summary>`);
+		parts.push(await capabilitiesHtml(info, capability.capabilities));
+		parts.push('</details>');
+	}
+	return `<li class="cap" data-supported="${support ?? 'group'}" data-name="${escapeHtml((capability.name + ' ' + capability.id).toLowerCase())}">`
+		+ (support ? `<span class="badge ${support}" title="${supportedLabel[support]}"></span>` : '')
+		+ parts.filter(p => p.length > 0).join('\n') + '</li>';
 }
 
-function getPreamble(): string {
-	return `
-Each capability has an id that can be used to link to it (use the link symbol to get a direct link to the capability).
-The internal id is also mentioned in the capability description. This id can be used to reference the capability in a labeled test within flowR.
-Besides, we use colored bullets like this:
-
-| <!-- -->               | <!-- -->                                              |
-| ---------------------- | ----------------------------------------------------- |
-| ${supportedSymbolMap.get('fully')} | _flowR_ is capable of handling this feature _fully_     |
-| ${supportedSymbolMap.get('partially')} | _flowR_ is capable of handling this feature _partially_ |
-| ${supportedSymbolMap.get('not')} | _flowR_ is _not_ capable of handling this feature     |
-
-:cloud: This could be a feature diagram... :cloud:
-
-${block({
-	type:    'NOTE',
-	content: `
-The capabilities are a qualitative measure of the features that flowR can handle.
-Statements like "flowR can fully handle 50/80 capabilities" are discouraged as the capabilities may have a vastly different granularity.
-Please prefer using a statement like "flowR has only partial support for feature 'XY'" (or simply reference this document) within the flowR sources.
-	`
-})}
-`;
+async function capabilitiesHtml(info: CapabilityInformation, capabilities: readonly FlowrCapability[]): Promise<string> {
+	const items = [];
+	for(const capability of capabilities) {
+		items.push(await capabilityHtml(info, capability));
+	}
+	return `<ul class="caps">${items.join('\n')}</ul>`;
 }
 
 /**
- * https://github.com/flowr-analysis/flowr/wiki/Capabilities
+ * The content of the capabilities page, ready to be dropped into `scripts/landing-capabilities-template.html`.
+ * Every capability comes with what flowR states about it, the tests that demonstrate it, and its example.
  */
-export class DocCapabilities extends DocMaker<'wiki/Capabilities.md'> {
-	constructor() {
-		super('wiki/Capabilities.md', module.filename, 'flowR capabilities overview');
+export async function capabilitiesAsHtml(parser: KnownParser): Promise<{ body: string, summary: ChildrenSummary }> {
+	if(!fs.existsSync(detailedInfoFile)) {
+		console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test:full) to generate it.\x1b[m');
 	}
-
-	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {
-		/* check if the detailed test data is available */
-		if(!fs.existsSync(detailedInfoFile)) {
-			console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test:full) to generate it.\x1b[m');
-		}
-		return getPreamble() + await printAsMarkdown({ parser: treeSitter, info: obtainDetailedInfos() }, flowrCapabilities.capabilities);
-	}
+	const info = { parser, info: obtainDetailedInfos(), tests: indexTestSources() };
+	return {
+		body:    await capabilitiesHtml(info, flowrCapabilities.capabilities),
+		summary: summarizeChildren(flowrCapabilities.capabilities)
+	};
 }

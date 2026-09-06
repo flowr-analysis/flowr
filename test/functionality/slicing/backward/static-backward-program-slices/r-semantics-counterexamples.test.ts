@@ -5,44 +5,91 @@ import type { RShell } from '../../../../../src/r-bridge/shell';
 import { createSlicePipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { deterministicCountingIdGenerator } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { MutationTarget } from '../../../_helper/r-mutations';
+import { MutationPasses, mutate, observeQueries } from '../../../_helper/r-mutations';
 
-interface Counterexample {
+interface Counterexample extends MutationTarget {
 	readonly name:         string;
 	readonly capabilities: readonly SupportedFlowrCapabilityId[];
-	readonly code:         string;
-	readonly criterion:    SlicingCriterion;
-	readonly expected:     string;
 }
 
 /**
- * Each case slices `code` for `criterion`, then runs the input and the reconstructed slice in R and requires both
- * to print `expected`. Checking what is printed rather than the shape of the slice is what makes these tests about
- * R's semantics: whatever the slice looks like, dropping something the criterion needs shows up here.
+ * Mutants flowR does not slice correctly yet, as `<group>: <case> [<pass>]`. They are checked to still be
+ * wrong, so that fixing one fails here instead of going unnoticed.
+ */
+const KnownWrongMutants: ReadonlySet<string> = new Set([
+	/* a name `assign` binds is linked into a function body, but not into a body installed with `body<-` */
+	'Reflection: a body written in reads what it names [assign call]'
+]);
+const generatedMutants = new Set<string>();
+const usedPasses = new Set<string>();
+
+/**
+ * Each case slices `code` for `criterion` and requires the input and the slice to print `expected` in R.
+ * Checking what is printed rather than the shape of the slice is what makes these tests about R's semantics.
+ * Every {@link MutationPasses|pass} is then run against the case, checking the same for its mutants.
  */
 function counterexamples(shell: RShell, group: string, cases: readonly Counterexample[]): void {
 	/**
 	 * HANDLE WITH UTTER CARE! Runs in an R shell on the host system, just like `assertSliced`'s output checks.
 	 *
-	 * A slice that is wrong may not even run, and the shell's R is not interactive, so an uncaught error would end
-	 * the session for every test after this one; `try` keeps it alive and turns the error into missing output.
-	 * Evaluating the whole program as one expression also drops the auto-printing of intermediate results, which
-	 * a slice legitimately introduces by dropping an unused assignment target or an `invisible` wrapper.
+	 * The handler keeps the non-interactive session alive on a slice that does not run, and evaluating the
+	 * program as one expression drops the auto-printing a slice may introduce by dropping an assignment target.
 	 */
 	async function run(what: string): Promise<string> {
-		const lines = await shell.sendCommandWithOutput(`try(eval(parse(text = ${JSON.stringify(what)})), silent = TRUE)`, { automaticallyTrimOutput: true });
-		shell.clearEnvironment();
+		const guarded = `tryCatch(eval(parse(text = ${JSON.stringify(what)})), error = function(e) cat("R error:", conditionMessage(e), "\n"))`;
+		const lines = await shell.sendCommandWithOutput(guarded, { automaticallyTrimOutput: true });
+		/* `clearEnvironment` keeps what `ls()` hides, and a binding left behind would answer the next program */
+		await shell.sendCommandWithOutput('rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
 		return lines.join('\n');
 	}
-	describe(group, () => cases.forEach(({ name, capabilities, code, criterion, expected }) =>
-		test(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, async() => {
-			const result = await createSlicePipeline(shell, { getId: deterministicCountingIdGenerator(0), context: contextFromInput(code), criterion: [criterion] }).allRemainingSteps();
-			const reconstructed = result.reconstruct.code;
-			const sliced = Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
-			assert.strictEqual(await run(code), expected, 'the input does not print what this test claims it does');
-			assert.strictEqual(await run(sliced), expected, `the slice does not print what the input does, it is:\n${sliced}`);
-		})));
+	/** only the shell engine, as R is what runs the slice */
+	async function slice({ code, criterion }: MutationTarget): Promise<string> {
+		const result = await createSlicePipeline(shell, { getId: deterministicCountingIdGenerator(0), context: contextFromInput(code), criterion: [criterion] }).allRemainingSteps();
+		const reconstructed = result.reconstruct.code;
+		return Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
+	}
+	async function check(target: MutationTarget, wrongForNow: boolean): Promise<void> {
+		const what = `the program sliced for ${target.criterion} is:\n${target.code}`;
+		const sliced = await slice(target);
+		assert.strictEqual(await run(target.code), target.expected, `the input does not print what this test claims it does, ${what}`);
+		const output = await run(sliced);
+		const slicedIs = `${what}\nand its slice is:\n${sliced}`;
+		/* nothing reads what a mutation adds, so a slice keeping it says more than the criterion needs */
+		assert.notMatch(sliced, /\bmut_[abc]\b/, `the slice keeps a binding nothing reads, ${slicedIs}`);
+		if(wrongForNow) {
+			assert.notStrictEqual(output, target.expected, `this mutant is sliced correctly now, remove it from KnownWrongMutants, ${slicedIs}`);
+		} else {
+			assert.strictEqual(output, target.expected, `the slice does not print what the input does, ${slicedIs}`);
+		}
+	}
+	describe(group, () => {
+		for(const counterexample of cases) {
+			const { name, capabilities, code } = counterexample;
+			test(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, () => check(counterexample, false));
+		}
+		for(const pass of MutationPasses) {
+			describe(pass.name, () => {
+				for(const counterexample of cases) {
+					const id = `${group}: ${counterexample.name} [${pass.name}]`;
+					test(counterexample.name, async(ctx) => {
+						const mutant = await mutate(shell, counterexample, pass);
+						if(mutant === undefined) {
+							/* the pass has nothing to rewrite in this program */
+							ctx.skip();
+							return;
+						}
+						generatedMutants.add(id);
+						usedPasses.add(pass.name);
+						await check(mutant, KnownWrongMutants.has(id));
+						assert.deepStrictEqual(await observeQueries(shell, mutant.code), await observeQueries(shell, counterexample.code),
+							`the mutation changes what the queries report about the program, it is:\n${mutant.code}`);
+					});
+				}
+			});
+		}
+	});
 }
 
 describe('Counterexamples against R semantics', { concurrent: false }, withShell(shell => {
@@ -143,4 +190,16 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 		{ name: 'what is read back was written before', capabilities: ['i-o'], code: 'f <- tempfile()\nwriteLines("hi", f)\nr <- readLines(f)\nprint(r)', criterion: '4@r', expected: '[1] "hi"' },
 		{ name: 'readRDS depends on the matching saveRDS', capabilities: ['i-o', 'handling-binary-riles'], code: 'f <- tempfile()\nsaveRDS(11, f)\nr <- readRDS(f)\nprint(r)', criterion: '4@r', expected: '[1] 11' },
 	]);
+
+	/* both checks read what the tests above recorded, so they only mean something once all of them ran */
+	describe.skipIf(process.env.VITEST_FILTER !== undefined)('bookkeeping', () => {
+		test('every known wrong mutant is still generated', () => {
+			const gone = [...KnownWrongMutants].filter(m => !generatedMutants.has(m));
+			assert.deepStrictEqual(gone, [], 'these mutants are no longer generated, remove them from KnownWrongMutants');
+		});
+		test('every pass mutates at least one counterexample', () => {
+			const idle = MutationPasses.map(p => p.name).filter(name => !usedPasses.has(name));
+			assert.deepStrictEqual(idle, [], 'these passes never applied, so nothing they claim to check is checked');
+		});
+	});
 }));

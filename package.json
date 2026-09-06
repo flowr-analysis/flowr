@@ -32,7 +32,7 @@
     "build:copy-data": "ts-node --transpile-only scripts/sigdb-copy.ts",
     "build:copy-wasm": "ts-node --transpile-only scripts/copy-wasm.ts",
     "gen:base-packages": "ts-node --transpile-only scripts/gen-base-packages.ts",
-    "gen:landing": "ts-node --transpile-only scripts/gen-landing.ts && ts-node --transpile-only scripts/gen-benchmark-index.ts && ts-node --transpile-only scripts/gen-sigdb-index.ts && ts-node --transpile-only scripts/gen-playground.ts",
+    "gen:landing": "ts-node --transpile-only scripts/gen-landing.ts && ts-node --transpile-only scripts/gen-benchmark-index.ts && ts-node --transpile-only scripts/gen-capabilities.ts && ts-node --transpile-only scripts/gen-sigdb-index.ts && ts-node --transpile-only scripts/gen-playground.ts",
     "sigdb:remote": "ts-node --transpile-only scripts/sigdb-remote.ts",
     "sigdb:sync": "ts-node --transpile-only scripts/sigdb-sync.ts",
     "sigdb:publish": "ts-node scripts/publish-sigdb.ts",

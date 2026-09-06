@@ -107,6 +107,21 @@ export const SlicingCriterion = {
 		}
 	},
 	/**
+	 * The line and the name a `<line>@<name>` criterion points at, `undefined` for every other form.
+	 * The counterpart of writing such a criterion down as a template literal.
+	 */
+	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: string } | undefined {
+		const split = splitFileFilter(criterion);
+		const at = split?.rest.indexOf('@') ?? -1;
+		if(split === undefined || at <= 0) {
+			return undefined;
+		}
+		/* the same line and name {@link SlicingCriterion.tryParse} accepts, so that what is read back resolves */
+		const line = split.rest.slice(0, at);
+		const name = split.rest.slice(at + 1);
+		return /^\d+$/.test(line) && name.length > 0 && !name.startsWith('[') ? { line: Number(line), name } : undefined;
+	},
+	/**
 	 * Converts a node id to a slicing criterion in the form of `$id`
 	 */
 	fromId(this: void, id: NodeId): SlicingCriterion {

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[src/documentation/wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts)' on 2026-08-16, 06:15:24 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
 <h2 id="roxygen-arguments">Roxygen Arguments&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments."><a href='#documentation'>![documentation](https://img.shields.io/badge/documentation-teal) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
@@ -43,20 +43,19 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (21 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function at 3.5-29 has undocumented argument 'b'\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: searchTimeMs: 2, processTimeMs: 0\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: searchTimeMs: 20, processTimeMs: 1\
+_All queries together required ≈21 ms (1ms accuracy, total 26 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _26.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -82,17 +81,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           }
         ],
         ".meta": {
-          "searchTimeMs": 2,
-          "processTimeMs": 0
+          "searchTimeMs": 20,
+          "processTimeMs": 1
         }
       }
     },
     ".meta": {
-      "timing": 2
+      "timing": 21
     }
   },
   ".meta": {
-    "timing": 2
+    "timing": 21
   }
 }
 ```
@@ -574,3 +573,26 @@ We expect the linter to report the following:
 
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L109) for the test-case implementation.
+		
+<h4 id="Test_Case:_comma-separated__param_documents_each_name">Test Case: comma-separated @param documents each name</h4>
+
+> roxygen2 accepts `@param x,y` for several parameters at once, so one tag may name more than one
+
+Given the following input:
+
+```r
+`#' This is a function.
+#' @param x,y numeric values
+add <- function(x, y) x + y`
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L111) for the test-case implementation.

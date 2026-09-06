@@ -17,6 +17,7 @@ import { Dataflow } from '../../graph/df-helper';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Resolve } from '../../environments/resolve-helper';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /**
  * The {@link BuiltInEvalHandler} the given name resolves to in the current environment, just like the
@@ -33,6 +34,13 @@ function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | 
 	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
 }
 
+/** Whether any built-in of that name declares a handler at all, so that only those walk the search path. */
+function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	const defs = ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
+		?? ctx.env.statedDefinitionsOf(name);
+	return defs?.some(d => d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined) ?? false;
+}
+
 /** the node types that may fold through a built-in: calls, operators, and the `(`/`{` groupings */
 const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.ExpressionList];
 
@@ -40,9 +48,19 @@ const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RTy
  * The name of the built-in the given node folds through, `undefined` if it is no call to one or if it may just
  * as well resolve to something else (a user redefinition, a conditional one, ...), which must not be folded.
  */
-function evalNameOf({ node, graph }: BuiltInEvalHandlerArgs): Identifier | undefined {
-	if(graph === undefined || !EvalNodeTypes.includes(node.type)) {
+function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): Identifier | undefined {
+	if(!EvalNodeTypes.includes(node.type)) {
 		return undefined;
+	} else if(graph === undefined) {
+		/*
+		 * While the graph is still being built there are no origins to ask. The syntax says which name is
+		 * called, and the environment says whether that name still refers to the built-in. Only a name that
+		 * folds at all is looked up, as most calls of a program are to something that does not.
+		 */
+		const named = RExpressionList.is(node) ? RExpressionList.groupStart(node)?.content
+			: RFunctionCall.isNamed(node) ? node.functionName.content : undefined;
+		return named !== undefined && environment !== undefined && foldsThroughBuiltIn(named, ctx)
+			&& Resolve.isBuiltIn(named, environment, ReferenceType.Function) ? named : undefined;
 	}
 	let name: Identifier | undefined;
 	for(const origin of Dataflow.origin(graph, node.info.id) ?? []) {

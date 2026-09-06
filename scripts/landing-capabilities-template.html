@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowR &middot; capabilities</title>
+<meta name="description" content="What flowR knows about R. <!--SUMMARY--> Every capability with its id, the tests that demonstrate it, and an example you can open in the playground.">
+<link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
+<script>
+	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
+	try {
+		const theme = localStorage.getItem('flowr-theme');
+		if(theme) { document.documentElement.dataset.theme = theme; }
+	} catch(e) { /* private mode keeps the system theme */ }
+</script>
+<style>
+:root {
+	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
+	--border: #d6dae1; --accent: #a63446;
+	--fully: #2e9e5b; --partially: #d9911d; --not: #c0392b;
+	color-scheme: light;
+}
+:root[data-theme="dark"] {
+	--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
+	--border: #2f343d; --accent: #56b4e9;
+	--fully: #3fbf74; --partially: #e2a63c; --not: #e05a4a;
+	color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
+		--border: #2f343d; --accent: #56b4e9;
+		--fully: #3fbf74; --partially: #e2a63c; --not: #e05a4a;
+		color-scheme: dark;
+	}
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0; background: var(--bg); color: var(--fg);
+	font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+header { padding: 1rem 1.2rem .6rem; border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+h1 { font-size: 1.15rem; margin: 0 0 .4rem; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.brand { color: inherit; text-decoration: none; display: flex; align-items: center; gap: .35rem; }
+.where { color: var(--muted); font-weight: 400; }
+.version { margin-left: auto; font-size: .8rem; color: var(--muted); }
+.intro { margin: 0 0 .5rem; color: var(--muted); font-size: .9rem; }
+.controls { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+input[type="search"], select, button {
+	font: inherit; padding: .35rem .5rem; border: 1px solid var(--border);
+	border-radius: 6px; background: var(--sunk); color: var(--fg);
+}
+input[type="search"] { flex: 1 1 18rem; }
+button { cursor: pointer; }
+main { padding: 1rem 1.2rem 3rem; max-width: 62rem; }
+ul.caps { list-style: none; margin: 0; padding-left: 0; }
+ul.caps ul.caps { padding-left: 1.1rem; border-left: 1px solid var(--border); margin-left: .35rem; }
+li.cap { padding: .35rem 0 .35rem .1rem; }
+.head { display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; }
+.name { font-weight: 600; scroll-margin-top: 6rem; }
+.badge { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .35rem; }
+.badge.fully { background: var(--fully); }
+.badge.partially { background: var(--partially); }
+.badge.not { background: var(--not); }
+.anchor { color: var(--muted); text-decoration: none; opacity: 0; }
+li.cap:hover .anchor, .anchor:focus { opacity: 1; }
+.cid, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
+.cid { color: var(--muted); background: var(--sunk); border-radius: 4px; padding: 0 .3rem; }
+.tests { font-size: .82rem; color: var(--accent); }
+.desc, .see, .proof { margin: .15rem 0; color: var(--fg); }
+.see, .proof { font-size: .85rem; color: var(--muted); }
+p { margin: .2rem 0; }
+a { color: var(--accent); }
+.example { margin: .35rem 0 .2rem; }
+.example pre {
+	margin: .2rem 0; padding: .5rem .6rem; background: var(--sunk); border: 1px solid var(--border);
+	border-radius: 6px; overflow-x: auto; font-size: .82rem;
+}
+.try { font-size: .8rem; }
+details > summary { cursor: pointer; color: var(--muted); font-size: .82rem; margin: .2rem 0; }
+footer { border-top: 1px solid var(--border); padding: .8rem 1.2rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<header>
+	<h1><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="24" height="24">flowR</a><span class="where">Capabilities</span><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h1>
+	<p class="intro">
+		What flowR can do with R, as a qualitative list. <!--SUMMARY-->
+		Each capability carries the id a labeled test refers to, links to the tests that demonstrate it, and an example that opens in the
+		<a href="../playground/">playground</a>.
+	</p>
+	<div class="controls">
+		<input type="search" id="filter" placeholder="filter by name or id, e.g. closures or dollar-access" autocomplete="off">
+		<select id="level">
+			<option value="">every level of support</option>
+			<option value="fully">fully supported</option>
+			<option value="partially">partially supported</option>
+			<option value="not">not supported</option>
+		</select>
+		<button type="button" id="expand">expand all</button>
+		<button type="button" id="collapse">collapse all</button>
+		<button type="button" id="theme">theme</button>
+	</div>
+</header>
+<main>
+<!--CAPABILITIES-->
+</main>
+<footer>
+	<a href="https://github.com/flowr-analysis/flowr">flowr-analysis/flowr</a> |
+	<a href="https://github.com/flowr-analysis/flowr/wiki">wiki</a> |
+	<a href="../playground/">playground</a> |
+	<a href="../sigdb/">signature database</a> |
+	The capabilities are a qualitative measure, and their granularity differs, so counts of them say little.
+</footer>
+<script>
+	const filter = document.getElementById('filter');
+	const level = document.getElementById('level');
+	const caps = [...document.querySelectorAll('li.cap')];
+
+	/* a capability stays when it matches, and so does every one it sits in, so a hit keeps its context */
+	function apply() {
+		const needle = filter.value.trim().toLowerCase();
+		const want = level.value;
+		for(const cap of caps) {
+			const self = (needle === '' || cap.dataset.name.includes(needle))
+				&& (want === '' || cap.dataset.supported === want);
+			cap.dataset.self = self ? 'yes' : 'no';
+			cap.hidden = !self;
+		}
+		for(const cap of caps) {
+			if(cap.dataset.self !== 'yes') { continue; }
+			for(let up = cap.parentElement; up; up = up.parentElement) {
+				if(up.tagName === 'LI') { up.hidden = false; }
+				if(up.tagName === 'DETAILS' && needle !== '') { up.open = true; }
+			}
+		}
+		history.replaceState(null, '', needle === '' ? location.pathname : '?q=' + encodeURIComponent(needle));
+	}
+	filter.addEventListener('input', apply);
+	level.addEventListener('change', apply);
+
+	const start = new URLSearchParams(location.search).get('q');
+	if(start) { filter.value = start; apply(); }
+
+	for(const [id, open] of [['expand', true], ['collapse', false]]) {
+		document.getElementById(id).addEventListener('click', () => {
+			for(const details of document.querySelectorAll('main details')) { details.open = open; }
+		});
+	}
+
+	/* the theme is the one every flowR page reads, so a choice here follows you to the playground */
+	document.getElementById('theme').addEventListener('click', () => {
+		const now = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+		document.documentElement.dataset.theme = now;
+		try { localStorage.setItem('flowr-theme', now); } catch(e) { /* private mode forgets the choice */ }
+	});
+
+	/* an anchor from elsewhere points at a capability that a folded group may hide */
+	function reveal() {
+		const target = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+		if(!target) { return; }
+		for(let up = target.parentElement; up; up = up.parentElement) {
+			if(up.tagName === 'DETAILS') { up.open = true; }
+			if(up.tagName === 'LI') { up.hidden = false; }
+		}
+		target.scrollIntoView({ block: 'center' });
+	}
+	addEventListener('hashchange', reveal);
+	reveal();
+</script>
+</body>
+</html>

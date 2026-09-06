@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[src/documentation/wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts)' on 2026-08-16, 06:15:24 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
 <h2 id="useless-loop">Useless Loops&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -42,20 +42,19 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (10 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ for-loop at 1.1-27 only loops once\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: numOfUselessLoops: 1, searchTimeMs: 2, processTimeMs: 0\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: numOfUselessLoops: 1, searchTimeMs: 6, processTimeMs: 4\
+_All queries together required ≈10 ms (1ms accuracy, total 12 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _12.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -79,17 +78,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ],
         ".meta": {
           "numOfUselessLoops": 1,
-          "searchTimeMs": 2,
-          "processTimeMs": 0
+          "searchTimeMs": 6,
+          "processTimeMs": 4
         }
       }
     },
     ".meta": {
-      "timing": 2
+      "timing": 10
     }
   },
   ".meta": {
-    "timing": 2
+    "timing": 10
   }
 }
 ```
@@ -137,6 +136,33 @@ loc:       [1, 1, 1, 27]
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L9) for the test-case implementation.
 		
+<h4 id="Test_Case:_i_in_a_scalar">Test Case: i in a scalar</h4>
+
+
+Given the following input:
+
+```r
+for(i in 1) { print(i) }
+```
+
+
+And using the following [configuration](#configuration): 
+```ts
+undefined
+```
+
+
+We expect the linter to report the following:
+
+```ts
+			certainty: LintingResultCertainty.Certain,
+name:      'for',
+loc:       [1, 1, 1, 24]
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L15) for the test-case implementation.
+		
 <h4 id="Test_Case:_always_break">Test Case: always break</h4>
 
 > Given a loop the linter checks, if the loop is always stopped after the first iteration
@@ -163,7 +189,7 @@ loc:       [1, 1, 1, 38]
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L16) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L22) for the test-case implementation.
 		
 <h4 id="Test_Case:_repeat_with_break">Test Case: repeat with break</h4>
 
@@ -188,4 +214,4 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L24) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L30) for the test-case implementation.

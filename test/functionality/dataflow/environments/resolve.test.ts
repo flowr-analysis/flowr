@@ -135,6 +135,7 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		testResolve('Constant Value',       '1@x', 'x <- 5', set([5]));
 		testResolve('Constant Value Str',   '1@x', 'x <- "foo"', set(['foo']));
 		testResolve('Alias Constant Value', '3@x', 'y <- 5 \n x <- y \n x', set([5]));
+		testResolve('Brace block',          '2@x', 'x <- { 1 + 2 } \n x', set([3]));
 
 		testResolve('rm() with alias',      '4@x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
 	});
@@ -342,7 +343,7 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		testResolve('quoted argument',     '2@x', 'x <- abs(quote(a)) \n x',                     Top);
 		testResolve('grouping redefined',  '3@x', '`(` <- function(a) 0 \n x <- (1 + 2) \n x',   Top);
 		testResolve('conditionally redefined', '3@x', 'if(u) abs <- function(a) 0 \n x <- abs(-1) \n x', Top);
-		testResolve('brace block',         '2@x', 'x <- { 1 + 2 } \n x',                         Top);
+		testResolve('brace redefined',     '3@x', '`{` <- function(a) 0 \n x <- { 1 + 2 } \n x', Top);
 		testResolve('removed again',       '3@x', 'x <- 1 + 1 \n rm(x) \n x',                    Top);
 		/* `NA` and `NaN` make R answer `NA`, never a logical */
 		testResolve('NaN compared',        '2@x', 'x <- NaN > 1 \n x',                           Top);

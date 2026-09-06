@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
 <h2 id="unused-import">Unused Import&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Highlights packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L132">src/linter/rules/unused-import.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L138">src/linter/rules/unused-import.ts</a>._
 
 
 ### Configuration
@@ -43,20 +43,19 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (7 ms)\
+Query: **linter** (19 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Import of stats at 1.1-14 (1 quick fix(es) available)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnresolved: 0, totalMultiPackage: 0, totalUnused: 1, searchTimeMs: 6, processTimeMs: 1\
-_All queries together required ≈7 ms (1ms accuracy, total 7 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnresolved: 0, totalMultiPackage: 0, totalUnused: 1, searchTimeMs: 17, processTimeMs: 2\
+_All queries together required ≈19 ms (1ms accuracy, total 23 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _7.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _22.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -96,17 +95,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnresolved": 0,
           "totalMultiPackage": 0,
           "totalUnused": 1,
-          "searchTimeMs": 6,
-          "processTimeMs": 1
+          "searchTimeMs": 17,
+          "processTimeMs": 2
         }
       }
     },
     ".meta": {
-      "timing": 7
+      "timing": 19
     }
   },
   ".meta": {
-    "timing": 7
+    "timing": 19
   }
 }
 ```
@@ -284,6 +283,33 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L69) for the test-case implementation.
 		
+<h4 id="Test_Case:_an_export_handed_on_as_a_value_keeps_the_import">Test Case: an export handed on as a value keeps the import</h4>
+
+
+Given the following input:
+
+```r
+library(ggplot2)
+f <- aes
+f()
+```
+
+
+And using the following [configuration](#configuration): 
+```ts
+{ sigDb }
+```
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L72) for the test-case implementation.
+		
 <h4 id="Test_Case:_a_use_inside_a_function_body_keeps_the_import">Test Case: a use inside a function body keeps the import</h4>
 
 
@@ -309,7 +335,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L72) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L75) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_use_inside_a_branch_keeps_the_import">Test Case: a use inside a branch keeps the import</h4>
 
@@ -335,7 +361,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L75) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L78) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_shadowed_export_does_not_keep_the_import">Test Case: a shadowed export does not keep the import</h4>
 
@@ -362,7 +388,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L78) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L81) for the test-case implementation.
 		
 <h4 id="Test_Case:_using_one_package_does_not_excuse_the_others">Test Case: using one package does not excuse the others</h4>
 
@@ -391,7 +417,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L81) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L84) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_braced_branch_can_be_emptied">Test Case: a braced branch can be emptied</h4>
 
@@ -417,7 +443,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L87) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L90) for the test-case implementation.
 		
 <h4 id="Test_Case:_an_unbraced_branch_offers_no_removal">Test Case: an unbraced branch offers no removal</h4>
 
@@ -442,7 +468,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L90) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L93) for the test-case implementation.
 		
 <h4 id="Test_Case:_an_unbraced_function_body_offers_no_removal">Test Case: an unbraced function body offers no removal</h4>
 
@@ -467,7 +493,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L93) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L96) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_package_the_database_does_not_know_is_skipped">Test Case: a package the database does not know is skipped</h4>
 
@@ -495,7 +521,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L98) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L101) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_whitelisted_package_is_never_reported">Test Case: a whitelisted package is never reported</h4>
 
@@ -523,7 +549,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L102) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L105) for the test-case implementation.
 		
 <h4 id="Test_Case:_nothing_is_reported_without_a_signature_database">Test Case: nothing is reported without a signature database</h4>
 
@@ -548,7 +574,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L106) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L109) for the test-case implementation.
 		
 <h4 id="Test_Case:_requireNamespace_is_not_an_import">Test Case: requireNamespace is not an import</h4>
 
@@ -573,7 +599,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L109) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L112) for the test-case implementation.
 		
 <h4 id="Test_Case:_loadNamespace_is_not_an_import">Test Case: loadNamespace is not an import</h4>
 
@@ -598,7 +624,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L113) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L116) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_qualified_call_is_not_an_import_of_its_own">Test Case: a qualified call is not an import of its own</h4>
 
@@ -623,7 +649,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L116) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L119) for the test-case implementation.
 		
 <h4 id="Test_Case:_an_attach_naming_several_packages_at_once_is_skipped">Test Case: an attach naming several packages at once is skipped</h4>
 
@@ -648,7 +674,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L119) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L122) for the test-case implementation.
 		
 <h4 id="Test_Case:_an_attach_whose_package_cannot_be_resolved_is_skipped">Test Case: an attach whose package cannot be resolved is skipped</h4>
 
@@ -673,4 +699,4 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L123) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L126) for the test-case implementation.

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-09-01, 11:38:18 UTC (v2.15.8, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-09-05, 12:44:24 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
@@ -54,7 +54,7 @@ x"])
 
 ```
 	
-(The analysis required _0.9 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _4.1 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -121,7 +121,7 @@ click MergeableRecord href "https://github.com/flowr-analysis/flowr/tree/main/sr
 class Record{
     <<variable>>
 }
-click Record href "https://github.com/flowr-analysis/flowr/tree/main/src/util/record.ts#L4" "Helper for transforming records."
+click Record href "https://github.com/flowr-analysis/flowr/tree/main/src/util/record.ts#L5" "Helper for transforming records."
 class string{
     <<variable>>
 }
@@ -138,7 +138,7 @@ click ConstantSemantics href "https://github.com/flowr-analysis/flowr/tree/main/
 class unknown{
     <<variable>>
 }
-click unknown href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph-helper.ts#L114" ""
+click unknown href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts#L84" ""
 class Info{
     <<enum>>
 }
@@ -1537,7 +1537,7 @@ The following segments intend to give you an overview of how to work with the no
 ## How to Get a Normalized AST
 
 As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page, you can use an instance of
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L116"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L116"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
 
 
 ```ts
@@ -1551,7 +1551,7 @@ From the REPL, you can use the <span title="Description (Repl Command): Get merm
 
 ### Multi-File Projects
 
-With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
+With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
 
 
 ```ts
@@ -1664,16 +1664,16 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang
 
 
 > [!TIP]
-> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L49"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
+> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L50"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
 
 
 ### Visitors
 
-If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L363"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
+If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L364"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
 For example, if you want to collect all the `id`s present within a normalized (sub-)AST,
-as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L372"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L451"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L53"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
+as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L373"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L452"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L54"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
 
 
 ```ts

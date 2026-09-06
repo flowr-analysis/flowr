@@ -19,7 +19,7 @@ export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	wikiFaq.withTopic('flowr.development')
 		.addFaq('What are *test labels*?', `
 Tests are labeled based on the *flowR* capabilities that they test for.
-The list of supported capabilities can be found on the ${ctx.linkPage('wiki/Capabilities', 'Capabilities')} wiki page.
+The list of supported capabilities can be found on the ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
 `)
 		.addFaq('How do I run *all checks* before pushing?', `

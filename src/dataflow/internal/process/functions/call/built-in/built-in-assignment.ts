@@ -30,7 +30,7 @@ import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { ClosureRefs } from '../../../../linker';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { define } from '../../../../../environments/define';
-import { EdgeType } from '../../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
@@ -497,11 +497,32 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
 }
 
 /**
- * Returns `true` when the entry-point of `sourceInfo` is a call to a `new.env`-family function.
+ * The node an assignment takes its value from, following the {@link EdgeType.Returns} edges of the graph.
+ * A block hands back its last expression and a grouping what it wraps, so `e <- { new.env() }` creates an
+ * environment just like `e <- new.env()` does. `undefined` whenever more than one node may produce the value,
+ * as a branch or a loop does, since the assignment then has no single source to speak of.
+ */
+function valueEntryPointOf(sourceInfo: DataflowInformation): NodeId | undefined {
+	const seen = new Set<NodeId>();
+	let id = sourceInfo.entryPoint;
+	while(true) {
+		const returns = [...sourceInfo.graph.edgesFrom(id)].filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Returns));
+		if(returns.length === 0) {
+			return id;
+		} else if(returns.length > 1 || seen.has(id)) {
+			return undefined;
+		}
+		seen.add(id);
+		id = returns[0][0];
+	}
+}
+
+/**
+ * Returns `true` when the value of `sourceInfo` comes from a call to a `new.env`-family function.
  * Used by {@link processAssignmentToSymbol} to attach an initial {@link InGraphIdentifierDefinition#envState}.
  */
-function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
-	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
+function isEnvCreatorSource(sourceInfo: DataflowInformation, entryPoint: NodeId | undefined): boolean {
+	const vert = entryPoint === undefined ? undefined : sourceInfo.graph.getVertex(entryPoint);
 	return DfgVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
 }
 
@@ -684,8 +705,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	if(data.ctx.config.solver.trackEnvironments) {
 		let envState: REnvironmentInformation | undefined;
 		let returnsEnvState: REnvironmentInformation | undefined;
-		const stackEnv = stackEnvStateFromSource(sourceArg, data);
-		if(isEnvCreatorSource(sourceArg)) {
+		const valueEntry = valueEntryPointOf(sourceArg);
+		const stackEnv = stackEnvStateFromSource(sourceArg, data, valueEntry);
+		if(isEnvCreatorSource(sourceArg, valueEntry)) {
 			envState = createFreshEnvState(data, sourceArg);
 		} else if(stackEnv !== undefined) {
 			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env

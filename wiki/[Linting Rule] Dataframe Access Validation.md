@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-25, 11:40:12 UTC (v2.14.4), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
 <h2 id="dataframe-access-validation">Dataframe Access Validation&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Validates the existence of accessed columns and rows of dataframes.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L58">src/linter/rules/dataframe-access-validation.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L62">src/linter/rules/dataframe-access-validation.ts</a>._
 
 
 ### Configuration
@@ -15,7 +15,7 @@ _This linting rule is implemented in <a href="https://github.com/flowr-analysis/
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `dataframe-access-validation` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L46"><code><span title="Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if undefined)">readLoadedData</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L50"><code><span title="Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if undefined)">readLoadedData</span></code></a>\
 Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if `undefined`)
 
 ### Examples
@@ -44,21 +44,20 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (47 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Access of row 6 of `df` at 3.1-14\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Access of column "value" of `df` at 3.1-14\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: numOperations: 1, numAccesses: 2, totalAccessed: 2, searchTimeMs: 0, processTimeMs: 4\
-_All queries together required ≈4 ms (1ms accuracy, total 5 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: numOperations: 1, numAccesses: 2, totalAccessed: 2, searchTimeMs: 5, processTimeMs: 41\
+_All queries together required ≈47 ms (1ms accuracy, total 54 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _53.9 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -101,17 +100,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "numOperations": 1,
           "numAccesses": 2,
           "totalAccessed": 2,
-          "searchTimeMs": 0,
-          "processTimeMs": 4
+          "searchTimeMs": 5,
+          "processTimeMs": 41
         }
       }
     },
     ".meta": {
-      "timing": 4
+      "timing": 47
     }
   },
   ".meta": {
-    "timing": 4
+    "timing": 47
   }
 }
 ```
@@ -131,6 +130,49 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-dataframe-access-validation.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts)
 
 
+<h4 id="Test_Case:_dollar_matches_a_prefix">Test Case: dollar matches a prefix</h4>
+
+> `$` matches a unique prefix of a column name, `[[` matches exactly
+
+Given the following input:
+
+```r
+df <- data.frame(id = 1:5, value = "A")
+df$val
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L157) for the test-case implementation.
+		
+<h4 id="Test_Case:_double_bracket_does_not">Test Case: double bracket does not</h4>
+
+
+Given the following input:
+
+```r
+df <- data.frame(id = 1:5, value = "A")
+df[["val"]]
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+[{ type: 'column', accessed: 'val', access: '[[', operand: 'df', loc: [2, 1, 2, 11], certainty: LintingResultCertainty.Certain }]
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L158) for the test-case implementation.
+		
 <h4 id="Test_Case:_Column_access_by_name">Test Case: Column access by name</h4>
 
 > We expect the linter to report an issue, if a column is accessed by name via `$` that does not exist in the data frame.
@@ -151,7 +193,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L157) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L164) for the test-case implementation.
 		
 <h4 id="Test_Case:_Column_access_by_index">Test Case: Column access by index</h4>
 
@@ -173,7 +215,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L166) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L173) for the test-case implementation.
 		
 <h4 id="Test_Case:_Row_access_by_index">Test Case: Row access by index</h4>
 
@@ -195,7 +237,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L175) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L182) for the test-case implementation.
 		
 <h4 id="Test_Case:_Filter_access">Test Case: Filter access</h4>
 
@@ -217,7 +259,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L184) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L191) for the test-case implementation.
 		
 <h4 id="Test_Case:_Select_access">Test Case: Select access</h4>
 
@@ -239,7 +281,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L193) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L200) for the test-case implementation.
 		
 <h4 id="Test_Case:_Code_example">Test Case: Code example</h4>
 
@@ -276,4 +318,4 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L202) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L209) for the test-case implementation.

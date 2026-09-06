@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
 <h2 id="naming-convention">Naming Convention&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
@@ -46,17 +46,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (17 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention): _no findings_\
-_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
+_All queries together required ≈22 ms (1ms accuracy, total 26 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _25.6 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -69,17 +68,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "numMatches": 1,
           "numBreak": 0,
-          "searchTimeMs": 1,
-          "processTimeMs": 0
+          "searchTimeMs": 12,
+          "processTimeMs": 5
         }
       }
     },
     ".meta": {
-      "timing": 1
+      "timing": 17
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 22
   }
 }
 ```
@@ -129,6 +128,37 @@ certainty:      LintingResultCertainty.Certain,
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L126) for the test-case implementation.
 		
+<h4 id="Test_Case:_no_fix_onto_a_taken_name">Test Case: no fix onto a taken name</h4>
+
+> A rename onto a name the program binds already would change what that name refers to, so no fix is offered
+
+Given the following input:
+
+```r
+testVar <- 5
+TestVar <- 6
+```
+
+
+And using the following [configuration](#configuration): 
+```ts
+{ caseing: CasingConvention.PascalCase }
+```
+
+
+We expect the linter to report the following:
+
+```ts
+			name:           'testVar',
+detectedCasing: CasingConvention.CamelCase,
+quickFix:       undefined,
+loc:            [1, 1, 1, 7],
+certainty:      LintingResultCertainty.Certain,
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L135) for the test-case implementation.
+		
 <h4 id="Test_Case:_only_detect_definition">Test Case: only detect definition</h4>
 
 > The casing of the definition is checked, and quick fixes for all usages (and the definition) are provided
@@ -161,7 +191,7 @@ certainty: LintingResultCertainty.Certain,
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L135) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L144) for the test-case implementation.
 		
 <h4 id="Test_Case:_function_and_call">Test Case: function and call</h4>
 
@@ -206,11 +236,12 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L147) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L156) for the test-case implementation.
 		
 <h4 id="Test_Case:_detect_casing">Test Case: detect casing</h4>
 
 > The rule can be configured to automaticaly detect the most used casing style. The file will be linted according to the detected style
+> `testVar` is taken, so renaming `test_var` onto it would merge the two variables and no fix is offered
 
 Given the following input:
 
@@ -232,13 +263,13 @@ We expect the linter to report the following:
 ```ts
 			name:           'test_var',
 detectedCasing: CasingConvention.SnakeCase,
-quickFix:       [{ type: 'replace', replacement: 'testVar', loc: [3, 1, 3, 8], description: 'Rename to match naming convention camelCase' } as const],
+quickFix:       undefined,
 loc:            [3, 1, 3, 8],
 certainty:      LintingResultCertainty.Certain,
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L171) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L181) for the test-case implementation.
 		
 <h4 id="Test_Case:_non_alpha_identifier__ignore_">Test Case: non alpha identifier (ignore)</h4>
 
@@ -267,7 +298,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L180) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L190) for the test-case implementation.
 		
 <h4 id="Test_Case:_non_alpha_identifier__do_not_ignore_">Test Case: non alpha identifier (do not ignore)</h4>
 
@@ -300,7 +331,7 @@ quickFix:       undefined
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L186) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L196) for the test-case implementation.
 		
 <h4 id="Test_Case:_empty_string">Test Case: empty string</h4>
 
@@ -325,7 +356,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L197) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L207) for the test-case implementation.
 		
 <h4 id="Test_Case:_empty_string__auto_detect_">Test Case: empty string (auto detect)</h4>
 
@@ -350,7 +381,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L198) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L208) for the test-case implementation.
 		
 <h4 id="Test_Case:_ignore_leading_underscores">Test Case: ignore leading underscores</h4>
 
@@ -379,4 +410,4 @@ certainty:      LintingResultCertainty.Certain,
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L200) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L210) for the test-case implementation.

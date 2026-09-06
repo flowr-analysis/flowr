@@ -127,7 +127,7 @@ The set of currently supported capabilities and their IDs can be found in ${getF
 
 The resulting labels are used in the test report that is generated as part of the test output. 
 They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
-The report can be found on the wiki's ${ctx.linkPage('wiki/Capabilities', 'capabilities page')}.
+The report can be found on flowR's ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 
 To add new labels, simply add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
 

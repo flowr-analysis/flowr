@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-25, 12:15:37 UTC (v2.14.4), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:31 UTC (v2.15.8), do not edit directly._
 <h2 id="network-functions">Network Functions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule is used to detect issues that are related to the performance of the code. For example, inefficient algorithms, unnecessary computations, or unoptimized data structures."><a href='#performance'>![performance](https://img.shields.io/badge/performance-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span>
@@ -46,21 +46,20 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (21 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function `utils::read.csv` at 2.1-40\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function `utils::download.file` at 3.1-32\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalCalls: 2, totalFunctionDefinitions: 2, searchTimeMs: 1, processTimeMs: 1\
-_All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalCalls: 2, totalFunctionDefinitions: 2, searchTimeMs: 14, processTimeMs: 6\
+_All queries together required ≈21 ms (1ms accuracy, total 32 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _32.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -96,17 +95,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalCalls": 2,
           "totalFunctionDefinitions": 2,
-          "searchTimeMs": 1,
-          "processTimeMs": 1
+          "searchTimeMs": 14,
+          "processTimeMs": 6
         }
       }
     },
     ".meta": {
-      "timing": 2
+      "timing": 21
     }
   },
   ".meta": {
-    "timing": 3
+    "timing": 21
   }
 }
 ```
@@ -571,3 +570,86 @@ We expect the linter to report the following:
 
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L158) for the test-case implementation.
+		
+<h4 id="Test_Case:_cat_without_file">Test Case: cat without file</h4>
+
+> `cat`'s `file` defaults to `""` and `writeLines`' `con` to `stdout()`, neither of which is a URL,
+			   so an argument the call never supplies must not count as one that might hold one
+
+Given the following input:
+
+```r
+cat("hello
+")
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L169) for the test-case implementation.
+		
+<h4 id="Test_Case:_writeLines_without_con">Test Case: writeLines without con</h4>
+
+
+Given the following input:
+
+```r
+writeLines("x")
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L170) for the test-case implementation.
+		
+<h4 id="Test_Case:_cat_to_a_local_file">Test Case: cat to a local file</h4>
+
+
+Given the following input:
+
+```r
+cat("hello", file = "out.txt")
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L171) for the test-case implementation.
+		
+<h4 id="Test_Case:_cat_to_a_url">Test Case: cat to a url</h4>
+
+
+Given the following input:
+
+```r
+cat("hello", file = "https://example.com")
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+[{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 42] }]
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L172) for the test-case implementation.

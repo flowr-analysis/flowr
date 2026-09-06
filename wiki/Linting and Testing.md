@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-09-01, 11:38:17 UTC (v2.15.8, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-09-05, 18:05:51 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
@@ -121,7 +121,7 @@ The set of currently supported capabilities and their IDs can be found in [`./sr
 
 The resulting labels are used in the test report that is generated as part of the test output. 
 They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
-The report can be found on the wiki's [capabilities page](https://github.com/flowr-analysis/flowr/wiki/Capabilities).
+The report can be found on flowR's [capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
 
 To add new labels, simply add them to the relevant section in [`./src/r-bridge/data/data.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/data/data.ts) as part of a pull request.
 
@@ -292,7 +292,7 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 <a id='flowr-specific-rules'></a>
 ### 🧭 flowR-Specific Rules
 
-flowR groups its functions in helper objects (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L9"><code><span title="An edge consist of only of the type (source and target are encoded with the Dataflow Graph). Multiple edges are encoded by joining the respective type bits.">DfEdge</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L37"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L14"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a>, and
+flowR groups its functions in helper objects (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L9"><code><span title="An edge consist of only of the type (source and target are encoded with the Dataflow Graph). Multiple edges are encoded by joining the respective type bits.">DfEdge</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L38"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L14"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a>, and
 friends) so that there is one obvious entry point per topic. Two rules of the
 [`flowr` plugin](https://github.com/flowr-analysis/flowr-lint) keep the code on those entry points, both part of `npm run lint`.
 Each is fixed on the spot where the replacement is already imported, and offered as an editor suggestion otherwise.
@@ -314,14 +314,14 @@ export function resolveByNameAnyType(/* ... */) { /* ... */ }
 
 
 Never reported are the references that make the replacement exist: the wiring in an object literal
-(<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L58"><code><span title="Every definition the identifier may refer to, whatever its type.">Resolve::<b>byName</b></span></code></a> pointing at `resolveByNameAnyType`), re-exports, and files declaring the helper itself.
+(<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L59"><code><span title="Every definition the identifier may refer to, whatever its type.">Resolve::<b>byName</b></span></code></a> pointing at `resolveByNameAnyType`), re-exports, and files declaring the helper itself.
 
 <a id='replacement-patterns'></a>
 #### Replacement Patterns
 
 Some replacements are a shape of code rather than a renamed function, such as `edge.types === EdgeType.Reads`, which
-reads like "has this type" (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L158"><code><span title="Check if the given-edge type has any of the given types. As types are bitmasks, you can combine multiple types with a bitwise OR (|).">DfEdge::<b>includesType</b></span></code></a>) but holds only if it is the *only* type
-(<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L199"><code><span title="Check whether the edge carries the given types and nothing else. Strict counterpart of DfEdge#includesType , which already holds if one of the bits is set.">DfEdge::<b>isOnlyType</b></span></code></a>). These are matched with [esquery](https://github.com/estools/esquery) selectors,
+reads like "has this type" (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L159"><code><span title="Check if the given-edge type has any of the given types. As types are bitmasks, you can combine multiple types with a bitwise OR (|).">DfEdge::<b>includesType</b></span></code></a>) but holds only if it is the *only* type
+(<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L200"><code><span title="Check whether the edge carries the given types and nothing else. Strict counterpart of DfEdge#includesType , which already holds if one of the bits is set.">DfEdge::<b>isOnlyType</b></span></code></a>). These are matched with [esquery](https://github.com/estools/esquery) selectors,
 the language `no-restricted-syntax` uses.
 
 The [flowr-lint README](https://github.com/flowr-analysis/flowr-lint#flowrreplacement-pattern) documents the fields of a pattern,

@@ -13,7 +13,6 @@ import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
 import {
-	DocCapabilities,
 	WikiCore, WikiDataflowGraph,
 	WikiEngine,
 	WikiHelperObjects,
@@ -56,8 +55,7 @@ export const AllWikiDocuments = [
 	new WikiCreateLintingRules(),
 	new WikiSignatureDatabase(),
 	new IssueLintingRule(),
-	new DocReadme(),
-	new DocCapabilities()
+	new DocReadme()
 ] as const satisfies DocMakerLike[];
 
 export type ValidWikiDocumentTargets = ReturnType<typeof AllWikiDocuments[number]['getTarget']>;

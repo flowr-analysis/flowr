@@ -111,9 +111,12 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 	return undefined;
 }
 
-/** The stack environment `sourceInfo`'s entry call refers to (`e <- globalenv()`, `e <- environment()`), or `undefined`. */
-export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: StackEnvContext): REnvironmentInformation | undefined {
-	const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
+/**
+ * The stack environment `sourceInfo`'s value comes from (`e <- globalenv()`, `e <- environment()`), or `undefined`.
+ * @param entryPoint - the node the value comes from, if that is not the entry point of `sourceInfo` itself
+ */
+export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: StackEnvContext, entryPoint: NodeId | undefined = sourceInfo.entryPoint): REnvironmentInformation | undefined {
+	const vertex = entryPoint === undefined ? undefined : sourceInfo.graph.getVertex(entryPoint);
 	if(!DfgVertex.isFunctionCall(vertex) || vertex.name === undefined) {
 		return undefined;
 	}

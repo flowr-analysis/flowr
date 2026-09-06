@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 18:14:16 UTC (v2.15.8), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
 <h2 id="unused-definitions">Unused Definitions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Checks for unused definitions.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L322">src/linter/rules/unused-definition.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L324">src/linter/rules/unused-definition.ts</a>._
 
 
 ### Configuration
@@ -48,20 +48,19 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (20 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Definition of `y` at 3.1 (1 quick fix(es) available)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 2, searchTimeMs: 0, processTimeMs: 1\
-_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 2, searchTimeMs: 10, processTimeMs: 10\
+_All queries together required ≈20 ms (1ms accuracy, total 46 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _46.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -97,17 +96,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ],
         ".meta": {
           "totalConsidered": 2,
-          "searchTimeMs": 0,
-          "processTimeMs": 1
+          "searchTimeMs": 10,
+          "processTimeMs": 10
         }
       }
     },
     ".meta": {
-      "timing": 1
+      "timing": 20
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 20
   }
 }
 ```
@@ -152,3 +151,27 @@ We expect the linter to report the following:
 
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L63) for the test-case implementation.
+		
+<h4 id="Test_Case:_call_with_a_super-assignment_offers_no_fix">Test Case: call with a super-assignment offers no fix</h4>
+
+> removing `r <- bump()` would drop the `<<-` the call performs, so it is reported without a fix
+
+Given the following input:
+
+```r
+counter <- 0
+bump <- function() { counter <<- counter + 1; counter }
+r <- bump()
+print(counter)
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+[{ certainty: LintingResultCertainty.Uncertain, variableName: 'r', loc: [3, 1, 3, 1], quickFix: undefined }]
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L110) for the test-case implementation.

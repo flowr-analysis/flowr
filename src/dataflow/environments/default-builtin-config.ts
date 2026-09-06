@@ -1011,7 +1011,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['stopifnot', PkgName.Base]), Identifier.from(['assert_that', PkgName.AssertThat])], processor: BuiltInProcName.StopIfNot, config: { props: CallProp.Invisible | CallProp.Throws, sig: [['...', 0], ['exprs', ArgProp.NoDefault], ['exprObject', ArgProp.NoDefault], ['local', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: ['break'], processor: BuiltInProcName.Default, config: { useAsProcessor: BuiltInProcName.Break, cfg: ExitPointType.Break }, assumePrimitive: false },
 	{ type: 'function', names: ['next'], processor: BuiltInProcName.Default, config: { cfg: ExitPointType.Next }, assumePrimitive: false },
-	{ type: 'function', names: ['{'], processor: BuiltInProcName.ExpressionList, config: { sig: [['...', 0]] }, assumePrimitive: true },
+	{ type: 'function', names: ['{'], processor: BuiltInProcName.ExpressionList, config: { props: CallProp.Pure, sig: [['...', 0]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.Group },
 	{ type:            'function', names:           [Identifier.from(['source', PkgName.Base])],
 		/* it hands back what it evaluated invisibly, so a top-level `source()` prints nothing of its own */
 		processor:       BuiltInProcName.Source,

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 18:14:16 UTC (v2.15.8), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
 <h2 id="stop-call">Stop without call.=False argument&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Checks whether stop calls without call. argument set to FALSE are used.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/stop-with-call-arg.ts#L24">src/linter/rules/stop-with-call-arg.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/stop-with-call-arg.ts#L32">src/linter/rules/stop-with-call-arg.ts</a>._
 
 
 ### Configuration
@@ -41,20 +41,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
-&nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ `stop()` without `call. = FALSE` at 1.1-8\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: consideredNodes: 0, searchTimeMs: 0, processTimeMs: 1\
-_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
+Query: **linter** (2 ms)\
+&nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call): _no findings_\
+_All queries together required ≈2 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _0.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _5.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
 
 
 
@@ -63,31 +59,20 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
   "linter": {
     "results": {
       "stop-call": {
-        "results": [
-          {
-            "certainty": "uncertain",
-            "involvedId": 3,
-            "loc": [
-              1,
-              1,
-              1,
-              8
-            ]
-          }
-        ],
+        "results": [],
         ".meta": {
           "consideredNodes": 0,
-          "searchTimeMs": 0,
-          "processTimeMs": 1
+          "searchTimeMs": 2,
+          "processTimeMs": 0
         }
       }
     },
     ".meta": {
-      "timing": 1
+      "timing": 2
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 2
   }
 }
 ```
@@ -127,7 +112,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L9) for the test-case implementation.
 		
-<h4 id="Test_Case:_single_stop">Test Case: single stop</h4>
+<h4 id="Test_Case:_a_top-level_stop_has_no_call_to_append">Test Case: a top-level stop has no call to append</h4>
 
 
 Given the following input:
@@ -141,20 +126,19 @@ stop(x)
 We expect the linter to report the following:
 
 ```ts
-				certainty: LintingResultCertainty.Uncertain,
-loc:       SourceRange.from(1, 1, 1, 7)
+* no lints
 ```
 
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L10) for the test-case implementation.
 		
-<h4 id="Test_Case:_single_stop_with_arg">Test Case: single stop with arg</h4>
+<h4 id="Test_Case:_single_stop">Test Case: single stop</h4>
 
 
 Given the following input:
 
 ```r
-stop(x, call.=FALSE)
+f <- function(x) stop(x)
 ```
 
 
@@ -162,20 +146,20 @@ stop(x, call.=FALSE)
 We expect the linter to report the following:
 
 ```ts
-* no lints
+				certainty: LintingResultCertainty.Uncertain,
+loc:       SourceRange.from(1, 18, 1, 24)
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L16) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L11) for the test-case implementation.
 		
-<h4 id="Test_Case:_shadow_call.">Test Case: shadow call.</h4>
+<h4 id="Test_Case:_single_stop_with_arg">Test Case: single stop with arg</h4>
 
 
 Given the following input:
 
 ```r
-stop <- function(x, call.){return 0}
-stop(3, call.=TRUE)
+f <- function(x) stop(x, call.=FALSE)
 ```
 
 
@@ -189,35 +173,14 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L17) for the test-case implementation.
 		
-<h4 id="Test_Case:_stop_with_set_to_true">Test Case: stop with set to true</h4>
+<h4 id="Test_Case:_shadow_call.">Test Case: shadow call.</h4>
 
 
 Given the following input:
 
 ```r
-stop(y, call.=TRUE)
-```
-
-
-
-We expect the linter to report the following:
-
-```ts
-				certainty: LintingResultCertainty.Uncertain,
-loc:       SourceRange.from(1, 1, 1, 19)
-```
-
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L18) for the test-case implementation.
-		
-<h4 id="Test_Case:_resolve_flag_in_stop">Test Case: resolve flag in stop</h4>
-
-
-Given the following input:
-
-```r
-x <- FALSE
-stop(y, call.=x)
+stop <- function(x, call.){return 0}
+f <- function() stop(3, call.=TRUE)
 ```
 
 
@@ -229,4 +192,65 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L24) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L18) for the test-case implementation.
+		
+<h4 id="Test_Case:_stop_with_set_to_true">Test Case: stop with set to true</h4>
+
+
+Given the following input:
+
+```r
+f <- function(y) stop(y, call.=TRUE)
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+				certainty: LintingResultCertainty.Uncertain,
+loc:       SourceRange.from(1, 18, 1, 36)
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L19) for the test-case implementation.
+		
+<h4 id="Test_Case:_resolve_flag_in_stop">Test Case: resolve flag in stop</h4>
+
+
+Given the following input:
+
+```r
+f <- function(y) { x <- FALSE; stop(y, call.=x) }
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L25) for the test-case implementation.
+		
+<h4 id="Test_Case:_a_condition_object_carries_its_own_call">Test Case: a condition object carries its own call</h4>
+
+
+Given the following input:
+
+```r
+f <- function() stop(simpleError("x"))
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+* no lints
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L26) for the test-case implementation.

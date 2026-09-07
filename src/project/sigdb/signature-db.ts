@@ -57,6 +57,14 @@ export interface SignatureDb {
 	 */
 	functionOf(this: void, id: Identifier, version?: string): DecodedFunction | undefined;
 	/**
+	 * Like {@link functionOf} (same version and S4-group resolution) but returns the entry's true `exported`
+	 * bit instead of applying the `::`-only check - for callers checking whether a source's own `::`/`:::`
+	 * matches what the package actually exports, rather than wanting R's accessibility rules applied for them.
+	 * @param id      - The identifier to look up; its internal bit is ignored.
+	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
+	 */
+	rawFunctionOf(this: void, id: Identifier, version?: string): DecodedFunction | undefined;
+	/**
 	 * The formal parameter names of a qualified call, ready to hand to {@link FunctionSemantics.call.match.toNames}.
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
@@ -115,6 +123,17 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 		return group === undefined ? undefined : reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v)));
 	};
 
+	/* like functionOf but keeps the entry's raw exported bit */
+	const rawFunctionOf = (id: Identifier, version?: string): DecodedFunction | undefined => {
+		const [name, pkg] = Identifier.toArray(id);
+		if(pkg === undefined) {
+			return undefined; // without a package there is nothing to look the function up in
+		}
+		/* no group-generic fallback here: `setMethod('Math', ...)` binds no `sin`, so its export bit says
+		 * nothing about `sin`, and a caller asking about this very name would be told about another one */
+		return answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
+	};
+
 	return {
 		available:         () => deps.signatureSources().length > 0,
 		versionOf,
@@ -123,6 +142,7 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 		packagesExporting: name => deps.packagesExporting(name),
 		sources:           () => merged(),
 		functionOf,
+		rawFunctionOf,
 		parametersOf:      (id, version) => functionOf(id, version)?.signature.map(p => p.name)
 	};
 }

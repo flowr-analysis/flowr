@@ -6,48 +6,10 @@
 <title>flowR &middot; program analysis for R</title>
 <meta name="description" content="flowR is a sophisticated static program analyzer for the R language: slicing, dependency and query analysis, shape inference, and linting, without needing to run your code.">
 <link rel="icon" href="wiki/img/flowR-mark-red.svg" type="image/svg+xml">
-<script>
-	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
-	try {
-		const theme = localStorage.getItem('flowr-theme');
-		if(theme) { document.documentElement.dataset.theme = theme; }
-	} catch(e) { /* private mode keeps the system theme */ }
-	/* every flowR page reads the same key, so a change on one of them follows you to the others */
-	addEventListener('storage', e => {
-		if(e.key === 'flowr-theme') {
-			if(e.newValue) {
-				document.documentElement.dataset.theme = e.newValue;
-			} else {
-				delete document.documentElement.dataset.theme;
-			}
-		}
-	});
-</script>
+<!--CHROME-SCRIPT-->
 <style>
-:root {
-	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
-	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff;
-	--shadow: 0 1px 2px rgba(16,20,30,.06), 0 6px 18px rgba(16,20,30,.06);
-	color-scheme: light;
-}
-:root[data-theme="dark"] {
-	--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
-	--border: #2f343d; --accent: #56b4e9; --accent-fg: #10131a;
-	--shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35); color-scheme: dark;
-}
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) {
-		--bg: #14161a; --panel: #1b1e24; --sunk: #22262d; --fg: #e7e9ed; --muted: #a3aab8;
-		--border: #2f343d; --accent: #56b4e9; --accent-fg: #10131a;
-		--shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35); color-scheme: dark;
-	}
-}
-* { box-sizing: border-box; }
-body {
-	margin: 0; padding: 0 1rem 3rem; color: var(--fg); -webkit-text-size-adjust: 100%;
-	font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-	background: radial-gradient(64rem 24rem at 50% -10rem, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%) var(--bg) no-repeat;
-}
+<!--THEME-CSS-->
+<!--BASE-CSS-->
 /* a few soft balls behind everything, in the colours the feature cards use, drifting slowly enough
    that one only notices them when looking for them */
 body::before, body::after {
@@ -82,14 +44,6 @@ body::after {
 	body::before, body::after { animation: none; }
 }
 main { max-width: 62rem; margin: 0 auto; }
-a {
-	color: var(--accent); text-decoration: underline;
-	text-decoration-thickness: from-font; text-underline-offset: .16em;
-	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
-	transition: color .12s, text-decoration-color .12s, opacity .12s;
-}
-a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
-@media (prefers-reduced-motion: reduce) { a { transition: none; } }
 .prose a, .cases a { font-weight: 400; text-decoration: none; color: color-mix(in srgb, var(--accent) 85%, var(--fg)); }
 .prose a:hover, .cases a:hover { text-decoration: underline; color: var(--accent); }
 h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); }
@@ -102,60 +56,7 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 	transition: border-color .12s, background .12s;
 }
 
-.bar {
-	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
-	padding: .8rem 0 .6rem; border-bottom: 1px solid var(--border);
-}
-.bar nav { overflow-x: auto; scrollbar-width: none; }
-.bar nav::-webkit-scrollbar { display: none; }
-.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
-.bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
-/* the slash owns the space on both of its sides, so the two names sit evenly around it */
-.bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }
-.bar .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
-.bar .version { margin-left: .55rem; font-size: .82rem; font-weight: 400; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.bar .version:hover { color: var(--fg); }
-.mark { color: var(--accent); flex: none; }
-.bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; }
-.bar nav a {
-	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
-	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
-}
-.bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
-.bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
-/* a phone has no room for one row: the links wrap under the name instead of scrolling out of sight */
-@media (max-width: 46rem) {
-	.bar { flex-wrap: wrap; }
-	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
-	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
-	.bar .controls { margin-left: auto; }
-}
-/* the four names no longer fit on one line: two by two reads better than three and a stray */
-@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
-/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
-   page colours; only the backdrop reacts to the pointer */
-.bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
-.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
-.bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
-:root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) .bar .controls .gh, :root:not([data-theme="light"]) .bar .controls .gh:hover { color: #fff; }
-}
-.bar .controls .gh svg { display: block; }
-#theme {
-	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; flex: none;
-	font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
-	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
-}
-#theme:hover { border-color: var(--accent); color: var(--accent); }
-#theme svg { display: block; }
-#theme .sun { display: none; }
-:root[data-theme="dark"] #theme .sun { display: block; }
-:root[data-theme="dark"] #theme .moon { display: none; }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) #theme .sun { display: block; }
-	:root:not([data-theme="light"]) #theme .moon { display: none; }
-}
+<!--BAR-CSS-->
 
 header { text-align: center; padding: 2.6rem 0 1.6rem; }
 header h1 { margin: 0 0 1.3rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
@@ -240,8 +141,8 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .demo .code[data-way=">"] { --slice: #0f766e; }
 :root[data-theme="dark"] .demo .code[data-way=">"] { --slice: #2dd4bf; }
 .demo .line { transition: opacity .2s ease, background .2s ease, filter .2s ease; }
-.demo k { color: #b07d00; } .demo f { color: var(--fg); font-weight: 600; } .demo str { color: #0f766e; } .demo o { color: var(--muted); }
-:root[data-theme="dark"] .demo k { color: #e0b341; } :root[data-theme="dark"] .demo str { color: #2dd4bf; }
+.demo .tk-keyword { color: #b07d00; } .demo .tk-call { color: var(--fg); font-weight: 600; } .demo .tk-string { color: #0f766e; } .demo .tk-op { color: var(--muted); }
+:root[data-theme="dark"] .demo .tk-keyword { color: #e0b341; } :root[data-theme="dark"] .demo .tk-string { color: #2dd4bf; }
 .demo .code { padding: .8rem 1rem; overflow-x: auto; font-size: clamp(.75rem, 3vw, .9rem); }
 /* the frame around a sample: a title bar, then numbered lines */
 .demo .chrome {
@@ -424,12 +325,8 @@ details.unfold > summary {
 }
 details.unfold[open] > summary { margin-bottom: 1rem; }
 /* the links that lead off the page */
-footer { margin: 3.5rem 0 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
-footer .ends { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
-footer .ends > div { display: flex; flex-direction: column; gap: .3rem; }
-footer b { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-footer a { color: var(--fg); text-decoration: none; font-size: .9rem; }
-footer a:hover { color: var(--accent); text-decoration: underline; }
+footer { margin: 3.5rem 0 1.5rem; }
+<!--FOOTER-CSS-->
 .updated { margin: .6rem 0 1.5rem; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .prose { max-width: 58rem; color: var(--muted); }
 .prose.small { font-size: .88rem; margin-top: 2rem; }
@@ -439,19 +336,12 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <main>
 
 <div class="bar">
-	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h2>
+	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><!--VERSION-LINK--></h2>
 	<nav>
-		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
-		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
-		<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
-		<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+		<!--NAV:landing-->
 	</nav>
 	<span class="controls">
-		<a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
-		<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
-		<svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
-		<svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
-	</button>
+		<!--CONTROLS:landing-->
 	</span>
 </div>
 
@@ -722,32 +612,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 </details>
 
 
-<footer>
-	<div class="ends">
-		<div>
-			<b>Learn</b>
-			<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Setup</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
-		</div>
-		<div>
-			<b>Project</b>
-			<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">Source on GitHub</a>
-			<a href="https://github.com/flowr-analysis/flowr/releases" target="_blank" rel="noopener">Releases</a>
-			<a href="doc/" target="_blank" rel="noopener">API docs</a>
-			<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">Security policy</a>
-			<a href="https://doi.org/10.1145/3763087" target="_blank" rel="noopener">Cite flowR</a>
-		</div>
-		<div>
-			<b>Pages</b>
-			<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
-			<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
-			<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
-		</div>
-	</div>
-</footer>
+<!--FOOTER:landing-->
 
 <p class="prose small">
 	Maintained at Ulm University by <a href="https://eagleoutice.github.io/portfolio/" target="_blank" rel="noopener">Florian Sihler</a>,
@@ -894,15 +759,6 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 		});
 		panel.addEventListener('mouseleave', () => marks.forEach(m => m.classList.remove('run')));
 	}
-
-
-	document.getElementById('theme').addEventListener('click', () => {
-		const next = getComputedStyle(document.body).colorScheme === 'dark' ? 'light' : 'dark';
-		document.documentElement.dataset.theme = next;
-		try {
-			localStorage.setItem('flowr-theme', next);
-		} catch(e) { /* private mode simply does not remember it */ }
-	});
 
 	const get = url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status));
 	Promise.all([

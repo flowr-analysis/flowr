@@ -41,6 +41,8 @@ export interface PrintDataflowGraphOptions {
 	readonly exposeResult?:       boolean;
 	readonly switchCodeAndGraph?: boolean;
 	readonly simplified?:         boolean;
+	/** omit the measured duration, for deterministic committed output */
+	readonly timeless?:           boolean;
 	readonly callGraph?:          boolean;
 	readonly ctx?:                GeneralDocContext;
 }
@@ -64,7 +66,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
  * This function returns a markdown string containing the dataflow graph as a mermaid code block,
  * along with the R code itself in a collapsible section.
  */
-export async function printDfGraphForCode(parser: KnownParser, code: string, { callGraph = false, simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false, ctx }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
+export async function printDfGraphForCode(parser: KnownParser, code: string, { callGraph = false, simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false, timeless = false, ctx }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {
 		context: contextFromInput(code)
@@ -76,7 +78,8 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { c
 	}
 
 	const sigDbNote = `No ${ctx ? ctx.linkPage('wiki/Signature Database', 'signature database') : `[signature database](${FlowrWikiBaseRef}/Signature-Database)`} is mounted for these generated graphs, so \`library()\` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. \`acf\` as \`stats::acf\`).`;
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment. ${sigDbNote}`;
+	const took = timeless ? '' : ` required _${printAsMs(duration)}_ and`;
+	const metaInfo = `The analysis${took} ran (including parse and normalize, using the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment. ${sigDbNote}`;
 	const graph = callGraph ? CallGraph.compute(result.dataflow.graph) : result.dataflow.graph;
 	const dfGraph = printDfGraph(graph, mark, simplified);
 	const simplyText = simplified ? '(simplified) ' : '';

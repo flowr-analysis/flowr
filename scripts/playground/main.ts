@@ -1199,16 +1199,6 @@ function markUnderPointer(event: MouseEvent): string | undefined {
 	return targetAt(line.text, line.number, at - line.from)?.criterion ?? String(line.number);
 }
 
-
-document.getElementById('theme')?.addEventListener('click', () => {
-	const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-	const next = (document.documentElement.dataset.theme || (dark ? 'dark' : 'light')) === 'dark' ? 'light' : 'dark';
-	document.documentElement.dataset.theme = next;
-	try {
-		localStorage.setItem('flowr-theme', next);
-	} catch{ /* private mode forgets the choice */ }
-});
-
 /** the name under the cursor, as the criterion flowR slices for; the first name on the line otherwise */
 function cursorCriterion(): string | undefined {
 	const at = editor.state.selection.main.head;

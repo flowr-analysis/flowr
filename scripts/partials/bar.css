@@ -1,0 +1,52 @@
+.bar {
+	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
+	padding: .8rem 0 .6rem; border-bottom: 1px solid var(--border);
+}
+.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
+.bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
+/* margin on both sides of the slash keeps the two names evenly spaced */
+.bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }
+.bar .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+.bar .version { margin-left: .55rem; font-size: .82rem; font-weight: 400; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar .version:hover { color: var(--fg); }
+.mark { flex: none; }
+.bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+.bar nav::-webkit-scrollbar { display: none; }
+.bar nav a {
+	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
+	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
+}
+.bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
+.bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
+/* narrow viewport: wrap nav under the title instead of scrolling it off-screen */
+@media (max-width: 46rem) {
+	.bar { flex-wrap: wrap; }
+	/* negative margin aligns pill text with the brand, offsetting pill padding */
+	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
+	.bar .controls { margin-left: auto; }
+}
+/* below 21rem a 2x2 grid reads better than three names and a stray */
+@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
+/* GitHub brand guidelines: mark stays solid black/white, only the backdrop hovers */
+.bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
+.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
+.bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+:root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .bar .controls .gh, :root:not([data-theme="light"]) .bar .controls .gh:hover { color: #fff; }
+}
+.bar .controls .gh svg { display: block; }
+#theme {
+	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; flex: none;
+	font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
+	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+}
+#theme:hover { border-color: var(--accent); color: var(--accent); }
+#theme svg { display: block; }
+#theme .sun { display: none; }
+:root[data-theme="dark"] #theme .sun { display: block; }
+:root[data-theme="dark"] #theme .moon { display: none; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) #theme .sun { display: block; }
+	:root:not([data-theme="light"]) #theme .moon { display: none; }
+}

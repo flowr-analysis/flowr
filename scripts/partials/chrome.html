@@ -1,0 +1,26 @@
+<script>
+	/* set theme before first paint to avoid a flash of the other theme */
+	try {
+		const theme = localStorage.getItem('flowr-theme');
+		if(theme) { document.documentElement.dataset.theme = theme; }
+	} catch(e) { /* private mode keeps the system theme */ }
+	/* sync theme across tabs/pages sharing the same localStorage key */
+	addEventListener('storage', e => {
+		if(e.key === 'flowr-theme') {
+			if(e.newValue) {
+				document.documentElement.dataset.theme = e.newValue;
+			} else {
+				delete document.documentElement.dataset.theme;
+			}
+		}
+	});
+	/* delegate click since #theme isn't parsed yet; later listeners for theme-dependent redraws run after this */
+	document.addEventListener('click', e => {
+		if(!e.target.closest?.('#theme')) {
+			return;
+		}
+		const next = getComputedStyle(document.body).colorScheme === 'dark' ? 'light' : 'dark';
+		document.documentElement.dataset.theme = next;
+		try { localStorage.setItem('flowr-theme', next); } catch(e) { /* private mode forgets the choice */ }
+	});
+</script>

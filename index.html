@@ -7,12 +7,12 @@
 <meta name="description" content="flowR is a sophisticated static program analyzer for the R language: slicing, dependency and query analysis, shape inference, and linting, without needing to run your code.">
 <link rel="icon" href="wiki/img/flowR-mark-red.svg" type="image/svg+xml">
 <script>
-	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
+	/* set theme before first paint to avoid a flash of the other theme */
 	try {
 		const theme = localStorage.getItem('flowr-theme');
 		if(theme) { document.documentElement.dataset.theme = theme; }
 	} catch(e) { /* private mode keeps the system theme */ }
-	/* every flowR page reads the same key, so a change on one of them follows you to the others */
+	/* sync theme across tabs/pages sharing the same localStorage key */
 	addEventListener('storage', e => {
 		if(e.key === 'flowr-theme') {
 			if(e.newValue) {
@@ -21,6 +21,15 @@
 				delete document.documentElement.dataset.theme;
 			}
 		}
+	});
+	/* delegate click since #theme isn't parsed yet; later listeners for theme-dependent redraws run after this */
+	document.addEventListener('click', e => {
+		if(!e.target.closest?.('#theme')) {
+			return;
+		}
+		const next = getComputedStyle(document.body).colorScheme === 'dark' ? 'light' : 'dark';
+		document.documentElement.dataset.theme = next;
+		try { localStorage.setItem('flowr-theme', next); } catch(e) { /* private mode forgets the choice */ }
 	});
 </script>
 <style>
@@ -48,6 +57,13 @@ body {
 	font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 	background: radial-gradient(64rem 24rem at 50% -10rem, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%) var(--bg) no-repeat;
 }
+a {
+	color: var(--accent); text-decoration: none;
+	text-decoration-thickness: from-font; text-underline-offset: .16em;
+	transition: color .12s, border-color .12s, opacity .12s;
+}
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { a { transition: none; } }
 /* a few soft balls behind everything, in the colours the feature cards use, drifting slowly enough
    that one only notices them when looking for them */
 body::before, body::after {
@@ -82,14 +98,6 @@ body::after {
 	body::before, body::after { animation: none; }
 }
 main { max-width: 62rem; margin: 0 auto; }
-a {
-	color: var(--accent); text-decoration: underline;
-	text-decoration-thickness: from-font; text-underline-offset: .16em;
-	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
-	transition: color .12s, text-decoration-color .12s, opacity .12s;
-}
-a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
-@media (prefers-reduced-motion: reduce) { a { transition: none; } }
 .prose a, .cases a { font-weight: 400; text-decoration: none; color: color-mix(in srgb, var(--accent) 85%, var(--fg)); }
 .prose a:hover, .cases a:hover { text-decoration: underline; color: var(--accent); }
 h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); }
@@ -106,34 +114,32 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
 	padding: .8rem 0 .6rem; border-bottom: 1px solid var(--border);
 }
-.bar nav { overflow-x: auto; scrollbar-width: none; }
-.bar nav::-webkit-scrollbar { display: none; }
 .bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
 .bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
-/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+/* margin on both sides of the slash keeps the two names evenly spaced */
 .bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }
 .bar .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
 .bar .version { margin-left: .55rem; font-size: .82rem; font-weight: 400; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bar .version:hover { color: var(--fg); }
-.mark { color: var(--accent); flex: none; }
-.bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; }
+.mark { flex: none; }
+.bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+.bar nav::-webkit-scrollbar { display: none; }
 .bar nav a {
 	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
 	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
 }
 .bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
 .bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
-/* a phone has no room for one row: the links wrap under the name instead of scrolling out of sight */
+/* narrow viewport: wrap nav under the title instead of scrolling it off-screen */
 @media (max-width: 46rem) {
 	.bar { flex-wrap: wrap; }
-	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
+	/* negative margin aligns pill text with the brand, offsetting pill padding */
 	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
 	.bar .controls { margin-left: auto; }
 }
-/* the four names no longer fit on one line: two by two reads better than three and a stray */
+/* below 21rem a 2x2 grid reads better than three names and a stray */
 @media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
-/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
-   page colours; only the backdrop reacts to the pointer */
+/* GitHub brand guidelines: mark stays solid black/white, only the backdrop hovers */
 .bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
 .bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
 .bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
@@ -240,8 +246,8 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .demo .code[data-way=">"] { --slice: #0f766e; }
 :root[data-theme="dark"] .demo .code[data-way=">"] { --slice: #2dd4bf; }
 .demo .line { transition: opacity .2s ease, background .2s ease, filter .2s ease; }
-.demo k { color: #b07d00; } .demo f { color: var(--fg); font-weight: 600; } .demo str { color: #0f766e; } .demo o { color: var(--muted); }
-:root[data-theme="dark"] .demo k { color: #e0b341; } :root[data-theme="dark"] .demo str { color: #2dd4bf; }
+.demo .tk-keyword { color: #b07d00; } .demo .tk-call { color: var(--fg); font-weight: 600; } .demo .tk-string { color: #0f766e; } .demo .tk-op { color: var(--muted); }
+:root[data-theme="dark"] .demo .tk-keyword { color: #e0b341; } :root[data-theme="dark"] .demo .tk-string { color: #2dd4bf; }
 .demo .code { padding: .8rem 1rem; overflow-x: auto; font-size: clamp(.75rem, 3vw, .9rem); }
 /* the frame around a sample: a title bar, then numbered lines */
 .demo .chrome {
@@ -424,12 +430,24 @@ details.unfold > summary {
 }
 details.unfold[open] > summary { margin-bottom: 1rem; }
 /* the links that lead off the page */
-footer { margin: 3.5rem 0 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
-footer .ends { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+footer { margin: 3.5rem 0 1.5rem; }
+/* shared column footer; each template sets its own `footer` margin/width */
+footer { border-top: 1px solid var(--border); padding-top: 1.5rem; }
+footer .ends { display: grid; gap: 1.2rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 52rem) { footer .ends { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 footer .ends > div { display: flex; flex-direction: column; gap: .3rem; }
 footer b { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 footer a { color: var(--fg); text-decoration: none; font-size: .9rem; }
 footer a:hover { color: var(--accent); text-decoration: underline; }
+/* only the benchmark page fills this row, with its live status hooks */
+footer .notes {
+	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+	margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border); font-size: .85rem; color: var(--muted);
+}
+footer .notes a { color: var(--fg); }
+footer .notes a:hover { color: var(--accent); }
+footer .notes button { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .7rem; border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); }
+footer .notes button:hover { border-color: var(--accent); color: var(--accent); }
 .updated { margin: .6rem 0 1.5rem; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .prose { max-width: 58rem; color: var(--muted); }
 .prose.small { font-size: .88rem; margin-top: 2rem; }
@@ -438,18 +456,19 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <body>
 <main>
 <div class="bar">
-<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.15.8" href="https://github.com/flowr-analysis/flowr/commit/5059bc570d61ac8e950ec2fa84b65a1c7a54e2ff" target="_blank" rel="noopener" title="a development build of flowR, 12 commits after v2.15.8, with uncommitted changes (5059bc5)">v2.15.8*</a></h2>
+<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.15.8" href="https://github.com/flowr-analysis/flowr/commit/90fea4e76b3da783beb8921d892d794c8e23f652" target="_blank" rel="noopener" title="a development build of flowR, 16 commits after v2.15.8, with uncommitted changes (90fea4e)">v2.15.8*</a></h2>
 <nav>
 <a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
 <a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
+<a href="wiki/capabilities/" target="_blank" rel="noopener">Capabilities</a>
 <a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
 <a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
 </nav>
 <span class="controls">
 <a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
 <button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
-<svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
-<svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
+<svg class="moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+<svg class="sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
 </button>
 </span>
 </div>
@@ -513,54 +532,54 @@ impact
 <section data-panel="slice">
 <div class="chrome"><span class="file">survey.R</span></div>
 <div class="code" id="slice">
-<span class="line" data-keep="1@clean 1@clean> 1@d 1@d> 2@as.numeric 2:4 2:24 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="1@clean" data-label="clean">clean</v> <o>&lt;-</o> <k>function</k>(<v data-name="1@d" data-label="d">d</v>) {</span>
-<span class="line" data-keep="1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="2:4" data-label="d$age">d$age</v> <o>&lt;-</o> <v data-name="2@as.numeric" data-label="as.numeric"><f>as.numeric</f></v>(<v data-name="2:24" data-label="d$age">d$age</v>)</span>
-<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="3@d" data-label="d">d</v></span>
+<span class="line" data-keep="1@clean 1@clean> 1@d 1@d> 2@as.numeric 2:4 2:24 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="1@clean" data-label="clean"><span class="tk-name">clean</span></v> <span class="tk-op">&lt;-</span> <span class="tk-keyword">function</span>(<v data-name="1@d" data-label="d"><span class="tk-name">d</span></v>) {</span>
+<span class="line" data-keep="1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="2:4" data-label="d$age"><span class="tk-name">d</span><span class="tk-op">$</span><span class="tk-name">age</span></v> <span class="tk-op">&lt;-</span> <v data-name="2@as.numeric" data-label="as.numeric"><span class="tk-call">as.numeric</span></v>(<v data-name="2:24" data-label="d$age"><span class="tk-name">d</span><span class="tk-op">$</span><span class="tk-name">age</span></v>)</span>
+<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="3@d" data-label="d"><span class="tk-name">d</span></v></span>
 <span class="line" data-keep="1@clean 1@clean> 1@d 2@as.numeric 2:4 2:24 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">}</span>
-<span class="line" data-keep="1@d 2@as.numeric 2:4 2:24 3@d 5@survey 5@survey> 5@read.csv 5@read.csv> 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="5@survey" data-label="survey">survey</v>   <o>&lt;-</o> <v data-name="5@read.csv" data-label="read.csv"><f>read.csv</f></v>(<str>&quot;survey.csv&quot;</str>)</span>
-<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 6@survey> 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="6@survey" data-label="survey">survey</v>   <o>&lt;-</o> <v data-name="6@clean" data-label="clean"><f>clean</f></v>(<v data-name="6@survey" data-label="survey">survey</v>)</span>
-<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 7@mean_age 7@mean_age> 7@mean 7@mean> 7:24 7:24>"><v data-name="7@mean_age" data-label="mean_age">mean_age</v> <o>&lt;-</o> <v data-name="7@mean" data-label="mean"><f>mean</f></v>(<v data-name="7:24" data-label="survey$age">survey$age</v>)</span>
-<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 8@survey 8@survey> 8@model 8@model> 8@lm 8@lm>"><v data-name="8@model" data-label="model">model</v>    <o>&lt;-</o> <v data-name="8@lm" data-label="lm"><f>lm</f></v>(income ~ age, data = <v data-name="8@survey" data-label="survey">survey</v>)</span>
-<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 9@plot 9@plot> 9:12 9:12>"><v data-name="9@plot" data-label="plot"><f>plot</f></v>(<v data-name="9:12" data-label="survey$age">survey$age</v>)</span>
+<span class="line" data-keep="1@d 2@as.numeric 2:4 2:24 3@d 5@survey 5@survey> 5@read.csv 5@read.csv> 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="5@survey" data-label="survey"><span class="tk-name">survey</span></v>   <span class="tk-op">&lt;-</span> <v data-name="5@read.csv" data-label="read.csv"><span class="tk-call">read.csv</span></v>(<span class="tk-string">&quot;survey.csv&quot;</span>)</span>
+<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 6@survey> 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="6@survey" data-label="survey"><span class="tk-name">survey</span></v>   <span class="tk-op">&lt;-</span> <v data-name="6@clean" data-label="clean"><span class="tk-call">clean</span></v>(<v data-name="6@survey" data-label="survey"><span class="tk-name">survey</span></v>)</span>
+<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 7@mean_age 7@mean_age> 7@mean 7@mean> 7:24 7:24>"><v data-name="7@mean_age" data-label="mean_age"><span class="tk-name">mean_age</span></v> <span class="tk-op">&lt;-</span> <v data-name="7@mean" data-label="mean"><span class="tk-call">mean</span></v>(<v data-name="7:24" data-label="survey$age"><span class="tk-name">survey</span><span class="tk-op">$</span><span class="tk-name">age</span></v>)</span>
+<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 8@survey 8@survey> 8@model 8@model> 8@lm 8@lm>"><v data-name="8@model" data-label="model"><span class="tk-name">model</span></v>    <span class="tk-op">&lt;-</span> <v data-name="8@lm" data-label="lm"><span class="tk-call">lm</span></v>(<span class="tk-name">income</span> <span class="tk-op">~</span> <span class="tk-name">age</span>, <span class="tk-name">data</span> <span class="tk-op">=</span> <v data-name="8@survey" data-label="survey"><span class="tk-name">survey</span></v>)</span>
+<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 9@plot 9@plot> 9:12 9:12>"><v data-name="9@plot" data-label="plot"><span class="tk-call">plot</span></v>(<v data-name="9:12" data-label="survey$age"><span class="tk-name">survey</span><span class="tk-op">$</span><span class="tk-name">age</span></v>)</span>
 </div>
 </section>
 <section data-panel="deps" hidden>
 <div class="chrome"><span class="file">project.R</span></div>
 <div class="code">
-<span class="line dep library" data-line="1" data-run="library" data-kind="library" data-tip="loads dplyr"><f>library</f>(dplyr)</span>
-<span class="line dep source" data-line="2" data-run="source" data-kind="source" data-tip="sources helpers.R"><f>source</f>(<str>&quot;helpers.R&quot;</str>)</span>
-<span class="line dep read" data-line="3" data-run="read" data-kind="read" data-tip="reads survey.csv">raw <o>&lt;-</o> <f>read.csv</f>(<str>&quot;survey.csv&quot;</str>)</span>
-<span class="line" data-line="4">clean <o>&lt;-</o> <f>filter</f>(raw, !<f>is.na</f>(age))</span>
-<span class="line dep write" data-line="5" data-run="write" data-kind="write" data-tip="writes clean.csv"><f>write.csv</f>(clean, <str>&quot;clean.csv&quot;</str>)</span>
-<span class="line dep visualize first" data-line="6" data-run="visualize" data-kind="visualize" data-tip="draws a plot"><f>plot</f>(clean$age)</span>
-<span class="line dep visualize last" data-line="7" data-run="visualize" data-tip="draws a plot"><f>abline</f>(h = <f>mean</f>(clean$age))</span>
+<span class="line dep library" data-line="1" data-run="library" data-kind="library" data-tip="loads dplyr"><span class="tk-call">library</span>(<span class="tk-name">dplyr</span>)</span>
+<span class="line dep source" data-line="2" data-run="source" data-kind="source" data-tip="sources helpers.R"><span class="tk-call">source</span>(<span class="tk-string">&quot;helpers.R&quot;</span>)</span>
+<span class="line dep read" data-line="3" data-run="read" data-kind="read" data-tip="reads survey.csv"><span class="tk-name">raw</span> <span class="tk-op">&lt;-</span> <span class="tk-call">read.csv</span>(<span class="tk-string">&quot;survey.csv&quot;</span>)</span>
+<span class="line" data-line="4"><span class="tk-name">clean</span> <span class="tk-op">&lt;-</span> <span class="tk-call">filter</span>(<span class="tk-name">raw</span>, <span class="tk-op">!</span><span class="tk-call">is.na</span>(<span class="tk-name">age</span>))</span>
+<span class="line dep write" data-line="5" data-run="write" data-kind="write" data-tip="writes clean.csv"><span class="tk-call">write.csv</span>(<span class="tk-name">clean</span>, <span class="tk-string">&quot;clean.csv&quot;</span>)</span>
+<span class="line dep visualize first" data-line="6" data-run="visualize" data-kind="visualize" data-tip="draws a plot"><span class="tk-call">plot</span>(<span class="tk-name">clean</span><span class="tk-op">$</span><span class="tk-name">age</span>)</span>
+<span class="line dep visualize last" data-line="7" data-run="visualize" data-tip="draws a plot"><span class="tk-call">abline</span>(<span class="tk-name">h</span> <span class="tk-op">=</span> <span class="tk-call">mean</span>(<span class="tk-name">clean</span><span class="tk-op">$</span><span class="tk-name">age</span>))</span>
 </div>
 </section>
 <section data-panel="lint" hidden>
 <div class="chrome"><span class="file">messy.R</span></div>
 <div class="code">
-<span class="line" data-line="1">data   <o>&lt;-</o> <bad data-tip="Path `/root/x.txt` does not point to a valid file + Path `/root/x.txt` is absolute + Path `/root/x.txt` is absolute"><f>read.csv</f>(<str>&quot;/root/x.txt&quot;</str>)</bad></span>
-<span class="line" data-line="2"><bad data-tip="Definition of `unused` is unused">unused</bad> <o>&lt;-</o> 42</span>
-<span class="line" data-line="3"><k>if</k>(<k>FALSE</k>) {</span>
-<span class="line" data-line="4">  <bad data-tip="Code can never be executed"><f>print</f>(<str>&quot;never runs&quot;</str>)</bad></span>
+<span class="line" data-line="1"><span class="tk-name">data</span>   <span class="tk-op">&lt;-</span> <bad data-tip="Path `/root/x.txt` does not point to a valid file + Path `/root/x.txt` is absolute + Path `/root/x.txt` is absolute"><span class="tk-call">read.csv</span>(<span class="tk-string">&quot;/root/x.txt&quot;</span>)</bad></span>
+<span class="line" data-line="2"><bad data-tip="Definition of `unused` is unused"><span class="tk-name">unused</span></bad> <span class="tk-op">&lt;-</span> <span class="tk-number">42</span></span>
+<span class="line" data-line="3"><span class="tk-keyword">if</span>(<span class="tk-keyword">FALSE</span>) {</span>
+<span class="line" data-line="4">  <bad data-tip="Code can never be executed"><span class="tk-call">print</span>(<span class="tk-string">&quot;never runs&quot;</span>)</bad></span>
 <span class="line" data-line="5">}</span>
-<span class="line" data-line="6"><f>print</f>(<f>nrow</f>(data))</span>
+<span class="line" data-line="6"><span class="tk-call">print</span>(<span class="tk-call">nrow</span>(<span class="tk-name">data</span>))</span>
 </div>
 </section>
 <section data-panel="values" hidden>
 <div class="chrome"><span class="file">shapes.R</span></div>
 <div class="code">
-<span class="line" data-line="1" data-note="# 3 rows, 1 column named id"><v data-name="1@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [3, 3])">df</v> <o>&lt;-</o> <f>data.frame</f>(id = 1:3)</span>
-<span class="line" data-line="2" data-note="# 0 to 3 rows, 1 column named id"><v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])">df</v> <o>&lt;-</o> <f>filter</f>(<v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])">df</v>, id &gt; 1)</span>
-<span class="line" data-line="3" data-note="# 6"><v data-name="3@n" data-label="n" data-tip="value: [6L, 6L]">n</v>  <o>&lt;-</o> 2 * 3</span>
+<span class="line" data-line="1" data-note="# 3 rows, 1 column named id"><v data-name="1@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [3, 3])"><span class="tk-name">df</span></v> <span class="tk-op">&lt;-</span> <span class="tk-call">data.frame</span>(<span class="tk-name">id</span> <span class="tk-op">=</span> <span class="tk-number">1</span><span class="tk-op">:</span><span class="tk-number">3</span>)</span>
+<span class="line" data-line="2" data-note="# 0 to 3 rows, 1 column named id"><v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])"><span class="tk-name">df</span></v> <span class="tk-op">&lt;-</span> <span class="tk-call">filter</span>(<v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])"><span class="tk-name">df</span></v>, <span class="tk-name">id</span> &gt; <span class="tk-number">1</span>)</span>
+<span class="line" data-line="3" data-note="# 6"><v data-name="3@n" data-label="n" data-tip="value: [6L, 6L]"><span class="tk-name">n</span></v>  <span class="tk-op">&lt;-</span> <span class="tk-number">2</span> <span class="tk-op">*</span> <span class="tk-number">3</span></span>
 </div>
 </section>
 <section data-panel="origin" hidden>
 <div class="chrome"><span class="file">aliases.R</span></div>
 <div class="code">
-<span class="line" data-line="1"><v data-name="1@square" data-label="square">square</v> <o>&lt;-</o> <k>function</k>(x) x * x</span>
-<span class="line" data-line="2"><v data-name="2@area" data-label="area">area</v>   <o>&lt;-</o> <v data-name="2@square" data-label="square">square</v></span>
-<span class="line" data-line="3"><v data-name="3@print" data-label="print"><f>print</f></v>(<v data-name="3@area" data-label="area"><f>area</f></v>(3))</span>
+<span class="line" data-line="1"><v data-name="1@square" data-label="square"><span class="tk-name">square</span></v> <span class="tk-op">&lt;-</span> <span class="tk-keyword">function</span>(<span class="tk-name">x</span>) <span class="tk-name">x</span> <span class="tk-op">*</span> <span class="tk-name">x</span></span>
+<span class="line" data-line="2"><v data-name="2@area" data-label="area"><span class="tk-name">area</span></v>   <span class="tk-op">&lt;-</span> <v data-name="2@square" data-label="square"><span class="tk-name">square</span></v></span>
+<span class="line" data-line="3"><v data-name="3@print" data-label="print"><span class="tk-call">print</span></v>(<v data-name="3@area" data-label="area"><span class="tk-call">area</span></v>(<span class="tk-number">3</span>))</span>
 </div>
 <div class="code out">
 <span class="line" data-for="1@square" data-target="1"><b>1@square</b>writes square (line 1)</span>
@@ -743,23 +762,31 @@ Ask with the <a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" ta
 <b>Learn</b>
 <a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
 <a href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Setup</a>
-<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
-<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">Interface</a>
 <a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
+<a href="doc/" target="_blank" rel="noopener">API docs</a>
 </div>
 <div>
-<b>Project</b>
-<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">Source on GitHub</a>
-<a href="https://github.com/flowr-analysis/flowr/releases" target="_blank" rel="noopener">Releases</a>
-<a href="doc/" target="_blank" rel="noopener">API docs</a>
-<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">Security policy</a>
-<a href="https://doi.org/10.1145/3763087" target="_blank" rel="noopener">Cite flowR</a>
+<b>R references</b>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-lang.html" target="_blank" rel="noopener">R Language Definition</a>
+<a href="https://adv-r.hadley.nz/" target="_blank" rel="noopener">Advanced R</a>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-ints.html" target="_blank" rel="noopener">R Internals</a>
 </div>
 <div>
 <b>Pages</b>
 <a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
 <a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
+<a href="wiki/capabilities/" target="_blank" rel="noopener">Capabilities</a>
 <a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+</div>
+<div>
+<b>Project</b>
+<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">Source on GitHub</a>
+<a href="https://github.com/flowr-analysis/flowr/releases" target="_blank" rel="noopener">Releases</a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?labels=enhancement&amp;template=generic-feature-request.md&amp;title=Capability%3A%20" target="_blank" rel="noopener">Suggest a capability!</a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?labels=bug&amp;template=bug-report.yaml" target="_blank" rel="noopener">Report a bug</a>
+<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">Security policy</a>
+<a href="https://doi.org/10.1145/3763087" target="_blank" rel="noopener">Cite flowR</a>
 </div>
 </div>
 </footer>
@@ -772,7 +799,7 @@ Funded by the German Research Foundation (DFG), grant
 <a href="https://gepris.dfg.de/gepris/projekt/504226141" target="_blank" rel="noopener">504226141</a>, with a gift from
 <a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
 </p>
-<p class="updated">Last updated 2026-09-05, 13:27</p>
+<p class="updated">Last updated 2026-09-07, 18:22</p>
 </main>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 <script>
@@ -906,15 +933,6 @@ Funded by the German Research Foundation (DFG), grant
 		});
 		panel.addEventListener('mouseleave', () => marks.forEach(m => m.classList.remove('run')));
 	}
-
-
-	document.getElementById('theme').addEventListener('click', () => {
-		const next = getComputedStyle(document.body).colorScheme === 'dark' ? 'light' : 'dark';
-		document.documentElement.dataset.theme = next;
-		try {
-			localStorage.setItem('flowr-theme', next);
-		} catch(e) { /* private mode simply does not remember it */ }
-	});
 
 	const get = url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status));
 	Promise.all([

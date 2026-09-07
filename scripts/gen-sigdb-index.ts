@@ -15,21 +15,20 @@ import { build } from 'esbuild';
 import { encode, pack, readSigIndex } from './sigdb-index';
 import { template, writePage } from './html-page';
 
-/**
- * The name ranker as plain script, so this page orders its hits with the very function the playground's
- * completion uses. The page has no bundler of its own, so the build writes the module into it.
- */
-async function ranker(): Promise<string> {
+/** bundles sigdb-page/main.ts as iife; module scripts are CORS-blocked when opened from disk */
+async function pageScript(): Promise<string> {
 	const bundled = await build({
-		entryPoints: [path.join('src', 'util', 'text', 'name-rank.ts')],
-		bundle:      true,
-		write:       false,
-		format:      'iife',
-		globalName:  'NameRank',
-		target:      'es2022',
-		logLevel:    'error'
+		entryPoints:   [path.join('scripts', 'sigdb-page', 'main.ts')],
+		bundle:        true,
+		write:         false,
+		minify:        true,
+		format:        'iife',
+		platform:      'browser',
+		target:        'es2022',
+		legalComments: 'none',
+		logLevel:      'error'
 	});
-	return `${bundled.outputFiles[0].text}\nconst rankName = NameRank.rankName;`;
+	return bundled.outputFiles[0].text;
 }
 
 const SiteUrl = 'https://flowr-analysis.github.io/flowr';
@@ -78,12 +77,12 @@ async function main(): Promise<void> {
 		.replaceAll('<!--UPDATED-->', index.updated)
 		.replaceAll('<!--PACKAGES-->', group(index.packages.length))
 		.replaceAll('<!--FUNCTIONS-->', group(blobs.count))
-		.replace('<!--RANKER-->', await ranker())
+		.replace('<!--MAIN-SCRIPT-->', await pageScript())
 		.replace('"<!--KINDS-->"', kinds)
 		.replace('"<!--STATED-->"', stated)
 		.replace('"<!--FORMALS-->"', JSON.stringify(Object.fromEntries(index.formals)).replaceAll('</', '<\\/'))
 		.replace('"<!--TOPICS-->"', JSON.stringify(Object.fromEntries(index.topics)).replaceAll('</', '<\\/'))
-		.replaceAll('<!--TOPICS-COMPLETE-->', String(index.topicsComplete))
+		.replace('<!--TOPICS-COMPLETE-->', String(index.topicsComplete))
 		.replace('"<!--GROUPS-->"', JSON.stringify(Object.fromEntries(index.groups)).replaceAll('</', '<\\/'))
 		.replace('"<!--GENERICS-->"', JSON.stringify([...index.generics].sort().join('\n')).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));

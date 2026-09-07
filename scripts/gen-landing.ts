@@ -18,6 +18,7 @@ import { SliceDirection } from '../src/util/slice-direction';
 import { LintingRules } from '../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../src/linter/linter-format';
 import { arraySum } from '../src/util/collections/arrays';
+import { highlightR, renderRToken, tokenizeR, escapeHtml as escape } from '../src/util/text/r-highlight';
 
 /**
  * The samples every tab runs on. Each one is written next to the page as a real `.R` file, so the
@@ -346,18 +347,6 @@ function lastUpdated(): string {
 	}
 }
 
-const escape = (text: string): string => text.replace(/[&<>"]/g, c =>
-	({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
-
-/** R, highlighted with the little that a landing page needs. */
-function highlight(line: string): string {
-	return escape(line)
-		.replace(/&quot;[^&]*&quot;/g, m => `<str>${m}</str>`)
-		.replace(/\b(function|if|else|for|while|return|TRUE|FALSE|NULL|NA)\b/g, '<k>$1</k>')
-		.replace(/\b([a-zA-Z._][\w._]*)\b(?=\()/g, '<f>$1</f>')
-		.replace(/&lt;-/g, '<o>&lt;-</o>');
-}
-
 async function main(): Promise<void> {
 	await TreeSitterExecutor.initTreeSitter();
 	const code = SliceSample;
@@ -402,43 +391,102 @@ interface PageData {
 /** `survey$age` is one thing to slice for, and its criterion sits on the `$` that does the access. */
 const Access = /([A-Za-z._][\w.]*)\$([A-Za-z._][\w.]*)/g;
 
-/** every `x$y` on a line, as the criterion that selects it and the text it covers */
-function accessesOf(line: string, number: number): { criterion: string, text: string }[] {
+/** every `x$y` on a line: its criterion, text, and the 1-indexed inclusive column range it covers */
+function accessesOf(line: string, number: number): { criterion: string, text: string, from: number, to: number }[] {
 	return [...line.matchAll(Access)].map(match => ({
 		criterion: `${number}:${(match.index) + match[1].length + 1}`,
-		text:      match[0]
+		text:      match[0],
+		from:      match.index + 1,
+		to:        match.index + match[0].length
 	}));
 }
 
-/**
- * Wraps every `a$b` as one pointable thing. Runs before the plain names are marked, so it only ever
- * sees untouched text; the lookbehind then keeps a later access from matching inside an earlier one.
- */
-function markAccesses(html: string, accesses: readonly { criterion: string, text: string }[]): string {
-	return accesses.reduce((text, { criterion, text: access }) => {
-		const [base, field] = access.split('$');
-		/* not after a quote either: the first replacement writes the access into a `data-label`, and the
-		   next one must not find it there */
-		const pattern = new RegExp(`(?<![\\w.>$="])${base.replace('.', '\\.')}\\$${field.replace('.', '\\.')}`);
-		return text.replace(pattern, `<v data-name="${criterion}" data-label="${escape(access)}">${escape(access)}</v>`);
-	}, html);
+/** one stretch of a line's own columns to wrap in a tag, laid over the R highlighting rather than into it */
+interface Mark {
+	readonly from:  number;   // 1-indexed column, inclusive
+	readonly to:    number;   // 1-indexed column, inclusive
+	readonly tag:   string;
+	readonly attrs: string;
 }
 
-/** marks each name that carries a criterion on this line, leaving the highlighting around it intact */
-function markNames(html: string, marks: readonly { criterion: string, name: string, tip?: string }[]): string {
-	return marks.reduce((text, { criterion, name, tip }) => text.replaceAll(
-		new RegExp(`(?<![\\w.>$])(<f>)?(${name.replace('.', '\\.')})(</f>)?(?![\\w.$])`, 'g'),
-		`<v data-name="${criterion}" data-label="${name}"${tip ? ` data-tip="${escape(tip)}"` : ''}>$1$2$3</v>`), html);
+function overlaps(a: { from: number, to: number }, b: { from: number, to: number }): boolean {
+	return a.from <= b.to && b.from <= a.to;
+}
+
+/** columns `name` occupies in `line`, via tokens so a mark never lands inside a string or comment */
+function nameRanges(line: string, name: string): { from: number, to: number }[] {
+	const ranges: { from: number, to: number }[] = [];
+	let col = 1;
+	for(const token of tokenizeR(line)) {
+		const from = col;
+		col += token.text.length;
+		if((token.kind === 'name' || token.kind === 'call') && token.text === name) {
+			ranges.push({ from, to: col - 1 });
+		}
+	}
+	return ranges;
+}
+
+/** marks a line's names and, if asked, its a$b accesses; access wins over the plain name inside it */
+function marksFor(line: string, number: number, names: readonly { criterion: string, name: string, tip?: string }[], withAccesses: boolean): Mark[] {
+	const marks: Mark[] = [];
+	const covered: { from: number, to: number }[] = [];
+	if(withAccesses) {
+		for(const access of accessesOf(line, number)) {
+			covered.push(access);
+			marks.push({ from: access.from, to: access.to, tag: 'v', attrs: `data-name="${access.criterion}" data-label="${escape(access.text)}"` });
+		}
+	}
+	for(const { criterion, name, tip } of names) {
+		for(const range of nameRanges(line, name)) {
+			if(covered.some(c => overlaps(c, range))) {
+				continue;
+			}
+			marks.push({ from: range.from, to: range.to, tag: 'v', attrs: `data-name="${criterion}" data-label="${escape(name)}"${tip ? ` data-tip="${escape(tip)}"` : ''}` });
+		}
+	}
+	return marks;
+}
+
+/** renders a line by tokenizing it whole, so a mark's tag wraps tokens without re-tokenizing in isolation */
+function highlightWithMarks(line: string, marks: readonly Mark[]): string {
+	const sorted = [...marks].sort((a, b) => a.from - b.from);
+	let out = '';
+	let col = 1;
+	let mi = 0;
+	let active: { mark: Mark, buf: string } | undefined;
+	for(const token of tokenizeR(line)) {
+		const from = col;
+		const to = col + token.text.length - 1;
+		col = to + 1;
+		while(!active && mi < sorted.length && sorted[mi].from < from) {
+			mi++;   // a mark that starts inside a token already rendered plain; drop it
+		}
+		if(!active && mi < sorted.length && sorted[mi].from === from) {
+			active = { mark: sorted[mi], buf: '' };
+			mi++;
+		}
+		const rendered = renderRToken(token);
+		if(active) {
+			active.buf += rendered;
+			if(to >= active.mark.to) {
+				out += `<${active.mark.tag} ${active.mark.attrs}>${active.buf}</${active.mark.tag}>`;
+				active = undefined;
+			}
+		} else {
+			out += rendered;
+		}
+	}
+	return out;
 }
 
 function render(data: PageData): string {
 	const sliceCode = SliceSample.split('\n').map((line, index) => {
 		const number = index + 1;
 		const keeps = Object.entries(data.slices).filter(([, lines]) => lines.includes(number)).map(([key]) => key);
-		/* every occurrence carries its own criterion (`5@survey` and `9@survey` are different questions),
-		   and accesses go first so `survey$age` is one thing rather than `survey` plus some text */
-		const marked = markNames(markAccesses(highlight(line), accessesOf(line, number)),
-			Names.map(name => ({ criterion: `${number}@${name}`, name })));
+		/* every occurrence carries its own criterion (`5@survey` and `9@survey` are different questions) */
+		const marked = highlightWithMarks(line, marksFor(line, number,
+			Names.map(name => ({ criterion: `${number}@${name}`, name })), true));
 		return `\t\t\t<span class="line"${keeps.length > 0 ? ` data-keep="${keeps.join(' ')}"` : ''}>${marked}</span>`;
 	}).join('\n');
 
@@ -449,11 +497,11 @@ function render(data: PageData): string {
 	const pointable = (code: string, criteria: readonly string[], found: string[][] = []): string => code.split('\n').map((line, index) => {
 		const mine = criteria.filter(c => c.startsWith(`${index + 1}@`));
 		const said = (criterion: string): string => found.filter(([c]) => c === criterion).map(([, , text]) => text).join('; ');
-		const named = markNames(highlight(line), mine.map(criterion => ({
+		const named = highlightWithMarks(line, marksFor(line, index + 1, mine.map(criterion => ({
 			criterion,
 			name: criterion.slice(criterion.indexOf('@') + 1),
 			tip:  said(criterion) ? `value: ${said(criterion)}` : undefined
-		})));
+		})), false));
 		const note = found.filter(([c]) => mine.includes(c)).map(([, value]) => value).join('; ');
 		return `\t\t\t<span class="line" data-line="${index + 1}"${note ? ` data-note="# ${escape(note)}"` : ''}>${named}</span>`;
 	}).join('\n');
@@ -475,16 +523,15 @@ function render(data: PageData): string {
 			range.rules.push(f.what);
 		}
 		let covered = Infinity;
-		const marked = [...ranges.values()].sort((a, b) => b.from - a.from).reduce((text, range) => {
+		const marks: Mark[] = [];
+		for(const range of [...ranges.values()].sort((a, b) => b.from - a.from)) {
 			if(range.to >= covered) {
-				return text;   // overlaps a mark that is already there
+				continue;   // overlaps a mark that is already there
 			}
 			covered = range.from;
-			return text.slice(0, range.from - 1)
-				+ `[[${range.rules.join(' + ')}|${text.slice(range.from - 1, range.to)}]]${text.slice(range.to)}`;
-		}, line);
-		/* marked before highlighting, so the columns still line up with the source the linter saw */
-		const html = highlight(marked).replace(/\[\[([^|\]]+)\|(.*?)\]\]/g, '<bad data-tip="$1">$2</bad>');
+			marks.push({ from: range.from, to: range.to, tag: 'bad', attrs: `data-tip="${escape(range.rules.join(' + '))}"` });
+		}
+		const html = highlightWithMarks(line, marks);
 		return `\t\t\t<span class="line" data-line="${number}">${html}</span>`;
 	}).join('\n');
 
@@ -502,7 +549,7 @@ function render(data: PageData): string {
 		const edge = repeats && continues ? ' mid' : repeats ? ' last' : continues ? ' first' : '';
 		const said = mine.map(([kind, value]) => value === '?' ? Silent[kind] ?? kind : `${Verbs[kind] ?? kind} ${value}`).join(', ');
 		const tip = said.length > 0 ? ` data-tip="${escape(said)}"` : '';
-		return `\t\t\t<span class="line${kinds.length > 0 ? ' dep ' + kinds[0] + edge : ''}" data-line="${number}"${run}${tag}${tip}>${highlight(line)}</span>`;
+		return `\t\t\t<span class="line${kinds.length > 0 ? ' dep ' + kinds[0] + edge : ''}" data-line="${number}"${run}${tag}${tip}>${highlightR(line)}</span>`;
 	}).join('\n');
 
 	/* one bar per answer, scaled against the slowest of them */

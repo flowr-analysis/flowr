@@ -124,7 +124,13 @@ body {
 
 a {
 	color: var(--accent);
+	text-decoration: none;
+	text-decoration-thickness: from-font;
+	text-underline-offset: .16em;
+	transition: color .12s ease;
 }
+
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
 
 header {
 	display: flex;
@@ -185,8 +191,31 @@ header {
 	color: var(--muted);
 }
 
-/* the way back to the landing page, after the sentence rather than crowding the heading */
-.intro a { margin-left: .5rem; }
+/* the list every flowR page carries, as pills that stay out of the way of the heading */
+nav.links {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .1rem .2rem;
+	margin-left: auto;
+}
+
+nav.links a {
+	display: inline-flex;
+	align-items: center;
+	height: 2rem;
+	padding: 0 .5rem;
+	white-space: nowrap;
+	border-radius: .5rem;
+	color: var(--muted);
+	text-decoration: none;
+	font-size: .82rem;
+}
+
+nav.links a:hover {
+	background: color-mix(in srgb, var(--fg) 6%, transparent);
+	color: var(--fg);
+}
 
 /* the release this page was built from, the same link every flowR page carries */
 .titles h1 > .version {
@@ -202,16 +231,57 @@ header {
 .titles h1 > .version:hover,
 .titles h1 > .version:focus-visible { color: var(--fg); }
 
-.theme {
-	display: flex;
+.controls {
+	display: inline-flex;
 	align-items: center;
-	gap: .4rem;
-	font-size: .8rem;
-	color: var(--muted);
+	gap: .35rem;
+	flex: none;
 }
 
-.theme select {
-	width: auto;
+#theme {
+	display: grid;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+	flex: none;
+	font: inherit;
+	line-height: 1;
+	cursor: pointer;
+	border-radius: .5rem;
+	border: 1px solid var(--border);
+	background: var(--panel);
+	color: var(--fg);
+}
+
+#theme:hover { border-color: var(--accent); color: var(--accent); }
+
+.controls .gh, .controls .gh:hover { color: #181717; }
+
+.controls .gh {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	border-radius: .5rem;
+}
+
+.controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.controls .gh svg { display: block; width: 16px; height: 16px; }
+:root[data-theme="dark"] .controls .gh, :root[data-theme="dark"] .controls .gh:hover { color: #fff; }
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .controls .gh, :root:not([data-theme="light"]) .controls .gh:hover { color: #fff; }
+}
+#theme svg { display: block; width: 16px; height: 16px; }
+#theme .sun { display: none; }
+:root[data-theme="dark"] #theme .sun { display: block; }
+:root[data-theme="dark"] #theme .moon { display: none; }
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) #theme .sun { display: block; }
+	:root:not([data-theme="light"]) #theme .moon { display: none; }
 }
 
 
@@ -1025,17 +1095,7 @@ svg {
 	padding: .5rem 0 .8rem;
 }
 
-footer {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: .4rem;
-	margin-top: 1.5rem;
-	padding-top: .8rem;
-	border-top: 1px solid var(--border);
-	font-size: .8rem;
-	color: var(--muted);
-}
+footer { margin-top: 1.5rem; }
 
 /* whether the page is still watching for a newer history, and why not where it is not */
 #watch-note {

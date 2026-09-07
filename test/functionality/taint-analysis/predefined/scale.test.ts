@@ -1,7 +1,7 @@
 import { test, describe } from 'vitest';
 import type { TaintAnalysisExpectation } from '../helper';
 import { testPredefinedTaintAnalysis } from '../helper';
-import { ZScore, ZeroCentered, MinMax } from '../../../../src/taint-analysis/predefined/scale-analysis';
+import { ZScore, ZeroCentered, MinMax, Unscaled } from '../../../../src/taint-analysis/predefined/scale-analysis';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 
 const testScaleAnalysis =
@@ -77,11 +77,48 @@ describe('Taint Analysis Scale', () => {
 	test('interprocedural tracking: passing a scaled value into a user-defined function and returning it keeps the taint', async() => {
 		await testScaleAnalysis(`
 				f <- function(v) { v }
-				x <- scale(x)
+				x <- scale(vector())
 				y <- f(x)`,
 		{
 			'2@x': ZScore,
 			'3@y': ZScore,
+		});
+	});
+
+	test('interprocedural tracking: scaling in a user-defined function adds the taint', async() => {
+		await testScaleAnalysis(`
+				f <- function(v) { scale(v) }
+				x <- vector()
+				y <- f(x)`,
+		{
+			'2@x': Top,
+			'3@y': ZScore,
+		});
+	});
+
+	test('interprocedural tracking: transformer in a user-defined function changes the taint', async() => {
+		await testScaleAnalysis(`
+				f <- function(v) { head(v) }
+				x <- scale(vector())
+				y <- f(x)`,
+		{
+			'2@x': ZScore,
+			'3@y': Unscaled,
+		});
+	});
+
+	test('interprocedural tracking: sources, sinks, and transformer update the taint', async() => {
+		await testScaleAnalysis(`
+				g <- function(v) { head(v) }
+				h <- function(v) { mean(scale(v)) }
+				x <- scale(vector())
+				y <- x |> g() 
+				z <- y |> h()
+				`,
+		{
+			'3@x': ZScore,
+			'4@y': Unscaled,
+			'5@y': Bottom,
 		});
 	});
 

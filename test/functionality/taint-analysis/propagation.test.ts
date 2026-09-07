@@ -119,6 +119,8 @@ describe('Taint Propagation', () => {
 		testPropagate('taint passes through an identity function via its argument and return value', 'f <- function(v) { v }\nx <- taint()\ny <- f(x)', { '3@y': TaintA });
 		testPropagate('a source called inside a user-defined function taints the returned value', 'f <- function() { taint() }\ny <- f()', { '2@y': TaintA });
 		testPropagate('a user-defined function that discards its argument does not forward the taint', 'f <- function(v) { 1 }\nx <- taint()\ny <- f(x)', { '3@y': Top });
+		testConflict('a sink applied inside a user-defined function maps to Bottom', 'f <- function(v) { sink(v) }\na <- taint()\ny <- f(a)', { '2@a': TaintA, '3@y': Bottom });
+		testConflict('a pipe chain through user-defined functions updates the taint', 'g <- function(v) { reclassify(v) }\nh <- function(v) { sink(taint(v)) }\na <- taint()\ny <- a |> g()\nz <- y |> h()', { '3@a': TaintA, '4@y': TaintB, '5@z': Bottom });
 	});
 
 	describe('Source-Sink Conflict (Greatest Lower Bound)', () => {

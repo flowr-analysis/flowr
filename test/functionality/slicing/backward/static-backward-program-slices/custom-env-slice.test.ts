@@ -5,7 +5,7 @@ import { FlowrConfig } from '../../../../../src/config';
 
 describe('Custom Environment Slicing', { concurrent: false }, withShell(shell => {
 	describe('assign and get', () => {
-		assertSliced(label('slice for get includes assign that provided value, not unrelated assign', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
+		assertSliced(label('slice for get includes assign that provided value, not unrelated assign', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved']),
 			shell,
 			'e1 <- new.env()\ne2 <- new.env()\nassign("x", 42, envir=e1)\nassign("y", 99, envir=e2)\nget("x", envir=e1)',
 			['5@get'],
@@ -19,14 +19,14 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			'x'
 		);
 
-		assertSliced(label('slice of get traces value through assign back to new.env', ['dynamic-environment-resolution', 'name-created']),
+		assertSliced(label('slice of get traces value through assign back to new.env', ['dynamic-environment-resolution', 'name-created-resolved']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", envir=e)',
 			['3@get'],
 			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", envir=e)'
 		);
 
-		assertSliced(label('slice of e$x read traces back through assign', ['dynamic-environment-resolution', 'name-created']),
+		assertSliced(label('slice of e$x read traces back through assign', ['dynamic-environment-resolution']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\ne$x',
 			['3@$'],
@@ -40,7 +40,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			'e <- new.env()\nassign("x", 42, envir=e)\nattach(e)\nx'
 		);
 
-		assertSliced(label('multi-assign config: slice of specific get excludes unrelated assigns to same env', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
+		assertSliced(label('multi-assign config: slice of specific get excludes unrelated assigns to same env', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved']),
 			shell,
 			[
 				'cfg <- new.env()',
@@ -70,7 +70,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			'e <- new.env()\nflag <- sample(c(TRUE, FALSE), 1)\nif(flag) { assign("x", 1, envir=e) } else\n{ assign("x", 2, envir=e) }\nget("x", envir=e)'
 		);
 
-		assertSliced(label('chained get-assign-get slice: full chain across two envs preserved', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
+		assertSliced(label('chained get-assign-get slice: full chain across two envs preserved', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved']),
 			shell,
 			[
 				'src <- new.env()',
@@ -89,7 +89,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			].join('\n')
 		);
 
-		assertSliced(label('slice of get from metrics env excludes unrelated results env assigns', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
+		assertSliced(label('slice of get from metrics env excludes unrelated results env assigns', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved']),
 			shell,
 			[
 				'results <- new.env()',
@@ -111,17 +111,42 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		);
 	});
 
+	describe('assign and ls, piped', () => {
+		/* a piped `e` must resolve for ls() the same way the nested form `ls(e)` does */
+		assertSliced(label('nested: ls(e) resolves the custom env', ['dynamic-environment-resolution']),
+			shell,
+			'e <- new.env()\nassign("x1", 1, envir = e)\nr <- length(ls(e))\nprint(r)',
+			['4@r'],
+			'e <- new.env()\nassign("x1", 1, envir = e)\nr <- length(ls(e))\nr'
+		);
+
+		assertSliced(label('piped: e |> ls() resolves the same custom env as the nested form', ['dynamic-environment-resolution', 'pipe-and-pipe-bind']),
+			shell,
+			'e <- new.env()\nassign("x1", 1, envir = e)\nr <- e |> ls() |> length()\nprint(r)',
+			['4@r'],
+			'e <- new.env()\nassign("x1", 1, envir = e)\nr <- e |> ls() |> length()\nr'
+		);
+	});
+
 	describe('parent env', () => {
-		assertSliced(label('slice through child env with emptyenv parent: includes assign and new.env', ['dynamic-environment-resolution', 'environment-parent', 'name-created']),
+		assertSliced(label('slice through child env with emptyenv parent: includes assign and new.env', ['dynamic-environment-resolution', 'environment-parent-tracked', 'name-created-resolved']),
 			shell,
 			'e <- new.env(parent=emptyenv())\nassign("x", 42, envir=e)\nget("x", envir=e)',
 			['3@get'],
 			'e <- new.env(parent=emptyenv())\nassign("x", 42, envir=e)\nget("x", envir=e)'
 		);
+
+		/* a dynamic parent isn't resolved, so flowR drops `w <- 42` even though real R prints "[1] 42" */
+		assertSliced(label('a dynamic parent (globalenv() inside a function) is not resolved, w is dropped', ['environment-parent']),
+			shell,
+			'w <- 42\nf <- function() {\n  e <- new.env(parent = globalenv())\n  r <- get("w", envir = e)\n  print(r)\n}\nf()',
+			['5@r'],
+			'e <- new.env(parent = globalenv())\nr <- get("w", envir = e)\nr'
+		);
 	});
 
 	describe('aliasing', () => {
-		assertSliced(label('slice through alias: get via alias traces back through assign and new.env', ['dynamic-environment-resolution', 'environment-alias', 'name-created']),
+		assertSliced(label('slice through alias: get via alias traces back through assign and new.env', ['dynamic-environment-resolution', 'environment-alias-read', 'name-created-resolved']),
 			shell,
 			[
 				'e <- new.env()',
@@ -137,10 +162,28 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 				'get("x", envir=alias)',
 			].join('\n')
 		);
+
+		/* the alias snapshot is taken at alias time, so a later assign to the original is dropped here */
+		assertSliced(label('an assign to the original after the alias is not reflected through it', ['environment-alias']),
+			shell,
+			[
+				'e <- new.env()',
+				'alias <- e',
+				'assign("x", 5, envir = e)',
+				'r <- get("x", envir = alias)',
+				'print(r)',
+			].join('\n'),
+			['4@r'],
+			[
+				'e <- new.env()',
+				'alias <- e',
+				'r <- get("x", envir = alias)',
+			].join('\n')
+		);
 	});
 
 	describe('with() / within()', () => {
-		assertSliced(label('slice from with(e, x): traces through assign and new.env', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+		assertSliced(label('slice from with(e, x): traces through assign and new.env', ['dynamic-environment-resolution', 'environment-with']),
 			shell,
 			[
 				'e <- new.env()',
@@ -155,7 +198,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			].join('\n')
 		);
 
-		assertSliced(label('slice from with via alias: traces assign, alias assignment, and new.env', ['dynamic-environment-resolution', 'environment-with', 'environment-alias', 'name-created']),
+		assertSliced(label('slice from with via alias: traces assign, alias assignment, and new.env', ['dynamic-environment-resolution', 'environment-with', 'environment-alias-read']),
 			shell,
 			[
 				'e <- new.env()',
@@ -172,7 +215,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			].join('\n')
 		);
 
-		assertSliced(label('with() scoping: y assigned inside with body is not in outer scope', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+		assertSliced(label('with() scoping: y assigned inside with body is not in outer scope', ['dynamic-environment-resolution', 'environment-with']),
 			shell,
 			[
 				'x <- new.env()',
@@ -184,7 +227,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			'y'
 		);
 
-		assertSliced(label('with() named args reordered: expr first, data second', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+		assertSliced(label('with() named args reordered: expr first, data second', ['dynamic-environment-resolution', 'environment-with']),
 			shell,
 			[
 				'e <- new.env()',
@@ -199,7 +242,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			].join('\n')
 		);
 
-		assertSliced(label('with() partial arg name: dat= matches data param', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+		assertSliced(label('with() partial arg name: dat= matches data param', ['dynamic-environment-resolution', 'environment-with']),
 			shell,
 			[
 				'e <- new.env()',
@@ -212,6 +255,31 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 				'assign("x", 42, envir=e)',
 				'with(dat=e, x)',
 			].join('\n')
+		);
+	});
+
+	describe('local with an explicit envir', () => {
+		/* the assignment lands in .GlobalEnv, so the slice keeps local() and drops the shadowed `x <- 1` */
+		assertSliced(label('local(x <- 2, envir = globalenv()) writes into the real global scope', ['local-envir-argument']),
+			shell,
+			'x <- 1\nlocal(x <- 2, envir = globalenv())\nprint(x)',
+			['3@x'],
+			'local(x <- 2, envir = globalenv())\nx'
+		);
+
+		assertSliced(label('local(x <- 2, envir = .GlobalEnv) writes into the real global scope', ['local-envir-argument']),
+			shell,
+			'x <- 1\nlocal(x <- 2, envir = .GlobalEnv)\nprint(x)',
+			['3@x'],
+			'local(x <- 2, envir = .GlobalEnv)\nx'
+		);
+
+		/* list2env() binds into .GlobalEnv even though it runs inside f() */
+		assertSliced(label('list2env(envir = globalenv()) inside a function writes into the real global scope', ['local-envir-argument']),
+			shell,
+			'f <- function() list2env(list(x = 1), envir = globalenv())\nf()\nprint(x)',
+			['3@x'],
+			'f <- function() list2env(list(x = 1), envir = globalenv())\nf()\nx'
 		);
 	});
 

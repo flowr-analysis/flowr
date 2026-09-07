@@ -11,9 +11,10 @@ import { dataflowLogger } from '../../../../../logger';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveConstantString, resolveEnvirArg } from './built-in-envir-utils';
+import { effectiveArgs, resolveConstantString, resolveEnvirArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -62,11 +63,15 @@ export function processGet<OtherInfo>(
 		returnsValue?: boolean
 	} = {}
 ): DataflowInformation {
+	/* a piped `x` (`x |> get()`) patches in after dispatch; use effectiveArgs so this sees it in time */
+	const effArgs = effectiveArgs(args, rootId, data);
+	const usedPipedArg = effArgs !== args;
+
 	/* use the custom environment for resolution when envir points to a tracked env */
-	const resolution = resolveEnvirArg(args, data);
+	const resolution = resolveEnvirArg(effArgs, data);
 
 	/* the first arg must name the variable(s) to retrieve */
-	const firstArg = args.length >= 1 ? args[0] : undefined;
+	const firstArg = effArgs.length >= 1 ? effArgs[0] : undefined;
 	const retrieve = firstArg !== undefined && firstArg !== EmptyArgument
 		? unpackNonameArg(firstArg)
 		: undefined;
@@ -75,13 +80,16 @@ export function processGet<OtherInfo>(
 	/* set when the names had to be computed, so the expression that produced them still has to be evaluated */
 	let nameExpression: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
 	if(retrieve !== undefined && RString.is(retrieve)) {
-		targets.push({
+		const synthId = `${rootId}-get-name`;
+		const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
 			type:     RType.Symbol,
-			info:     retrieve.info,
+			info:     { ...retrieve.info, id: synthId },
 			content:  removeRQuotes(retrieve.lexeme),
 			lexeme:   retrieve.lexeme,
 			location: retrieve.location
-		});
+		};
+		data.completeAst.idMap.set(synthId, synthSymbol);
+		targets.push(synthSymbol);
 	} else if(retrieve !== undefined) {
 		for(const [i, resolvedName] of namesDenotedBy(retrieve, data).entries()) {
 			const synthId = `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
@@ -95,7 +103,8 @@ export function processGet<OtherInfo>(
 			data.completeAst.idMap.set(synthId, synthSymbol);
 			targets.push(synthSymbol);
 		}
-		if(targets.length > 0) {
+		/* a piped name is already linked by processPipe, so don't forward it for processing again */
+		if(targets.length > 0 && !usedPipedArg) {
 			nameExpression = firstArg;
 		}
 	}
@@ -106,6 +115,9 @@ export function processGet<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
 	}
 
+	/* piped args need no slicing; otherwise the resolved name replaced args[0], so real args start at 1 */
+	const remainingArgs = usedPipedArg ? args : args.slice(1);
+
 	/* resolve in the custom environment if one was found, else the global one.
 	 * Pass remaining original args (e.g. envir=e) so they appear as Use vertices in the graph. */
 	const { information, processedArguments } = processKnownFunctionCall({
@@ -113,7 +125,7 @@ export function processGet<OtherInfo>(
 		args: [
 			...wrapArgumentsUnnamed(targets, data.completeAst.idMap),
 			...(nameExpression !== undefined ? [nameExpression] : []),
-			...args.slice(1)
+			...remainingArgs
 		],
 		rootId,
 		data:   resolution ? resolution.envirData : data,
@@ -125,6 +137,11 @@ export function processGet<OtherInfo>(
 	for(const target of named) {
 		if(target) {
 			information.graph.addEdge(rootId, target.entryPoint, returns);
+			/* mark the fallback so an unresolved name still reports a constant origin (see constantFallback) */
+			const targetVtx = information.graph.getVertex(target.entryPoint);
+			if(DfgVertex.isUse(targetVtx)) {
+				targetVtx.constantFallback = true;
+			}
 		}
 	}
 

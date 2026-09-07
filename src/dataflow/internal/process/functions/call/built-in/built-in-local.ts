@@ -15,7 +15,7 @@ import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../enviro
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { resolveEnvirArg, routeWrittenToEnvir } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
 
 
@@ -110,9 +110,6 @@ export function processLocal<OtherInfo>(
 		unknownReferences: []
 	};
 
-	/* move all definitions made inside the body into the custom env's tracked state */
-	if(envirResolution) {
-		return routeWrittenToCustomEnv(baseResult, envirResolution.envDef, rootId);
-	}
-	return baseResult;
+	/* route body writes to wherever envir resolved: the real stack frame or the custom env's tracked state */
+	return envirResolution ? routeWrittenToEnvir(baseResult, envirResolution, rootId, data.environment) : baseResult;
 }

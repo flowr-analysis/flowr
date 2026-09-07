@@ -18,11 +18,10 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { define } from '../../../../../environments/define';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { resolveConstantString } from './built-in-envir-utils';
+import { effectiveArgs, pipedCall, resolveConstantString, routeWrittenToStackEnv } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -54,9 +53,11 @@ export function processEvalCall<OtherInfo>(
 		parentFrame?:         boolean
 	}
 ): DataflowInformation {
-	const bound = FunctionSemantics.call.match.toNames(args, config.parameterNames ?? EvalParameterNames);
+	/* a piped `x` (`x |> eval()`) patches in after dispatch; use effectiveArgs so expr binds correctly */
+	const effArgs = effectiveArgs(args, rootId, data);
+	const bound = FunctionSemantics.call.match.toNames(effArgs, config.parameterNames ?? EvalParameterNames);
 	/* `evalText` names its formal differently, so a lone argument is the expression whatever it is called */
-	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(args))?.value;
+	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(effArgs))?.value;
 	const envirArg = bound.get('envir');
 
 	if(evalArgument === undefined) {
@@ -160,16 +161,15 @@ function escapeWritesToParentFrame<OtherInfo>(
 	if(written.length === 0) {
 		return;
 	}
-	let environment = information.environment;
-	for(const definition of written) {
-		environment = define(definition, true, environment);
-	}
-	information.environment = environment;
+	/* same fold + Reads edge as routeWrittenToStackEnv; written comes from the AST walk above, not result.out */
+	const routed = routeWrittenToStackEnv({ ...information, out: written }, information.environment, rootId);
+	information.environment = routed.environment;
 	information.out = [...information.out, ...written];
 }
 
 function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
-	const val = evalArgument;
+	/* match the call a pipe desugars to (e.g. `nm |> as.name()`), not the pipe node itself */
+	const val = pipedCall(evalArgument, data) ?? evalArgument;
 
 	if(config.supportFunctionCall) {
 		return getAsString(val, data);

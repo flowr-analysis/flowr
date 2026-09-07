@@ -60,6 +60,8 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * processing (and recursing into) that node again. This allows to separate arg wrappers from their content!
 	 */
 	readonly precomputedValue?:    { readonly nodeId: NodeId, readonly info: DataflowInformation }
+	/** the piped value for a placeholder-less pipe rhs, scoped by rootId; read via effectiveArgs, not args */
+	readonly pipedArgument?:       { readonly rootId: NodeId, readonly node: RNode<OtherInfo & ParentInformation> }
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;

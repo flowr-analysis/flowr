@@ -9,7 +9,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import { resolveArgToEnvir, routeWrittenToCustomEnv, signatureParamNames } from './built-in-envir-utils';
+import { resolveArgToEnvir, routeWrittenToEnvir, signatureParamNames } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
@@ -102,7 +102,6 @@ export function processWithEnv<OtherInfo>(
 	});
 
 	const merged = dfDataArg.graph.mergeWith(dfExpr.graph);
-	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	const cfgEntry = ControlFlow.inSequence(merged, [dfDataArg, dfExpr], rootId);
 
 	const ingoing = dfDataArg.in.concat(
@@ -112,12 +111,16 @@ export function processWithEnv<OtherInfo>(
 		[{ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function }]
 	);
 
-	/* within routes body writes back into the data environment; with discards them */
+	/* within routes writes back into the data environment (stack frame or custom env); with discards them */
 	const isWithin = Identifier.getName(name.content) === 'within';
 	let resultEnv = data.environment;
 	if(isWithin && dfExpr.out.length > 0) {
-		const tempResult = { ...dfExpr, environment: data.environment };
-		resultEnv = routeWrittenToCustomEnv(tempResult, envirResolution.envDef, rootId).environment;
+		/* routeWrittenToEnvir owns the Reads edge to envirNodeId on this path */
+		const tempResult = { ...dfExpr, environment: data.environment, graph: merged };
+		resultEnv = routeWrittenToEnvir(tempResult, envirResolution, rootId, data.environment).environment;
+	} else {
+		/* plain `with`, or `within` with no writes: routeWrittenToEnvir never runs, so add the edge here */
+		merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	}
 
 	return {

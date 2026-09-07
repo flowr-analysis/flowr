@@ -14,7 +14,7 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { effectiveArgs, resolveEnvirArg, routeWrittenToEnvir } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { define } from '../../../../../environments/define';
 
@@ -30,7 +30,8 @@ export function processEnvContents<OtherInfo>(
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.EnvContents }).information;
 
-	const resolution = resolveEnvirArg(args, data, 'envir', 0);
+	/* a piped envir (e.g. `e |> ls()`) patches in after dispatch, so look via effectiveArgs, not args directly */
+	const resolution = resolveEnvirArg(effectiveArgs(args, rootId, data), data, 'envir', 0);
 	if(!resolution) {
 		return result;
 	}
@@ -112,9 +113,7 @@ export function processListToEnv<OtherInfo>(
 	}
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 
-	/* a target environment of its own takes the bindings instead of the current scope */
+	/* a target environment of its own (stack frame or custom env) takes the bindings instead of current scope */
 	const resolution = resolveEnvirArg(args, data, 'envir');
-	return resolution && !resolution.isStackEnv
-		? routeWrittenToCustomEnv(defined, resolution.envDef, rootId, rootId)
-		: defined;
+	return resolution ? routeWrittenToEnvir(defined, resolution, rootId, data.environment, rootId) : defined;
 }

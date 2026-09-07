@@ -21,22 +21,36 @@ import { dataflowLogger } from '../../../../../logger';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RPipe } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import { EdgeType } from '../../../../../graph/edge';
+import { toUnnamedArgument } from '../argument/make-argument';
 
 /** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
 function isStackEnvState(envState: REnvironmentInformation): boolean {
 	return envState.current.globalEnv === true || envState.current.builtInEnv === true;
 }
 
+/** `args` with the piped value spliced in as an implicit first arg, when the pipe targets this `rootId` */
+export function effectiveArgs<OtherInfo>(
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
+): readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] {
+	return data.pipedArgument?.rootId === rootId ? [toUnnamedArgument(data.pipedArgument.node, data.completeAst.idMap), ...args] : args;
+}
+
 /** Result type for a successful envir-argument resolution. */
 export interface EnvirResolution<OtherInfo> {
 	/** `data` with its `environment` replaced by the resolved `envState` for in-env lookups. */
-	readonly envirData:   DataflowProcessorInformation<OtherInfo & ParentInformation>;
+	readonly envirData:    DataflowProcessorInformation<OtherInfo & ParentInformation>;
 	/** The definition of the variable that holds the environment */
-	readonly envDef:      NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
+	readonly envDef:       NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 	/** Node ID of the USE of the envir variable (e.g. the `e` in `envir=e`). */
-	readonly envirNodeId: NodeId;
-	/** `true` when this resolves to a real stack environment (`globalenv()`/`.GlobalEnv`), not a tracked custom env. */
-	readonly isStackEnv?: boolean;
+	readonly envirNodeId:  NodeId;
+	/** true when this resolves to a real stack env (globalenv/baseenv), not a tracked custom env */
+	readonly isStackEnv?:  boolean;
+	/** the global half of `isStackEnv`, which is the half that reaches the real frame chain */
+	readonly isGlobalEnv?: boolean;
 }
 
 /** Maps a list of identifier definitions (from {@link Resolve.byNameAndType}) to an {@link EnvirResolution}, merging the envStates of multiple reaching definitions. */
@@ -55,7 +69,7 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 			return undefined;
 		}
 		const envDef = inDefs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
-		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: isStackEnvState(envState) };
+		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: isStackEnvState(envState), isGlobalEnv: envState.current.globalEnv === true };
 	}
 	if(!inDefs.every(d => d.envState !== undefined)) {
 		return undefined;
@@ -117,6 +131,18 @@ function asCharacterOf<OtherInfo>(
 	return undefined;
 }
 
+/** desugars `lhs |> rhs(...)` one level to `rhs(lhs, ...)`, for literal-shape inspection */
+export function pipedCall<OtherInfo>(
+	node: RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): RFunctionCall<OtherInfo & ParentInformation> & { named: true } | undefined {
+	if(!RPipe.is(node) || !RFunctionCall.isNamed(node.rhs)) {
+		return undefined;
+	}
+	const lhsArg = RArgument.is(node.lhs) ? node.lhs : toUnnamedArgument(node.lhs, data.completeAst.idMap);
+	return { ...node.rhs, arguments: [lhsArg, ...node.rhs.arguments] };
+}
+
 /** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
 export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
@@ -125,6 +151,10 @@ export function resolveConstantString<OtherInfo>(
 	const unshadowed = new Map<string, boolean>();
 	/* only a part of a joined name is coerced: `paste0("v", 1)` names `v1`, while `get(1)` is an error in R */
 	const fold = (n: RNode<OtherInfo & ParentInformation>, joined = true): string | undefined => {
+		const piped = pipedCall(n, data);
+		if(piped !== undefined) {
+			return fold(piped, joined);
+		}
 		if(!RFunctionCall.isNamed(n)) {
 			const str = NodeValue.singleStringOf(n.info.id, data);
 			return str ?? (joined ? asCharacterOf(n.info.id, data) : undefined);
@@ -184,7 +214,7 @@ function stackEnvirResolution<OtherInfo>(
 		definedAt: nodeId,
 		envState,
 	} as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
-	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: true };
+	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: true, isGlobalEnv: envState.current.globalEnv === true };
 }
 
 /** Resolves the `argName` argument (default `'envir'`), named with pmatch, to an {@link EnvirResolution}. */
@@ -212,18 +242,23 @@ export function resolveSymbolToEnvir<OtherInfo>(
 	return resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable), nodeId, data);
 }
 
+/** the writes to route into the resolved envir */
+function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): readonly NamedInGraphIdentifierDefinition[] {
+	return result.out.filter(
+		(d): d is NamedInGraphIdentifierDefinition =>
+			d.name !== undefined && 'definedAt' in d &&
+			(definedAt === undefined || d.definedAt === definedAt)
+	);
+}
+
 /** Moves definitions written into a custom environment from the caller's scope into `envDef`'s tracked `envState`, re-defining the holder variable. */
-export function routeWrittenToCustomEnv(
+function routeWrittenToCustomEnv(
 	result:    DataflowInformation,
 	envDef:    NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation },
 	newDefAt:  NodeId,
 	definedAt?: NodeId
 ): DataflowInformation {
-	const written = result.out.filter(
-		(d): d is NamedInGraphIdentifierDefinition =>
-			d.name !== undefined && 'definedAt' in d &&
-			(definedAt === undefined || d.definedAt === definedAt)
-	);
+	const written = writtenDefinitionsOf(result, definedAt);
 
 	let newEnvState = envDef.envState;
 	const namesToRemove = written.map(w => ({ name: w.name }));
@@ -237,6 +272,43 @@ export function routeWrittenToCustomEnv(
 		{ current: result.environment.current.removeAll(namesToRemove), level: result.environment.level }
 	);
 	return { ...result, environment: newEnvironment };
+}
+
+/**
+ * Routes writes into a real stack env's frame chain, the same way `<<-` reaches an outer scope.
+ * Each write also gets a `Reads` edge back to `rootId`, so slicing does not drop the call that made it.
+ */
+export function routeWrittenToStackEnv(
+	result:    DataflowInformation,
+	into:      REnvironmentInformation,
+	rootId:    NodeId,
+	definedAt?: NodeId
+): DataflowInformation {
+	const written = writtenDefinitionsOf(result, definedAt);
+	let environment = into;
+	for(const w of written) {
+		environment = define(w, true, environment);
+		result.graph.addEdge(w.nodeId, rootId, EdgeType.Reads);
+	}
+	return { ...result, environment };
+}
+
+/**
+ * Routes writes under a resolved `envir=` to the real stack frame or a tracked custom env, and adds the
+ * `Reads` edge from `rootId` to the envir argument.
+ */
+export function routeWrittenToEnvir<OtherInfo>(
+	result:            DataflowInformation,
+	resolution:        EnvirResolution<OtherInfo>,
+	rootId:            NodeId,
+	callerEnvironment: REnvironmentInformation,
+	definedAt?:        NodeId
+): DataflowInformation {
+	const routed = resolution.isStackEnv && resolution.isGlobalEnv
+		? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt)
+		: routeWrittenToCustomEnv(result, resolution.envDef, rootId, definedAt);
+	routed.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+	return routed;
 }
 
 /** A `search()` position must be an integer and may never displace the global environment (R rejects `pos = 1`). */

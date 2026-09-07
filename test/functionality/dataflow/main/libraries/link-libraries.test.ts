@@ -473,6 +473,14 @@ describe('Link libraries', withTreeSitter(ts => {
 	});
 }));
 
+describe('Dynamic search path', withTreeSitter(ts => {
+	// search() is not a recognized built-in; it resolves as an unknown call, not linked to library()
+	assertDataflow(label('search() is an ordinary call, not linked to library()', ['dynamic-search-path']), ts, 'library(tools)\nn <- search()',
+		emptyGraph().call('2@search', 'search', []),
+		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+}));
+
 /** Loads the given `code` (with dummy packages `a`, `b`, `c` registered) and returns its leading library layers as `[name, type]`, nearest first. */
 async function loadedLayers(ts: TreeSitterExecutor, code: string): Promise<[string | undefined, EnvType | undefined][]> {
 	const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();

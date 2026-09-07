@@ -160,13 +160,35 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		testWithGraphAndEnvironment('Not yet supported', resolveWith => {
 			// Not yet Supported
 			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
-			testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top, resolveWith);
 			testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top, resolveWith);
 
 			testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top, Allow.Top, resolveWith);
 			testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top, resolveWith);
 			testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', set([8]), Allow.Top, resolveWith);
 		});
+	});
+
+	describe('Resolve by name', () => {
+		testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]));
+		testResolve('Get0',                 '3@x', 'y <- 5 \n x <- get0("y") \n x', set([5]));
+		testResolve('Get of a folded name', '4@x', 'y <- 5 \n nm <- "y" \n x <- get(nm) \n x', set([5]));
+		testResolve('Get of a folded call', '3@x', 'y <- paste0("a", "b") \n x <- get("y") \n x', set(['ab']));
+		testResolve('Get non-syntactic',    '3@x', '`my var` <- 1 \n x <- get("my var") \n x', set([1]));
+		testResolve('Match fun',            '3@x', 'f <- function() 1 \n x <- match.fun("f") \n x', setFrom({ type: 'function-definition' }));
+		// the dataflow graph alone links the call to the definition, so no environment is needed
+		testResolve('Get without env',      '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.ExactOnly, With.GraphOnly);
+	});
+
+	describe('Resolve by name (unknown)', () => {
+		/* every parameter but the name picks another environment or another match, which we do not track */
+		testResolve('Get with envir',       '4@x', 'e <- new.env() \n y <- 5 \n x <- get("y", envir = e) \n x', Top);
+		testResolve('Get with pos',         '3@x', 'y <- 5 \n x <- get("y", 2) \n x', Top);
+		testResolve('Get with inherits',    '3@x', 'y <- 5 \n x <- get("y", inherits = FALSE) \n x', Top);
+		testResolve('Get with mode',        '3@x', 'y <- 5 \n x <- get("y", mode = "numeric") \n x', Top);
+		// mget returns a list, which the value domain does not model
+		testResolve('Mget',                 '3@x', 'y <- 5 \n x <- mget("y") \n x', Top);
+		testResolve('Get of itself',        '2@x', 'x <- get("x") \n x', Top);
+		testResolve('Get of a redefinition', '4@x', 'get <- function(n) 0 \n y <- 5 \n x <- get("y") \n x', set([0]), Allow.Top);
 	});
 
 	describe('Resolve Value (distractors)', () => {

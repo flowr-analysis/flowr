@@ -115,7 +115,14 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => RArgument.isEmpty(a) ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
+			args.map(a => {
+				if(RArgument.isEmpty(a)) {
+					return undefined;
+				}
+				/* a named argument (e.g. `k = 2`) has no unnamed value to unpack, its own node is the entry point */
+				const entry = a.name === undefined ? unpackNonameArg(a) : a;
+				return entry === undefined ? undefined : { entryPoint: entry.info.id };
+			}),
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});

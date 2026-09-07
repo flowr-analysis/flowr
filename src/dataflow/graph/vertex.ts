@@ -83,6 +83,8 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Use
 	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
 	readonly environment?: undefined
+	/** set on a synthesized by-name-lookup use whose name folded to a constant; not readonly, set post-graph */
+	constantFallback?:     true
 }
 
 /**

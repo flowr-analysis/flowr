@@ -73,17 +73,36 @@ export function processPipe<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	{ pipePlaceholderName, assignLhs, returnLhs, rhsMightBeSymbol = false }: PipeConfiguration
 ): DataflowInformation {
-	const fCallInfo = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe });
-	const processedArguments = fCallInfo.processedArguments;
-	let information = fCallInfo.information;
 	if(args.length !== 2) {
 		dataflowLogger.warn(`Pipe ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
-		return information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe }).information;
 	}
 
 	const [lhs, rhs] = args.map(e => unpackNonameArg(e));
 
 	guard(lhs !== undefined && rhs !== undefined, () => `lhs and rhs must be present, but ${JSON.stringify(lhs)} and ${JSON.stringify(rhs)} were found instead.`);
+
+	/* find placeholder occurrences first; if none, splice the piped value in as pipedArgument */
+	const occurrenceIds: NodeId[] = [];
+	RNode.visitAst<OtherInfo & ParentInformation>(rhs, (node) => {
+		if(RSymbol.is(node) && node.content === pipePlaceholderName) {
+			occurrenceIds.push(node.info.id);
+		}
+		return false;
+	});
+	const pipedArgumentForRhs = RFunctionCall.is(rhs) && occurrenceIds.length === 0 ? lhs : undefined;
+
+	const fCallInfo = processKnownFunctionCall({
+		name,
+		args,
+		rootId,
+		data,
+		origin:    BuiltInProcName.Pipe,
+		patchData: pipedArgumentForRhs === undefined ? undefined
+			: (d, i) => i === 1 ? { ...d, pipedArgument: { rootId: rhs.info.id, node: pipedArgumentForRhs } } : d
+	});
+	const processedArguments = fCallInfo.processedArguments;
+	let information = fCallInfo.information;
 
 
 	// If this is an assigning pipe (e.g., %<>%), perform the assignment writeback using the built-in
@@ -130,15 +149,7 @@ export function processPipe<OtherInfo>(
 		// make the lhs an argument node (or link it to placeholders within the rhs call):
 		const argId = lhs.info.id;
 
-		// find all symbol occurrences inside the rhs function call AST that match the placeholder name
-		const occurrenceIds: NodeId[] = [];
-		RNode.visitAst<OtherInfo & ParentInformation>(rhs, (node) => {
-			if(RSymbol.is(node) && node.content === pipePlaceholderName) {
-				occurrenceIds.push(node.info.id);
-			}
-			return false;
-		});
-
+		// occurrenceIds was already computed above, before dispatch
 		if(occurrenceIds.length > 0) {
 			if(occurrenceIds.length !== 1) {
 				log.warn(`Expected exactly one occurrence of the pipe placeholder '${Identifier.toString(pipePlaceholderName)}' in the rhs of the pipe, but found ${occurrenceIds.length}. Linking all occurrences to the lhs.`);

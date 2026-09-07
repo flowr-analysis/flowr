@@ -8,7 +8,6 @@ import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RConstant } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
 /** What flowR states about the built-in a call names, see {@link BuiltInFnInfo}. */
@@ -167,11 +166,16 @@ function argumentsOf(vertex: DataflowGraphVertexFunctionCall): NodeId[] {
 	return ids;
 }
 
-/** Whether the access reads a formal directly, or via the constant naming it (`get("x", ...)`); a computed name (`get(nm, ...)`) does not. */
+/** true when `node` names its target outright: a literal, or a by-name lookup whose name folded to one */
+function isFixedName(node: NodeId, graph: DataflowGraph): boolean {
+	const vtx = graph.getVertex(node);
+	return DfgVertex.isValue(vtx) || (DfgVertex.isUse(vtx) && vtx.constantFallback === true);
+}
+
+/** whether the access reads a formal directly or via a fixed name (constant or folded get/exists/match.fun) */
 function resolvedToAFormal(vertex: DataflowGraphVertexFunctionCall, formals: ReadonlySet<NodeId>, graph: DataflowGraph): boolean {
-	const idMap = graph.idMap;
 	for(const node of [vertex.id, ...argumentsOf(vertex)]) {
-		if(node !== vertex.id && !RConstant.is(idMap?.get(node))) {
+		if(node !== vertex.id && !isFixedName(node, graph)) {
 			continue;
 		}
 		if(edgeTargets(graph, node, EdgeType.Reads).some(to => formals.has(to))) {

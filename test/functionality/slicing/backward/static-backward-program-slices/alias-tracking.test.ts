@@ -29,7 +29,11 @@ describe('Alias Tracking', { concurrent: false }, withShell(shell => {
 		['x <- TRUE; while(x) { if(runif(1)) { x <- FALSE } }', 'x', setFrom(valueFromTsValue(true), valueFromTsValue(false))],
 		['k <- 4; if(u) { x <- 2; } else { x <- 3; }; y <- x; print(y);', 'y', setFrom(valueFromTsValue(2), valueFromTsValue(3))],
 		['f <- function(a = u) { if(k) { u <- 1; } else { u <- 2; }; print(a); }; f();', 'a', Top], // Note: This should result in a in [1,2] in the future
-		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', Top]
+		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', Top],
+		/* non-syntactic names are keyed without backticks, so the lexeme alone won't find them */
+		['`my var` <- 1; x <- `my var`; print(x);', 'x', setFrom(valueFromTsValue(1))],
+		['`my var` <- 1; `my var` + 1; print(x <- get("my var"));', 'x', setFrom(valueFromTsValue(1))],
+		['`my var` <- 1; x <- `my var` + 1; print(x);', 'x', setFrom(valueFromTsValue(2))]
 	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
 		const ctx = contextFromInput(code);
 		const result = await runPipeline(code, shell, ctx);

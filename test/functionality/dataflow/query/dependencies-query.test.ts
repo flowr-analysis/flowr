@@ -1,4 +1,5 @@
 import { assertQuery } from '../../_helper/query';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { label } from '../../_helper/label';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
@@ -58,9 +59,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		name: string,
 		code: string,
 		expected: Partial<DependenciesQueryResult>,
-		query: Partial<DependenciesQuery> = {}
+		query: Partial<DependenciesQuery> = {},
+		caps: readonly FlowrCapabilityId[] = []
 	): void {
-		assertQuery(label(name), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
+		assertQuery(label(name, caps), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
 			dependencies: {
 				...emptyDependencies,
 				...decodeIds(expected, normalize.idMap)
@@ -185,7 +187,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			library: [
 				{ nodeId: '1@x', functionName: '::', value: 'foo' },
 				{ nodeId: '2@y', functionName: ':::', value: 'bar' }
-			] });
+			] }, {}, ['accessing-exported-names', 'accessing-internal-names']);
+
+		// stats::median would work too; nothing here flags ::: as unnecessary against the sigdb
+		testQuery('an exported name accessed with ::: resolves the same, unflagged', 'stats:::median(1:3)', {
+			write:   [{ nodeId: 5, functionName: Identifier.make('median' as never, 'stats' as never, true), value: 'stdout', implicit: true }],
+			library: [{ nodeId: '1@median', functionName: ':::', value: 'stats' }]
+		}, {}, ['namespace-exports']);
+
+		testQuery('a foreign call is recognized as one', '.Call("my_c_fn", 1)\n.Fortran("my_f_sub", x = 1)', {
+			write: [
+				{ nodeId: '1@.Call', functionName: '.Call', value: 'stdout', implicit: true },
+				{ nodeId: '2@.Fortran', functionName: '.Fortran', value: 'stdout', implicit: true }
+			] }, {}, ['foreign-function-interface']);
 
 		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { write:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '1@library', functionName: 'library', value: '"a"' },

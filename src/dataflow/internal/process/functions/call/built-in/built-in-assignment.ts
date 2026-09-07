@@ -33,7 +33,7 @@ import { define } from '../../../../../environments/define';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -594,11 +594,8 @@ function tryRouteToCustomEnv<OtherInfo>(
 		return undefined;
 	}
 
-	if(resolution.isStackEnv) {
-		/* real stack env, not a private snapshot. Route a global write as a super-assignment so it reaches global scope from inside a function. */
-		if(resolution.envirData.environment.current.globalEnv !== true) {
-			return undefined;
-		}
+	if(resolution.isStackEnv && resolution.isGlobalEnv) {
+		/* the global env: route as super-assignment so processAssignment's own tagging applies (post-hoc can't) */
 		const globalResult = processAssignment(name, args, rootId, data, {
 			...config,
 			environmentArg:  undefined,   // prevent re-entry
@@ -614,10 +611,8 @@ function tryRouteToCustomEnv<OtherInfo>(
 		environmentArg: undefined   // prevent re-entry
 	});
 
-	normalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
-
 	/* pass rootId as definedAt so only defs made at this call site are routed */
-	return routeWrittenToCustomEnv(normalResult, resolution.envDef, rootId, rootId);
+	return routeWrittenToEnvir(normalResult, resolution, rootId, data.environment, rootId);
 }
 
 export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {

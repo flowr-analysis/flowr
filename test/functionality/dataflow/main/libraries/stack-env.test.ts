@@ -53,7 +53,7 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 
 	assertDataflow(label('get(envir = globalenv()) reaches the global definition', ['search-path', 'dynamic-environment-resolution']), ts,
 		'x <- 1\nget("x", envir = globalenv())',
-		emptyGraph().addEdge('2@"x"', '1@x', EdgeType.Reads),
+		emptyGraph().addEdge('10-get-name', '1@x', EdgeType.Reads),
 		opts);
 
 	assertDataflow(label('get(envir = baseenv()) does not crash and does not leak into the global scope', ['search-path', 'dynamic-environment-resolution']), ts,
@@ -80,4 +80,15 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 		'library(pkgA)\nparent.env(globalenv())$fa',
 		emptyGraph().addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
+
+	assertDataflow(label('list2env(envir = globalenv()) inside a function reaches the global', ['search-path', 'dynamic-environment-resolution']), ts,
+		'f <- function() list2env(list(x = 42), envir = globalenv())\nf()\nx',
+		emptyGraph().addEdge('3@x', '1@42', EdgeType.Reads),
+		opts);
+
+	// within() has no env method in real R, but flowR routes it like with(e, ...) for consistency
+	assertDataflow(label('within(globalenv(), ...) inside a function reaches the global', ['search-path', 'dynamic-environment-resolution', 'environment-with']), ts,
+		'f <- function() within(globalenv(), { y <- 42 })\nf()\ny',
+		emptyGraph().addEdge('3@y', '1@y', EdgeType.Reads),
+		opts);
 }));

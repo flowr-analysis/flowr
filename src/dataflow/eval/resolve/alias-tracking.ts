@@ -20,7 +20,7 @@ import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } fro
 import { setFrom, setOf } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { Resolve } from '../../environments/resolve-helper';
@@ -54,10 +54,16 @@ export interface ResolveInfo {
 	blocked?:     Set<NodeId>;
 }
 
+/** the name a node is keyed under; a symbol's lexeme keeps backticks, its content doesn't */
+function environmentNameOf(sourceId: NodeId, idMap: AstIdMap | undefined): Identifier | undefined {
+	const node = idMap?.get(sourceId);
+	return RSymbol.is(node) ? node.content : node?.lexeme;
+}
+
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const vertex = dataflow.getVertex(sourceId);
 	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
-	const identifier = DfgVertex.isFunctionCall(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
+	const identifier = DfgVertex.isFunctionCall(vertex) ? vertex.name : environmentNameOf(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -74,7 +80,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 	const definitions: NodeId[] = [];
 
 	// Source is Symbol -> resolve definitions of symbol
-	const identifier = NodeId.recoverName(sourceId, dataflow.idMap);
+	const identifier = environmentNameOf(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -474,7 +480,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
 			if(isFn) {
-				if(DfEdge.isOnlyType(edge, EdgeType.Returns) || DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) || DfEdge.isOnlyType(edge, EdgeType.DefinedBy)) {
+				/* Returns may share a target with Argument/Reads (e.g. get("y")), so match the bit, not the exact type */
+				if(DfEdge.includesType(edge, EdgeType.Returns) || DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) || DfEdge.isOnlyType(edge, EdgeType.DefinedBy)) {
 					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 				}
 				foundRetuns ||= DfEdge.includesType(edge, EdgeType.Returns);

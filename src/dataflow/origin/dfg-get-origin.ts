@@ -138,6 +138,16 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 			});
 		}
 	}
+	/* a use naming only itself (e.g. match.fun("sum")) is no more informative than the raw name */
+	const onlyNamesItself = origins.length > 0 && origins.every(o => o.type === OriginType.BuiltInFunctionOrigin && o.id === use.id);
+	if(origins.length > 0 && !onlyNamesItself) {
+		return origins;
+	}
+	/* nothing else resolved, but the synthesized target's name was fixed at build time (constantFallback) */
+	const vtx = dfg.getVertex(use.id);
+	if(DfgVertex.isUse(vtx) && vtx.constantFallback) {
+		return [{ type: OriginType.ConstantOrigin, id: use.id }];
+	}
 	return origins.length > 0 ? origins : undefined;
 }
 

@@ -16,10 +16,7 @@ interface Counterexample extends MutationTarget {
 	readonly capabilities: readonly FlowrCapabilityId[];
 }
 
-/**
- * Mutants flowR does not slice correctly yet, as `<group>: <case> [<pass>]`. They are checked to still be
- * wrong, so that fixing one fails here instead of going unnoticed.
- */
+/** mutants flowR still mis-slices, named `<group>: <case> [<pass>]`; kept wrong so a fix gets noticed */
 const KnownWrongMutants: ReadonlySet<string> = new Set<string>();
 const generatedMutants = new Set<string>();
 const usedPasses = new Set<string>();
@@ -28,17 +25,10 @@ const knownGroups = new Set<string>();
 const knownTargets = new Set<string>();
 const knownCapabilities = new Set<string>();
 
-/**
- * Where the numbers of a complete run are left for `scripts/test-label-counts.ts`, which merges them into the
- * benchmark graph data. They describe the version rather than a measurement, so the page states them as facts.
- */
+/** counts a full run leaves for test-label-counts.ts, folded into the benchmark page as facts */
 const MutationDetailsFile = 'coverage/flowr-mutation-details.json';
 
-/**
- * Each case slices `code` for `criterion` and requires the input and the slice to print `expected` in R.
- * Checking what is printed rather than the shape of the slice is what makes these tests about R's semantics.
- * Every {@link MutationPasses|pass} is then run against the case, checking the same for its mutants.
- */
+/** slices code for criterion, checks R's printed output (not slice shape) for the case and its mutants */
 function counterexamples(shell: RShell, group: string, cases: readonly Counterexample[]): void {
 	knownGroups.add(group);
 	for(const { name, capabilities } of cases) {
@@ -48,10 +38,8 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		}
 	}
 	/**
-	 * HANDLE WITH UTTER CARE! Runs in an R shell on the host system, just like `assertSliced`'s output checks.
-	 *
-	 * The handler keeps the non-interactive session alive on a slice that does not run, and evaluating the
-	 * program as one expression drops the auto-printing a slice may introduce by dropping an assignment target.
+	 * runs on a real R shell (handle with care); tryCatch keeps it alive when a slice errors,
+	 * and eval as one expression avoids stray auto-print from a dropped assignment target.
 	 */
 	async function run(what: string): Promise<string> {
 		const guarded = `tryCatch(eval(parse(text = ${JSON.stringify(what)})), error = function(e) cat("R error:", conditionMessage(e), "\n"))`;
@@ -124,8 +112,7 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 	]);
 
 	counterexamples(shell, 'Functions as values', [
-		/* the value of a function is its body, so a criterion reading the function itself needs all of it;
-		   a slice may only trim the body where the function is called and just part of it is needed */
+		/* a function's value is its body, so a slice keeps it whole unless trimmed at the call */
 		{ name: 'a function read as a value keeps its body', capabilities: ['normal-definition', 'get-function-structure'], code: 'f <- function() { x <- 1; x + 1 }\nr <- length(deparse(f))\nprint(r)', criterion: '3@r', expected: '[1] 5' },
 		/* the wrapper a higher-order built-in hands back calls what it wraps */
 		{ name: 'a function wrapped by Negate is called through the wrapper', capabilities: ['closures', 'normal-definition'], code: 'thr <- 3\nsmall <- function(x) x < thr\nr <- Filter(Negate(small), 1:5)\nprint(r)', criterion: '4@r', expected: '[1] 3 4 5' },
@@ -136,8 +123,7 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 
 	counterexamples(shell, 'Closures', [
 		{ name: 'a sibling closure sees a write made through <<-', capabilities: ['closure-capture', 'dollar-access'], code: 'make <- function() {\n  x <- 1\n  list(get = function() x, set = function(v) x <<- v)\n}\no <- make()\no$set(5)\nr <- o$get()\nprint(r)', criterion: '8@r', expected: '[1] 5' },
-		/* c1 and c2 keep independent state in R, but flowR over-approximates the shared <<- target and
-		   keeps c1's calls in the slice even though c2's result never needed them (imprecise, not wrong) */
+		/* c1/c2 keep independent state; flowR over-approximates the shared <<- target (imprecise, not wrong) */
 		{ name: 'two instances of the same factory still print correctly', capabilities: ['closures'], code: 'counter <- function() {\n  i <- 0\n  function() {\n    i <<- i + 1\n    i\n  }\n}\nc1 <- counter()\nc2 <- counter()\nc1()\nc1()\nr <- c2()\nprint(r)', criterion: '13@r', expected: '[1] 1' },
 	]);
 
@@ -147,7 +133,7 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 	]);
 
 	counterexamples(shell, 'Reflection', [
-		/* `body(f) <- quote(k)` puts a name into the function, so what that name is bound to is read on the call */
+		/* body(f) <- quote(k) puts a name into the function; what it's bound to is read on the call */
 		{ name: 'a body written in reads what it names', capabilities: ['modify-function-structure', 'built-in-quoting'], code: 'k <- 7\nf <- function() 0\nbody(f) <- quote(k)\nr <- f()\nprint(r)', criterion: '5@r', expected: '[1] 7' },
 		/* a replacement keeps the target a function, so the call reads what the replacement made of it */
 		{ name: 'a nested replacement of the formals reaches the call', capabilities: ['modify-function-structure', 'replacement-functions'], code: 'f <- function(x) x + 1\nformals(f)$x <- 10\nr <- f()\nprint(r)', criterion: '4@r', expected: '[1] 11' },
@@ -208,6 +194,10 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 		{ name: 'a promise is forced after the body assigned', capabilities: ['formals-promises', 'super-left-assignment'], code: 'f <- function(a) { x <<- 99; a }\nx <- 1\nr <- f(x)\nprint(r)', criterion: '4@r', expected: '[1] 99' },
 		/* the default is evaluated in the function's own environment, so it uses `a` as the body left it */
 		{ name: 'a default argument sees the reassigned parameter', capabilities: ['formals-default', 'formals-promises'], code: 'f <- function(a, b = a * 2) { a <- 10; b }\nr <- f(3)\nprint(r)', criterion: '3@r', expected: '[1] 20' },
+	]);
+
+	counterexamples(shell, 'Loops', [
+		{ name: 'while(TRUE) stops at its break', capabilities: ['while-loop', 'break'], code: 'i <- 0\nwhile(TRUE) { i <- i + 1; if(i >= 3) break }\nprint(i)', criterion: '3@print', expected: '[1] 3' }
 	]);
 
 	counterexamples(shell, 'Communication through files', [

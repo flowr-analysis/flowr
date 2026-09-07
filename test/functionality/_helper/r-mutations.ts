@@ -12,6 +12,10 @@ import { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol
 import { SourceRange } from '../../../src/util/range';
 import type { DependenciesQueryResult, DependencyInfo } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { UnnamedFunctionCallPrefix } from '../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
+import { AttachedBasePackageSet, baseRExportOwner } from '../../../src/util/r-base-packages';
+import { MIN_VERSION_LAMBDA } from '../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { RPipe } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import semver from 'semver/preload';
 
 export interface MutationTarget {
 	/** the program to mutate */
@@ -39,16 +43,37 @@ const MutationPrefix = 'mut_';
 /** an assignment of one expression to a plain name */
 const SimpleAssignment = /^([A-Za-z.][\w.]*) <- (.+)$/;
 
+/** what stands before the parentheses of a head like `function(x)`, whose body is whatever comes next */
+const OpenHeadKeyword = /(^|[^\w.])(if|for|while|function|\\)\s*$/;
+
+/** whether the line ends in the head of a construct, so that R reads its body from the next line */
+function endsWithOpenHead(line: string): boolean {
+	const trimmed = line.trimEnd();
+	if(/(^|[^\w.])(repeat|else)$/.test(trimmed)) {
+		return true;
+	} else if(!trimmed.endsWith(')')) {
+		return false;
+	}
+	let depth = 0;
+	for(let i = trimmed.length - 1; i >= 0; i--) {
+		depth += trimmed[i] === ')' ? 1 : trimmed[i] === '(' ? -1 : 0;
+		if(depth === 0) {
+			return OpenHeadKeyword.test(trimmed.slice(0, i));
+		}
+	}
+	return false;
+}
+
 /** whether the line holds one whole statement, so that rewriting it cannot spill into the next one */
 function isWholeStatement(line: string): boolean {
 	let depth = 0;
 	for(const c of line) {
 		depth += '([{'.includes(c) ? 1 : ')]}'.includes(c) ? -1 : 0;
 	}
-	return depth === 0 && !line.includes('#')
+	return depth === 0 && !line.includes('#') && !endsWithOpenHead(line)
 		&& (line.match(/"/g)?.length ?? 0) % 2 === 0 && (line.match(/'/g)?.length ?? 0) % 2 === 0
 		/* a trailing operator asks R for the rest of the expression on the next line */
-		&& !/([-+*/^,~|&<>=!]|%[^%]*%)$/.test(line.trimEnd());
+		&& !/([-+*/^,~|&<>=!:]|%[^%]*%)$/.test(line.trimEnd());
 }
 
 /** rewrites the lines of a program and moves the criterion along, unless a line spans more than its own statement */
@@ -60,11 +85,11 @@ function mapLines(target: MutationTarget, map: (lines: readonly string[]) => str
 }
 
 /** rewrites every assignment the pass accepts; a `;` on the right holds another statement and is left alone */
-function rewriteAssignments(target: MutationTarget, rewrite: (name: string, rhs: string) => string | undefined): MutationTarget | undefined {
+function rewriteAssignments(target: MutationTarget, rewrite: (name: string, rhs: string, line: number) => string | undefined): MutationTarget | undefined {
 	let changed = false;
-	const mutated = mapLines(target, lines => lines.map(l => {
+	const mutated = mapLines(target, lines => lines.map((l, index) => {
 		const match = SimpleAssignment.exec(l);
-		const rewritten = match === null || match[2].includes(';') ? undefined : rewrite(match[1], match[2]);
+		const rewritten = match === null || match[2].includes(';') ? undefined : rewrite(match[1], match[2], index + 1);
 		changed ||= rewritten !== undefined;
 		return rewritten ?? l;
 	}), line => line);
@@ -103,8 +128,10 @@ const joinFirstTwo: MutationPass = {
 	apply: target => {
 		/* on the joined line the criterion would name the first of the two occurrences, which is another node */
 		const at = SlicingCriterion.nameAt(target.criterion);
-		return target.code.split('\n').length < 2 || at === undefined || at.line <= 2 ? undefined
-			: mapLines(target, lines => [`${lines[0]}; ${lines[1]}`, ...lines.slice(2)], line => line - 1);
+		const lines = target.code.split('\n');
+		/* an empty line holds no statement, and `; x <- 1` is not a program */
+		return lines.length < 2 || at === undefined || at.line <= 2 || lines[0].trim() === '' || lines[1].trim() === '' ? undefined
+			: mapLines(target, ls => [`${ls[0]}; ${ls[1]}`, ...ls.slice(2)], line => line - 1);
 	}
 };
 
@@ -131,10 +158,118 @@ const bracedRhs: MutationPass = {
 	apply: target => rewriteAssignments(target, (name, rhs) => `${name} <- { ${rhs} }`)
 };
 
+/** index just past `open`'s matching `)`, quote-aware; `-1` if unbalanced */
+function matchingCloseParen(text: string, open: number): number {
+	let depth = 0;
+	let quote: string | undefined;
+	for(let i = open; i < text.length; i++) {
+		const c = text[i];
+		if(quote !== undefined) {
+			if(c === '\\') {
+				i++;
+			} else if(c === quote) {
+				quote = undefined;
+			}
+			continue;
+		} else if(c === '"' || c === '\'') {
+			quote = c;
+		} else if(c === '(') {
+			depth++;
+		} else if(c === ')') {
+			depth--;
+			if(depth === 0) {
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
+/** `text` if it is entirely one call `name(args)`, i.e. nothing comes before or after it */
+function soleCall(text: string): { name: string, args: string } | undefined {
+	const head = /^([A-Za-z.][\w.]*)\(/.exec(text);
+	if(head === null) {
+		return undefined;
+	}
+	const close = matchingCloseParen(text, head[1].length);
+	return close === text.length - 1 ? { name: head[1], args: text.slice(head[1].length + 1, close) } : undefined;
+}
+
+/** `text` split on its top-level commas (none inside nested `()`/`[]`/`{}` or a quoted string) */
+function splitTopLevelArgs(text: string): string[] {
+	const parts: string[] = [];
+	let depth = 0;
+	let quote: string | undefined;
+	let start = 0;
+	for(let i = 0; i < text.length; i++) {
+		const c = text[i];
+		if(quote !== undefined) {
+			if(c === '\\') {
+				i++;
+			} else if(c === quote) {
+				quote = undefined;
+			}
+			continue;
+		} else if(c === '"' || c === '\'') {
+			quote = c;
+		} else if('([{'.includes(c)) {
+			depth++;
+		} else if(')]}'.includes(c)) {
+			depth--;
+		} else if(c === ',' && depth === 0) {
+			parts.push(text.slice(start, i));
+			start = i + 1;
+		}
+	}
+	parts.push(text.slice(start));
+	return parts.map(p => p.trim()).filter(p => p !== '');
+}
+
+/** `f(g(x, ...))` reads as `x |> g(...) |> f()`; only rewrites an rhs shaped as one call wrapping one call */
+const nestedCallToPipe: MutationPass = {
+	name:  'nested call rewritten as a pipe',
+	apply: target => !globalThis.rVersion || !semver.satisfies(globalThis.rVersion, `>=${RPipe.availableFromRVersion().toString()}`)
+		? undefined
+		: rewriteAssignments(target, (name, rhs) => {
+			const outer = soleCall(rhs);
+			if(outer === undefined) {
+				return undefined;
+			}
+			const inner = soleCall(outer.args);
+			if(inner === undefined) {
+				return undefined;
+			}
+			const [piped, ...rest] = splitTopLevelArgs(inner.args);
+			return piped === undefined ? undefined : `${name} <- ${piped} |> ${inner.name}(${rest.join(', ')}) |> ${outer.name}()`;
+		})
+};
+
 /** `assign("x", e)` binds what `x <- e` binds, the way an obfuscator hides a binding */
 const assignCall: MutationPass = {
 	name:  'assign call',
-	apply: target => rewriteAssignments(target, (name, rhs) => `assign("${name}", ${rhs})`)
+	apply: target => {
+		/* the name is only a string afterwards, so a criterion naming that line would resolve to nothing */
+		const criterionLine = SlicingCriterion.nameAt(target.criterion)?.line;
+		return rewriteAssignments(target, (name, rhs, line) => line === criterionLine ? undefined : `assign("${name}", ${rhs})`);
+	}
+};
+
+/** `=` binds at the top level just as `<-` does */
+const equalsAssign: MutationPass = {
+	name:  'equals assignment',
+	apply: target => rewriteAssignments(target, (name, rhs) => `${name} = ${rhs}`)
+};
+
+/** a name the search path already answers, which `<<-` would write in the package that holds it */
+function shadowsAttachedBase(name: string): boolean {
+	const owner = baseRExportOwner(name);
+	return owner !== undefined && AttachedBasePackageSet.has(owner);
+}
+
+/** top level `x <<- e` binds in globalenv like `<-`, unless the name is exported by an attached base package */
+const superAssign: MutationPass = {
+	name:  'top level super assignment',
+	apply: target => rewriteAssignments(target, (name, rhs) => shadowsAttachedBase(name) ? undefined : `${name} <<- ${rhs}`)
 };
 
 /** the same place may be reported by more than one search element, and rewriting it twice doubles it */
@@ -151,27 +286,40 @@ function renameOccurrences(code: string, places: readonly SourceRange[], to: str
 	return lines.join('\n');
 }
 
+/** the text as a regex matches it literally, as an R name may hold a `.` */
+function escapeRegex(text: string): string {
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** renames the variable the criterion points at to `to`, unless a rename of the symbols misses a place */
+async function renameCriterionTo(target: MutationTarget, occurrencesOf: Occurrences, to: string): Promise<MutationTarget | undefined> {
+	const at = SlicingCriterion.nameAt(target.criterion);
+	if(at === undefined
+		/* a criterion may name a call rather than a variable of the program (`3@print`) */
+		|| !target.code.split('\n').some(l => SimpleAssignment.exec(l)?.[1] === at.name)
+		/* a name a string spells out is read by `get` and its kin, which no rename of the symbols reaches */
+		|| new RegExp(String.raw`(["'])[^"']*(?<![\w.])${escapeRegex(at.name)}(?![\w.])[^"']*\1`).test(target.code)) {
+		return undefined;
+	}
+	const places = await occurrencesOf(at.name);
+	return places.length === 0 ? undefined
+		: { ...target, code: renameOccurrences(target.code, places, to), criterion: `${at.line}@${to}` };
+}
+
 /** renames what the criterion points at, the way an obfuscator would */
 const renameCriterion: MutationPass = {
 	name:  'renamed criterion variable',
-	apply: async(target, occurrencesOf) => {
-		const at = SlicingCriterion.nameAt(target.criterion);
-		if(at === undefined
-			/* a criterion may name a call rather than a variable of the program (`3@print`) */
-			|| !target.code.split('\n').some(l => SimpleAssignment.exec(l)?.[1] === at.name)
-			/* a name a string spells out is read by `get` and its kin, which no rename of the symbols reaches */
-			|| new RegExp(String.raw`(["'])[^"']*\b${at.name}\b[^"']*\1`).test(target.code)) {
-			return undefined;
-		}
-		const places = await occurrencesOf(at.name);
-		const renamed = `${MutationPrefix}v`;
-		return places.length === 0 ? undefined
-			: { ...target, code: renameOccurrences(target.code, places, renamed), criterion: `${at.line}@${renamed}` };
-	}
+	apply: (target, occurrencesOf) => renameCriterionTo(target, occurrencesOf, `${MutationPrefix}v`)
+};
+
+/** the same rename, to a name only valid in backticks; the criterion keeps the backticks in its lexeme */
+const renameCriterionNonSyntactic: MutationPass = {
+	name:  'non-syntactic criterion name',
+	apply: (target, occurrencesOf) => renameCriterionTo(target, occurrencesOf, `\`${MutationPrefix}non syntactic\``)
 };
 
 /** these decide what to do with a literal before it is evaluated, so a `paste0` is another thing entirely */
-const LiteralTakenAsWritten = /\b(library|require|quote|substitute|bquote|expression|deparse)\(\s*$/;
+const LiteralTakenAsWritten = /\b(library|require|quote|substitute|bquote|expression|deparse)\(\s*([\w.]+\s*=\s*)?$/;
 
 /** splits the first string literal, the way an obfuscator hides a name that is only known at run time */
 const splitString: MutationPass = {
@@ -210,11 +358,299 @@ const shiftCriterionValue: MutationPass = {
 			return undefined;
 		}
 		return {
-			code:      lines.map((l, i) => i === bindings[0].index ? `${at.name} <- (${bindings[0].rhs}) + 1` : l).join('\n'),
-			criterion: target.criterion,
-			expected:  `[1] ${Number(printed[1]) + 1}`
+			...target,
+			code:     lines.map((l, i) => i === bindings[0].index ? `${at.name} <- (${bindings[0].rhs}) + 1` : l).join('\n'),
+			expected: `[1] ${Number(printed[1]) + 1}`
 		};
 	}
+};
+
+/** a comment after a statement belongs to it, and what it says changes nothing about the program */
+const trailingComments: MutationPass = {
+	name:  'trailing comments',
+	apply: target => mapLines(target, lines => lines.map(l => l.trim() === '' ? l : `${l} # ${MutationPrefix}note`), line => line)
+};
+
+/** `{ e }` evaluates to `e`, so bracing keeps a statement's printed value; skips multi-statement lines */
+const statementBlocks: MutationPass = {
+	name:  'every statement in a block',
+	apply: target => {
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const wrap = l.trim() !== '' && !l.includes(';');
+			changed ||= wrap;
+			return wrap ? `{ ${l} }` : l;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+/** a statement the top level prints nothing of, so that one block around all of them hides no output */
+const PrintsNothing = /^([A-Za-z.][\w.]* (<-|=) |print\(|cat\(|invisible\(|library\(|require\(|for\(|while\()/;
+
+/** wraps the whole program in one block; unlike {@link statementBlocks}, needs no earlier print */
+const wholeProgramBlock: MutationPass = {
+	name:  'whole program in a block',
+	apply: target => target.code.split('\n').slice(0, -1).every(l => PrintsNothing.test(l)) ?
+		mapLines(target, lines => ['{', ...lines, '}'], line => line + 1) : undefined
+};
+
+/** `;` joins statements like a newline; keeps criterion's line separate, avoiding an ambiguous name\@line */
+const semicolonJoined: MutationPass = {
+	name:  'semicolon-separated statements',
+	apply: target => {
+		const at = SlicingCriterion.nameAt(target.criterion);
+		const lines = target.code.split('\n');
+		if(at === undefined || !lines.every(isWholeStatement)) {
+			return undefined;
+		}
+		const before = lines.slice(0, at.line - 1).filter(l => l.trim() !== '');
+		const after = lines.slice(at.line).filter(l => l.trim() !== '');
+		if(before.length < 2 && after.length < 2) {
+			return undefined;
+		}
+		const merged = [
+			...(before.length > 0 ? [before.join('; ')] : []),
+			lines[at.line - 1],
+			...(after.length > 0 ? [after.join('; ')] : [])
+		];
+		return { ...target, code: merged.join('\n'), criterion: `${before.length > 0 ? 2 : 1}@${at.name}` };
+	}
+};
+
+/** which bracket closes the one at `open` in `text`, skipping quoted text; `undefined` if it is never closed */
+const BracketClose: Readonly<Record<string, string>> = { '(': ')', '{': '}' };
+function findMatchingBracket(text: string, open: number): number | undefined {
+	const closeChar = BracketClose[text[open]];
+	let depth = 0;
+	let quote: string | undefined;
+	for(let i = open; i < text.length; i++) {
+		const c = text[i];
+		if(quote !== undefined) {
+			if(c === '\\') {
+				i++;
+			} else if(c === quote) {
+				quote = undefined;
+			}
+			continue;
+		}
+		if(c === '"' || c === '\'') {
+			quote = c;
+		} else if(c === text[open]) {
+			depth++;
+		} else if(c === closeChar) {
+			depth--;
+			if(depth === 0) {
+				return i;
+			}
+		}
+	}
+	return undefined;
+}
+
+/** whether `text` holds a `;` outside of any nested bracket or quote, so it is more than one statement */
+function hasTopLevelSemicolon(text: string): boolean {
+	let depth = 0;
+	let quote: string | undefined;
+	for(let i = 0; i < text.length; i++) {
+		const c = text[i];
+		if(quote !== undefined) {
+			if(c === '\\') {
+				i++;
+			} else if(c === quote) {
+				quote = undefined;
+			}
+			continue;
+		}
+		if(c === '"' || c === '\'') {
+			quote = c;
+		} else if('([{'.includes(c)) {
+			depth++;
+		} else if(')]}'.includes(c)) {
+			depth--;
+		} else if(c === ';' && depth === 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** the head of a single-line `if(...)`, `for(...)` or `while(...)`, up to and including its closing paren */
+const ControlHeader = /^(if|for|while)\s*\(/;
+interface ControlHead {
+	readonly keyword: 'if' | 'for' | 'while';
+	readonly header:  string;
+	readonly rest:    string;
+}
+function controlHead(line: string): ControlHead | undefined {
+	const m = ControlHeader.exec(line);
+	if(m === null) {
+		return undefined;
+	}
+	const close = findMatchingBracket(line, m[0].length - 1);
+	return close === undefined ? undefined : { keyword: m[1] as ControlHead['keyword'], header: line.slice(0, close + 1), rest: line.slice(close + 1) };
+}
+
+/** splits at a top level ` else `, the one that belongs to this very `if` rather than one nested inside it */
+function topLevelElseSplit(text: string): readonly [string, string] | undefined {
+	let depth = 0;
+	let quote: string | undefined;
+	for(let i = 0; i < text.length; i++) {
+		const c = text[i];
+		if(quote !== undefined) {
+			if(c === '\\') {
+				i++;
+			} else if(c === quote) {
+				quote = undefined;
+			}
+			continue;
+		}
+		if(c === '"' || c === '\'') {
+			quote = c;
+		} else if('([{'.includes(c)) {
+			depth++;
+		} else if(')]}'.includes(c)) {
+			depth--;
+		} else if(depth === 0 && i > 0 && /\s/.test(text[i - 1]) && /^else\b/.test(text.slice(i))) {
+			return [text.slice(0, i), text.slice(i + 4)];
+		}
+	}
+	return undefined;
+}
+
+/** wraps the body of a single-line `if`/`for`/`while` in braces, keeping its value and visibility */
+function addBraces(line: string): string | undefined {
+	const head = controlHead(line);
+	if(head === undefined) {
+		return undefined;
+	}
+	const rest = head.rest.trim();
+	if(rest === '' || rest.startsWith('{')) {
+		return undefined;
+	}
+	if(head.keyword === 'if') {
+		const split = topLevelElseSplit(rest);
+		if(split !== undefined) {
+			const ifBody = split[0].trim();
+			const elseBody = split[1].trim();
+			return ifBody === '' || elseBody === '' || ifBody.startsWith('{') || elseBody.startsWith('{') ? undefined
+				: `${head.header} { ${ifBody} } else { ${elseBody} }`;
+		}
+	}
+	return `${head.header} { ${rest} }`;
+}
+
+const bracesAdded: MutationPass = {
+	name:  'braces added to a construct body',
+	apply: target => {
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const rewritten = addBraces(l);
+			changed ||= rewritten !== undefined;
+			return rewritten ?? l;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+/** inverse of {@link addBraces}: `{ e }` evaluates to `e`, so a single-statement block may go */
+function removeBraces(line: string): string | undefined {
+	const head = controlHead(line);
+	if(head === undefined) {
+		return undefined;
+	}
+	const rest = head.rest.trimStart();
+	if(!rest.startsWith('{')) {
+		return undefined;
+	}
+	const close = findMatchingBracket(rest, 0);
+	if(close === undefined) {
+		return undefined;
+	}
+	const inner = rest.slice(1, close).trim();
+	const after = rest.slice(close + 1).trim();
+	/* a bare `if` left behind by unwrapping could bind a later `else` to itself instead of to this construct */
+	if(inner === '' || hasTopLevelSemicolon(inner) || /^if\s*\(/.test(inner)) {
+		return undefined;
+	}
+	if(head.keyword !== 'if' || after === '') {
+		return after === '' ? `${head.header} ${inner}` : undefined;
+	}
+	if(!after.startsWith('else')) {
+		return undefined;
+	}
+	const elseRest = after.slice(4).trim();
+	if(!elseRest.startsWith('{')) {
+		return undefined;
+	}
+	const elseClose = findMatchingBracket(elseRest, 0);
+	if(elseClose === undefined) {
+		return undefined;
+	}
+	const elseInner = elseRest.slice(1, elseClose).trim();
+	const elseAfter = elseRest.slice(elseClose + 1).trim();
+	return elseInner === '' || hasTopLevelSemicolon(elseInner) || /^if\s*\(/.test(elseInner) || elseAfter !== '' ? undefined
+		: `${head.header} ${inner} else ${elseInner}`;
+}
+
+const bracesRemoved: MutationPass = {
+	name:  'braces removed from a construct body',
+	apply: target => {
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const rewritten = removeBraces(l);
+			changed ||= rewritten !== undefined;
+			return rewritten ?? l;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+/** `\(x)` reads exactly as `function(x)` does, from the R version that introduced the shorthand onward */
+const lambdaShorthand: MutationPass = {
+	name:  'lambda shorthand',
+	apply: target => !globalThis.rVersion || !semver.satisfies(globalThis.rVersion, `>=${MIN_VERSION_LAMBDA}`) || !/\bfunction\s*\(/.test(target.code)
+		? undefined
+		: { ...target, code: target.code.replace(/\bfunction\s*\(/g, '\\(') }
+};
+
+/** a string with no quote of the other kind and no escape reads the same between `"` and `'` */
+const quoteStyleSwapped: MutationPass = {
+	name:  'quote style swapped',
+	apply: target => {
+		let changed = false;
+		const code = target.code.replace(/"([^"\\\n]*)"/g, (whole, content: string) => {
+			if(content.includes('\'')) {
+				return whole;
+			}
+			changed = true;
+			return `'${content}'`;
+		});
+		return changed ? { ...target, code } : undefined;
+	}
+};
+
+/** `repeat` and `while (TRUE)` run the same body forever, `break` included; either spelling reads the same */
+const repeatWhileTrueSwap: MutationPass = {
+	name:  'repeat and while(TRUE) swapped',
+	apply: target => {
+		const toRepeat = target.code.replace(/\bwhile\s*\(\s*TRUE\s*\)/g, 'repeat');
+		if(toRepeat !== target.code) {
+			return { ...target, code: toRepeat };
+		}
+		const toWhile = target.code.replace(/\brepeat\b/g, 'while (TRUE)');
+		return toWhile === target.code ? undefined : { ...target, code: toWhile };
+	}
+};
+
+/** whether the program already gives `T`/`F` a meaning `TRUE`/`FALSE` must not shadow */
+const bareTOrF = /\b[TF]\b/;
+
+/** `T`/`F` are bindings, not literals; only safe to substitute when the program doesn't redefine them */
+const trueFalseAbbreviated: MutationPass = {
+	name:  'TRUE and FALSE abbreviated',
+	apply: target => bareTOrF.test(target.code) || !/\b(TRUE|FALSE)\b/.test(target.code) ? undefined
+		: { ...target, code: target.code.replace(/\bTRUE\b/g, 'T').replace(/\bFALSE\b/g, 'F') }
 };
 
 /** every pass a mutant is generated for; add to this list to check another rewrite */
@@ -222,15 +658,29 @@ export const MutationPasses: readonly MutationPass[] = [
 	leadingNoise,
 	trailingNoise,
 	comments,
+	trailingComments,
 	blankLines,
 	joinFirstTwo,
+	statementBlocks,
+	wholeProgramBlock,
 	rightAssign,
 	groupedRhs,
 	bracedRhs,
 	assignCall,
+	equalsAssign,
+	superAssign,
 	renameCriterion,
+	renameCriterionNonSyntactic,
 	splitString,
-	shiftCriterionValue
+	shiftCriterionValue,
+	semicolonJoined,
+	bracesAdded,
+	bracesRemoved,
+	lambdaShorthand,
+	nestedCallToPipe,
+	quoteStyleSwapped,
+	repeatWhileTrueSwap,
+	trueFalseAbbreviated
 ];
 
 /** one analysis per program and parser, as every pass and every query asks the same questions of it again */

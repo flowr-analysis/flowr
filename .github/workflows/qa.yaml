@@ -170,13 +170,19 @@ jobs:
       - name: "⚙️ Run System Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
+      - name: "🧬 Run Mutation Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run --reporter=default --reporter=json --outputFile.json=coverage/flowr-mutation-test-results.json -- --make-summary"
+
       - name: "⬆️ Upload Test Label Details"
         uses: actions/upload-artifact@v4
         with:
           name: test-label-details
           path: |
             coverage/flowr-test-details.json
+            coverage/flowr-test-details-mutations.json
             coverage/flowr-test-results.json
+            coverage/flowr-mutation-details.json
+            coverage/flowr-mutation-test-results.json
           if-no-files-found: warn
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
@@ -282,7 +288,7 @@ jobs:
           path: benchmark-ai-r-shell/
 
       - name: "🧪 Add the Test Counters (artificial-r-shell)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json --mutation-results test-labels/flowr-mutation-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json"
 
       - name: "🥄 Merge and Produce Performance Results (artificial, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -331,7 +337,7 @@ jobs:
           path: benchmark-rw-r-shell
 
       - name: "🧪 Add the Test Counters (real-world-r-shell)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json --mutation-results test-labels/flowr-mutation-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json"
 
       - name: "🥄 Merge and Produce Performance Results (real-world, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -380,7 +386,7 @@ jobs:
           path: benchmark-ai-tree-sitter/
 
       - name: "🧪 Add the Test Counters (artificial-tree-sitter)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json --mutation-results test-labels/flowr-mutation-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json"
 
       - name: "🥄 Merge and Produce Performance Results (artificial, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -429,7 +435,7 @@ jobs:
           path: benchmark-rw-tree-sitter
 
       - name: "🧪 Add the Test Counters (real-world-tree-sitter)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json --mutation-results test-labels/flowr-mutation-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json"
 
       - name: "🥄 Merge and Produce Performance Results (real-world, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1

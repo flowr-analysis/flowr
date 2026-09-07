@@ -144,7 +144,7 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory-detail', 'the memory chart is about the graphs');
 		assert.ok(!S.GROUPS.some(g => g.id === 'totals'), 'the totals get no chart of their own');
 		assert.ok(!S.GROUPS.some(g => g.id === 'other'), 'a metric no rule claims stays off the page');
-		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests'],
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests', 'mutations'],
 			'only what the flowR version itself carries is independent of the suite');
 		assert.strictEqual(S.groupOf('plugins', '#'), 'features', 'the plugins are part of what the version carries');
 		assert.strictEqual(S.groupOf('plugins (file-load)', '#'), 'features', 'the per-type breakdown joins its total');
@@ -170,14 +170,31 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.betterOf('signature database size (full history)', 'KiB'), 'flat',
 			'a larger database is not a regression');
 		assert.strictEqual(S.groupOf('memory (df-graph)', 'KiB'), 'memory', 'the other sizes stay where they were');
-		assert.strictEqual(S.GROUPS[S.GROUPS.length - 1].id, 'tests', 'the test suite is the final tile');
+		assert.strictEqual(S.GROUPS[S.GROUPS.length - 1].id, 'mutations', 'what the suite mutates is the final tile');
 		assert.strictEqual(S.groupOf('tests', '#'), 'tests');
 		assert.strictEqual(S.groupOf('tests (dataflow)', '#'), 'tests');
 		assert.strictEqual(S.groupOf('tests overall', '#'), 'tests', 'the total of a run belongs to its tile');
-		assert.deepStrictEqual(S.GROUPS.filter(g => g.facts).map(g => g.id), ['sigdb', 'tests'],
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.facts).map(g => g.id), ['sigdb', 'tests', 'mutations'],
 			'only what never moves between runs is stated instead of plotted');
 		assert.strictEqual(S.shortName('signature database functions (older only)'), 'Functions (older only)',
 			'the chart is already titled for the database');
+	});
+
+	/* these four mirror the mutation entries in scripts/test-label-counts.ts */
+	test('group the metamorphic mutation counters', () => {
+		for(const name of ['mutation mutants', 'mutation passes', 'mutation known-wrong mutants', 'mutation tests']) {
+			assert.strictEqual(S.groupOf(name, '#'), 'mutations', `${name} belongs to the mutation tile`);
+		}
+		for(const name of ['mutation mutants', 'mutation passes', 'mutation tests']) {
+			assert.strictEqual(S.betterOf(name, '#'), 'up', `${name} says how much is checked, so more is better`);
+		}
+		assert.strictEqual(S.betterOf('mutation known-wrong mutants', '#'), 'down',
+			'a mutant that is still sliced wrongly is a debt, and a zero that stays zero is the point of it');
+		assert.strictEqual(S.shortName('mutation known-wrong mutants'), 'Known-wrong mutants',
+			'the tile is already titled for the mutations');
+		assert.strictEqual(S.shortName('mutation tests'), 'Tests',
+			'the tile is already titled for the mutations');
+		assert.strictEqual(S.groupOf('mutations', '#'), 'other', 'only the counters of the setup are claimed');
 	});
 
 	test('keep the measurements that are recorded but not drawn off the page', () => {

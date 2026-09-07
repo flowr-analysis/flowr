@@ -37,6 +37,7 @@ for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'be
     - [🖋️ Writing a Test](#writing-a-test)
     - [🤏 Running Only Some Tests](#running-only-some-tests)
   - [💽 System Tests](#system-tests)
+  - [🧬 Mutation Tests](#mutation-tests)
   - [💃 Performance Tests](#performance-tests)
   - [📝 Testing Within Your IDE](#testing-within-your-ide)
     - [VS Code](#vs-code)
@@ -57,8 +58,8 @@ for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'be
 <a id='testing-suites'></a>
 ## 🏨 Testing Suites
 
-Currently, flowR contains three testing suites: one for [functionality](#functionality-tests), 
-one for [system tests](#system-tests), and one for [performance](#performance-tests). We explain each of them in the following.
+Currently, flowR contains four testing suites: one for [functionality](#functionality-tests),
+one for [system tests](#system-tests), one for [mutation tests](#mutation-tests), and one for [performance](#performance-tests). We explain each of them in the following.
 In addition to running those tests, you can use the more generalized \`npm run checkup\`.
 This command includes the construction of the docker image, the generation of the wiki pages, and the linter.
 It runs these jobs concurrently but caps the test workers so the combined run fits the machine (it splits the
@@ -188,7 +189,103 @@ to check basic availability of *flowR*'s core features (as we test the functiona
 with the [functionality tests](#functionality-tests)).
 
 Have a look at the [test/system-tests](${RemoteFlowrFilePathBaseRef}test/system-tests) folder for more information.
- 
+
+<a id='mutation-tests'></a>
+### 🧬 Mutation Tests
+
+A metamorphic mutation rewrites an R program without changing what it means, so flowR's answer must not
+change either: the same dependencies are found, the same slice comes out. This finds bugs without a
+hand-written expectation for every program, checking a rewrite of a program the suite already knows the
+answer for rather than the program itself.
+
+Run the suite with:
+
+${codeBlock('shell', 'npm run test:mutations')}
+
+It lives in its own set (${linkFlowRSourceFile('test/mutations')}, with its own \`vitest.config.mts\`) and is
+deliberately excluded from \`npm run test\`, the same arrangement as the [system tests](#system-tests), so
+the default suite stays fast. It is wired into CI (see [🪈 CI Pipeline](#ci-pipeline)) and into \`npm run
+checkup\`, where \`npm run checkup -- mutations\` runs just this job.
+
+The suite has three pieces:
+
+- the passes, in ${linkFlowRSourceFile('test/functionality/_helper/r-mutations.ts')} (\`MutationPasses\`), 26 of them at the moment.
+- the corpus of programs and the invariant checks run against their mutants, in ${linkFlowRSourceFile('test/mutations/r-semantics-counterexamples.test.ts')}.
+- pass-level unit tests, in ${linkFlowRSourceFile('test/mutations/r-mutations.test.ts')}, checking each pass on its own rather than against the corpus.
+
+Every program in the corpus is a counterexample, something that already takes care to slice correctly (a
+function called through a list, a value read back through an environment, a closure over a super-assignment,
+and so on). It is checked once for what it prints and once more for what its slice prints. Every pass is then
+tried against it: where a pass has nothing to rewrite it is skipped for that program instead of failing, and
+where it does apply, its mutant is checked the same way, plus that no query result about the program changed.
+
+The passes fall into a few categories:
+
+- formatting and noise: bindings nothing reads are added before or after the program (\`leading noise\`,
+  \`trailing noise\`), a comment or a blank line is interleaved between every line, and a trailing comment is
+  appended to each statement.
+- assignment spelling: \`x <- 1\` becomes \`1 -> x\`, \`x = 1\`, \`x <<- 1\` (only where safe, see below), or
+  \`assign("x", 1)\`; the right-hand side of an assignment is wrapped in \`(...)\` or in \`{ ... }\`.
+- naming: the variable the criterion points at is renamed to \`mut_v\`, or to a name only valid in backticks;
+  a string literal is split apart into \`paste0("v", "vv")\`.
+- structure and braces: the first two statements (or a run of statements around the criterion's own line) are
+  joined with \`;\`, every statement or the whole program is wrapped in a \`{ ... }\` block, and braces are added
+  to or removed from the body of an \`if\`/\`for\`/\`while\`.
+- loop forms: \`while (TRUE)\` and \`repeat\` are swapped for each other, as either spells out the same loop.
+- function forms: \`function(x)\` becomes \`\\(x)\` where the R version supports the shorthand, and a call
+  nested inside another call is rewritten as a native pipe, e.g. \`f(g(x))\` becomes \`x |> g() |> f()\`.
+- quoting and literals: \`"..."\` and \`'...'\` are swapped where doing so is safe, and \`TRUE\`/\`FALSE\` are
+  abbreviated to \`T\`/\`F\` where the program does not otherwise bind them.
+- one pass, \`criterion value shifted by one\`, is the exception that deliberately changes the output: it adds
+  one to a printed number and updates the expected output to match, so the corpus also checks that a slice
+  tracks a value rather than just a name.
+
+A pass is a \`MutationPass\`, an object naming what its mutants are called and a function rewriting the
+target, or returning \`undefined\` where it does not apply:
+
+${codeBlock('typescript', `interface MutationPass {
+	name:  string;
+	apply: (target: MutationTarget, occurrencesOf: Occurrences) =>
+		Promise<MutationTarget | undefined> | MutationTarget | undefined;
+}`)}
+
+${linkFlowRSourceFile('test/functionality/_helper/r-mutations.ts')} carries helpers most passes are built from,
+notably \`rewriteAssignments\`, which rewrites every simple assignment a pass accepts and leaves the rest of the
+program (and the criterion's line number) alone, and \`mapLines\`, which rewrites the lines of a program and
+moves the criterion's line along with them.
+
+${block({
+	type:    'WARNING',
+	content: `
+A pass has to stay sound, which is harder than it looks. Rules learned the hard way:
+
+- the rewrite must not change what the program *prints*, as the suite compares printed output. Wrapping
+  something in \`invisible(...)\` or in parentheses at the statement level is not allowed for that reason:
+  \`(x <- 1)\` prints where \`x <- 1\` does not.
+- do not emit magrittr's \`%>%\`, which is not base R and fails on a clean R installation.
+- \`T\`/\`F\` are ordinary bindings R initializes to \`TRUE\`/\`FALSE\`, not literals, so a pass abbreviating them
+  applies only where the program does not otherwise assign them.
+- reordering arguments into named form is unsound in general, as R does partial matching on argument names.
+- a pass must not join the criterion's own line with another line naming the same variable, or the
+  \`line@name\` criterion becomes ambiguous about which of the two occurrences it means.
+`
+})}
+
+${linkFlowRSourceFile('test/mutations/r-semantics-counterexamples.test.ts')} also keeps a \`KnownWrongMutants\`
+set, naming a mutant flowR is known not to slice correctly yet. It is currently empty. A new pass surfacing a
+genuine flowR bug should be reported and the bug fixed, not silenced by adding an entry: the suite asserts
+that a listed mutant still fails, so fixing the underlying bug requires removing it from the set again, not
+leaving it there.
+
+A complete run writes what it exercised, passes, counterexamples, mutants and known-wrong mutants, together
+with how many tests it ran, and ${linkFlowRSourceFile('scripts/test-label-counts.ts')} merges those numbers
+into the ${ctx.linkPage('flowr:benchmarks', 'benchmark page')} as the number of mutation passes, the number of
+mutants (out of how many were possible), the number of known-wrong mutants, and the number of mutation tests.
+
+The suite already found real bugs this way. Most recently, a value arriving through the native pipe (e.g.
+\`x |> g() |> get()\`) was not tracked like a literal argument, so the slice dropped a definition it needed;
+see the piped-argument handling in ${linkFlowRSourceFile('src/dataflow/internal/process/functions/call/built-in/built-in-get.ts')}.
+
 <a id='performance-tests'></a>
 ### 💃 Performance Tests
 
@@ -231,7 +328,7 @@ We have several workflows defined in ${linkFlowRSourceFile('.github/workflows')}
 We explain the most important workflows in the following:
 
 - ${linkFlowRSourceFile('.github/workflows/qa.yaml')} is the main workflow that will run different steps depending on several factors. It is responsible for:
-  - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
+  - running the [functionality](#functionality-tests), [system](#system-tests), [mutation](#mutation-tests), and [performance tests](#performance-tests)
     - uploading the results to the ${ctx.linkPage('flowr:benchmarks', 'benchmark page')} for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage

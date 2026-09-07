@@ -1,9 +1,8 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 
 /*
- * globalSetup runs in vitest's own process before `test.env` is injected into workers, so `test.env`
- * cannot reach it; setting it here (this file also runs in that process) is what does. This is what
- * keeps a run of this suite from overwriting the functionality suite's own `coverage/flowr-test-details.json`.
+ * set here since globalSetup runs before workers see test.env, and this file shares that process.
+ * keeps this suite's run from overwriting the functionality suite's own test-details file.
  */
 process.env.FLOWR_TEST_DETAILS_FILE = 'coverage/flowr-test-details-mutations.json';
 
@@ -11,7 +10,7 @@ export default defineConfig({
 	test: {
 		testTimeout: 60 * 1000,
 		sequence:    {
-			/* each test file that does not support parallel execution will be executed in sequence by stating this explicitly */
+			/* explicit concurrent:true is what makes a file without parallel support run in sequence */
 			concurrent: true,
 			setupFiles: 'parallel'
 		},

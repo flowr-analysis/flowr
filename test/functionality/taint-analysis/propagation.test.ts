@@ -23,6 +23,10 @@ const marker = new TaintAnalysisDefinition('marker', lattice)
 		{ identifier: Identifier.make('TaintB'), taint: TaintB },
 	]);
 
+/** Checks whether the first argument has been tainted, returning the given constant taint or undefined */
+const toConst = (taint: symbol) =>
+	(_args: unknown[], [incoming]: symbol[]) => incoming === undefined || incoming === Top ? Top : taint;
+
 const conflict = new TaintAnalysisDefinition('conflict', lattice)
 	.from([
 		{ identifier: Identifier.make('taint'), taint: TaintA },
@@ -35,21 +39,21 @@ const conflict = new TaintAnalysisDefinition('conflict', lattice)
 			identifier: Identifier.make('sink'),
 			condition:  {
 				argTaints:   [{ pos: 0 }],
-				conditionFn: (_args, [taint]) => taint === undefined ? undefined : Bottom
+				conditionFn: toConst(Bottom)
 			}
 		},
 		{
 			identifier: Identifier.make('reclassify'),
 			condition:  {
 				argTaints:   [{ pos: 0 }],
-				conditionFn: (_args, [taint]) => taint === undefined ? undefined : TaintB
+				conditionFn: toConst(TaintB)
 			}
 		},
 		{
 			identifier: Identifier.make('narrow'),
 			condition:  {
 				argTaints:   [{ pos: 0 }],
-				conditionFn: (_args, [taint]) => taint === undefined ? undefined : TaintA
+				conditionFn: toConst(TaintA)
 			}
 		},
 	]);

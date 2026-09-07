@@ -11,12 +11,13 @@ import {
 	getFunctionArguments
 } from '../abstract-interpretation/data-frame/mappers/arguments';
 import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../util/log';
 import { Top } from '../abstract-interpretation/domains/lattice';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DataflowGraph } from '../dataflow/graph/graph';
+import { isNotUndefined } from '../util/assert';
 
 /**
  * Gets all defined mappings for a given function call.
@@ -63,9 +64,10 @@ export function resolveFnCallToTaint<Domain extends AnyAbstractDomain>(
 	if(mappings.length === 0) {
 		return { value: domain.top() };
 	}
-	const roleTaints = TaintRoles
-		.map(role => ({ role, taint: resolveMappingToTaint(mappings.find(m => m.role === role), domain, node, dfg, ctx, projectArg) }))
-		.filter((entry): entry is { role: TaintRole, taint: Domain } => entry.taint !== undefined);
+	const context = { domain, node, dfg, ctx, projectArg };
+	const roleTaints = Object.values(TaintRole)
+		.map(role => ({ role, taint: resolveMappingToTaint(mappings.find(m => m.role === role), context) }))
+		.filter((entry): entry is { role: TaintRole, taint: Domain } => isNotUndefined(entry.taint));
 
 	const value = AbstractDomain.meetAll(roleTaints.map(entry => entry.taint), domain.top());
 
@@ -74,18 +76,32 @@ export function resolveFnCallToTaint<Domain extends AnyAbstractDomain>(
 	return { value, role };
 }
 
-function resolveMappingToTaint<Domain extends AnyAbstractDomain>(mapping: TaintMapping<Domain> | undefined, domain: Domain, node: RNamedFunctionCall<ParentInformation>, dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, projectArg: (id: NodeId) => Domain | undefined): Domain | undefined {
+type ResolveContext<Domain extends AnyAbstractDomain> = {
+	node:       RNamedFunctionCall<ParentInformation>,
+	domain:     Domain,
+	dfg:        DataflowGraph,
+	ctx:        ReadOnlyFlowrAnalyzerContext,
+	projectArg: (id: NodeId) => Domain | undefined
+};
+
+function resolveMappingToTaint<Domain extends AnyAbstractDomain>(
+	mapping: TaintMapping<Domain> | undefined,
+	context: ResolveContext<Domain>
+): Domain | undefined {
 	if(!mapping) {
 		return undefined;
 	}
 	if('taint' in mapping) {
-		return domain.create(mapping.taint);
+		return context.domain.create(mapping.taint);
 	}
-	const resultingTaint = resolveTaintCondition(node, dfg, ctx, mapping, domain, projectArg);
-	return resultingTaint === undefined ? undefined : domain.create(resultingTaint);
+	const resultingTaint = resolveTaintCondition(mapping, context);
+	return resultingTaint === undefined ? undefined : context.domain.create(resultingTaint);
 }
 
-function resolveTaintCondition<Domain extends AnyAbstractDomain>(node: RNamedFunctionCall<ParentInformation>, dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, mapping: TaintConditionMapping<Domain>, domain: Domain, projectArg: (id: NodeId) => (Domain | undefined)) {
+function resolveTaintCondition<Domain extends AnyAbstractDomain>(
+	mapping: TaintConditionMapping<Domain>,
+	{ node, dfg, ctx, domain, projectArg }: ResolveContext<Domain>
+) {
 	const allArgs = getFunctionArguments(node, dfg);
 
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx };
@@ -96,26 +112,26 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(node: RNamedFun
 	const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
 		const arg = getFunctionArgument(allArgs, location, resolveInfo);
 		if(!arg) {
-			log.warn(`Could not determine function argument for requested taint at position ${location.pos} with name ${location.name}`);
+			log.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
 		}
 		return arg;
 	}) : [];
 
 	const incomingTaints = taintArgs
 		.map(arg => (arg === EmptyArgument || !arg?.value?.info) ? domain.create(Top) : projectArg(arg.value.info.id))
-		.filter((value): value is Domain => value !== undefined)
+		.filter((value) => isNotUndefined(value))
 		.map(value => value.value as AbstractValue<Domain>);
 
-	const resultingTaint = mapping.condition.conditionFn(valArgs, incomingTaints);
-	return resultingTaint;
+	return mapping.condition.conditionFn(valArgs, incomingTaints);
 }
 
 export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];
 
-export const TaintRoles = ['to', 'through', 'from'] as const;
-
-/** Whether a mapped call acts as a source (`from`), transformer/propagator (`through`), or sink (`to`). */
-export type TaintRole = typeof TaintRoles[number];
+export enum TaintRole {
+	Source = 'Source',
+	Transformer = 'Transformer',
+	Sink = 'Sink',
+}
 
 type TaintMappingBase = {
 	readonly role?:      TaintRole;

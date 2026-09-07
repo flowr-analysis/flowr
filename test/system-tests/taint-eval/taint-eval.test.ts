@@ -3,6 +3,7 @@ import { assert, describe, test } from 'vitest';
 import { run } from '../utility/utility';
 import { allPredefinedTaintAnalysisNames } from '../../../src/taint-analysis/predefined/predefined';
 import type { LoggedFnCallInfo } from '../../../src/taint-analysis/eval/instrumentation';
+import { TaintRole } from '../../../src/taint-analysis/function-mapper';
 
 type ParsedTrace = Record<string, Record<string, LoggedFnCallInfo>>;
 type ParsedCallInfo = LoggedFnCallInfo['unmappedCalls'][number];
@@ -61,12 +62,12 @@ describe('taint-analysis evaluation', () => {
 		assert.isDefined(sec);
 
 		assert.equal(sec.mappedCalls.length, 2);
-		assert.deepEqual(sec.mappedCalls[0], { line: '2', nodeId: 2, functionName: 'read.table', args: [], role: 'from', taint: 'File Input' });
+		assert.deepEqual(sec.mappedCalls[0], { line: '2', nodeId: 2, functionName: 'read.table', args: [], role: TaintRole.Source, taint: 'File Input' });
 		assert.deepEqual(sec.mappedCalls[1], {
 			line:         '4',
 			nodeId:       19,
 			functionName: 'source',
-			role:         'to',
+			role:         TaintRole.Sink,
 			args:         [
 				{ taint: 'File Input' }, { value: 'someOtherArg' }, { name: 'namedArg', value: true }
 			], taint: 'bottom' });

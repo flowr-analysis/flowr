@@ -64,7 +64,7 @@ export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisito
 		super.onFunctionCall({ call });
 
 		const node = this.getNormalizedAst(call.id);
-		if(!node || !RFunctionCall.is(node) || !node.named) {
+		if(!node || !RFunctionCall.is(node) || !RFunctionCall.isNamed(node)) {
 			return;
 		}
 		const product: Writable<TaintProduct> = {};

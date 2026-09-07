@@ -118,7 +118,7 @@ describe('Taint Analysis Scale', () => {
 		{
 			'3@x': ZScore,
 			'4@y': Unscaled,
-			'5@y': Bottom,
+			'5@z': Bottom,
 		});
 	});
 

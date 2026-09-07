@@ -53,7 +53,7 @@ const conflict = new TaintAnalysisDefinition('conflict', lattice)
 			identifier: Identifier.make('narrow'),
 			condition:  {
 				argTaints:   [{ pos: 0 }],
-				conditionFn: toConst(TaintA)
+				conditionFn: toConst(TaintB)
 			}
 		},
 	]);
@@ -120,13 +120,20 @@ describe('Taint Propagation', () => {
 		testPropagate('a source called inside a user-defined function taints the returned value', 'f <- function() { taint() }\ny <- f()', { '2@y': TaintA });
 		testPropagate('a user-defined function that discards its argument does not forward the taint', 'f <- function(v) { 1 }\nx <- taint()\ny <- f(x)', { '3@y': Top });
 		testConflict('a sink applied inside a user-defined function maps to Bottom', 'f <- function(v) { sink(v) }\na <- taint()\ny <- f(a)', { '2@a': TaintA, '3@y': Bottom });
-		testConflict('a pipe chain through user-defined functions updates the taint', 'g <- function(v) { reclassify(v) }\nh <- function(v) { sink(taint(v)) }\na <- taint()\ny <- a |> g()\nz <- y |> h()', { '3@a': TaintA, '4@y': TaintB, '5@z': Bottom });
+		testConflict('a pipe chain through user-defined functions updates the taint', `
+			g <- function(v) { narrow(v) }
+			h <- function(v) { sink(taint(v)) }
+			a <- taint()
+			y <- a |> g()
+			z <- y |> h()
+			`,
+		{ '3@a': TaintA, '4@y': TaintB, '5@z': Bottom });
 	});
 
 	describe('Source-Sink Conflict (Greatest Lower Bound)', () => {
 		testConflict('meeting the source taint with the sink finding taint (Bottom) drops to Bottom', 'a <- taint()\nx <- sink(a)', { '2@x': Bottom });
 		testConflict('meeting incomparable source and sink taints drops to Bottom', 'a <- taint()\nx <- reclassify(a)', { '2@x': Bottom });
-		testConflict('meeting comparable source and sink taints keeps the lower bound', 'a <- taint()\nx <- narrow(a)', { '2@x': TaintA });
+		testConflict('meeting comparable source and sink taints keeps the lower bound', 'a <- taint()\nx <- narrow(a)', { '2@x': TaintB });
 		testConflict('an inapplicable sink condition (undefined) leaves the source taint', 'x <- sink(1)', { '1@x': TaintA });
 		testConflict('an inapplicable sink condition (undefined) leaves the higher source taint', 'x <- narrow(1)', { '1@x': TaintC });
 		testPropagate('a source called on a tainted argument returns its own source taint, ignoring the incoming taint', 'x <- taint(TaintB())', { '1@x': TaintA });

@@ -2,7 +2,14 @@ import { RBasePackageStore } from '../data/r-base-packages.generated';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { RVersion } from './r-version';
 
-/** the base packages R attaches to the search path on startup, so their exports are usable without a `library` call */
+/**
+ * The base packages R attaches to the search path on startup, so their exports are usable without a `library` call.
+ *
+ * This is what a plain R session attaches, which the code we read never states: `R_DEFAULT_PACKAGES`,
+ * `--default-packages` and `options(defaultPackages=)` each change the set without leaving a trace in it.
+ * A project that changes it says so through `solver.assumeAttachedPackages`; see {@link attachedBasePackages}
+ * for the version-aware view, as a release cannot attach a package it did not ship.
+ */
 export const AttachedBasePackages: readonly string[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
 /** {@link AttachedBasePackages} for membership tests, which happen far more often than iteration. */
 export const AttachedBasePackageSet: ReadonlySet<string> = new Set(AttachedBasePackages);
@@ -37,6 +44,28 @@ export function baseRPackages(rVersion?: string): readonly string[] {
 		.filter(([, [first, last]]) => RVersion.compare(first, eff) <= 0 && RVersion.compare(last, eff) >= 0)
 		.map(([name]) => name);
 	cache.set(rVersion, result);
+	return result;
+}
+
+/** {@link attachedBasePackages} per assumed version, as the filter walks the whole base set */
+const attachedCache = new Map<string, readonly string[]>();
+
+/**
+ * The base packages attached at the assumed R version: {@link AttachedBasePackages} without the ones that
+ * release did not ship yet, so an assumed R 1.8 does not resolve a name against a package that came later.
+ * The order is kept, as it is the search-path order a shared export is decided by.
+ */
+export function attachedBasePackages(rVersion?: string): readonly string[] {
+	if(rVersion === undefined) {
+		return AttachedBasePackages;
+	}
+	const cached = attachedCache.get(rVersion);
+	if(cached !== undefined) {
+		return cached;
+	}
+	const shipped = new Set(baseRPackages(rVersion));
+	const result = AttachedBasePackages.filter(p => shipped.has(p));
+	attachedCache.set(rVersion, result);
 	return result;
 }
 

@@ -1,6 +1,6 @@
 import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta';
+import { ensureChildrenAreLhsAndRhsOrdered, ensureExpressionList, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import { expensiveTrace } from '../../../../../../../util/log';
 import { startAndEndsWith } from '../../../../../../../util/text/strings';
@@ -8,12 +8,16 @@ import type { RNode } from '../../../../model/model';
 import { RawRType, RType } from '../../../../model/type';
 import { OperatorsInRAst } from '../../../../model/operators';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
-import type { RFunctionCall } from '../../../../model/nodes/r-function-call';
-import type { RBinaryOp } from '../../../../model/nodes/r-binary-op';
+import type { RFunctionCall, RUnnamedFunctionCall } from '../../../../model/nodes/r-function-call';
+import { RBinaryOp } from '../../../../model/nodes/r-binary-op';
 import type { RPipe } from '../../../../model/nodes/r-pipe';
 import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import { RExpressionList } from '../../../../model/nodes/r-expression-list';
+import { RSymbol } from '../../../../model/nodes/r-symbol';
+import type { RParameter } from '../../../../model/nodes/r-parameter';
+import type { RFunctionDefinition } from '../../../../model/nodes/r-function-definition';
+import type { BrandedIdentifier } from '../../../../../../../dataflow/environments/identifier';
 
 
 /**
@@ -25,7 +29,7 @@ export function tryNormalizeBinary(
 	[lhs, operator, rhs]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]
 ): RNode | undefined {
 	expensiveTrace(parseLog, () => `binary op for ${lhs.name} [${operator.name}] ${rhs.name}`);
-	if(operator.name === RawRType.Special || OperatorsInRAst.has(operator.name) || operator.name === RawRType.Pipe) {
+	if(operator.name === RawRType.Special || OperatorsInRAst.has(operator.name) || operator.name === RawRType.Pipe || operator.name === RawRType.Pipebind) {
 		return parseBinaryOp(data, lhs, operator, rhs);
 	} else {
 		return undefined;
@@ -99,7 +103,7 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 				lexeme:   parsedLhs.lexeme,
 				info:     {}
 			},
-			rhs:    parsedRhs,
+			rhs:    desugarPipeBindRhs(parsedRhs),
 			lexeme: content,
 			info:   {
 				fullRange:  data.currentRange,
@@ -122,4 +126,45 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			}
 		};
 	}
+}
+
+/**
+ * Desugars a pipe-bind rhs `name => body` into `(function(name) body)(x)`, mirroring R's own `gram.y`
+ * desugaring, so the pipe built-in can treat it like any other pipe into an anonymous function.
+ */
+function desugarPipeBindRhs(rhs: RNode): RNode {
+	if(!RBinaryOp.is(rhs) || rhs.operator !== '=>') {
+		return rhs;
+	}
+	const boundName = rhs.lhs;
+	if(!RSymbol.is(boundName) || typeof boundName.content !== 'string') {
+		throw new ParseError(`pipe-bind variable must be a symbol, but received ${JSON.stringify(boundName)}`);
+	}
+	const parameter: RParameter = {
+		type:         RType.Parameter,
+		location:     boundName.location,
+		lexeme:       boundName.lexeme,
+		name:         boundName as RSymbol<object, BrandedIdentifier>,
+		special:      false,
+		defaultValue: undefined,
+		info:         rhs.info
+	};
+	const definition: RFunctionDefinition = {
+		type:       RType.FunctionDefinition,
+		location:   rhs.location,
+		lexeme:     rhs.lexeme,
+		parameters: [parameter],
+		body:       ensureExpressionList(rhs.rhs),
+		info:       rhs.info
+	};
+	const call: RUnnamedFunctionCall = {
+		type:           RType.FunctionCall,
+		named:          undefined,
+		location:       rhs.location,
+		lexeme:         rhs.lexeme,
+		calledFunction: definition,
+		arguments:      [],
+		info:           rhs.info
+	};
+	return call;
 }

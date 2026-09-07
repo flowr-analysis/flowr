@@ -7,6 +7,8 @@ export const MIN_VERSION_PIPE = '4.1.0';
 export const MIN_VERSION_LAMBDA = '4.1.0';
 export const MIN_VERSION_PIPE_PLACEHOLDER = '4.2.0';
 export const MIN_VERSION_PIPE_PLACEHOLDER_EXTRACT = '4.3.0';
+/** pipe-bind `=>` (behind `_R_USE_PIPEBIND_`) has existed since the native pipe shipped */
+export const MIN_VERSION_PIPE_BIND = '4.1.0';
 
 
 /** between 4.0.0 and (i think) 4.1.0 the parser handled them differently. We ignore that for now. */

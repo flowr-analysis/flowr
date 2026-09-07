@@ -39,6 +39,9 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
 	}
 	const files: { filePath: string | undefined, root: RExpressionList<TreeSitterInfo> }[] = [];
 	for(const t of tree) {
+		if(t.parsed.rootNode.hasError) {
+			rejectUnsupportedPipeBind(t.parsed.rootNode);
+		}
 		const root = convertTreeNode(t.parsed.rootNode);
 		if(!RExpressionList.is(root)) {
 			throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
@@ -53,6 +56,26 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
 		type: RType.Project,
 		files
 	};
+}
+
+/**
+ * tree-sitter-r has no production for pipe-bind `=>`: it tokenizes `=` normally, leaving a lone `=`
+ * followed by an error node spanning `>`. Detect that pattern and report it as unsupported instead of
+ * silently dropping the statement, which normal error recovery would otherwise do.
+ * @see {@link https://github.com/r-lib/tree-sitter-r}
+ */
+function rejectUnsupportedPipeBind(node: SyntaxNode): void {
+	if(!node.hasError) {
+		return;
+	} else if(node.type === TreeSitterType.Error && node.text === '>'
+		&& node.previousSibling?.text === '=' && node.previousSibling.endIndex === node.startIndex) {
+		throw new ParseError('the experimental pipe-bind "=>" has no production in the tree-sitter grammar flowR uses; analyze this code with the r-shell engine instead (with the "engine.r-shell.pipeBind" configuration option enabled)');
+	}
+	for(const child of node.children) {
+		if(child) {
+			rejectUnsupportedPipeBind(child);
+		}
+	}
 }
 
 function nonErrorChildrenStrict(node: SyntaxNode): SyntaxNode[] {

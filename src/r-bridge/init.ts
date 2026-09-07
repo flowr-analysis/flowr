@@ -1,9 +1,14 @@
 import { ts2r } from './lang-4.x/convert-values';
 
 export const ErrorMarker = 'err';
+/** In place of {@link ErrorMarker} when parsing failed because pipe-bind is disabled. */
+export const PipeBindDisabledMarker = 'err-pipe-bind-disabled';
 
-/** Command(s) to be issued at the start of each shell */
-export function initCommand(eol: string): string {
+/**
+ * Command(s) to be issued at the start of each shell.
+ * @param pipeBind - enable R's experimental pipe-bind operator `=>` for this session; off by default like R itself
+ */
+export function initCommand(eol: string, pipeBind = false): string {
 	/* define the get function complete wrapped in a try so that we can handle failures gracefully on stdout
 	 * furthermore, we compile for performance reasons
 	 * Please note that we add a `flowr_output` assignment before to avoid issues with earlier R versions
@@ -12,6 +17,8 @@ export function initCommand(eol: string): string {
 	 * octal escapes (e.g. `\303\264`), which are not valid JSON and would break parsing of non-ASCII R sources on
 	 * hosts running in a non-UTF-8 locale (a common CI setup). Falls back silently if no UTF-8 locale is available. */
 	return 'invisible(suppressWarnings(local(for(.l in c("C.UTF-8","en_US.UTF-8","UTF-8")) if(nzchar(Sys.setlocale("LC_CTYPE",.l))) break)));'
+		/* gated behind _R_USE_PIPEBIND_, off by default since R itself never shipped it in a release */
+		+ (pipeBind ? 'Sys.setenv("_R_USE_PIPEBIND_"="true");' : '')
 		+ 'flowr_output<-NULL;flowr_get_ast<-compiler::cmpfun(function(...){tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
 		+ 'flowr_output<<-getParseData(parse(...,keep.source=TRUE),includeText=TRUE);'
@@ -19,6 +26,6 @@ export function initCommand(eol: string): string {
 		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
 		 */
 		+ 'cat(paste0(sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s]",flowr_output$line1,flowr_output$col1,flowr_output$line2,flowr_output$col2,flowr_output$id,flowr_output$parent,encodeString(flowr_output$token,quote="\\""),ifelse(flowr_output$terminal,"true","false"),encodeString(flowr_output$text,quote="\\"")),collapse=","))'
-		/* error handling (just produce the marker) */
-		+ `},error=function(e){cat("${ErrorMarker}")});cat(${ts2r(eol)})},options=compiler::setCompilerOptions(optimize=3));`;
+		/* error handling: pipe-bind-disabled gets its own marker, everything else the generic one */
+		+ `},error=function(e){cat(if(grepl("_R_USE_PIPEBIND_",conditionMessage(e),fixed=TRUE)) "${PipeBindDisabledMarker}" else "${ErrorMarker}")});cat(${ts2r(eol)})},options=compiler::setCompilerOptions(optimize=3));`;
 }

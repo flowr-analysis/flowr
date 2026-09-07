@@ -4,7 +4,8 @@ import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
 import { RShellExecutor } from './shell-executor';
 import { normalize } from './lang-4.x/ast/parser/json/parser';
-import { ErrorMarker } from './init';
+import { ErrorMarker, PipeBindDisabledMarker } from './init';
+import { ParseError } from './lang-4.x/ast/parser/main/normalizer-data';
 import { ts2r } from './lang-4.x/convert-values';
 import { type NormalizedAst, deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
@@ -227,6 +228,10 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell, ignoreCo
 }
 
 function guardRetrievedOutput(output: string, request: RParseRequest): string {
+	if(output === PipeBindDisabledMarker) {
+		throw new ParseError('the experimental pipe-bind "=>" is disabled by default (R gates it behind '
+			+ '_R_USE_PIPEBIND_); enable the "engine.r-shell.pipeBind" configuration option to analyze it with the r-shell engine');
+	}
 	guard(output !== ErrorMarker,
 		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`);
 	return output;

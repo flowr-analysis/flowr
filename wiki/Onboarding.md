@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's developer onboarding process">Generated</span> from '[wiki-onboarding.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-onboarding.ts "src/documentation/wiki-onboarding.ts")' on 2026-09-08, 07:17:52 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's developer onboarding process">Generated</span> from '[wiki-onboarding.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-onboarding.ts "src/documentation/wiki-onboarding.ts")' on 2026-09-08, 07:39:20 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 To get started developing on *flowR*, we recommend carefully reading the following pages:
 - 💻 [Setting up the *flowR* development environment](https://github.com/flowr-analysis/flowr/wiki/Setup#-building-from-scratch).\

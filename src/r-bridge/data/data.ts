@@ -240,7 +240,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 						{
 							name:        'Namespaces',
 							id:          'namespaces',
-							supported:   'fully',
+							supported:   'partially',
 							description: "_Handling R's namespaces ([Advanced R](https://adv-r.hadley.nz/environments.html#namespaces))._ The imports environment a package carries for itself is not modelled."
 						},
 						{

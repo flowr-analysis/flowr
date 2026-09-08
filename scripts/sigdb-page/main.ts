@@ -525,7 +525,6 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 				link.href = docUrl(name, { index, topic });
 				link.title = 'the manual page for ' + name + ' in ' + pkg;
 			} else {
-				/* no page of its own, so the package's documentation is the next best thing */
 				link.href = packageDocUrl(index);
 				row.classList.add('undocumented');
 				link.title = 'no manual page is recorded for ' + name + ' in ' + pkg + ', so this links to the package documentation';

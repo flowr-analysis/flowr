@@ -137,7 +137,7 @@ function createConfig(): FlowrConfig {
 			const at = engines.findIndex(e => e.type === values.type);
 			const given = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
 			if(at < 0) {
-				engines.push(values);
+				engines.push(given as E);
 			} else {
 				engines[at] = { ...engines[at], ...given };
 			}

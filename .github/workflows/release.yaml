@@ -106,6 +106,7 @@ jobs:
             coverage/flowr-test-details.json
             coverage/flowr-test-results.json
             coverage/flowr-mutation-details.json
+            coverage/flowr-test-details-mutations.json
           if-no-files-found: warn
 
       - name: "⬆️ Upload Coverage Reports to Codecov"

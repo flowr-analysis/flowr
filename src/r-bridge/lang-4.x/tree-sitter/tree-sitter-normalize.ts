@@ -60,7 +60,6 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
  * tree-sitter-r has no production for pipe-bind `=>`: it tokenizes `=` normally, leaving a lone `=`
  * followed by an error node spanning `>`. Detect that pattern and report it as unsupported instead of
  * silently dropping the statement, which normal error recovery would otherwise do.
- * @see {@link https://github.com/r-lib/tree-sitter-r}
  */
 function rejectUnsupportedPipeBind(node: SyntaxNode): void {
 	if(!node.hasError) {

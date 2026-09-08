@@ -11,10 +11,12 @@
 <style>
 <!--THEME-LIGHT
 	--fully: #2e9e5b; --partially: #b8923f; --not: #c0392b;
+	--ref-advr: #2c7a5d; --ref-rlang: #4054a4;
 	--tk-comment: #6a737d; --tk-string: #227a3d; --tk-number: #9b4dca; --tk-keyword: #a63446; --tk-call: #1f5fa8;
 -->
 <!--THEME-DARK
 	--fully: #3fbf74; --partially: #cbb069; --not: #e05a4a;
+	--ref-advr: #6fd3ae; --ref-rlang: #a9b6f7;
 	--tk-comment: #8b95a5; --tk-string: #7ec699; --tk-number: #c9a2f0; --tk-keyword: #ff7b72; --tk-call: #79c0ff;
 -->
 <!--THEME-CSS-->
@@ -152,15 +154,11 @@ a.ref {
 }
 a.ref:hover { border-color: var(--accent); color: var(--accent); }
 a.ref .src { font-weight: 600; color: var(--fg); }
-a.ref.advr .src { color: #1f7a5c; }
-a.ref.rlang .src { color: #2b6cb0; }
+/* the source hues come from the palette, so each theme keeps them clear of its own accent */
+a.ref.advr .src { color: var(--ref-advr); }
+a.ref.rlang .src { color: var(--ref-rlang); }
 a.ref.flowr .src { color: var(--accent); }
-:root[data-theme="dark"] a.ref.advr .src { color: #6fd3ae; }
-:root[data-theme="dark"] a.ref.rlang .src { color: #8ec4f5; }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) a.ref.advr .src { color: #6fd3ae; }
-	:root:not([data-theme="light"]) a.ref.rlang .src { color: #8ec4f5; }
-}
+a.ref:hover .src { color: var(--accent); }
 /* refs and the example toggle share one line; each opens its own detail below */
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; margin: .25rem 0; }
 .meta .refs { margin: 0; }

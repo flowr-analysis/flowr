@@ -71,6 +71,25 @@ function readJson<T>(id: string): T {
 	return JSON.parse(byId(id).textContent ?? 'null') as T;
 }
 
+/** a new element with its class and text set in one line, the two properties most creations here want */
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
+	const node = document.createElement(tag);
+	if(className) {
+		node.className = className;
+	}
+	if(text !== undefined) {
+		node.textContent = text;
+	}
+	return node;
+}
+
+/** opens `link` in a new tab, safely: the target/rel pair every outbound link on this page sets */
+function blank<T extends HTMLAnchorElement>(link: T): T {
+	link.target = '_blank';
+	link.rel = 'noopener';
+	return link;
+}
+
 /* The table is unpacked once, on the first search, so opening the page stays cheap. */
 let packages: readonly PackedPackage[] = [];
 let names = '';
@@ -122,9 +141,8 @@ const picks = [...document.querySelectorAll<HTMLButtonElement>('.pick')];
 let how = 'all';
 const buttons = new Map<string, HTMLButtonElement>();
 for(const [what, key, label, about] of Filters) {
-	const button = document.createElement('button');
+	const button = el('button', undefined, label);
 	button.type = 'button';
-	button.textContent = label;
 	button.title = about + '. Click to filter by it, click again to drop it';
 	button.setAttribute('aria-pressed', 'false');
 	button.addEventListener('click', () => {
@@ -313,8 +331,7 @@ function docUrl(name: string, entry: { readonly index: number, readonly topic?: 
 
 /** a name with the matched part marked, built as nodes so a function name can never inject markup */
 function marked(name: string, needle: string, at: number): HTMLSpanElement {
-	const span = document.createElement('span');
-	span.className = 'name';
+	const span = el('span', 'name');
 	span.title = 'click for every package that exports ' + name;
 	if(at < 0) {
 		/* fuzzy hits match scattered chars; adjacent ones merge into one mark instead of many tiny boxes */
@@ -322,9 +339,7 @@ function marked(name: string, needle: string, at: number): HTMLSpanElement {
 		let next = 0, run = '', plain = '';
 		const flush = () => {
 			if(run) {
-				const one = document.createElement('mark');
-				one.textContent = run;
-				span.append(one);
+				span.append(el('mark', undefined, run));
 				run = '';
 			}
 		};
@@ -344,9 +359,7 @@ function marked(name: string, needle: string, at: number): HTMLSpanElement {
 		return span;
 	}
 	span.append(name.slice(0, at));
-	const hit = document.createElement('mark');
-	hit.textContent = name.slice(at, at + needle.length);
-	span.append(hit, name.slice(at + needle.length));
+	span.append(el('mark', undefined, name.slice(at, at + needle.length)), name.slice(at + needle.length));
 	return span;
 }
 
@@ -438,13 +451,9 @@ function count(downloads: string): string {
 
 function ownerLink(index: number): HTMLAnchorElement {
 	const [name, version, base] = packages[index];
-	const link = document.createElement('a');
-	link.target = '_blank';
-	link.rel = 'noopener';
-	link.textContent = name;
+	const link = blank(el('a', base === '1' ? 'base' : '', name));
 	const repository = repositoryOf(index);
 	link.title = name + ' ' + version + (base === '1' ? ' (base R, always available)' : ' (' + repository.label + ')');
-	link.className = base === '1' ? 'base' : '';
 	link.href = (base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html'
 		: repository.home(name)) ?? '';
 	return link;
@@ -456,10 +465,8 @@ const Shown = 3;
 function detail(name: string, owners: readonly string[]): HTMLDivElement {
 	/* the packages flowR itself states something about, so its words land on the right row */
 	const statedFor = new Map((stated.get(name) ?? []).map(entry => [entry[0], entry] as const));
-	const box = document.createElement('div');
-	box.className = 'detail';
-	const list = document.createElement('div');
-	list.className = 'owns';
+	const box = el('div', 'detail');
+	const list = el('div', 'owns');
 	for(const entry of owners) {
 		const { index, flags, topic, file, line } = owner(entry);
 		const packageRow = packages[index];
@@ -467,8 +474,7 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 			continue;   // an index the table does not have: never expected, never fatal
 		}
 		const [pkg, version, base, downloads] = packageRow;
-		const row = document.createElement('div');
-		row.className = 'own';
+		const row = el('div', 'own');
 		if(documented(name, flags, index)) {
 			row.title = 'the manual page for ' + name + ' in ' + pkg;
 		} else {
@@ -482,13 +488,10 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 		}
 		/* the name and the arrow open the manual page; the row is not one link so the source can sit within it */
 		const docs: HTMLAnchorElement[] = [];
-		const who = document.createElement('a');
-		who.className = 'pkg';
-		who.textContent = pkg;
+		const who = el('a', 'pkg', pkg);
 		docs.push(who);
 		row.append(who);
-		const marks = document.createElement('span');
-		marks.className = 'flags';
+		const marks = el('span', 'flags');
 		/* one signature per package version: flowR's formals if declared, merged with both statements' labels */
 		const own = statedFor.get(pkg);
 		const here = {
@@ -499,30 +502,22 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 		const said = new Set(wordsOf(here.props));
 		for(const flag of flags) {
 			if(FlagNames[flag] && !said.has(FlagNames[flag])) {
-				const one = document.createElement('span');
-				one.className = 'flag';
-				one.textContent = FlagNames[flag];
+				const one = el('span', 'flag', FlagNames[flag]);
 				if(FlagAbout[flag]) {
 					one.title = FlagAbout[flag];
 				}
 				marks.append(one);
 			}
 		}
-		const ver = document.createElement('span');
-		ver.className = 'ver';
-		ver.textContent = Number(downloads) > 0 ? version + ' · ' + count(downloads) : version;
+		const ver = el('span', 'ver', Number(downloads) > 0 ? version + ' · ' + count(downloads) : version);
 		ver.title = Number(downloads) > 0
 			? Number(downloads).toLocaleString('en-US') + ' CRAN downloads in the last month'
 			: 'ships with R, so CRAN counts nothing';
-		const tag = document.createElement('span');
-		tag.className = 'tag';
-		tag.textContent = base === '1' ? 'base R' : 'CRAN';
+		const tag = el('span', 'tag', base === '1' ? 'base R' : 'CRAN');
 		if(here.args !== '' || here.props !== '') {
 			marks.append(signature(name, here.args, here.props));
 		}
-		const go = document.createElement('a');
-		go.className = 'go';
-		go.textContent = '↗';
+		const go = el('a', 'go', '↗');
 		for(const link of docs) {
 			link.target = '_blank';
 			link.rel = 'noopener';
@@ -538,10 +533,7 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 		}
 		/* where this very function is written, which the manual page never shows */
 		const where = sourceFile(index, file);
-		const src = document.createElement('a');
-		src.className = 'src';
-		src.target = '_blank';
-		src.rel = 'noopener';
+		const src = blank(el('a', 'src'));
 		src.href = sourceUrl(pkg, version, base === '1', where, line, repositoryOf(index)) ?? '';
 		src.textContent = where === undefined ? '' : where + (line === undefined ? '' : ':' + line);
 		src.title = where === undefined
@@ -560,15 +552,12 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 		});
 		list.append(row);
 	}
-	const note = document.createElement('p');
-	note.className = 'ask';
+	const note = el('p', 'ask');
 	const command = document.createElement('span');
 	/* pointing at a package means asking about that one, so the command says which */
 	const asks = (qualified: string) => command.textContent = ':query @signature ' + qualified;
 	asks(name);
-	const said = document.createElement('span');
-	said.textContent = 'for parameters and the call graph, ask flowR:';
-	note.append(said, command);
+	note.append(el('span', undefined, 'for parameters and the call graph, ask flowR:'), command);
 	list.addEventListener('mouseover', event => {
 		const row = (event.target as HTMLElement | null)?.closest('.own');
 		asks(row ? (row.querySelector('.pkg')?.textContent ?? '') + '::' + name : name);
@@ -605,24 +594,16 @@ function s4GenericOf(name: string, owners: readonly string[]): string | undefine
 /** a package is a thing to find too: searching `dplyr` should offer the package, not only its names */
 function showPackage(index: number, needle: string, at: number): void {
 	const [name, version, base, downloads, exports, releases, , archived] = packages[index];
-	const row = document.createElement('li');
-	row.className = 'pkghit';
-	const head = document.createElement('div');
-	head.className = 'head';
-	const title = document.createElement('span');
-	title.className = 'name';
+	const row = el('li', 'pkghit');
+	const head = el('div', 'head');
+	const title = el('span', 'name');
 	title.append(name.slice(0, at));
-	const hit = document.createElement('mark');
-	hit.textContent = name.slice(at, at + needle.length);
-	title.append(hit, name.slice(at + needle.length));
-	const badge = document.createElement('span');
-	badge.className = 'kindtag';
-	badge.textContent = base === '1' ? 'base R package' : archived === '1' ? 'archived package' : 'package';
+	title.append(el('mark', undefined, name.slice(at, at + needle.length)), name.slice(at + needle.length));
+	const badge = el('span', 'kindtag', base === '1' ? 'base R package' : archived === '1' ? 'archived package' : 'package');
 	if(archived === '1') {
 		badge.classList.add('gone');
 	}
-	const facts = document.createElement('span');
-	facts.className = 'owners';
+	const facts = el('span', 'owners');
 	facts.textContent = [
 		version,
 		Number(downloads) > 0 ? count(downloads) : null,
@@ -652,8 +633,7 @@ function showPackage(index: number, needle: string, at: number): void {
 /** what the database holds about one package, in the same shape as the per-name detail */
 function aboutPackage(index: number): HTMLDivElement {
 	const [name, version, base, downloads, exports, releases, since, archived] = packages[index];
-	const box = document.createElement('div');
-	box.className = 'detail';
+	const box = el('div', 'detail');
 	const facts: readonly (readonly [string, string])[] = [
 		['latest version', version],
 		['exported names', Number(exports).toLocaleString('en-US')],
@@ -666,14 +646,10 @@ function aboutPackage(index: number): HTMLDivElement {
 	];
 	for(const [label, value] of facts) {
 		const line = document.createElement('p');
-		const key = document.createElement('span');
-		key.className = 'kind';
-		key.textContent = label;
-		line.append(key, value);
+		line.append(el('span', 'kind', label), value);
 		box.append(line);
 	}
-	const links = document.createElement('p');
-	links.className = 'links';
+	const links = el('p', 'links');
 	const repository = repositoryOf(index);
 	const where: readonly [string | undefined, string] = base === '1'
 		? ['https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html', 'the R manual']
@@ -681,11 +657,10 @@ function aboutPackage(index: number): HTMLDivElement {
 	const offered: readonly (readonly [string | undefined, string])[] =
 		[where, ['?q=' + encodeURIComponent(name + '::'), 'everything it exports']];
 	for(const [href, text] of offered.filter((entry): entry is readonly [string, string] => Boolean(entry[0]))) {
-		const link = document.createElement('a');
+		const link = el('a', undefined, text);
 		link.href = href;
 		if(href.startsWith('http')) {
-			link.target = '_blank';
-			link.rel = 'noopener';
+			blank(link);
 		} else {
 			link.addEventListener('click', event => {
 				event.preventDefault();
@@ -694,7 +669,6 @@ function aboutPackage(index: number): HTMLDivElement {
 				void search();
 			});
 		}
-		link.textContent = text;
 		links.append(link);
 	}
 	box.append(links);
@@ -781,11 +755,10 @@ function argsOf(args: string): (readonly [string, readonly string[]])[] {
 
 /** one `name: roles` part of a signature, the roles set apart from the formal they belong to */
 function formal([name, roles]: readonly [string, readonly string[]]): HTMLSpanElement {
-	const part = document.createElement('span');
-	part.className = 'formal';
+	const part = el('span', 'formal');
 	part.append(name);
 	if(roles.length > 0) {
-		part.append(Object.assign(document.createElement('i'), { className: 'role', textContent: ': ' + short(roles).join('+') }));
+		part.append(el('i', 'role', ': ' + short(roles).join('+')));
 	}
 	return part;
 }
@@ -800,24 +773,22 @@ function readable(name: string, args: string, props: string): string {
 
 /** signature as `name<kind>(formal: role): returns`; parens omitted only when no formals are known at all */
 function signature(name: string, args: string, props: string): HTMLElement {
-	const said = document.createElement('code');
-	said.className = 'stated';
+	const said = el('code', 'stated');
 	const { kind, returns } = parts(props);
-	said.append(Object.assign(document.createElement('b'), { textContent: name }));
+	said.append(el('b', undefined, name));
 	if(kind.length > 0) {
-		said.append(Object.assign(document.createElement('i'), { className: 'kind', textContent: '[' + short(kind).join(',') + ']' }));
+		said.append(el('i', 'kind', '[' + short(kind).join(',') + ']'));
 	}
 	if(args !== '') {
 		/* the formals are what gets cut when the line is too long; what the call is and does stays */
-		const list = document.createElement('span');
-		list.className = 'args';
+		const list = el('span', 'args');
 		list.append('(');
 		argsOf(args).forEach((arg, at) => list.append(at > 0 ? ', ' : '', formal(arg)));
 		list.append(')');
 		said.append(list);
 	}
 	if(returns.length > 0) {
-		said.append(Object.assign(document.createElement('i'), { className: 'ret', textContent: ': ' + short(returns).join(',') }));
+		said.append(el('i', 'ret', ': ' + short(returns).join(',')));
 	}
 	/* the short form is for the glance, the words for the reader who stops on it */
 	said.title = readable(name, args, props);
@@ -839,16 +810,13 @@ let scoped: string | undefined;
 
 function show(name: string, needle: string, at: number, owners: readonly string[]): void {
 	const row = document.createElement('li');
-	const head = document.createElement('div');
-	head.className = 'head';
+	const head = el('div', 'head');
 	/* decided by the likely package: `pi` reads as a constant even though something else exports `pi()` */
 	const value = owner(owners[0]).flags.includes('c');
 	head.append(marked(name, needle, at));
 	if(value) {
 		(head.firstChild as HTMLElement).classList.add('value');
-		const badge = document.createElement('span');
-		badge.className = 'kindtag value';
-		badge.textContent = 'value';
+		const badge = el('span', 'kindtag value', 'value');
 		badge.title = 'the database records it as a value rather than a function';
 		head.append(badge);
 	}
@@ -862,15 +830,10 @@ function show(name: string, needle: string, at: number, owners: readonly string[
 	/* what the name does comes first, that flowR knows it at all comes after */
 	const known = kinds.get(name) ?? [];
 	for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
-		const badge = document.createElement('span');
-		badge.className = kind === 'builtin' ? 'kindtag flowr' : 'kindtag';
-		badge.textContent = KindNames[kind] ?? kind;
-		head.append(badge);
+		head.append(el('span', kind === 'builtin' ? 'kindtag flowr' : 'kindtag', KindNames[kind] ?? kind));
 		/* the signature below states them where flowR carries one, and repeating them as a count says nothing */
 		if(kind === 'builtin' && words.length > 0 && !own) {
-			const more = document.createElement('span');
-			more.className = 'kindtag props';
-			more.textContent = '+' + words.length;
+			const more = el('span', 'kindtag props', '+' + words.length);
 			more.title = 'flowR states ' + words.join(', ') + ' about this call; open the entry to see which package for';
 			head.append(more);
 		}
@@ -891,35 +854,28 @@ function show(name: string, needle: string, at: number, owners: readonly string[
 		head.append(signature(name, shown.args, shown.props));
 	}
 	for(const [kind, generic] of dispatches) {
-		const link = document.createElement('a');
-		link.className = 'generic';
+		const link = el('a', 'generic', kind + ' method for ' + generic);
 		link.href = '?q=' + encodeURIComponent(generic);
-		link.textContent = kind + ' method for ' + generic;
 		link.title = 'search for the generic this method dispatches for';
 		head.append(link);
 	}
 	/* an S4 group member is exported via the whole group for one class, so it says little about the package */
 	const group = groups.get(name);
 	if(group) {
-		const link = document.createElement('a');
-		link.className = 'generic';
+		const link = el('a', 'generic', group + ' group');
 		link.href = '?q=' + encodeURIComponent(group);
-		link.textContent = group + ' group';
 		link.title = name + ' belongs to R\'s ' + group + ' group generic: a package may answer it for its own '
 			+ 'class with setMethod("' + name + '", ...) or setMethod("' + group + '", ...) instead of defining a '
 			+ 'function of its own. Click to search for ' + group + '.';
 		head.append(link);
 	}
-	const list = document.createElement('span');
-	list.className = 'owners';
+	const list = el('span', 'owners');
 	for(const entry of owners.slice(0, Shown)) {
 		list.append(ownerLink(owner(entry).index));
 	}
 	if(owners.length > Shown) {
-		const rest = document.createElement('button');
+		const rest = el('button', 'more', '+' + (owners.length - Shown) + ' more');
 		rest.type = 'button';
-		rest.className = 'more';
-		rest.textContent = '+' + (owners.length - Shown) + ' more';
 		list.append(rest);
 	}
 	head.append(list);
@@ -1081,10 +1037,8 @@ function report(total: number, what: string, where: string, inPackages: number |
 	status.textContent = `${total.toLocaleString('en-US')} ${what}${total === 1 ? '' : 's'}${where}${from}`
 		+ (shown < total ? ` · showing ${shown.toLocaleString('en-US')}` : '');
 	if(shown < total) {
-		const more = document.createElement('button');
+		const more = el('button', 'more-hits', `show ${Math.min(Step, total - shown)} more`);
 		more.type = 'button';
-		more.className = 'more-hits';
-		more.textContent = `show ${Math.min(Step, total - shown)} more`;
 		more.addEventListener('click', () => {
 			limit += Step;
 			void search();

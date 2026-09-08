@@ -121,7 +121,6 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		/* the rhs is processed again here, so it has to be told about the piped value just like above */
 		const assignData = pipedArgumentForRhs === undefined ? data
 			: { ...data, pipedArgument: { rootId: rhs.info.id, node: pipedArgumentForRhs } };
 		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, assignData, { canBeReplacement: true, mayHaveMoreArgs: true });

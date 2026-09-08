@@ -30,8 +30,6 @@ describe('Signature database page', () => {
 			logLevel:    'error'
 		});
 		const text = bundled.outputFiles[0].text;
-		assert.isAbove(text.length, 0);
-		/* `type="module"` is blocked by CORS under `file://`; an `iife` bundle never exports anything */
 		assert.notInclude(text, 'export{');
 		assert.notInclude(text, 'export {');
 		for(const id of Hooks) {

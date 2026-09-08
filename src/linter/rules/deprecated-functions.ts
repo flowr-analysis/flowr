@@ -27,7 +27,7 @@ import type  { KnownParser } from '../../r-bridge/parser';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import { DeprecatedArgumentInformation, DeprecatedFunctionInformation, DeprecationState } from '../../dataflow/environments/built-in-config';
+import type { DeprecatedArgumentInformation, DeprecatedFunctionInformation, DeprecationState  } from '../../dataflow/environments/deprecation-info';
 
 /**
  * Result of the {@link DEPRECATED_FUNCTIONS} linting rule
@@ -72,7 +72,7 @@ export interface DeprecatedFunctionsConfig extends MergeableRecord {
 	 * {@link DeprecatedFunctionsConfig.always}: `pkg::fn` names the package the versions are checked against and
 	 * matches only that one, a bare name matches any package.
 	 */
-	conditionally: Record<BrandedIdentifier, DeprecatedFunctionInformation>
+	conditionally: Map<BrandedIdentifier, DeprecatedFunctionInformation>
 }
 
 interface PotentialFunction {
@@ -88,23 +88,6 @@ interface Metadata extends MergeableRecord {
 	builtin: number
 }
 
-/**
- * `size` names the stroke width of every line-based geom until ggplot2 4.0.0 renamed it: it gained
- * `linewidth` beside it in 3.4.0, and 4.0.0 drops `size`.
- */
-const GgplotLinewidth: DeprecatedFunctionInformation = {
-	whenArgs: [{ argName: 'size', state: DeprecationState.Deprecated, replacedBy: 'linewidth', sinceVersion: RRange.parse('>= 3.4.0') }]
-};
-
-const ConditionallyDeprecated = {
-	/* https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles */
-	/* the quantiles moved to the stat, and the geom only kept arguments styling them, so neither is a rename of
-	   `draw_quantiles = 0.5`: the value is a quantile, not a linetype, and `quantiles` is no formal of the geom */
-	'ggplot2::geom_violin':  { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: RRange.parse('>= 4.0.0') }] },
-	'ggplot2::element_line': GgplotLinewidth,
-	'ggplot2::element_rect': GgplotLinewidth
-} as Record<BrandedIdentifier, DeprecatedFunctionInformation>;
-
 /** One entry with the package its key named, `undefined` for a bare key. */
 interface ConditionalEntry {
 	readonly info: DeprecatedFunctionInformation
@@ -114,7 +97,7 @@ interface ConditionalEntry {
 /** The entries by bare name, as a call names its package only when written `pkg::fn`. */
 function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditionally']): Map<string, ConditionalEntry[]> {
 	const index = new Map<string, ConditionalEntry[]>();
-	for(const [key, info] of Object.entries(conditionally)) {
+	for(const [key, info] of conditionally.entries()) {
 		const id = Identifier.parse(key);
 		const name = Identifier.getName(id);
 		const known = index.get(name);
@@ -173,10 +156,21 @@ function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | un
 	return sure ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
 }
 
-function functionListFromBuiltinConfig(): Identifier[] {
+function alwaysDeprecatedListFromBuiltinConfig(): Identifier[] {
 	return DefaultBuiltinConfig.filter(def => def.type === 'function'
 			&& FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
 		.flatMap(def => def.names);
+}
+
+function conditionalyDeprecatedFromBuiltinConfig(): Map<BrandedIdentifier, DeprecatedFunctionInformation> {
+	const result = new Map<BrandedIdentifier, DeprecatedFunctionInformation>();
+	for(const def of DefaultBuiltinConfig.filter(def => def.type === 'function')) {
+		const info = def.config?.deprInfo;
+		if(info !== undefined) {
+			def.names.forEach(n => result.set(Identifier.toString(n), info));
+		}
+	}
+	return result;
 }
 
 export const DEPRECATED_FUNCTIONS = {
@@ -295,8 +289,8 @@ export const DEPRECATED_FUNCTIONS = {
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it.',
 		defaultConfig: {
-			always:        functionListFromBuiltinConfig(),
-			conditionally: ConditionallyDeprecated
+			always:        alwaysDeprecatedListFromBuiltinConfig(),
+			conditionally: conditionalyDeprecatedFromBuiltinConfig()
 		}
 	}
 } as const satisfies LintingRule<DeprecatedFunctionRuleResult, Metadata, DeprecatedFunctionsConfig>;
@@ -344,7 +338,8 @@ function doesPackageVersionMatch(derivedVersion: Range | undefined, info: Deprec
 		setUncertain();
 		return true;
 	} else {
-		return info.sinceVersion.intersects(derivedVersion);
+		const version = RRange.parse(info.sinceVersion);
+		return version ? version?.intersects(derivedVersion) : false;
 	}
 }
 
@@ -434,7 +429,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 				arg:          (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,
 				state:        deprecatedArgInfo.state,
 				replacedBy:   deprecatedArgInfo.replacedBy,
-				sinceVersion: deprecatedArgInfo.sinceVersion,
+				sinceVersion: deprecatedArgInfo.sinceVersion ? RRange.parse(deprecatedArgInfo.sinceVersion) : undefined,
 				loc:          SourceLocation.fromNode(argNode) ?? candidate.sourceLocation,
 				quickFix:     deprecatedArgInfo.argName === undefined ? undefined : renameFix(argNode, deprecatedArgInfo.replacedBy, `argument \`${deprecatedArgInfo.argName}\``)
 			} satisfies DeprecatedArgumentResult);
@@ -442,8 +437,9 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 	}
 
 	// Deprecated Function: If `sinceVersion` is set, check package version before marking as deprecated
-	if(info.sinceVersion) {
-		const isDeprecatedVersion = derivedRange ? info.sinceVersion.intersects(derivedRange) : undefined;
+	const fnSinceVersion = info.sinceVersion ? RRange.parse(info.sinceVersion) : undefined;
+	if(fnSinceVersion) {
+		const isDeprecatedVersion = derivedRange ? fnSinceVersion.intersects(derivedRange) : undefined;
 		if(isDeprecatedVersion === true || isDeprecatedVersion === undefined) {
 			results.push({
 				type:         'deprecated-function',
@@ -453,7 +449,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 				function:     candidate.target,
 				state:        info.state,
 				replacedBy:   info.replacedBy,
-				sinceVersion: info.sinceVersion,
+				sinceVersion: fnSinceVersion,
 				quickFix:     renameFix(calledName(candidate.node), info.replacedBy, 'the call')
 			} satisfies DeprecatedFunctionResult);
 		}

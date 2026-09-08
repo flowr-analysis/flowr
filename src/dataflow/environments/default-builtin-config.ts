@@ -21,8 +21,7 @@ import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-pack
 import { RBasePrimitives } from '../../data/r-base-primitives.generated';
 import { RBasePackageStore } from '../../data/r-base-packages.generated';
 import { Top } from '../eval/values/r-value';
-import { RRange } from '../../util/r-version';
-import { DeprecationState } from '../../linter/rules/deprecated-functions';
+import { DeprecationState } from './deprecation-info';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -1370,8 +1369,16 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Readr, ['read_table2', 'melt_table', 'melt_fwf', 'melt_delim'])  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Tibble, ['repair_names', 'set_tidy_names', 'tidy_names', 'is.tibble', 'trunc_mat', 'frame_data', 'as.tibble', 'as_data_frame', 'lst_', 'data_frame_', 'tibble_', 'data_frame', 'as_tibble'])  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.TidyR, ['nest_legacy', 'unnest_', 'unite_', 'spread_', 'separate_', 'separate_rows_', 'nest_', 'gather_', 'fill_', 'extract_', 'nesting_', 'crossing_', 'expand_', 'drop_na_', 'complete_', 'extract_numeric'])  },
-  /** deprecated, but only when when a certain condition is met (e.g. specific argument value) */
-  { type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, names: [Identifier.make('geom_violin', PkgName.GgPlot2)], config: { deprInfo: { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: RRange.parse('>= 4.0.0') }]} } }
+	/* deprecated, but only when when a certain condition is met (e.g. specific argument value) */
+	/* https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles */
+	/* the quantiles moved to the stat, and the geom only kept arguments styling them, so neither is a rename of
+	   `draw_quantiles = 0.5`: the value is a quantile, not a linetype, and `quantiles` is no formal of the geom */
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, names: [Identifier.make('geom_violin', PkgName.GgPlot2)], config: { deprInfo: { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: '>= 4.0.0' }] } } },
+	/*
+	* `size` names the stroke width of every line-based geom until ggplot2 4.0.0 renamed it: it gained
+	* `linewidth` beside it in 3.4.0, and 4.0.0 drops `size`.
+	*/
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, names: Identifier.fromAll(PkgName.GgPlot2, ['element_line', 'element_rect']), config: { deprInfo: {  whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: '>= 4.0.0' }] } } }
 ] as const satisfies AnyBuiltInDefinition[];
 
 /** Contains the built-in definitions recognized by flowR */

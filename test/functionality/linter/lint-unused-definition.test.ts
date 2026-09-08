@@ -113,5 +113,59 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 				[{ certainty: LintingResultCertainty.Uncertain, variableName: 'r', loc: [3, 1, 3, 1], quickFix: undefined }],
 				{ totalConsidered: 5 });
 		});
+
+		describe('a definition nested inside a larger expression', () => {
+			/* removing the whole assignment here would leave `print()`, which is not the same program (and errors) */
+			assertLinter('assignment nested in a call argument keeps its value', parser,
+				'`my var` <- 1\n`my var` + 1\nprint(x <- get("my var"))',
+				'unused-definitions',
+				[{
+					certainty:    LintingResultCertainty.Uncertain,
+					variableName: 'x',
+					loc:          [3, 7, 3, 7],
+					quickFix:     [{ type: 'replace', loc: [3, 7, 3, 24], replacement: 'get("my var")', description: 'Remove unused definition of `x`' }]
+				}]);
+
+			assertLinter('assignment as a function argument keeps its value', parser,
+				'foo(x <- 1)',
+				'unused-definitions',
+				[{
+					certainty:    LintingResultCertainty.Uncertain,
+					variableName: 'x',
+					loc:          [1, 5, 1, 5],
+					quickFix:     [{ type: 'replace', loc: [1, 5, 1, 10], replacement: '1', description: 'Remove unused definition of `x`' }]
+				}]);
+
+			assertLinter('assignment in an if-condition keeps its value', parser,
+				'if((x <- 1) > 0) { 42 }',
+				'unused-definitions',
+				[{
+					certainty:    LintingResultCertainty.Uncertain,
+					variableName: 'x',
+					loc:          [1, 5, 1, 5],
+					quickFix:     [{ type: 'replace', loc: [1, 5, 1, 10], replacement: '1', description: 'Remove unused definition of `x`' }]
+				}]);
+
+			assertLinter('assignment on the right of another assignment keeps its value', parser,
+				'y <- (x <- 1)\nprint(y)',
+				'unused-definitions',
+				[{
+					certainty:    LintingResultCertainty.Uncertain,
+					variableName: 'x',
+					loc:          [1, 7, 1, 7],
+					quickFix:     [{ type: 'replace', loc: [1, 7, 1, 12], replacement: '1', description: 'Remove unused definition of `x`' }]
+				}]);
+
+			assertLinter('assignment as the sole statement of a block is still fully removed', parser,
+				'{\n x <- 1\n}',
+				'unused-definitions',
+				[{
+					certainty:    LintingResultCertainty.Uncertain,
+					variableName: 'x',
+					loc:          [2, 2, 2, 2],
+					quickFix:     [{ type: 'remove', loc: [2, 2, 2, 7], description: 'Remove unused definition of `x`' }]
+				}]);
+			/* top-level 'x <- 2' full removal is already covered by the table above */
+		});
 	});
 }));

@@ -1,4 +1,4 @@
-import { type LintingResult, type LintingRule, type LintQuickFixRemove, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -8,7 +8,7 @@ import { isNotUndefined } from '../../util/assert';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { AstIdMap, NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -26,6 +26,7 @@ import type { DataflowInformation } from '../../dataflow/info';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -242,7 +243,35 @@ function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' |
 	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), worthKeeping);
 }
 
-function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFixRemove[] | undefined {
+/** value side of the assignment `node` belongs to (`<-`/`<<-`/`=`/`->`/`->>`); undefined if not one */
+function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): { statement: RNode<ParentInformation>, value: RNode<ParentInformation> } | undefined {
+	const parent = RNode.directParent(node, ast.idMap);
+	if(!RBinaryOp.is(parent)) {
+		return undefined;
+	}
+	if(parent.lhs.info.id === node.info.id) {
+		return { statement: parent, value: parent.rhs };
+	}
+	if(parent.rhs.info.id === node.info.id) {
+		return { statement: parent, value: parent.lhs };
+	}
+	return undefined;
+}
+
+/** true if `node` is a direct child of a program/`{ }` block, where removing it leaves valid syntax */
+function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAst): boolean {
+	if(node.info.role !== RoleInParent.ExpressionListChild) {
+		return false;
+	}
+	const parent = RNode.directParent(node, ast.idMap);
+	if(!RExpressionList.is(parent)) {
+		return false;
+	}
+	const opening = RExpressionList.groupStart(parent);
+	return opening === undefined || opening.lexeme === '{';
+}
+
+function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
 	const dfg = df.graph;
 	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
 	// otherwise we can automatically remove the full definition!
@@ -265,11 +294,14 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 		return undefined; // we can not remove this definition, it has important arguments
 	}
 
+	const assignment = getAssignmentPeer(variable, ast);
+
 	const totalRangeToRemove = SourceLocation.merge(
 		[...definedBys.map(d => {
 			const vertex = ast.idMap.get(d);
 			return vertex ? SourceLocation.fromNode(vertex) : undefined;
 		}),
+		assignment ? SourceLocation.fromNode(assignment.value) : undefined,
 		variable.info.fullRange ?? variable.location]
 	);
 
@@ -277,10 +309,24 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
+
+	const description = `Remove unused definition of \`${variable.lexeme}\``;
+
+	if(isStandaloneStatement(assignment?.statement ?? variable, ast)) {
+		return [{ type: 'remove', loc: totalRangeToRemove, description }];
+	}
+
+	/* not a standalone statement (e.g. `print(x <- get(...))`); keep the value, drop only the binding */
+	const replacement = assignment !== undefined ? assignment.value.info.fullLexeme ?? assignment.value.lexeme : undefined;
+	if(replacement === undefined) {
+		/* nothing safe to keep in its place, so offer no fix at all */
+		return undefined;
+	}
 	return [{
-		type:        'remove',
-		loc:         totalRangeToRemove,
-		description: `Remove unused definition of \`${variable.lexeme}\``
+		type: 'replace',
+		loc:  totalRangeToRemove,
+		replacement,
+		description
 	}];
 }
 

@@ -106,6 +106,27 @@ describe('flowR linter', withTreeSitter(parser => {
 	describe('Unescaped Evaluation', () => {
 		assertLinter('constant evaluation', parser, 'eval(parse(text = "1+1"))', 'unescaped-arguments', []);
 		assertLinter('bounded evaluation', parser, 'eval(parse(text = match.arg(x, c("a", "b"))))', 'unescaped-arguments', []);
+		/* the name is a constant, so an attacker cannot steer this lookup even if "x" is undefined */
+		assertLinter('constant symbol lookup', parser, 'get("x")', 'unescaped-arguments', []);
+		assertLinter('constant symbol lookup of a known variable', parser, 'x <- 2\nget("x")', 'unescaped-arguments', []);
+		assertLinter('constant symbol lookup with a folded name', parser, 'i <- "x"\nget(i)', 'unescaped-arguments', []);
+		assertLinter('constant symbol tests', parser, 'exists("x")\nmget(c("a", "b"))\nmatch.fun("sum")', 'unescaped-arguments', []);
+		assertLinter('symbol lookup of a parameter', parser, 'f <- function(n) get(n)', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Uncertain,
+			category:  UnescapedArgumentCategory.Eval,
+			function:  'get',
+			loc:       SourceRange.from(1, 22, 1, 22),
+			sources:   [{ id: 4, trace: InputTraceType.Pure, types: [InputType.Parameter] }],
+			input:     [InputType.Parameter]
+		}]);
+		assertLinter('symbol lookup of user input', parser, shinyServer('get(input$n)'), 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Certain,
+			category:  UnescapedArgumentCategory.Eval,
+			function:  'get',
+			loc:       SourceRange.from(3, 6, 3, 12),
+			sources:   [{ id: 15, trace: InputTraceType.Unknown, types: [InputType.User], name: 'n' }],
+			input:     [InputType.User]
+		}]);
 		assertLinter('unknown evaluation', parser, 'eval(parse(text = x))', 'unescaped-arguments', [{
 			certainty: LintingResultCertainty.Uncertain,
 			category:  UnescapedArgumentCategory.Eval,

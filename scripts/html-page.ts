@@ -5,6 +5,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { transformSync } from 'esbuild';
 import { fillVersion, versionMarker } from './version-marker';
 
 /** one of the pages that link to each other */
@@ -35,6 +36,9 @@ const Wiki = 'https://github.com/flowr-analysis/flowr/wiki';
 
 /** whitespace is content in these, so they are put back untouched */
 const Protected = /<(script|style|pre|textarea)\b[^>]*>[\s\S]*?<\/\1>/gi;
+
+/** the blocks of {@link Protected} that hold code rather than text; one with attributes carries data */
+const Inline = /^<(style|script)>([\s\S]*)<\/\1>$/;
 const Marker = /\0(\d+)\0/g;
 
 /** what a page adds to the shared palette, said once for each half of it */
@@ -137,14 +141,26 @@ export function template(...name: readonly string[]): string {
 	return fillVersion(fillParts(fs.readFileSync(path.join('scripts', ...name), 'utf8')), versionMarker());
 }
 
+/** minifies an inline `<style>`/`<script>`; anything else is code to nobody and stays as it is */
+function minifyInline(block: string): string {
+	const match = Inline.exec(block);
+	if(match === null) {
+		return block;
+	}
+	const [, tag, code] = match;
+	const out = transformSync(code, { loader: tag === 'style' ? 'css' : 'js', minify: true, legalComments: 'none' }).code.trim();
+	return `<${tag}>${out}</${tag}>`;
+}
+
 /**
- * Drops the source indentation and the blank lines. One element per line stays on purpose: a committed page
- * that collapsed into one would turn every later change into a diff of the whole file.
+ * Drops the source indentation and the blank lines, and minifies the inline css and js. One element per line
+ * stays on purpose: a committed page that collapsed into one would turn every later change into a diff of the
+ * whole file.
  */
 export function compact(page: string): string {
 	const kept: string[] = [];
 	return page
-		.replace(Protected, block => `\0${kept.push(block) - 1}\0`)
+		.replace(Protected, block => `\0${kept.push(minifyInline(block)) - 1}\0`)
 		.replace(/^[ \t]+/gm, '')
 		.replace(/\n{2,}/g, '\n')
 		.trim()

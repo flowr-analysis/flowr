@@ -190,9 +190,9 @@ function inlineText(text: string): string {
 	return inlineMarkdown(text).replace(/<a\b[^>]*>|<\/a>/g, '');
 }
 
-/** references an icon symbol defined once in {@link iconDefs} */
+/** references an icon symbol defined once in {@link iconDefs}; `.ico` gives it its size */
 function icon(id: string): string {
-	return `<svg class="ico" width="14" height="14" aria-hidden="true"><use href="#${id}"/></svg>`;
+	return `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`;
 }
 
 /** icon symbol defs, shared once instead of repeated per use */
@@ -313,8 +313,10 @@ function testDetails(info: CapabilityInformation, capability: FlowrCapability): 
 	grouped.delete('other');
 	const contexts = [...grouped.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([context, count]) => `${count} ${context}`);
 	const where = contexts.length === 0 ? 'every test that claims this id' : `where they run: ${contexts.join(', ')}`;
+	const shown = shownContexts(contexts);
+	const truncated = shown !== contexts.join(', ');
 	return `<a class="tests" href="${capabilitySearchUrl(capability.id)}" title="${escapeHtml(where)}">${unique.length} test${unique.length === 1 ? '' : 's'}</a>`
-		+ (contexts.length === 0 ? '' : `<span class="ctx" title="${escapeHtml(where)}">${escapeHtml(shownContexts(contexts))}</span>`);
+		+ (contexts.length === 0 ? '' : `<span class="ctx"${truncated ? ` title="${escapeHtml(where)}"` : ''}>${escapeHtml(shown)}</span>`);
 }
 
 /** title + aria-label for an icon control, from one string */
@@ -324,7 +326,7 @@ function iconLabel(what: string): string {
 
 /** collapsible wrapper so tests/example don't crowd the description */
 function foldHtml(cssClass: string, icon: string, tooltip: string, label: string, content: string, open = false): string {
-	return `<details class="${cssClass}"${open ? ' open' : ''}><summary${iconLabel(tooltip)}>${icon}<span>${label}</span></summary>${content}</details>`;
+	return `<details class="${cssClass}"${open ? ' open' : ''}><summary title="${escapeHtml(tooltip)}">${icon}<span>${label}</span></summary>${content}</details>`;
 }
 
 /** icon for the signature-tests fold */

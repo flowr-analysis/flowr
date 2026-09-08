@@ -54,7 +54,8 @@ export function tokenizeR(code: string): RToken[] {
 
 /** escapes html-significant characters so R source can sit in an attribute or text node */
 export function escapeHtml(text: string): string {
-	return text.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+	/* we also scape \r to avoid CLRF detection */
+	return text.replace(/[&<>"\r]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\r': '&#13;' })[c] as string);
 }
 
 /** the `tk-*` class a token's kind carries; `text` gaps carry none */

@@ -14,6 +14,7 @@ import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/verte
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SourceLocation } from '../../util/range';
+import { guard, isNotUndefined } from '../../util/assert';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -71,11 +72,11 @@ export interface TaintInferenceResult {
  * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
  */
 export class TaintAnalysis<Defs extends readonly string[] = []> {
-	private readonly analyzer: ReadonlyFlowrAnalysisProvider;
-	private readonly defs:     RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
-	private fnCallHook:        FnCallHook | undefined;
+	private readonly analyzer?: ReadonlyFlowrAnalysisProvider;
+	private readonly defs:      RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
+	private fnCallHook:         FnCallHook | undefined;
 
-	constructor(analyzer: ReadonlyFlowrAnalysisProvider) {
+	private constructor(analyzer?: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
 	}
 
@@ -116,16 +117,19 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 	 * Run one or multiple taint analyses.
 	 * Note: Requires a prior call to {@link TaintAnalysis.add}, {@link TaintAnalysis.addComposite}, or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<Defs[number], TaintInferenceResult>> {
+	public async run(analyzer?: ReadonlyFlowrAnalysisProvider): Promise<Map<Defs[number], TaintInferenceResult>> {
+		const priorityAnalyzer = analyzer ?? this.analyzer;
+		guard(isNotUndefined(priorityAnalyzer), 'No analyzer has been set');
+
 		const results: Map<Defs[number], TaintInferenceResult> = new Map();
-		const dfg = (await this.analyzer.dataflow()).graph;
-		const ctx = this.analyzer.inspectContext();
+		const dfg = (await priorityAnalyzer.dataflow()).graph;
+		const ctx = priorityAnalyzer.inspectContext();
 		for(const def of this.defs) {
 			const baseConfig: TaintVisitorConfiguration = {
-				controlFlow:   await this.analyzer.controlflow(),
+				controlFlow:   await priorityAnalyzer.controlflow(),
 				ctx:           ctx,
 				dfg:           dfg,
-				normalizedAst: await this.analyzer.normalize(),
+				normalizedAst: await priorityAnalyzer.normalize(),
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
 			};
 

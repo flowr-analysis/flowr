@@ -21,7 +21,7 @@ import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
-import { TaintAnalysis } from '../taint-analysis/builder/taint-analysis';
+import { TaintAnalysis, type TaintAnalysisBuilder } from '../taint-analysis/builder/taint-analysis';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
 
@@ -161,7 +161,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/**
 	 * Access the taint analysis API for the request.
 	 */
-	taint<Names extends readonly string[] = []>(): TaintAnalysis<Names>;
+	taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names>;
 	/**
 	 * Run a search on the current analysis.
 	 * @param search  - The search to run.
@@ -362,8 +362,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx.gas.withGas(options?.gas, () => runSearch(search, this));
 	}
 
-	public taint<Names extends readonly string[] = []>(): TaintAnalysis<Names> {
-		return new TaintAnalysis(this);
+	public taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names> {
+		return TaintAnalysis.create<Names>(this);
 	}
 
 	/**

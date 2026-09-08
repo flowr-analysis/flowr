@@ -3,7 +3,10 @@ import { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/tai
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
-import { testTaintAnalysis, type TaintAnalysisExpectation } from './helper';
+import type { TaintAnalysisExpectation } from './helper';
+import { testTaintAnalysis } from './helper';
+import type { LoopKind } from './loop-helper';
+import { loopKinds, testLoopFixpoint, wrapLoop } from './loop-helper';
 import { decorateLabelContext, label } from '../_helper/label';
 
 const TaintA = Symbol('TaintA');
@@ -195,26 +198,26 @@ describe('Taint Propagation', () => {
 				{ identifier: Identifier.make('glb'), condition: { argTaints: [{ pos: 0 }, { pos: 1 }], conditionFn: (_args, [p, q]) => diamond.create(p ?? Top).meet(diamond.create(q ?? Top)).value } },
 			]);
 
-		const loopKinds = ['for', 'while', 'repeat'] as const;
-		type LoopKind = typeof loopKinds[number];
 		const thresholds = [1, 2, 4, 8];
 
-		// wraps a body in each loop kind
-		function wrapLoop(kind: LoopKind, body: string, cond = 'cond'): string {
-			switch(kind) {
-				case 'for':    return `for (i in 1:5) {\n${body}\n}`;
-				case 'while':  return `while (${cond}) {\n${body}\n}`;
-				case 'repeat': return `repeat {\n${body}\nif (${cond}) break\n}`;
-			}
-		}
+		describe('Fixpoint stability without climbing', () => {
+			testLoopFixpoint(climbToTop, 'a self-assignment loop keeps the pre-loop taint', 'x <- tainted()', 'x <- x', High, thresholds);
+			testLoopFixpoint(climbToTop, 'a loop re-tainting every iteration overwrites the pre-loop value', 'x <- bot()', 'x <- tainted()', High, thresholds);
+		});
 
-		type Expected = symbol | Record<LoopKind, symbol>;
+		describe('Climbing walkers', () => {
+			testLoopFixpoint(climbToTop, 'a walker climbing an unbounded ladder reaches Top', 'x <- bot()', 'x <- oneCloserToTop(x)', Top, thresholds);
+			testLoopFixpoint(climbBounded, 'a clamped walker settles at the clamp', 'x <- bot()', 'x <- oneCloserToTop(x)', High, thresholds);
+			testLoopFixpoint(climbToTop, 'a walker that only maybe climbs still reaches Top', 'x <- bot()', 'if (runif(u) > 0.5) { x <- oneCloserToTop(x) }', Top, thresholds);
+			testLoopFixpoint(climbBounded, 'a clamped walker that only maybe climbs still reaches the clamp', 'x <- bot()', 'if (branch) { x <- oneCloserToTop(x) }', High, thresholds);
+		});
 
-		/*
-		 * Every scenario for each loop kind across every widening threshold.
-		 * Widening on a finite lattice is join, so each loop results in the exact same least fixpoint (independent of the threshold).
-		 */
-		function widenScenario(name: string, analysis: TaintAnalysisDefinition, pre: string, body: (kind: LoopKind) => string, expected: Expected): void {
+		describe('Multi-way joins', () => {
+			testLoopFixpoint(merges, 'meeting a bottom value with a taint under a branch keeps it bottom', 'x <- bot()\nz <- taintB()', 'if (branch) { x <- glb(x, z) }', Bottom, thresholds);
+			testLoopFixpoint(merges, 'joining incomparable taints across a branch reaches Top', 'x <- taintA()\nz <- taintB()', 'if (branch) { x <- z }', Top, thresholds);
+		});
+
+		function widenScenario(name: string, analysis: TaintAnalysisDefinition, pre: string, body: (kind: LoopKind) => string, expected: symbol | Record<LoopKind, symbol>): void {
 			for(const kind of loopKinds) {
 				const code = `${pre}${body(kind)}\nsink(x)\nout <- x`;
 				const criterion = `${code.split('\n').length}@out`;
@@ -225,24 +228,6 @@ describe('Taint Propagation', () => {
 			}
 		}
 
-		describe('Fixpoint stability without climbing', () => {
-			widenScenario('a self-assignment loop keeps the pre-loop taint', climbToTop,
-				'x <- tainted()\n', kind => wrapLoop(kind, 'x <- x'), High);
-			widenScenario('a loop re-tainting every iteration overwrites the pre-loop value', climbToTop,
-				'x <- bot()\n', kind => wrapLoop(kind, 'x <- tainted()'), High);
-		});
-
-		describe('Climbing walkers', () => {
-			widenScenario('a walker climbing an unbounded ladder reaches Top', climbToTop,
-				'x <- bot()\n', kind => wrapLoop(kind, 'x <- oneCloserToTop(x)'), Top);
-			widenScenario('a clamped walker settles at the clamp', climbBounded,
-				'x <- bot()\n', kind => wrapLoop(kind, 'x <- oneCloserToTop(x)'), High);
-			widenScenario('a walker that only maybe climbs still reaches Top', climbToTop,
-				'x <- bot()\n', kind => wrapLoop(kind, 'if (runif(u) > 0.5) { x <- oneCloserToTop(x) }'), Top);
-			widenScenario('a clamped walker that only maybe climbs still reaches the clamp', climbBounded,
-				'x <- bot()\n', kind => wrapLoop(kind, 'if (branch) { x <- oneCloserToTop(x) }'), High);
-		});
-
 		describe('Oscillating loops', () => {
 			widenScenario('a shaker stepping up then down', climbToTop,
 				'x <- bot()\n', kind => wrapLoop(kind, 'x <- oneCloserToTop(x)\nx <- oneCloserToBot(x)'),
@@ -250,13 +235,6 @@ describe('Taint Propagation', () => {
 			widenScenario('a multi-shaker whose inner loop saturates before the down-step', climbToTop,
 				'x <- bot()\n', kind => wrapLoop(kind, `${wrapLoop(kind, 'x <- oneCloserToTop(x)', 'inner')}\nx <- oneCloserToBot(x)`),
 				{ for: High, while: High, repeat: Top });
-		});
-
-		describe('Multi-way joins', () => {
-			widenScenario('meeting a bottom value with a taint under a branch keeps it bottom', merges,
-				'x <- bot()\ny <- taintB()\n', kind => wrapLoop(kind, 'if (branch) { x <- glb(x, y) }'), Bottom);
-			widenScenario('joining incomparable taints across a branch reaches Top', merges,
-				'x <- taintA()\ny <- taintB()\n', kind => wrapLoop(kind, 'if (branch) { x <- y }'), Top);
 		});
 
 		describe('Loops with break and next', () => {

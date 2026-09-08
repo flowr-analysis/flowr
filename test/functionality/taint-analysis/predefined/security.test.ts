@@ -3,6 +3,7 @@ import { testTaintAnalysis, type TaintAnalysisExpectation } from '../helper';
 import { securityAnalysis, NetworkInput, FileInput, UserInput } from '../../../../src/taint-analysis/predefined/security-analysis';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { decorateLabelContext, label } from '../../_helper/label';
+import { testLoopFixpoint } from '../loop-helper';
 
 function testSecurity(name: string, code: string, expectation: TaintAnalysisExpectation): void {
 	const effectiveName = decorateLabelContext(label(name), ['taint']);
@@ -47,5 +48,12 @@ describe('Security Taint Analysis', () => {
 	describe('Higher-Order Propagation', () => {
 		testSecurity('user input inside a sapply closure propagates', 'y <- sapply(1:5, function(i) readline())', { '1@y': UserInput });
 		testSecurity('user input inside a lapply closure propagates', 'y <- lapply(1:5, function(i) readline())', { '1@y': UserInput });
+	});
+
+	describe('Loops preserve the taint (no unexpected widening)', () => {
+		testLoopFixpoint(securityAnalysis, 'a user-input source re-read each iteration stays UserInput', 'x <- readline()', 'x <- readline()', UserInput);
+		testLoopFixpoint(securityAnalysis, 'UserInput forwarded through the loop stays UserInput', 'x <- readline()', 'x <- x', UserInput);
+		testLoopFixpoint(securityAnalysis, 'FileInput forwarded through the loop stays FileInput', 'x <- read.table("data.csv")', 'x <- x', FileInput);
+		testLoopFixpoint(securityAnalysis, 'NetworkInput forwarded through the loop stays NetworkInput', 'x <- download.file("http://example.com/d.csv")', 'x <- x', NetworkInput);
 	});
 });

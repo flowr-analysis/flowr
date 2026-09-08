@@ -1,8 +1,9 @@
 import { test, describe } from 'vitest';
 import type { TaintAnalysisExpectation } from '../helper';
 import { testPredefinedTaintAnalysis } from '../helper';
-import { ZScore, ZeroCentered, MinMax, Unscaled } from '../../../../src/taint-analysis/predefined/scale-analysis';
+import { scaleAnalysis, ZScore, ZeroCentered, MinMax, Unscaled } from '../../../../src/taint-analysis/predefined/scale-analysis';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import { testLoopFixpoint } from '../loop-helper';
 
 const testScaleAnalysis =
 	(code: string, expectation: TaintAnalysisExpectation) => testPredefinedTaintAnalysis(code, 'scale', expectation);
@@ -171,5 +172,12 @@ describe('Taint Analysis Scale', () => {
 				'2@y': Top,
 			});
 		});
+	});
+
+	describe('Loops preserve the taint (no unexpected widening)', () => {
+		testLoopFixpoint(scaleAnalysis, 're-scaling each iteration stays ZScore', 'x <- scale(vector())', 'x <- scale(x)', ZScore);
+		testLoopFixpoint(scaleAnalysis, 'ZScore forwarded through the loop stays ZScore', 'x <- scale(vector())', 'x <- x', ZScore);
+		testLoopFixpoint(scaleAnalysis, 'a fixed transformer stays Unscaled', 'x <- head(vector())', 'x <- head(x)', Unscaled);
+		testLoopFixpoint(scaleAnalysis, 'a transformer changing the pre-loop taint widens to Top', 'x <- scale(vector())', 'x <- head(x)', Top);
 	});
 });

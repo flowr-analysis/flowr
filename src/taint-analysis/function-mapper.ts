@@ -13,11 +13,11 @@ import {
 import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument, RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { log } from '../util/log';
 import { Top } from '../abstract-interpretation/domains/lattice';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { isNotUndefined } from '../util/assert';
+import { taintLogger } from './logger';
 
 /**
  * Gets all defined mappings for a given function call.
@@ -112,7 +112,7 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 	const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
 		const arg = getFunctionArgument(allArgs, location, resolveInfo);
 		if(!arg) {
-			log.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
+			taintLogger.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
 		}
 		return arg;
 	}) : [];

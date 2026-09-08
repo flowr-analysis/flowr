@@ -16,7 +16,7 @@ import { ClosureRefs } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
-import { type DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
+import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from '../../../../../graph/graph';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
@@ -72,8 +72,8 @@ export function processTryCatch<OtherInfo>(
 	 * called (`warning`, `message`, or one the program defined), so each of them names a handler that runs */
 	const dots = new Set(argMaps.get('...'));
 	const otherHandlerArg = new Set(res.callArgs
-		.filter(a => !FunctionArgument.isEmpty(a) && FunctionArgument.getName(a) !== undefined && dots.has(a.nodeId))
-		.map(a => (a as { nodeId: NodeId }).nodeId));
+		.filter((a): a is NamedFunctionArgument => FunctionArgument.isNamed(a) && dots.has(a.nodeId))
+		.map(a => a.nodeId));
 	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out:
 	   `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`.
 	   A construct declaring no handler parameter at all, as `try` does, catches whatever arrives. */

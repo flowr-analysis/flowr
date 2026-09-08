@@ -47,7 +47,7 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 
 /** whether reading the definition at `id` runs a function, as an active binding does */
 function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
-	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Calls)) === true;
+	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.Calls));
 }
 
 /** `activeReads` collects the reads that turn out to run a function, see {@link callsOnRead} */

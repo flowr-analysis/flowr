@@ -51,7 +51,7 @@ export const NAMESPACE_ACCESS = {
 					continue;
 				}
 				// rawFunctionOf skips the exported check - that's exactly what we're cross-checking here
-				const raw = db.rawFunctionOf(Identifier.make(name, pkg));
+				const raw = db.rawFunctionOf(node.content);
 				if(raw === undefined) {
 					unresolved++;
 					continue;

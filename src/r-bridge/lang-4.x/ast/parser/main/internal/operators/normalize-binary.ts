@@ -157,7 +157,7 @@ function desugarPipeBindRhs(rhs: RNode): RNode {
 		body:       ensureExpressionList(rhs.rhs),
 		info:       rhs.info
 	};
-	const call: RUnnamedFunctionCall = {
+	return {
 		type:           RType.FunctionCall,
 		named:          undefined,
 		location:       rhs.location,
@@ -165,6 +165,5 @@ function desugarPipeBindRhs(rhs: RNode): RNode {
 		calledFunction: definition,
 		arguments:      [],
 		info:           rhs.info
-	};
-	return call;
+	} satisfies RUnnamedFunctionCall;
 }

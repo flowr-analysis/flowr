@@ -1,5 +1,5 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { RFunctionCall  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../fn/function-semantics';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../util/assert';
@@ -615,7 +615,7 @@ export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs
  */
 export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState: REnvironmentInformation, idMap: AstIdMap): void {
 	const read = idMap.get(readId);
-	const access = read?.info.parent !== undefined ? idMap.get(read.info.parent) : undefined;
+	const access = read === undefined ? undefined : RNode.directParent(read, idMap);
 	if(!RAccess.is(access) || access.accessed.info.id !== readId) {
 		return;
 	}

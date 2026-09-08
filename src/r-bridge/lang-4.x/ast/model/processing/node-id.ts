@@ -5,6 +5,7 @@ import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
+import { compareByCodeUnit } from '../../../../../util/text/strings';
 
 /**
  * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
@@ -38,10 +39,7 @@ export const NodeId = {
 	 */
 	compare(this: void, a: NodeId, b: NodeId): number {
 		const [x, y] = [NodeId.normalize(a), NodeId.normalize(b)];
-		if(typeof x === 'number' && typeof y === 'number') {
-			return x - y;
-		}
-		return String(x) < String(y) ? -1 : String(x) > String(y) ? 1 : 0;
+		return typeof x === 'number' && typeof y === 'number' ? x - y : compareByCodeUnit(String(x), String(y));
 	},
 	/**
 	 * Normalizes a node id by converting numeric strings to numbers.

@@ -47,9 +47,6 @@ export function baseRPackages(rVersion?: string): readonly string[] {
 	return result;
 }
 
-/** {@link attachedBasePackages} per assumed version, as the filter walks the whole base set */
-const attachedCache = new Map<string, readonly string[]>();
-
 /**
  * The base packages attached at the assumed R version: {@link AttachedBasePackages} without the ones that
  * release did not ship yet, so an assumed R 1.8 does not resolve a name against a package that came later.
@@ -59,14 +56,8 @@ export function attachedBasePackages(rVersion?: string): readonly string[] {
 	if(rVersion === undefined) {
 		return AttachedBasePackages;
 	}
-	const cached = attachedCache.get(rVersion);
-	if(cached !== undefined) {
-		return cached;
-	}
 	const shipped = new Set(baseRPackages(rVersion));
-	const result = AttachedBasePackages.filter(p => shipped.has(p));
-	attachedCache.set(rVersion, result);
-	return result;
+	return AttachedBasePackages.filter(p => shipped.has(p));
 }
 
 /** the base export to owning-package map, materialised once from the grouped store (never per lookup) */

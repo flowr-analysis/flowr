@@ -39,9 +39,7 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
 	}
 	const files: { filePath: string | undefined, root: RExpressionList<TreeSitterInfo> }[] = [];
 	for(const t of tree) {
-		if(t.parsed.rootNode.hasError) {
-			rejectUnsupportedPipeBind(t.parsed.rootNode);
-		}
+		rejectUnsupportedPipeBind(t.parsed.rootNode);
 		const root = convertTreeNode(t.parsed.rootNode);
 		if(!RExpressionList.is(root)) {
 			throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
@@ -72,9 +70,7 @@ function rejectUnsupportedPipeBind(node: SyntaxNode): void {
 		throw new ParseError('the experimental pipe-bind "=>" has no production in the tree-sitter grammar flowR uses; analyze this code with the r-shell engine instead (with the "engine.r-shell.pipeBind" configuration option enabled)');
 	}
 	for(const child of node.children) {
-		if(child) {
-			rejectUnsupportedPipeBind(child);
-		}
+		rejectUnsupportedPipeBind(child);
 	}
 }
 

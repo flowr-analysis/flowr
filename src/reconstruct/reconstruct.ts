@@ -393,7 +393,6 @@ function hasSelectedAncestor(n: RNodeWithParent, config: ReconstructionConfigura
 	return false;
 }
 
-
 /**
  * Whether the definition is an argument of a call, where R never evaluates it: `safe(function() stop("x"))`
  * defines a function, it does not stop.

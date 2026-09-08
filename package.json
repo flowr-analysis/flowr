@@ -51,7 +51,7 @@
     "test:coverage": "npm run test -- --coverage",
     "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
-    "test:mutations": "vitest --dir test/mutations --config test/mutations/vitest.config.mts",
+    "test:mutations": "vitest --config test/mutations/vitest.config.mts",
     "test:bench": "vitest bench --config test/vitest.config.mts",
     "test:performance": "func() { cd test/performance/ && bash run-all-suites.sh \"$@\"; }; func",
     "test:docker": "func() { b() { docker build ${1:+--network=$1} -t flowr-docker-test -f \"$2\" .; }; r() { docker run --rm ${1:+--network=$1} flowr-docker-test --version; }; for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; b '' \"$df\" || { echo '(retrying with --network=host: bridge networking unavailable)'; b host \"$df\"; } || return 1; echo \"=== smoke-testing $df ===\"; r '' || r host || return 1; done; }; func",

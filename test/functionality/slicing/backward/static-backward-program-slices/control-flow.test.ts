@@ -2,7 +2,7 @@ import { assertSliced, withShell } from '../../../_helper/shell';
 import type { TestConfigurationWithOutput } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { describe } from 'vitest';
 
@@ -29,7 +29,7 @@ x`);
 			{ loop: 'repeat', caps: ['repeat-loop'] },
 			{ loop: 'while(u)', caps: ['while-loop', 'logical'] },
 			{ loop: 'for(i in 1:100)', caps: ['for-loop', 'numbers', 'name-normal'] }
-		] satisfies { loop: string, caps: SupportedFlowrCapabilityId[] }[])('$loop', ({ loop, caps }) => {
+		] satisfies { loop: string, caps: FlowrCapabilityId[] }[])('$loop', ({ loop, caps }) => {
 			assertSliced(label('Break immediately', [...caps, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 ${loop} {
@@ -169,10 +169,10 @@ print(y)`, ['7@y'], 'y <- TRUE\ny');
 	describe('Calls that throw', () => {
 		/* a callee that always throws makes what follows it unreachable, but says nothing about what runs before it
 		 * and nothing at all once a handler, a branch, or a loop sits between the call and the enclosing list */
-		const caps: SupportedFlowrCapabilityId[] = ['exceptions-and-errors', 'control-flow', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'unnamed-arguments', 'normal-definition', 'call-normal'];
+		const caps: FlowrCapabilityId[] = ['exceptions-and-errors', 'control-flow', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'unnamed-arguments', 'normal-definition', 'call-normal'];
 		const outputs = { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' };
 		const sliced = 'x <- 1\nw <- x + 1\nw';
-		const cases: [string, string, SlicingCriterion, SupportedFlowrCapabilityId[]?, Partial<TestConfigurationWithOutput>?][] = [
+		const cases: [string, string, SlicingCriterion, FlowrCapabilityId[]?, Partial<TestConfigurationWithOutput>?][] = [
 			['always throwing callee caught by try', 'f <- function() { stop("b") }\nx <- 1\nw <- x + 1\nr <- try(f(), silent = TRUE)\nw', '5@w'],
 			['always throwing callee caught by tryCatch', 'f <- function() { stop("b") }\nx <- 1\nw <- x + 1\nr <- tryCatch(f(), error = function(e) 0)\nw', '5@w'],
 			['always throwing callee caught within a function', 'f <- function() { stop("b") }\nh <- function() {\n  x <- 1\n  w <- x + 1\n  r <- try(f(), silent = TRUE)\n  w\n}\nprint(h())', '6@w'],

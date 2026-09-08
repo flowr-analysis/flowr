@@ -8,7 +8,7 @@
 
 import { DefaultMap } from '../../../src/util/collections/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
-import { type FlowrCapabilityWithPath, type SupportedFlowrCapabilityId, getAllCapabilities } from '../../../src/r-bridge/data/get';
+import { type FlowrCapabilityWithPath, type FlowrCapabilityId, getAllCapabilities } from '../../../src/r-bridge/data/get';
 import { randomString } from '../../../src/util/random';
 
 // map flowr ids to the capabilities
@@ -26,7 +26,7 @@ export interface TestLabel extends MergeableRecord {
 	readonly id:           string
 	readonly name:         string
 	/** even if ids appear multiple times, we only want to count each one once */
-	readonly capabilities: ReadonlySet<SupportedFlowrCapabilityId>
+	readonly capabilities: ReadonlySet<FlowrCapabilityId>
 	/** this is automatically set (hihi) by functions like `assertAst` to correctly derive what part of capability we check */
 	readonly context:      Set<TestLabelContext>
 }
@@ -34,7 +34,7 @@ export interface TestLabel extends MergeableRecord {
 export interface SerializedTestLabel {
 	readonly id:           string
 	readonly name:         string
-	readonly capabilities: readonly SupportedFlowrCapabilityId[]
+	readonly capabilities: readonly FlowrCapabilityId[]
 	readonly context:      readonly TestLabelContext[]
 }
 
@@ -47,10 +47,10 @@ export interface SerializedTestLabel {
  * @param ids      - the capability ids to attach to the test
  * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it
  */
-export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context: readonly TestLabelContext[]): string;
-export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel;
-export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
-	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids);
+export function label(testname: string, ids: readonly FlowrCapabilityId[], context: readonly TestLabelContext[]): string;
+export function label(testname: string, ids?: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel;
+export function label(testname: string, ids?: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
+	const capabilities: Set<FlowrCapabilityId> = new Set(ids);
 	const label: TestLabel = {
 		id:      uniqueTestId(),
 		name:    testname.toLowerCase(),

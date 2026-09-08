@@ -5,7 +5,7 @@ import { decorateAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/proc
 import { type SlicingCriteriaFilter, collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
 import { describe, assert, test } from 'vitest';
@@ -27,7 +27,7 @@ function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: 
 
 describe('Retrieve all slicing locations', { concurrent: false }, withShell(shell => {
 	describe('Test the default all variables filter', () => {
-		function test(input: string, caps: SupportedFlowrCapabilityId[], ...expected: SlicingCriteria[]) {
+		function test(input: string, caps: FlowrCapabilityId[], ...expected: SlicingCriteria[]) {
 			assertRetrievedIdsWith(shell, label(`Retrieve all variables in ${JSON.stringify(input)}`, caps), input, DefaultAllVariablesFilter, ...expected);
 		}
 		test('x <- 1', [...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers'], ['1@x']);

@@ -16,6 +16,7 @@ import {
 	type RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
+	createNormalizePipeline,
 	createSlicePipeline,
 	DEFAULT_NORMALIZE_PIPELINE,
 	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
@@ -155,12 +156,9 @@ function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProj
  * this is an old, and nowadays outdated method to retrieve the normalized AST for a given input
  * Please prefer using the {@link FlowrAnalyzer} for new code!
  */
-export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
+export const retrieveNormalizedAst = async(parser: KnownParser, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
 	const context = contextFromInput(input);
-	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		parser: shell,
-		context
-	}).allRemainingSteps()).normalize;
+	return (await createNormalizePipeline(parser, { context }).allRemainingSteps()).normalize;
 };
 
 export interface TestConfiguration extends MergeableRecord {

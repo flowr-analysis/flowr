@@ -206,7 +206,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Environment Sharing',
 							id:          'environment-sharing',
 							supported:   'partially',
-							description: `_Handling side-effects through environments, which act as reference types and are not copied when modified._ Not through \`assign(..., envir = <parameter>)\`; see ${LinkTo('environment-alias')} and ${LinkTo('side-effects-in-function-call')}.`,
+							description: `_Handling side-effects through environments, which act as reference types and are not copied when modified._ A write through a parameter is kept as an unknown side effect of the call; see ${LinkTo('environment-alias')} and ${LinkTo('side-effects-in-function-call')}.`,
 							example:     codeBlock('r', 'e <- new.env()\nassign("x", 42, envir = e)\nprint(get("x", envir = e))'),
 							url:         [
 								{ name: RLang('Environment objects'), href: 'https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Environment-objects' },
@@ -1123,7 +1123,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Dispatch',
 							id:          'oop-s3-dispatch',
 							supported:   'partially',
-							description: '_Route a generic call to the method that runs._ `UseMethod` links to every `generic.class` in scope; the class does not narrow it and `registerS3method` is not followed.',
+							description: '_Route a generic call to the method that runs._ `UseMethod` links to every `generic.class` in scope (heavily over-approximating).',
 							url:         [
 								{ name: RLang('UseMethod'), href: 'https://cran.r-project.org/doc/manuals/r-release/R-lang.html#UseMethod' },
 								{ name: RLang('Method dispatching'), href: 'https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Method-dispatching' }

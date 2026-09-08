@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import type { RoxygenTag } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
 import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
 import { parseRoxygenCommentsOfNode, parseRoxygenComment } from '../../../../src/r-bridge/roxygen2/roxygen-parse';
@@ -12,7 +13,7 @@ describe('Parse Comments', () => {
 	describe('Direct Comment Parser', () => {
 		function check(name: string, comments: string | string[], expected: readonly RoxygenTag[]) {
 			const lines = Array.isArray(comments) ? comments : comments.split('\n');
-			test(name, () => {
+			test(label(name, ['roxygen2'], ['other']), () => {
 				const parsed = parseRoxygenComment(lines);
 				assert.deepStrictEqual(parsed, expected);
 			});

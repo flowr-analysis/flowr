@@ -1373,12 +1373,12 @@ export const WrittenBuiltinDefinitions = [
 	/* https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles */
 	/* the quantiles moved to the stat, and the geom only kept arguments styling them, so neither is a rename of
 	   `draw_quantiles = 0.5`: the value is a quantile, not a linetype, and `quantiles` is no formal of the geom */
-	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, names: [Identifier.make('geom_violin', PkgName.GgPlot2)], config: { deprInfo: { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: '>= 4.0.0' }] } } },
+	{ overrides: true, type: 'function', processor: BuiltInProcName.Default, names: [Identifier.make('geom_violin', PkgName.GgPlot2)], config: { ...PlotAddonConfig, deprInfo: { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: '>= 4.0.0' }] } } },
 	/*
 	* `size` names the stroke width of every line-based geom until ggplot2 4.0.0 renamed it: it gained
 	* `linewidth` beside it in 3.4.0, and 4.0.0 drops `size`.
 	*/
-	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, names: Identifier.fromAll(PkgName.GgPlot2, ['element_line', 'element_rect']), config: { deprInfo: {  whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: '>= 4.0.0' }] } } }
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, names: Identifier.fromAll(PkgName.GgPlot2, ['element_line', 'element_rect']), config: { deprInfo: { whenArgs: [{ argName: 'size', state: DeprecationState.Deprecated, replacedBy: 'linewidth', sinceVersion: '>= 3.4.0' }] } } }
 ] as const satisfies AnyBuiltInDefinition[];
 
 /** Contains the built-in definitions recognized by flowR */

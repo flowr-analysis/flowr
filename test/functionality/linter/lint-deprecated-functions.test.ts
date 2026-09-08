@@ -121,7 +121,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				'deprecated-functions',
 				[],
 				{ builtin: 0, sigdb: 0 },
-				{ always: [], conditionally: new Map([['testFn', { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] }]]) }
+				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] } } }
 			);
 
 			assertLinter('deprecated arg present', parser, 'testFn(badArg="not hehe")',
@@ -138,7 +138,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					quickFix:     undefined
 				}],
 				{ builtin: 1, sigdb: 0 },
-				{ always: [], conditionally: new Map([['testFn', { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] }]]) }
+				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] } } }
 			);
 		});
 
@@ -147,7 +147,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				'deprecated-functions',
 				[],
 				{ builtin: 0, sigdb: 0 },
-				{ always: [], conditionally: new Map([['testFn', { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated }] }]]) }
+				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated }] } } }
 			);
 
 			assertLinter('deprecated arg present', parser, 'testFn(badArg=5)',
@@ -164,7 +164,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					quickFix:     [{ type: 'replace', description: 'Replace argument `badArg` with `foo`', replacement: 'foo', loc: [1, 8, 1, 13] }]
 				}],
 				{ builtin: 1, sigdb: 0 },
-				{ always: [], conditionally: new Map([['testFn', { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo' }] }]]) }
+				{ always: [], conditionally: {  'testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo' }] } } }
 			);
 		});
 
@@ -189,7 +189,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					quickFix:     [{ type: 'replace', description: 'Replace argument `badArg` with `foo`', replacement: 'foo', loc: [2, 8, 2, 13] }]
 				}],
 				{ builtin: 1, sigdb: 0 },
-				{ always: [], conditionally: new Map([['testPkg::testFn', { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=1.0.0' }] }]]) }
+				{ always: [], conditionally: { 'testPkg::testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=1.0.0' }] } } }
 			);
 
 			assertLinter('(arg) version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
@@ -208,7 +208,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				{ builtin: 1, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: new Map([['testPkg::testFn', { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=1.0.0' }] }]]),
+					conditionally: { 'testPkg::testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=1.0.0' }] } },
 					sigDb:         db
 				}
 			);
@@ -219,7 +219,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				{ builtin: 0, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: new Map([['testPkg::testFn', { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=3.0.0' }] }]]),
+					conditionally: { 'testPkg::testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=3.0.0' }] } },
 					sigDb:         db
 				}
 			);
@@ -237,7 +237,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					quickFix:     undefined
 				}],
 				{ builtin: 1, sigdb: 0 },
-				{ always: [], conditionally: new Map([['testPkg::testFn', { sinceVersion: '>=1.0.0', state: DeprecationState.Defunct }]]) }
+				{ always: [], conditionally: { 'testPkg::testFn': { sinceVersion: '>=1.0.0', state: DeprecationState.Defunct } } }
 			);
 
 			assertLinter('(fn) version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn()',
@@ -255,7 +255,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				{ builtin: 1, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: new Map([['testPkg::testFn', { sinceVersion: '>=1.0.0', state: DeprecationState.Defunct }]]),
+					conditionally: { 'testPkg::testFn': { sinceVersion: '>=1.0.0', state: DeprecationState.Defunct } },
 					sigDb:         db
 				}
 			);
@@ -266,7 +266,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				{ builtin: 0, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: new Map([['testPkg::testFn', { sinceVersion: '>= 3.0.0', state: DeprecationState.Defunct }]]),
+					conditionally: { 'testPkg::testFn': { sinceVersion: '>= 3.0.0', state: DeprecationState.Defunct } },
 					sigDb:         db
 				}
 			);
@@ -287,7 +287,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 		});
 
 		describe('a positional argument is matched the way R fills it', () => {
-			const positional = { always: [], conditionally: new Map([['testFn', { whenArgs: [{ argIdx: 0, replacedBy: 'newArg', state: DeprecationState.Deprecated }] }]]) };
+			const positional = { always: [], conditionally: { 'testFn': { whenArgs: [{ argIdx: 0, replacedBy: 'newArg', state: DeprecationState.Deprecated }] } } };
 			assertLinter('first argument', parser, 'testFn(99)',
 				'deprecated-functions',
 				[{ type:         'deprecated-argument', certainty:    LintingResultCertainty.Certain, arg:          0, replacedBy:   'newArg',

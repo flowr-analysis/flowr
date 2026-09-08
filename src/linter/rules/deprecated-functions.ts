@@ -72,7 +72,7 @@ export interface DeprecatedFunctionsConfig extends MergeableRecord {
 	 * {@link DeprecatedFunctionsConfig.always}: `pkg::fn` names the package the versions are checked against and
 	 * matches only that one, a bare name matches any package.
 	 */
-	conditionally: Map<BrandedIdentifier, DeprecatedFunctionInformation>
+	conditionally: Record<BrandedIdentifier, DeprecatedFunctionInformation>
 }
 
 interface PotentialFunction {
@@ -97,7 +97,7 @@ interface ConditionalEntry {
 /** The entries by bare name, as a call names its package only when written `pkg::fn`. */
 function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditionally']): Map<string, ConditionalEntry[]> {
 	const index = new Map<string, ConditionalEntry[]>();
-	for(const [key, info] of conditionally.entries()) {
+	for(const [key, info] of Object.entries(conditionally)) {
 		const id = Identifier.parse(key);
 		const name = Identifier.getName(id);
 		const known = index.get(name);
@@ -162,12 +162,12 @@ function alwaysDeprecatedListFromBuiltinConfig(): Identifier[] {
 		.flatMap(def => def.names);
 }
 
-function conditionalyDeprecatedFromBuiltinConfig(): Map<BrandedIdentifier, DeprecatedFunctionInformation> {
-	const result = new Map<BrandedIdentifier, DeprecatedFunctionInformation>();
+function conditionalyDeprecatedFromBuiltinConfig(): DeprecatedFunctionsConfig['conditionally'] {
+	const result: DeprecatedFunctionsConfig['conditionally'] = {};
 	for(const def of DefaultBuiltinConfig.filter(def => def.type === 'function')) {
 		const info = def.config?.deprInfo;
 		if(info !== undefined) {
-			def.names.forEach(n => result.set(Identifier.toString(n), info));
+			def.names.forEach(n => result[Identifier.toString(n)] = info);
 		}
 	}
 	return result;

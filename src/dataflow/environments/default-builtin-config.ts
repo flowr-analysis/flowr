@@ -21,6 +21,7 @@ import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-pack
 import { RBasePrimitives } from '../../data/r-base-primitives.generated';
 import { RBasePackageStore } from '../../data/r-base-packages.generated';
 import { Top } from '../eval/values/r-value';
+import { DeprecationState } from './deprecation-info';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -1356,7 +1357,7 @@ export const WrittenBuiltinDefinitions = [
 	{ overrides: true, type: 'function', names: [Identifier.from(['writeLines', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: [['text', ArgProp.Forced | ArgProp.Value], ['con', ArgProp.Forced | ArgProp.Resource], ['sep', ArgProp.Forced | ArgProp.Value], ['useBytes', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: false },
 	{ overrides: true, type: 'function', names: [Identifier.from(['write.table', PkgName.Utils])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['x', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['append', ArgProp.Forced | ArgProp.Flag], ['quote', ArgProp.Forced | ArgProp.Flag], ['sep', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ overrides: true, type: 'function', names: [Identifier.from(['download.file', PkgName.Utils])], processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['url', ArgProp.Forced | ArgProp.Resource], ['destfile', ArgProp.Forced | ArgProp.Resource], ['method', ArgProp.Forced | ArgProp.Value], ['quiet', ArgProp.Forced | ArgProp.Flag], ['mode', ArgProp.Forced | ArgProp.Value], ['cacheOK', ArgProp.Forced | ArgProp.Flag], ['extra', ArgProp.Forced | ArgProp.Value], ['headers', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
-	/** Deprecated Functions */
+	/* deprecated functions */
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Dplyr, ['id', 'top_n', 'sample_n', 'recode', 'progress_estimated', 'group_nest', 'add_rownames', 'tbl_df', 'src_local', 'summarise_each', 'summarize_', 'summarise_', 'slice_', 'select_vars_', 'select_', 'rename_vars_', 'rename_', 'transmute_', 'tally_', 'mutate_', 'group_indices_', 'group_by_', 'funs_', 'filter_', 'do_', 'distinct_', 'count_', 'arrange_', 'add_tally_', 'add_count_', 'funs', 'do', 'combine', 'changes', 'location', 'eval_tbls2', 'eval_tbls', 'compare_tbls2', 'compare_tbls', 'bench_tbls', 'current_vars', 'select_var', 'rename_vars', 'select_vars', 'failwith', 'all_vars', 'vars', 'select_all', 'mutate_all', 'summarise_all', 'group_by_all', 'filter_all', 'all_equal', 'arrange_all', 'distinct_all'])  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: [Identifier.make('fct_explicit_na', PkgName.Forecats)]  },
 	/* deprecated, but still data-masking: restating the mask keeps the column names out of the variable resolution */
@@ -1368,6 +1369,16 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Readr, ['read_table2', 'melt_table', 'melt_fwf', 'melt_delim'])  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Tibble, ['repair_names', 'set_tidy_names', 'tidy_names', 'is.tibble', 'trunc_mat', 'frame_data', 'as.tibble', 'as_data_frame', 'lst_', 'data_frame_', 'tibble_', 'data_frame', 'as_tibble'])  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.TidyR, ['nest_legacy', 'unnest_', 'unite_', 'spread_', 'separate_', 'separate_rows_', 'nest_', 'gather_', 'fill_', 'extract_', 'nesting_', 'crossing_', 'expand_', 'drop_na_', 'complete_', 'extract_numeric'])  },
+	/* deprecated, but only when when a certain condition is met (e.g. specific argument value) */
+	/* https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles */
+	/* the quantiles moved to the stat, and the geom only kept arguments styling them, so neither is a rename of
+	   `draw_quantiles = 0.5`: the value is a quantile, not a linetype, and `quantiles` is no formal of the geom */
+	{ overrides: true, type: 'function', processor: BuiltInProcName.Default, names: [Identifier.make('geom_violin', PkgName.GgPlot2)], config: { ...PlotAddonConfig, deprInfo: { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: '>= 4.0.0' }] } } },
+	/*
+	* `size` names the stroke width of every line-based geom until ggplot2 4.0.0 renamed it: it gained
+	* `linewidth` beside it in 3.4.0, and 4.0.0 drops `size`.
+	*/
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, names: Identifier.fromAll(PkgName.GgPlot2, ['element_line', 'element_rect']), config: { deprInfo: { whenArgs: [{ argName: 'size', state: DeprecationState.Deprecated, replacedBy: 'linewidth', sinceVersion: '>= 3.4.0' }] } } }
 ] as const satisfies AnyBuiltInDefinition[];
 
 /** Contains the built-in definitions recognized by flowR */

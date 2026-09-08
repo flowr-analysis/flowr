@@ -4,6 +4,7 @@ import { BuiltIns } from './built-in';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { Identifier } from './identifier';
 import type { BuiltInFnInfo } from './built-in-props';
+import type { DeprecatedFunctionInformation } from './deprecation-info';
 
 export interface BaseBuiltInDefinition {
 	/** The type of the built-in configuration */
@@ -36,7 +37,7 @@ type ConfigOfProcessor<P extends keyof typeof BuiltInProcessorMapper> = ConfigOf
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper> extends BaseBuiltInDefinition {
 	readonly type:         'function';
 	readonly processor:    BuiltInProcessor;
-	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean };
+	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean } & { deprInfo?: DeprecatedFunctionInformation };
 	/** the value solver to use when folding a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
 	readonly evalHandler?: BuiltInEvalName
 }

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-09-05, 18:40:50 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-09-08, 07:17:51 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 # Signature Database
 
@@ -78,7 +78,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb
 which is not what the analysis assumes. When the assumed version is one the database does not carry, the answer
 falls back to the newest it has and says so in the log rather than quietly answering for another version.
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/signature-db.ts#L68"><code><span title="Every loaded source as one, for the questions this interface does not ask.">SignatureDb::<b>sources</b></span></code></a> is the escape hatch to the raw sources for what the interface above does not
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/signature-db.ts#L76"><code><span title="Every loaded source as one, for the questions this interface does not ask.">SignatureDb::<b>sources</b></span></code></a> is the escape hatch to the raw sources for what the interface above does not
 cover, and reaches the same functions directly.
 
 
@@ -142,7 +142,7 @@ span tens of megabytes): the `base.*` floor (self-contained base-R signatures, a
 `current.*` scope (every package's latest version) and `history.*` (every older version) all live as assets on the
 free <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (string): GitHub owner/repo the full-history bundle is downloaded from via &quot;:signature download&quot; (default &quot;flowr-analysis/flowr&quot;, release tag &quot;sigdb-v&lt;flowR-version&gt;&quot;).">solver.sigdb.downloadRepo</a> GitHub release. The only committed file is a tiny **link file**,
 `src/data/sigdb/sigdb.remote.json`, which records the release tag and each shard's sha256 and size, so
-<span title="Description (Repl Command): Inspect and extend the signature database: `query` (identical to :query @signature), `add <path>` to mount another database/source, `download` to fetch the full-history database. (aliases: :sig)">`:signature`</span> download builds the direct release-CDN URL, verifies every shard by content hash,
+<span title="Description (Repl Command): Inspect and extend the signature database: `query` (identical to :query @signature), `info <name>` for where a function comes from (identical to :query @function-info), `add <path>` to mount another database/source, `download` to fetch the full-history database. (aliases: :sig)">`:signature`</span> download builds the direct release-CDN URL, verifies every shard by content hash,
 and skips any already cached. Because the link file is versioned, a `git pull` that updates it re-syncs only the
 shards whose hash changed &mdash; and with <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).">solver.sigdb.autoSync</a> that check runs on startup and re-downloads in the
 background; `npm run build` bakes the shards in as well. The richest downloaded scope is used (order `full` >
@@ -159,11 +159,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | n/a |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | n/a |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | n/a |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | n/a |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | n/a |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 270 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 1.7 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 5.3 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 90 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 170 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from
@@ -173,7 +173,7 @@ shared dictionary that its shards depend on, so it is decompressed the first tim
 The flowR Docker images ship this dictionary already decompressed, so a container reads it in place and skips
 that step (the load column above is the cost a plain npm install pays).
 
-Every shard, dictionary, and manifest is published in both brotli (`.br`) and zstd (`.zst`, faster to decompress) compression, and flowR uses whichever the runtime supports: `.zst` when the Node version exposes [zstd](https://nodejs.org/api/zlib.html#zstd) (Node &ge; 22.15), otherwise `.br`. <span title="Description (Repl Command): Inspect and extend the signature database: `query` (identical to :query @signature), `add <path>` to mount another database/source, `download` to fetch the full-history database. (aliases: :sig)">`:signature`</span> download fetches only that one variant per file, and <span title="Description (Repl Command): Prints the version of flowR as well as the current version of R">`:version`</span> reports the format each loaded database resolved to.
+Every shard, dictionary, and manifest is published in both brotli (`.br`) and zstd (`.zst`, faster to decompress) compression, and flowR uses whichever the runtime supports: `.zst` when the Node version exposes [zstd](https://nodejs.org/api/zlib.html#zstd) (Node &ge; 22.15), otherwise `.br`. <span title="Description (Repl Command): Inspect and extend the signature database: `query` (identical to :query @signature), `info <name>` for where a function comes from (identical to :query @function-info), `add <path>` to mount another database/source, `download` to fetch the full-history database. (aliases: :sig)">`:signature`</span> download fetches only that one variant per file, and <span title="Description (Repl Command): Prints the version of flowR as well as the current version of R">`:version`</span> reports the format each loaded database resolved to.
 
 ## Format
 
@@ -192,4 +192,4 @@ The extractor produces the bundle from its analysis of CRAN.
 
 The dictionary is read once, the reader then seeks straight to each requested package, and consumers cache
 what they derive (the `base`-package list is precomputed when flowR is bundled, so it costs nothing at
-analysis time). Measured here at generation time: opening the bundle took 54 ms, and a warmed per-package export lookup takes 140 µs. Each `library()` or `::` in a script is then one cached lookup.
+analysis time). After the one-time load a per-package lookup is O(1), so each `library()` or `::` a script uses is a single cached lookup.

@@ -91,6 +91,11 @@ jobs:
         continue-on-error: ${{ matrix.os == 'windows-latest' }}
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
+      # `test:full` excludes them as well; only the leg that uploads needs their label details
+      - name: "🧬 Run Mutation Tests"
+        if: matrix.os == 'ubuntu-latest' && matrix.r-version == '4.5.0'
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run -- --make-summary"
+
       - name: "⬆️ Upload Test Label Details"
         # the test job is a matrix, so only one leg may claim the artifact name
         if: matrix.os == 'ubuntu-latest' && matrix.r-version == '4.5.0'
@@ -100,6 +105,7 @@ jobs:
           path: |
             coverage/flowr-test-details.json
             coverage/flowr-test-results.json
+            coverage/flowr-mutation-details.json
           if-no-files-found: warn
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
@@ -393,7 +399,7 @@ jobs:
           path: benchmark-ai-r-shell/
 
       - name: "🧪 Add the Test Counters (artificial-r-shell)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json"
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
@@ -442,7 +448,7 @@ jobs:
           path: benchmark-rw-r-shell/
 
       - name: "🧪 Add the Test Counters (real-world-r-shell)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json"
 
       - name: "🥄 Merge and Produce Performance Results (real-world, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -489,7 +495,7 @@ jobs:
           path: benchmark-ai-tree-sitter/
 
       - name: "🧪 Add the Test Counters (artificial-tree-sitter)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json"
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
@@ -538,7 +544,7 @@ jobs:
           path: benchmark-rw-tree-sitter/
 
       - name: "🧪 Add the Test Counters (real-world-tree-sitter)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json"
 
       - name: "🥄 Merge and Produce Performance Results (real-world, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1

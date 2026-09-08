@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-05, 12:44:15 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:17:50 UTC (v2.15.8), do not edit directly._
 <h2 id="Signature Query">Signature Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Inspects the signature database: packages, function signatures, source and documentation links.\
@@ -52,18 +52,18 @@ we can inspect the signature of the function it calls:
 
 _Results (prettified and summarized):_
 
-Query: **signature** (56 ms)\
+Query: **signature** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **dplyr**::**lead** v1.2.1\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **lead**(_x_, _n_ = _1L_, _default_ = _NULL_, _order_by_ = _NULL_, ...)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ exported  _can-throw_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _source_  R/lead-lag.R:74  [https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74](https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _docs_    [rdrr.io](https://rdrr.io/cran/dplyr/man/lead-lag.html)  [man v1.2.1](https://github.com/cran/dplyr/blob/1.2.1/man/lead-lag.Rd)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _calls_ (6): -, <, abort, shift, check_number_whole, check_dots_empty0\
-_All queries together required ≈58 ms (1ms accuracy, total 60 ms)_
+_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _59.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _4.7 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -74,7 +74,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "signature": {
     ".meta": {
-      "timing": 56
+      "timing": 5
     },
     "databases": [
       {
@@ -145,7 +145,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 58
+    "timing": 5
   }
 }
 ```

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:32 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-08, 07:17:50 UTC (v2.15.8), do not edit directly._
 <h2 id="problematic-inputs">Problematic inputs&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule is used to detect issues that are related to the performance of the code. For example, inefficient algorithms, unnecessary computations, or unoptimized data structures."><a href='#performance'>![performance](https://img.shields.io/badge/performance-teal) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -47,16 +47,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (35 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Use of configured dynamic call at 3.2-8; inputs: 5 (type: [param], trace: pure)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: searchTimeMs: 15, processTimeMs: 20\
-_All queries together required ≈36 ms (1ms accuracy, total 40 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: searchTimeMs: 1, processTimeMs: 1\
+_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _39.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _3.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -91,17 +91,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           }
         ],
         ".meta": {
-          "searchTimeMs": 15,
-          "processTimeMs": 20
+          "searchTimeMs": 1,
+          "processTimeMs": 1
         }
       }
     },
     ".meta": {
-      "timing": 35
+      "timing": 2
     }
   },
   ".meta": {
-    "timing": 36
+    "timing": 2
   }
 }
 ```
@@ -139,7 +139,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L10) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L11) for the test-case implementation.
 		
 <h4 id="Test_Case:_network_eval">Test Case: network eval</h4>
 
@@ -162,7 +162,7 @@ sources:   [{ id: 11, trace: InputTraceType.Known, types: [InputType.File, Input
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L11) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L12) for the test-case implementation.
 		
 <h4 id="Test_Case:_read_eval">Test Case: read eval</h4>
 
@@ -185,7 +185,7 @@ sources:   [{ id: 11, trace: InputTraceType.Known, types: [InputType.File, Input
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L17) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L18) for the test-case implementation.
 		
 <h4 id="Test_Case:_unseeded_randomness_eval">Test Case: unseeded randomness eval</h4>
 
@@ -208,7 +208,7 @@ sources:   [{ id: 8, trace: InputTraceType.Known, types: [InputType.Random, Inpu
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L23) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L24) for the test-case implementation.
 		
 <h4 id="Test_Case:_unknown_eval">Test Case: unknown eval</h4>
 
@@ -231,9 +231,9 @@ sources:   [{ id: 5, trace: InputTraceType.Known, types: [InputType.Unknown, Inp
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L29) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L30) for the test-case implementation.
 		
-<h4 id="Test_Case:_unknown_system">Test Case: unknown system</h4>
+<h4 id="Test_Case:_label__unknown_system_____system-calls______linter___">Test Case: label('unknown system', ['system-calls'], ['linter'])</h4>
 
 
 Given the following input:
@@ -254,7 +254,7 @@ sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L35) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L36) for the test-case implementation.
 		
 <h4 id="Test_Case:_pdf_safe_path">Test Case: pdf safe path</h4>
 
@@ -274,7 +274,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L43) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L44) for the test-case implementation.
 		
 <h4 id="Test_Case:_pdf_pipe_constant">Test Case: pdf pipe constant</h4>
 
@@ -298,7 +298,7 @@ sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L44) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L45) for the test-case implementation.
 		
 <h4 id="Test_Case:_pdf_pipe_with_named_arg">Test Case: pdf pipe with named arg</h4>
 
@@ -322,7 +322,7 @@ sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L51) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L52) for the test-case implementation.
 		
 <h4 id="Test_Case:_pdf_non-file_arg_pipe_not_flagged">Test Case: pdf non-file arg pipe not flagged</h4>
 
@@ -342,7 +342,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L58) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L59) for the test-case implementation.
 		
 <h4 id="Test_Case:_pdf_unknown_input">Test Case: pdf unknown input</h4>
 
@@ -365,7 +365,7 @@ sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L59) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L60) for the test-case implementation.
 		
 <h4 id="Test_Case:_postscript_pipe_constant">Test Case: postscript pipe constant</h4>
 
@@ -389,4 +389,4 @@ sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L65) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L66) for the test-case implementation.

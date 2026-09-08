@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-05, 12:44:13 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:17:50 UTC (v2.15.8), do not edit directly._
 <h2 id="Inspect Argument Roles Query">Inspect Argument Roles Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine what functions and their formals do\
@@ -44,13 +44,13 @@ Using the example code `f <- function(x, xs, FUN, opt) { if(missing(opt)) print(
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (25ms)\
+Query: **inspect-fn-props** (4ms)\
 &nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
-_All queries together required ≈25 ms (1ms accuracy, total 28 ms)_
+_All queries together required ≈4 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _27.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _3.9 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -61,7 +61,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-fn-props": {
     ".meta": {
-      "timing": 25
+      "timing": 4
     },
     "roles": {
       "32": {
@@ -81,7 +81,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 25
+    "timing": 4
   }
 }
 ```
@@ -104,7 +104,7 @@ f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, 
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _11.9 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _2.4 ms_ and ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
 
 
@@ -299,13 +299,13 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (22ms)\
+Query: **inspect-fn-props** (2ms)\
 &nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
-_All queries together required ≈22 ms (1ms accuracy, total 25 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _25.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -316,7 +316,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-fn-props": {
     ".meta": {
-      "timing": 22
+      "timing": 2
     },
     "roles": {
       "32": {
@@ -336,7 +336,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 22
+    "timing": 2
   }
 }
 ```
@@ -359,7 +359,7 @@ f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, 
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _11.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.7 ms_ and ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
 
 

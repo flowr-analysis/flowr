@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-05, 12:44:15 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:17:50 UTC (v2.15.8), do not edit directly._
 <h2 id="Control-Flow Query">Control-Flow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides the control-flow of the program.\
@@ -22,13 +22,13 @@ In other words, if you have a script simply reading: `if(TRUE) 1 else 2`, the fo
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (8ms)\
+Query: **control-flow** (1ms)\
 &nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
-_All queries together required ≈10 ms (1ms accuracy, total 15 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _15.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -39,7 +39,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "control-flow": {
     ".meta": {
-      "timing": 8
+      "timing": 1
     },
     "controlFlow": {
       "graph": {
@@ -106,7 +106,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 10
+    "timing": 1
   }
 }
 ```
@@ -146,13 +146,13 @@ You can also overwrite the simplification passes to tune the perspective. for ex
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (9ms)\
+Query: **control-flow** (1ms)\
 &nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgc3ViZ3JhcGggbmJiLTAgW0Jsb2NrIGJiLTBdXG4gICAgICAgIGRpcmVjdGlvbiBURFxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbioqVFJVRSoqYFwiXSlcbiAgICBuMVtcImBSTnVtYmVyICgxKVxuKioxKipgXCJdXG4gICAgbjAgLS0+IG4xXG4gICAgbjVbXCJgUklmVGhlbkVsc2UgKDUpXG4qKmlmKFRSVUUpIDEgZWxzZSAyKipgXCJdXG4gICAgbjEgLS0+IG41XG4gICAgZW5kXG4gICAgc3R5bGUgbmJiLTAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuYmItMCBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
-_All queries together required ≈9 ms (1ms accuracy, total 11 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _10.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -163,7 +163,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "control-flow": {
     ".meta": {
-      "timing": 9
+      "timing": 1
     },
     "controlFlow": {
       "returns": [],
@@ -222,7 +222,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 9
+    "timing": 1
   }
 }
 ```
@@ -260,7 +260,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _8.9 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _1.2 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 	)_
 
@@ -292,13 +292,13 @@ If, on the other hand, you want to prune dead code edges:
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (7ms)\
+Query: **control-flow** (1ms)\
 &nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
-_All queries together required ≈7 ms (1ms accuracy, total 10 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _10.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.3 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -309,7 +309,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "control-flow": {
     ".meta": {
-      "timing": 7
+      "timing": 1
     },
     "controlFlow": {
       "returns": [],
@@ -376,7 +376,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 7
+    "timing": 1
   }
 }
 ```
@@ -411,7 +411,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _8.4 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _1.0 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `analyze-dead-code` .
 	)_
 
@@ -444,13 +444,13 @@ Or, completely remove dead code:
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (6ms)\
+Query: **control-flow** (1ms)\
 &nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
-_All queries together required ≈6 ms (1ms accuracy, total 9 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _9.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -461,7 +461,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "control-flow": {
     ".meta": {
-      "timing": 6
+      "timing": 1
     },
     "controlFlow": {
       "returns": [],
@@ -528,7 +528,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 6
+    "timing": 1
   }
 }
 ```
@@ -563,7 +563,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _7.9 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _1.1 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `analyze-dead-code`, `remove-dead-code` .
 	)_
 

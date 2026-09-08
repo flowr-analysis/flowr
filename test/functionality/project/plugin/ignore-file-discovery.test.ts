@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
@@ -41,7 +42,7 @@ describe('Ignore-file project discovery', () => {
 		'.gitignore':    'scratch.R\n'
 	};
 
-	test('.Rbuildignore drops matching files and whole directories', () => {
+	test(label('.Rbuildignore drops matching files and whole directories', ['project-ignore-files'], ['other']), () => {
 		const got = discovered(new FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin(greedy()), project(files));
 		assert.notInclude(got, 'tests/big.R', 'a directory matched by ^tests$ is dropped entirely');
 		assert.notInclude(got, 'notes.md');
@@ -54,7 +55,7 @@ describe('Ignore-file project discovery', () => {
 		assert.includeMembers(got, ['tests/big.R', 'notes.md']);
 	});
 
-	test('the combined plugin respects both files', () => {
+	test(label('the combined plugin respects both files', ['project-ignore-files'], ['other']), () => {
 		const got = discovered(new FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin(undefined, greedy()), project(files));
 		assert.sameMembers(got, ['R/main.R', 'R/helper.R', '.Rbuildignore', '.gitignore']);
 	});

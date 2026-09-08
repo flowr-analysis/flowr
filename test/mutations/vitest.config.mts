@@ -4,7 +4,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
  * set here since globalSetup runs before workers see test.env, and this file shares that process.
  * keeps this suite's run from overwriting the functionality suite's own test-details file.
  */
-process.env.FLOWR_TEST_DETAILS_FILE = 'coverage/flowr-test-details-mutations.json';
+process.env.FLOWR_TEST_DETAILS_FILE = 'coverage/flowr-mutation-details.json';
 
 export default defineConfig({
 	test: {

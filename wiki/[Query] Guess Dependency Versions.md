@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-05, 12:44:15 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:17:50 UTC (v2.15.8), do not edit directly._
 <h2 id="Guess Dependency Versions Query">Guess Dependency Versions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Guesses the version range each dependency must have, from declared constraints and actual code usage.\
@@ -47,7 +47,7 @@ that produced the bound:
 
 _Results (prettified and summarized):_
 
-Query: **guess-dep-versions** (7490 ms)\
+Query: **guess-dep-versions** (678 ms)\
 &nbsp;&nbsp;&nbsp;╰ R _4.5.3_ _(config)_\
 &nbsp;&nbsp;&nbsp;_evidence_: d declared  t transitive  s signature  D date  b base-r  # available  i indirect\
 &nbsp;&nbsp;&nbsp;▶ **sample** _(newest)_: base@4.5.3, dplyr@1.2.1, tidyselect@1.2.1 (works with all newest versions)\
@@ -60,11 +60,11 @@ Query: **guess-dep-versions** (7490 ms)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;! everything() at 2:23 resolves to no definition _(most downloaded of 3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_or instead_: poorman >=0.1.10 <=0.2.7, rfoaas >=0.0.4 <=2.3.3\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;t >=1.1.0 required by dplyr\
-_All queries together required ≈7491 ms (1ms accuracy, total 7494 ms)_
+_All queries together required ≈678 ms (1ms accuracy, total 679 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _7494.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _679.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -75,7 +75,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "guess-dep-versions": {
     ".meta": {
-      "timing": 7490
+      "timing": 678
     },
     "dependencies": [
       {
@@ -264,7 +264,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "possibleCombinations": 611
   },
   ".meta": {
-    "timing": 7491
+    "timing": 678
   }
 }
 ```

@@ -209,6 +209,10 @@ function(x) {
 		'unescaped-arguments', 'UnescapedArgumentsConfig', 'UNESCAPED_ARGUMENTS', 'lint-unescaped-arguments',
 		'function(dir) {\n\tsystem(paste0("ls ", dir))\n}', tagTypes);
 
+	rule(knownParser,
+		'namespace-access', 'NamespaceAccessConfig', 'NAMESPACE_ACCESS', 'lint-namespace-access',
+		'dplyr:::filter(df, x > 1)', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

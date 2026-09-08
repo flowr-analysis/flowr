@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-05, 12:44:29 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-08, 07:17:49 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
@@ -17,7 +17,7 @@ R> :query @linter "read.csv(\"/root/x.txt\")"
 
 
 ```text
-Query: linter (76 ms)
+Query: linter (8 ms)
    ╰ Deprecated Functions (deprecated-functions): no findings
    ╰ File Path Validity (file-path-validity): no findings
    ╰ Seeded Randomness (seeded-randomness): no findings
@@ -35,7 +35,8 @@ Query: linter (76 ms)
    ╰ Unused Import (unused-import): no findings
    ╰ Unclosed Connection (unclosed-connection): no findings
    ╰ Unescaped Arguments (unescaped-arguments): no findings
-All queries together required ≈76 ms (1ms accuracy, total 77 ms)
+   ╰ Namespace Access Validity (namespace-access): no findings
+All queries together required ≈8 ms (1ms accuracy, total 9 ms)
 ```
 
 
@@ -57,17 +58,17 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (190 ms)\
+Query: **linter** (227 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 10, processTimeMs: 15\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 3, processTimeMs: 0\
 &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 10, processTimeMs: 1\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0\
 &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -81,11 +82,12 @@ Query: **linter** (190 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
-_All queries together required ≈191 ms (1ms accuracy, total 193 ms)_
+&nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
+_All queries together required ≈227 ms (1ms accuracy, total 230 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _193.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _229.7 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -101,8 +103,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "builtin": 0,
           "sigdb": 0,
-          "searchTimeMs": 5,
-          "processTimeMs": 25
+          "searchTimeMs": 35,
+          "processTimeMs": 159
         }
       },
       "file-path-validity": {
@@ -124,8 +126,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnknown": 0,
           "totalWritesBeforeAlways": 0,
           "totalValid": 0,
-          "searchTimeMs": 10,
-          "processTimeMs": 15
+          "searchTimeMs": 3,
+          "processTimeMs": 0
         }
       },
       "seeded-randomness": {
@@ -136,8 +138,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "callsWithAssignmentProducers": 0,
           "callsWithNonConstantProducers": 0,
           "callsWithOtherBranchProducers": 0,
-          "searchTimeMs": 9,
-          "processTimeMs": 1
+          "searchTimeMs": 0,
+          "processTimeMs": 0
         }
       },
       "absolute-file-paths": {
@@ -156,8 +158,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalConsidered": 1,
           "totalUnknown": 0,
-          "searchTimeMs": 10,
-          "processTimeMs": 1
+          "searchTimeMs": 0,
+          "processTimeMs": 0
         }
       },
       "unused-definitions": {
@@ -165,7 +167,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalConsidered": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 1
+          "processTimeMs": 0
         }
       },
       "network-functions": {
@@ -173,8 +175,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalCalls": 0,
           "totalFunctionDefinitions": 0,
-          "searchTimeMs": 1,
-          "processTimeMs": 2
+          "searchTimeMs": 3,
+          "processTimeMs": 1
         }
       },
       "dataframe-access-validation": {
@@ -184,7 +186,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "numAccesses": 0,
           "totalAccessed": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 4
+          "processTimeMs": 2
         }
       },
       "dead-code": {
@@ -205,7 +207,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       "problematic-inputs": {
         "results": [],
         ".meta": {
-          "searchTimeMs": 1,
+          "searchTimeMs": 0,
           "processTimeMs": 0
         }
       },
@@ -245,7 +247,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "subscript": 0
           },
           "searchTimeMs": 0,
-          "processTimeMs": 77
+          "processTimeMs": 17
         }
       },
       "unused-import": {
@@ -256,7 +258,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalMultiPackage": 0,
           "totalUnused": 0,
           "searchTimeMs": 1,
-          "processTimeMs": 5
+          "processTimeMs": 0
         }
       },
       "unclosed-connection": {
@@ -274,16 +276,24 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalCriticalArguments": 0,
           "totalEscapedArguments": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 16
+          "processTimeMs": 1
+        }
+      },
+      "namespace-access": {
+        "results": [],
+        ".meta": {
+          "unresolved": 0,
+          "searchTimeMs": 0,
+          "processTimeMs": 0
         }
       }
     },
     ".meta": {
-      "timing": 190
+      "timing": 227
     }
   },
   ".meta": {
-    "timing": 191
+    "timing": 227
   }
 }
 ```
@@ -329,6 +339,9 @@ The following linting rules are available:
 **[File Path Validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20File%20Path%20Validity):** Checks whether file paths used in read and write operations are valid and point to existing files. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/file-path-validity.ts#L63">src/linter/rules/file-path-validity.ts</a>]\
 	<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+**[Namespace Access Validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Namespace%20Access):** Flags `pkg:::name` where `name` is actually exported by `pkg` (so `::` would do), and `pkg::name` where the signature database knows `name` is not exported (which fails at runtime in R). Stays silent whenever the database has no definite answer for the name. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/namespace-access.ts#L37">src/linter/rules/namespace-access.ts</a>]\
+	<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span>
+
 **[Naming Convention](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Naming%20Convention):** Checks whether the symbols conform to a certain naming convention [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L213">src/linter/rules/naming-convention.ts</a>]\
 	<span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
 
@@ -359,7 +372,7 @@ The following linting rules are available:
 **[Syntactically Valid](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Syntactically%20Valid):** Checks whether the code is free of syntax errors, using the configured (error-tolerant) parser, and offers extensible quick-fixes to repair them. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/syntactically-valid.ts#L266">src/linter/rules/syntactically-valid.ts</a>]\
 	<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
-**[Unclosed Connection](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unclosed%20Connection):** Flags connections that are opened but not closed on every path opening them. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L190">src/linter/rules/unclosed-connection.ts</a>]\
+**[Unclosed Connection](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unclosed%20Connection):** Flags connections that are opened but not closed on every path opening them. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L189">src/linter/rules/unclosed-connection.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
 **[Undefined Symbol](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Undefined%20Symbol):** Flags functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L95">src/linter/rules/undefined-symbol.ts</a>]\
@@ -368,7 +381,7 @@ The following linting rules are available:
 **[Unescaped Arguments](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unescaped%20Arguments):** Detects arguments of critical system, evaluation, database, and HTML/JavaScript calls that are not properly escaped. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unescaped-arguments.ts#L377">src/linter/rules/unescaped-arguments.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the shiny framework."><a href='#shiny'>![shiny](https://img.shields.io/badge/shiny-teal) </a></span>
 
-**[Unused Definitions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unused%20Definitions):** Checks for unused definitions. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L324">src/linter/rules/unused-definition.ts</a>]\
+**[Unused Definitions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unused%20Definitions):** Checks for unused definitions. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L370">src/linter/rules/unused-definition.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
 
 **[Unused Import](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unused%20Import):** Highlights packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L138">src/linter/rules/unused-import.ts</a>]\
@@ -395,7 +408,7 @@ We use tags to categorize linting rules for users. The following tags are availa
 
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
-| <a id="bug"></a> <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> | This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue. (rules: [file-path-validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-File-Path-Validity), [dataframe-access-validation](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dataframe-Access-Validation), [undefined-symbol](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Undefined-Symbol), and [syntactically-valid](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Syntactically-Valid)) | 
+| <a id="bug"></a> <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> | This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue. (rules: [file-path-validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-File-Path-Validity), [dataframe-access-validation](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dataframe-Access-Validation), [undefined-symbol](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Undefined-Symbol), [syntactically-valid](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Syntactically-Valid), and [namespace-access](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Namespace-Access)) | 
 | <a id="deprecated"></a> <span title="This signals the use of deprecated functions or features."><a href='#deprecated'>![deprecated](https://img.shields.io/badge/deprecated-teal) </a></span> | This signals the use of deprecated functions or features. (rule: [deprecated-functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Deprecated-Functions)) | 
 | <a id="documentation"></a> <span title="This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments."><a href='#documentation'>![documentation](https://img.shields.io/badge/documentation-teal) </a></span> | This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments. (rules: [roxygen-arguments](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Roxygen-Arguments) and [software-has-license](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Software-Has-License)) | 
 | <a id="experimental"></a> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span> | This marks rules which are currently considered experimental, _not_ that they detect experimental code. (rules: [no-leaked-credentials](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-No-Leaked-Credentials) and [undefined-symbol](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Undefined-Symbol)) | 
@@ -421,7 +434,7 @@ Both linting rules and their individual results are additionally categorized by 
 | Rule Certainty | Description |
 | -------------- | :---------- |
 | <a id="exact"></a> `exact` | Linting rules that are expected to have both high precision and high recall. (rules: _none_) |
-| <a id="best-effort"></a> `best-effort` | Linting rules that are expected to have high precision, but not necessarily high recall. Rules with this certainty generally ensure that the results they return are correct, but may not return all results. (rules: [deprecated-functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Deprecated-Functions), [file-path-validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-File-Path-Validity), [seeded-randomness](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Seeded-Randomness), [absolute-file-paths](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Absolute-File-Paths), [unused-definitions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unused-Definitions), [network-functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Network-Functions), [dataframe-access-validation](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dataframe-Access-Validation), [dead-code](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dead-Code), [useless-loop](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Useless-Loop), [problematic-inputs](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Problematic-Inputs), [stop-call](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Stop-Call), [roxygen-arguments](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Roxygen-Arguments), [software-has-license](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Software-Has-License), [software-has-tests](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Software-Has-Tests), [no-leaked-credentials](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-No-Leaked-Credentials), [unused-import](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unused-Import), [syntactically-valid](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Syntactically-Valid), [unclosed-connection](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unclosed-Connection), and [unescaped-arguments](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unescaped-Arguments)) |
+| <a id="best-effort"></a> `best-effort` | Linting rules that are expected to have high precision, but not necessarily high recall. Rules with this certainty generally ensure that the results they return are correct, but may not return all results. (rules: [deprecated-functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Deprecated-Functions), [file-path-validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-File-Path-Validity), [seeded-randomness](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Seeded-Randomness), [absolute-file-paths](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Absolute-File-Paths), [unused-definitions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unused-Definitions), [network-functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Network-Functions), [dataframe-access-validation](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dataframe-Access-Validation), [dead-code](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dead-Code), [useless-loop](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Useless-Loop), [problematic-inputs](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Problematic-Inputs), [stop-call](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Stop-Call), [roxygen-arguments](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Roxygen-Arguments), [software-has-license](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Software-Has-License), [software-has-tests](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Software-Has-Tests), [no-leaked-credentials](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-No-Leaked-Credentials), [unused-import](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unused-Import), [syntactically-valid](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Syntactically-Valid), [unclosed-connection](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unclosed-Connection), [unescaped-arguments](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Unescaped-Arguments), and [namespace-access](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Namespace-Access)) |
 | <a id="over-approximative"></a> `over-approximative` | Linting rules that are expected to have high recall, but not necessarily high precision. Rules with this certainty generally return all relevant results, but may also include some incorrect matches. (rules: [naming-convention](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Naming-Convention) and [undefined-symbol](https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Undefined-Symbol)) |
 	
 <h3 id="result-certainty">Result Certainty</h3>

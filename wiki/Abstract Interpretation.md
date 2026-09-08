@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-09-05, 18:15:29 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-09-08, 07:17:52 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 
 This page describes the abstract interpretation framework of _flowR_.

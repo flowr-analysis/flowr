@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-05, 12:44:11 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:17:50 UTC (v2.15.8), do not edit directly._
 <h2 id="Call-Context Query">Call-Context Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds all calls in a set of files that matches specified criteria.\
@@ -67,17 +67,17 @@ all calls that start with `read_` to the kind `input` but only if they are not l
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (4 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (3 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (2 hits): _`mean(data$x)`_ (L.9), _`mean(data2$k)`_ (L.19)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **plot** (1 hit): _`points(data2$x, data2$y)`_ (L.17) with 1 link (_`plot(data2$x, data2$y)`_ (L.16))\
-_All queries together required ≈1696 ms (1ms accuracy, total 1701 ms)_
+_All queries together required ≈108 ms (1ms accuracy, total 108 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1701.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _108.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -88,7 +88,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "call-context": {
     ".meta": {
-      "timing": 4
+      "timing": 1
     },
     "kinds": {
       "input": {
@@ -137,7 +137,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 1696
+    "timing": 108
   }
 }
 ```
@@ -188,14 +188,14 @@ Now let's say we want to query _all_ uses of the `my_test_function`:
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (7 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **.** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (2 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1))\
-_All queries together required ≈41 ms (1ms accuracy, total 44 ms)_
+_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _44.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _4.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -206,7 +206,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "call-context": {
     ".meta": {
-      "timing": 7
+      "timing": 0
     },
     "kinds": {
       ".": {
@@ -232,7 +232,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 41
+    "timing": 3
   }
 }
 ```

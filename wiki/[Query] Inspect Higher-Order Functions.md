@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-05, 12:44:13 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:17:50 UTC (v2.15.8), do not edit directly._
 <h2 id="Inspect Higher-Order Functions Query">Inspect Higher-Order Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are higher-order functions\
@@ -25,14 +25,14 @@ Using the example code `f <- function() function(x) x; f()` the following query 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (12ms)\
+Query: **inspect-higher-order** (2ms)\
 &nbsp;&nbsp;- Function **5** (1.17-29) is not a higher-order function\
 &nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
-_All queries together required ≈12 ms (1ms accuracy, total 15 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _15.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.3 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -43,7 +43,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-higher-order": {
     ".meta": {
-      "timing": 12
+      "timing": 2
     },
     "higherOrder": {
       "5": false,
@@ -51,7 +51,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 12
+    "timing": 2
   }
 }
 ```
@@ -74,7 +74,7 @@ f <- function() function(x) x; f()
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _12.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.3 ms_ and ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -172,13 +172,13 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (11ms)\
+Query: **inspect-higher-order** (1ms)\
 &nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
-_All queries together required ≈11 ms (1ms accuracy, total 14 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _14.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -189,14 +189,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-higher-order": {
     ".meta": {
-      "timing": 11
+      "timing": 1
     },
     "higherOrder": {
       "7": true
     }
   },
   ".meta": {
-    "timing": 11
+    "timing": 1
   }
 }
 ```

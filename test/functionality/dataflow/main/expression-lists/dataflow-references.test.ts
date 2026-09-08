@@ -85,6 +85,10 @@ describe('References of an Expression List', withTreeSitter(parser => {
 		assertReferences('revived in every branch', 'x <- 1\nrm(x)\nif(c) x <- 2 else x <- 3\ny <- x', { in: ['c'], out: ['x', 'y'] });
 		assertReferences('removal in every branch', 'x <- 1\nif(c) rm(x) else rm(x)\ny <- x', { in: ['c', 'x'], out: ['y'], kill: ['x'] });
 		assertReferences('removal in a nested list', 'x <- 1\n{ rm(x) }\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		/* the kill happens while evaluating an argument of the pipe call, same frame as a direct `rm(x)` */
+		assertReferences('removal through a pipe', 'x <- 1\nx |> rm()\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		/* not pipe-specific: any call whose argument removes a variable must not swallow the kill */
+		assertReferences('removal as a plain call argument', 'x <- 1\nidentity(rm(x))\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
 		assertReferences('removal of several definitions', 'x <- 1\ny <- 2\nrm(x, y)\nz <- x', { in: ['x'], out: ['z'], kill: ['x', 'y'] });
 		assertReferences('removal in a repeat body', 'x <- 1\nrepeat { rm(x); break }\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
 		assertReferences('removal in a tryCatch block', 'x <- 1\ntryCatch(rm(x))\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });

@@ -1,21 +1,20 @@
 /** Shared utilities for built-in functions that interact with tracked R environments. */
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { isValue, RValue } from '../../../../../eval/values/r-value';
+import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { unpackArg } from '../argument/unpack-argument';
-import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition, Identifier } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { StringFold } from '../../../../../eval/resolve/resolve-strings';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { dataflowLogger } from '../../../../../logger';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -107,30 +106,6 @@ export function signatureParamNames<OtherInfo>(
 	return names.length > 0 ? names : fallback;
 }
 
-/**
- * What `as.character` makes of a node holding a non-string constant, which is how `paste0("v", i)` names `v1`.
- * Only for the values R writes out the way JavaScript does: whole numbers below `1e5` (R switches to `1e+05`
- * from there) and the two logicals. Everything else stays `undefined`, as a name built from a wrongly
- * formatted number would be worse than one flowR admits it does not know.
- */
-function asCharacterOf<OtherInfo>(
-	id:   NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): string | undefined {
-	const sole = NodeValue.sole(NodeValue.setOf(id, data));
-	if(sole === undefined) {
-		return undefined;
-	}
-	const num = RValue.numberOf(sole);
-	if(num !== undefined) {
-		return Number.isInteger(num) && Math.abs(num) < 1e5 ? String(num) : undefined;
-	}
-	if(sole.type === 'logical' && isValue(sole.value) && sole.value !== 'maybe') {
-		return sole.value ? 'TRUE' : 'FALSE';
-	}
-	return undefined;
-}
-
 /** desugars `lhs |> rhs(...)` one level to `rhs(lhs, ...)`, for literal-shape inspection */
 export function pipedCall<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
@@ -143,35 +118,20 @@ export function pipedCall<OtherInfo>(
 	return { ...node.rhs, arguments: [lhsArg, ...node.rhs.arguments] };
 }
 
-/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
+/**
+ * The constant string a name-position node denotes at construction time (string literal, aliased variable, or
+ * a paste-like join of such); `undefined` if any part is dynamic or the fold is user-shadowed. Unwraps one
+ * leading pipe (the value domain does not desugar those) and otherwise defers entirely to it -- the shadow
+ * check, the paste-like fold and its numeric/logical coercion all live there, in {@link resolveAsStringFn}.
+ */
 export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): string | undefined {
-	const unshadowed = new Map<string, boolean>();
-	/* only a part of a joined name is coerced: `paste0("v", 1)` names `v1`, while `get(1)` is an error in R */
-	const fold = (n: RNode<OtherInfo & ParentInformation>, joined = true): string | undefined => {
-		const piped = pipedCall(n, data);
-		if(piped !== undefined) {
-			return fold(piped, joined);
-		}
-		if(!RFunctionCall.isNamed(n)) {
-			const str = NodeValue.singleStringOf(n.info.id, data);
-			return str ?? (joined ? asCharacterOf(n.info.id, data) : undefined);
-		}
-		const fnName = Identifier.getName(n.functionName.content);
-		if(!StringFold.pasteLike.has(fnName)) {
-			return undefined;
-		}
-		let ok = unshadowed.get(fnName);
-		if(ok === undefined) {
-			ok = Resolve.isBuiltIn(n.functionName.content, data.environment, ReferenceType.Function);
-			unshadowed.set(fnName, ok);
-		}
-		const folded = ok ? StringFold.fold(n, fold) : undefined;
-		return typeof folded === 'string' ? folded : undefined;
-	};
-	return fold(node, false);
+	/* pass the (possibly desugared) node itself, not its id: the desugared call is synthesized and never makes
+	 * it into the id map, so looking it back up by id would hand back the original, un-desugared call */
+	const piped = pipedCall(node, data);
+	return NodeValue.singleStringOf(piped ?? node, data);
 }
 
 /** The `returnsEnvState` of the first reaching definition that carries one, else `undefined`. */
@@ -179,24 +139,52 @@ export function findReturnsEnvState(defs: readonly IdentifierDefinition[] | unde
 	return defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined)?.returnsEnvState;
 }
 
-/** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
-export function resolveArgToEnvir<OtherInfo>(
+/** Result of resolving an envir-like argument that also reports when routing anywhere would be a guess. */
+export interface EnvirArgRouting<OtherInfo> {
+	/** the environment to route into, if flowR can pin one down */
+	readonly resolution: EnvirResolution<OtherInfo> | undefined
+	/**
+	 * the argument names a value whose identity is out of reach at this point (e.g. a function parameter), so
+	 * `resolution` being `undefined` does not mean it is not an environment -- routing anywhere would be unsound
+	 */
+	readonly ambiguous:  boolean
+}
+
+/** a reaching definition that carries no envState only because we cannot see what it will be bound to, not because it is known to not be an environment */
+function isAmbiguousEnvirDef(d: InGraphIdentifierDefinition): boolean {
+	return d.type === ReferenceType.Parameter && d.envState === undefined;
+}
+
+/** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirArgRouting}. */
+export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): EnvirResolution<OtherInfo> | undefined {
+): EnvirArgRouting<OtherInfo> {
 	if(RArgument.isEmpty(arg)) {
-		return undefined;
+		return { resolution: undefined, ambiguous: false };
 	}
 	const node = unpackArg(arg);
 	// `.GlobalEnv`/`.BaseEnv` or a `globalenv()`/`baseenv()`/`emptyenv()` call resolves to the corresponding stack env
 	const stackEnv = resolveNodeToStackEnv(node, data);
 	if(stackEnv !== undefined && node !== undefined) {
-		return stackEnvirResolution(stackEnv, node.info.id, node.lexeme ?? '', data);
+		return { resolution: stackEnvirResolution(stackEnv, node.info.id, node.lexeme ?? '', data), ambiguous: false };
 	}
 	if(!RSymbol.is(node)) {
-		return undefined;
+		return { resolution: undefined, ambiguous: false };
 	}
-	return resolveDefsToEnvirResolution(Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
+	const defs = Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable);
+	return {
+		resolution: resolveDefsToEnvirResolution(defs, node.info.id, data),
+		ambiguous:  (defs as readonly InGraphIdentifierDefinition[] | undefined)?.some(isAmbiguousEnvirDef) ?? false
+	};
+}
+
+/** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
+export function resolveArgToEnvir<OtherInfo>(
+	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): EnvirResolution<OtherInfo> | undefined {
+	return resolveArgToEnvirOrAmbiguous(arg, data).resolution;
 }
 
 /** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
@@ -217,6 +205,32 @@ function stackEnvirResolution<OtherInfo>(
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: true, isGlobalEnv: envState.current.globalEnv === true };
 }
 
+/** The `argName` argument (matched with pmatch) or, when unnamed, the argument at `position`; `undefined` when neither is present. */
+function findEnvirArgNode<OtherInfo>(
+	args:      readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	argName:   string,
+	position?: number
+): PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined {
+	for(const arg of args) {
+		if(arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [argName]) === argName) {
+			return arg;
+		}
+	}
+	const positional = position === undefined ? undefined : args[position];
+	return positional !== undefined && !RArgument.isNamed(positional) ? positional : undefined;
+}
+
+/** Resolves the `argName` argument (default `'envir'`), named with pmatch, to an {@link EnvirArgRouting}. */
+export function resolveEnvirArgOrAmbiguous<OtherInfo>(
+	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	data:    DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	argName  = 'envir',
+	position?: number
+): EnvirArgRouting<OtherInfo> {
+	const arg = findEnvirArgNode(args, argName, position);
+	return arg === undefined ? { resolution: undefined, ambiguous: false } : resolveArgToEnvirOrAmbiguous(arg, data);
+}
+
 /** Resolves the `argName` argument (default `'envir'`), named with pmatch, to an {@link EnvirResolution}. */
 export function resolveEnvirArg<OtherInfo>(
 	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -224,13 +238,7 @@ export function resolveEnvirArg<OtherInfo>(
 	argName  = 'envir',
 	position?: number
 ): EnvirResolution<OtherInfo> | undefined {
-	for(const arg of args) {
-		if(arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [argName]) === argName) {
-			return resolveArgToEnvir(arg, data);
-		}
-	}
-	const positional = position === undefined ? undefined : args[position];
-	return positional !== undefined && !RArgument.isNamed(positional) ? resolveArgToEnvir(positional, data) : undefined;
+	return resolveEnvirArgOrAmbiguous(args, data, argName, position).resolution;
 }
 
 /** Resolves a symbol by name to an {@link EnvirResolution} when it holds a tracked environment. */
@@ -304,9 +312,15 @@ export function routeWrittenToEnvir<OtherInfo>(
 	callerEnvironment: REnvironmentInformation,
 	definedAt?:        NodeId
 ): DataflowInformation {
-	const routed = resolution.isStackEnv && resolution.isGlobalEnv
-		? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt)
-		: routeWrittenToCustomEnv(result, resolution.envDef, rootId, definedAt);
+	let routed: DataflowInformation;
+	if(resolution.isStackEnv) {
+		/* only the global frame is ours to write: `baseenv()`/`emptyenv()` hand out the built-in environment,
+		 * which is shared and never cloned, so defining into it would corrupt every later lookup (R errors on
+		 * such a write anyway) */
+		routed = resolution.isGlobalEnv ? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt) : result;
+	} else {
+		routed = routeWrittenToCustomEnv(result, resolution.envDef, rootId, definedAt);
+	}
 	routed.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 	return routed;
 }

@@ -15,8 +15,9 @@ import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../enviro
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveEnvirArg, routeWrittenToEnvir } from './built-in-envir-utils';
+import { resolveEnvirArgOrAmbiguous, routeWrittenToEnvir } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 
 export interface LocalFunctionConfiguration {
@@ -54,7 +55,8 @@ export function processLocal<OtherInfo>(
 	}
 
 	/* when envir resolves to a tracked environment, evaluate expr inside it */
-	const envirResolution = env ? resolveEnvirArg(args, data, config.args.env) : undefined;
+	const envirRouting = env ? resolveEnvirArgOrAmbiguous(args, data, config.args.env) : undefined;
+	const envirResolution = envirRouting?.resolution;
 
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
 	if(ControlFlow.alwaysExits(dfEnv)) {
@@ -109,6 +111,13 @@ export function processLocal<OtherInfo>(
 		out:               escaping.concat(dfEnv.out),
 		unknownReferences: []
 	};
+
+	if(envirRouting?.ambiguous) {
+		/* envir names a value we cannot pin down (e.g. a parameter): body writes stay scoped locally above so
+		 * nothing leaks, but they may really escape into whatever envir turns out to be, so the call as a whole
+		 * is an unknown side effect */
+		handleUnknownSideEffect(graph, baseResult.environment, rootId);
+	}
 
 	/* route body writes to wherever envir resolved: the real stack frame or the custom env's tracked state */
 	return envirResolution ? routeWrittenToEnvir(baseResult, envirResolution, rootId, data.environment) : baseResult;

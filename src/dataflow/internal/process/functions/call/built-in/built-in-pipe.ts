@@ -24,6 +24,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { log } from '../../../../../../util/log';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { applyKills, cancelRevivedKills } from '../../../../../environments/apply-kill';
 
 /**
  * Configuration options for the basic R pipe
@@ -120,7 +121,10 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true });
+		/* the rhs is processed again here, so it has to be told about the piped value just like above */
+		const assignData = pipedArgumentForRhs === undefined ? data
+			: { ...data, pipedArgument: { rootId: rhs.info.id, node: pipedArgumentForRhs } };
+		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, assignData, { canBeReplacement: true, mayHaveMoreArgs: true });
 	}
 
 	let treatedAsFunctionCall = false;
@@ -177,15 +181,13 @@ export function processPipe<OtherInfo>(
 	}
 
 	const firstArgument = processedArguments[0];
+	const secondArgument = processedArguments[1];
 
 	// If requested, return the lhs value (tee/TPipe semantics): add a Returns edge to the lhs entry
 	if(firstArgument && returnLhs) {
 		information.graph.addEdge(rootId, firstArgument.entryPoint, EdgeType.Returns);
-	} else {
-		const secondArgument = processedArguments[1];
-		if(secondArgument && !returnLhs) {
-			information.graph.addEdge(rootId, secondArgument.entryPoint, EdgeType.Returns);
-		}
+	} else if(secondArgument && !returnLhs) {
+		information.graph.addEdge(rootId, secondArgument.entryPoint, EdgeType.Returns);
 	}
 
 	const uniqueIn = information.in.slice();
@@ -207,12 +209,19 @@ export function processPipe<OtherInfo>(
 		}
 	}
 
+	/* a removal performed by either side (e.g. a piped `rm()`) is bookkept as a kill, not a value, so it escapes
+	   neither through processKnownFunctionCall's out nor through the in/out merge above; re-apply it here instead.
+	   %<>% then writes the result back to the same name, which revives it - cancelRevivedKills accounts for that */
+	const kill = cancelRevivedKills((firstArgument?.kill ?? []).concat(secondArgument?.kill ?? []), uniqueOut);
+	const environment = kill.length > 0 ? applyKills(information.environment, kill) : information.environment;
 
 	return {
 		...information,
 		in:                uniqueIn,
 		out:               uniqueOut,
 		unknownReferences: uniqueUnknownReferences,
+		environment,
+		kill:              kill.length > 0 ? kill : information.kill,
 		entryPoint:        rootId,
 		cfgEntry:          information.cfgEntry
 	};

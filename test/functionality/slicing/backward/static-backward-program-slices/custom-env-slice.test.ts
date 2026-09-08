@@ -283,6 +283,187 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		);
 	});
 
+	describe('envir argument is a function parameter (unresolvable at definition time)', () => {
+		/* `en` carries no envState inside f's body -- a parameter is whatever its caller passes, so routing
+		 * the write precisely would be a guess; the call becomes an unknown side effect, and
+		 * linkEnvironmentArgumentsWrittenByCallee (extractor.ts) carries that mark out to f's call site once it
+		 * sees `e` (the argument bound to `en`) is a tracked environment -- same as it already does for a
+		 * replacement write through a parameter (`en$a <- 42`), so no includeCallees is needed here either */
+		assertSliced(label('assign(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("a", 1, envir = e)',
+				'f <- function(en) assign("a", 42, envir = en)',
+				'f(e)',
+				'r <- get("a", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("a", 1, envir = e)',
+				'f <- function(en) assign("a", 42, envir = en)',
+				'f(e)',
+				'r <- get("a", envir = e)',
+				'print(r)',
+			].join('\n')
+		);
+
+		/* same program, kept with includeCallees explicitly set: the unknown-side-effect-driven boundary above
+		 * must not depend on this option, but the option must keep working alongside it either way */
+		assertSliced(label('assign(envir=parameter) inside a function keeps f and its call site with includeCallees', ['dynamic-environment-resolution', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("a", 1, envir = e)',
+				'f <- function(en) assign("a", 42, envir = en)',
+				'f(e)',
+				'r <- get("a", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("a", 1, envir = e)',
+				'f <- function(en) assign("a", 42, envir = en)',
+				'f(e)',
+				'r <- get("a", envir = e)',
+				'print(r)',
+			].join('\n'),
+			{ includeCallees: true }
+		);
+
+		assertSliced(label('local(expr, envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) local(x <- 42, envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) local(x <- 42, envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n')
+		);
+
+		assertSliced(label('local(expr, envir=parameter) inside a function keeps f and its call site with includeCallees', ['dynamic-environment-resolution', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) local(x <- 42, envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) local(x <- 42, envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			{ includeCallees: true }
+		);
+
+		assertSliced(label('list2env(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) list2env(list(x = 42), envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) list2env(list(x = 42), envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n')
+		);
+
+		assertSliced(label('list2env(envir=parameter) inside a function keeps f and its call site with includeCallees', ['dynamic-environment-resolution', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) list2env(list(x = 42), envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) list2env(list(x = 42), envir = en)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			{ includeCallees: true }
+		);
+
+		assertSliced(label('within(data=parameter, ...) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'environment-with', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) within(en, x <- 42)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) within(en, x <- 42)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n')
+		);
+
+		assertSliced(label('within(data=parameter, ...) inside a function keeps f and its call site with includeCallees', ['dynamic-environment-resolution', 'environment-with', 'local-envir-argument']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) within(en, x <- 42)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			['6@print'],
+			[
+				'e <- new.env()',
+				'assign("x", 1, envir = e)',
+				'f <- function(en) within(en, x <- 42)',
+				'f(e)',
+				'r <- get("x", envir = e)',
+				'print(r)',
+			].join('\n'),
+			{ includeCallees: true }
+		);
+	});
+
 	describe('config: trackEnvironments disabled', () => {
 		const noTrack = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.trackEnvironments', false);
 

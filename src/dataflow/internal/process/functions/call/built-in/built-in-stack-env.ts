@@ -74,7 +74,7 @@ export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: StackE
  */
 export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data: StackEnvContext): REnvironmentInformation | undefined {
 	const kind = stackEnvKindOf(node, data);
-	if(node === undefined || kind === undefined) {
+	if(kind === undefined) {
 		return undefined;
 	}
 	const firstArg = RFunctionCall.is(node) && node.arguments.length > 0 && node.arguments[0] !== EmptyArgument ? node.arguments[0].value : undefined;

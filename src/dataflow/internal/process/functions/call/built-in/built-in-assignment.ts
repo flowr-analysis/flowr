@@ -33,7 +33,7 @@ import { define } from '../../../../../environments/define';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToEnvir } from './built-in-envir-utils';
+import { findReturnsEnvState, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveSymbolToEnvir, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -581,6 +581,8 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 /**
  * When `config.environmentArg` (e.g. `'envir'` for `assign`) resolves to a variable with a tracked
  * {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible.
+ * An `envir=` that names a value we cannot pin down (e.g. a parameter) is not a "no envir" call: routing the
+ * write into the local scope would be a guess, so the call becomes an unknown side effect instead.
  */
 function tryRouteToCustomEnv<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -589,7 +591,16 @@ function tryRouteToCustomEnv<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation | undefined {
-	const resolution = resolveEnvirArg(args, data, config.environmentArg);
+	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, config.environmentArg);
+	if(envirRouting.ambiguous) {
+		const info = processKnownFunctionCall({
+			name, args, rootId, data,
+			origin: config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
+		}).information;
+		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		return info;
+	}
+	const resolution = envirRouting.resolution;
 	if(!resolution) {
 		return undefined;
 	}

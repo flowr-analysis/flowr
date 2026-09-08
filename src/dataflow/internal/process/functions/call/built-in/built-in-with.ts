@@ -9,12 +9,13 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import { resolveArgToEnvir, routeWrittenToEnvir, signatureParamNames } from './built-in-envir-utils';
+import { resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
 const withParamsFallback = ['data', 'expr'] as const;
@@ -69,9 +70,16 @@ export function processWithEnv<OtherInfo>(
 		return markAsMaskedFallback(name, args, rootId, data);
 	}
 
-	const envirResolution = resolveArgToEnvir(dataArg, data);
+	const envirRouting = resolveArgToEnvirOrAmbiguous(dataArg, data);
+	const envirResolution = envirRouting.resolution;
 	if(!envirResolution) {
-		return markAsMaskedFallback(name, args, rootId, data);
+		const fallback = markAsMaskedFallback(name, args, rootId, data);
+		if(envirRouting.ambiguous) {
+			/* data names a value we cannot pin down (e.g. a parameter): within persists writes into it, and
+			 * we cannot rule out it being an environment, so the call becomes an unknown side effect */
+			handleUnknownSideEffect(fallback.graph, fallback.environment, rootId);
+		}
+		return fallback;
 	}
 
 	/* evaluate data arg in the caller's scope (it is just read) */

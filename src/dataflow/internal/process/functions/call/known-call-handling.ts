@@ -1,9 +1,10 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { FnSig } from '../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
-import type { ExitPoint, DataflowInformation } from '../../../../info';
+import type { ExitPoint, DataflowInformation, KillReference } from '../../../../info';
 import { ExitPointType } from '../../../../info';
 import { processAllArguments } from './common';
+import { applyKills } from '../../../../environments/apply-kill';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -247,6 +248,16 @@ export function processKnownFunctionCall<OtherInfo>(
 		}
 	}
 
+	/*
+	 * an argument that itself removes a variable (e.g. `rm(x)` passed to another call, or spliced in by a
+	 * pipe) does so in the caller's frame, same as any other argument side effect; environment merging is
+	 * additive only and cannot express a removal, so the kill has to be re-applied here explicitly and
+	 * bubbled up for whichever construct merges branches or iterations next
+	 */
+	const argKills: KillReference[] = processedArguments.flatMap(p => p?.kill ?? []);
+	const kill = argKills.length > 0 ? argKills : undefined;
+	const environment = kill ? applyKills(finalEnv, kill) : finalEnv;
+
 	return {
 		information: {
 			unknownReferences: [],
@@ -254,11 +265,12 @@ export function processKnownFunctionCall<OtherInfo>(
 			/* we do not keep the argument out as it has been linked by the function */
 			out:               functionName.out,
 			graph:             finalGraph,
-			environment:       finalEnv,
+			environment,
 			entryPoint:        rootId,
 			cfgEntry:          cfgEntry === rootId ? undefined : cfgEntry,
 			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
-			hooks:             functionName.hooks
+			hooks:             functionName.hooks,
+			kill
 		},
 		callArgs,
 		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments,

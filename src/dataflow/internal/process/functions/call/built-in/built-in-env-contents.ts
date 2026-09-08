@@ -14,7 +14,7 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { effectiveArgs, resolveEnvirArg, routeWrittenToEnvir } from './built-in-envir-utils';
+import { effectiveArgs, resolveEnvirArg, resolveEnvirArgOrAmbiguous, routeWrittenToEnvir } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { define } from '../../../../../environments/define';
 
@@ -81,6 +81,13 @@ export function processListToEnv<OtherInfo>(
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ListToEnv }).information;
 
+	/* envir names a value we cannot pin down (e.g. a parameter): routing into local scope would be a guess */
+	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, 'envir');
+	if(envirRouting.ambiguous) {
+		handleUnknownSideEffect(result.graph, result.environment, rootId);
+		return result;
+	}
+
 	const first = args.length >= 1 && args[0] !== EmptyArgument ? unpackArg(args[0]) : undefined;
 	const literal = listLiteralOf(first, data);
 	if(literal === undefined) {
@@ -114,6 +121,5 @@ export function processListToEnv<OtherInfo>(
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 
 	/* a target environment of its own (stack frame or custom env) takes the bindings instead of current scope */
-	const resolution = resolveEnvirArg(args, data, 'envir');
-	return resolution ? routeWrittenToEnvir(defined, resolution, rootId, data.environment, rootId) : defined;
+	return envirRouting.resolution ? routeWrittenToEnvir(defined, envirRouting.resolution, rootId, data.environment, rootId) : defined;
 }

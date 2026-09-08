@@ -17,7 +17,7 @@ import { attachProject } from './internal/process/functions/call/built-in/built-
 import { type DataflowGraph, UnknownSideEffect } from './graph/graph';
 import { handleUnknownSideEffect } from './graph/unknown-side-effect';
 import { ControlFlowGraph } from '../control-flow/control-flow-graph';
-import { EdgeType, DfEdge  } from './graph/edge';
+import { EdgeType, DfEdge } from './graph/edge';
 import { identifyLinkToLastCallRelationSync } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
@@ -27,7 +27,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from './graph/vertex';
-import { VertexType, DfgVertex  } from './graph/vertex';
+import { VertexType, DfgVertex } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
 import type { InGraphIdentifierDefinition } from './environments/identifier';
@@ -40,6 +40,7 @@ import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow } from './graph/df-helper';
 import { BuiltInProcName } from './environments/built-in-proc-name';
 import { uniqueArray } from '../util/collections/arrays';
+import { DefaultMap } from '../util/collections/defaultmap';
 import { MatchArgs } from './graph/match-args';
 import { ArgProp, SemanticCallTag } from './environments/built-in-props';
 import type { BuiltInFnInfo } from './environments/built-in-props';
@@ -88,7 +89,6 @@ export const processors: DataflowProcessors<ParentInformation> = {
 };
 
 
-
 /**
  * Marks a call that writes into an environment it was handed. An environment is the one R value a callee shares
  * with its caller rather than copying, so `f(e)` with `f <- function(en) en$a <- 42` changes the caller's `e`;
@@ -96,7 +96,14 @@ export const processors: DataflowProcessors<ParentInformation> = {
  */
 function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environment: REnvironmentInformation): void {
 	for(const [, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		for(const [parameter, writes] of replacementWritesOfParameters(graph, definition)) {
+		const parameters = new Set(Object.keys(definition.params ?? {}).map(NodeIdHelper.normalize));
+		if(parameters.size === 0) {
+			continue;
+		}
+		const writesByParameter = new DefaultMap<NodeId, NodeId[]>(() => []);
+		replacementWritesOfParameters(graph, definition, parameters, writesByParameter);
+		envirWritesOfParameters(graph, definition, parameters, writesByParameter);
+		for(const [parameter, writes] of writesByParameter.entries()) {
 			for(const [argument, bound] of graph.edgesFrom(parameter)) {
 				if(!DfEdge.includesType(bound, EdgeType.DefinedByOnCall) || !holdsEnvironment(graph, argument, environment)) {
 					continue;
@@ -116,13 +123,8 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 	}
 }
 
-/** Per parameter of `definition`, the replacement calls (`en$a <- v`) its body performs on that parameter. */
-function replacementWritesOfParameters(graph: DataflowGraph, definition: DataflowGraphVertexFunctionDefinition): ReadonlyMap<NodeId, NodeId[]> {
-	const written = new Map<NodeId, NodeId[]>();
-	const parameters = new Set(Object.keys(definition.params ?? {}).map(NodeIdHelper.normalize));
-	if(parameters.size === 0) {
-		return written;
-	}
+/** Records per parameter of `definition` the replacement calls (`en$a <- v`) its body performs on that parameter. */
+function replacementWritesOfParameters(graph: DataflowGraph, definition: DataflowGraphVertexFunctionDefinition, parameters: ReadonlySet<NodeId>, written: DefaultMap<NodeId, NodeId[]>): void {
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
 		/* a replacement marks its target partial, which is the only shape writing into a parameter */
@@ -139,10 +141,38 @@ function replacementWritesOfParameters(graph: DataflowGraph, definition: Dataflo
 			}
 		}
 		for(const parameter of onParameter) {
-			written.set(parameter, [...(written.get(parameter) ?? []), ...replacements]);
+			written.get(parameter).push(...replacements);
 		}
 	}
-	return written;
+}
+
+/** The built-ins whose `envir=`-like argument, once ambiguous (see {@link resolveEnvirArgOrAmbiguous}), can write into a parameter passed to them, same as a replacement function. */
+const EnvirWritingBuiltins: ReadonlySet<string> = new Set(['assign', 'local', 'list2env', 'with', 'within']);
+
+/**
+ * Records per parameter of `definition` the `assign`/`local`/`list2env`/`with`/`within` calls its body performs whose
+ * `envir=`-like argument reads that parameter. Such a call only ever became an unknown side effect (see the
+ * built-ins above) because its envir-like argument named a parameter flowR could not pin down -- so membership
+ * there, together with the call reading the parameter through one of its arguments, is what a replacement's
+ * `.par` marker is for {@link replacementWritesOfParameters}.
+ */
+function envirWritesOfParameters(graph: DataflowGraph, definition: DataflowGraphVertexFunctionDefinition, parameters: ReadonlySet<NodeId>, written: DefaultMap<NodeId, NodeId[]>): void {
+	for(const node of definition.subflow.graph) {
+		const vertex = graph.getVertex(node);
+		if(!DfgVertex.isFunctionCall(vertex) || !EnvirWritingBuiltins.has(Identifier.getName(vertex.name)) || !graph.unknownSideEffects.has(NodeIdHelper.normalize(node))) {
+			continue;
+		}
+		for(const [target, edge] of graph.edgesFrom(node)) {
+			if(!DfEdge.includesType(edge, EdgeType.Argument)) {
+				continue;
+			}
+			for(const reached of definitionsReachedBy(target, graph)) {
+				if(parameters.has(reached)) {
+					written.get(reached).push(node);
+				}
+			}
+		}
+	}
 }
 
 /** Whether the argument holds a tracked environment, which is what makes the write reach back out of the call. */

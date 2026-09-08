@@ -66,9 +66,10 @@ export async function testTaintAnalyses(code: string, analyses: Set<[string, Tai
 	const analyzer = await builder.build();
 
 	analyzer.addRequest(code.trim());
-	const analysis = analyzer.taint<string[]>();
+	const [[, firstDef], ...restEntries] = analyses;
+	const analysis = analyzer.taint<string[]>().add(firstDef);
 
-	for(const [_name, def, _expectation] of analyses) {
+	for(const [_name, def, _expectation] of restEntries) {
 		analysis.add(def);
 	}
 
@@ -109,8 +110,7 @@ export async function testCompositeTaintAnalysis(
 		.build();
 
 	analyzer.addRequest(code.trim());
-	const analysis = analyzer.taint<string[]>();
-	analysis.addComposite(composite);
+	const analysis = analyzer.taint<string[]>().addComposite(composite);
 
 	const results = await analysis.run();
 	const result = results.get(composite.name);

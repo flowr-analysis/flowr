@@ -90,8 +90,11 @@ async function analyzeScript(run: ScriptRun, analyzer: FlowrAnalyzer): Promise<s
 		analyzer.reset();
 		analyzer.addRequest(`${fileProtocol}${run.path}`);
 
-		const analysis = analyzer.taint<AllPredefinedTaintAnalysisNames>();
-		for(const def of allPredefinedTaintAnalysisNames) {
+		const [firstPredefined, ...restPredefined] = allPredefinedTaintAnalysisNames;
+		const analysis = analyzer
+			.taint<AllPredefinedTaintAnalysisNames>()
+			.addPredefined(firstPredefined);
+		for(const def of restPredefined) {
 			analysis.addPredefined(def);
 		}
 		analysis.withHook(instrumentation.fnCallHook);

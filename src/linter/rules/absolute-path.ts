@@ -177,7 +177,7 @@ export const ABSOLUTE_PATH = {
 				} else if(enrichmentContent(element, Enrichment.QueryData)) {
 					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
 					const mappedStrings = result.read.flatMap(r => {
-						if(r.value === undefined || r.value === Unknown) {
+						if(r.value === undefined || r.value === Unknown || r.nodeId === undefined) {
 							return [];
 						}
 						const resolved = resolvePathForAbsoluteCheck(r.value, config.ignoreUrls);

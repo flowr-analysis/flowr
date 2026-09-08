@@ -4,7 +4,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import type { DataflowInformation } from '../../../dataflow/info';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
 import { SemanticCallTag } from '../../../dataflow/environments/built-in-props';
-import { DfgVertex } from '../../../dataflow/graph/vertex';
+import { VertexType } from '../../../dataflow/graph/vertex';
 import { SourceRange } from '../../../util/range';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PropSelector } from '../../../dataflow/environments/built-in-props';
@@ -26,21 +26,30 @@ function callHas(id: NodeId, dataflow: DataflowInformation, props: PropSelector)
  * ({@link SemanticCallTag.Closes}), and the order is the one the source states.
  */
 export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: DependencyInfo[], dataflow: DataflowInformation, ast: NormalizedAst): void {
+	/* write/visualize entries always come from a real call; only the assumed-base-package `library` entries lack one */
 	const opened = new Map(written
-		.filter(w => w.value !== undefined && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
-		.map(w => [w.nodeId, w.value as string]));
-	const closed = new Set(dataflow.graph.vertices(true)
-		.filter(([id, v]) => DfgVertex.isFunctionCall(v) && callHas(id, dataflow, SemanticCallTag.Closes))
-		.map(([id]) => id));
-	const plotAt = new Map(plots.map((p, index) => [p.nodeId, index]));
-	const located = [...opened.keys(), ...closed, ...plotAt.keys()]
+		.filter(w => w.nodeId !== undefined && w.value !== undefined && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
+		.map(w => [w.nodeId as NodeId, w.value as string]));
+	const closed = new Set(dataflow.graph.vertexIdsOfType(VertexType.FunctionCall)
+		.filter(id => callHas(id, dataflow, SemanticCallTag.Closes)));
+	const plotAt = new Map<NodeId, number>();
+	/* an addon points at the creation it belongs to, a creation points at nothing */
+	const linkOf = new Map<NodeId, readonly NodeId[]>();
+	/* `at` indexes `plots` itself, so a later rewrite lands on the entry the id came from */
+	plots.forEach(({ nodeId, linkedIds }, at) => {
+		if(nodeId !== undefined) {
+			plotAt.set(nodeId, at);
+			if(linkedIds?.length) {
+				linkOf.set(nodeId, linkedIds);
+			}
+		}
+	});
+	/* a call may hold two of these roles, and is then walked once, under the first one that claims it */
+	const located = [...new Set([...opened.keys(), ...closed, ...plotAt.keys()])]
 		.flatMap(id => {
 			const at = ast.idMap.get(id)?.location; return at ? [[id, at] as const] : [];
 		})
 		.sort(([, a], [, b]) => SourceRange.compare(a, b));
-
-	/* an addon points at the creation it belongs to, a creation points at nothing */
-	const linkOf = new Map(plots.filter(p => p.linkedIds?.length).map(p => [p.nodeId, p.linkedIds as readonly NodeId[]]));
 
 	const devices: { file: string, opener: NodeId, plots: NodeId[] }[] = [];
 	/* the opener/closer pair enclosing a plot, so it can report what it takes to produce its file */
@@ -90,7 +99,12 @@ export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: De
 
 	const addonsOf = new Map<NodeId, NodeId[]>();
 	for(const [addon, creation] of builds) {
-		addonsOf.set(creation, [...addonsOf.get(creation) ?? [], addon]);
+		const drawn = addonsOf.get(creation);
+		if(drawn === undefined) {
+			addonsOf.set(creation, [addon]);
+		} else {
+			drawn.push(addon);
+		}
 	}
 	for(const [id, index] of plotAt) {
 		const parts = [...addonsOf.get(id) ?? [], ...around.get(id) ?? []];

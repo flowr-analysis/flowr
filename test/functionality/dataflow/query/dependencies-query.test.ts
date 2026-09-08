@@ -8,6 +8,7 @@ import {
 	type DependenciesQueryResult,
 	DefaultDependencyCategories,
 	type DependencyInfo,
+	Attached,
 	Constant,
 	Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
@@ -43,7 +44,7 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 			continue;
 		}
 		out[key] = value.map(({ nodeId, linkedIds, argumentId, parts, ...rest }) => ({
-			nodeId:     decode(nodeId),
+			nodeId:     nodeId === undefined ? undefined : decode(nodeId),
 			linkedIds:  linkedIds?.map(decode),
 			argumentId: argumentId === undefined ? undefined : decode(argumentId),
 			parts:      parts?.map(decode),
@@ -947,10 +948,36 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			});
 	});
-	/**
-	 * The signature database knows what a package exports, so it settles whether an entry names the right one.
-	 * A wrong package is invisible in a bare snippet and only drops the call once the owning library is loaded.
-	 */
+	describe('Assumed base packages', () => {
+		testQuery('off by default', 'x <- median(1:10)', {});
+
+		/* base is reported like the rest but flagged: it is always attached and can never be asked for.
+		   Its linkedIds are given as plain ids, as the operators that pull it in have no useful criterion */
+		testQuery('reports an assumed base package used without library()', 'x <- median(1:10)', {
+			library: [
+				{ nodeId: undefined, functionName: Attached, value: 'base', implicit: true, alwaysAttached: true, linkedIds: [4, 7] },
+				{ nodeId: undefined, functionName: Attached, value: 'stats', implicit: true, linkedIds: ['1@median'] }
+			]
+		}, { assumedPackages: true });
+
+		testQuery('does not duplicate an explicitly loaded package', 'library(stats)\nx <- median(1:10)', {
+			library: [
+				{ nodeId: '1@library', functionName: 'library', value: 'stats' },
+				{ nodeId: undefined, functionName: Attached, value: 'base', implicit: true, alwaysAttached: true, linkedIds: [3, 8, 11] }
+			]
+		}, { assumedPackages: true });
+
+		testQuery('several assumed packages come back in search-path order', 'x <- sd(1:10)\ny <- head(1:10)', {
+			library: [
+				{ nodeId: undefined, functionName: Attached, value: 'base', implicit: true, alwaysAttached: true, linkedIds: [4, 7, 12, 15] },
+				{ nodeId: undefined, functionName: Attached, value: 'stats', implicit: true, linkedIds: ['1@sd'] },
+				{ nodeId: undefined, functionName: Attached, value: 'utils', implicit: true, linkedIds: ['2@head'] }
+			]
+		}, { assumedPackages: true });
+
+		testQuery('does nothing when the library category is disabled', 'x <- median(1:10)', {}, { assumedPackages: true, enabledCategories: ['read'] });
+	});
+
 	describe('Package attribution', () => {
 		/* the database records these as an S4 generic or an S3 method, so their name is not in the export list */
 		const recordedElsewhere = new Set(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);

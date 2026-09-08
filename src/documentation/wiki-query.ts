@@ -775,6 +775,20 @@ ${
 }
 
 Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
+
+By default the query reports only the dependencies the code names itself. Yet R attaches a handful of base packages
+to the search path on startup, so a bare \`sd(x)\` genuinely depends on \`stats\` without any \`library\` call saying so.
+Set \`assumedPackages\` to have those reported as well, as \`library\` entries marked \`implicit\` and carrying no
+\`nodeId\` (no single call stands for "R attached this"), with the calls that pulled the package in listed as
+\`linkedIds\`:
+${
+	await showQuery(shell, 'sd(c(1, 2, 3))', [{ type: 'dependencies', assumedPackages: true, enabledCategories: ['library'] }], { showCode: true, collapseQuery: false, collapseResult: false, ctx })
+}
+
+\`base\` is reported alongside the others but additionally marked \`alwaysAttached\`. The other six are attached by
+convention and \`R_DEFAULT_PACKAGES\` (or \`options(defaultPackages=)\`) can drop any of them, whereas \`base\` is always
+there and cannot be detached -- so it is never something the script could have asked for, and never something to
+suggest a \`library\` call for.
 		`;
 	}
 });

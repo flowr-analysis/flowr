@@ -30,6 +30,8 @@ import { collectImplicitEchoes } from './implicit-echo';
 export const Unknown = 'unknown';
 /** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
 export const Constant = 'constant';
+/** {@link DependencyInfo#functionName} for an assumed base package: nothing in the code names it, so there is no call to report as `functionName`. */
+export const Attached = '<attached>';
 
 export interface DependencyCategorySettings {
 	queryDisplayName?:   string
@@ -139,13 +141,26 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
 	readonly ignoreDefaultFunctions?: boolean
 	/** Naming a built-in category extends it; use `ignoreDefaultFunctions` to drop the built-in functions. */
 	readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
+	/**
+	 * Also report the base packages R attaches on startup (see `attachedBasePackages`) that the code calls into
+	 * but never asks for via `library()`/`require()`/`::`, as `library` entries marked {@link DependencyInfo#implicit}.
+	 * `base` is among them, flagged {@link DependencyInfo#alwaysAttached} because it cannot be detached.
+	 * Off by default: for most callers these are noise, not a dependency they need to act on.
+	 */
+	readonly assumedPackages?:        boolean
 }
 
 export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
 
 export interface DependencyInfo extends Record<string, unknown> {
-	nodeId:              NodeId
+	/** absent for an assumed base package (see {@link Attached}): it names no single call to hang a node on */
+	nodeId?:             NodeId
+	/**
+	 * Set on the `base` entry of an assumed-package report: unlike the other attached base packages, `base` is
+	 * always on the search path and cannot be dropped by `R_DEFAULT_PACKAGES`. There is no library call for base necessary.
+	 */
+	alwaysAttached?:     boolean
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
@@ -182,11 +197,18 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	result.push(`   ${bold(title, formatter)} ${faint(`(${infos.length})`, formatter)}`);
 	// one line per dependency: the value (package/file) up front, its function + node as a faint provenance suffix
 	for(const i of infos) {
-		const fn = Identifier.getName(i.functionName);
 		/* neither names a resource: inline data is resolved but no path, `unknown` is a path we could not resolve */
 		const stands = i.value === Constant ? '<inline data>' : i.value === Unknown || i.value === undefined ? '<unresolved>' : undefined;
 		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
+		if(i.nodeId === undefined) {
+			/* an assumed base package names no call of its own; the calls that pulled it in are in linkedIds */
+			const uses = i.linkedIds?.length ? `, used at ${i.linkedIds.join(', ')}` : '';
+			const how = i.alwaysAttached ? 'always attached by R' : 'attached by R at startup';
+			result.push(`     ${value}${version} ${faint(`${how}${uses}`, formatter)}`);
+			continue;
+		}
+		const fn = Identifier.getName(i.functionName);
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
 		/* an output nothing asked for reads like every other one, so it says that it is the top level echoing */
 		const how = i.implicit ? 'auto-printed by' : 'via';
@@ -236,6 +258,7 @@ export const DependenciesQueryDefinition = {
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
 		...Object.fromEntries(Object.keys(DefaultDependencyCategories).map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
 		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for.'),
+		assumedPackages:        Joi.boolean().optional().description('Also report the base packages R attaches on startup (e.g. `stats` for a bare `sd()`) that the code uses but never asks for explicitly, as `library` entries marked `implicit`. `base` is reported too, additionally marked `alwaysAttached`. Defaults to false.'),
 		additionalCategories:   Joi.object().allow(Joi.object({
 			queryDisplayName: Joi.string().description('The display name in the query result.'),
 			functions:        functionInfoSchema.description('The functions that this additional category should search for.'),
@@ -244,6 +267,6 @@ export const DependenciesQueryDefinition = {
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults, query): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;
-		return Object.keys(getAllCategories(query as DependenciesQuery[])).flatMap(c => out[c] ?? []).map(o => o.nodeId);
+		return Object.keys(getAllCategories(query as DependenciesQuery[])).flatMap(c => out[c] ?? []).map(o => o.nodeId).filter((id): id is NodeId => id !== undefined);
 	}
 } as const satisfies SupportedQuery<'dependencies'>;

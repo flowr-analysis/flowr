@@ -556,13 +556,15 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 	const command = document.createElement('span');
 	/* pointing at a package means asking about that one, so the command says which */
 	const asks = (qualified: string) => command.textContent = ':query @signature ' + qualified;
-	asks(name);
+	/* a lone word names a package, so asking about the function in any package needs the `*` glob in front */
+	const anyPackage = '* ' + name;
+	asks(anyPackage);
 	note.append(el('span', undefined, 'for parameters and the call graph, ask flowR:'), command);
 	list.addEventListener('mouseover', event => {
 		const row = (event.target as HTMLElement | null)?.closest('.own');
-		asks(row ? (row.querySelector('.pkg')?.textContent ?? '') + '::' + name : name);
+		asks(row ? (row.querySelector('.pkg')?.textContent ?? '') + '::' + name : anyPackage);
 	});
-	list.addEventListener('mouseleave', () => asks(name));
+	list.addEventListener('mouseleave', () => asks(anyPackage));
 	box.append(list, note);
 	return box;
 }

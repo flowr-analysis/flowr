@@ -1,9 +1,10 @@
 import { executeQueriesOfSameType } from '../../query';
-import { DefaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
+import { Attached, DefaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
@@ -20,6 +21,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { AttachedBasePackageSet, attachedBasePackages } from '../../../util/r-base-packages';
 
 /**
  * Executes a dependencies query.
@@ -36,6 +38,7 @@ export async function executeDependenciesQuery({
 				...query,
 				enabledCategories:      query.enabledCategories === undefined && q.enabledCategories === undefined ? undefined : [...(query.enabledCategories ?? []), ...(q.enabledCategories ?? [])],
 				ignoreDefaultFunctions: query.ignoreDefaultFunctions || q.ignoreDefaultFunctions,
+				assumedPackages:        query.assumedPackages || q.assumedPackages,
 				additionalCategories:   {
 					...query.additionalCategories,
 					...q.additionalCategories
@@ -83,12 +86,44 @@ export async function executeDependenciesQuery({
 		linkPlotsToDevices(results.write ?? [], results.visualize, dataflow, normalize);
 	}
 
+	if(query.assumedPackages && (enabled === undefined || enabled.includes('library'))) {
+		const explicit = new Set((results.library ?? []).map(r => r.value).filter((v): v is string => v !== undefined && v !== Unknown && v !== Constant));
+		const rVersion = data.analyzer.inspectContext().resolvedRVersion;
+		const assumed = assumedBasePackageEntries(dataflow.graph, rVersion, explicit);
+		if(assumed.length > 0) {
+			results.library = [...(results.library ?? []), ...assumed];
+		}
+	}
+
 	return {
 		'.meta': {
 			timing: Date.now() - now
 		},
 		...results,
 	} as DependenciesQueryResult;
+}
+
+function assumedBasePackageEntries(dfg: DataflowGraph, rVersion: string, explicit: ReadonlySet<string>): DependencyInfo[] {
+	const usedBy = new Map<string, NodeId[]>();
+	for(const [id, qualified] of Dataflow.qualifyAll(dfg, true)) {
+		const pkg = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+		if(pkg === undefined || explicit.has(pkg) || !AttachedBasePackageSet.has(pkg)) {
+			continue;
+		}
+		const known = usedBy.get(pkg);
+		if(known) {
+			known.push(id);
+		} else {
+			usedBy.set(pkg, [id]);
+		}
+	}
+	return attachedBasePackages(rVersion).filter(pkg => usedBy.has(pkg)).map(pkg => compactRecord({
+		functionName:   Attached,
+		value:          pkg,
+		implicit:       true,
+		alwaysAttached: pkg === PkgName.Base ? true : undefined,
+		linkedIds:      usedBy.get(pkg)
+	}) as DependencyInfo);
 }
 
 function makeCallContextQuery(this: void, [kind, functions]: [DependencyCategoryName, readonly FunctionInfo[]]): CallContextQuery[] {

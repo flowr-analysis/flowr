@@ -318,9 +318,9 @@ export const SYNTACTICALLY_VALID = {
 		certainty:       LintingRuleCertainty.BestEffort,
 		// only meaningful under tree-sitter, so opt-in rather than part of the default set
 		activeByDefault: false,
-		defaultConfig:   {
+		defaultConfig:   () => ({
 			disabledFixes: [],
 			preferFix:     'remove'
-		}
+		})
 	}
 } as const satisfies LintingRule<SyntacticallyValidResult, SyntacticallyValidMetadata, SyntacticallyValidConfig>;

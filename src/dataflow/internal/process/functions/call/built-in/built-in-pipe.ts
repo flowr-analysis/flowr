@@ -6,7 +6,7 @@ import { Unquote } from '../nse';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -91,7 +91,9 @@ export function processPipe<OtherInfo>(
 		}
 		return false;
 	});
-	const pipedArgumentForRhs = RFunctionCall.is(rhs) && occurrenceIds.length === 0 ? lhs : undefined;
+	const pipedArgumentForRhs = RFunctionCall.is(rhs) && occurrenceIds.length === 0
+		? toUnnamedArgument(lhs, data.completeAst.idMap) : EmptyArgument;
+	const pipedArgument = RArgument.isUnnamed(pipedArgumentForRhs) ? { rootId: rhs.info.id, argument: pipedArgumentForRhs } : undefined;
 
 	const fCallInfo = processKnownFunctionCall({
 		name,
@@ -99,8 +101,7 @@ export function processPipe<OtherInfo>(
 		rootId,
 		data,
 		origin:    BuiltInProcName.Pipe,
-		patchData: pipedArgumentForRhs === undefined ? undefined
-			: (d, i) => i === 1 ? { ...d, pipedArgument: { rootId: rhs.info.id, node: pipedArgumentForRhs } } : d
+		patchData: pipedArgument === undefined ? undefined : (d, i) => i === 1 ? { ...d, pipedArgument } : d
 	});
 	const processedArguments = fCallInfo.processedArguments;
 	let information = fCallInfo.information;
@@ -121,8 +122,7 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		const assignData = pipedArgumentForRhs === undefined ? data
-			: { ...data, pipedArgument: { rootId: rhs.info.id, node: pipedArgumentForRhs } };
+		const assignData = pipedArgument === undefined ? data : { ...data, pipedArgument };
 		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, assignData, { canBeReplacement: true, mayHaveMoreArgs: true });
 	}
 

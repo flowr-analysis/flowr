@@ -632,15 +632,17 @@ footer { margin: 3.5rem 0 1.5rem; }
 	const tip = document.getElementById('tip');
 	const tipFor = target => {
 		if(!target) {
-			return tip.removeAttribute('data-show');
+			delete tip.dataset.show;
+			return;
 		}
 		const slice = target.closest('[data-panel="slice"]');
 		tip.textContent = target.dataset.tip
 			?? (slice ? `${slice.querySelector('.code').dataset.way ? 'impact of' : 'slice for'} ${target.dataset.label}` : '');
 		if(!tip.textContent) {
-			return tip.removeAttribute('data-show');
+			delete tip.dataset.show;
+			return;
 		}
-		tip.setAttribute('data-show', '');
+		tip.dataset.show = '';
 		const at = target.getBoundingClientRect(), box = tip.getBoundingClientRect();
 		const left = Math.min(Math.max(8, at.left + at.width / 2 - box.width / 2), innerWidth - box.width - 8);
 		const above = at.top - box.height - 8;

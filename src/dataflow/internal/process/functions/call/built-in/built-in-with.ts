@@ -1,7 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -9,13 +9,12 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import { resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, unknownIfAmbiguous } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { patchFunctionCall } from '../common';
+import { isPipedArgument, patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
-import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
 const withParamsFallback = ['data', 'expr'] as const;
@@ -71,19 +70,16 @@ export function processWithEnv<OtherInfo>(
 	}
 
 	const envirRouting = resolveArgToEnvirOrAmbiguous(dataArg, data);
-	const envirResolution = envirRouting.resolution;
+	const envirResolution = envirOf(envirRouting);
 	if(!envirResolution) {
 		const fallback = markAsMaskedFallback(name, args, rootId, data);
-		if(envirRouting.ambiguous) {
-			/* data names a value we cannot pin down (e.g. a parameter): within persists writes into it, and
-			 * we cannot rule out it being an environment, so the call becomes an unknown side effect */
-			handleUnknownSideEffect(fallback.graph, fallback.environment, rootId);
-		}
+		unknownIfAmbiguous(envirRouting, fallback, rootId);
 		return fallback;
 	}
 
-	/* evaluate data arg in the caller's scope (it is just read) */
-	const dfDataArg = processDataflowFor(dataArg.value, data);
+	/* evaluate data arg in the caller's scope (it is just read); a piped one is already processed and linked by processPipe */
+	const pipedData = isPipedArgument(dataArg, rootId, data);
+	const dfDataArg = pipedData ? DataflowInformation.initialize(rootId, data) : processDataflowFor(dataArg.value, data);
 
 	/* evaluate expr in the resolved env's scope so variable lookup uses envState */
 	const dfExpr = processDataflowFor(exprArg.value, {
@@ -105,12 +101,12 @@ export function processWithEnv<OtherInfo>(
 		rootId,
 		name,
 		data,
-		argumentProcessResult: [dfDataArg, dfExpr],
+		argumentProcessResult: pipedData ? [dfExpr] : [dfDataArg, dfExpr],
 		origin:                BuiltInProcName.With
 	});
 
 	const merged = dfDataArg.graph.mergeWith(dfExpr.graph);
-	const cfgEntry = ControlFlow.inSequence(merged, [dfDataArg, dfExpr], rootId);
+	const cfgEntry = ControlFlow.inSequence(merged, pipedData ? [dfExpr] : [dfDataArg, dfExpr], rootId);
 
 	const ingoing = dfDataArg.in.concat(
 		dfExpr.in,
@@ -121,14 +117,11 @@ export function processWithEnv<OtherInfo>(
 
 	/* within routes writes back into the data environment (stack frame or custom env); with discards them */
 	const isWithin = Identifier.getName(name.content) === 'within';
+	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	let resultEnv = data.environment;
 	if(isWithin && dfExpr.out.length > 0) {
-		/* routeWrittenToEnvir owns the Reads edge to envirNodeId on this path */
 		const tempResult = { ...dfExpr, environment: data.environment, graph: merged };
 		resultEnv = routeWrittenToEnvir(tempResult, envirResolution, rootId, data.environment).environment;
-	} else {
-		/* plain `with`, or `within` with no writes: routeWrittenToEnvir never runs, so add the edge here */
-		merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	}
 
 	return {

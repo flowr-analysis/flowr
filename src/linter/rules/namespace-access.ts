@@ -93,6 +93,6 @@ export const NAMESPACE_ACCESS = {
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Flags `pkg:::name` where `name` is actually exported by `pkg` (so `::` would do), and `pkg::name` where the signature database knows `name` is not exported (which fails at runtime in R). Stays silent whenever the database has no definite answer for the name.',
 		tags:          [LintingRuleTag.Bug],
-		defaultConfig: {}
+		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<NamespaceAccessResult, NamespaceAccessMetadata, NamespaceAccessConfig>;

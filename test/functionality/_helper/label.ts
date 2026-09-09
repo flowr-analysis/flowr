@@ -44,7 +44,7 @@ export interface SerializedTestLabel {
  * Test labels are used for identifying which of flowR's capabilities are being tested for.
  * For more information about test labels and capabilities, see the wiki page: {@link https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#test-labels}
  * @param testname - the name of the test (`it`) to be labeled
- * @param ids      - the capability ids to attach to the test
+ * @param ids      - the capability ids to attach to the test, including `supported: 'not'` ones so a counterexample can name the gap it documents
  * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it
  */
 export function label(testname: string, ids: readonly FlowrCapabilityId[], context: readonly TestLabelContext[]): string;

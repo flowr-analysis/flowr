@@ -125,7 +125,7 @@ export interface PlaygroundLinkParts {
 /**
  * Everything about flowR's playground that is not the page itself: what a link to it carries, and how
  * one is written. The page reads back exactly what {@link Playground.link} writes.
- * @helper location Everything about flowR's playground that is not the page itself: what a link to it carries, and how one is written.
+ * @helper location
  * @example
  * ```ts
  * Playground.link({ code: 'x <- 1\nprint(x)', at: '2@x', marks: ['2@x'] });

@@ -500,6 +500,8 @@ export interface BuiltInFnInfo extends StatedProps {
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */
 export interface SigLayout {
+	/** the declared parameter names, in order */
+	readonly names: readonly string[]
 	/** the props of each declared parameter, in order */
 	readonly props: readonly ArgProps[]
 	/** the position of the `...` parameter, `-1` if there is none */
@@ -508,6 +510,8 @@ export interface SigLayout {
 	readonly any:   ArgProps
 	/** the position of the {@link ArgProp.Alias} argument, handed back as the result, `-1` if there is none */
 	readonly alias: number
+	/** what {@link forcedArgs} answered for an argument count, kept since the answer only depends on the two */
+	forced?:        (readonly boolean[])[]
 }
 
 const layouts = new WeakMap<FnSig, SigLayout>();
@@ -519,10 +523,12 @@ const layouts = new WeakMap<FnSig, SigLayout>();
 function sigLayout(this: void, sig: FnSig): SigLayout {
 	let layout = layouts.get(sig);
 	if(layout === undefined) {
+		const names = sig.map(p => p[0]);
 		const props = sig.map(p => p[1]);
 		layout = {
+			names,
 			props,
-			rest:  sig.findIndex(p => p[0] === '...'),
+			rest:  names.indexOf('...'),
 			any:   props.reduce((acc, p) => acc | p, 0),
 			alias: props.findIndex(p => (p & ArgProp.Alias) !== 0)
 		};
@@ -556,7 +562,8 @@ function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly
 	if((layout.any & ArgProp.Forced) === 0) {
 		return undefined;
 	}
-	return Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
+	const cache = layout.forced ??= [];
+	return cache[count] ??= Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
 }
 
 /** The positions of the first `count` arguments that carry any of `prop`. */

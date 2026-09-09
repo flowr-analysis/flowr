@@ -11,10 +11,11 @@ import { dataflowLogger } from '../../../../../logger';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { effectiveArgs, resolveConstantString, resolveEnvirArg } from './built-in-envir-utils';
+import { EnvirPositionFormals, resolveConstantString, resolveFirstEnvirArg, suppliesArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -22,6 +23,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { Resolve } from '../../../../../environments/resolve-helper';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../../../../../util/assert';
+import type { FnSig } from '../../../../../environments/built-in-props';
 
 /**
  * The names an expression in name position denotes: the one it folds to, or every element of a `c(...)` of such,
@@ -61,17 +63,17 @@ export function processGet<OtherInfo>(
 	config: {
 		/** whether the call hands back what the name is bound to; `exists` only asks whether it is bound */
 		returnsValue?: boolean
+		/** the formals of the call, so a positional environment argument is found at the slot it really has */
+		sig?:          FnSig
 	} = {}
 ): DataflowInformation {
-	/* a piped `x` (`x |> get()`) patches in after dispatch; use effectiveArgs so this sees it in time */
-	const effArgs = effectiveArgs(args, rootId, data);
-	const usedPipedArg = effArgs !== args;
-
-	/* use the custom environment for resolution when envir points to a tracked env */
-	const resolution = resolveEnvirArg(effArgs, data);
+	/* the custom environment reaches the call through `envir` or, since `envir = as.environment(pos)`, through the
+	 * `pos`/`where` slot; only a value that really resolves to an environment is taken from the latter, as
+	 * `get("x", 1)` names a search-path position instead */
+	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', ...EnvirPositionFormals]);
 
 	/* the first arg must name the variable(s) to retrieve */
-	const firstArg = effArgs.length >= 1 ? effArgs[0] : undefined;
+	const firstArg = args.length >= 1 ? args[0] : undefined;
 	const retrieve = firstArg !== undefined && firstArg !== EmptyArgument
 		? unpackNonameArg(firstArg)
 		: undefined;
@@ -79,32 +81,24 @@ export function processGet<OtherInfo>(
 	const targets: RSymbol<OtherInfo & ParentInformation>[] = [];
 	/* set when the names had to be computed, so the expression that produced them still has to be evaluated */
 	let nameExpression: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
-	if(retrieve !== undefined && RString.is(retrieve)) {
-		const synthId = `${rootId}-get-name`;
-		const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
-			type:     RType.Symbol,
-			info:     { ...retrieve.info, id: synthId },
-			content:  removeRQuotes(retrieve.lexeme),
-			lexeme:   retrieve.lexeme,
-			location: retrieve.location
-		};
-		data.completeAst.idMap.set(synthId, synthSymbol);
-		targets.push(synthSymbol);
-	} else if(retrieve !== undefined) {
-		for(const [i, resolvedName] of namesDenotedBy(retrieve, data).entries()) {
+	if(retrieve !== undefined) {
+		/* a string literal names itself, anything else has to be folded to the name(s) it denotes */
+		const literal = RString.is(retrieve);
+		const names = literal ? [removeRQuotes(retrieve.lexeme)] : namesDenotedBy(retrieve, data);
+		const location = literal ? retrieve.location : retrieve.location ?? name.location ?? SourceRange.invalid();
+		for(const [i, resolvedName] of names.entries()) {
 			const synthId = `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
 			const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
-				type:     RType.Symbol,
-				info:     { ...retrieve.info, id: synthId },
-				content:  resolvedName,
-				lexeme:   resolvedName,
-				location: retrieve.location ?? name.location ?? SourceRange.invalid()
+				type:    RType.Symbol,
+				info:    { ...retrieve.info, id: synthId },
+				content: resolvedName,
+				lexeme:  literal ? retrieve.lexeme : resolvedName,
+				location
 			};
 			data.completeAst.idMap.set(synthId, synthSymbol);
 			targets.push(synthSymbol);
 		}
-		/* a piped name is already linked by processPipe, so don't forward it for processing again */
-		if(targets.length > 0 && !usedPipedArg) {
+		if(!literal && targets.length > 0) {
 			nameExpression = firstArg;
 		}
 	}
@@ -115,8 +109,8 @@ export function processGet<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
 	}
 
-	/* piped args need no slicing; otherwise the resolved name replaced args[0], so real args start at 1 */
-	const remainingArgs = usedPipedArg ? args : args.slice(1);
+	/* the resolved name replaced args[0], so the real args start at 1 */
+	const remainingArgs = args.slice(1);
 
 	/* resolve in the custom environment if one was found, else the global one.
 	 * Pass remaining original args (e.g. envir=e) so they appear as Use vertices in the graph. */
@@ -153,6 +147,9 @@ export function processGet<OtherInfo>(
 
 	if(resolution) {
 		information.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+	} else if(suppliesArg(args, config.sig, EnvirPositionFormals)) {
+		/* the value comes from a search-path position we do not model, so the local resolution is a guess */
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 	}
 
 	const isolatedTarget = resolution?.envirData.environment.current.builtInEnv === true;

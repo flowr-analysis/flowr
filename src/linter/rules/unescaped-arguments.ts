@@ -3,7 +3,7 @@ import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { ArgProps, FnSig, PropSelector } from '../../dataflow/environments/built-in-props';
 import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier, PkgName } from '../../dataflow/environments/identifier';
-import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
@@ -155,7 +155,7 @@ interface CriticalTargetEntry {
 }
 
 /** Get the critical calls of every category that is not disabled */
-function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltInIndex = BuiltInIndex.default()): CriticalCallEntry[] {
+function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltInIndex): CriticalCallEntry[] {
 	const result: CriticalCallEntry[] = [];
 
 	for(const category of UnescapedArgumentCategories) {
@@ -175,10 +175,10 @@ function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltI
 }
 
 /** Index the critical calls of the enabled categories by function name */
-function indexCriticalCalls(config: UnescapedArgumentsConfig): Map<string, CriticalCallEntry[]> {
+function indexCriticalCalls(config: UnescapedArgumentsConfig, builtIns: BuiltInIndex): Map<string, CriticalCallEntry[]> {
 	const index = new Map<string, CriticalCallEntry[]>();
 
-	for(const call of getEnabledCriticalCalls(config)) {
+	for(const call of getEnabledCriticalCalls(config, builtIns)) {
 		const name = Identifier.getName(call.name);
 		const known = index.get(name);
 
@@ -195,9 +195,10 @@ function indexCriticalCalls(config: UnescapedArgumentsConfig): Map<string, Criti
 function getCriticalTargets(
 	elements: readonly FlowrSearchElement<ParentInformation>[],
 	graph: DataflowGraph,
-	config: UnescapedArgumentsConfig
+	config: UnescapedArgumentsConfig,
+	builtIns: BuiltInIndex
 ): CriticalTarget[] {
-	const criticalCalls = indexCriticalCalls(config);
+	const criticalCalls = indexCriticalCalls(config, builtIns);
 	const targets: CriticalTarget[] = [];
 	const seen = new Set<string>();
 
@@ -290,7 +291,7 @@ async function getUnescapedSources(
 ): Promise<Map<CriticalTarget, InputSource[]>> {
 	const sanitizerNames = new Set((config.categories[category].sanitizers ?? []).map(call => Identifier.getName(call)));
 	const sanitizers = (config.categories[category].sanitizers ?? []).map(call => ({ call }));
-	const queryConfig = { narrowing: [...narrowingFunctions(), ...sanitizers] };
+	const queryConfig = { narrowing: [...narrowingFunctions(data.inspectContext().env.builtInIndex), ...sanitizers] };
 	const found = new Map<CriticalTarget, InputSource[]>();
 	let entries: CriticalTargetEntry[] = targets.map(target => ({ target, call: target.call.id, only: new Set([target.arg]), depth: 0 }));
 
@@ -375,15 +376,15 @@ function createResult(target: CriticalTarget, sources: InputSource[], config: Un
 }
 
 export const UNESCAPED_ARGUMENTS = {
-	createSearch: config => Q.fromQuery({
+	createSearch: (config, data) => Q.fromQuery({
 		type:        'call-context',
-		callName:    [...new Set(getEnabledCriticalCalls(config).map(({ name }) => Identifier.getName(name)))],
+		callName:    [...new Set(getEnabledCriticalCalls(config, data.inspectContext().env.builtInIndex).map(({ name }) => Identifier.getName(name)))],
 		callTargets: CallTargets.MustIncludeGlobal
 	}),
 	processSearchResult: async(elements, config, data) => {
 		const idMap = (await data.normalize()).idMap;
 		const graph = (await data.dataflow()).graph;
-		const targets = getCriticalTargets(elements.getElements(), graph, config);
+		const targets = getCriticalTargets(elements.getElements(), graph, config, data.inspectContext().env.builtInIndex);
 
 		const results: UnescapedArgumentsResult[] = [];
 		let escaped = 0;
@@ -422,7 +423,7 @@ export const UNESCAPED_ARGUMENTS = {
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Shiny, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Detects arguments of critical system, evaluation, database, and HTML/JavaScript calls that are not properly escaped.',
-		defaultConfig: {
+		defaultConfig: () => ({
 			categories: {
 				[UnescapedArgumentCategory.System]: {
 					criticalCalls: SemanticCallTag.Process,
@@ -477,6 +478,6 @@ export const UNESCAPED_ARGUMENTS = {
 			disabledCategories: [],
 			acceptedInputs:     AcceptedInputs,
 			maxDecentDepth:     MaxDescentDepth
-		}
+		})
 	}
 } as const satisfies LintingRule<UnescapedArgumentsResult, UnescapedArgumentsMetadata, UnescapedArgumentsConfig>;

@@ -1,11 +1,12 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { FunctionInfoPackageHit, FunctionInfoQuery, FunctionInfoQueryResult } from './function-info-query-format';
-import { functionOrigin } from './function-origin';
+import { builtinModelsOf } from './function-origin';
+import { isBaseRPackage } from '../../../util/r-base-packages';
 import { Identifier } from '../../../dataflow/environments/identifier';
 
 /**
  * Executes a function-info query: looks up `name` in the loaded signature database(s) (optionally restricted to
- * `packages`) and in flowR's own built-in configuration, via the shared {@link functionOrigin} helper.
+ * `packages`) and in flowR's own built-in configuration, see {@link builtinModelsOf}.
  */
 export function executeFunctionInfoQuery({ analyzer }: BasicQueryData, queries: readonly FunctionInfoQuery[]): Promise<FunctionInfoQueryResult> {
 	const start = Date.now();
@@ -15,8 +16,11 @@ export function executeFunctionInfoQuery({ analyzer }: BasicQueryData, queries: 
 	   has actually been asked for; a `getDependency` no-op is the public way to force that the very first time */
 	deps.getDependency(query.name);
 	const sigDb = deps.signatures();
-	const origin = functionOrigin(sigDb, query.name, query.packages);
-	const packages: FunctionInfoPackageHit[] = origin.packages.map(pkg => {
+	const exporting = sigDb.packagesExporting(query.name);
+	const candidates = query.packages;
+	const matching = candidates === undefined ? exporting : exporting.filter(p => candidates.includes(p));
+	/* base R carries no download count to rank by, yet a base package exporting the name is the likeliest answer */
+	const packages: FunctionInfoPackageHit[] = [...matching.filter(p => isBaseRPackage(p)), ...matching.filter(p => !isBaseRPackage(p))].map(pkg => {
 		const id = Identifier.make(query.name, pkg);
 		const fn = sigDb.functionOf(id) ?? sigDb.rawFunctionOf(id);
 		return {
@@ -33,6 +37,6 @@ export function executeFunctionInfoQuery({ analyzer }: BasicQueryData, queries: 
 		'.meta': { timing: Date.now() - start },
 		name:    query.name,
 		packages,
-		builtin: origin.builtin
+		builtin: builtinModelsOf(query.name, analyzer.inspectContext())
 	});
 }

@@ -180,16 +180,17 @@ describe('Benchmark page helpers', () => {
 			'the chart is already titled for the database');
 	});
 
-	/* these four mirror the mutation entries in scripts/test-label-counts.ts */
+	/* these three are what scripts/test-label-counts.ts records for the mutation tile */
 	test('group the metamorphic mutation counters', () => {
-		for(const name of ['mutation mutants', 'mutation passes', 'mutation known-wrong mutants', 'mutation tests']) {
-			assert.strictEqual(S.groupOf(name, '#'), 'mutations', `${name} belongs to the mutation tile`);
-		}
 		for(const name of ['mutation mutants', 'mutation passes', 'mutation tests']) {
+			assert.strictEqual(S.groupOf(name, '#'), 'mutations', `${name} belongs to the mutation tile`);
 			assert.strictEqual(S.betterOf(name, '#'), 'up', `${name} says how much is checked, so more is better`);
 		}
+		/* the suite stopped recording this one; the mapping is kept so that the runs still carrying it read right */
+		assert.strictEqual(S.groupOf('mutation known-wrong mutants', '#'), 'mutations',
+			'an older run still draws it in the mutation tile');
 		assert.strictEqual(S.betterOf('mutation known-wrong mutants', '#'), 'down',
-			'a mutant that is still sliced wrongly is a debt, and a zero that stays zero is the point of it');
+			'a mutant that is still sliced wrongly was a debt, so a run holding the number reads it as one');
 		assert.strictEqual(S.shortName('mutation known-wrong mutants'), 'Known-wrong mutants',
 			'the tile is already titled for the mutations');
 		assert.strictEqual(S.shortName('mutation tests'), 'Tests',

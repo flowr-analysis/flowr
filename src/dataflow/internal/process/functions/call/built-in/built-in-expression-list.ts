@@ -47,7 +47,15 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 
 /** whether reading the definition at `id` runs a function, as an active binding does */
 function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
-	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.Calls));
+	if(!DfgVertex.isVariableDefinition(graph.getVertex(id))) {
+		return false;
+	}
+	for(const e of graph.edgesFrom(id).values()) {
+		if(DfEdge.includesType(e, EdgeType.Calls)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /** `activeReads` collects the reads that turn out to run a function, see {@link callsOnRead} */
@@ -86,7 +94,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
-			if(!isFunc && read.name !== undefined && callsOnRead(nextGraph, tid) && DfgVertex.isUse(nextGraph.getVertex(rid))) {
+			if(!isFunc && read.name !== undefined && DfgVertex.isUse(nextGraph.getVertex(rid)) && callsOnRead(nextGraph, tid)) {
 				activeReads.push(read);
 			}
 		}

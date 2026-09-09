@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:39:20 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
 <h2 id="Function Info Query">Function Info Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.\
@@ -32,7 +32,7 @@ Given a base-R name such as `sd`:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (30 ms)\
+Query: **function-info** (75 ms)\
 &nbsp;&nbsp;&nbsp;╰ **stats** _(x, na.rm)_ _(R/sd.R:19)_\
 &nbsp;&nbsp;&nbsp;╰ **posterior** _(x, ...)_ _(R/rvar-summaries-over-draws.R:192)_\
 &nbsp;&nbsp;&nbsp;╰ **h2o** _(x, na.rm)_ _(R/frame.R:2998)_\
@@ -64,11 +64,10 @@ Query: **function-info** (30 ms)\
 &nbsp;&nbsp;&nbsp;╰ **descsuppR** _(x, ...)_ _(R/tod.r:201)_\
 &nbsp;&nbsp;&nbsp;╰ **tidyna** _(x, na.rm, all_na, ...)_ _(R/aaa-utils.R:25)_\
 &nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **stats::sd** [function] _processor builtin:d-ra, primitive_\
-_All queries together required ≈30 ms (1ms accuracy, total 31 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _31.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -77,7 +76,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 _As the code is pretty long, we inhibit pretty printing and syntax highlighting (JSON, hiding built-in):_
 
 ```text
-{"function-info":{".meta":{"timing":30},"name":"sd","packages":[{"package":"stats","exported":true,"parameters":["x","na.rm"],"file":"R/sd.R","line":19},{"package":"posterior","exported":true,"parameters":["x","..."],"file":"R/rvar-summaries-over-draws.R","line":192},{"package":"h2o","exported":true,"parameters":["x","na.rm"],"file":"R/frame.R","line":2998},{"package":"mosaic","exported":true,"parameters":[],"line":-1},{"package":"elliptic","exported":true,"parameters":["u","m","..."],"file":"R/elliptic.R","line":1447},{"package":"sn","exported":true,"parameters":[],"file":"R/sn-funct.R","line":5070},{"package":"actuar","exported":true,"parameters":["x","..."],"file":"R/var-methods.R","line":12},{"package":"rapportools","exported":true,"parameters":[],"file":"R/univar.R","line":189},{"package":"circular","exported":true,"parameters":["x","..."],"file":"R/sd.circular.R","line":2},{"package":"CVXR","exported":true,"parameters":["x","..."],"file":"R/263_zzz_R_specific_masking.R","line":56},{"package":"fdth","exported":true,"parameters":["x","..."],"file":"R/sd.R","line":2},{"package":"ftsa","exported":true,"parameters":[],"file":"R/sd.R","line":1},{"package":"Bolstad","exported":true,"parameters":["x","..."],"file":"R/sd.R","line":6},{"package":"crunch","exported":true,"parameters":["x","na.rm"],"file":"R/univariate.R","line":65},{"package":"spant","exported":true,"parameters":["x","na.rm"],"file":"R/mrs_data_proc.R","line":3140},{"package":"DynTxRegime","exported":true,"parameters":["x","na.rm"],"file":"R/E_class_IQLearnFS_C.R","line":169},{"package":"RSDA","exported":true,"parameters":["x","..."],"file":"R/symbolic_objects.R","line":405},{"package":"cmvnorm","exported":true,"parameters":["x","na.rm"],"file":"R/cmvnorm.R","line":276},{"package":"BayesTools","exported":true,"parameters":["x","..."],"file":"R/priors.R","line":2213},{"package":"spectrolab","exported":true,"parameters":["x","na.rm"],"file":"R/stats_function_overloads.R","line":121},{"package":"tf","exported":true,"parameters":["x","na.rm"],"file":"R/summarize.R","line":113},{"package":"fChange","exported":true,"parameters":["object","..."],"file":"R/generic_functions.R","line":263},{"package":"HistDat","exported":true,"parameters":[],"file":"R/histogram.R","line":175},{"package":"estimators","exported":true,"parameters":[],"file":"R/02_Weib.R","line":137},{"package":"ReMFPCA","exported":true,"parameters":["x","..."],"file":"R/mfdMethods.R","line":92},{"package":"rvec","exported":true,"parameters":["x","na.rm"],"file":"R/sd.R","line":32},{"package":"joker","exported":true,"parameters":[],"file":"R/02_Weib.R","line":239},{"package":"ibdsegments","exported":true,"parameters":["x","..."],"file":"R/distribution_methods.R","line":55},{"package":"descsuppR","exported":true,"parameters":["x","..."],"file":"R/tod.r","line":201},{"package":"tidyna","exported":true,"parameters":["x","na.rm","all_na","..."],"file":"R/aaa-utils.R","line":25}],"builtin":[{"kind":"function","namespace":"stats","processor":"builtin:d-ra","assumePrimitive":true,"tags":[],"configKeys":["props","sig"]}]},".meta":{"timing":30}}
+{"function-info":{".meta":{},"name":"sd","packages":[{"package":"stats","exported":true,"parameters":["x","na.rm"],"file":"R/sd.R","line":19},{"package":"posterior","exported":true,"parameters":["x","..."],"file":"R/rvar-summaries-over-draws.R","line":192},{"package":"h2o","exported":true,"parameters":["x","na.rm"],"file":"R/frame.R","line":2998},{"package":"mosaic","exported":true,"parameters":[],"line":-1},{"package":"elliptic","exported":true,"parameters":["u","m","..."],"file":"R/elliptic.R","line":1447},{"package":"sn","exported":true,"parameters":[],"file":"R/sn-funct.R","line":5070},{"package":"actuar","exported":true,"parameters":["x","..."],"file":"R/var-methods.R","line":12},{"package":"rapportools","exported":true,"parameters":[],"file":"R/univar.R","line":189},{"package":"circular","exported":true,"parameters":["x","..."],"file":"R/sd.circular.R","line":2},{"package":"CVXR","exported":true,"parameters":["x","..."],"file":"R/263_zzz_R_specific_masking.R","line":56},{"package":"fdth","exported":true,"parameters":["x","..."],"file":"R/sd.R","line":2},{"package":"ftsa","exported":true,"parameters":[],"file":"R/sd.R","line":1},{"package":"Bolstad","exported":true,"parameters":["x","..."],"file":"R/sd.R","line":6},{"package":"crunch","exported":true,"parameters":["x","na.rm"],"file":"R/univariate.R","line":65},{"package":"spant","exported":true,"parameters":["x","na.rm"],"file":"R/mrs_data_proc.R","line":3140},{"package":"DynTxRegime","exported":true,"parameters":["x","na.rm"],"file":"R/E_class_IQLearnFS_C.R","line":169},{"package":"RSDA","exported":true,"parameters":["x","..."],"file":"R/symbolic_objects.R","line":405},{"package":"cmvnorm","exported":true,"parameters":["x","na.rm"],"file":"R/cmvnorm.R","line":276},{"package":"BayesTools","exported":true,"parameters":["x","..."],"file":"R/priors.R","line":2213},{"package":"spectrolab","exported":true,"parameters":["x","na.rm"],"file":"R/stats_function_overloads.R","line":121},{"package":"tf","exported":true,"parameters":["x","na.rm"],"file":"R/summarize.R","line":113},{"package":"fChange","exported":true,"parameters":["object","..."],"file":"R/generic_functions.R","line":263},{"package":"HistDat","exported":true,"parameters":[],"file":"R/histogram.R","line":175},{"package":"estimators","exported":true,"parameters":[],"file":"R/02_Weib.R","line":137},{"package":"ReMFPCA","exported":true,"parameters":["x","..."],"file":"R/mfdMethods.R","line":92},{"package":"rvec","exported":true,"parameters":["x","na.rm"],"file":"R/sd.R","line":32},{"package":"joker","exported":true,"parameters":[],"file":"R/02_Weib.R","line":239},{"package":"ibdsegments","exported":true,"parameters":["x","..."],"file":"R/distribution_methods.R","line":55},{"package":"descsuppR","exported":true,"parameters":["x","..."],"file":"R/tod.r","line":201},{"package":"tidyna","exported":true,"parameters":["x","na.rm","all_na","..."],"file":"R/aaa-utils.R","line":25}],"builtin":[{"kind":"function","namespace":"stats","processor":"builtin:d-ra","assumePrimitive":true,"tags":[],"configKeys":["props","sig"]}]},".meta":{}}
 ```
 
 
@@ -114,17 +113,16 @@ flowR states for it:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (6 ms)\
+Query: **function-info** (13 ms)\
 &nbsp;&nbsp;&nbsp;╰ **base** _(x, pos, envir, mode, inherits)_ _(R/get.R:26)_\
 &nbsp;&nbsp;&nbsp;╰ **config** _(value, config, file, use_parent)_ _(R/get.R:43)_\
 &nbsp;&nbsp;&nbsp;╰ **crmPack**\
 &nbsp;&nbsp;&nbsp;╰ **ale** _(obj, ...)_ _(R/000-startup.R:52)_\
 &nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **base::get** [function] _processor builtin:get, eval eval:get, eval_\
-_All queries together required ≈6 ms (1ms accuracy, total 7 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _6.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -134,9 +132,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 ```json
 {
   "function-info": {
-    ".meta": {
-      "timing": 6
-    },
+    ".meta": {},
     "name": "get",
     "packages": [
       {
@@ -199,9 +195,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       }
     ]
   },
-  ".meta": {
-    "timing": 6
-  }
+  ".meta": {}
 }
 ```
 

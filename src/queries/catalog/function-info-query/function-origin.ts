@@ -1,12 +1,10 @@
-import type { AnyBuiltInDefinition } from '../../../dataflow/environments/built-in-config';
-import { DefaultBuiltinConfig } from '../../../dataflow/environments/default-builtin-config';
+import type { AnyBuiltInDefinition, BuiltInDefinitions } from '../../../dataflow/environments/built-in-config';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import type { SignatureDb } from '../../../project/sigdb/signature-db';
-import { isBaseRPackage } from '../../../util/r-base-packages';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
- * flowR's own modeling of one built-in entry naming a function, read off {@link DefaultBuiltinConfig} (built
- * from `WrittenBuiltinDefinitions`). Raw config values are not surfaced as-is - some carry closures
+ * flowR's own modeling of one built-in entry naming a function, read off the built-in definitions the analyzer
+ * registered (see {@link ReadOnlyFlowrAnalyzerEnvironmentContext#builtInDefinitions}). Raw config values are not surfaced as-is - some carry closures
  * (`ignoreIf`, `hasUnknownSideEffects`), which are not meaningful to a query consumer - so only their keys are.
  */
 export interface BuiltinModel {
@@ -49,52 +47,24 @@ function toModel(def: AnyBuiltInDefinition, namespace: string | undefined): Buil
 	}
 }
 
-/** indexes {@link DefaultBuiltinConfig} by bare name, then by namespace, once (the table never changes at runtime) */
-let byBareName: Map<string, Map<string | undefined, BuiltinModel>> | undefined;
-
-function index(): Map<string, Map<string | undefined, BuiltinModel>> {
-	if(byBareName === undefined) {
-		byBareName = new Map();
-		for(const def of DefaultBuiltinConfig as readonly AnyBuiltInDefinition[]) {
-			for(const id of def.names) {
-				const bare = Identifier.getName(id);
-				const namespace = Identifier.getNamespace(id);
-				const byNamespace = byBareName.get(bare) ?? new Map<string | undefined, BuiltinModel>();
-				byBareName.set(bare, byNamespace);
-				/* a later entry for the same (namespace, name) deliberately restates an earlier one (`overrides:
-				   true`, see WrittenBuiltinDefinitions) and wins, exactly like BuiltIns.set() overwriting the map */
-				byNamespace.set(namespace, toModel(def, namespace));
-			}
+/** indexes the definitions by bare name, then by namespace, once per definition table */
+function byBareName(definitions: BuiltInDefinitions): Map<string, Map<string | undefined, BuiltinModel>> {
+	const known = new Map<string, Map<string | undefined, BuiltinModel>>();
+	for(const def of definitions as readonly AnyBuiltInDefinition[]) {
+		for(const id of def.names) {
+			const bare = Identifier.getName(id);
+			const namespace = Identifier.getNamespace(id);
+			const byNamespace = known.get(bare) ?? new Map<string | undefined, BuiltinModel>();
+			known.set(bare, byNamespace);
+			/* a later entry for the same (namespace, name) deliberately restates an earlier one (`overrides:
+			   true`, see WrittenBuiltinDefinitions) and wins, exactly like BuiltIns.set() overwriting the map */
+			byNamespace.set(namespace, toModel(def, namespace));
 		}
 	}
-	return byBareName;
+	return known;
 }
 
-/** every built-in flowR states for the bare name `name`, one entry per namespace it is declared under, empty when it states none */
-export function builtinModelsOf(name: string): readonly BuiltinModel[] {
-	return [...(index().get(name)?.values() ?? [])];
-}
-
-export interface FunctionOrigin {
-	/** packages the signature database says export `name`, restricted to `candidates` when given; base R first, the rest by downloads (see {@link SignatureDb.packagesExporting}) */
-	readonly packages: readonly string[];
-	/** flowR's own definitions for `name`, see {@link builtinModelsOf} */
-	readonly builtin:  readonly BuiltinModel[];
-}
-
-/**
- * Where `name` comes from: what the signature database says exports it, and what flowR's own built-in
- * configuration states about it. Backs the function-info query; the dependencies query's assumed-base-package
- * reporting asks the narrower "is this one of the attached base packages" question instead, via
- * `attachedBasePackages`/`Dataflow.qualifyAll`, since that needs no signature database mounted at all.
- * @param sigDb      - the database to ask, see {@link SignatureDb}
- * @param name       - the bare name to look up
- * @param candidates - restrict the package list to these names; every exporting package when omitted
- */
-export function functionOrigin(sigDb: SignatureDb, name: string, candidates?: readonly string[]): FunctionOrigin {
-	const exporting = sigDb.packagesExporting(name);
-	const matching = candidates === undefined ? exporting : exporting.filter(p => candidates.includes(p));
-	/* base R carries no download count to rank by, yet a base package exporting the name is the likeliest answer */
-	const packages = [...matching.filter(p => isBaseRPackage(p)), ...matching.filter(p => !isBaseRPackage(p))];
-	return { packages, builtin: builtinModelsOf(name) };
+/** every built-in the analyzer states for the bare name `name`, one entry per namespace it is declared under, empty when it states none */
+export function builtinModelsOf(name: string, ctx: ReadOnlyFlowrAnalyzerContext): readonly BuiltinModel[] {
+	return [...(ctx.env.deriveFromDefinitions(byBareName).get(name)?.values() ?? [])];
 }

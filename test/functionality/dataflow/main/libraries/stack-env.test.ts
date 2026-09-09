@@ -46,6 +46,11 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 		emptyGraph().addEdge('3@x', '2@"x"', EdgeType.Reads),
 		opts);
 
+	assertDataflow(label('assign through two agreeing globalenv() definitions reaches the global', ['search-path', 'dynamic-environment-resolution']), ts,
+		'p <- runif(1) > 0.5\nif(p) e <- globalenv() else e <- globalenv()\nassign("x", 1, envir = e)\nx',
+		emptyGraph().addEdge('4@x', '3@"x"', EdgeType.Reads),
+		opts);
+
 	assertDataflow(label('assign to globalenv() inside a function reaches the global', ['search-path', 'dynamic-environment-resolution']), ts,
 		'f <- function() assign("x", 42, envir = globalenv())\nf()\nx',
 		emptyGraph().addEdge('3@x', '1@"x"', EdgeType.Reads),
@@ -81,9 +86,10 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 		emptyGraph().addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 
+	// `$5` is the `x = 42` argument of the list, which is where the binding is anchored
 	assertDataflow(label('list2env(envir = globalenv()) inside a function reaches the global', ['search-path', 'dynamic-environment-resolution']), ts,
 		'f <- function() list2env(list(x = 42), envir = globalenv())\nf()\nx',
-		emptyGraph().addEdge('3@x', '1@42', EdgeType.Reads),
+		emptyGraph().addEdge('3@x', '$5', EdgeType.Reads),
 		opts);
 
 	// within() has no env method in real R, but flowR routes it like with(e, ...) for consistency

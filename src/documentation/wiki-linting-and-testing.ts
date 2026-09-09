@@ -15,6 +15,7 @@ import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import { MutationPasses } from '../../test/functionality/_helper/r-mutations';
 
 
 /**
@@ -209,7 +210,7 @@ checkup\`, where \`npm run checkup -- mutations\` runs just this job.
 
 The suite has three pieces:
 
-- the passes, in ${linkFlowRSourceFile('test/functionality/_helper/r-mutations.ts')} (\`MutationPasses\`), 26 of them at the moment.
+- the passes, in ${linkFlowRSourceFile('test/functionality/_helper/r-mutations.ts')} (\`MutationPasses\`), ${MutationPasses.length} of them at the moment.
 - the corpus of programs and the invariant checks run against their mutants, in ${linkFlowRSourceFile('test/mutations/r-semantics-counterexamples.test.ts')}.
 - pass-level unit tests, in ${linkFlowRSourceFile('test/mutations/r-mutations.test.ts')}, checking each pass on its own rather than against the corpus.
 
@@ -230,12 +231,9 @@ The passes fall into a few categories:
   a string literal is split apart into \`paste0("v", "vv")\`.
 - structure and braces: the first two statements (or a run of statements around the criterion's own line) are
   joined with \`;\`, every statement or the whole program is wrapped in a \`{ ... }\` block, and braces are added
-  to or removed from the body of an \`if\`/\`for\`/\`while\`.
-- loop forms: \`while (TRUE)\` and \`repeat\` are swapped for each other, as either spells out the same loop.
+  to the body of a single-line \`if\` (both arms of an \`if\`/\`else\`), \`for\` or \`while\`.
 - function forms: \`function(x)\` becomes \`\\(x)\` where the R version supports the shorthand, and a call
   nested inside another call is rewritten as a native pipe, e.g. \`f(g(x))\` becomes \`x |> g() |> f()\`.
-- quoting and literals: \`"..."\` and \`'...'\` are swapped where doing so is safe, and \`TRUE\`/\`FALSE\` are
-  abbreviated to \`T\`/\`F\` where the program does not otherwise bind them.
 - one pass, \`criterion value shifted by one\`, is the exception that deliberately changes the output: it adds
   one to a printed number and updates the expected output to match, so the corpus also checks that a slice
   tracks a value rather than just a name.
@@ -271,16 +269,13 @@ A pass has to stay sound, which is harder than it looks. Rules learned the hard 
 `
 })}
 
-${linkFlowRSourceFile('test/mutations/r-semantics-counterexamples.test.ts')} also keeps a \`KnownWrongMutants\`
-set, naming a mutant flowR is known not to slice correctly yet. It is currently empty. A new pass surfacing a
-genuine flowR bug should be reported and the bug fixed, not silenced by adding an entry: the suite asserts
-that a listed mutant still fails, so fixing the underlying bug requires removing it from the set again, not
-leaving it there.
+There is no list of mutants flowR is allowed to fail on: a pass surfacing a genuine flowR bug should be
+reported and the bug fixed, not silenced.
 
-A complete run writes what it exercised, passes, counterexamples, mutants and known-wrong mutants, together
-with how many tests it ran, and ${linkFlowRSourceFile('scripts/test-label-counts.ts')} merges those numbers
-into the ${ctx.linkPage('flowr:benchmarks', 'benchmark page')} as the number of mutation passes, the number of
-mutants (out of how many were possible), the number of known-wrong mutants, and the number of mutation tests.
+A complete run writes what it exercised, passes, counterexamples and mutants, together with how many tests it
+ran, and ${linkFlowRSourceFile('scripts/test-label-counts.ts')} merges those numbers into the
+${ctx.linkPage('flowr:benchmarks', 'benchmark page')} as the number of mutation passes, the number of mutants
+(out of how many were possible), and the number of mutation tests.
 
 The suite already found real bugs this way. Most recently, a value arriving through the native pipe (e.g.
 \`x |> g() |> get()\`) was not tracked like a literal argument, so the slice dropped a definition it needed;

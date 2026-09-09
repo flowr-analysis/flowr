@@ -6,7 +6,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import fs from 'fs';
 import path from 'path';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
-import { getVarsAndTypesFromShell, SexpToRType } from '../../../project/plugin/load-pipeline/load-pipeline.test';
+import { getVarsAndTypesFromShell, MissingRealWorldRda, realWorldRdaFiles, SexpToRType } from '../../../project/plugin/load-pipeline/load-pipeline.test';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
@@ -17,16 +17,14 @@ import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processin
 import { SexpType } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 
 describe('load real-world', withTreeSitter(parser => {
-	const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
-	if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
-		it.skip('skipped - no RDA files found', () => {});
+	const found = realWorldRdaFiles();
+	if(found.length === 0) {
+		it.skip(MissingRealWorldRda, () => {});
 		return;
 	}
 
-	const files = fs.readdirSync(dir)
-		.filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda'))
-		// forward slashes so the path survives interpolation into R strings (`\` is an escape there) on Windows
-		.map(file => rPath(path.join(dir, file)));
+	// forward slashes so the path survives interpolation into R strings (`\` is an escape there) on Windows
+	const files = found.map(rPath);
 
 	describe('defines variables', () => {
 		for(const file of files) {

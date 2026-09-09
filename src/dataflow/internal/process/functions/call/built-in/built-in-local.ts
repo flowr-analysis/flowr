@@ -15,9 +15,8 @@ import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../enviro
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveEnvirArgOrAmbiguous, routeWrittenToEnvir } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 
 export interface LocalFunctionConfiguration {
@@ -48,15 +47,16 @@ export function processLocal<OtherInfo>(
 		'...':              '...'
 	};
 	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
-	const env = unpackArg(RArgument.getWithId(args, argMaps.get('env')?.[0]));
+	const envArg = RArgument.getWithId(args, argMaps.get('env')?.[0]);
+	const env = unpackArg(envArg);
 	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
 	if(!expr) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* when envir resolves to a tracked environment, evaluate expr inside it */
-	const envirRouting = env ? resolveEnvirArgOrAmbiguous(args, data, config.args.env) : undefined;
-	const envirResolution = envirRouting?.resolution;
+	const envirRouting = envArg ? resolveArgToEnvirOrAmbiguous(envArg, data) : undefined;
+	const envirResolution = envirOf(envirRouting);
 
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
 	if(ControlFlow.alwaysExits(dfEnv)) {
@@ -81,7 +81,7 @@ export function processLocal<OtherInfo>(
 		rootId,
 		name,
 		data,
-		argumentProcessResult: [dfExpr, dfEnv],
+		argumentProcessResult: env ? [dfExpr, dfEnv] : [dfExpr],
 		origin:                BuiltInProcName.Local
 	});
 
@@ -112,12 +112,8 @@ export function processLocal<OtherInfo>(
 		unknownReferences: []
 	};
 
-	if(envirRouting?.ambiguous) {
-		/* envir names a value we cannot pin down (e.g. a parameter): body writes stay scoped locally above so
-		 * nothing leaks, but they may really escape into whatever envir turns out to be, so the call as a whole
-		 * is an unknown side effect */
-		handleUnknownSideEffect(graph, baseResult.environment, rootId);
-	}
+	/* body writes stay scoped locally above so nothing leaks, but they may really escape into whatever envir turns out to be */
+	unknownIfAmbiguous(envirRouting, baseResult, rootId);
 
 	/* route body writes to wherever envir resolved: the real stack frame or the custom env's tracked state */
 	return envirResolution ? routeWrittenToEnvir(baseResult, envirResolution, rootId, data.environment) : baseResult;

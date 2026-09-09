@@ -109,6 +109,13 @@ export interface RShellOptions extends RShellSessionOptions {
 
 export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R';
 
+/**
+ * R reads its character type from the environment before it runs a line of ours, so ask for UTF-8 here as well:
+ * `Sys.setlocale` in the init (see `init.ts`) can only try names this host may not have, and a non-UTF-8
+ * character type makes `getParseData` escape non-ASCII source unparseably. Copied once, as `process.env` is large.
+ */
+let DEFAULT_R_SHELL_ENV: NodeJS.ProcessEnv | undefined = undefined;
+
 /** Default RShell options from `config`, built fresh each call so later config changes are seen. */
 export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOptions {
 	return {
@@ -118,10 +125,7 @@ export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOpti
 		// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
 		commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
 		cwd:                process.cwd(),
-		/* R reads its character type from the environment before it runs a line of ours, so ask for UTF-8
-		 * here as well: `Sys.setlocale` in the init (see `init.ts`) can only try names this host may not
-		 * have, and a non-UTF-8 character type makes `getParseData` escape non-ASCII source unparseably. */
-		env:                { ...process.env, LC_CTYPE: process.env.LC_ALL ?? process.env.LC_CTYPE ?? 'C.UTF-8' },
+		env:                DEFAULT_R_SHELL_ENV ??= { ...process.env, LC_CTYPE: process.env.LC_ALL ?? process.env.LC_CTYPE ?? 'C.UTF-8' },
 		eol:                '\n',
 		homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
 		sessionName:        'default',

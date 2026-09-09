@@ -8,6 +8,7 @@ import { FlowrGithubGroupName, flowrSourceFileUrl } from './doc-util/doc-files';
 import { Playground } from '../util/text/playground-link';
 import { OperatorDatabase } from '../r-bridge/lang-4.x/ast/model/operators';
 import { highlightR, escapeHtml, type KnownNames } from '../util/text/r-highlight';
+import { DefaultMap } from '../util/collections/defaultmap';
 
 /* mutations suite writes its own file so the two test runs don't clobber each other */
 const detailedInfoFiles = ['coverage/flowr-test-details.json', 'coverage/flowr-test-details-mutations.json'];
@@ -27,13 +28,13 @@ interface SignatureTest {
 
 /** the labeled tests of flowR, located in their sources so that we can link to the line they start at */
 interface TestSourceIndex {
-	readonly byCapability: Map<string, SignatureTest[]>;
-	readonly byName:       Map<string, SignatureTest[]>;
+	readonly byCapability: DefaultMap<string, SignatureTest[]>;
+	readonly byName:       DefaultMap<string, SignatureTest[]>;
 }
 
 interface CapabilityInformation {
 	readonly parser:      KnownParser;
-	readonly info:        Map<string, TestLabel[]> | undefined
+	readonly info:        DefaultMap<string, TestLabel[]> | undefined
 	readonly tests:       TestSourceIndex
 	/** known R names to link in the signature browser; omit or empty links none */
 	readonly knownNames?: KnownNames
@@ -58,15 +59,9 @@ function claimedCapabilities(array: string): { ids: string[], opaque: boolean } 
 	return { ids: [...new Set(ids)], opaque: /\.{3}/.test(array.replace(operatorSpreadRegex, '')) };
 }
 
-function pushTest(map: Map<string, SignatureTest[]>, key: string, test: SignatureTest): void {
-	const existing = map.get(key) ?? [];
-	existing.push(test);
-	map.set(key, existing);
-}
-
 function indexTestSources(): TestSourceIndex {
-	const byCapability = new Map<string, SignatureTest[]>();
-	const byName = new Map<string, SignatureTest[]>();
+	const byCapability = new DefaultMap<string, SignatureTest[]>(() => []);
+	const byName = new DefaultMap<string, SignatureTest[]>(() => []);
 	for(const testSourceFolder of testSourceFolders) {
 		if(!fs.existsSync(testSourceFolder)) {
 			continue;
@@ -83,9 +78,9 @@ function indexTestSources(): TestSourceIndex {
 					claimed: ids.length,
 					opaque
 				};
-				pushTest(byName, test.name.toLowerCase(), test);
+				byName.get(test.name.toLowerCase()).push(test);
 				for(const id of ids) {
-					pushTest(byCapability, id, test);
+					byCapability.get(id).push(test);
 				}
 			}
 		}
@@ -121,14 +116,14 @@ function pickSignatureTests(tests: readonly SignatureTest[]): SignatureTest[] {
  */
 function signatureTestsFor(info: CapabilityInformation, capability: FlowrCapability): SignatureTest[] {
 	const direct = info.tests.byCapability.get(capability.id);
-	if(direct) {
+	if(direct.length > 0) {
 		return pickSignatureTests(direct);
 	}
 	const byName: SignatureTest[] = [];
 	for(const { name } of info.info?.get(capability.id) ?? []) {
 		const locations = info.tests.byName.get(name);
 		/* skip opaque tests, their name doesn't reliably match this capability */
-		if(locations && locations.length === 1 && !locations[0].opaque) {
+		if(locations.length === 1 && !locations[0].opaque) {
 			byName.push(locations[0]);
 		}
 	}
@@ -138,12 +133,6 @@ function signatureTestsFor(info: CapabilityInformation, capability: FlowrCapabil
 function capabilitySearchUrl(id: string): string {
 	return `https://github.com/search?q=${encodeURIComponent(`repo:${FlowrGithubGroupName}/flowr "'${id}'"`)}&type=code`;
 }
-
-const supportedLabel = {
-	not:       'not supported',
-	partially: 'partially supported',
-	fully:     'fully supported'
-} as const;
 
 /** capability id to name, for rendering links by name instead of raw id */
 const capabilityNames: ReadonlyMap<string, string> = (() => {
@@ -204,9 +193,6 @@ const iconDefs = `<svg width="0" height="0" style="position:absolute" aria-hidde
 	}).map(([id, path]) => `<symbol id="${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</symbol>`).join('')
 }</defs></svg>`;
 
-/** play icon shown on a code snippet instead of a text label */
-const playIcon = icon('i-play');
-
 /** renders a fenced block: mermaid diagram, highlighted+runnable R, or plain text */
 function fencedHtml(language: string, code: string, knownNames?: KnownNames): string {
 	if(language === 'mermaid') {
@@ -214,7 +200,7 @@ function fencedHtml(language: string, code: string, knownNames?: KnownNames): st
 	}
 	if(language === 'r') {
 		return `<figure class="code"><a class="try" href="${Playground.link({ code })}" target="_blank" rel="noopener"`
-			+ `${iconLabel('open in the playground')}>${playIcon}</a>`
+			+ `${iconLabel('open in the playground')}>${icon('i-play')}</a>`
 			+ `<pre><code class="language-r">${highlightR(code, knownNames)}</code></pre></figure>`;
 	}
 	return `<figure class="code"><pre><code>${escapeHtml(code)}</code></pre></figure>`;
@@ -258,25 +244,14 @@ function exampleHtml(markdown: string, knownNames?: KnownNames): string {
 	}).filter(b => b.length > 0).join('\n');
 }
 
-function obtainDetailedInfos(): Map<string, TestLabel[]> | undefined {
-	const out = new Map<string, TestLabel[]>();
+function obtainDetailedInfos(): DefaultMap<string, TestLabel[]> | undefined {
+	const out = new DefaultMap<string, TestLabel[]>(() => []);
 	let foundAny = false;
-	for(const file of detailedInfoFiles) {
-		if(!fs.existsSync(file)) {
-			continue;
-		}
+	for(const file of detailedInfoFiles.filter(f => fs.existsSync(f))) {
 		foundAny = true;
-		const content = fs.readFileSync(file).toString();
-		const base = JSON.parse(content) as [string, SerializedTestLabel[]][];
+		const base = JSON.parse(fs.readFileSync(file).toString()) as [string, SerializedTestLabel[]][];
 		for(const [key, values] of base) {
-			const existing = out.get(key) ?? [];
-			existing.push(...values.map(v => ({
-				id:           v.id,
-				name:         v.name,
-				capabilities: new Set(v.capabilities),
-				context:      new Set(v.context)
-			} satisfies TestLabel)));
-			out.set(key, existing);
+			out.get(key).push(...values.map(v => ({ ...v, capabilities: new Set(v.capabilities), context: new Set(v.context) } satisfies TestLabel)));
 		}
 	}
 	return foundAny ? out : undefined;
@@ -284,13 +259,6 @@ function obtainDetailedInfos(): Map<string, TestLabel[]> | undefined {
 
 /** contexts shown before the rest collapse into "and N more" */
 const shownContextCount = 3;
-
-/** top contexts by count, remainder folded into "and N more" */
-function shownContexts(contexts: readonly string[]): string {
-	const rest = contexts.length - shownContextCount;
-	return rest <= 0 ? contexts.join(', ')
-		: `${contexts.slice(0, shownContextCount).join(', ')} and ${rest} more`;
-}
 
 /** how many tests claim the capability, linking to all of them, and in which contexts they check it */
 function testDetails(info: CapabilityInformation, capability: FlowrCapability): string {
@@ -313,10 +281,10 @@ function testDetails(info: CapabilityInformation, capability: FlowrCapability): 
 	grouped.delete('other');
 	const contexts = [...grouped.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([context, count]) => `${count} ${context}`);
 	const where = contexts.length === 0 ? 'every test that claims this id' : `where they run: ${contexts.join(', ')}`;
-	const shown = shownContexts(contexts);
-	const truncated = shown !== contexts.join(', ');
+	const rest = contexts.length - shownContextCount;
+	const shown = rest <= 0 ? contexts.join(', ') : `${contexts.slice(0, shownContextCount).join(', ')} and ${rest} more`;
 	return `<a class="tests" href="${capabilitySearchUrl(capability.id)}" title="${escapeHtml(where)}">${unique.length} test${unique.length === 1 ? '' : 's'}</a>`
-		+ (contexts.length === 0 ? '' : `<span class="ctx"${truncated ? ` title="${escapeHtml(where)}"` : ''}>${escapeHtml(shown)}</span>`);
+		+ (contexts.length === 0 ? '' : `<span class="ctx"${rest > 0 ? ` title="${escapeHtml(where)}"` : ''}>${escapeHtml(shown)}</span>`);
 }
 
 /** title + aria-label for an icon control, from one string */
@@ -329,9 +297,6 @@ function foldHtml(cssClass: string, icon: string, tooltip: string, label: string
 	return `<details class="${cssClass}"${open ? ' open' : ''}><summary title="${escapeHtml(tooltip)}">${icon}<span>${label}</span></summary>${content}</details>`;
 }
 
-/** icon for the signature-tests fold */
-const proofIcon = icon('i-proof');
-
 function signatureTestsHtml(info: CapabilityInformation, capability: FlowrCapability): string {
 	const tests = signatureTestsFor(info, capability);
 	if(tests.length === 0) {
@@ -341,32 +306,38 @@ function signatureTestsHtml(info: CapabilityInformation, capability: FlowrCapabi
 		const name = displayName(t.name);
 		return `<a href="${flowrSourceFileUrl(t.file)}#L${t.line}">${escapeHtml(name.length > 72 ? name.slice(0, 69) + '...' : name)}</a>`;
 	});
-	return foldHtml('proof', proofIcon, 'the tests that demonstrate this capability', 'signature tests', `<p>${links.join(', ')}</p>`);
+	return foldHtml('proof', icon('i-proof'), 'the tests that demonstrate this capability', 'signature tests', `<p>${links.join(', ')}</p>`);
 }
 
-interface ChildrenSummary {
-	total:     number;
-	fully:     number;
-	partially: number;
-	not:       number;
+/** the three support states, in the order every meter, tally and count row lists them */
+const supportStates = ['fully', 'partially', 'not'] as const;
+
+type ChildrenSummary = Record<typeof supportStates[number], number>;
+
+/** how many capabilities the summary covers */
+function totalOf(summary: ChildrenSummary): number {
+	return summary.fully + summary.partially + summary.not;
 }
 
 function summarizeChildren(capabilities: readonly FlowrCapability[]): ChildrenSummary {
-	const summary: ChildrenSummary = { total: 0, fully: 0, partially: 0, not: 0 };
+	const summary: ChildrenSummary = { fully: 0, partially: 0, not: 0 };
 	for(const capability of capabilities) {
 		if(capability.capabilities) {
 			const child = summarizeChildren(capability.capabilities);
-			summary.fully += child.fully;
-			summary.partially += child.partially;
-			summary.not += child.not;
-			summary.total += child.total;
+			for(const key of supportStates) {
+				summary[key] += child[key];
+			}
 		}
 		if(capability.supported) {
 			summary[capability.supported]++;
-			summary.total++;
 		}
 	}
 	return summary;
+}
+
+/** the summary of a capability's children, or of the capability itself when it has none */
+function summaryOf(capability: FlowrCapability): ChildrenSummary {
+	return summarizeChildren(capability.capabilities ?? [capability]);
 }
 
 /** minimum R version badge, for capabilities R gained later */
@@ -399,46 +370,27 @@ function referencesHtml(capability: FlowrCapability): string {
 	return `<p class="refs">${pills.join('')}</p>`;
 }
 
-/** [cssClass, value, label] triples for the three support states */
-function summaryTriples(summary: ChildrenSummary): readonly [string, number, string][] {
-	return [
-		['fully', summary.fully, 'fully'],
-		['partially', summary.partially, 'partially'],
-		['not', summary.not, 'not']
-	];
-}
-
-/** summary sentence used as tooltip by meterHtml and tallyHtml */
+/** summary sentence used as tooltip by meterHtml and summaryPills */
 function summarySentence(summary: ChildrenSummary): string {
-	return summaryTriples(summary).map(([, value, label]) => `${value} ${label}`).join(', ') + ' supported';
+	return supportStates.map(state => `${summary[state]} ${state}`).join(', ') + ' supported';
 }
 
 /** support bar for a group, readable without counting */
 function meterHtml(summary: ChildrenSummary): string {
-	const share = (n: number) => summary.total === 0 ? 0 : (n / summary.total * 100).toFixed(1);
+	const total = totalOf(summary);
+	const share = (n: number) => total === 0 ? 0 : (n / total * 100).toFixed(1);
 	return `<span class="meter" role="img" aria-label="${summarySentence(summary)}">`
-		+ summaryTriples(summary).map(([cssClass, value]) => `<span class="${cssClass}" style="width:${share(value)}%"></span>`).join('')
+		+ supportStates.map(state => `<span class="${state}" style="width:${share(summary[state])}%"></span>`).join('')
 		+ '</span>';
 }
 
-/** support counts as pills, labeled or just titled depending on room */
-function summaryPills(summary: ChildrenSummary, wrapper: string, title: string | undefined, withLabel: boolean): string {
-	return `<span class="${wrapper}"${title ? ` title="${title}"` : ''}>`
-		+ summaryTriples(summary).map(([cssClass, value, label]) => `<span class="c ${cssClass}">${value}${withLabel ? ' ' + label : ''}</span>`).join('')
+/** support counts as pills; without room for labels (`tally-mini`) the sentence becomes the tooltip */
+function summaryPills(summary: ChildrenSummary, variant: 'counts' | 'tally-mini'): string {
+	const withLabel = variant === 'counts';
+	return `<span class="${variant}"${withLabel ? '' : ` title="${summarySentence(summary)}"`}>`
+		+ supportStates.map(state => `<span class="c ${state}">${summary[state]}${withLabel ? ' ' + state : ''}</span>`).join('')
 		+ '</span>';
 }
-
-/** compact {@link countsHtml}, for a fold's summary line */
-function tallyHtml(summary: ChildrenSummary): string {
-	return summaryPills(summary, 'tally-mini', summarySentence(summary), false);
-}
-
-function countsHtml(summary: ChildrenSummary): string {
-	return summaryPills(summary, 'counts', undefined, true);
-}
-
-/** icon for the example fold */
-const demoIcon = icon('i-demo');
 
 /** the example a capability carries, already rendered */
 async function exampleOf(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
@@ -456,11 +408,11 @@ async function metaHtml(info: CapabilityInformation, capability: FlowrCapability
 	if(refs === '' && example === '') {
 		return '';
 	}
+	const shown = `<div class="example">${example}</div>`;
 	if(refs === '') {
-		return `<div class="example">${example}</div>`;
+		return shown;
 	}
-	const fold = example === '' ? ''
-		: foldHtml('demo', demoIcon, 'an example of this capability', 'example', `<div class="example">${example}</div>`, true);
+	const fold = example === '' ? '' : foldHtml('demo', icon('i-demo'), 'an example of this capability', 'example', shown, true);
 	return `<div class="meta">${refs}${fold}</div>`;
 }
 
@@ -473,7 +425,7 @@ async function capabilityHtml(info: CapabilityInformation, capability: FlowrCapa
 	const support = capability.supported;
 	const parts = [
 		`<div class="head"><a class="anchor" href="#${capability.id}"${iconLabel('link to this capability')}>#</a>`,
-		support ? `<span class="badge ${support}" title="${supportedLabel[support]}"></span>` : '',
+		support ? `<span class="badge ${support}" title="${support} supported"></span>` : '',
 		`<span class="name" id="${capability.id}" title="${escapeHtml(capability.id)}">${escapeHtml(capability.name)}</span>`,
 		versionHtml(capability),
 		testDetails(info, capability),
@@ -484,7 +436,8 @@ async function capabilityHtml(info: CapabilityInformation, capability: FlowrCapa
 	];
 	if(capability.capabilities) {
 		const summary = summarizeChildren(capability.capabilities);
-		parts.push(`<details${depth < openDepth ? ' open' : ''}><summary>${summary.total} child${summary.total === 1 ? '' : 'ren'}${meterHtml(summary)}${tallyHtml(summary)}</summary>`);
+		const total = totalOf(summary);
+		parts.push(`<details${depth < openDepth ? ' open' : ''}><summary>${total} child${total === 1 ? '' : 'ren'}${meterHtml(summary)}${summaryPills(summary, 'tally-mini')}</summary>`);
 		parts.push(await capabilitiesHtml(info, capability.capabilities, true, depth + 1));
 		parts.push('</details>');
 	}
@@ -504,11 +457,8 @@ async function capabilitiesHtml(info: CapabilityInformation, capabilities: reado
 		items.push(await capabilityHtml(info, capability, collapse && items.length >= shownChildren, depth));
 	}
 	const hidden = collapse ? items.length - shownChildren : 0;
-	if(hidden <= 0) {
-		return `<ul class="caps">${items.join('\n')}</ul>`;
-	}
-	return `<ul class="caps" data-collapsed="yes">${items.join('\n')}</ul>`
-		+ `<button type="button" class="more">show ${hidden} more</button>`;
+	return `<ul class="caps"${hidden > 0 ? ' data-collapsed="yes"' : ''}>${items.join('\n')}</ul>`
+		+ (hidden > 0 ? `<button type="button" class="more">show ${hidden} more</button>` : '');
 }
 
 /** groups named on an overview card before the rest collapse */
@@ -527,24 +477,26 @@ function groupsHtml(capability: FlowrCapability): string {
 }
 
 /** overview card for a category, linking into its full view */
-function cardHtml(capability: FlowrCapability, summary: ChildrenSummary): string {
+function cardHtml(capability: FlowrCapability): string {
+	const summary = summaryOf(capability);
+	const total = totalOf(summary);
 	const about = capability.description ? inlineText(capability.description) : '';
 	return `<div class="card" data-name="${searchKey(capability)}">`
-		+ `<span class="total" title="${summary.total} capabilities in this category">${summary.total}</span>`
+		+ `<span class="total" title="${total} capabilities in this category">${total}</span>`
 		+ `<h3><a href="#${capability.id}">${escapeHtml(capability.name)}</a></h3>`
 		+ (about === '' ? '' : `<p class="sum">${about}</p>`)
 		+ groupsHtml(capability)
-		+ `<span class="foot">${meterHtml(summary)}${countsHtml(summary)}</span></div>`;
+		+ `<span class="foot">${meterHtml(summary)}${summaryPills(summary, 'counts')}</span></div>`;
 }
 
 /** a category in full, shown once someone picks it on the overview */
 async function categoryHtml(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
-	const summary = capability.capabilities ? summarizeChildren(capability.capabilities) : summarizeChildren([capability]);
+	const summary = summaryOf(capability);
 	const parts = [
 		'<p class="crumbs"><a href="#" class="back">All categories</a></p>',
 		`<h2 id="${capability.id}" title="${escapeHtml(capability.id)}">${escapeHtml(capability.name)}`
 			+ versionHtml(capability) + testDetails(info, capability) + '</h2>',
-		`<p class="tally">${meterHtml(summary)}${countsHtml(summary)}</p>`,
+		`<p class="tally">${meterHtml(summary)}${summaryPills(summary, 'counts')}</p>`,
 		capability.description ? `<p class="desc">${inlineMarkdown(capability.description)}</p>` : '',
 		referencesHtml(capability),
 		signatureTestsHtml(info, capability),
@@ -561,19 +513,20 @@ async function categoryHtml(info: CapabilityInformation, capability: FlowrCapabi
  * The content of the capabilities page, dropped into `scripts/landing-capabilities-template.html`.
  * Renders a card per category plus each category's full view, swapped in by id.
  */
-export async function capabilitiesAsHtml(parser: KnownParser, knownNames?: KnownNames): Promise<{ body: string, summary: ChildrenSummary }> {
+export async function capabilitiesAsHtml(parser: KnownParser, knownNames?: KnownNames): Promise<{ body: string, summary: ChildrenSummary & { total: number } }> {
 	if(!detailedInfoFiles.some(f => fs.existsSync(f))) {
 		console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test:full) to generate it.\x1b[m');
 	}
 	const info: CapabilityInformation = { parser, info: obtainDetailedInfos(), tests: indexTestSources(), knownNames };
 	const categories: readonly FlowrCapability[] = flowrCapabilities.capabilities;
-	const cards = categories.map(c => cardHtml(c, c.capabilities ? summarizeChildren(c.capabilities) : summarizeChildren([c])));
+	const cards = categories.map(c => cardHtml(c));
 	const sections = [];
 	for(const category of categories) {
 		sections.push(await categoryHtml(info, category));
 	}
+	const summary = summarizeChildren(categories);
 	return {
 		body:    `${iconDefs}<section id="overview"><div class="cards">${cards.join('')}</div></section>\n${sections.join('\n')}`,
-		summary: summarizeChildren(categories)
+		summary: { ...summary, total: totalOf(summary) }
 	};
 }

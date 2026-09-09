@@ -5,18 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>flowR Benchmark History</title>
 	<meta name="description" content="Performance history of the flowR static analyzer for R, measured on every release.">
-	<script>
-		/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
-		(function() {
-			try {
-				var url = new URLSearchParams(location.hash.replace(/^#/, ''));
-				var theme = url.get('theme') || localStorage.getItem('flowr-theme');
-				if(theme === 'light' || theme === 'dark') {
-					document.documentElement.setAttribute('data-theme', theme);
-				}
-			} catch(e) { /* private mode keeps the system theme */ }
-		})();
-	</script>
+	<!--CHROME-SCRIPT-->
 	<link rel="icon" href="../../img/flowR-mark-red.svg" type="image/svg+xml">
 	<link rel="stylesheet" href="style.css">
 	<style>

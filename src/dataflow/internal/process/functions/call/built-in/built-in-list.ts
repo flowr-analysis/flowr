@@ -36,6 +36,15 @@ export function processList<OtherInfo>(
 	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.List }).information;
 }
 
+/** Whether `node` denotes a function: a definition written down, or a symbol that resolves to one in `environment`. */
+export function holdsFunction<OtherInfo>(
+	node:        RNode<OtherInfo & ParentInformation>,
+	environment: REnvironmentInformation
+): boolean {
+	return RFunctionDefinition.is(node)
+		|| (RSymbol.is(node) && (Resolve.byNameAndType(node.content, environment, ReferenceType.Function)?.length ?? 0) > 0);
+}
+
 /**
  * Records a `list(...)`'s entries as a resolvable pseudo-env, so `d$foo(...)`, `d[["foo"]](...)` and `d[[1]](...)`
  * link to them; `undefined` if none. An entry is reachable under its name and, since R numbers list entries as
@@ -59,8 +68,7 @@ export function resolveListToEnvState<OtherInfo>(
 			continue;
 		}
 		const value = arg.value;
-		const isFn = RFunctionDefinition.is(value)
-			|| (RSymbol.is(value) && (Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
+		const isFn = holdsFunction(value, data.environment);
 		if(!isFn && !values) {
 			continue;
 		}

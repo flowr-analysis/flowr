@@ -56,7 +56,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (4 ms)
+    Query: linter (10 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -75,7 +75,7 @@ It offers a wide variety of features, for example:
        ╰ Unclosed Connection (unclosed-connection): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
+    All queries together required ≈10 ms (1ms accuracy, total 10 ms)
     ```
     
     
@@ -97,17 +97,15 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (10 ms)\
+    Query: **linter** (22 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -122,11 +120,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈10 ms (1ms accuracy, total 11 ms)_
+    _All queries together required ≈22 ms (1ms accuracy, total 23 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _10.7 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis ran (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -141,9 +139,7 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "builtin": 0,
-              "sigdb": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 2
+              "sigdb": 0
             }
           },
           "file-path-validity": {
@@ -164,9 +160,7 @@ It offers a wide variety of features, for example:
               "totalReads": 1,
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
-              "totalValid": 0,
-              "searchTimeMs": 1,
-              "processTimeMs": 0
+              "totalValid": 0
             }
           },
           "seeded-randomness": {
@@ -176,9 +170,7 @@ It offers a wide variety of features, for example:
               "callsWithFunctionProducers": 0,
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
-              "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "callsWithOtherBranchProducers": 0
             }
           },
           "absolute-file-paths": {
@@ -196,26 +188,20 @@ It offers a wide variety of features, for example:
             ],
             ".meta": {
               "totalConsidered": 1,
-              "totalUnknown": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "totalUnknown": 0
             }
           },
           "unused-definitions": {
             "results": [],
             ".meta": {
-              "totalConsidered": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "totalConsidered": 0
             }
           },
           "network-functions": {
             "results": [],
             ".meta": {
               "totalCalls": 0,
-              "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
+              "totalFunctionDefinitions": 0
             }
           },
           "dataframe-access-validation": {
@@ -223,54 +209,37 @@ It offers a wide variety of features, for example:
             ".meta": {
               "numOperations": 0,
               "numAccesses": 0,
-              "totalAccessed": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "totalAccessed": 0
             }
           },
           "dead-code": {
             "results": [],
-            ".meta": {
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
+            ".meta": {}
           },
           "useless-loop": {
             "results": [],
             ".meta": {
-              "numOfUselessLoops": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "numOfUselessLoops": 0
             }
           },
           "problematic-inputs": {
             "results": [],
-            ".meta": {
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
+            ".meta": {}
           },
           "stop-call": {
             "results": [],
             ".meta": {
-              "consideredNodes": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "consideredNodes": 0
             }
           },
           "roxygen-arguments": {
             "results": [],
-            ".meta": {
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
+            ".meta": {}
           },
           "no-leaked-credentials": {
             "results": [],
             ".meta": {
-              "totalChecked": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "totalChecked": 0
             }
           },
           "undefined-symbol": {
@@ -284,9 +253,7 @@ It offers a wide variety of features, for example:
                 "enclosingScope": 0,
                 "nonStandardEval": 0,
                 "subscript": 0
-              },
-              "searchTimeMs": 0,
-              "processTimeMs": 5
+              }
             }
           },
           "unused-import": {
@@ -295,45 +262,33 @@ It offers a wide variety of features, for example:
               "totalConsidered": 0,
               "totalUnresolved": 0,
               "totalMultiPackage": 0,
-              "totalUnused": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "totalUnused": 0
             }
           },
           "unclosed-connection": {
             "results": [],
             ".meta": {
               "totalOpened": 0,
-              "totalClosed": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "totalClosed": 0
             }
           },
           "unescaped-arguments": {
             "results": [],
             ".meta": {
               "totalCriticalArguments": 0,
-              "totalEscapedArguments": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "totalEscapedArguments": 0
             }
           },
           "namespace-access": {
             "results": [],
             ".meta": {
-              "unresolved": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "unresolved": 0
             }
           }
         },
-        ".meta": {
-          "timing": 10
-        }
+        ".meta": {}
       },
-      ".meta": {
-        "timing": 10
-      }
+      ".meta": {}
     }
     ```
     
@@ -412,7 +367,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈1 ms (1ms accuracy, total 1 ms)
+    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
     ```
     
     
@@ -774,7 +729,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _3.9 ms_ and ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+    (The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     
     

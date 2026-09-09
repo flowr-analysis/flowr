@@ -10,6 +10,16 @@ import os from 'os';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 
+/** the real-world corpus `setup.sh` downloads; it is never committed, so the skip names how to obtain it */
+const RealWorldRdaDir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
+export const MissingRealWorldRda = `no .rda/.rdata fixture in ${RealWorldRdaDir}: run test/functionality/project/plugin/load-pipeline/setup.sh with a zenodo/zenodo_files.csv (see that folder's README.md) to download it`;
+/** every real-world `.rda`/`.rdata` fixture on disk, empty where the corpus was never downloaded */
+export function realWorldRdaFiles(): string[] {
+	return fs.existsSync(RealWorldRdaDir)
+		? fs.readdirSync(RealWorldRdaDir).filter(f => /\.(rda|rdata)$/i.test(f)).map(f => path.join(RealWorldRdaDir, f))
+		: [];
+}
+
 describe('rda-files', () => {
 	describe('load-pipeline random', () => {
 		const runs = 30;
@@ -152,13 +162,11 @@ describe('rda-files', () => {
 	});
 
 	describe('load-pipeline real-world', () => {
-		const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
-		if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
-			it.skip('skipped - no RDA files found', () => {});
+		const files = realWorldRdaFiles();
+		if(files.length === 0) {
+			it.skip(MissingRealWorldRda, () => {});
 			return;
 		}
-
-		const files = fs.readdirSync(dir).filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda')).map(file => path.join(dir, file));
 
 		for(const file of files) {
 			it(`File: ${file}`, () => {

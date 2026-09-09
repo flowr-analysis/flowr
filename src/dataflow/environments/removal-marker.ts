@@ -12,7 +12,15 @@ export function removalMarkerOf(name: BrandedIdentifier): BrandedIdentifier {
 	return (removalMarkerPrefix + name);
 }
 
-/** Whether `name` is such a marker rather than something the analyzed program bound. */
-export function isRemovalMarker(name: BrandedIdentifier): boolean {
-	return name.startsWith(removalMarkerPrefix);
+/** The names a {@link removalMarkerOf|marker} was written for, so a name no removal ever took away never looks for one. */
+const removedNames = new Set<BrandedIdentifier>();
+
+/** Records that a {@link removalMarkerOf|marker} was written for `name`; see {@link anyRemovalMarker}. */
+export function noteRemovalMarker(name: BrandedIdentifier): void {
+	removedNames.add(name);
+}
+
+/** Whether a removal marker was ever written for `name`, so nothing else pays for looking one up. */
+export function anyRemovalMarker(name: BrandedIdentifier): boolean {
+	return removedNames.has(name);
 }

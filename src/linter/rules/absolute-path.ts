@@ -7,8 +7,8 @@ import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isAbsolutePath, isUrl, fileUrlToPath } from '../../util/text/strings';
 import { isNotUndefined, isUndefined } from '../../util/assert';
-import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
+import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import { writeFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
@@ -129,7 +129,7 @@ function resolvePathForAbsoluteCheck(value: string, ignoreUrls: boolean): string
 
 export const ABSOLUTE_PATH = {
 	/* this can be done better once we have types */
-	createSearch: (config) => {
+	createSearch: (config, data) => {
 		let q;
 		if(config.include.allStrings) {
 			q = Q.all().filter(RType.String);
@@ -138,7 +138,7 @@ export const ABSOLUTE_PATH = {
 				type:                   'dependencies',
 				// we use the dependencies query to give us all functions that take a file path as input
 				ignoreDefaultFunctions: true,
-				readFunctions:          ReadFunctions.concat(WriteFunctions, SourceFunctions, OtherPathFunctions, config.additionalPathFunctions),
+				readFunctions:          readFunctions(data.inspectContext()).concat(writeFunctions(data.inspectContext()), SourceFunctions, OtherPathFunctions, config.additionalPathFunctions),
 			});
 		}
 		if(config.include.constructed) {
@@ -234,7 +234,7 @@ export const ABSOLUTE_PATH = {
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// checks all found paths for whether they're absolute to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
+		defaultConfig: () => ({
 			include: {
 				constructed: true,
 				allStrings:  false
@@ -243,6 +243,6 @@ export const ABSOLUTE_PATH = {
 			absolutePathRegex:       undefined,
 			useAsWd:                 '@project',
 			ignoreUrls:              true
-		}
+		})
 	}
 } as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig>;

@@ -2,7 +2,7 @@ import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
 import type { LinkedInputDeclaration, LinkedInputEntryPoint, LinkedInputObject, NarrowingFunction } from './simple-input-classifier';
 import { InputType } from './simple-input-classifier';
 import { ArgProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
-import { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
+import type { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
 
 /** shiny's ui-side control widgets, all taking the id of the `input` entry they feed as their first argument */
 const ShinyInputWidgets: LinkedInputDeclaration = {
@@ -34,7 +34,7 @@ export const LinkedInputObjects: readonly LinkedInputObject[] = [
  * and its `choices`), without one it is a count, an index, or a logical of the call's own making. Label a
  * built-in `Narrows` (in the {@link DefaultBuiltinConfig} or your own definitions) and it shows up here.
  */
-export function narrowingFunctions(index: BuiltInIndex = BuiltInIndex.default()): readonly NarrowingFunction[] {
+export function narrowingFunctions(index: BuiltInIndex): readonly NarrowingFunction[] {
 	const bounds = new Map(index.params(ArgProp.Bounds).map(p => [Identifier.getName(p.call), p]));
 	return index.with(SemanticCallTag.Narrows).map(call => {
 		const bound = bounds.get(Identifier.getName(call));

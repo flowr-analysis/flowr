@@ -46,7 +46,7 @@ function defineRule() {
 			description:   'Detects something.',
 			tags:          [],
 			certainty:     LintingRuleCertainty.BestEffort,
-			defaultConfig: {}
+			defaultConfig: () => ({})
 		}
 	} as const satisfies LintingRule<MyRuleResult, MyRuleMetadata, MyRuleConfig>;
 

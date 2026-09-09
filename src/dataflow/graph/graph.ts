@@ -41,8 +41,8 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
 /**
- * Helper functions to work with {@link FunctionArgument}s. {@link EmptyArgument} marks an empty argument.
- * @helper dataflow Helper functions to work with FunctionArguments.
+ * Helper functions to work with {@link FunctionArgument|FunctionArguments}. {@link EmptyArgument} marks an empty argument.
+ * @helper dataflow
  */
 export const FunctionArgument = {
 	name: 'FunctionArgument',
@@ -161,7 +161,7 @@ export interface LinkedUnknownSideEffect {
  * Helpers for the {@link UnknownSideEffect} union, which is either a plain {@link NodeId} or a
  * `{ id, linkTo }` object. Use these instead of hand-rolling `typeof x === 'object' ? x.id : x`
  * checks so the object/non-object discrimination lives in one place.
- * @helper dataflow Helpers for the UnknownSideEffect union, which is either a plain NodeId or a `{ id, linkTo }` object.
+ * @helper dataflow
  */
 export const UnknownSideEffect = {
 	name: 'UnknownSideEffect',

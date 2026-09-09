@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-09-08, 07:39:20 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 # Signature Database
 
@@ -28,7 +28,7 @@ The parameter mask is the one flowR states its own built-ins with, so a paramete
 when the function always evaluates it, and whichever roles the extractor could infer
 (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L15"><code><span title="the result is this argument, handed back unchanged, like x in identity(x); this is what draws the Returns edge">ArgProp::<b>Alias</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L31"><code><span title="only whether it was supplied matters, as with missing()">ArgProp::<b>Presence</b></span></code></a>,
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L29"><code><span title="called as a function, like FUN in lapply(x, FUN)">ArgProp::<b>Callee</b></span></code></a>, ...). Every bit it cannot see stays unset, so an unset bit
-reads as "unknown" rather than "no"; <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L588"><code><span title="The part of a BuiltInFnInfo the signature database already knows: the parameter names in order with the ArgProp bits stored for each, plus the SigDbProps properties; everything else is dropped.">fnInfoFromSignature</span></code></a> hands the mask on unchanged, which is
+reads as "unknown" rather than "no"; <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L595"><code><span title="The part of a BuiltInFnInfo the signature database already knows: the parameter names in order with the ArgProp bits stored for each, plus the SigDbProps properties; everything else is dropped.">fnInfoFromSignature</span></code></a> hands the mask on unchanged, which is
 what lets a package function answer the same questions a built-in does.
 
 Per version the source also answers declared dependencies (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/decode.ts#L132"><code><span title="a decoded package dependency of one version (type is the compact DepType enum; map to a label via DepTypeNames )">ResolvedDependency</span></code></a>), release dates, the plain export view (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L16"><code><span title="The resolved identifiers of a singular package version">LibraryExports</span></code></a>), the versions it carries (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L189"><code><span title="one version a source can answer for a package, with its release date when known">AvailableVersion</span></code></a>), and its class relations (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L291"><code><span title="One class of a package version: what its declaration states, plus which package defines it -- structure s4Classes (a flat name list) has no room for, so a consumer can tell an owned class from an inherited one.">SigClassInfo</span></code></a>, via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L819"><code>SigDatabase::<b>classes</b></code></a>).
@@ -39,7 +39,7 @@ Beyond the flags above, <a href="https://github.com/flowr-analysis/flowr/tree/ma
 
 The S4 side has <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L69"><code><span title="Set on the name of an S4 class this package OWNS: it exports the class via its NAMESPACE exportClasses() (see LibraryExports.s4Classes , derived from this bit by deriveLibraryExports ).">FnProp::<b>S4Owner</b></span></code></a> for an exported class and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L75"><code><span title="A registered S4 method: the name is exported because the package answers a generic for one of its classes (setMethod('sin', 'float32', ...), exportMethods(sin)), not because it defines a function of its own. The S4 analogue of FnProp.S3Method .">FnProp::<b>S4Method</b></span></code></a> for a name a package exports because it answered a generic for one of its classes (`setMethod("sin", "float32", ...)` plus `exportMethods(sin)`), rather than because it defines a function of its own. Such a name is often documented only under its `sin,float32-method` Rd alias, so it also carries <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L57"><code>FnProp::<b>NoDoc</b></code></a>. Because `setMethod("Math", ...)` answers every member of a group at once, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/signature-db.ts#L58"><code><span title="The database entry for a *qualified* call, i.e. a pkg::fn Identifier . Decodes only that one function rather than the whole package. A name the package answers only as part of an S4 group falls back to the group: Matrix::sin is served by Matrix's Math entry when there is no sin of its own, because that is what an sin(x) call dispatches to. The result then carries the group's name, not the one that...">SignatureDb::<b>functionOf</b></span></code></a> falls back to the group entry for a member it finds nothing for: `pkg::sin` is served by `pkg`'s `Math`, which is what the call would dispatch to. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/group-generics.ts#L46"><code><span title="The S4 group generic name is a member of, undefined for a name that is in none.">groupGenericOf</span></code></a> maps a member to its group.
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L86"><code><span title="The definition is a generic others dispatch on (S3 UseMethod, S4 setGeneric/standardGeneric, S7 new_generic). The call graph only shows this for an S3 generic with a bundled body, never for S4/S7.">FnProp::<b>Generic</b></span></code></a> says the definition is one others dispatch on: an S3 generic whose body calls `UseMethod`, an S4 one from `setGeneric`, or an S7 `new_generic`. The call graph shows the same for the S3 case, but only while a bundle carries one, and never for a generic built without an R body -- which is why the bit exists next to it. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L588"><code><span title="The part of a BuiltInFnInfo the signature database already knows: the parameter names in order with the ArgProp bits stored for each, plus the SigDbProps properties; everything else is dropped.">fnInfoFromSignature</span></code></a> reads it, falling back to the dispatching callee for a bundle written before it.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L86"><code><span title="The definition is a generic others dispatch on (S3 UseMethod, S4 setGeneric/standardGeneric, S7 new_generic). The call graph only shows this for an S3 generic with a bundled body, never for S4/S7.">FnProp::<b>Generic</b></span></code></a> says the definition is one others dispatch on: an S3 generic whose body calls `UseMethod`, an S4 one from `setGeneric`, or an S7 `new_generic`. The call graph shows the same for the S3 case, but only while a bundle carries one, and never for a generic built without an R body -- which is why the bit exists next to it. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L595"><code><span title="The part of a BuiltInFnInfo the signature database already knows: the parameter names in order with the ArgProp bits stored for each, plus the SigDbProps properties; everything else is dropped.">fnInfoFromSignature</span></code></a> reads it, falling back to the dispatching callee for a bundle written before it.
 
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L81"><code><span title="The export binds a value rather than a function: a constant, a dataset, a class object (pi, LETTERS, ggplot2's class_gg). Only the extractor can tell: an entry without a definition location may equally be a function built at load time, an S4 generic or a Vectorize result, which has no source to point at.">FnProp::<b>Value</b></span></code></a> says the export binds a value rather than a function (`pi`, `LETTERS`, ggplot2's `class_gg`). Only the extractor can tell: an entry without a definition location is as likely to be a function nothing wrote down, an S4 generic `setGeneric` builds or a `Vectorize` result, so a reader that has only the location to go on can say no more than that there is none.
 
@@ -68,7 +68,7 @@ function fromTheAnalyzer(analyzer: FlowrAnalyzer) {
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L29">src/documentation/wiki-signature-database.ts#L29</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L30">src/documentation/wiki-signature-database.ts#L30</a></i>
 
 
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/signature-db.ts#L29"><code><span title="The signature database as the analyzed project sees it. A PackageSignatureSource answers for a version you name, and falls back to whatever it holds as newest when you name none. This adds the step above that, taking the version from what flowR resolved for the project, which is where solver.sigdb.versionOverrides, solver.sigdb.versionSelection and solver.sigdb.assumedRVersion have already been ap...">SignatureDb</span></code></a> it hands back is every loaded source as one database, answering for the version
@@ -99,7 +99,7 @@ cover, and reaches the same functions directly.
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L40">src/documentation/wiki-signature-database.ts#L40</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L41">src/documentation/wiki-signature-database.ts#L41</a></i>
 
 
 To check what a project can resolve against without touching the raw sources, a [context](https://github.com/flowr-analysis/flowr/wiki/Analyzer) exposes
@@ -123,7 +123,7 @@ function usePackageDatabase(parser: KnownParser) {
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L23">src/documentation/wiki-signature-database.ts#L23</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L24">src/documentation/wiki-signature-database.ts#L24</a></i>
 
 
 File sources load lazily on the first package load, so a script with no `library()` or `use()` calls
@@ -159,11 +159,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 260 µs |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 1.7 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 5 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 89 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 180 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | n/a |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | n/a |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | n/a |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | n/a |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | n/a |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from
@@ -192,4 +192,4 @@ The extractor produces the bundle from its analysis of CRAN.
 
 The dictionary is read once, the reader then seeks straight to each requested package, and consumers cache
 what they derive (the `base`-package list is precomputed when flowR is bundled, so it costs nothing at
-analysis time). After the one-time load a per-package lookup is O(1), so each `library()` or `::` a script uses is a single cached lookup.
+analysis time). Opening the bundle is a one-off cost paid once per analysis, and a warmed per-package export lookup is a matter of microseconds. Each `library()` or `::` in a script is then one cached lookup.

@@ -1,7 +1,13 @@
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
-import { LintingResultCertainty } from '../../../src/linter/linter-format';
+import { LintingResultCertainty, LintingResults } from '../../../src/linter/linter-format';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { executeLintingRule } from '../../../src/linter/linter-executor';
+import type { BuiltInDefinitions } from '../../../src/dataflow/environments/built-in-config';
+import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
+import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('R3 seeded randomness', () => {
@@ -88,6 +94,34 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('get in function call', parser, 'runif(runif(1))', 'seeded-randomness', [
 			{ loc: [1, 7, 1, 14], function: 'runif', certainty: LintingResultCertainty.Certain },
 			{ loc: [1, 1, 1, 15], function: 'runif', certainty: LintingResultCertainty.Certain }]);
+		describe('a configured built-in reaches the rule defaults', () => {
+			const definitions: BuiltInDefinitions = [{
+				type:            'function',
+				names:           [Identifier.from(['rollIt', 'base'])],
+				processor:       BuiltInProcName.Default,
+				config:          { tags: [SemanticCallTag.Random], sig: [['n', ArgProp.Forced | ArgProp.Value]] },
+				assumePrimitive: false
+			}];
+			test('a `Random` built-in only the config states is an unseeded consumer', async() => {
+				const analyzer = await new FlowrAnalyzerBuilder()
+					.setParser(parser)
+					.amendConfig(c => {
+						c.semantics.environment.overwriteBuiltIns.definitions = definitions;
+					})
+					.build();
+				analyzer.addRequest('rollIt(1)');
+				const found = LintingResults.unpackSuccess(await executeLintingRule('seeded-randomness', analyzer, undefined));
+				assert.deepStrictEqual(found.results.map(r => r.function), ['rollIt'],
+					'the configured built-in has to be a randomness consumer');
+			});
+			test('and it does not leak into an analyzer that does not state it', async() => {
+				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+				analyzer.addRequest('rollIt(1)');
+				const found = LintingResults.unpackSuccess(await executeLintingRule('seeded-randomness', analyzer, undefined));
+				assert.isEmpty(found.results);
+			});
+		});
+
 		describe('a name that only looks like a consumer', () => {
 			/* `some` is purrr's predicate helper; only `car::some` samples rows, and consumers match by bare name */
 			assertLinter('some is not a randomness consumer', parser, 'some(1:3, is.numeric)', 'seeded-randomness', [],

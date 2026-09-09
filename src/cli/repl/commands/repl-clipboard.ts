@@ -2,7 +2,7 @@ import type { ReplOutput } from './repl-main';
 
 /**
  * Output that the user most likely wants on their clipboard as well.
- * @helper output Output that the user most likely wants on their clipboard as well.
+ * @helper output
  */
 export const ReplClipboard = {
 	name: 'ReplClipboard',

@@ -2,10 +2,7 @@ import { describe, test, assert } from 'vitest';
 import { withShell } from '../functionality/_helper/shell';
 import type { RShell } from '../../src/r-bridge/shell';
 import type { MutationPass, MutationTarget } from '../functionality/_helper/r-mutations';
-import { MutationPasses, mutate } from '../functionality/_helper/r-mutations';
-import { createSlicePipeline } from '../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../src/project/context/flowr-analyzer-context';
-import { deterministicCountingIdGenerator } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { MutationPasses, mutate, passIsAvailable, slice } from '../functionality/_helper/r-mutations';
 
 function passOf(name: string): MutationPass {
 	const pass = MutationPasses.find(p => p.name === name);
@@ -24,13 +21,6 @@ async function evaluate(shell: RShell, expression: string): Promise<string> {
 	return out.join('').trim();
 }
 
-/** the slice of `code` for `criterion`, which is empty where the criterion resolves to nothing */
-async function slice(shell: RShell, { code, criterion }: MutationTarget): Promise<string> {
-	const result = await createSlicePipeline(shell, { getId: deterministicCountingIdGenerator(0), context: contextFromInput(code), criterion: [criterion] }).allRemainingSteps();
-	const reconstructed = result.reconstruct.code;
-	return Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
-}
-
 describe('R mutations', { concurrent: false }, withShell(shell => {
 	/** programs a pass must either reject or rewrite into something R still reads */
 	const programs: readonly MutationTarget[] = [
@@ -41,17 +31,23 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		{ code: 'x <- 1:\n3\nr <- sum(x)\nprint(r)', criterion: '4@r', expected: '[1] 6' },
 		{ code: 'if(TRUE)\nx <- 2\nprint(x)', criterion: '3@x', expected: '[1] 2' },
 		{ code: '\nx <- 1\ny <- x\nprint(y)', criterion: '4@y', expected: '[1] 1' },
-		{ code: 'nm <- "vvv"\nvvv <- 8\nr <- get(nm)\nprint(r)', criterion: '4@r', expected: '[1] 8' }
+		{ code: 'nm <- "vvv"\nvvv <- 8\nr <- get(nm)\nprint(r)', criterion: '4@r', expected: '[1] 8' },
+		{ code: 'if(TRUE) x <- 2\nprint(x)', criterion: '2@x', expected: '[1] 2' },
+		{ code: 'r <- sum(rev(1:3))\nprint(r)', criterion: '2@r', expected: '[1] 6' }
 	];
 	describe('every mutant is a program R reads', () => {
 		for(const pass of MutationPasses) {
-			test(pass.name, async() => {
+			/* a pass the host's R is too old for rewrites nothing, which says nothing about the pass */
+			test.skipIf(!passIsAvailable(pass))(pass.name, async() => {
+				let applied = 0;
 				for(const program of programs) {
 					const mutant = await mutate(shell, program, pass);
 					if(mutant !== undefined) {
+						applied++;
 						assert.isTrue(await parses(shell, mutant.code), `${pass.name} produced:\n${mutant.code}`);
 					}
 				}
+				assert.isAbove(applied, 0, `${pass.name} rewrote none of the sample programs, so this test checks nothing`);
 			});
 		}
 	});

@@ -4,7 +4,7 @@ import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipeli
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { GeneralDocContext } from '../wiki-mk/doc-context';
@@ -78,7 +78,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { c
 	}
 
 	const sigDbNote = `No ${ctx ? ctx.linkPage('wiki/Signature Database', 'signature database') : `[signature database](${FlowrWikiBaseRef}/Signature-Database)`} is mounted for these generated graphs, so \`library()\` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. \`acf\` as \`stats::acf\`).`;
-	const took = timeless ? '' : ` required _${printAsMs(duration)}_ and`;
+	const took = timeless ? '' : docTook(duration);
 	const metaInfo = `The analysis${took} ran (including parse and normalize, using the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment. ${sigDbNote}`;
 	const graph = callGraph ? CallGraph.compute(result.dataflow.graph) : result.dataflow.graph;
 	const dfGraph = printDfGraph(graph, mark, simplified);

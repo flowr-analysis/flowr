@@ -11,7 +11,7 @@ const DescriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
 
 /**
  * Access to the `DESCRIPTION` file of the analyzed project.
- * @helper project Access to the `DESCRIPTION` file of the analyzed project.
+ * @helper project
  */
 export const DescriptionFile = {
 	name: 'DescriptionFile',

@@ -17,7 +17,7 @@ import { isValue } from '../../../../../eval/values/r-value';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { define } from '../../../../../environments/define';
 import type { EnvirResolution } from './built-in-envir-utils';
-import { effectiveArgs, resolveArgToEnvir } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -215,9 +215,7 @@ export function processRm<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	/* a piped `x` (`x |> rm()`) patches in after dispatch; effectiveArgs sees it in time for target collection */
-	const effArgs = effectiveArgs(args, rootId, data);
-	if(effArgs.length === 0) {
+	if(args.length === 0) {
 		dataflowLogger.warn('empty rm, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -239,12 +237,12 @@ export function processRm<OtherInfo>(
 		unknownReferences: evaluated.flatMap(p => p.unknownReferences)
 	};
 
-	const targets = collectRmTargets(effArgs, data);
+	const targets = collectRmTargets(args, data);
 
 	if(targets.frame !== undefined) {
 		// `rm(x, envir=e)` removes from a tracked custom environment instead of the lexical scope
 		if(targets.frame.formal === 'envir' && data.ctx.config.solver.trackEnvironments) {
-			const envir = resolveArgToEnvir(targets.frame.arg, data);
+			const envir = envirOf(resolveArgToEnvirOrAmbiguous(targets.frame.arg, data));
 			if(envir) {
 				return removeFromCustomEnv(res, envir, targets, rootId, data.cds);
 			}

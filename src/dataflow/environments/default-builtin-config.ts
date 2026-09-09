@@ -1117,8 +1117,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['brew', PkgName.Brew])], processor: BuiltInProcName.StringTemplate, config: { open: '<%=', close: '%>', props: CallProp.MayPure }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['rprintf', PkgName.Rprintf])], processor: BuiltInProcName.StringTemplate, config: { open: '$', close: '', props: CallProp.MayPure }, assumePrimitive: false },
 	/* `local(expr)` evaluates `expr` in a frame of its own and hands its value back */
-	{ type: 'function', names: [Identifier.from(['local', PkgName.Base])], processor: BuiltInProcName.Local, config: { args: { env: 'envir', expr: 'expr' }, sig: [['expr', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
-	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['with', 'within']), processor: BuiltInProcName.With, config: { sig: [['data', ArgProp.NoDefault], ['expr', ArgProp.NoDefault], ['...', 0]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['local', PkgName.Base])], processor: BuiltInProcName.Local, config: { args: { env: 'envir', expr: 'expr' }, sig: [['expr', ArgProp.Alias | ArgProp.Forced], ['envir', ArgProp.Written]] }, assumePrimitive: false },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['with', 'within']), processor: BuiltInProcName.With, config: { sig: [['data', ArgProp.NoDefault | ArgProp.Written], ['expr', ArgProp.NoDefault], ['...', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['new.env', PkgName.Base]), Identifier.from(['new_environment', PkgName.Rlang])], processor: BuiltInProcName.NewEnv, config: { sig: [['hash', 0], ['parent', 0], ['size', 0]] }, assumePrimitive: true },
 	{ type:      'function', names:     [Identifier.from(['R6Class', PkgName.R6])],
 		processor: BuiltInProcName.ClassGenerator,

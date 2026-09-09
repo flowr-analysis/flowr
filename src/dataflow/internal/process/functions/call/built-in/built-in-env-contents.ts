@@ -14,7 +14,8 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { effectiveArgs, resolveEnvirArg, resolveEnvirArgOrAmbiguous, routeWrittenToEnvir } from './built-in-envir-utils';
+import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import type { FnSig } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { define } from '../../../../../environments/define';
 
@@ -27,11 +28,12 @@ export function processEnvContents<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: { sig?: FnSig } = {}
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.EnvContents }).information;
 
-	/* a piped envir (e.g. `e |> ls()`) patches in after dispatch, so look via effectiveArgs, not args directly */
-	const resolution = resolveEnvirArg(effectiveArgs(args, rootId, data), data, 'envir', 0);
+	/* `ls(name)` takes the environment in its first formal, `ls(envir = e)` in the one named for it */
+	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', 'name']);
 	if(!resolution) {
 		return result;
 	}
@@ -78,13 +80,12 @@ export function processListToEnv<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: { sig?: FnSig } = {}
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ListToEnv }).information;
 
-	/* envir names a value we cannot pin down (e.g. a parameter): routing into local scope would be a guess */
-	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, 'envir');
-	if(envirRouting.ambiguous) {
-		handleUnknownSideEffect(result.graph, result.environment, rootId);
+	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, config.sig);
+	if(unknownIfAmbiguous(envirRouting, result, rootId)) {
 		return result;
 	}
 
@@ -103,10 +104,13 @@ export function processListToEnv<OtherInfo>(
 		written.push({
 			type:      ReferenceType.Variable,
 			name:      arg.name.content,
-			nodeId:    arg.value.info.id,
+			nodeId:    arg.info.id,
 			definedAt: rootId,
 			cds:       data.cds
 		});
+		/* the binding is defined by its value and by the call, so reading it keeps the `list2env` call itself */
+		result.graph.addEdge(arg.info.id, arg.value.info.id, EdgeType.DefinedBy);
+		result.graph.addEdge(arg.info.id, rootId, EdgeType.DefinedBy);
 		result.graph.addEdge(rootId, arg.value.info.id, EdgeType.Reads);
 	}
 	if(written.length === 0) {
@@ -121,5 +125,6 @@ export function processListToEnv<OtherInfo>(
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 
 	/* a target environment of its own (stack frame or custom env) takes the bindings instead of current scope */
-	return envirRouting.resolution ? routeWrittenToEnvir(defined, envirRouting.resolution, rootId, data.environment, rootId) : defined;
+	const envirResolution = envirOf(envirRouting);
+	return envirResolution ? routeWrittenToEnvir(defined, envirResolution, rootId, data.environment, rootId) : defined;
 }

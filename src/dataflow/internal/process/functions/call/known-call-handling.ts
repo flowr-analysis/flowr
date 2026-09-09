@@ -254,8 +254,13 @@ export function processKnownFunctionCall<OtherInfo>(
 	 * additive only and cannot express a removal, so the kill has to be re-applied here explicitly and
 	 * bubbled up for whichever construct merges branches or iterations next
 	 */
-	const argKills: KillReference[] = processedArguments.flatMap(p => p?.kill ?? []);
-	const kill = argKills.length > 0 ? argKills : undefined;
+	let kill: KillReference[] | undefined = undefined;
+	for(const p of processedArguments) {
+		const kills = p?.kill;
+		if(kills !== undefined && kills.length > 0) {
+			kill = kill === undefined ? kills.slice() : kill.concat(kills);
+		}
+	}
 	const environment = kill ? applyKills(finalEnv, kill) : finalEnv;
 
 	return {

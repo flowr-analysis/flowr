@@ -183,12 +183,12 @@ export const FILE_PATH_VALIDITY = {
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
-		defaultConfig: {
+		defaultConfig: () => ({
 			additionalReadFunctions:  [],
 			additionalWriteFunctions: [],
 			includeUnknown:           false,
 			checkUrls:                false
-		}
+		})
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,

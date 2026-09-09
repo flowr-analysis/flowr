@@ -28,19 +28,19 @@ import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/m
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { ClosureRefs } from '../../../../linker';
-import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { define } from '../../../../../environments/define';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { findReturnsEnvState, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveSymbolToEnvir, routeWrittenToEnvir } from './built-in-envir-utils';
+import { EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import type { FnSig } from '../../../../../environments/built-in-props';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
-import { resolveListToEnvState } from './built-in-list';
+import { holdsFunction, resolveListToEnvState } from './built-in-list';
 import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
 import { stackEnvStateFromSource } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -82,6 +82,8 @@ export interface AssignmentConfiguration {
 	 * {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope.
 	 */
 	readonly environmentArg?:      string
+	/** the formals of the call, so a positional {@link AssignmentConfiguration#environmentArg} is found at the slot it really has */
+	readonly sig?:                 FnSig
 	/** does the call run what it binds, as `makeActiveBinding` runs its function on every read of the name? */
 	readonly callsSource?:         boolean
 }
@@ -555,8 +557,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
 	/* the binding is the value, not the name written down: a later `e$f` has to reach what was assigned */
-	const isFunction = RFunctionDefinition.is(source)
-		|| (RSymbol.is(source) && (Resolve.byNameAndType(source.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
+	const isFunction = holdsFunction(source, data.environment);
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		type:      isFunction ? ReferenceType.Function : ReferenceType.Variable,
 		name:      fieldName,
@@ -591,8 +592,12 @@ function tryRouteToCustomEnv<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation | undefined {
-	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, config.environmentArg);
-	if(envirRouting.ambiguous) {
+	/* `envir = as.environment(pos)`, so an environment handed to `pos`/`where` is the target too; anything there that
+	 * does not resolve to one names a search-path position rather than an unknown environment, so it leaves the call untouched */
+	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, config.sig, config.environmentArg)
+		?? resolveFirstEnvirArg(args, data, config.sig, EnvirPositionFormals);
+	/* the target frame is out of reach, so the write lands somewhere we cannot name: it must not become a local one */
+	if(envirRouting === 'ambiguous' || (!envirRouting && suppliesArg(args, config.sig, EnvirPositionFormals))) {
 		const info = processKnownFunctionCall({
 			name, args, rootId, data,
 			origin: config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
@@ -600,19 +605,18 @@ function tryRouteToCustomEnv<OtherInfo>(
 		handleUnknownSideEffect(info.graph, info.environment, rootId);
 		return info;
 	}
-	const resolution = envirRouting.resolution;
-	if(!resolution) {
+	if(!envirRouting) {
 		return undefined;
 	}
 
-	if(resolution.isStackEnv && resolution.isGlobalEnv) {
+	if(envirRouting.stack === 'global') {
 		/* the global env: route as super-assignment so processAssignment's own tagging applies (post-hoc can't) */
 		const globalResult = processAssignment(name, args, rootId, data, {
 			...config,
 			environmentArg:  undefined,   // prevent re-entry
 			superAssignment: true
 		});
-		globalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+		globalResult.graph.addEdge(rootId, envirRouting.envirNodeId, EdgeType.Reads);
 		return globalResult;
 	}
 
@@ -623,7 +627,7 @@ function tryRouteToCustomEnv<OtherInfo>(
 	});
 
 	/* pass rootId as definedAt so only defs made at this call site are routed */
-	return routeWrittenToEnvir(normalResult, resolution, rootId, data.environment, rootId);
+	return routeWrittenToEnvir(normalResult, envirRouting, rootId, data.environment, rootId);
 }
 
 export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {

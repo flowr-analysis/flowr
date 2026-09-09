@@ -57,11 +57,11 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; max-width: 52rem; }
 	border: 1px solid var(--border); background: var(--panel); color: var(--fg); box-shadow: var(--shadow);
 }
 .search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.search select, .search button {
+.search select {
 	font: inherit; font-size: .9rem; padding: .7rem .6rem; border-radius: .6rem;
 	border: 1px solid var(--border); background: var(--panel); color: var(--fg); cursor: pointer;
 }
-.search button:hover, .search select:hover { border-color: var(--accent); color: var(--accent); }
+.search select:hover { border-color: var(--accent); color: var(--accent); }
 
 /* one card per category; the card links into its full view */
 .cards { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
@@ -93,14 +93,12 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; max-width: 52rem; }
 
 .meter { display: flex; height: .4rem; border-radius: .3rem; overflow: hidden; background: var(--sunk); min-width: 6rem; }
 .meter > span { display: block; height: 100%; }
-.meter .fully { background: var(--fully); }
-.meter .partially { background: var(--partially); }
-.meter .not { background: var(--not); }
 .counts { display: inline-flex; flex-wrap: wrap; gap: .5rem; font-size: .76rem; color: var(--muted); }
 .counts .c::before { content: ""; display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; margin-right: .3rem; }
-.counts .fully::before { background: var(--fully); }
-.counts .partially::before { background: var(--partially); }
-.counts .not::before { background: var(--not); }
+/* the state hues, said once for the meter's bars, the bullet badge and the two count rows */
+.meter .fully, .badge.fully, .counts .fully::before, .tally-mini .fully::before { background: var(--fully); }
+.meter .partially, .badge.partially, .counts .partially::before, .tally-mini .partially::before { background: var(--partially); }
+.meter .not, .badge.not, .counts .not::before, .tally-mini .not::before { background: var(--not); }
 
 section.cat { margin-top: .6rem; }
 .crumbs { margin: 0 0 .4rem; font-size: .85rem; }
@@ -120,16 +118,11 @@ details[open] > ul.caps > li.cap { cursor: auto; }
 details[open] > ul.caps:hover { border-left-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
 details[open] > ul.caps:has(> li.cap:hover) { border-left-color: var(--border); }
 li.cap { padding: .45rem 0 .45rem .1rem; }
-.head { display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; }
+.head { position: relative; display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; }
 .name { font-weight: 600; scroll-margin-top: 2rem; }
-.badge { display: block; width: .5rem; height: .5rem; border-radius: 50%; }
-.badge.fully { background: var(--fully); }
-.badge.partially { background: var(--partially); }
-.badge.not { background: var(--not); }
 /* badge dot doubles as the bullet; the anchor swaps in on hover */
-.head { position: relative; }
+.badge { display: block; width: .5rem; height: .5rem; border-radius: 50%; top: .55em; }
 .badge, .anchor { position: absolute; left: -.95rem; transition: opacity .12s; }
-.badge { top: .55em; }
 .anchor { top: 0; color: var(--muted); text-decoration: none; opacity: 0; font-size: .9em; border: 0; }
 li.cap:hover > .head > .anchor, .anchor:focus { opacity: 1; }
 li.cap:hover > .head > .badge { opacity: 0; }
@@ -141,7 +134,6 @@ li.cap:hover > .head > .badge { opacity: 0; }
 	font-size: .72rem; color: var(--muted); border: 1px solid var(--border);
 	border-radius: 1rem; padding: 0 .4rem; white-space: nowrap; font-variant-numeric: tabular-nums;
 }
-.tests { font-size: .78rem; }
 .desc { margin: .12rem 0; }
 p { margin: .2rem 0; }
 
@@ -174,10 +166,9 @@ details[open] > summary::before { transform: rotate(45deg); }
 /* nested fold's chevron aligns with the guide line below it */
 li.cap > details > summary::before { margin-left: .3rem; margin-right: .55rem; }
 summary:hover::before, summary:focus-visible::before { opacity: 1; }
-details.demo > summary { gap: .3rem; font-size: .76rem; list-style: none; width: max-content; }
-details.demo > summary::-webkit-details-marker { display: none; }
-details.demo > summary:hover { color: var(--accent); }
-.meta details.demo[open] { flex-basis: 100%; }
+details.demo > summary, details.proof > summary { gap: .3rem; font-size: .76rem; width: max-content; }
+details.demo > summary:hover, details.proof > summary:hover { color: var(--accent); }
+.meta details.demo[open], .head details.proof[open] { flex-basis: 100%; }
 .meta details.demo > .example { margin: .3rem 0 .1rem; }
 
 
@@ -226,23 +217,14 @@ a.tests:hover { color: var(--accent); border-bottom-color: var(--accent); text-d
 
 /* proof tests are a footnote to the capability, kept visually secondary */
 svg.ico { width: 14px; height: 14px; }
-details.proof { margin: .2rem 0; }
+details.proof { margin: .2rem 0; line-height: 1; align-self: center; }
 /* mini tally stays one line; labels only show on hover */
 .tally-mini { display: inline-flex; gap: .4rem; font-size: .74rem; font-variant-numeric: tabular-nums; }
 .tally-mini .c::before { content: ""; display: inline-block; width: .45rem; height: .45rem; border-radius: 50%; margin-right: .25rem; }
-.tally-mini .fully::before { background: var(--fully); }
-.tally-mini .partially::before { background: var(--partially); }
-.tally-mini .not::before { background: var(--not); }
-details > summary { flex-wrap: nowrap; white-space: nowrap; }
-details > summary .meter { flex: 0 1 6rem; }
-details.proof { line-height: 1; align-self: center; }
-.head details.proof[open] { flex-basis: 100%; }
-details.proof > summary { gap: .3rem; font-size: .76rem; list-style: none; width: max-content; align-items: center; margin: .1rem 0; }
+details.proof > summary { align-items: center; margin: .1rem 0; }
 details.proof > summary svg { display: block; }
-details.proof > summary::-webkit-details-marker { display: none; }
 details.proof > summary span { opacity: 0; transition: opacity .12s; }
 details.proof > summary:hover span, details.proof[open] > summary span { opacity: 1; }
-details.proof > summary:hover { color: var(--accent); }
 details.proof > p { margin: .1rem 0 .3rem 1.1rem; font-size: .8rem; color: var(--muted); }
 
 figure.code { position: relative; }
@@ -255,7 +237,7 @@ figure.code:hover a.try, figure.code a.try:focus { opacity: 1; color: var(--acce
 .bar a.where, h1 a { color: inherit; text-decoration: none; border: 0; }
 .bar a.where:hover, h1 a:hover { color: var(--accent); text-decoration: none; }
 
-details > summary { cursor: pointer; color: var(--muted); font-size: .82rem; margin: .3rem 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+details > summary { color: var(--muted); font-size: .82rem; margin: .3rem 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; white-space: nowrap; }
 details > summary .meter { flex: 0 1 8rem; }
 #empty { color: var(--muted); }
 
@@ -405,56 +387,45 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 64rem; }
 		if(filter.value.trim() === '' && level.value === '') { route(); }
 	});
 
-	/* theme toggle lives in shared chrome; redraw diagrams in the new colors */
-	document.addEventListener('click', e => {
-		if(e.target.closest('#theme')) { redraw(); }
-	});
-
 	document.addEventListener('toggle', e => { if(e.target.tagName === 'DETAILS') { draw(); } }, true);
 
-	/* reset filter, url and view state when navigating back to the overview */
+	/* one handler for the whole page; no two of these branches can match the same target */
 	document.addEventListener('click', e => {
-		const back = e.target.closest('a[href="#"]');
-		if(!back) { return; }
-		e.preventDefault();
-		filter.value = '';
-		level.value = '';
-		clearFilter();
-		const url = new URL(location.href);
-		url.searchParams.delete('q');
-		history.replaceState(null, '', url.pathname + url.search);
-		route();
-	});
-
-	/* clicking the left guide strip folds the group, like an editor's indent guide */
-	document.addEventListener('click', e => {
-		const list = e.target;
-		if(!(list instanceof Element) || !list.matches('ul.caps')) { return; }
-		/* only count clicks within the 12px guide strip, not the whole list */
-		if(e.clientX - list.getBoundingClientRect().left > 12) { return; }
-		const fold = list.closest('details');
-		if(fold) { fold.open = false; }
-	});
-
-	document.addEventListener('click', e => {
+		/* theme toggle lives in shared chrome; redraw diagrams in the new colors */
+		if(e.target.closest('#theme')) {
+			redraw();
+		}
+		/* reset filter, url and view state when navigating back to the overview */
+		if(e.target.closest('a[href="#"]')) {
+			e.preventDefault();
+			filter.value = '';
+			level.value = '';
+			clearFilter();
+			const url = new URL(location.href);
+			url.searchParams.delete('q');
+			history.replaceState(null, '', url.pathname + url.search);
+			route();
+		}
+		/* clicking the left guide strip, within its 12px, folds the group like an editor's indent guide */
+		const strip = e.target;
+		if(strip instanceof Element && strip.matches('ul.caps') && e.clientX - strip.getBoundingClientRect().left <= 12) {
+			const fold = strip.closest('details');
+			if(fold) { fold.open = false; }
+		}
 		const more = e.target.closest('button.more');
-		if(!more) { return; }
-		/* "more" button's list is whichever ul.caps precedes or contains it */
-		const list = more.previousElementSibling?.matches('ul.caps') ? more.previousElementSibling
-			: more.parentElement?.querySelector('ul.caps[data-collapsed="yes"]');
-		if(list) { list.dataset.collapsed = 'no'; }
-		more.remove();
-		draw();
+		if(more) {
+			/* "more" button's list is whichever ul.caps precedes or contains it */
+			const list = more.previousElementSibling?.matches('ul.caps') ? more.previousElementSibling
+				: more.parentElement?.querySelector('ul.caps[data-collapsed="yes"]');
+			if(list) { list.dataset.collapsed = 'no'; }
+			more.remove();
+			draw();
+		}
 	});
 
 	/* mermaid loads lazily, once; only diagrams currently visible get drawn */
-	let mermaid = null;
-	let loading = null;
-	let drawn = null;
-	const dark = () => {
-		const set = document.documentElement.dataset.theme;
-		return set ? set === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-	};
+	let mermaid = null, loading = null, drawn = null;
+	const dark = () => getComputedStyle(document.body).colorScheme === 'dark';
 	for(const pre of document.querySelectorAll('pre.mermaid')) { pre.dataset.src = pre.textContent; }
 
 	/* don't cache a failed load; retry on the next call */
@@ -497,7 +468,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 64rem; }
 		if(!mermaid) { return; }
 		for(const pre of document.querySelectorAll('pre.mermaid')) {
 			if(!pre.dataset.done) { continue; }
-			pre.removeAttribute('data-processed');
+			delete pre.dataset.processed;
 			delete pre.dataset.done;
 			pre.textContent = pre.dataset.src;
 		}
@@ -511,15 +482,13 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 64rem; }
 	const repo = 'flowr-analysis/flowr';
 	const release = document.getElementById('release');
 	const here = document.getElementById('version').dataset.release;
-	const pageOf = tag => `https://raw.githubusercontent.com/${repo}/${tag}/wiki/capabilities/index.html`;
-	const markdownOf = tag => `https://github.com/${repo}/blob/${tag}/wiki/Capabilities.md`;
 
 	async function show(tag) {
 		if(tag === '' || tag === here) { return; }
-		const answer = await fetch(pageOf(tag)).catch(() => null);
+		const answer = await fetch(`https://raw.githubusercontent.com/${repo}/${tag}/wiki/capabilities/index.html`).catch(() => null);
 		if(!answer || !answer.ok) {
 			/* release predates this page; fall back to its wiki markdown */
-			location.href = markdownOf(tag);
+			location.href = `https://github.com/${repo}/blob/${tag}/wiki/Capabilities.md`;
 			return;
 		}
 		/* use an iframe so the release's own scripts keep running, without replacing the document */

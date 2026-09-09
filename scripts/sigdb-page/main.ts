@@ -4,6 +4,7 @@
  */
 import { rankName } from '../../src/util/text/name-rank';
 import type { SigIndex } from '../sigdb-index';
+import { blank, el } from '../page-lib/dom';
 
 /**
  * One row of the packages table: the columns encode() in sigdb-index.ts writes for a PackageEntry
@@ -71,25 +72,6 @@ function readJson<T>(id: string): T {
 	return JSON.parse(byId(id).textContent ?? 'null') as T;
 }
 
-/** a new element with its class and text set in one line, the two properties most creations here want */
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
-	const node = document.createElement(tag);
-	if(className) {
-		node.className = className;
-	}
-	if(text !== undefined) {
-		node.textContent = text;
-	}
-	return node;
-}
-
-/** opens `link` in a new tab, safely: the target/rel pair every outbound link on this page sets */
-function blank<T extends HTMLAnchorElement>(link: T): T {
-	link.target = '_blank';
-	link.rel = 'noopener';
-	return link;
-}
-
 /* The table is unpacked once, on the first search, so opening the page stays cheap. */
 let packages: readonly PackedPackage[] = [];
 let names = '';
@@ -134,7 +116,7 @@ const active = new Set<string>();
 const filters = byId('filters');
 const scope = byId<HTMLButtonElement>('scope');
 scope.addEventListener('click', () => {
-	q.value = q.value.replace(/^[\w.]+:::?/, '');
+	q.value = q.value.trim().replace(/^\?/, '').replace(/^[\w.]+:::?/, '');
 	void search();
 });
 const picks = [...document.querySelectorAll<HTMLButtonElement>('.pick')];
@@ -288,6 +270,11 @@ function sourceUrl(pkg: string, version: string | undefined, base: boolean, file
 	return file ? root + '/' + file + at : root;
 }
 
+/** base R's own index of what a package documents, which rdrr.io has no page for */
+function baseIndexUrl(pkg: string): string {
+	return 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/00Index.html';
+}
+
 /** where a package comes from, as the database records it; CRAN unless a version states another repository */
 const Repositories: Record<string, Repository> = {
 	'cran':         { label: 'CRAN',          home: pkg => 'https://cran.r-project.org/package=' + encodeURIComponent(pkg) },
@@ -304,7 +291,7 @@ const Repositories: Record<string, Repository> = {
 function repositoryOf(index: number): Repository {
 	const row = packages[index];
 	if(row?.[2] === '1') {
-		return { label: 'base R', home: pkg => 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/00Index.html' };
+		return { label: 'base R', home: baseIndexUrl };
 	}
 	const source = row?.[9] ?? '';
 	const stated = source.toLowerCase();
@@ -316,8 +303,7 @@ function repositoryOf(index: number): Repository {
 function packageDocUrl(index: number): string {
 	const [pkg, , base] = packages[index];
 	/* rdrr.io has no index page for a base package, but the R manual does */
-	return base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/00Index.html'
-		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/';
+	return base === '1' ? baseIndexUrl(pkg) : 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/';
 }
 
 /* base R links to its own manual, not rdrr.io, which is stale and lacks recent additions like array2DF */
@@ -332,7 +318,6 @@ function docUrl(name: string, entry: { readonly index: number, readonly topic?: 
 /** a name with the matched part marked, built as nodes so a function name can never inject markup */
 function marked(name: string, needle: string, at: number): HTMLSpanElement {
 	const span = el('span', 'name');
-	span.title = 'click for every package that exports ' + name;
 	if(at < 0) {
 		/* fuzzy hits match scattered chars; adjacent ones merge into one mark instead of many tiny boxes */
 		const wanted = needle.toLowerCase();
@@ -443,6 +428,13 @@ const KindNames: Record<string, string> = {
 	builtin:   'flowR'
 };
 
+/** what the download count means, for the packages CRAN counts and the ones that ship with R */
+function downloadsTitle(downloads: string): string {
+	return Number(downloads) > 0
+		? Number(downloads).toLocaleString('en-US') + ' CRAN downloads in the last month'
+		: 'ships with R, so CRAN counts nothing';
+}
+
 /** CRAN downloads over the last month (what `cran_downloads(when = "last-month")` reported) */
 function count(downloads: string): string {
 	const n = Number(downloads);
@@ -454,12 +446,26 @@ function ownerLink(index: number): HTMLAnchorElement {
 	const link = blank(el('a', base === '1' ? 'base' : '', name));
 	const repository = repositoryOf(index);
 	link.title = name + ' ' + version + (base === '1' ? ' (base R, always available)' : ' (' + repository.label + ')');
-	link.href = (base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html'
-		: repository.home(name)) ?? '';
+	link.href = (base === '1' ? baseIndexUrl(name) : repository.home(name)) ?? '';
 	return link;
 }
 
 const Shown = 3;
+
+/** a hit opens what the page knows about it, and closes it again; a link on the row stays a link */
+function opens(row: HTMLElement, detailOf: () => Node): void {
+	row.addEventListener('click', event => {
+		if((event.target as HTMLElement | null)?.closest('a')) {
+			return;   // a link is a link, not a toggle
+		}
+		const open = row.querySelector('.detail');
+		if(open) {
+			open.remove();
+		} else {
+			row.append(detailOf());
+		}
+	});
+}
 
 /** one aligned row per owning package, each one a link to that package's manual page for this name */
 function detail(name: string, owners: readonly string[]): HTMLDivElement {
@@ -475,8 +481,11 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 		}
 		const [pkg, version, base, downloads] = packageRow;
 		const row = el('div', 'own');
+		/* the name opens the manual page; the row is not one link so the source can sit within it */
+		const who = blank(el('a', 'pkg', pkg));
 		if(documented(name, flags, index)) {
-			row.title = 'the manual page for ' + name + ' in ' + pkg;
+			row.title = who.title = 'the manual page for ' + name + ' in ' + pkg;
+			who.href = docUrl(name, { index, topic });
 		} else {
 			/* no page of its own, so the package's documentation is the next best thing */
 			row.classList.add('undocumented');
@@ -485,11 +494,9 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 				? name + ' has no manual page of its own in ' + pkg + ': an S4 method is documented under its '
 					+ name + ',<class>-method alias, so this links to the package documentation'
 				: name + ' has no manual page in ' + pkg + ', so this links to the package documentation';
+			who.href = packageDocUrl(index);
+			who.title = 'no manual page is recorded for ' + name + ' in ' + pkg + ', so this links to the package documentation';
 		}
-		/* the name and the arrow open the manual page; the row is not one link so the source can sit within it */
-		const docs: HTMLAnchorElement[] = [];
-		const who = el('a', 'pkg', pkg);
-		docs.push(who);
 		row.append(who);
 		const marks = el('span', 'flags');
 		/* one signature per package version: flowR's formals if declared, merged with both statements' labels */
@@ -510,26 +517,12 @@ function detail(name: string, owners: readonly string[]): HTMLDivElement {
 			}
 		}
 		const ver = el('span', 'ver', Number(downloads) > 0 ? version + ' · ' + count(downloads) : version);
-		ver.title = Number(downloads) > 0
-			? Number(downloads).toLocaleString('en-US') + ' CRAN downloads in the last month'
-			: 'ships with R, so CRAN counts nothing';
+		ver.title = downloadsTitle(downloads);
 		const tag = el('span', 'tag', base === '1' ? 'base R' : 'CRAN');
 		if(here.args !== '' || here.props !== '') {
 			marks.append(signature(name, here.args, here.props));
 		}
 		const go = el('a', 'go', '↗');
-		for(const link of docs) {
-			link.target = '_blank';
-			link.rel = 'noopener';
-			if(documented(name, flags, index)) {
-				link.href = docUrl(name, { index, topic });
-				link.title = 'the manual page for ' + name + ' in ' + pkg;
-			} else {
-				link.href = packageDocUrl(index);
-				row.classList.add('undocumented');
-				link.title = 'no manual page is recorded for ' + name + ' in ' + pkg + ', so this links to the package documentation';
-			}
-		}
 		/* where this very function is written, which the manual page never shows */
 		const where = sourceFile(index, file);
 		const src = blank(el('a', 'src'));
@@ -597,9 +590,7 @@ function showPackage(index: number, needle: string, at: number): void {
 	const [name, version, base, downloads, exports, releases, , archived] = packages[index];
 	const row = el('li', 'pkghit');
 	const head = el('div', 'head');
-	const title = el('span', 'name');
-	title.append(name.slice(0, at));
-	title.append(el('mark', undefined, name.slice(at, at + needle.length)), name.slice(at + needle.length));
+	const title = marked(name, needle, at);
 	const badge = el('span', 'kindtag', base === '1' ? 'base R package' : archived === '1' ? 'archived package' : 'package');
 	if(archived === '1') {
 		badge.classList.add('gone');
@@ -611,23 +602,10 @@ function showPackage(index: number, needle: string, at: number): void {
 		exports + ' exports',
 		Number(releases) > 0 ? releases + (Number(releases) === 1 ? ' release' : ' releases') : null
 	].filter(Boolean).join(' · ');
-	facts.title = Number(downloads) > 0
-		? Number(downloads).toLocaleString('en-US') + ' CRAN downloads in the last month'
-		: 'ships with R, so CRAN counts nothing';
+	facts.title = downloadsTitle(downloads);
 	head.append(title, badge, facts);
 	row.append(head);
-	/* the button scopes the search; the row itself opens what flowR knows about the package */
-	row.addEventListener('click', event => {
-		if((event.target as HTMLElement | null)?.closest('a')) {
-			return;
-		}
-		const open = row.querySelector('.detail');
-		if(open) {
-			open.remove();
-		} else {
-			row.append(aboutPackage(index));
-		}
-	});
+	opens(row, () => aboutPackage(index));
 	hits.append(row);
 }
 
@@ -646,14 +624,14 @@ function aboutPackage(index: number): HTMLDivElement {
 			: repositoryOf(index).label + (archived === '1' ? ', since archived' : '')]
 	];
 	for(const [label, value] of facts) {
-		const line = document.createElement('p');
+		const line = el('p');
 		line.append(el('span', 'kind', label), value);
 		box.append(line);
 	}
 	const links = el('p', 'links');
 	const repository = repositoryOf(index);
 	const where: readonly [string | undefined, string] = base === '1'
-		? ['https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html', 'the R manual']
+		? [baseIndexUrl(name), 'the R manual']
 		: [repository.home(name), repository.label];
 	const offered: readonly (readonly [string | undefined, string])[] =
 		[where, ['?q=' + encodeURIComponent(name + '::'), 'everything it exports']];
@@ -810,11 +788,13 @@ function declaredIn(name: string, pkg: string | undefined): string | undefined {
 let scoped: string | undefined;
 
 function show(name: string, needle: string, at: number, owners: readonly string[]): void {
-	const row = document.createElement('li');
+	const row = el('li');
 	const head = el('div', 'head');
 	/* decided by the likely package: `pi` reads as a constant even though something else exports `pi()` */
 	const value = owner(owners[0]).flags.includes('c');
-	head.append(marked(name, needle, at));
+	const named = marked(name, needle, at);
+	named.title = 'click for every package that exports ' + name;
+	head.append(named);
 	if(value) {
 		(head.firstChild as HTMLElement).classList.add('value');
 		const badge = el('span', 'kindtag value', 'value');
@@ -881,17 +861,7 @@ function show(name: string, needle: string, at: number, owners: readonly string[
 	}
 	head.append(list);
 	row.append(head);
-	row.addEventListener('click', event => {
-		if((event.target as HTMLElement | null)?.closest('a')) {
-			return;   // a link is a link, not a toggle
-		}
-		const open = row.querySelector('.detail');
-		if(open) {
-			open.remove();
-		} else {
-			row.append(detail(name, owners));
-		}
-	});
+	opens(row, () => detail(name, owners));
 	hits.append(row);
 }
 
@@ -981,8 +951,13 @@ async function search(): Promise<void> {
 		matches.sort((a, b) => a.rank - b.rank || a.name.length - b.name.length
 			|| (a.name.toLowerCase() < b.name.toLowerCase() ? -1 : a.name.toLowerCase() > b.name.toLowerCase() ? 1 : a.name < b.name ? -1 : 1));
 	}
+	/* the query named a package, so the reader is offered the way back out of it */
+	scope.hidden = inPackage === undefined;
+	if(inPackage !== undefined) {
+		scope.textContent = 'in ' + inPackage;
+		scope.title = 'only names ' + inPackage + ' exports; click to search every package instead';
+	}
 	/* a package was named, so only the names it exports count */
-	scope.hidden = true;
 	const wanted = inPackage === undefined ? undefined : byName.get(inPackage);
 	/* `base::sin` is base R's whatever the database holds, so the scope asks the same owners a row shows */
 	const inScope = wanted === undefined ? matches

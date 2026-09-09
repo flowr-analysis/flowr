@@ -29,9 +29,9 @@
 	function setTheme(mode) {
 		themeMode = mode;
 		if(mode === 'system') {
-			document.documentElement.removeAttribute('data-theme');
+			delete document.documentElement.dataset.theme;
 		} else {
-			document.documentElement.setAttribute('data-theme', mode);
+			document.documentElement.dataset.theme = mode;
 		}
 		try {
 			if(mode === 'system') {
@@ -1789,7 +1789,8 @@
 			lead: [
 				['mutation mutants', 'mutants sliced'],
 				['mutation passes', 'rewrites applied to each'],
-				['mutation known-wrong mutants', 'still sliced wrongly', true]
+				/* the suite no longer records it, so only a run that still carries the number states it */
+				['mutation known-wrong mutants', 'still sliced wrongly']
 			],
 			rest: [['mutation tests', 'tests run by the suite']],
 			splits: [],

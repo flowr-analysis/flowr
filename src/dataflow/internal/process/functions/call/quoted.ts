@@ -108,13 +108,16 @@ export const Quoted = {
 		let cfg: ControlFlowGraph | undefined | null = null;
 		const cfgOnce = () => (cfg === null ? (cfg = controlFlow()) : cfg);
 		const masking: MaskingCall[] = [];
-		const withSideEffects = callsWithSideEffects(graph);
+		let sideEffects: ReadonlySet<NodeId> | undefined = undefined;
+		const sideEffectsOnce = () => sideEffects ??= callsWithSideEffects(graph);
+		let installers: ReadonlySet<NodeId> | undefined = undefined;
+		const installersOnce = () => installers ??= languageInstallersOf(graph, environment);
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
 			if(masks !== undefined) {
 				masking.push(masks);
 			}
-			for(const installed of installedLanguageOf(graph, id, environment)) {
+			for(const installed of installedLanguageOf(graph, id, installersOnce)) {
 				names ??= Deferred.indexOf(graph, idMap);
 				Deferred.link(graph, installed, names, idMap);
 				graph.addEdge(id, installed, EdgeType.Returns);
@@ -142,7 +145,7 @@ export const Quoted = {
 				}
 				/* an argument the callee writes over before reading it is forced on the written value, not the
 				 * one the call site handed in: `f(x)` with `f <- function(a) { x <<- 99; a }` yields 99 */
-				if(withSideEffects.has(id)) {
+				if(sideEffectsOnce().has(id)) {
 					const flow = cfgOnce();
 					if(flow !== undefined) {
 						for(const [argument, parameter] of forcedParameters(graph, id)) {
@@ -191,7 +194,7 @@ function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: Nod
  * The captured language a call evaluates because a replacement working on language installed it into what the call
  * reads: after `body(f) <- quote(k)`, every `f()` evaluates `k`.
  */
-function* installedLanguageOf(graph: DataflowGraph, id: NodeId, environment: REnvironmentInformation): Generator<NodeId> {
+function* installedLanguageOf(graph: DataflowGraph, id: NodeId, installers: () => ReadonlySet<NodeId>): Generator<NodeId> {
 	for(const [definition, edge] of graph.edgesFrom(id)) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads) || !DfgVertex.isVariableDefinition(graph.getVertex(definition))) {
 			continue;
@@ -205,8 +208,7 @@ function* installedLanguageOf(graph: DataflowGraph, id: NodeId, environment: REn
 			const captures = capturedArgumentsOf(graph, by, true);
 			if(captures.length > 0) {
 				captured.push(...captures);
-			} else if(DfgVertex.hasOrigin(graph.getVertex(by), BuiltInProcName.Replacement)
-				&& ((callFnProps(by, { graph, environment })?.props ?? 0) & CallProp.Lang) !== 0) {
+			} else if(DfgVertex.hasOrigin(graph.getVertex(by), BuiltInProcName.Replacement) && installers().has(by)) {
 				installs = true;
 			}
 		}
@@ -214,6 +216,18 @@ function* installedLanguageOf(graph: DataflowGraph, id: NodeId, environment: REn
 			yield* captured;
 		}
 	}
+}
+
+/** The replacement calls working on language, which are what {@link installedLanguageOf} looks for. */
+function languageInstallersOf(graph: DataflowGraph, environment: REnvironmentInformation): ReadonlySet<NodeId> {
+	const installers = new Set<NodeId>();
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)
+			&& ((callFnProps(id, { graph, environment })?.props ?? 0) & CallProp.Lang) !== 0) {
+			installers.add(id);
+		}
+	}
+	return installers;
 }
 
 /**

@@ -6,7 +6,7 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
-	DefaultDependencyCategories,
+	defaultDependencyCategories,
 	type DependencyInfo,
 	Attached,
 	Constant,
@@ -25,12 +25,16 @@ import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/defa
 import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
 import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
-import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { readFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { writeFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
 import { RFunctionCall } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', 'plotly', 'remotes', 'rlang', 'tinyplot');
+
+const defaultCtx = new FlowrAnalyzerContext(FlowrConfig.default());
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], statistics: [] };
 
@@ -772,10 +776,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			const stated = BuiltInIndex.default().with(SemanticCallTag.Statistics);
 			assert.isNotEmpty(stated);
 			assert.deepStrictEqual(
-				DefaultDependencyCategories.statistics.functions.map(f => `${f.package as string}::${f.name}`).sort(),
+				defaultDependencyCategories(defaultCtx).statistics.functions.map(f => `${f.package as string}::${f.name}`).sort(),
 				stated.map(Identifier.toString).sort()
 			);
-			for(const f of DefaultDependencyCategories.statistics.functions) {
+			for(const f of defaultDependencyCategories(defaultCtx).statistics.functions) {
 				assert.isDefined(f.package, `${f.name} has no package`);
 			}
 		});
@@ -932,7 +936,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 		}
-		test.each([['read', ReadFunctions], ['write', WriteFunctions], ['other paths', OtherPathFunctions]] as const)(
+		test.each([['read', readFunctions(defaultCtx)], ['write', writeFunctions(defaultCtx)], ['other paths', OtherPathFunctions]] as const)(
 			'%s', (_name, list) => {
 				for(const f of list) {
 					const declared = resources.get(f.package === undefined ? f.name : Identifier.toString(Identifier.make(f.name, f.package)));
@@ -988,7 +992,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			const sources = analyzer.inspectContext().deps.signatureSources();
 			const exportsOf = (pkg: string): string[] => sources.filter(s => s.packageNames().includes(pkg))
 				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);
-			for(const [category, { functions }] of Object.entries(DefaultDependencyCategories)) {
+			for(const [category, { functions }] of Object.entries(defaultDependencyCategories(defaultCtx))) {
 				for(const f of functions) {
 					const known = f.package === undefined ? [] : exportsOf(f.package);
 					if(known.length === 0 || recordedElsewhere.has(f.name)) {

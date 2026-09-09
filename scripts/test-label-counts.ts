@@ -2,7 +2,7 @@
  * Merges test-suite-produced counters into benchmark graph outputs (the suite runs as a separate job).
  * A label may repeat across tests, so tests are counted by id, not by label occurrence.
  * --results/--mutation-results add total test counts from a vitest report; --mutations adds the
- * counterexample suite's own coverage (mutants, passes, known-wrong) from its details file.
+ * counterexample suite's own coverage (mutants, passes) from its details file.
  *
  * Usage: test-label-counts.ts [--results f] [--mutations f] [--mutation-results f] details.json graph.json...
  */
@@ -25,7 +25,6 @@ interface MutationDetails {
 	readonly passes?:          number;
 	readonly counterexamples?: number;
 	readonly mutants?:         number;
-	readonly knownWrong?:      number;
 }
 
 const argv = process.argv.slice(2);
@@ -80,8 +79,7 @@ function mutationEntries(path: string | undefined, resultsPath: string | undefin
 		? facts.passes * facts.counterexamples : undefined;
 	const entries = ([
 		['mutation mutants', facts.mutants, possible === undefined ? undefined : `out of ${possible} possible`],
-		['mutation passes', facts.passes, undefined],
-		['mutation known-wrong mutants', facts.knownWrong, undefined]
+		['mutation passes', facts.passes, undefined]
 	] as const).flatMap(([name, value, extra]) =>
 		typeof value === 'number' && value >= 0 ? [{ name, unit: '#', value, ...(extra ? { extra } : {}) }] : []);
 	return testsEntry ? [...entries, testsEntry] : entries;

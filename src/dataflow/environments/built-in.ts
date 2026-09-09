@@ -40,7 +40,7 @@ import type { ResolveInfo } from '../eval/resolve/alias-tracking';
 import { resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import { StringFold } from '../eval/resolve/resolve-strings';
 import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
-import { GetFold } from '../eval/resolve/resolve-get';
+import { resolveAsGet } from '../eval/resolve/resolve-get';
 import { NumericFold } from '../eval/resolve/resolve-numbers';
 import { BuiltInEvalName } from './built-in-eval-name';
 import type { VariableResolve } from '../../config';
@@ -391,7 +391,7 @@ export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.Logical]:    resolveAsLogical,
 	[BuiltInEvalName.StringFn]:   StringFold.call,
 	[BuiltInEvalName.Group]:      resolveAsGroup,
-	[BuiltInEvalName.Get]:        GetFold.call
+	[BuiltInEvalName.Get]:        resolveAsGet
 } as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];

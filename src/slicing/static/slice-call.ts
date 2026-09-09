@@ -24,21 +24,28 @@ import { DfgVertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
+const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
+
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true);
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 
 	// lift baseEnv on the same level
 
-	const activeEnvironment = retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
+	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
 
 	const name = callerInfo.name;
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
-	const functionCallDefs = Resolve.byName(name, activeEnvironment)?.filter(d => !NodeId.isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
+	const functionCallDefs: NodeId[] = [];
+	for(const d of Resolve.byName(name, activeEnvironment) ?? []) {
+		if(!NodeId.isBuiltIn(d.definedAt)) {
+			functionCallDefs.push(d.nodeId);
+		}
+	}
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
@@ -46,7 +53,8 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 		}
 	}
 
-	const functionCallTargets = queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)[0]);
+	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets :
+		queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)[0]);
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -103,7 +111,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment)) {
 			return;
 		}
-		const argEnvironmentFingerprint = envFingerprint(activeEnvironment);
+		const argEnvironmentFingerprint = activeEnvironment === current.baseEnvironment ? current.envFingerprint : envFingerprint(activeEnvironment);
 		const outgoing = graph.outgoingEdges(callerInfo.id);
 		for(const arg of callerInfo.args) {
 			const reference = FunctionArgument.getReference(arg);
@@ -114,7 +122,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		}
 		return;
 	}
-	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
+	const activeEnvironmentFingerprint = activeEnvironment === current.baseEnvironment ? current.envFingerprint : envFingerprint(activeEnvironment);
 	linkCallTargets(current.onlyForSideEffects, functionCallTargets, activeEnvironment, activeEnvironmentFingerprint, queue);
 }
 

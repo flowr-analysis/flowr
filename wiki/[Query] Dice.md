@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:39:20 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
 <h2 id="Dice Query">Dice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reduces the code to the parts that carry information from a given start point to a given end point.\
@@ -54,11 +54,10 @@ _Results (prettified and summarized):_
 
 x <- 1\
 z <- x + y\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -68,9 +67,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 ```json
 {
   "dice": {
-    ".meta": {
-      "timing": 2
-    },
+    ".meta": {},
     "results": {
       "1@x->3@z": {
         "slice": {
@@ -87,9 +84,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             0,
             6
           ],
-          ".meta": {
-            "timing": 1
-          }
+          ".meta": {}
         },
         "reconstruct": {
           "code": "x <- 1\nz <- x + y",
@@ -99,16 +94,12 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             }
           ],
           "linesWithAutoSelected": 0,
-          ".meta": {
-            "timing": 0
-          }
+          ".meta": {}
         }
       }
     }
   },
-  ".meta": {
-    "timing": 2
-  }
+  ".meta": {}
 }
 ```
 
@@ -158,11 +149,10 @@ x <- 1\
 y <- 2\
 z <- x + y\
 print(z)\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -172,9 +162,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 ```json
 {
   "dice": {
-    ".meta": {
-      "timing": 2
-    },
+    ".meta": {},
     "results": {
       "1@x,2@y->5@print": {
         "slice": {
@@ -197,9 +185,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             3,
             19
           ],
-          ".meta": {
-            "timing": 0
-          }
+          ".meta": {}
         },
         "reconstruct": {
           "code": "x <- 1\ny <- 2\nz <- x + y\nprint(z)",
@@ -209,16 +195,12 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             }
           ],
           "linesWithAutoSelected": 0,
-          ".meta": {
-            "timing": 0
-          }
+          ".meta": {}
         }
       }
     }
   },
-  ".meta": {
-    "timing": 2
-  }
+  ".meta": {}
 }
 ```
 

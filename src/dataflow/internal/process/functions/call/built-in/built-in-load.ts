@@ -29,7 +29,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type {
 	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous, signatureParamNames } from './built-in-envir-utils';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
@@ -59,7 +59,7 @@ export function processLoadCall<OtherInfo>(
 		return fn.information;
 	}
 
-	const envirResolution = envirArg ? resolveArgToEnvir(envirArg, data) : undefined;
+	const envirResolution = envirArg ? envirOf(resolveArgToEnvirOrAmbiguous(envirArg, data)) : undefined;
 	if(envirResolution) {
 		fn.information.graph.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	}

@@ -18,7 +18,7 @@ interface HelperCategory {
 }
 
 /**
- * The categories a helper object may declare with `@helper <category> <what it is>`, by what they are *about*
+ * The categories a helper object may declare with `@helper <category>`, by what they are *about*
  * rather than by where the objects happen to live.
  */
 const Categories: readonly HelperCategory[] = [
@@ -36,14 +36,26 @@ const Categories: readonly HelperCategory[] = [
 interface DeclaredHelper {
 	readonly file:      string;
 	readonly category?: string;
+	/** the optional rest of the `@helper` line; without it the doc comment's own first sentence is used */
 	readonly summary?:  string;
+}
+
+/**
+ * The first sentence of a helper object's own documentation, which is what the table shows when the
+ * `@helper` tag names only a category: the helper states what it is, and the tag does not repeat it.
+ */
+function summarize(doc: string): string {
+	/* a `{@link X}` arrives wrapped in `<code>` and spaced off the punctuation behind it, which a description does not want */
+	const text = doc.replace(/<\/?code>/g, '').replace(/\s+/g, ' ').replace(/ (?=[.,;:!?)])|(?<=\() /g, '').trim();
+	const stop = /(?<!e\.g|i\.e|etc|vs)\.\s/.exec(text);
+	return (stop ? text.slice(0, stop.index + 1) : text).trim();
 }
 
 /**
  * Every `export const X = { name: 'X', ... }` under `src/`, which is what makes something a helper object here:
  * the `name` has to repeat the constant's own, which is what separates a helper object from the other things
  * that carry a `name` (a pipeline step names its step, a query registry names the query). With it comes the
- * `@helper <category> <what it is>` tag of the doc comment right above, if there is one.
+ * `@helper <category>` tag of the doc comment right above, if there is one, and the optional description behind it.
  * Read from the sources rather than from a list, so the check below cannot go stale.
  */
 function declaredHelperObjects(): Map<string, DeclaredHelper> {
@@ -57,8 +69,8 @@ function declaredHelperObjects(): Map<string, DeclaredHelper> {
 				const source = fs.readFileSync(at, 'utf-8');
 				for(const match of source.matchAll(/^export const (\w+)(?::[^=]+)? = \{\n(?:\t[^\n]*\n){0,12}?\tname:\s*'\1'/gm)) {
 					const doc = source.slice(source.lastIndexOf('/**', match.index), match.index);
-					const tag = /@helper\s+(\S+)\s+([^\n]*?)\s*(?:\n|\*\/)/.exec(doc.endsWith('*/\n') ? doc : '');
-					found.set(match[1], { file: at, category: tag?.[1], summary: tag?.[2] });
+					const tag = /@helper[ \t]+(\S+)(?:[ \t]+([^\n]*?))?[ \t]*(?:\n|\*\/)/.exec(doc.endsWith('*/\n') ? doc : '');
+					found.set(match[1], { file: at, category: tag?.[1], summary: tag?.[2] || undefined });
 				}
 			}
 		}
@@ -80,12 +92,15 @@ export class WikiHelperObjects extends DocMaker<'wiki/Helper Objects.md'> {
 		const known = new Set(Categories.map(c => c.id));
 		const families = Categories.map(c => c.alsoIn).filter(isNotUndefined);
 		const untagged = [...declared].filter(([, h]) => h.category === undefined && !families.some(dir => h.file.includes(dir))).map(([n]) => n).sort();
-		guard(untagged.length === 0, () => `Helper objects without an \`@helper <category> <what it is>\` tag: ${untagged.join(', ')}. The categories are ${[...known].join(', ')}.`);
+		guard(untagged.length === 0, () => `Helper objects without an \`@helper <category>\` tag: ${untagged.join(', ')}. The categories are ${[...known].join(', ')}.`);
 		const unknown = [...declared].filter(([, h]) => h.category !== undefined && !known.has(h.category)).map(([n, h]) => `${n} (${h.category})`).sort();
 		guard(unknown.length === 0, () => `Helper objects tagged with a category ${module.filename} does not know: ${unknown.join(', ')}.`);
 		const empty = Categories.filter(c => c.alsoIn === undefined && ![...declared.values()].some(h => h.category === c.id)).map(c => c.id);
 		guard(empty.length === 0, () => `No helper object is tagged with: ${empty.join(', ')}.`);
 		const members = (id: string) => [...declared].filter(([, h]) => h.category === id).sort(([a], [b]) => a.localeCompare(b));
+		const describe = (name: string, h: DeclaredHelper) => h.summary ?? summarize(ctx.doc({ name }, { type: 'variable' }));
+		const undocumented = [...declared].filter(([n, h]) => h.category !== undefined && describe(n, h) === '').map(([n]) => n).sort();
+		guard(undocumented.length === 0, () => `Helper objects with neither a description on their \`@helper\` tag nor a doc comment to take one from: ${undocumented.join(', ')}.`);
 
 		return `
 This page lists every important helper object of flowR.
@@ -97,12 +112,13 @@ ${Categories.map(category => `${section(category.title, 2)}
 
 | helper | what it is |
 | :-- | :-- |
-${members(category.id).map(([name, h]) => `| ${ctx.link({ name }, undefined, { type: 'variable' })} | ${h.summary} |`).join('\n')}`).join('\n\n')}
+${members(category.id).map(([name, h]) => `| ${ctx.link({ name }, undefined, { type: 'variable' })} | ${describe(name, h)} |`).join('\n')}`).join('\n\n')}
 
 ${section('Adding a helper object', 2)}
 
-Give the doc comment of the object an \`@helper <category> <what it is>\` tag. The category is one of
-${Categories.map(c => `\`${c.id}\``).join(', ')}, and the rest of the line is the short description for the table.
+Give the doc comment of the object an \`@helper <category>\` tag. The category is one of
+${Categories.map(c => `\`${c.id}\``).join(', ')}. The table shows the first sentence of the doc comment itself;
+write \`@helper <category> <what it is>\` only when the table should say something else.
 `;
 	}
 }

@@ -21,7 +21,7 @@ import type { InGraphIdentifierDefinition } from '../../../../../environments/id
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { effectiveArgs, pipedCall, resolveConstantString, routeWrittenToStackEnv } from './built-in-envir-utils';
+import { pipedCall, resolveConstantString, routeWrittenToStackEnv } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -53,11 +53,9 @@ export function processEvalCall<OtherInfo>(
 		parentFrame?:         boolean
 	}
 ): DataflowInformation {
-	/* a piped `x` (`x |> eval()`) patches in after dispatch; use effectiveArgs so expr binds correctly */
-	const effArgs = effectiveArgs(args, rootId, data);
-	const bound = FunctionSemantics.call.match.toNames(effArgs, config.parameterNames ?? EvalParameterNames);
+	const bound = FunctionSemantics.call.match.toNames(args, config.parameterNames ?? EvalParameterNames);
 	/* `evalText` names its formal differently, so a lone argument is the expression whatever it is called */
-	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(effArgs))?.value;
+	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(args))?.value;
 	const envirArg = bound.get('envir');
 
 	if(evalArgument === undefined) {

@@ -59,7 +59,7 @@ function raw(of: SourceLocationLike | undefined): SourceLocation | undefined {
 
 /**
  * Utility functions for {@link SourceRange|source ranges}.
- * @helper location Utility functions for source ranges.
+ * @helper location
  */
 export const SourceRange = {
 	name: 'SourceRange',
@@ -307,7 +307,7 @@ export const SourceRange = {
  *
  * As every {@link SourceRange} is a location without a file, the readers of {@link SourceRange} apply
  * to locations as well; the ones re-exported here save you the detour via {@link SourceLocation.getRange}.
- * @helper location Utility functions for source locations.
+ * @helper location
  */
 export const SourceLocation = {
 	name: 'SourceLocation',

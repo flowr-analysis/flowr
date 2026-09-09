@@ -1,3 +1,4 @@
+import { withoutTimings } from '../doc-util/doc-timings';
 import type { PathLike } from 'fs';
 import type { GeneralDocContext } from './doc-context';
 import type { RShell } from '../../r-bridge/shell';
@@ -32,9 +33,9 @@ export enum WikiChangeType {
 	Identical
 }
 
-/** Strips `\r` so generated files stay consistent regardless of OS/checkout settings. */
+/** Strips `\r` and the measurements of {@link withoutTimings} so a regenerated page only differs when its content does. */
 export function normalizeLineEndings(text: string): string {
-	return text.replace(/\r\n/g, '\n');
+	return withoutTimings(text.replace(/\r\n/g, '\n'));
 }
 
 export interface DocMakerLike<Target extends string = string> {

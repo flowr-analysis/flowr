@@ -12,8 +12,9 @@ import { defaultSigDbPaths } from '../src/project/sigdb/manifest';
 /* the plain function lists rather than the query module, which would pull in half the analyzer */
 import { LibraryFunctions } from '../src/queries/catalog/dependencies-query/function-info/library-functions';
 import { SourceFunctions } from '../src/queries/catalog/dependencies-query/function-info/source-functions';
-import { ReadFunctions } from '../src/queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { computeReadFunctions } from '../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { computeWriteFunctions } from '../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { BuiltInIndex } from '../src/dataflow/environments/query-fn-props';
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
 import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
@@ -264,11 +265,11 @@ function builtInKinds(): Map<string, string[]> {
 	const categories: Record<string, readonly { name: string }[]> = {
 		library:    LibraryFunctions,
 		source:     SourceFunctions,
-		read:       ReadFunctions,
-		write:      WriteFunctions,
+		read:       computeReadFunctions(DefaultBuiltinConfig),
+		write:      computeWriteFunctions(DefaultBuiltinConfig),
 		visualize:  VisualizeFunctions,
 		test:       TestFunctions,
-		statistics: statisticsFunctions()
+		statistics: statisticsFunctions(BuiltInIndex.default())
 	};
 	const kinds = new Map<string, string[]>();
 	/* flowR's own built-in definitions: `:`, `<-`, `TRUE` and the rest of what it understands without

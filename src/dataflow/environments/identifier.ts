@@ -37,7 +37,7 @@ const dotDotDotAccess = /^\.\.\d+$/;
 /**
  * Helper functions to work with {@link Identifier|identifiers}.
  * Use {@link Identifier.matches} to check if two identifiers match according to R's scoping rules!
- * @helper values Helper functions to work with identifiers.
+ * @helper values
  * @example
  * ```ts
  * const id1 = Identifier.make('a', 'pkg');

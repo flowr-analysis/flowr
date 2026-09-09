@@ -16,6 +16,9 @@ import { AttachedBasePackageSet, baseRExportOwner } from '../../../src/util/r-ba
 import { MIN_VERSION_LAMBDA } from '../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { RPipe } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import semver from 'semver/preload';
+import { createSlicePipeline } from '../../../src/core/steps/pipeline/default-pipelines';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export interface MutationTarget {
 	/** the program to mutate */
@@ -32,10 +35,25 @@ export type Occurrences = (name: string) => Promise<readonly SourceRange[]>;
 /** one rewrite, applied to every counterexample it fits */
 export interface MutationPass {
 	/** what the mutants of this pass are named after */
-	readonly name:  string;
+	readonly name:         string;
+	/** the R version the rewrite needs, so a host below it explains an idle pass without a name list */
+	readonly minRVersion?: string;
 	/** the mutated program, or `undefined` if the pass does not apply */
-	readonly apply: (target: MutationTarget, occurrencesOf: Occurrences) => Promise<MutationTarget | undefined> | MutationTarget | undefined;
+	readonly apply:        (target: MutationTarget, occurrencesOf: Occurrences) => Promise<MutationTarget | undefined> | MutationTarget | undefined;
 }
+
+/** whether the R the tests run against is at least `version`; an unknown version satisfies nothing */
+function rVersionAtLeast(version: string): boolean {
+	return !!globalThis.rVersion && semver.satisfies(globalThis.rVersion, `>=${version}`);
+}
+
+/** whether the host R meets what the pass declares, so that an idle pass is idle for the program and not the host */
+export function passIsAvailable(pass: MutationPass): boolean {
+	return pass.minRVersion === undefined || rVersionAtLeast(pass.minRVersion);
+}
+
+/** the version {@link nestedCallToPipe} declares and checks, so the two cannot drift apart */
+const PipeVersion = RPipe.availableFromRVersion().toString();
 
 /** prefix of the names a pass introduces; a dotted one would survive {@link RShell#clearEnvironment}'s `ls()` */
 const MutationPrefix = 'mut_';
@@ -227,8 +245,9 @@ function splitTopLevelArgs(text: string): string[] {
 
 /** `f(g(x, ...))` reads as `x |> g(...) |> f()`; only rewrites an rhs shaped as one call wrapping one call */
 const nestedCallToPipe: MutationPass = {
-	name:  'nested call rewritten as a pipe',
-	apply: target => !globalThis.rVersion || !semver.satisfies(globalThis.rVersion, `>=${RPipe.availableFromRVersion().toString()}`)
+	name:        'nested call rewritten as a pipe',
+	minRVersion: PipeVersion,
+	apply:       target => !rVersionAtLeast(PipeVersion)
 		? undefined
 		: rewriteAssignments(target, (name, rhs) => {
 			const outer = soleCall(rhs);
@@ -448,37 +467,10 @@ function findMatchingBracket(text: string, open: number): number | undefined {
 	return undefined;
 }
 
-/** whether `text` holds a `;` outside of any nested bracket or quote, so it is more than one statement */
-function hasTopLevelSemicolon(text: string): boolean {
-	let depth = 0;
-	let quote: string | undefined;
-	for(let i = 0; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-			continue;
-		}
-		if(c === '"' || c === '\'') {
-			quote = c;
-		} else if('([{'.includes(c)) {
-			depth++;
-		} else if(')]}'.includes(c)) {
-			depth--;
-		} else if(c === ';' && depth === 0) {
-			return true;
-		}
-	}
-	return false;
-}
-
-/** the head of a single-line `if(...)`, `for(...)` or `while(...)`, up to and including its closing paren */
-const ControlHeader = /^(if|for|while)\s*\(/;
+/** the head of a single-line `if`, `for`, `while` or named `function`/`\(` definition, up to its closing paren */
+const ControlHeader = /^([A-Za-z.][\w.]* (<-|=) )?(if|for|while|function|\\)\s*\(/;
 interface ControlHead {
-	readonly keyword: 'if' | 'for' | 'while';
+	readonly keyword: 'if' | 'for' | 'while' | 'function' | '\\';
 	readonly header:  string;
 	readonly rest:    string;
 }
@@ -488,7 +480,7 @@ function controlHead(line: string): ControlHead | undefined {
 		return undefined;
 	}
 	const close = findMatchingBracket(line, m[0].length - 1);
-	return close === undefined ? undefined : { keyword: m[1] as ControlHead['keyword'], header: line.slice(0, close + 1), rest: line.slice(close + 1) };
+	return close === undefined ? undefined : { keyword: m[3] as ControlHead['keyword'], header: line.slice(0, close + 1), rest: line.slice(close + 1) };
 }
 
 /** splits at a top level ` else `, the one that belongs to this very `if` rather than one nested inside it */
@@ -540,9 +532,15 @@ function addBraces(line: string): string | undefined {
 	return `${head.header} { ${rest} }`;
 }
 
+/** metaprogramming reads a body as it is written, so a brace around it is another program */
+const ReadsCodeAsWritten = /\b(body|deparse|substitute|quote|bquote|args|match\.call)\s*\(/;
+
 const bracesAdded: MutationPass = {
 	name:  'braces added to a construct body',
 	apply: target => {
+		if(ReadsCodeAsWritten.test(target.code)) {
+			return undefined;
+		}
 		let changed = false;
 		const mutated = mapLines(target, lines => lines.map(l => {
 			const rewritten = addBraces(l);
@@ -553,104 +551,13 @@ const bracesAdded: MutationPass = {
 	}
 };
 
-/** inverse of {@link addBraces}: `{ e }` evaluates to `e`, so a single-statement block may go */
-function removeBraces(line: string): string | undefined {
-	const head = controlHead(line);
-	if(head === undefined) {
-		return undefined;
-	}
-	const rest = head.rest.trimStart();
-	if(!rest.startsWith('{')) {
-		return undefined;
-	}
-	const close = findMatchingBracket(rest, 0);
-	if(close === undefined) {
-		return undefined;
-	}
-	const inner = rest.slice(1, close).trim();
-	const after = rest.slice(close + 1).trim();
-	/* a bare `if` left behind by unwrapping could bind a later `else` to itself instead of to this construct */
-	if(inner === '' || hasTopLevelSemicolon(inner) || /^if\s*\(/.test(inner)) {
-		return undefined;
-	}
-	if(head.keyword !== 'if' || after === '') {
-		return after === '' ? `${head.header} ${inner}` : undefined;
-	}
-	if(!after.startsWith('else')) {
-		return undefined;
-	}
-	const elseRest = after.slice(4).trim();
-	if(!elseRest.startsWith('{')) {
-		return undefined;
-	}
-	const elseClose = findMatchingBracket(elseRest, 0);
-	if(elseClose === undefined) {
-		return undefined;
-	}
-	const elseInner = elseRest.slice(1, elseClose).trim();
-	const elseAfter = elseRest.slice(elseClose + 1).trim();
-	return elseInner === '' || hasTopLevelSemicolon(elseInner) || /^if\s*\(/.test(elseInner) || elseAfter !== '' ? undefined
-		: `${head.header} ${inner} else ${elseInner}`;
-}
-
-const bracesRemoved: MutationPass = {
-	name:  'braces removed from a construct body',
-	apply: target => {
-		let changed = false;
-		const mutated = mapLines(target, lines => lines.map(l => {
-			const rewritten = removeBraces(l);
-			changed ||= rewritten !== undefined;
-			return rewritten ?? l;
-		}), line => line);
-		return changed ? mutated : undefined;
-	}
-};
-
 /** `\(x)` reads exactly as `function(x)` does, from the R version that introduced the shorthand onward */
 const lambdaShorthand: MutationPass = {
-	name:  'lambda shorthand',
-	apply: target => !globalThis.rVersion || !semver.satisfies(globalThis.rVersion, `>=${MIN_VERSION_LAMBDA}`) || !/\bfunction\s*\(/.test(target.code)
+	name:        'lambda shorthand',
+	minRVersion: MIN_VERSION_LAMBDA,
+	apply:       target => !rVersionAtLeast(MIN_VERSION_LAMBDA) || !/\bfunction\s*\(/.test(target.code)
 		? undefined
 		: { ...target, code: target.code.replace(/\bfunction\s*\(/g, '\\(') }
-};
-
-/** a string with no quote of the other kind and no escape reads the same between `"` and `'` */
-const quoteStyleSwapped: MutationPass = {
-	name:  'quote style swapped',
-	apply: target => {
-		let changed = false;
-		const code = target.code.replace(/"([^"\\\n]*)"/g, (whole, content: string) => {
-			if(content.includes('\'')) {
-				return whole;
-			}
-			changed = true;
-			return `'${content}'`;
-		});
-		return changed ? { ...target, code } : undefined;
-	}
-};
-
-/** `repeat` and `while (TRUE)` run the same body forever, `break` included; either spelling reads the same */
-const repeatWhileTrueSwap: MutationPass = {
-	name:  'repeat and while(TRUE) swapped',
-	apply: target => {
-		const toRepeat = target.code.replace(/\bwhile\s*\(\s*TRUE\s*\)/g, 'repeat');
-		if(toRepeat !== target.code) {
-			return { ...target, code: toRepeat };
-		}
-		const toWhile = target.code.replace(/\brepeat\b/g, 'while (TRUE)');
-		return toWhile === target.code ? undefined : { ...target, code: toWhile };
-	}
-};
-
-/** whether the program already gives `T`/`F` a meaning `TRUE`/`FALSE` must not shadow */
-const bareTOrF = /\b[TF]\b/;
-
-/** `T`/`F` are bindings, not literals; only safe to substitute when the program doesn't redefine them */
-const trueFalseAbbreviated: MutationPass = {
-	name:  'TRUE and FALSE abbreviated',
-	apply: target => bareTOrF.test(target.code) || !/\b(TRUE|FALSE)\b/.test(target.code) ? undefined
-		: { ...target, code: target.code.replace(/\bTRUE\b/g, 'T').replace(/\bFALSE\b/g, 'F') }
 };
 
 /** every pass a mutant is generated for; add to this list to check another rewrite */
@@ -675,12 +582,8 @@ export const MutationPasses: readonly MutationPass[] = [
 	shiftCriterionValue,
 	semicolonJoined,
 	bracesAdded,
-	bracesRemoved,
 	lambdaShorthand,
-	nestedCallToPipe,
-	quoteStyleSwapped,
-	repeatWhileTrueSwap,
-	trueFalseAbbreviated
+	nestedCallToPipe
 ];
 
 /** one analysis per program and parser, as every pass and every query asks the same questions of it again */
@@ -691,6 +594,13 @@ function analyzerFor(parser: KnownParser, code: string): Promise<FlowrAnalyzer> 
 	const analyzer = known.get(code) ?? new FlowrAnalyzerBuilder().setParser(parser).build().then(a => (a.addRequest(code), a));
 	known.set(code, analyzer);
 	return analyzer;
+}
+
+/** the slice of `code` for `criterion`, which is empty where the criterion resolves to nothing */
+export async function slice(parser: KnownParser, { code, criterion }: MutationTarget): Promise<string> {
+	const result = await createSlicePipeline(parser, { getId: deterministicCountingIdGenerator(0), context: contextFromInput(code), criterion: [criterion] }).allRemainingSteps();
+	const reconstructed = result.reconstruct.code;
+	return Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
 }
 
 /** applies one pass, letting it locate what it rewrites with the flowR search */

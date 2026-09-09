@@ -787,8 +787,11 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		const assignments = (await runGuess(ts, scenario)).assignments;
 		expect(assignments).toBeDefined();
 		expect(assignments).not.toContainEqual({ versions: { pkgA: '2.0.0', pkgB: '1.0.0' } });
+		expect(assignments?.length ?? 0).toBeGreaterThan(0);
 		for(const { versions } of assignments ?? []) {
-			expect(versions.pkgA === '2.0.0' ? versions.pkgB : '2.0.0').toBe('2.0.0');
+			if(versions.pkgA === '2.0.0') {
+				expect(versions.pkgB).toBe('2.0.0');
+			}
 		}
 	});
 

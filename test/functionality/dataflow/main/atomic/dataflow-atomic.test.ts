@@ -25,6 +25,7 @@ import { RSymbol } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-
 import { RString } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 
 function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | object {
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
@@ -984,12 +985,12 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 
 		test('get() synthesizes a symbol id distinct from the string literal it reads', async() => {
 			const { normalize } = await createDataflowPipeline(shell, { context: contextFromInput('get("a")') }).allRemainingSteps();
-			const stringId = [...normalize.idMap.keys()].find(id => RString.is(normalize.idMap.get(id)));
+			const stringId = [...normalize.idMap.keys()].find(id => normalize.idMap.get(id)?.lexeme === '"a"');
 			assert.isDefined(stringId, 'the "a" string literal has to be part of the ast');
-			const synthId = '3-get-name';
+			const synthId = `${SlicingCriterion.parse('1@get', normalize.idMap)}-get-name`;
 			const synth = normalize.idMap.get(synthId);
 			assert.isTrue(RSymbol.is(synth), 'the synthesized name has to resolve to a symbol');
-			assert.notStrictEqual<NodeId>(synthId, stringId, 'the synthesized symbol must not reuse the string literal\'s id');
+			assert.notStrictEqual(String(stringId), synthId, 'the synthesized symbol must not reuse the string literal\'s id');
 			assert.isTrue(RString.is(normalize.idMap.get(stringId)), 'the original string literal must still resolve to itself');
 		});
 

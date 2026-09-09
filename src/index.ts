@@ -52,6 +52,10 @@ export { TreeSitterExecutor } from './r-bridge/lang-4.x/tree-sitter/tree-sitter-
 
 /* how it is configured */
 export { FlowrConfig } from './config';
+/* what a `semantics.environment.overwriteBuiltIns` entry is made of */
+export type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
+export { BuiltInProcName } from './dataflow/environments/built-in-proc-name';
+export { ArgProp, CallProp, SemanticCallTag } from './dataflow/environments/built-in-props';
 
 /* the low-level interface the analyzer is built on, for anyone assembling their own pipeline */
 export { PipelineExecutor } from './core/pipeline-executor';

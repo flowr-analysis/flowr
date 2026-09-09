@@ -1,5 +1,6 @@
 import type { Range } from 'semver';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -24,7 +25,6 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
-import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
@@ -220,9 +220,9 @@ function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | un
 	return sure ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
 }
 
-function functionListFromBuiltinConfig(): Identifier[] {
-	return DefaultBuiltinConfig.filter(def => def.type === 'function'
-			&& FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
+function functionListFromBuiltinConfig(definitions: BuiltInDefinitions): Identifier[] {
+	return definitions.filter(def => def.type === 'function'
+		&& FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
 		.flatMap(def => def.names);
 }
 
@@ -341,10 +341,10 @@ export const DEPRECATED_FUNCTIONS = {
 		// incomplete; the signature-database pass above adds recall for whichever packages are resolved
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it.',
-		defaultConfig: {
-			always:        functionListFromBuiltinConfig(),
+		defaultConfig: ctx => ({
+			always:        ctx.env.deriveFromDefinitions(functionListFromBuiltinConfig),
 			conditionally: ConditionallyDeprecated
-		}
+		})
 	}
 } as const satisfies LintingRule<DeprecatedFunctionRuleResult, Metadata, DeprecatedFunctionsConfig>;
 

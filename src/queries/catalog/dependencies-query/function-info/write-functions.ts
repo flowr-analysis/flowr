@@ -2,7 +2,10 @@ import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInf
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
-import { ReadFunctions } from './read-functions';
+import { computeReadFunctions } from './read-functions';
+import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
+import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../../project/context/flowr-analyzer-environment-context';
 
 const OutputRedirects = [
 	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
@@ -80,8 +83,19 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	/* phylogeny / sequence */
 ] as const;
 
-/* the configuration leads here too, see {@link ReadFunctions} */
-export const WriteFunctions: FunctionInfo[] = [
-	...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...ReadFunctions]),
-	...WriteFunctionsWithMore
-];
+/* the configuration leads here too, see {@link readFunctions} */
+/** The write entries the given built-in definitions imply, together with the ones written down here. */
+export function computeWriteFunctions(definitions: BuiltInDefinitions, read: FunctionInfo[] = computeReadFunctions(definitions)): FunctionInfo[] {
+	return [
+		...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...read], definitions),
+		...WriteFunctionsWithMore
+	];
+}
+
+/** {@link computeWriteFunctions} for the built-ins `env` registered, reusing the read entries it already derived. */
+export function writeFunctionsOf(env: ReadOnlyFlowrAnalyzerEnvironmentContext): FunctionInfo[] {
+	return computeWriteFunctions(env.builtInDefinitions, env.deriveFromDefinitions(computeReadFunctions));
+}
+
+/** {@link computeWriteFunctions} for the built-ins an analyzer registered, shared per built-in index. */
+export const writeFunctions = (ctx: ReadOnlyFlowrAnalyzerContext): FunctionInfo[] => ctx.env.derive(writeFunctionsOf);

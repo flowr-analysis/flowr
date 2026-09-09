@@ -12,10 +12,11 @@ import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingResultCertainty } from '../../../linter/linter-format';
 import { Record } from '../../../util/record';
-import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
+import { computeReadFunctions } from '../dependencies-query/function-info/read-functions';
 import { LinkedInputEntryPoints, LinkedInputObjects, narrowingFunctions } from './input-source-functions';
 import { CallProp, FileInputProps, InputProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
-import { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -32,32 +33,37 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly config?:   InputSourcesQueryConfig
 }
 
-const builtIns = BuiltInIndex.default();
 
 /**
- * Which functions belong to which input type is stated with the functions themselves, in the {@link DefaultBuiltinConfig|built-in configuration}:
+ * Which functions belong to which input type is stated with the functions themselves, in the built-in configuration
+ * the analyzer registered (see {@link ReadOnlyFlowrAnalyzerEnvironmentContext#builtInDefinitions}):
  * a function that states its props and carries none of the {@link InputProps} derives its result from its arguments, the others bring in data of their own, and a {@link SemanticCallTag.Narrows} one bounds its result no matter what flows in. Add a function there (or override its props with your own built-in definitions) and it shows up here.
  */
-export const DefaultInputClassifierConfig: InputClassifierConfig = {
-	/*
-	 * every {@link CallProp.Pure} built-in is in here (a test checks it), but the label alone is too narrow: what matters for provenance is that the call invents no data of its own, not that it has no effect at all -- `x <- z <- 'x'` stays constant across the assignments, and `print(x)` hands `x` back, yet neither is `Pure` (they rebind a name, write to the console).
-	 * So the set is every built-in that states its props and claims none of the {@link InputProps}.
-	 */
-	[InputTraceType.Pure]:   builtIns.without(InputProps),
-	[InputType.File]:        [...ReadFunctions.map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
-	[InputType.TempFile]:    builtIns.with(SemanticCallTag.TempFile),
-	[InputType.Glob]:        builtIns.with(SemanticCallTag.Glob),
-	[InputType.Network]:     Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
-	[InputType.Random]:      Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
-	[InputType.System]:      builtIns.with(SemanticCallTag.Process),
-	[InputType.Ffi]:         builtIns.with(CallProp.Ffi),
-	[InputType.Lang]:        builtIns.with(CallProp.Lang),
-	[InputType.Options]:     builtIns.with(CallProp.Ambient),
-	[InputType.CommandLine]: builtIns.with(SemanticCallTag.CommandLine),
-	[InputType.User]:        builtIns.with(SemanticCallTag.User),
-	linkedObjects:           LinkedInputObjects,
-	linkedEntryPoints:       LinkedInputEntryPoints,
-	narrowing:               narrowingFunctions(builtIns)
+export const defaultInputClassifierConfig = (ctx: ReadOnlyFlowrAnalyzerContext): InputClassifierConfig => ctx.env.derive(inputClassifierConfigOf);
+
+const inputClassifierConfigOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): InputClassifierConfig => {
+	const builtIns = env.builtInIndex;
+	return {
+		/*
+		 * every {@link CallProp.Pure} built-in is in here (a test checks it), but the label alone is too narrow: what matters for provenance is that the call invents no data of its own, not that it has no effect at all -- `x <- z <- 'x'` stays constant across the assignments, and `print(x)` hands `x` back, yet neither is `Pure` (they rebind a name, write to the console).
+		 * So the set is every built-in that states its props and claims none of the {@link InputProps}.
+		 */
+		[InputTraceType.Pure]:   builtIns.without(InputProps),
+		[InputType.File]:        [...env.deriveFromDefinitions(computeReadFunctions).map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
+		[InputType.TempFile]:    builtIns.with(SemanticCallTag.TempFile),
+		[InputType.Glob]:        builtIns.with(SemanticCallTag.Glob),
+		[InputType.Network]:     Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
+		[InputType.Random]:      Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
+		[InputType.System]:      builtIns.with(SemanticCallTag.Process),
+		[InputType.Ffi]:         builtIns.with(CallProp.Ffi),
+		[InputType.Lang]:        builtIns.with(CallProp.Lang),
+		[InputType.Options]:     builtIns.with(CallProp.Ambient),
+		[InputType.CommandLine]: builtIns.with(SemanticCallTag.CommandLine),
+		[InputType.User]:        builtIns.with(SemanticCallTag.User),
+		linkedObjects:           LinkedInputObjects,
+		linkedEntryPoints:       LinkedInputEntryPoints,
+		narrowing:               narrowingFunctions(builtIns)
+	};
 };
 
 export interface InputSourcesQueryResult extends BaseQueryResult {

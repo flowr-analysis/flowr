@@ -38,7 +38,7 @@ function sameControlDependency(a: ControlDependency, b: ControlDependency): bool
 
 /**
  * Utility functions to work with {@link ControlDependency|control dependencies}.
- * @helper dataflow Utility functions to work with control dependencies.
+ * @helper dataflow
  */
 export const ControlDependency = {
 	name:   'ControlDependency',
@@ -258,8 +258,8 @@ export interface DataflowInformation extends DataflowCfgInformation {
 }
 
 /**
- * Helper object for {@link DataflowInformation}
- * @helper dataflow Helper object for DataflowInformation.
+ * Helper object for {@link DataflowInformation}.
+ * @helper dataflow
  */
 export const DataflowInformation = {
 	name: 'DataflowInformation',

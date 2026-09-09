@@ -19,6 +19,11 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { KnownParser } from '../r-bridge/parser';
+import { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../config';
+
+/** the wiki documents flowR as it ships, so the default configuration is what its rule defaults are read from */
+const documentedContext = new FlowrAnalyzerContext(FlowrConfig.default());
 
 const SpecialTagColors: Record<string, string> = {
 	[LintingRuleTag.Bug]:      'red',
@@ -260,7 +265,7 @@ Linting rules can be configured by passing a configuration object to the linter 
 The \`${name}\` rule accepts the following configuration options:
 
 ${
-	Object.getOwnPropertyNames(LintingRules[name].info.defaultConfig).sort().map(key =>
+	Object.keys(LintingRules[name].info.defaultConfig(documentedContext)).sort().map(key =>
 		`- ${shortLink(`${configType}:::${key}`, types)}\\\n${getDocumentationForType(`${configType}::${key}`, types)}`
 	).join('\n')
 }

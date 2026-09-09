@@ -261,9 +261,9 @@ export const NAMING_CONVENTION = {
 		tags:            [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		// heuristic and noisy on real package code, so only run when requested explicitly
 		activeByDefault: false,
-		defaultConfig:   {
+		defaultConfig:   () => ({
 			caseing:        'auto',
 			ignoreNonAlpha: true
-		}
+		})
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

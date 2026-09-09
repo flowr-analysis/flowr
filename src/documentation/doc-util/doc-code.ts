@@ -1,4 +1,5 @@
 import { jsonReplacer } from '../../util/json';
+import { timingReplacer } from './doc-timings';
 import { builtInEnvJsonReplacer } from '../../dataflow/environments/environment';
 
 /**
@@ -35,11 +36,12 @@ export function codeInline(code: string): string {
  * still exceeds `hardLimit` characters is cut, as a page GitHub cannot render shows nothing at all.
  */
 export function jsonWithLimit(object: object, maxLength: number = 5_000, tooLongText: string = '_As the code is pretty long, we inhibit pretty printing and syntax highlighting (JSON, hiding built-in):_', hardLimit = 20_000): string {
-	const prettyPrinted = JSON.stringify(object, jsonReplacer, 2);
+	const prettyPrinted = JSON.stringify(object, (k, v) => jsonReplacer(k, timingReplacer ? timingReplacer(k, v) : v), 2);
 	if(prettyPrinted.length <= maxLength) {
 		return `\n${codeBlock('json', prettyPrinted)}\n`;
 	}
-	const compact = JSON.stringify(object, (k, v) => {
+	const compact = JSON.stringify(object, (k, raw: unknown) => {
+		const v = timingReplacer ? timingReplacer(k, raw) : raw;
 		if(typeof v === 'object' && v !== null && 'id' in v && (v as { id: number })['id'] === 0 && 'memory' in v && (v as { memory: undefined | null | object })['memory']) {
 			return '<BuiltInEnvironment>';
 		} else {

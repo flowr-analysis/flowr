@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 07:39:20 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
 <h2 id="Location Map Query">Location Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simple mapping of ids to their location in the source file\
@@ -38,11 +38,10 @@ Query: **location-map** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {<span title="['0','1','2','3','4','5','2-arg','5-arg','0-arg','1-arg','3-arg','4-arg']">0, 1, 2, 3, 4, 5, 2-arg, ... (see JSON)</span>}\
-_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -52,9 +51,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 ```json
 {
   "location-map": {
-    ".meta": {
-      "timing": 0
-    },
+    ".meta": {},
     "map": {
       "files": {
         "0": "@inline"
@@ -171,9 +168,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       }
     }
   },
-  ".meta": {
-    "timing": 1
-  }
+  ".meta": {}
 }
 ```
 
@@ -207,11 +202,10 @@ Query: **location-map** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {0, 3}\
-_All queries together required ≈0 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -221,9 +215,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 ```json
 {
   "location-map": {
-    ".meta": {
-      "timing": 0
-    },
+    ".meta": {},
     "map": {
       "files": {
         "0": "@inline"
@@ -250,9 +242,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       }
     }
   },
-  ".meta": {
-    "timing": 0
-  }
+  ".meta": {}
 }
 ```
 

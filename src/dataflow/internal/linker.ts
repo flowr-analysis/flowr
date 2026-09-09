@@ -122,10 +122,12 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 	return linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph);
 }
 
+const NoCalleeEnvironments: readonly REnvironmentInformation[] = [];
+
 /** The environments a called function was given of its own, as `environment(f) <- e` gives one. */
 function environmentsOfCallee(info: DataflowGraphVertexFunctionCall): readonly REnvironmentInformation[] {
 	if(info.name === undefined || info.environment === undefined) {
-		return [];
+		return NoCalleeEnvironments;
 	}
 	const found: REnvironmentInformation[] = [];
 	for(const def of Resolve.byName(info.name, info.environment) ?? []) {
@@ -147,22 +149,33 @@ export function linkFunctionCallWithSingleTarget(
 	idMap: AstIdMap
 ): ExitPoint[] {
 	const id = info.id;
-	if(info.environment !== undefined) {
+	const environment = info.environment;
+	if(environment !== undefined) {
 		/* `environment(f) <- e` decides where the body looks its free names up, so that env comes first */
-		const lookIn = [...environmentsOfCallee(info), info.environment];
+		let callee: readonly REnvironmentInformation[] | undefined = undefined;
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of fnSubflow.in) {
 			const name = ingoing.name;
-			const found = name === undefined ? undefined
-				: lookIn.map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
-			/* what the callee itself wrote is not what it read: `f` reading `x` cannot mean the `x <<- ` inside `f`,
-			 * however the environment looks once that write has been folded back into the caller */
-			const defs = found?.filter(d => !fnSubflow.graph.has(d.nodeId));
-			if(defs === undefined || defs.length === 0) {
+			if(name === undefined) {
 				continue;
 			}
-			for(const { nodeId, type, value, definedAt, envState } of defs as InGraphIdentifierDefinition[]) {
-				if(!NodeId.isBuiltIn(nodeId)) {
+			/* what the callee itself wrote is not what it read: `f` reading `x` cannot mean the `x <<- ` inside `f`,
+			 * however the environment looks once that write has been folded back into the caller */
+			callee ??= environmentsOfCallee(info);
+			let defs: readonly IdentifierDefinition[] | undefined = undefined;
+			for(const env of callee) {
+				defs = Resolve.byNameAndType(name, env, ingoing.type);
+				if(defs !== undefined) {
+					break;
+				}
+			}
+			defs ??= Resolve.byNameAndType(name, environment, ingoing.type);
+			if(defs === undefined) {
+				continue;
+			}
+			for(const d of defs as readonly InGraphIdentifierDefinition[]) {
+				const { nodeId, type, value, definedAt, envState } = d;
+				if(!fnSubflow.graph.has(nodeId) && !NodeId.isBuiltIn(nodeId)) {
 					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					if(envState !== undefined) {
@@ -359,9 +372,17 @@ export function getAllLinkedFunctionDefinitions(
 	 * whether the variable *is* a function but what `x$f`/`x[[i]]` holds, so a partial definition still counts */
 	const potential: [NodeId, boolean][] = Array.from(functionDefinitionReadIds, id => [id, false]);
 	const visited = new Set<NodeId>();
+	/* expanding a state again can only push what its first expansion already did */
+	const expanded = new Set<NodeId>();
+	const expandedViaAccess = new Set<NodeId>();
 
 	while(potential.length !== 0) {
 		const [cid, viaAccess] = potential.pop() as [NodeId, boolean];
+		const done = viaAccess ? expandedViaAccess : expanded;
+		if(done.has(cid)) {
+			continue;
+		}
+		done.add(cid);
 		visited.add(cid);
 
 		if(NodeId.isBuiltIn(cid)) {
@@ -550,7 +571,7 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 
 /**
  * The open references a function definition still carries into its closure.
- * @helper api The open references a function definition still carries into its closure.
+ * @helper api
  */
 export const ClosureRefs = {
 	name: 'ClosureRefs',

@@ -15,8 +15,7 @@ import type { FlowrAnalyzer } from '../src/project/flowr-analyzer';
 import { OriginType } from '../src/dataflow/origin/dfg-get-origin';
 import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
-import { LintingRules } from '../src/linter/linter-rules';
-import { LintingPrettyPrintContext } from '../src/linter/linter-format';
+import { explain } from './page-lib/lint-text';
 import { arraySum } from '../src/util/collections/arrays';
 import { highlightR, renderRToken, tokenizeR, escapeHtml as escape } from '../src/util/text/r-highlight';
 
@@ -122,17 +121,6 @@ async function lintLines(code: string): Promise<Finding[]> {
 		from: finding.loc?.[1] ?? 1,
 		to:   finding.loc?.[0] === finding.loc?.[2] ? finding.loc?.[3] ?? 0 : 0
 	})));
-}
-
-/**
- * One finding in the linter's own words. `Full` is the phrasing meant for a person; the trailing
- * position is dropped because the underline already points at it.
- */
-function explain(rule: string, finding: unknown, meta: unknown): string {
-	const rules = LintingRules as unknown as Record<string, { prettyPrint: Record<string, (r: never, m: never) => string> }>;
-	const print = rules[rule].prettyPrint;
-	const text = (print[LintingPrettyPrintContext.Full] ?? print[LintingPrettyPrintContext.Query])(finding as never, meta as never);
-	return text.replace(/\s+at \d+\.\d+(-\d+)?/g, '').trim();
 }
 
 interface Finding {

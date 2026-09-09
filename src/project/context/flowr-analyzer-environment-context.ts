@@ -3,10 +3,12 @@ import type { IEnvironment, REnvironmentInformation } from '../../dataflow/envir
 import { Environment } from '../../dataflow/environments/environment';
 import type { cleanEnvOf } from '../../dataflow/environments/scoping';
 import type { DeepReadonly } from 'ts-essentials';
+import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { BrandedIdentifier, IdentifierDefinition } from '../../dataflow/environments/identifier';
 import { Identifier, ReferenceType } from '../../dataflow/environments/identifier';
-import type { BuiltInIdentifierDefinition, BuiltInMemory  } from '../../dataflow/environments/built-in';
+import type { BuiltInIdentifierDefinition, BuiltInMemory, BuiltIns } from '../../dataflow/environments/built-in';
 import type { Fingerprint } from '../../slicing/static/fingerprint';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 
@@ -75,6 +77,25 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 
 	/** The definitions the configuration states for `name` without any package attached: its namespace's when it names one, otherwise what every package together states for the bare name. */
 	statedDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] | undefined;
+
+	/**
+	 * The built-in definitions the analyzer actually registered: the ones its {@link FlowrConfig} adds, on top of the
+	 * `DefaultBuiltinConfig` unless the configuration drops it. Never read the default table directly from a query or
+	 * a linting rule, as a caller may have configured flowR differently.
+	 */
+	readonly builtInDefinitions: BuiltInDefinitions;
+
+	/** The {@link BuiltInIndex} over exactly {@link builtInDefinitions}, built on first use. */
+	get builtInIndex(): BuiltInIndex;
+
+	/** A table derived from the registered built-ins, computed once per {@link builtInIndex} rather than once per analysis. */
+	derive<T>(compute: (env: ReadOnlyFlowrAnalyzerEnvironmentContext) => T): T;
+
+	/** {@link derive}, but over the {@link builtInIndex} alone. */
+	deriveFromIndex<T>(compute: (index: BuiltInIndex) => T): T;
+
+	/** {@link derive}, but over the {@link builtInDefinitions} alone. */
+	deriveFromDefinitions<T>(compute: (definitions: BuiltInDefinitions) => T): T;
 }
 
 /**
@@ -82,8 +103,11 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
  */
 export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnvironmentContext {
 	public readonly name = 'flowr-analyzer-environment-context';
-	private readonly builtInEnv:      Environment;
-	private readonly emptyBuiltInEnv: Environment;
+	public readonly builtIns:           BuiltIns;
+	public readonly builtInDefinitions: BuiltInDefinitions;
+	private readonly builtInEnv:        Environment;
+	private readonly emptyBuiltInEnv:   Environment;
+	private index:                      BuiltInIndex | undefined;
 
 	/** what the configuration states about packages R does not attach on startup, see {@link statedFor} */
 	private readonly stated: ReadonlyMap<string, BuiltInMemory>;
@@ -96,7 +120,9 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	constructor(ctx: FlowrAnalyzerContext) {
 		const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
-		const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
+		const { builtIns, definitions } = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
+		this.builtIns = builtIns;
+		this.builtInDefinitions = definitions;
 
 		this.builtInEnv = new Environment(undefined as unknown as Environment, true);
 		this.builtInEnv.adoptMap(builtIns.builtInMemory);
@@ -107,6 +133,27 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		this.stated = builtIns.packageMemory;
 		/* `pkg::fn` resolves whether or not the package is attached, so the built-in env answers for it */
 		this.builtInEnv.namespaces = builtIns.packageMemory;
+	}
+
+	public get builtInIndex(): BuiltInIndex {
+		return this.index ??= BuiltInIndex.of(this.builtInDefinitions);
+	}
+
+	public derive<A, T>(compute: (from: A) => T, from: A = this as unknown as A): T {
+		const derived = this.builtInIndex.derived;
+		let known = derived.get(compute) as T | undefined;
+		if(known === undefined) {
+			derived.set(compute, known = compute(from));
+		}
+		return known;
+	}
+
+	public deriveFromIndex<T>(compute: (index: BuiltInIndex) => T): T {
+		return this.derive(compute, this.builtInIndex);
+	}
+
+	public deriveFromDefinitions<T>(compute: (definitions: BuiltInDefinitions) => T): T {
+		return this.derive(compute, this.builtInDefinitions);
 	}
 
 	public statedFor(pkg: string): BuiltInMemory | undefined {

@@ -1,8 +1,9 @@
 <script>
-	/* set theme before first paint to avoid a flash of the other theme */
+	/* set theme before first paint to avoid a flash of the other theme; a link may carry one */
 	try {
-		const theme = localStorage.getItem('flowr-theme');
-		if(theme) { document.documentElement.dataset.theme = theme; }
+		const asked = new URLSearchParams(location.hash.replace(/^#/, '')).get('theme');
+		const theme = asked || localStorage.getItem('flowr-theme');
+		if(theme === 'light' || theme === 'dark') { document.documentElement.dataset.theme = theme; }
 	} catch(e) { /* private mode keeps the system theme */ }
 	/* sync theme across tabs/pages sharing the same localStorage key */
 	addEventListener('storage', e => {
@@ -14,9 +15,14 @@
 			}
 		}
 	});
+	/* what the theme was when the click started, so a page that switches it itself is left alone */
+	let themeBefore = null;
+	document.addEventListener('click', e => {
+		if(e.target.closest?.('#theme')) { themeBefore = document.documentElement.dataset.theme; }
+	}, true);
 	/* delegate click since #theme isn't parsed yet; later listeners for theme-dependent redraws run after this */
 	document.addEventListener('click', e => {
-		if(!e.target.closest?.('#theme')) {
+		if(!e.target.closest?.('#theme') || document.documentElement.dataset.theme !== themeBefore) {
 			return;
 		}
 		const next = getComputedStyle(document.body).colorScheme === 'dark' ? 'light' : 'dark';

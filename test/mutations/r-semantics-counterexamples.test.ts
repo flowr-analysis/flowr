@@ -4,21 +4,18 @@ import { describe, test, assert } from 'vitest';
 import { withShell } from '../functionality/_helper/shell';
 import { decorateLabelContext, label } from '../functionality/_helper/label';
 import type { RShell } from '../../src/r-bridge/shell';
-import { createSlicePipeline } from '../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../src/project/context/flowr-analyzer-context';
-import { deterministicCountingIdGenerator } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrCapabilityId } from '../../src/r-bridge/data/get';
 import type { MutationTarget } from '../functionality/_helper/r-mutations';
-import { MutationPasses, mutate, observeQueries } from '../functionality/_helper/r-mutations';
+import { MutationPasses, mutate, observeQueries, passIsAvailable, slice } from '../functionality/_helper/r-mutations';
 
 interface Counterexample extends MutationTarget {
 	readonly name:         string;
 	readonly capabilities: readonly FlowrCapabilityId[];
 }
 
-/** mutants flowR still mis-slices, named `<group>: <case> [<pass>]`; kept wrong so a fix gets noticed */
-const KnownWrongMutants: ReadonlySet<string> = new Set<string>();
 const generatedMutants = new Set<string>();
+/** every mutant test that ran, so a run collecting only part of the corpus can be told apart */
+const attemptedMutants = new Set<string>();
 const usedPasses = new Set<string>();
 /** what the corpus below spans, collected while the cases are registered */
 const knownGroups = new Set<string>();
@@ -48,36 +45,27 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		await shell.sendCommandWithOutput('rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
 		return lines.join('\n');
 	}
-	/** only the shell engine, as R is what runs the slice */
-	async function slice({ code, criterion }: MutationTarget): Promise<string> {
-		const result = await createSlicePipeline(shell, { getId: deterministicCountingIdGenerator(0), context: contextFromInput(code), criterion: [criterion] }).allRemainingSteps();
-		const reconstructed = result.reconstruct.code;
-		return Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
-	}
-	async function check(target: MutationTarget, wrongForNow: boolean): Promise<void> {
+	async function check(target: MutationTarget): Promise<void> {
 		const what = `the program sliced for ${target.criterion} is:\n${target.code}`;
-		const sliced = await slice(target);
+		const sliced = await slice(shell, target);
 		assert.strictEqual(await run(target.code), target.expected, `the input does not print what this test claims it does, ${what}`);
 		const output = await run(sliced);
 		const slicedIs = `${what}\nand its slice is:\n${sliced}`;
 		/* nothing reads what a mutation adds, so a slice keeping it says more than the criterion needs */
 		assert.notMatch(sliced, /\bmut_[abc]\b/, `the slice keeps a binding nothing reads, ${slicedIs}`);
-		if(wrongForNow) {
-			assert.notStrictEqual(output, target.expected, `this mutant is sliced correctly now, remove it from KnownWrongMutants, ${slicedIs}`);
-		} else {
-			assert.strictEqual(output, target.expected, `the slice does not print what the input does, ${slicedIs}`);
-		}
+		assert.strictEqual(output, target.expected, `the slice does not print what the input does, ${slicedIs}`);
 	}
 	describe(group, () => {
 		for(const counterexample of cases) {
 			const { name, capabilities, code } = counterexample;
-			test(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, () => check(counterexample, false));
+			test(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, () => check(counterexample));
 		}
 		for(const pass of MutationPasses) {
 			describe(pass.name, () => {
 				for(const counterexample of cases) {
 					const id = `${group}: ${counterexample.name} [${pass.name}]`;
 					test(counterexample.name, async(ctx) => {
+						attemptedMutants.add(id);
 						const mutant = await mutate(shell, counterexample, pass);
 						if(mutant === undefined) {
 							/* the pass has nothing to rewrite in this program */
@@ -86,7 +74,7 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 						}
 						generatedMutants.add(id);
 						usedPasses.add(pass.name);
-						await check(mutant, KnownWrongMutants.has(id));
+						await check(mutant);
 						assert.deepStrictEqual(await observeQueries(shell, mutant.code), await observeQueries(shell, counterexample.code),
 							`the mutation changes what the queries report about the program, it is:\n${mutant.code}`);
 					});
@@ -207,17 +195,24 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 	]);
 
 	/* both checks read what the tests above recorded, so they only mean something once all of them ran */
-	describe.skipIf(process.env.VITEST_FILTER !== undefined)('bookkeeping', () => {
-		test('every known wrong mutant is still generated', () => {
-			const gone = [...KnownWrongMutants].filter(m => !generatedMutants.has(m));
-			assert.deepStrictEqual(gone, [], 'these mutants are no longer generated, remove them from KnownWrongMutants');
-		});
-		test('every pass mutates at least one counterexample', () => {
-			const idle = MutationPasses.map(p => p.name).filter(name => !usedPasses.has(name));
+	describe('bookkeeping', () => {
+		/* a run narrowed by `-t`, a shard or a bail collects part of the corpus, and a part states nothing */
+		const partialRun = () => attemptedMutants.size < knownTargets.size * MutationPasses.length;
+		test('every pass mutates at least one counterexample', ctx => {
+			if(partialRun()) {
+				ctx.skip();
+				return;
+			}
+			/* a pass the host's R is too old for never got the chance to apply */
+			const idle = MutationPasses.filter(passIsAvailable).map(p => p.name).filter(name => !usedPasses.has(name));
 			assert.deepStrictEqual(idle, [], 'these passes never applied, so nothing they claim to check is checked');
 		});
 		/* only a run of the whole file knows these, so they are written where they are complete */
-		test('record what this run exercised', () => {
+		test('record what this run exercised', ctx => {
+			if(partialRun()) {
+				ctx.skip();
+				return;
+			}
 			assert.isAbove(generatedMutants.size, 0, 'nothing was mutated, so there is no run to record');
 			fs.mkdirSync(path.dirname(MutationDetailsFile), { recursive: true });
 			fs.writeFileSync(MutationDetailsFile, JSON.stringify({
@@ -225,8 +220,7 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 				groups:          knownGroups.size,
 				counterexamples: knownTargets.size,
 				capabilities:    knownCapabilities.size,
-				mutants:         generatedMutants.size,
-				knownWrong:      KnownWrongMutants.size
+				mutants:         generatedMutants.size
 			}));
 		});
 	});

@@ -1,5 +1,5 @@
 import { executeQueriesOfSameType } from '../../query';
-import { Attached, DefaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
+import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyCategorySettings, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
@@ -56,7 +56,8 @@ export async function executeDependenciesQuery({
 
 	const now = Date.now();
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
-	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c, v]) => {
+	const ctx = analyzer.inspectContext();
+	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(defaultDependencyCategories(ctx)).map(([c, v]) => {
 		return [c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)];
 	}));
 	if(query.additionalCategories !== undefined) {
@@ -69,11 +70,11 @@ export async function executeDependenciesQuery({
 
 	const queryResults = !functions.values().toArray().some(f => f.length > 0) ? { kinds: {}, '.meta': { timing: 0 } } :
 		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().flatMap(makeCallContextQuery).toArray());
-	const g = getAllCategories(queries);
+	const g = getAllCategories(queries, ctx);
 	const enabled = query.enabledCategories;
 
 	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
-		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
+		const results = getResults(g, { dataflow, config, normalize }, queryResults, c, f, data);
 		// only default categories allow additional analyses, so we null-coalesce here!
 		if(enabled === undefined || (enabled?.length > 0 && enabled.includes(c))) {
 			await g[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
@@ -88,7 +89,7 @@ export async function executeDependenciesQuery({
 
 	if(query.assumedPackages && (enabled === undefined || enabled.includes('library'))) {
 		const explicit = new Set((results.library ?? []).map(r => r.value).filter((v): v is string => v !== undefined && v !== Unknown && v !== Constant));
-		const rVersion = data.analyzer.inspectContext().resolvedRVersion;
+		const rVersion = ctx.resolvedRVersion;
 		const assumed = assumedBasePackageEntries(dataflow.graph, rVersion, explicit);
 		if(assumed.length > 0) {
 			results.library = [...(results.library ?? []), ...assumed];
@@ -164,8 +165,8 @@ function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: st
 	return candidates.find(c => c.package !== undefined && isLoaded(c.package)) ?? candidates[0];
 }
 
-function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
-	const defaultValue = getAllCategories(queries)[kind].defaultValue;
+function getResults(categories: Record<DependencyCategoryName, DependencyCategorySettings>, { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
+	const defaultValue = categories[kind].defaultValue;
 	const vars = config.solver.variables;
 	const functionMap = new Map<string, FunctionInfo[]>();
 	for(const f of functions) {

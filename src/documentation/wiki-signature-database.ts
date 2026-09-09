@@ -1,3 +1,4 @@
+import { ShowDocTimings } from './doc-util/doc-timings';
 import fs from 'fs';
 import path from 'path';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
@@ -88,9 +89,12 @@ async function measurePerformance(): Promise<string | undefined> {
 		}
 		const perLookupMs = Number(process.hrtime.bigint() - t1) / iterations / 1e6;
 		db.close();
-		return `Measured here at generation time: opening the bundle took ${roughDuration(loadMs)}, and a warmed`
-			+ ` per-package export lookup takes ${roughDuration(perLookupMs)}. Each \`library()\` or \`::\` in a script`
-			+ ' is then one cached lookup.';
+		return ShowDocTimings
+			? `Measured here at generation time: opening the bundle took ${roughDuration(loadMs)}, and a warmed`
+				+ ` per-package export lookup takes ${roughDuration(perLookupMs)}. Each \`library()\` or \`::\` in a script`
+				+ ' is then one cached lookup.'
+			: 'Opening the bundle is a one-off cost paid once per analysis, and a warmed per-package export lookup is a'
+				+ ' matter of microseconds. Each `library()` or `::` in a script is then one cached lookup.';
 	} catch{
 		return undefined;
 	}

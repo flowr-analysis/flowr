@@ -1,12 +1,16 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { SigDatabase } from '../../../../src/project/sigdb/reader';
 import { SigDbBuilder, writeSignatureDb } from '../../../../src/project/sigdb/build';
 import { SigDbExt, FnProp, type SigFunctionInfo } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
 import type { FunctionInfoQuery, FunctionInfoQueryResult } from '../../../../src/queries/catalog/function-info-query/function-info-query-format';
 import { builtinModelsOf } from '../../../../src/queries/catalog/function-info-query/function-origin';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import type { BuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -16,46 +20,73 @@ const fn = (name: string, opts: Partial<SigFunctionInfo> = {}): SigFunctionInfo 
 });
 
 /** two CRAN packages that both export `shared`, plus one exporting only `onlyA` - enough to test package restriction */
-async function buildDb(dir: string): Promise<SigDatabase> {
+async function buildDb(dir: string): Promise<void> {
 	const b = new SigDbBuilder();
 	b.addPackage('pkgA', { latest: '1.0.0', downloads: 10 });
 	b.addVersion('pkgA', '1.0.0', { cran: true, functions: [fn('shared', { params: [{ name: 'x', props: 0 }], file: 'R/a.R', line: 3 }), fn('onlyA')] });
 	b.addPackage('pkgB', { latest: '2.0.0', downloads: 1 });
 	b.addVersion('pkgB', '2.0.0', { cran: true, functions: [fn('shared', { file: 'R/b.R', line: 9 })] });
 	await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
-	return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
 }
 
 describe('Function Info Query', withTreeSitter(parser => {
+	async function contextOf(definitions?: BuiltInDefinitions): Promise<ReadOnlyFlowrAnalyzerContext> {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).amendConfig(c => {
+			if(definitions) {
+				c.semantics.environment.overwriteBuiltIns.definitions = definitions;
+			}
+		}).build();
+		return analyzer.inspectContext();
+	}
+
 	describe('shared function-origin helper (builtinModelsOf)', () => {
-		test('reports flowR\'s own definition for a base function', () => {
-			const models = builtinModelsOf('get');
+		test('reports flowR\'s own definition for a base function', async() => {
+			const models = builtinModelsOf('get', await contextOf());
 			expect(models).toHaveLength(1);
 			expect(models[0]).toMatchObject({ kind: 'function', namespace: 'base', processor: 'builtin:get', evalHandler: 'eval:get' });
 		});
 
-		test('a name a later entry deliberately overrides is reported once, not once per entry', () => {
+		test('a name a later entry deliberately overrides is reported once, not once per entry', async() => {
 			// `median` is declared once in the general "x carries the data" group and once more with `overrides: true`
 			// for a precise signature (see WrittenBuiltinDefinitions); only the winning one should come back
-			const models = builtinModelsOf('median');
+			const models = builtinModelsOf('median', await contextOf());
 			expect(models).toHaveLength(1);
 			expect(models[0].namespace).toBe('stats');
 		});
 
-		test('an unknown name reports no built-in at all', () => {
-			expect(builtinModelsOf('totallyNotARealFunctionName12345')).toEqual([]);
+		test('an unknown name reports no built-in at all', async() => {
+			expect(builtinModelsOf('totallyNotARealFunctionName12345', await contextOf())).toEqual([]);
+		});
+
+		test('a built-in only the FlowrConfig states is reported, and only for that configuration', async() => {
+			const definitions = [{
+				type:            'function',
+				names:           [Identifier.from(['launchIt', 'base'])],
+				processor:       BuiltInProcName.Default,
+				config:          { tags: [SemanticCallTag.Process] },
+				assumePrimitive: false
+			}] as unknown as BuiltInDefinitions;
+			expect(builtinModelsOf('launchIt', await contextOf(definitions)))
+				.toMatchObject([{ kind: 'function', namespace: 'base', processor: BuiltInProcName.Default, tags: [SemanticCallTag.Process] }]);
+			expect(builtinModelsOf('launchIt', await contextOf())).toEqual([]);
+		});
+
+		test('a configuration that drops the defaults reports no built-in for a default name', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).amendConfig(c => {
+				c.semantics.environment.overwriteBuiltIns.loadDefaults = false;
+			}).build();
+			expect(builtinModelsOf('get', analyzer.inspectContext())).toEqual([]);
 		});
 	});
 
 	describe('the query, against a small synthetic database', { concurrent: false }, () => {
 		let tmp: string;
-		let db: SigDatabase;
 		let prevSigDb: string | undefined;
 		let prevDisable: string | undefined;
 
 		beforeAll(async() => {
 			tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-function-info-query-'));
-			db = await buildDb(tmp);
+			await buildDb(tmp);
 			// point the query's source resolution at just our temp database, exactly like the signature query tests
 			prevSigDb = process.env.FLOWR_SIGDB;
 			prevDisable = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
@@ -63,7 +94,6 @@ describe('Function Info Query', withTreeSitter(parser => {
 			process.env.FLOWR_DISABLE_DEFAULT_SIGDB = '1';
 		});
 		afterAll(() => {
-			db?.close();
 			process.env.FLOWR_SIGDB = prevSigDb;
 			if(prevDisable === undefined) {
 				delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;

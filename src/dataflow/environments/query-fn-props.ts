@@ -340,8 +340,10 @@ function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
 					continue;
 				}
 				const info = d.config as BuiltInFnInfo | undefined;
-				/* the memory is keyed by the bare name, the definition keeps the namespace it was declared with */
-				out.push({ name: d.name ?? registered, props: info?.props, tags: info?.tags, sig: info?.sig, foldable: d.evalHandler !== undefined });
+				/* the memory is keyed by the registered name (a replacement carries its suffix), the definition keeps the namespace */
+				const name = d.name === undefined || Identifier.getName(d.name) === registered
+					? d.name ?? registered : Identifier.make(registered, Identifier.getNamespace(d.name));
+				out.push({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable: d.evalHandler !== undefined });
 			}
 		}
 	}
@@ -398,6 +400,8 @@ export class BuiltInIndex {
 	/** namespace to name to entry, so a qualified name is two lookups and no string built to ask */
 	private readonly byNamespace = new Map<string, Map<string, BuiltInEntry>>();
 	private readonly cache = new Map<string, readonly Identifier[]>();
+	/** tables derived from this index, keyed by what derived them, see {@link FlowrAnalyzerEnvironmentContext#derive} */
+	public readonly derived = new Map<unknown, unknown>();
 
 	private constructor(definitions: readonly IndexedEntry[]) {
 		const unqualified = new Map<string, BuiltInEntry>();
@@ -434,12 +438,12 @@ export class BuiltInIndex {
 
 	/** The index of flowR's own {@link DefaultBuiltinConfig}, computed on first use and shared from then on. */
 	public static default(): BuiltInIndex {
-		return defaultIndex ??= BuiltInIndex.of(DefaultBuiltinConfig);
+		return defaultIndex ??= new BuiltInIndex(DefaultBuiltinConfig.flatMap(entryOfDefinition));
 	}
 
 	/** The index of a set of built-in definitions, e.g. the ones a flowR config adds. */
 	public static of(definitions: BuiltInDefinitions): BuiltInIndex {
-		return new BuiltInIndex(definitions.flatMap(entryOfDefinition));
+		return definitions === DefaultBuiltinConfig ? BuiltInIndex.default() : new BuiltInIndex(definitions.flatMap(entryOfDefinition));
 	}
 
 	/** The index of the built-ins an analysis registered, so a configured or overwritten built-in is what shows up. */

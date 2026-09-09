@@ -26,7 +26,7 @@ const NetworkProtocolRegex = /^(https?|ftps?):\/\//;
 const protocolTaint = (path: unknown) =>
 	typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
 
-export const securityAnalysis = new TaintAnalysisDefinition('security', securityDomain)
+export const securityAnalysis = TaintAnalysisDefinition.create('security', securityDomain)
 	.from([
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User)],
@@ -68,6 +68,7 @@ export const securityAnalysis = new TaintAnalysisDefinition('security', security
 			}
 		},
 	])
+	.through([])
 	.to([
 		{
 			identifier: [

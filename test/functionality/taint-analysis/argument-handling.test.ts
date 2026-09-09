@@ -16,7 +16,8 @@ const lattice = new FiniteDomainBuilder()
 	.addLeqOrder(taint3, Top)
 	.build();
 
-const argumentTaintAnalysis = new TaintAnalysisDefinition('arguments-eval', lattice)
+const argumentTaintAnalysis = TaintAnalysisDefinition.create('arguments-eval', lattice)
+	.from([]).through([])
 	.to([{
 		identifier: Identifier.make('myTestFunc'),
 		condition:
@@ -40,7 +41,7 @@ const argumentTaintAnalysis = new TaintAnalysisDefinition('arguments-eval', latt
 					}
 				}
 			}
-	}]);
+	}]).report('');
 
 function argumentTest(
 	arg1Value: boolean | undefined,

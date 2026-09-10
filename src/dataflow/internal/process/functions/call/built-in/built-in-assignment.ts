@@ -335,6 +335,7 @@ function processAssignmentTarget<OtherInfo>(
 			information:              res.information,
 		});
 		if(config.readTarget && RSymbol.is(target)) {
+			/* just like a replacement function, the call works on the old value of its target */
 			info.graph.addEdge(target.info.id, rootId, EdgeType.Reads);
 			return { ...info, in: [...info.in, { name: target.content, type: ReferenceType.Variable, nodeId: target.info.id, cds: data.cds }] };
 		}

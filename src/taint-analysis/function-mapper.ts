@@ -148,6 +148,7 @@ export type TaintConditionMapping<Domain extends AnyAbstractDomain> = TaintMappi
 	condition: TaintCondition<Domain>;
 };
 
+/** Mapping of incoming function arguments and taints to a resulting taint */
 export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
 	argValues?:  FunctionParameterLocation<unknown>[],
 	argTaints?:  TaintParameterLocation[],
@@ -158,6 +159,7 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
 	| TaintFixedMapping<Domain>
 	| TaintConditionMapping<Domain>;
 
+/** Function describing how the resulting taint is calculated from incoming arguments and taints */
 export type TaintConditionFunction<Domain extends AnyAbstractDomain> =
 	( args: unknown[], taints: AbstractValue<Domain>[]) => AbstractValue<Domain> | undefined;
 

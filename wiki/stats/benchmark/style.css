@@ -132,60 +132,6 @@ a {
 
 a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
 
-/* the titles/intro row is taller than a plain bar, so it wraps and aligns on its own terms */
-header.bar { flex-wrap: wrap; align-items: baseline; gap: .4rem 1.5rem; }
-
-.titles h1 {
-	margin: 0;
-	font-size: 1.15rem;
-	line-height: 1.2;
-	/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
-	display: inline-flex;
-	align-items: center;
-}
-
-.titles h1 a.brand {
-	display: inline-flex;
-	align-items: center;
-	gap: .45rem;
-	color: var(--fg);
-	text-decoration: none;
-}
-
-/* a grid is only as wide as its widest row, which puts the release above the end of the intro */
-.titles {
-	display: inline-grid;
-	max-width: 90ch;
-}
-
-.title-row {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 0 1.5rem;
-}
-
-.intro {
-	margin: .15rem 0 0;
-	font-size: .82rem;
-	color: var(--muted);
-}
-
-/* the release this page was built from, the same link every flowR page carries */
-.titles h1 > .version {
-	margin-left: .5rem;
-	font-size: .82rem;
-	font-weight: 400;
-	color: var(--muted);
-	font-variant-numeric: tabular-nums;
-	text-decoration: none;
-	transition: color .18s ease;
-}
-
-.titles h1 > .version:hover,
-.titles h1 > .version:focus-visible { color: var(--fg); }
-
 .status {
 	margin: .8rem 0 0;
 	padding: .6rem .8rem;
@@ -601,7 +547,7 @@ figcaption .chip {
 	white-space: nowrap;
 }
 
-svg {
+main svg {
 	width: 100%;
 	height: auto;
 	display: block;
@@ -1018,11 +964,6 @@ footer { margin-top: 1.5rem; }
 @media (max-width: 560px) {
 	body {
 		padding: 0 .6rem 1.5rem;
-	}
-
-	header {
-		flex-direction: column;
-		align-items: flex-start;
 	}
 
 	#controls {

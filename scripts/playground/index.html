@@ -36,7 +36,7 @@ a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decorati
 code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .top {
-	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .5rem 1rem; flex: none;
+	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .8rem 1rem .6rem; flex: none;
 	border-bottom: 1px solid var(--border); background: var(--panel);
 }
 /* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
@@ -66,21 +66,21 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 @media (max-width: 21rem) { .top .links { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
 @media (max-width: 42rem) { .top .version { display: none; } }
 .top a.link {
-	display: inline-flex; align-items: center; height: 1.9rem; padding: 0 .5rem; white-space: nowrap;
+	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
 	color: var(--muted); text-decoration: none; font-size: .85rem; border-radius: .45rem;
 }
 .top a.link:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 7%, transparent); }
 /* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
    page colours; only the backdrop reacts to the pointer */
 .top a.gh, .top a.gh:hover { color: #181717; }
-.top a.gh { justify-content: center; width: 1.9rem; padding: 0; }
+.top a.gh { justify-content: center; width: 2rem; padding: 0; }
 :root[data-theme="dark"] .top a.gh, :root[data-theme="dark"] .top a.gh:hover { color: #fff; }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) .top a.gh, :root:not([data-theme="light"]) .top a.gh:hover { color: #fff; }
 }
 .top a.gh svg { display: block; }
 #theme {
-	display: grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0; cursor: pointer;
+	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; cursor: pointer;
 	border-radius: .45rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
 #theme:hover { border-color: var(--accent); color: var(--accent); }

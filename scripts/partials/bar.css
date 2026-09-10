@@ -35,14 +35,14 @@
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) .bar .controls .gh, :root:not([data-theme="light"]) .bar .controls .gh:hover { color: #fff; }
 }
-.bar .controls .gh svg { display: block; }
+.bar .controls .gh svg { display: block; width: auto; height: auto; }
 #theme {
 	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; flex: none;
 	font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
 	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
 #theme:hover { border-color: var(--accent); color: var(--accent); }
-#theme svg { display: block; }
+#theme svg { display: block; width: auto; height: auto; }
 #theme .sun { display: none; }
 :root[data-theme="dark"] #theme .sun { display: block; }
 :root[data-theme="dark"] #theme .moon { display: none; }

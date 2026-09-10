@@ -18,14 +18,12 @@ interface Page {
 	readonly label: string;
 	/** the class this page puts on the links of its own bar, where it uses one */
 	readonly link?: string;
-	/** the size of the theme icons this page draws, where it is not the usual one */
-	readonly icon?: number;
 }
 
 /** every page that has a bar, in the order each of their navs lists them */
 const Pages: readonly Page[] = [
 	{ id: 'landing', dir: '', label: 'Landing Page' },
-	{ id: 'playground', dir: 'wiki/playground', label: 'Playground', link: 'link', icon: 15 },
+	{ id: 'playground', dir: 'wiki/playground', label: 'Playground', link: 'link' },
 	{ id: 'sigdb', dir: 'wiki/sigdb', label: 'Signature DB' },
 	{ id: 'capabilities', dir: 'wiki/capabilities', label: 'Capabilities' },
 	{ id: 'benchmark', dir: 'wiki/stats/benchmark', label: 'Benchmarks' }
@@ -80,7 +78,7 @@ function nav(from: Page): string {
 function controls(from: Page): string {
 	return partial('controls.html')
 		.replaceAll('<!--CONTROLS-CLASS-->', from.link ? `${from.link} gh` : 'gh')
-		.replaceAll('<!--ICON-->', String(from.icon ?? 16));
+		.replaceAll('<!--ICON-->', '16');
 }
 
 /** how a page reaches the site root; empty for the root itself so its own links need no prefix */

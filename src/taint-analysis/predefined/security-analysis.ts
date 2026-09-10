@@ -4,7 +4,6 @@ import { FiniteDomainBuilder } from '../builder/domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
-import { TaintFnCategory } from '../function-categories';
 
 export const UserInput = Symbol('User Input');
 export const NetworkInput = Symbol('Network Input');
@@ -28,8 +27,6 @@ const protocolTaint = (path: unknown) =>
 	typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
 
 export const securityAnalysis = TaintAnalysisDefinition.create('security', securityDomain)
-	.on(TaintFnCategory.pureAlias)
-	.on(TaintFnCategory.pureComputer)
 	.from([
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User)],
@@ -121,7 +118,8 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 			],
 			condition: {
 				argTaints:   [{ pos: 0 }],
-				conditionFn: (_args, [taint]) => (taint === UserInput || taint === NetworkInput || taint === FileInput) ? Bottom : undefined
+				conditionFn: (_args, [taint]) =>
+					(taint.value === UserInput || taint.value === NetworkInput || taint.value === FileInput) ? Bottom : taint.value
 			}
 		}
 	])

@@ -3,6 +3,7 @@ import { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/tai
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
+import type { AbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import type { TaintAnalysisExpectation } from './helper';
 import { testTaintAnalysis } from './helper';
 import type { LoopKind } from './loop-helper';
@@ -28,7 +29,7 @@ const marker = TaintAnalysisDefinition.create('marker', lattice)
 
 /** Checks whether the first argument has been tainted, returning the given constant taint or undefined */
 const toConst = (taint: symbol) =>
-	(_args: unknown[], [incoming]: symbol[]) => incoming === undefined || incoming === Top ? Top : taint;
+	(_args: unknown[], [incoming]: AbstractDomain<symbol, symbol, symbol>[]) => incoming.isTop() ? Top : taint;
 
 const conflict = TaintAnalysisDefinition.create('conflict', lattice)
 	.from([
@@ -169,9 +170,9 @@ describe('Taint Propagation', () => {
 		const boundedLadder: symbol[] = [Bottom, Low, Mid, High];
 
 		function walk(ladder: symbol[], dir: 1 | -1) {
-			return (_args: unknown[], [t]: symbol[]) =>
+			return (_args: unknown[], [t]: AbstractDomain<symbol, symbol, symbol>[]) =>
 				// ensure value is within upper and lower bound
-				ladder[Math.min(Math.max(ladder.indexOf(t ?? Bottom) + dir, 0), ladder.length - 1)];
+				ladder[Math.min(Math.max(ladder.indexOf(t.value ?? Bottom) + dir, 0), ladder.length - 1)];
 		}
 
 		function climber(name: string, ladder: symbol[]): TaintAnalysisDefinition {
@@ -196,7 +197,7 @@ describe('Taint Propagation', () => {
 				{ identifier: Identifier.make('taintB'), taint: B },
 			])
 			.through([
-				{ identifier: Identifier.make('glb'), condition: { argTaints: [{ pos: 0 }, { pos: 1 }], conditionFn: (_args, [p, q]) => diamond.create(p ?? Top).meet(diamond.create(q ?? Top)).value } },
+				{ identifier: Identifier.make('glb'), condition: { argTaints: [{ pos: 0 }, { pos: 1 }], conditionFn: (_args, [p, q]) => (p ?? diamond.top()).meet(q ?? diamond.top()).value } },
 			]).to([]).report('');
 
 		const thresholds = [1, 2, 4, 8];

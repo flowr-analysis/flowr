@@ -9,8 +9,8 @@ import type { FunctionInfo } from './function-info/function-info';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
 import { RemoteFunctions, remoteTarget } from './function-info/remote-functions';
-import { ReadFunctions } from './function-info/read-functions';
-import { WriteFunctions } from './function-info/write-functions';
+import { computeReadFunctions } from './function-info/read-functions';
+import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
 import { statisticsFunctions } from './function-info/statistics-functions';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
@@ -25,11 +25,15 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { compactRecord } from '../../../util/objects';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { collectImplicitEchoes } from './implicit-echo';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
 /** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
 export const Constant = 'constant';
+/** {@link DependencyInfo#functionName} for an assumed base package: nothing in the code names it, so there is no call to report as `functionName`. */
+export const Attached = '<attached>';
 
 export interface DependencyCategorySettings {
 	queryDisplayName?:   string
@@ -48,7 +52,18 @@ export interface DependencyCategorySettings {
 	additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: readonly FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
-export const DefaultDependencyCategories = {
+/** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
+export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'test', 'statistics'] as const;
+export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
+
+/**
+ * The categories flowR searches for by default. The functions of the categories flowR derives from its
+ * built-ins follow the ones the analyzer registered, so a configured built-in is searched for and a dropped
+ * one is not; the result is shared per configuration.
+ */
+export const defaultDependencyCategories = (ctx: ReadOnlyFlowrAnalyzerContext): Record<DefaultDependencyCategoryName, DependencyCategorySettings> => ctx.env.derive(dependencyCategoriesOf);
+
+const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): Record<DefaultDependencyCategoryName, DependencyCategorySettings> => ({
 	'library': {
 		queryDisplayName:   'Libraries',
 		functions:          LibraryFunctions,
@@ -95,12 +110,12 @@ export const DefaultDependencyCategories = {
 	},
 	'read': {
 		queryDisplayName: 'Read Data',
-		functions:        ReadFunctions,
+		functions:        env.deriveFromDefinitions(computeReadFunctions),
 		defaultValue:     Unknown
 	},
 	'write': {
 		queryDisplayName:   'Outputs',
-		functions:          WriteFunctions,
+		functions:          env.derive(writeFunctionsOf),
 		defaultValue:       'stdout',
 		/* what the top level prints on its own is an output like any other, marked {@link DependencyInfo#implicit} */
 		additionalAnalysis: async(data, ignoreDefault, _functions, queryResults, result) => {
@@ -127,10 +142,9 @@ export const DefaultDependencyCategories = {
 	},
 	'statistics': {
 		queryDisplayName: 'Statistical Tests',
-		functions:        statisticsFunctions()
+		functions:        statisticsFunctions(env.builtInIndex)
 	}
-} as const satisfies Record<string, DependencyCategorySettings>;
-export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;
+});
 export type DependencyCategoryName = DefaultDependencyCategoryName | string;
 
 export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${DefaultDependencyCategoryName}Functions`, readonly FunctionInfo[]>> {
@@ -139,13 +153,21 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
 	readonly ignoreDefaultFunctions?: boolean
 	/** Naming a built-in category extends it; use `ignoreDefaultFunctions` to drop the built-in functions. */
 	readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
+	/**
+	 * Also report the base packages R attaches on startup (see `attachedBasePackages`) that the code calls into
+	 * but never asks for via `library()`/`require()`/`::`, as `library` entries marked {@link DependencyInfo#implicit}.
+	 * `base` is among them, flagged {@link DependencyInfo#alwaysAttached} because it cannot be detached.
+	 * Off by default: for most callers these are noise, not a dependency they need to act on.
+	 */
+	readonly assumedPackages?:        boolean
 }
 
 export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
 
 export interface DependencyInfo extends Record<string, unknown> {
-	nodeId:              NodeId
+	nodeId?:             NodeId
+	alwaysAttached?:     boolean
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
@@ -182,11 +204,17 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	result.push(`   ${bold(title, formatter)} ${faint(`(${infos.length})`, formatter)}`);
 	// one line per dependency: the value (package/file) up front, its function + node as a faint provenance suffix
 	for(const i of infos) {
-		const fn = Identifier.getName(i.functionName);
 		/* neither names a resource: inline data is resolved but no path, `unknown` is a path we could not resolve */
 		const stands = i.value === Constant ? '<inline data>' : i.value === Unknown || i.value === undefined ? '<unresolved>' : undefined;
 		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
+		if(i.nodeId === undefined) {
+			const uses = i.linkedIds?.length ? `, used at ${i.linkedIds.join(', ')}` : '';
+			const how = i.alwaysAttached ? 'always attached by R' : 'attached by R at startup';
+			result.push(`     ${value}${version} ${faint(`${how}${uses}`, formatter)}`);
+			continue;
+		}
+		const fn = Identifier.getName(i.functionName);
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
 		/* an output nothing asked for reads like every other one, so it says that it is the top level echoing */
 		const how = i.implicit ? 'auto-printed by' : 'via';
@@ -198,8 +226,8 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
  * Gets all dependency categories, including user-defined additional categories.
  * A category named like a built-in one extends it instead of replacing it.
  */
-export function getAllCategories(queries: readonly DependenciesQuery[]): Record<DependencyCategoryName, DependencyCategorySettings> {
-	const categories: Record<DependencyCategoryName, DependencyCategorySettings> = { ...DefaultDependencyCategories };
+export function getAllCategories(queries: readonly DependenciesQuery[], ctx: ReadOnlyFlowrAnalyzerContext): Record<DependencyCategoryName, DependencyCategorySettings> {
+	const categories: Record<DependencyCategoryName, DependencyCategorySettings> = { ...defaultDependencyCategories(ctx) };
 	for(const query of queries) {
 		for(const [name, settings] of Object.entries(query.additionalCategories ?? {})) {
 			const known = categories[name];
@@ -213,6 +241,12 @@ export function getAllCategories(queries: readonly DependenciesQuery[]): Record<
 	return categories;
 }
 
+/** every category a set of queries reports on, which is what the results are keyed by; no built-in has to be read for that */
+export function getAllCategoryNames(queries: readonly DependenciesQuery[]): DependencyCategoryName[] {
+	return [...new Set<DependencyCategoryName>([...DefaultDependencyCategoryNames,
+		...queries.flatMap(query => Object.keys(query.additionalCategories ?? {}))])];
+}
+
 const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 	name:    Joi.string().required().description('The name of the library function.'),
 	package: Joi.string().optional().description('The package name of the library function'),
@@ -223,10 +257,10 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 export const DependenciesQueryDefinition = {
 	title:           'Dependencies Query',
 	executor:        executeDependenciesQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result, queries) => {
+	asciiSummarizer: (formatter, analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[]))) {
+		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[], analyzer.inspectContext()))) {
 			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
 		}
 		return true;
@@ -234,8 +268,9 @@ export const DependenciesQueryDefinition = {
 	schema: Joi.object({
 		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
-		...Object.fromEntries(Object.keys(DefaultDependencyCategories).map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
+		...Object.fromEntries(DefaultDependencyCategoryNames.map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
 		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for.'),
+		assumedPackages:        Joi.boolean().optional().description('Also report the base packages R attaches on startup (e.g. `stats` for a bare `sd()`) that the code uses but never asks for explicitly, as `library` entries marked `implicit`. `base` is reported too, additionally marked `alwaysAttached`. Defaults to false.'),
 		additionalCategories:   Joi.object().allow(Joi.object({
 			queryDisplayName: Joi.string().description('The display name in the query result.'),
 			functions:        functionInfoSchema.description('The functions that this additional category should search for.'),
@@ -244,6 +279,6 @@ export const DependenciesQueryDefinition = {
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults, query): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;
-		return Object.keys(getAllCategories(query as DependenciesQuery[])).flatMap(c => out[c] ?? []).map(o => o.nodeId);
+		return getAllCategoryNames(query as DependenciesQuery[]).flatMap(c => out[c] ?? []).map(o => o.nodeId).filter((id): id is NodeId => id !== undefined);
 	}
 } as const satisfies SupportedQuery<'dependencies'>;

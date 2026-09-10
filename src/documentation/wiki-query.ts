@@ -64,6 +64,7 @@ import { warnMissingSigDb } from './doc-util/doc-sigdb';
 import {
 	executeGuessDepVersionsQuery
 } from '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor';
+import { executeFunctionInfoQuery } from '../queries/catalog/function-info-query/function-info-query-executor';
 
 registerQueryDocumentation('call-context', {
 	type:             'active',
@@ -775,6 +776,20 @@ ${
 }
 
 Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
+
+By default the query reports only the dependencies the code names itself. Yet R attaches a handful of base packages
+to the search path on startup, so a bare \`sd(x)\` genuinely depends on \`stats\` without any \`library\` call saying so.
+Set \`assumedPackages\` to have those reported as well, as \`library\` entries marked \`implicit\` and carrying no
+\`nodeId\` (no single call stands for "R attached this"), with the calls that pulled the package in listed as
+\`linkedIds\`:
+${
+	await showQuery(shell, 'sd(c(1, 2, 3))', [{ type: 'dependencies', assumedPackages: true, enabledCategories: ['library'] }], { showCode: true, collapseQuery: false, collapseResult: false, ctx })
+}
+
+\`base\` is reported alongside the others but additionally marked \`alwaysAttached\`. The other six are attached by
+convention and \`R_DEFAULT_PACKAGES\` (or \`options(defaultPackages=)\`) can drop any of them, whereas \`base\` is always
+there and cannot be detached -- so it is never something the script could have asked for, and never something to
+suggest a \`library\` call for.
 		`;
 	}
 });
@@ -1069,6 +1084,40 @@ ${
 		content: `This query needs the ${ctx.linkPage('wiki/Signature Database', 'signature database')}, and specifically a database carrying the _history_ of a package,
 since bounding a version means comparing releases. Without one it returns no guesses and says so in its \`message\`.
 See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is drawn from.`
+	})
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('function-info', {
+	type:             'active',
+	shortDescription: 'Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.',
+	functionName:     executeFunctionInfoQuery.name,
+	functionFile:     '../queries/catalog/function-info-query/function-info-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		return `
+This query answers "where does this function come from?" for a bare name, combining two sources flowR otherwise
+consults separately: the ${ctx.linkPage('wiki/Signature Database', 'signature database')} (which packages export
+the name, and their signature/definition site) and flowR's own built-in configuration (whether flowR models the
+name itself, and how).
+
+Given a base-R name such as \`sd\`:
+
+${await showQuery(shell, '', [{ type: 'function-info', name: 'sd' }], { showCode: false, collapseResult: true, ctx })}
+
+The \`packages\` property restricts which packages are considered (every exporting package is checked by default),
+which is useful once a name is exported by more than one package on CRAN. A name flowR models itself, like \`get\`,
+also reports the built-in's processor, its evaluation handler (if it folds to a constant), and the semantic tags
+flowR states for it:
+
+${await showQuery(shell, '', [{ type: 'function-info', name: 'get' }], { showCode: false, collapseResult: true, ctx })}
+
+${
+	block({
+		type:    'NOTE',
+		content: `To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to inspect a specific
+package/version in the database directly, reach for the ${linkToQueryOfName('signature')}. In the REPL, \`:signature info <name>\` is a shorthand for this query.`
 	})
 }
 		`;

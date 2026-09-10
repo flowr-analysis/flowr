@@ -1,4 +1,3 @@
-import path from 'path';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
@@ -13,7 +12,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import { ControlDependency, negateControlDependency } from '../../info';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { DefaultMap } from '../../../util/collections/defaultmap';
-import { toPosixPath } from '../../../util/files';
+import { RPath } from '../../../util/files';
 import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { uniqueArray } from '../../../util/collections/arrays';
@@ -64,8 +63,7 @@ function isAbsoluteDir(dir: string): boolean {
 
 /** apply one `setwd(dir)`: an absolute (or `~`-rooted) `dir` replaces `current`, a relative `dir` joins onto it */
 function applyChange(current: string, dir: string): string {
-	const d = toPosixPath(dir);
-	return isAbsoluteDir(dir) ? path.posix.normalize(d) : path.posix.join(toPosixPath(current), d);
+	return isAbsoluteDir(dir) ? RPath.normalize(dir) : RPath.join(current, dir);
 }
 
 function guardIn(g: ControlDependency, set: Guards): boolean {

@@ -2,19 +2,18 @@ import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '
 import type {  FunctionsMetadata,  FunctionsResult } from './function-finder-util';
 import { functionFinderUtil } from './function-finder-util';
 import { LintingRuleTag } from '../linter-tags';
-import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Ternary } from '../../util/logic';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
-import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
+import { writeFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { MergeableRecord } from '../../util/objects';
 import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import type { BuiltInParam } from '../../dataflow/environments/query-fn-props';
-import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import type { BuiltInIndex, BuiltInParam } from '../../dataflow/environments/query-fn-props';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
 	/**
@@ -30,7 +29,7 @@ export interface NetworkFunction extends MergeableRecord {
 	name:                     Identifier,
 	/**
 	 * The {@link FunctionInfo} to use for querying the argument whose value should match {@link onlyTriggerWithArgument}.
-	 * If this is not specified, flowR's default database of functions ({@link ReadFunctions}, {@link SourceFunctions}, and {@link WriteFunctions}) is queried for appropriate information on the function's read argument.
+	 * If this is not specified, flowR's default database of functions ({@link readFunctions}, {@link SourceFunctions}, and {@link writeFunctions}) is queried for appropriate information on the function's read argument.
 	 */
 	info?:                    Omit<FunctionInfo, 'name'>
 	/**
@@ -64,7 +63,7 @@ function addressParam(params: readonly BuiltInParam[]): BuiltInParam {
  * resource is a url rather than a path -- which is what {@link UrlPattern} decides per call site. Label a
  * built-in `Network` or give it a resource parameter and it shows up here; nothing is listed twice.
  */
-export function networkFunctions(index: BuiltInIndex = BuiltInIndex.default()): NetworkFunction[] {
+export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 	const resources = new Map<string, BuiltInParam[]>();
 	for(const param of index.params(ArgProp.Resource)) {
 		const key = Identifier.toString(param.call);
@@ -92,7 +91,7 @@ export const NETWORK_FUNCTIONS = {
 	processSearchResult: async(e, c, d) => {
 		const df = await d.dataflow();
 		const fnPool = new Map<string, FunctionInfo>([
-			...ReadFunctions.concat(SourceFunctions, WriteFunctions).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
+			...readFunctions(d.inspectContext()).concat(SourceFunctions, writeFunctions(d.inspectContext())).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
 			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [[Identifier.toString(f.name), { name: Identifier.toString(f.name), ...f.info }] as const])
 		]);
 		const onlyTriggerLookup = new Map(c.fns.flatMap(f => Identifier.is(f) ? [] : [[Identifier.toString(f.name), f.onlyTriggerWithArgument] as const]));
@@ -127,8 +126,8 @@ export const NETWORK_FUNCTIONS = {
 		// ensures all network functions found are actually network functions through its limited config, but doesn't find all network functions since the config is pre-crawled, and the DFG may be over-approximated
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',
-		defaultConfig: {
-			fns: networkFunctions()
-		}
+		defaultConfig: ctx => ({
+			fns: ctx.env.deriveFromIndex(networkFunctions)
+		})
 	}
 } as const satisfies LintingRule<FunctionsResult, FunctionsMetadata, NetworkFunctionsConfig>;

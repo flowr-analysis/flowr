@@ -15,6 +15,8 @@ export enum BuiltInEvalName {
 	Logical = 'eval:logical',
 	/** every string function, from `paste` to `basename`, see {@link resolveAsStringFn} */
 	StringFn = 'eval:string-fn',
-	/** the grouping `(`, see {@link resolveAsGroup} */
-	Group = 'eval:group'
+	/** the groupings `(` and `{`, see {@link resolveAsGroup} */
+	Group = 'eval:group',
+	/** the by-name lookups, from `get` to `match.fun`, see {@link resolveAsGet} */
+	Get = 'eval:get'
 }

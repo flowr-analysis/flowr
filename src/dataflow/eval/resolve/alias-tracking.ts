@@ -11,6 +11,7 @@ import { Identifier, ReferenceType } from '../../environments/identifier';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { DataflowGraph } from '../../graph/graph';
+import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { DfgVertex, VertexType } from '../../graph/vertex';
@@ -19,7 +20,7 @@ import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } fro
 import { setFrom, setOf } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { Resolve } from '../../environments/resolve-helper';
@@ -53,10 +54,15 @@ export interface ResolveInfo {
 	blocked?:     Set<NodeId>;
 }
 
+function environmentNameOf(sourceId: NodeId, idMap: AstIdMap | undefined): Identifier | undefined {
+	const node = idMap?.get(sourceId);
+	return RSymbol.is(node) ? node.content : node?.lexeme;
+}
+
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const vertex = dataflow.getVertex(sourceId);
 	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
-	const identifier = DfgVertex.isFunctionCall(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
+	const identifier = DfgVertex.isFunctionCall(vertex) ? vertex.name : environmentNameOf(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -73,7 +79,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 	const definitions: NodeId[] = [];
 
 	// Source is Symbol -> resolve definitions of symbol
-	const identifier = NodeId.recoverName(sourceId, dataflow.idMap);
+	const identifier = environmentNameOf(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -248,6 +254,12 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 			values.add(valueFromTsValue(def.value));
 		} else if(def.type === ReferenceType.BuiltInFunction) {
 			// Tracked in #1207
+		} else if(def.value === undefined && graph !== undefined && !NodeId.isBuiltIn(def.nodeId)) {
+			const value = trackAliasesInGraph(def.nodeId, graph, ctx, idMap, blocked);
+			if(isTop(value)) {
+				return Top;
+			}
+			values.add(value);
 		} else if(def.value !== undefined) {
 			/* if there is at least one location for which we have no idea, we have to give up for now! */
 			if(def.value.length === 0) {
@@ -332,10 +344,16 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return RNode.iterateParents(node, ast).some(RLoopConstructs.is);
 }
 
-/** whether the node is (or sits in) a parameter's default, which any call site may override */
-function isParameterDefault(node: RNodeWithParent | undefined, idMap: AstIdMap): boolean {
-	return node !== undefined && (node.info.role === RoleInParent.ParameterDefaultValue
-		|| RNode.iterateParents(node, idMap).some(p => p.info.role === RoleInParent.ParameterDefaultValue));
+function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMap, graph: DataflowGraph): 'applies' | 'overridden' | 'unknown' {
+	const parameter = node === undefined ? undefined
+		: [node, ...RNode.iterateParents(node, idMap)].find(p => p.info.role === RoleInParent.ParameterDefaultValue)?.info.parent;
+	const bound = parameter === undefined ? undefined : idMap.get(parameter);
+	if(!RParameter.is(bound) || bound.info.parent === undefined) {
+		return 'applies';
+	}
+	const count = (edges: Iterable<[NodeId, DfEdge]>, type: EdgeType) => [...edges].filter(([, e]) => DfEdge.includesType(e, type)).length;
+	const calls = count(graph.edgesTo(bound.info.parent), EdgeType.Calls);
+	return calls === 0 ? 'unknown' : count(graph.edgesFrom(bound.name.info.id), EdgeType.DefinedByOnCall) >= calls ? 'overridden' : 'applies';
 }
 
 /**
@@ -455,7 +473,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
 			if(isFn) {
-				if(DfEdge.isOnlyType(edge, EdgeType.Returns) || DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) || DfEdge.isOnlyType(edge, EdgeType.DefinedBy)) {
+				if(DfEdge.includesType(edge, EdgeType.Returns) || DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) || DfEdge.isOnlyType(edge, EdgeType.DefinedBy)) {
 					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 				}
 				foundRetuns ||= DfEdge.includesType(edge, EdgeType.Returns);
@@ -470,8 +488,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			/* a call that hands back none of its arguments has no `Returns` edge to follow, yet the value solver may
 			 * well know what it produces (`p <- file.path("data", "x.csv")`), so we fold it instead of giving up */
 			const node = idMap.get(id);
-			const values = isParameterDefault(node, idMap) ? undefined
-				: valueSetGuard(resolveIdToValue(node, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked }));
+			const state = parameterDefaultState(node, idMap, graph);
+			if(state === 'overridden') {
+				continue;
+			}
+			const values = state === 'unknown' ? undefined : valueSetGuard(resolveIdToValue(node, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked }));
 			if(values === undefined || values.elements.some(isTop)) {
 				return Top;
 			}
@@ -493,8 +514,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			if(isParameterDefault(node, idMap)) {
+			const state = parameterDefaultState(node, idMap, graph);
+			if(state === 'unknown') {
 				return Top;
+			} else if(state === 'overridden') {
+				continue;
 			}
 			values.add(valueFromRNodeConstant(node));
 		}

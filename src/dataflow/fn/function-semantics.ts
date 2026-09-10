@@ -18,6 +18,7 @@ import type { DataflowGraphVertexInfo } from '../graph/vertex';
  * The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which
  * formals it forces, and what it declares as a class. It replaces the seven single-purpose helper objects
  * that used to sit one per file under `src/dataflow/fn/`.
+ * @helper api
  * @example
  * ```ts
  * FunctionSemantics.props(definitions, graph);            // what the definitions do with what they get

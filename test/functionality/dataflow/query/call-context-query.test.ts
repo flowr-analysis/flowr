@@ -127,7 +127,7 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ aliasRoots: [NodeId.toBuiltIn('print')], id: 4, name: 'print' }]));
 		testQuery('Alias with inclusion', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 4, aliasRoots: [1], name: 'foo' }]));
 		testQuery('Alias with inclusion and explicit', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true }), q(/foo/)], r([{ id: 4, aliasRoots: [1], name: 'foo' }, { id: 4, name: 'foo' }]));
-		testQuery('String alias with inclusion', 'foo <- get("print")\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [2], name: 'foo' }]));
+		testQuery('String alias with inclusion', 'foo <- get("print")\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: ['4-get-name'], name: 'foo' }]));
 		testQuery('Two level alias', 'foo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [1], name: 'bar' }]));
 		testQuery('Multi level alias with intermediate (fst)', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 10, aliasRoots: [4, 0], name: 'bar' }]));
 		testQuery('Multi level alias with intermediate (snd)', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/foo/, { includeAliases: true })], r([{ id: 10, aliasRoots: [7, 3], name: 'bar' }]));

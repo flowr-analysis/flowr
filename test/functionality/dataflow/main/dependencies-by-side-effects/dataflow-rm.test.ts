@@ -1,10 +1,11 @@
-import { assertDataflow, withShell } from '../../../_helper/shell';
+import { assertDataflow, assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { describe } from 'vitest';
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { RPipe } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 
 describe('Dataflow Plot Dependencies', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Removing breaks link', ['functions-with-global-side-effects']), shell,
@@ -135,6 +136,25 @@ describe('Dataflow Plot Dependencies', { concurrent: false }, withShell(shell =>
 			expectIsSubgraph:      true,
 			mustNotHaveEdges:      [['3@x', '1@x']]
 		}
+	);
+
+	assertDataflow(label('a piped rm removes the variable just like a nested one (verified: R prints FALSE)', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
+		'x <- 1\nx |> rm()\nx',
+		emptyGraph()
+			.use('3@x'),
+		{
+			resolveIdsAsCriterion: true,
+			expectIsSubgraph:      true,
+			mustNotHaveEdges:      [['3@x', '1@x']],
+			minRVersion:           RPipe.availableFromRVersion().toString()
+		}
+	);
+
+	assertSliced(label('a piped rm slices identically to a nested one (verified: R prints FALSE)', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
+		'x <- 1\nx <- 2\nx |> rm()\nr <- exists("x")\nprint(r)',
+		['4@r'],
+		'r <- exists("x")',
+		{ minRVersion: RPipe.availableFromRVersion().toString() }
 	);
 
 	assertDataflow(label('rm in both branches removes the variable (verified: R rm removes it)', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,

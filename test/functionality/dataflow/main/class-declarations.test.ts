@@ -3,6 +3,8 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { ClassSystem, type DeclaredClass, MemberVisibility } from '../../../../src/dataflow/fn/class-declaration';
 import { applyAssumedPackages, assumedPackagesOf, assumeLoadedPackages } from '../../_helper/shell';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
+import { label } from '../../_helper/label';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 
 
 assumeLoadedPackages('R6', 'S7');
@@ -16,8 +18,8 @@ async function classesOf(code: string, attach = false): Promise<Map<string, Decl
 }
 
 /** runs `pick` over what {@link classesOf} finds in `code` and compares it against `expected` */
-function testClasses(name: string, code: string, pick: (classes: Map<string, DeclaredClass>) => unknown, expected: unknown) {
-	test(name, async() => {
+function testClasses(name: string, code: string, pick: (classes: Map<string, DeclaredClass>) => unknown, expected: unknown, caps: readonly FlowrCapabilityId[] = []) {
+	test(label(name, caps, ['dataflow']), async() => {
 		assert.deepEqual(pick(await classesOf(code)), expected);
 	});
 }
@@ -55,7 +57,7 @@ Range <- S7::new_class("Range", parent = S7::S7_object, properties = list(start 
 `;
 	testClasses('a reference class states typed fields and its methods apart', code,
 		c => ({ system: c.get('Account')?.system, contains: c.get('Account')?.contains, members: c.get('Account')?.members }),
-		{ system: ClassSystem.RefClass, contains: ['envRefClass'], members: [{ name: 'balance', type: 'numeric' }, { name: 'deposit', method: true }] });
+		{ system: ClassSystem.RefClass, contains: ['envRefClass'], members: [{ name: 'balance', type: 'numeric' }, { name: 'deposit', method: true }] }, ['oop-rc']);
 	testClasses('R6 members carry the visibility they were declared under', code,
 		c => ({ system: c.get('Person')?.system, members: c.get('Person')?.members }), { system:  ClassSystem.R6, members: [
 			{ name: 'name', visibility: MemberVisibility.Public }, { name: 'greet', method: true, visibility: MemberVisibility.Public },

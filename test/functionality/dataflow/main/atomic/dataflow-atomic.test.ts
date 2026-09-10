@@ -10,7 +10,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider';
 import { startAndEndsWith } from '../../../../../src/util/text/strings';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -18,9 +18,14 @@ import {
 	UnnamedFunctionCallPrefix
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
+import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
+import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
+import { RSymbol } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RString } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 
 function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | object {
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
@@ -38,7 +43,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			['NULL', 'null'],
 			['Inf', 'inf-and-nan'],
 			['NaN', 'inf-and-nan']
-		] as [string, SupportedFlowrCapabilityId][]) {
+		] as [string, FlowrCapabilityId][]) {
 			assertDataflow(label(input, [id]), shell, input,
 				emptyGraph().constant(0)
 			);
@@ -49,7 +54,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 		for(const [input, capability] of [
 			['T', 'logical'],
 			['F', 'logical'],
-		] as [string, SupportedFlowrCapabilityId][]) {
+		] as [string, FlowrCapabilityId][]) {
 			assertDataflow(label(input, [capability]), shell, input,
 				emptyGraph()
 					.use(0, input)
@@ -544,26 +549,45 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(3)
 					.defineVariable(0, 'a', { definedBy: [9, 10] })
 			);
-			assertDataflow(label('partial assignment reads the previous definition of its target', ['name-normal', 'strings', 'unnamed-arguments', 'call-normal', 'newlines', 'assignment-functions']),
+			assertDataflow(label('setNames hands back a renamed copy and leaves its argument alone', ['name-normal', 'strings', 'unnamed-arguments', 'call-normal', 'newlines']),
 				shell, 'df <- data.frame(1:5)\nsetNames(df, "id")', emptyGraph()
-					.constant(2)
-					.constant(3)
-					.call(4, ':', [argumentInCall(2), argumentInCall(3)], { returns: [], reads: [2, 3, NodeId.toBuiltIn(':')], onlyBuiltIn: true })
-					.argument(4, [2, 3])
-					.calls(4, NodeId.toBuiltIn(':'))
-					.call(6, 'data.frame', [argumentInCall(4)], { returns: [], reads: [4, NodeId.toBuiltIn('data.frame')], onlyBuiltIn: true })
-					.argument(6, 4)
-					.calls(6, NodeId.toBuiltIn('data.frame'))
-					.call(7, '<-', [argumentInCall(0), argumentInCall(6)], { returns: [0], reads: [6, NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
-					.argument(7, [0, 6])
-					.calls(7, NodeId.toBuiltIn('<-'))
-					.defineVariable(0, 'df', { definedBy: [7, 6] })
-					.constant(11)
-					.call(13, 'setNames', [argumentInCall(9), argumentInCall(11)], { returns: [9], reads: [11, NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
-					.argument(13, [11, 9])
-					.calls(13, NodeId.toBuiltIn('setNames'))
-					.defineVariable(9, 'df', { definedBy: [13, 11] })
-					.reads(9, [13, 0])
+					.constant('1:18')
+					.constant('1:20')
+					.call('1:19', ':', [argumentInCall('1:18'), argumentInCall('1:20')], { returns: [], reads: ['1:18', '1:20', NodeId.toBuiltIn(':')], onlyBuiltIn: true })
+					.argument('1:19', ['1:18', '1:20'])
+					.calls('1:19', NodeId.toBuiltIn(':'))
+					.call('1@data.frame', 'data.frame', [argumentInCall('1:19')], { returns: [], reads: ['1:19', NodeId.toBuiltIn('data.frame')], onlyBuiltIn: true })
+					.argument('1@data.frame', '1:19')
+					.calls('1@data.frame', NodeId.toBuiltIn('data.frame'))
+					.call('1:4', '<-', [argumentInCall('1@df'), argumentInCall('1@data.frame')], { returns: ['1@df'], reads: ['1@data.frame', NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
+					.argument('1:4', ['1@df', '1@data.frame'])
+					.calls('1:4', NodeId.toBuiltIn('<-'))
+					.defineVariable('1@df', 'df', { definedBy: ['1:4', '1@data.frame'] })
+					.use('2@df', 'df')
+					.reads('2@df', '1@df')
+					.constant('2:14')
+					.call('2@setNames', 'setNames', [argumentInCall('2@df'), argumentInCall('2:14')], { returns: [], reads: ['2@df', '2:14', NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
+					.argument('2@setNames', ['2@df', '2:14'])
+					.calls('2@setNames', NodeId.toBuiltIn('setNames')),
+				{ resolveIdsAsCriterion: true }
+			);
+			assertDataflow(label('replacement call with a named argument points its argument edge at a real vertex', ['name-normal', 'numbers', 'named-arguments', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']),
+				shell, 'v <- 1\ng(v, k = 2) <- 3', emptyGraph()
+					.constant('1:6')
+					.call('1:3', '<-', [argumentInCall('1@v'), argumentInCall('1:6')], { returns: ['1@v'], reads: [NodeId.toBuiltIn('<-'), '1:6'], onlyBuiltIn: true })
+					.calls('1:3', NodeId.toBuiltIn('<-'))
+					.defineVariable('1@v', 'v', { definedBy: ['1:6', '1:3'] })
+					.constant('2:10')
+					/* the named argument's own vertex, which no criterion names: it shares its position with the name */
+					.use(8)
+					.reads(8, '2:10')
+					.constant('2:16')
+					.call('2@g', 'g<-', [argumentInCall('2@v'), argumentInCall(8), argumentInCall('2:16')],
+						{ returns: ['2@v'], reads: ['2:16', '2:10', NodeId.toBuiltIn('g<-')], origin: [BuiltInProcName.Replacement], link: { origin: ['2:13'] } })
+					.calls('2@g', NodeId.toBuiltIn('g<-'))
+					.defineVariable('2@v', 'v', { definedBy: ['2:16', '2@g'] })
+					.reads('2@v', ['2@g', '1@v']),
+				{ resolveIdsAsCriterion: true }
 			);
 		});
 	});
@@ -940,13 +964,13 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				})
 				.constant(3, undefined, false)
 		);
-		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments', 'name-created']),
+		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments', 'name-created-resolved']),
 			shell, 'a <- function() 1\nget("a")()', emptyGraph()
 				.call(9, `${UnnamedFunctionCallPrefix}9`, [], { returns: [1], reads: [8], environment: defaultEnv().defineFunction('a', 0, 4) })
 				.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true })
 				.calls(4, NodeId.toBuiltIn('<-'))
 				.calls(9, 3)
-				.call(8, 'get', [argumentInCall(6)], { returns: [6], reads: [6, NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', 0, 4) })
+				.call(8, 'get', [argumentInCall('8-get-name')], { returns: ['8-get-name'], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', 0, 4) })
 				.calls(8, NodeId.toBuiltIn('get'))
 				.defineFunction(3, [1], {
 					entryPoint:        0,
@@ -956,11 +980,22 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					out:               [],
 					unknownReferences: []
 				})
-				.use(6, '"a"')
+				.use('8-get-name', '"a"')
 				.defineVariable(0, 'a', { definedBy: [4, 3] })
 				.constant(1, undefined, false)
-				.reads(6, 0)
+				.reads('8-get-name', 0)
 		);
+
+		test('get() synthesizes a symbol id distinct from the string literal it reads', async() => {
+			const { normalize } = await createDataflowPipeline(shell, { context: contextFromInput('get("a")') }).allRemainingSteps();
+			const stringId = [...normalize.idMap.keys()].find(id => normalize.idMap.get(id)?.lexeme === '"a"');
+			assert.isDefined(stringId, 'the "a" string literal has to be part of the ast');
+			const synthId = `${SlicingCriterion.parse('1@get', normalize.idMap)}-get-name`;
+			const synth = normalize.idMap.get(synthId);
+			assert.isTrue(RSymbol.is(synth), 'the synthesized name has to resolve to a symbol');
+			assert.notStrictEqual(String(stringId), synthId, 'the synthesized symbol must not reuse the string literal\'s id');
+			assert.isTrue(RString.is(normalize.idMap.get(stringId)), 'the original string literal must still resolve to itself');
+		});
 
 		describe('S4 assign/get', () => {
 			for(const fn of ['setValidity']) {

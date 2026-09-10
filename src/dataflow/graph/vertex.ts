@@ -83,6 +83,7 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Use
 	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
 	readonly environment?: undefined
+	constantFallback?:     true
 }
 
 /**
@@ -212,6 +213,7 @@ export interface VertexByType {
  *
  * Every check tolerates an absent vertex, which is what {@link DataflowGraph#getVertex|getVertex()} hands back
  * for an id the graph does not know.
+ * @helper dataflow
  * @example
  * ```ts
  * const vertex = graph.getVertex(id);

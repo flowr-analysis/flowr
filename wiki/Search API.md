@@ -1,40 +1,30 @@
-_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-08-26, 11:00:45 UTC (v2.15.1, R v4.6.1), please do not edit directly._
-
+_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and the
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L178"><code><span title="Run a search on the current analysis.">runSearch</span></code></a> function.
+Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L177"><code><span title="Run a search on the current analysis.">runSearch</span></code></a> function.
 
 For an initial motivation, let's have a look at the following example:
-
-
-
 
 ```ts
 Q.get({"name":"x"})
 ```
 
-
 <details style="color:gray"> <summary>Search Visualization</summary>
-
 
 ```mermaid
 flowchart LR
 0("<b>get</b>(filter: #123;#34;name#34;#58;#34;x#34;#125;)<br/>_generator_")
 ```
 
-
 In the code:
-
 
 ```r
 x <- x * x
 ```
 
-
 <details style="color:gray"> <summary>JSON Representation</summary>
-
 
 ```json
 {
@@ -51,24 +41,18 @@ x <- x * x
 }
 ```
 
-
 </details>
 
 </details>
-
 
  <details> <summary style="color:gray">Show Results</summary>
 
 The query returns the following vetices (all references to `x` in the code):
 <b>0 ('x')</b> at L1.1, <b>1 ('x')</b> at L1.6, <b>2 ('x')</b> at L1.10
 
-The search required _3.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The search ran (including parsing and normalization and the query) within the generation environment.
 
 The returned results are highlighted thick and blue within the dataflow graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -108,40 +92,27 @@ flowchart LR
     linkStyle 10 stroke:gray;
 ```
 
-	
-(The analysis required _4.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
-
+(The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 </details>
-
-	
 
 This returns all references to the variable `x` in the code.
 However, the search API is not limited to simple variable references and can do much more.
 
 For example, let's have every definition of `x` in the code but the first one:
 
-
-
-
 ```ts
 Q.get({"name":"x"}).filter(VertexType.VariableDefinition).skip(1)
 ```
 
-
 <details style="color:gray"> <summary>Search Visualization</summary>
-
 
 ```mermaid
 flowchart LR
 0("<b>get</b>(filter: #123;#34;name#34;#58;#34;x#34;#125;)<br/>_generator_") --> 1["<b>filter</b>(filter: #34;vdef#34;)<br/>_transformer_"] --> 2["<b>skip</b>(count: 1)<br/>_transformer_"]
 ```
 
-
 In the code:
-
 
 ```r
 x <- x * x
@@ -151,9 +122,7 @@ print(x)
 x <- 2
 ```
 
-
 <details style="color:gray"> <summary>JSON Representation</summary>
-
 
 ```json
 {
@@ -185,24 +154,18 @@ x <- 2
 }
 ```
 
-
 </details>
 
 </details>
-
 
  <details> <summary style="color:gray">Show Results</summary>
 
 The query returns the following vetices (all references to `x` in the code):
 <b>9 ('x')</b> at L3.1, <b>18 ('x')</b> at L5.1
 
-The search required _4.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The search ran (including parsing and normalization and the query) within the generation environment.
 
 The returned results are highlighted thick and blue within the dataflow graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -318,19 +281,13 @@ print`"]
     linkStyle 40 stroke:gray;
 ```
 
-	
-(The analysis required _2.9 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
-
+(The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 </details>
 
-	
-
 In summary, every search has two parts. It is initialized with a _generator_ (such as `Q.var('x')`)
 and can be further refined with _transformers_ or _modifiers_.
-Such queries can be constructed starting from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L150"><code><span title="This is the root object to use for creating searches. See the FlowrSearchGenerator for the available methods. After the query is generated, you can use what is provided by the FlowrSearchBuilder to further refine the search.">Q</span></code></a> object (backed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L42"><code><span title="This object holds all the methods to generate search queries. For compatibility, please use the Q identifier object to access these methods.">FlowrSearchGenerator</span></code></a>) and
+Such queries can be constructed starting from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L151"><code><span title="This is the root object to use for creating searches. See the FlowrSearchGenerator for the available methods. After the query is generated, you can use what is provided by the FlowrSearchBuilder to further refine the search.">Q</span></code></a> object (backed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L43"><code><span title="This object holds all the methods to generate search queries. For compatibility, please use the Q identifier object to access these methods.">FlowrSearchGenerator</span></code></a>) and
 are fully serializable so you can use them when communicating with the [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 
 ## File Path Filtering
@@ -339,47 +296,46 @@ Many convenience functions and the `get` generator support filtering by file pat
 This is useful when you want to search for nodes only in specific files.
 Additionally, inline code (code without a file path) is treated as having an empty path `""` for regex matching purposes.
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L42"><code><span title="This object holds all the methods to generate search queries. For compatibility, please use the Q identifier object to access these methods.">FlowrSearchGenerator</span></code></a> provides several convenience functions for searching variables with file path filtering.
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L130"><code><span title="Short form of get with only the name filter: get({name}).">FlowrSearchGenerator::<b>var</b></span></code></a> and other functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L77"><code><span title="Returns all elements that match the given filters . You may pass a negative line number to count from the back. Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for 'production'.">FlowrSearchGenerator::<b>get</b></span></code></a>
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L43"><code><span title="This object holds all the methods to generate search queries. For compatibility, please use the Q identifier object to access these methods.">FlowrSearchGenerator</span></code></a> provides several convenience functions for searching variables with file path filtering.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L131"><code><span title="Short form of get with only the name filter: get({name}).">FlowrSearchGenerator::<b>var</b></span></code></a> and other functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L78"><code><span title="Returns all elements that match the given filters . You may pass a negative line number to count from the back. Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for 'production'.">FlowrSearchGenerator::<b>get</b></span></code></a>
 also allow you to pass in a regex to only match files that fit your specified pattern! 
-
 
 We offer the following generators:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L71"><code><span title="Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter).">FlowrSearchGenerator::<b>all</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L72"><code><span title="Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter).">FlowrSearchGenerator::<b>all</b></span></code></a>\
 Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter).
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L89"><code><span title="Returns all elements that match the given criteria (e.g., criterion('2@x', '3@<-'), to retrieve the first use of x in the second line and the first <- assignment in the third line). This will throw an error, if any criteria cannot be resolved to an id.">FlowrSearchGenerator::<b>criterion</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L90"><code><span title="Returns all elements that match the given criteria (e.g., criterion('2@x', '3@<-'), to retrieve the first use of x in the second line and the first <- assignment in the third line). This will throw an error, if any criteria cannot be resolved to an id.">FlowrSearchGenerator::<b>criterion</b></span></code></a>\
 Returns all elements that match the given
 <code>criteria</code>
 (e.g., `criterion('2@x', '3@<-')`,
 to retrieve the first use of `x` in the second line and the first `<-` assignment in the third line).
 This will throw an error, if any criteria cannot be resolved to an id.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L49"><code><span title="Initialize a search query with the given elements. <b>This is not intended to serialize well</b> wrt. the nodes, see FlowrSearchGenerator.criterion for a serializable alternative (passing the ids with $id).">FlowrSearchGenerator::<b>from</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L50"><code><span title="Initialize a search query with the given elements. <b>This is not intended to serialize well</b> wrt. the nodes, see FlowrSearchGenerator.criterion for a serializable alternative (passing the ids with $id).">FlowrSearchGenerator::<b>from</b></span></code></a>\
 Initialize a search query with the given elements.
 <b>This is not intended to serialize well</b> wrt. the nodes,
 see
 <code>FlowrSearchGenerator.criterion</code>
 for a serializable alternative (passing the ids with `$id`).
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L57"><code><span title="Initializes a new search query based on the results of the given JSON query or queries. Internally, the SupportedQuery#flattenInvolvedNodes function is used to flatten the resulting nodes of the query. Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.">FlowrSearchGenerator::<b>fromQuery</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L58"><code><span title="Initializes a new search query based on the results of the given JSON query or queries. Internally, the SupportedQuery#flattenInvolvedNodes function is used to flatten the resulting nodes of the query. Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.">FlowrSearchGenerator::<b>fromQuery</b></span></code></a>\
 Initializes a new search query based on the results of the given JSON query or queries.
 Internally, the
 <code>SupportedQuery#flattenInvolvedNodes</code>
 function is used to flatten the resulting nodes of the query.
 Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L77"><code><span title="Returns all elements that match the given filters . You may pass a negative line number to count from the back. Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for 'production'.">FlowrSearchGenerator::<b>get</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L78"><code><span title="Returns all elements that match the given filters . You may pass a negative line number to count from the back. Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for 'production'.">FlowrSearchGenerator::<b>get</b></span></code></a>\
 Returns all elements that match the given
 <code>filters</code>
 .
 You may pass a negative line number to count from the back.
 Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for "production".
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L139"><code><span title="Short form of get with only the id filter: get({id}).">FlowrSearchGenerator::<b>id</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L140"><code><span title="Short form of get with only the id filter: get({id}).">FlowrSearchGenerator::<b>id</b></span></code></a>\
 Short form of
 <code>get</code>
 with only the
 <code>id</code>
 filter:
 `get({id})`.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L101"><code><span title="Short form of get with only the line and column filters: get({line, column}). Please use locFuzzy for a fuzzy location search.">FlowrSearchGenerator::<b>loc</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L102"><code><span title="Short form of get with only the line and column filters: get({line, column}). Please use locFuzzy for a fuzzy location search.">FlowrSearchGenerator::<b>loc</b></span></code></a>\
 Short form of
 <code>get</code>
 with only the
@@ -390,25 +346,25 @@ filters:
 `get({line, column})`. Please use
 <code>locFuzzy</code>
 for a fuzzy location search.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L111"><code><span title="Fuzzy variant of loc that matches any node whose source range contains the given position.">FlowrSearchGenerator::<b>locFuzzy</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L112"><code><span title="Fuzzy variant of loc that matches any node whose source range contains the given position.">FlowrSearchGenerator::<b>locFuzzy</b></span></code></a>\
 Fuzzy variant of
 <code>loc</code>
 that matches any node whose source range contains the given position.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L65"><code><span title="Initializes a new search query based on the results of the given tree-sitter syntax query. Please note that this search generator is incompatible with the RShell parser and only works when using flowR with the TreeSitterExecutor .">FlowrSearchGenerator::<b>syntax</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L66"><code><span title="Initializes a new search query based on the results of the given tree-sitter syntax query. Please note that this search generator is incompatible with the RShell parser and only works when using flowR with the TreeSitterExecutor .">FlowrSearchGenerator::<b>syntax</b></span></code></a>\
 Initializes a new search query based on the results of the given tree-sitter syntax query.
 Please note that this search generator is incompatible with the
 <code>RShell</code>
 parser and only works when using flowR with the
 <code>TreeSitterExecutor</code>
 .
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L130"><code><span title="Short form of get with only the name filter: get({name}).">FlowrSearchGenerator::<b>var</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L131"><code><span title="Short form of get with only the name filter: get({name}).">FlowrSearchGenerator::<b>var</b></span></code></a>\
 Short form of
 <code>get</code>
 with only the
 <code>name</code>
 filter:
 `get({name})`.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L121"><code><span title="Short form of get with only the name and line filters: get({name, line}).">FlowrSearchGenerator::<b>varInLine</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L122"><code><span title="Short form of get with only the name and line filters: get({name, line}).">FlowrSearchGenerator::<b>varInLine</b></span></code></a>\
 Short form of
 <code>get</code>
 with only the
@@ -420,37 +376,37 @@ filters:
 
 Likewise, we have a palette of _transformers_ and _modifiers_:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L306"><code><span title="Construct the final search (this may happen automatically with most search handlers).">FlowrSearchBuilder::<b>build</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L307"><code><span title="Construct the final search (this may happen automatically with most search handlers).">FlowrSearchBuilder::<b>build</b></span></code></a>\
 Construct the final search (this may happen automatically with most search handlers).
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L195"><code><span title="only returns the elements that match the given filter.">FlowrSearchBuilder::<b>filter</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L196"><code><span title="only returns the elements that match the given filter.">FlowrSearchBuilder::<b>filter</b></span></code></a>\
 only returns the elements that match the given filter.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L203"><code><span title="first either returns the first element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>first</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L204"><code><span title="first either returns the first element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>first</b></span></code></a>\
 first either returns the first element of the search or nothing, if no elements are present.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L218"><code><span title="index returns the element at the given index if it exists">FlowrSearchBuilder::<b>index</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L219"><code><span title="index returns the element at the given index if it exists">FlowrSearchBuilder::<b>index</b></span></code></a>\
 index returns the element at the given index if it exists
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L211"><code><span title="last either returns the last element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>last</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L212"><code><span title="last either returns the last element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>last</b></span></code></a>\
 last either returns the last element of the search or nothing, if no elements are present.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L272"><code><span title="Maps the elements of the search to new values using the given mapper function.">FlowrSearchBuilder::<b>map</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L273"><code><span title="Maps the elements of the search to new values using the given mapper function.">FlowrSearchBuilder::<b>map</b></span></code></a>\
 Maps the elements of the search to new values using the given mapper function.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L287"><code><span title="merge combines the search results with those of another search.">FlowrSearchBuilder::<b>merge</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L288"><code><span title="merge combines the search results with those of another search.">FlowrSearchBuilder::<b>merge</b></span></code></a>\
 merge combines the search results with those of another search.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L253"><code><span title="select returns only the elements at the given indices.">FlowrSearchBuilder::<b>select</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L254"><code><span title="select returns only the elements at the given indices.">FlowrSearchBuilder::<b>select</b></span></code></a>\
 select returns only the elements at the given indices.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L244"><code><span title="skip returns all elements of the search except the first count ones.">FlowrSearchBuilder::<b>skip</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L245"><code><span title="skip returns all elements of the search except the first count ones.">FlowrSearchBuilder::<b>skip</b></span></code></a>\
 skip returns all elements of the search except the first `count` ones.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L227"><code><span title="tail returns all elements of the search except the first one.">FlowrSearchBuilder::<b>tail</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L228"><code><span title="tail returns all elements of the search except the first one.">FlowrSearchBuilder::<b>tail</b></span></code></a>\
 tail returns all elements of the search except the first one.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L235"><code><span title="take returns the first count elements of the search.">FlowrSearchBuilder::<b>take</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L236"><code><span title="take returns the first count elements of the search.">FlowrSearchBuilder::<b>take</b></span></code></a>\
 take returns the first `count` elements of the search.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L280"><code><span title="A convenience function that combines with and the Mapper.Enrichment mapper to immediately add an enrichment and then map to its value(s).">FlowrSearchBuilder::<b>to</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L281"><code><span title="A convenience function that combines with and the Mapper.Enrichment mapper to immediately add an enrichment and then map to its value(s).">FlowrSearchBuilder::<b>to</b></span></code></a>\
 A convenience function that combines
 <code>with</code>
 and the
 <code>Mapper.Enrichment</code>
 mapper to immediately add an enrichment and then map to its value(s).
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L297"><code><span title="Removes duplicate elements based on the ids of the elements.">FlowrSearchBuilder::<b>unique</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L298"><code><span title="Removes duplicate elements based on the ids of the elements.">FlowrSearchBuilder::<b>unique</b></span></code></a>\
 Removes duplicate elements based on the ids of the elements.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L264"><code><span title="Adds the given enrichment to each element of the search. Added enrichments can later be retrieved using the enrichmentContent function.">FlowrSearchBuilder::<b>with</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L265"><code><span title="Adds the given enrichment to each element of the search. Added enrichments can later be retrieved using the enrichmentContent function.">FlowrSearchBuilder::<b>with</b></span></code></a>\
 Adds the given enrichment to each element of the search.
 Added enrichments can later be retrieved using the
 <code>enrichmentContent</code>
@@ -460,4 +416,4 @@ Every search (and consequently the search pipeline) works with an array of <a hr
 Hence, even operations such as `.first` or `.last` return an array of elements (albeit with a single or no element).
 The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
 In addition, it offers optimizer passes to optimize the search pipeline before execution.
-They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L178"><code><span title="Run a search on the current analysis.">runSearch</span></code></a>.
+They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L177"><code><span title="Run a search on the current analysis.">runSearch</span></code></a>.

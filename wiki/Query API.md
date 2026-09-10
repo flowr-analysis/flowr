@@ -1,9 +1,7 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-31, 21:46:01 UTC (v2.15.8, R v4.6.1), please do not edit directly._
-
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-
 
 > [!NOTE]
 > There are many ways to query a dataflow graph created by flowR.
@@ -11,7 +9,6 @@ Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interfac
 > with a running flowR server, or the <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span> command in the flowR [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#-using-the-repl).
 > 
 > Also, check out the [flowr-analysis/sample-analyzer-project-query](https://github.com/flowr-analysis/sample-analyzer-project-query) repository for a complete example project using the query API.
-
 
 ## The Query Format
 
@@ -48,6 +45,8 @@ For now, we support the following **active** queries (which we will refer to sim
     Checks whether a function calls another function matching given constraints.
 1. [Files Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Files) (`files`):\
     Returns the files matching the given criteria.
+1. [Function Info Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Function-Info) (`function-info`):\
+    Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.
 1. [Guess Dependency Versions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Guess-Dependency-Versions) (`guess-dep-versions`):\
     Guesses the version range each dependency must have, from declared constraints and actual code usage.
 1. [Happens-Before Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Happens-Before) (`happens-before`):\
@@ -91,7 +90,6 @@ Similarly, we support the following **virtual** queries:
     Combines multiple queries of the same type into one, specifying common arguments.
 
 <details>
-
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
@@ -373,6 +371,7 @@ Valid item types:
                 - **enabledCategories** [optional] _A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for._ (array)
                 Valid item types:
                     - (string)
+                - **assumedPackages** [optional] _Also report the base packages R attaches on startup (e.g. `stats` for a bare `sd()`) that the code uses but never asks for explicitly, as `library` entries marked `implicit`. `base` is reported too, additionally marked `alwaysAttached`. Defaults to false._ (boolean)
                 - **additionalCategories** [optional] _A set of additional, user-supplied dependency categories, whose results will be included in the query return value. Using the name of a built-in category extends it instead of replacing it._ (object)
                     Only allows: '[object Object]'
             - _The location map query retrieves the location of every id in the ast._ (object)
@@ -460,10 +459,10 @@ Valid item types:
                 - **rules** _The rules to lint for. If unset, all rules will be included._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'unescaped-arguments'
+                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'unescaped-arguments', 'namespace-access'
                     - (object)
                         - **name** [required] (string)
-                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'unescaped-arguments'
+                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'unescaped-arguments', 'namespace-access'
                         - **config** (object)
             - _Dice query: selects only paths from the given start nodes that reach the given end nodes._ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -504,6 +503,13 @@ Valid item types:
                         Only allows: 'newest', 'oldest'
                     - **prefer** [optional] _A version to prefer per dependency when it survives the constraints._ (object)
                     - **limit** [optional] _Cap the number of version combinations considered. Combinations whose versions cannot be loaded together are skipped, so fewer assignments may come out._ (number)
+            - _Reports which packages export a function name, its signature/details in each, and whether flowR itself carries a built-in definition for it._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'function-info'
+                - **name** [required] _The bare function/symbol name to look up._ (string)
+                - **packages** [optional] _Restrict the package list to these names; every exporting package is considered when omitted._ (array)
+                Valid item types:
+                    - (string)
         - _Virtual queries (used for structure)_ (alternatives)
             - _Compound query used to combine queries of the same type_ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -543,10 +549,6 @@ print(mean(data2$k))
 ```
 
 <details> <summary>Dataflow Graph of the Example</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1468,10 +1470,7 @@ points`"]
     linkStyle 129 stroke:gray;
 ```
 
-	
-(The analysis required _8.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
+(The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 </details>
 
@@ -1490,9 +1489,6 @@ For the specific use-case stated, you could use the [Call-Context Query](https:/
 
 Just as an example, the following [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) finds all calls to `read_csv` that are not overwritten:
 
-
-
-
 ```json
 [
   {
@@ -1505,71 +1501,26 @@ Just as an example, the following [Call-Context Query](https://github.com/flowr-
 ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
-_All queries together required ≈8 ms (1ms accuracy, total 9 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _9.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
 {
-  "call-context": {
-    ".meta": {
-      "timing": 0
-    },
-    "kinds": {
-      "input": {
-        "subkinds": {
-          "csv-file": [
-            {
-              "id": 16,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            },
-            {
-              "id": 22,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            }
-          ]
-        }
-      }
-    }
-  },
-  ".meta": {
-    "timing": 8
-  }
+  "call-context": {".meta":{},"kinds":{"input":{"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}}}},
+  ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 Every query is explained in detail on its own wiki page, linked from the overviews above.

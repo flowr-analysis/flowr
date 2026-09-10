@@ -1,80 +1,37 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 11:40:13 UTC (v2.14.4), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
 _This query is requested with the type `absint`._\
 Run in the REPL: `:query @absint <inference> [(<crit>;...)] <code | file://path>`
 
-
 This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:
-
-
 
 ```json
 [ { "type": "absint",   "inference": "df-shape" } ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **absint** (2 ms)\
+Query: **absint** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
-_All queries together required ≈5 ms (1ms accuracy, total 6 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _6.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "absint": {
-    ".meta": {
-      "timing": 2
-    },
-    "result": {
-      "domain": {
-        "colnames": {
-          "must": [],
-          "may": "top"
-        },
-        "cols": [
-          0,
-          null
-        ],
-        "rows": [
-          0,
-          null
-        ]
-      }
-    }
-  },
-  ".meta": {
-    "timing": 5
-  }
-}
+{"absint":{".meta":{},"result":{"domain":{"colnames":{"must":[],"may":"top"},"cols":[0,null],"rows":[0,null]}}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 df <- data.frame(id = 1:3) |>
@@ -85,10 +42,8 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _2.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -179,112 +134,44 @@ filter`"]
     linkStyle 28 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-
 The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
-
-
 
 ```json
 [ { "type": "absint",   "inference": "df-shape",   "criteria": [ "1@df",    "1@data.frame" ] } ]
 ```
 
-
 (This can be shortened to `@absint (1@df;1@data.frame) "df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
 Query: **absint** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ 1@df: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ 1@data.frame: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
-_All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
 {
   "absint": {
-    ".meta": {
-      "timing": 1
-    },
-    "result": [
-      [
-        "1@df",
-        {
-          "colnames": {
-            "must": [
-              "id"
-            ],
-            "may": []
-          },
-          "cols": [
-            1,
-            1
-          ],
-          "rows": [
-            0,
-            3
-          ]
-        }
-      ],
-      [
-        "1@data.frame",
-        {
-          "colnames": {
-            "must": [
-              "id"
-            ],
-            "may": []
-          },
-          "cols": [
-            1,
-            1
-          ],
-          "rows": [
-            3,
-            3
-          ]
-        }
-      ]
-    ]
+    ".meta": {},
+    "result": [["1@df",{"colnames":{"must":["id"],"may":[]},"cols":[1,1],"rows":[0,3]}],["1@data.frame",{"colnames":{"must":["id"],"may":[]},"cols":[1,1],"rows":[3,3]}]]
   },
-  ".meta": {
-    "timing": 3
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 df <- data.frame(id = 1:3) |>
@@ -295,10 +182,8 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _2.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -389,21 +274,10 @@ filter`"]
     linkStyle 28 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

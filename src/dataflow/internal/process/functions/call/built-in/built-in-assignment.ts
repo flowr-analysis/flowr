@@ -20,25 +20,27 @@ import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../..
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { ClosureRefs } from '../../../../linker';
 import { define } from '../../../../../environments/define';
-import { EdgeType } from '../../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import type { FnSig } from '../../../../../environments/built-in-props';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
-import { resolveListToEnvState } from './built-in-list';
+import { holdsFunction, resolveListToEnvState } from './built-in-list';
 import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
 import { stackEnvStateFromSource } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -67,6 +69,8 @@ export interface AssignmentConfiguration {
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
 	readonly canBeReplacement?:    boolean
+	/** the call is a replacement function, which keeps the kind of its target whatever value it is given */
+	readonly replacement?:         boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
 	/** does the call use the old value of its target (e.g. `setNames(x, nm)`), so that the target reads its previous definition? */
@@ -78,6 +82,10 @@ export interface AssignmentConfiguration {
 	 * {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope.
 	 */
 	readonly environmentArg?:      string
+	/** the formals of the call, so a positional {@link AssignmentConfiguration#environmentArg} is found at the slot it really has */
+	readonly sig?:                 FnSig
+	/** does the call run what it binds, as `makeActiveBinding` runs its function on every read of the name? */
+	readonly callsSource?:         boolean
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
@@ -94,6 +102,23 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 		return current;
 	}
 	return undefined;
+}
+
+
+const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName.NewEnv, BuiltInProcName.StackEnv, BuiltInProcName.ListToEnv];
+
+function yieldsEnvironment<OtherInfo>(
+	node:  RNode<OtherInfo & ParentInformation>,
+	graph: DataflowGraph,
+	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
+): boolean {
+	if(!RFunctionCall.isNamed(node)) {
+		return false;
+	}
+	const vertex = graph.getVertex(node.info.id);
+	return EnvironmentProducers.some(origin => DfgVertex.hasOrigin(vertex, origin))
+		|| (Identifier.getName(node.functionName.content) === 'environment'
+			&& Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function));
 }
 
 function tryReplacement<OtherInfo>(
@@ -230,6 +255,37 @@ export function processAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation {
+	const information = processAssignmentTarget(name, args, rootId, data, config);
+	if(config.callsSource) {
+		linkSourceAsCalled(args, rootId, data, config, information);
+	}
+	return information;
+}
+
+function linkSourceAsCalled<OtherInfo>(
+	args:        readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId:      NodeId,
+	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config:      AssignmentConfiguration,
+	information: DataflowInformation
+): void {
+	const source = unpackArg(args[config.swapSourceAndTarget ? 0 : 1]);
+	const vertex = source ? information.graph.getVertex(source.info.id) : undefined;
+	if(vertex && DfgVertex.isFunctionDefinition(vertex)) {
+		ClosureRefs.resolveOpenIngoing(information.graph, rootId, vertex, data.environment);
+		for(const written of information.out) {
+			information.graph.addEdge(written.nodeId, vertex.id, EdgeType.Calls);
+		}
+	}
+}
+
+function processAssignmentTarget<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration
+): DataflowInformation {
 	if(isMaskedNamePair(name, rootId, data)) {
 		return processMaskedNamePair(name, args, rootId, data);
 	}
@@ -306,7 +362,11 @@ export function processAssignment<OtherInfo>(
 		if(envRouted !== undefined) {
 			return envRouted;
 		}
-		return tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+		const replaced = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+		if(yieldsEnvironment(target.accessed, replaced.graph, data)) {
+			handleUnknownSideEffect(replaced.graph, replaced.environment, rootId);
+		}
+		return replaced;
 	} else if(type === RType.Access) {
 		const rootArg = findRootAccess(target);
 		if(rootArg) {
@@ -428,11 +488,32 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
 }
 
 /**
- * Returns `true` when the entry-point of `sourceInfo` is a call to a `new.env`-family function.
+ * The node an assignment takes its value from, following the {@link EdgeType.Returns} edges of the graph.
+ * A block hands back its last expression and a grouping what it wraps, so `e <- { new.env() }` creates an
+ * environment just like `e <- new.env()` does. `undefined` whenever more than one node may produce the value,
+ * as a branch or a loop does, since the assignment then has no single source to speak of.
+ */
+function valueEntryPointOf(sourceInfo: DataflowInformation): NodeId | undefined {
+	const seen = new Set<NodeId>();
+	let id = sourceInfo.entryPoint;
+	while(true) {
+		const returns = [...sourceInfo.graph.edgesFrom(id)].filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Returns));
+		if(returns.length === 0) {
+			return id;
+		} else if(returns.length > 1 || seen.has(id)) {
+			return undefined;
+		}
+		seen.add(id);
+		id = returns[0][0];
+	}
+}
+
+/**
+ * Returns `true` when the value of `sourceInfo` comes from a call to a `new.env`-family function.
  * Used by {@link processAssignmentToSymbol} to attach an initial {@link InGraphIdentifierDefinition#envState}.
  */
-function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
-	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
+function isEnvCreatorSource(sourceInfo: DataflowInformation, entryPoint: NodeId | undefined): boolean {
+	const vert = entryPoint === undefined ? undefined : sourceInfo.graph.getVertex(entryPoint);
 	return DfgVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
 }
 
@@ -464,11 +545,12 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 
 	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
+	const isFunction = holdsFunction(source, data.environment);
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
-		type:      ReferenceType.Variable,
+		type:      isFunction ? ReferenceType.Function : ReferenceType.Variable,
 		name:      fieldName,
-		nodeId:    fieldNode.info.id,
-		definedAt: rootId,
+		nodeId:    source.info.id,
+		definedAt: normalResult.entryPoint,
 		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
 	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
@@ -488,6 +570,8 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 /**
  * When `config.environmentArg` (e.g. `'envir'` for `assign`) resolves to a variable with a tracked
  * {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible.
+ * An `envir=` that names a value we cannot pin down (e.g. a parameter) is not a "no envir" call: routing the
+ * write into the local scope would be a guess, so the call becomes an unknown side effect instead.
  */
 function tryRouteToCustomEnv<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -496,22 +580,27 @@ function tryRouteToCustomEnv<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation | undefined {
-	const resolution = resolveEnvirArg(args, data, config.environmentArg);
-	if(!resolution) {
+	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, config.sig, config.environmentArg)
+		?? resolveFirstEnvirArg(args, data, config.sig, EnvirPositionFormals);
+	if(envirRouting === 'ambiguous' || (!envirRouting && suppliesArg(args, config.sig, EnvirPositionFormals))) {
+		const info = processKnownFunctionCall({
+			name, args, rootId, data,
+			origin: config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
+		}).information;
+		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		return info;
+	}
+	if(!envirRouting) {
 		return undefined;
 	}
 
-	if(resolution.isStackEnv) {
-		/* real stack env, not a private snapshot. Route a global write as a super-assignment so it reaches global scope from inside a function. */
-		if(resolution.envirData.environment.current.globalEnv !== true) {
-			return undefined;
-		}
+	if(envirRouting.stack === 'global') {
 		const globalResult = processAssignment(name, args, rootId, data, {
 			...config,
 			environmentArg:  undefined,   // prevent re-entry
 			superAssignment: true
 		});
-		globalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+		globalResult.graph.addEdge(rootId, envirRouting.envirNodeId, EdgeType.Reads);
 		return globalResult;
 	}
 
@@ -521,10 +610,8 @@ function tryRouteToCustomEnv<OtherInfo>(
 		environmentArg: undefined   // prevent re-entry
 	});
 
-	normalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
-
 	/* pass rootId as definedAt so only defs made at this call site are routed */
-	return routeWrittenToCustomEnv(normalResult, resolution.envDef, rootId, rootId);
+	return routeWrittenToEnvir(normalResult, envirRouting, rootId, data.environment, rootId);
 }
 
 export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {
@@ -593,7 +680,8 @@ export function markAsAssignment<OtherInfo>(
 /** Helper for when the _target_ of an assignment is known to be a (single) symbol (i.e. `x <- ...`, not `names(x) <- ...`). */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
-	const referenceType = checkTargetReferenceType(sourceArg, config.modesForFn);
+	const kindOfValue = checkTargetReferenceType(sourceArg, config.modesForFn);
+	const referenceType = config.replacement && kindOfValue === ReferenceType.Variable ? ReferenceType.Unknown : kindOfValue;
 	const useSourceIds = [sourceArg.graph.hasVertex(source.info.id) ? source.info.id : sourceArg.entryPoint];
 
 	const aliases = getAliases(useSourceIds, information.graph, information.environment);
@@ -610,15 +698,16 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	if(data.ctx.config.solver.trackEnvironments) {
 		let envState: REnvironmentInformation | undefined;
 		let returnsEnvState: REnvironmentInformation | undefined;
-		const stackEnv = stackEnvStateFromSource(sourceArg, data);
-		if(isEnvCreatorSource(sourceArg)) {
+		const valueEntry = valueEntryPointOf(sourceArg);
+		const stackEnv = stackEnvStateFromSource(sourceArg, data, valueEntry);
+		if(isEnvCreatorSource(sourceArg, valueEntry)) {
 			envState = createFreshEnvState(data, sourceArg);
 		} else if(stackEnv !== undefined) {
 			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env
 			envState = stackEnv;
 		} else if(RSymbol.is(source)) {
 			const defs = Resolve.byNameAndType(source.content, data.environment, ReferenceType.Variable);
-			envState = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined)?.envState
+			envState = defs?.find(hasEnvState)?.envState
 				?? findReturnsEnvState(defs);
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);

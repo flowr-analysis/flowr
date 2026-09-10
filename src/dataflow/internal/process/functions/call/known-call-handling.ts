@@ -1,9 +1,10 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { FnSig } from '../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
-import type { ExitPoint, DataflowInformation } from '../../../../info';
+import type { ExitPoint, DataflowInformation, KillReference } from '../../../../info';
 import { ExitPointType } from '../../../../info';
 import { processAllArguments } from './common';
+import { applyKills } from '../../../../environments/apply-kill';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -66,7 +67,7 @@ export interface ProcessKnownFunctionCallResult {
 	/**
 	 * The arguments as recorded on the function call vertex.
 	 * They are also part of the information via the function call vertex adde, but sometimes useful separately.
-	 * For example, together with {@link pMatch} to do custom parameter matching.
+	 * For example, together with {@link FunctionSemantics.call.match.toSpec} to do custom parameter matching.
 	 */
 	readonly callArgs:           readonly FunctionArgument[]
 }
@@ -247,6 +248,15 @@ export function processKnownFunctionCall<OtherInfo>(
 		}
 	}
 
+	let kill: KillReference[] | undefined = undefined;
+	for(const p of processedArguments) {
+		const kills = p?.kill;
+		if(kills !== undefined && kills.length > 0) {
+			kill = kill === undefined ? kills.slice() : kill.concat(kills);
+		}
+	}
+	const environment = kill ? applyKills(finalEnv, kill) : finalEnv;
+
 	return {
 		information: {
 			unknownReferences: [],
@@ -254,11 +264,12 @@ export function processKnownFunctionCall<OtherInfo>(
 			/* we do not keep the argument out as it has been linked by the function */
 			out:               functionName.out,
 			graph:             finalGraph,
-			environment:       finalEnv,
+			environment,
 			entryPoint:        rootId,
 			cfgEntry:          cfgEntry === rootId ? undefined : cfgEntry,
 			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
-			hooks:             functionName.hooks
+			hooks:             functionName.hooks,
+			kill
 		},
 		callArgs,
 		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments,

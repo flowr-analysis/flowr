@@ -79,6 +79,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		describe('variables', () => {
 			assertLinter('undefined variable read is flagged (checked by default)', parser, 'f <- function() undefinedVar',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'undefinedVar', kind: 'variable', loc: [1, 17, 1, 28] }]);
+			assertLinter('a read before the write in the same frame is flagged', parser, 'f <- function() { print(v); v <- 1 }',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'v', kind: 'variable', loc: [1, 25, 1, 25] }]);
 
 			assertLinter('variable checking can be disabled', parser, 'f <- function() undefinedVar',
 				'undefined-symbol', [], undefined, { checkVariables: false });

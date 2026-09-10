@@ -37,6 +37,7 @@ const dotDotDotAccess = /^\.\.\d+$/;
 /**
  * Helper functions to work with {@link Identifier|identifiers}.
  * Use {@link Identifier.matches} to check if two identifiers match according to R's scoping rules!
+ * @helper values
  * @example
  * ```ts
  * const id1 = Identifier.make('a', 'pkg');
@@ -705,6 +706,11 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * `for` loop's variable does: it takes one element of that sequence at a time.
 	 */
 	readonly iterated?:        boolean
+}
+
+/** Whether a definition holds a tracked environment, i.e. carries an {@link InGraphIdentifierDefinition#envState}. */
+export function hasEnvState(definition: IdentifierDefinition | undefined): definition is InGraphIdentifierDefinition & { envState: REnvironmentInformation } {
+	return (definition as InGraphIdentifierDefinition | undefined)?.envState !== undefined;
 }
 
 /**

@@ -1,11 +1,6 @@
 import type { MergeableRecord } from './objects';
 import { arraySum } from './collections/arrays';
 
-export const enum SummarizerType {
-	Benchmark  = 'benchmark',
-	Statistics = 'statistics',
-}
-
 export interface CommonSummarizerConfiguration extends MergeableRecord {
 	logger: (message: string) => void
 }

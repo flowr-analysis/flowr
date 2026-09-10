@@ -276,6 +276,7 @@ function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] 
 
 /**
  * Helper object for call-graphs, you can compute new call graphs based on {@link CallGraph.compute}.
+ * @helper dataflow
  * @see {@link Dataflow}
  * @see {@link CallGraph}
  */

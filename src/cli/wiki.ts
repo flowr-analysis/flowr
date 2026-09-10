@@ -13,7 +13,6 @@ import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
 import {
-	DocCapabilities,
 	WikiCore, WikiDataflowGraph,
 	WikiEngine,
 	WikiHelperObjects,
@@ -56,8 +55,7 @@ export const AllWikiDocuments = [
 	new WikiCreateLintingRules(),
 	new WikiSignatureDatabase(),
 	new IssueLintingRule(),
-	new DocReadme(),
-	new DocCapabilities()
+	new DocReadme()
 ] as const satisfies DocMakerLike[];
 
 export type ValidWikiDocumentTargets = ReturnType<typeof AllWikiDocuments[number]['getTarget']>;
@@ -71,6 +69,20 @@ function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
 		const bMTime = bStat ? bStat.mtime.getTime() : 0;
 		return bMTime - aMTime;
 	});
+}
+
+const GitHubPageCharacterLimit = 450_000;
+
+function warnIfNearGitHubLimit(file: string): void {
+	let size: number;
+	try {
+		size = fs.readFileSync(file, 'utf-8').length;
+	} catch{
+		return;
+	}
+	if(size > GitHubPageCharacterLimit) {
+		console.warn(ansiFormatter.format(`  [${file}] has ${size} characters, which is over the ${GitHubPageCharacterLimit} GitHub renders a wiki page up to; split it or trim it`, { style: FontStyles.Bold, color: Colors.Yellow, effect: ColorEffect.Foreground }));
+	}
 }
 
 /**
@@ -126,6 +138,9 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 			for(const out of doc.getWrittenSubfiles()) {
 				changedWikis.add(out);
 				console.log(`    - Also updated: ${out}`);
+			}
+			for(const out of [doc.getTarget(), ...doc.getWrittenSubfiles()]) {
+				warnIfNearGitHubLimit(out);
 			}
 		}
 	} catch(error) {

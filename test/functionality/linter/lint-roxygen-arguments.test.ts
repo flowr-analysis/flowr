@@ -107,5 +107,8 @@ f = function(a, b){return a;}`, 'roxygen-arguments', [
 			}
 		]);
 		assertLinter('Inheriting param + \'...\'', parser, '#\' @param ... this is a param\n#\' @param a this is a param\nf1 <- function(a, ...){return a;}\n#\' @param b this is a param\n#\' @inheritParams f1\nf2 <- function(...){return 4;}', 'roxygen-arguments', []);
+		assertLinter('comma-separated @param documents each name', parser, `#' This is a function.
+#' @param x,y numeric values
+add <- function(x, y) x + y`, 'roxygen-arguments', []);
 	});
 }));

@@ -154,7 +154,7 @@ type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator;
 
 /**
  * @see {@link FlowrFilterCombinator.is}
- * @see {@link evalFilter}
+ * @see {@link prepareFilter}
  * @see {@link binaryTreeToString}
  */
 export class FlowrFilterCombinator {
@@ -282,11 +282,6 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 	return typeof tree === 'object' && tree !== null && 'tree' in tree;
 }
 
-interface FilterData {
-	readonly element: FlowrSearchElement<ParentInformation>,
-	readonly data:    { dataflow: DataflowInformation }
-}
-
 /** A filter expression resolved to the function testing one element. */
 export type PreparedFilter = (element: FlowrSearchElement<ParentInformation>, data: { dataflow: DataflowInformation }) => boolean;
 
@@ -331,7 +326,6 @@ function compileTree(tree: BooleanNode): PreparedFilter {
  * Resolve a filter expression to the function that tests one element.
  * Nothing here depends on the element, so a search over `n` elements should do this once instead of `n` times:
  * a bare {@link VertexType}/{@link RType} filter otherwise builds a {@link FlowrFilterCombinator} per element.
- * @see {@link evalFilter} - the one-shot form, if you only test a single element
  */
 export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): PreparedFilter {
 	if(filter instanceof FlowrFilterCombinator) {
@@ -346,12 +340,4 @@ export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExp
 	} else {
 		return compileTree(FlowrFilterCombinator.is(filter).get());
 	}
-}
-
-/**
- * Evaluates the given filter expression against the provided data.
- * @see {@link prepareFilter} - resolve once when testing more than one element
- */
-export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
-	return prepareFilter(filter)(data.element, data.data);
 }

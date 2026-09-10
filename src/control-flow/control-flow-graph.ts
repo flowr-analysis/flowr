@@ -77,6 +77,7 @@ export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlock
 
 /**
  * Helper object for {@link CfgVertex} - a vertex in the {@link ControlFlowGraph}.
+ * @helper control-flow
  */
 export const CfgVertex = {
 	name: 'CfgVertex',
@@ -246,6 +247,7 @@ export type CfgEdge = CfgFlowEdge | CfgControlEdge;
 
 /**
  * Helper object for {@link CfgEdge} - an edge in the {@link ControlFlowGraph}.
+ * @helper control-flow
  */
 export const CfgEdge = {
 	name: 'CfgEdge',

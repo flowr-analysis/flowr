@@ -2,13 +2,13 @@ import type { DataflowGraph } from '../graph/graph';
 import { FunctionArgument } from '../graph/graph';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../graph/edge';
+import { Dataflow } from '../graph/df-helper';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { DfgVertex } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
-import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RConstant } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
 /** What flowR states about the built-in a call names, see {@link BuiltInFnInfo}. */
@@ -33,7 +33,7 @@ export function* callsIn(definition: DataflowGraphVertexFunctionDefinition, grap
  * Recomputes `recompute(id)` for every node reachable from `seed` along the reverse of `successors`, so a
  * change at a node is carried on to whatever points at it, until nothing grows anymore. `recompute` updates
  * its node's value itself and reports whether it grew; shared by {@link propagateOverCalls} and
- * {@link calculateExceptionsOfFunction}, which differ only in what "grew" means for the value they carry, and
+ * {@link exceptionsOfFunction}, which differ only in what "grew" means for the value they carry, and
  * by {@link carriersOf} below, which grows a set rather than a bitfield.
  */
 export function propagateToFixpoint(seed: Iterable<NodeId>, successors: ReadonlyMap<NodeId, readonly NodeId[]>, recompute: (id: NodeId) => boolean): void {
@@ -87,16 +87,6 @@ export function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFun
 }
 
 
-/**
- * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the
- * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none). `get("x", envir = e)` and
- * `e$x` are followed to the name directly; `as.list(environment())` and a frame handed elsewhere mean any formal.
- * @deprecated use {@link reflectiveRolesOf} instead
- */
-export function reflectiveRoles(definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup): ArgProps {
-	return reflectiveRolesOf(definition, graph, { known });
-}
-
 /** Whether the call was handed the frame to look at ({@link ArgProp.Handle}, as in `environment(g)`). */
 function handedAnotherFrame(vertex: DataflowGraphVertexFunctionCall, known: BuiltInLookup): boolean {
 	const sig = known(vertex.name)?.sig;
@@ -105,7 +95,7 @@ function handedAnotherFrame(vertex: DataflowGraphVertexFunctionCall, known: Buil
 
 /** Whether every consumer of what the reflective call at `frame` handed out resolves to a formal, and there is at least one. */
 function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
-	const formals = new Set(Object.keys(definition.params).map(NodeId.normalize));
+	const formals = new Set(Dataflow.parametersOf(definition));
 	const carrying = carriersOf(frame, definition, graph);
 	let consumers = 0;
 	for(const node of definition.subflow.graph) {
@@ -167,11 +157,14 @@ function argumentsOf(vertex: DataflowGraphVertexFunctionCall): NodeId[] {
 	return ids;
 }
 
-/** Whether the access reads a formal directly, or via the constant naming it (`get("x", ...)`); a computed name (`get(nm, ...)`) does not. */
+function isFixedName(node: NodeId, graph: DataflowGraph): boolean {
+	const vtx = graph.getVertex(node);
+	return DfgVertex.isValue(vtx) || (DfgVertex.isUse(vtx) && vtx.constantFallback === true);
+}
+
 function resolvedToAFormal(vertex: DataflowGraphVertexFunctionCall, formals: ReadonlySet<NodeId>, graph: DataflowGraph): boolean {
-	const idMap = graph.idMap;
 	for(const node of [vertex.id, ...argumentsOf(vertex)]) {
-		if(node !== vertex.id && !RConstant.is(idMap?.get(node))) {
+		if(node !== vertex.id && !isFixedName(node, graph)) {
 			continue;
 		}
 		if(edgeTargets(graph, node, EdgeType.Reads).some(to => formals.has(to))) {

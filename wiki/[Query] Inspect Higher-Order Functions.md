@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-23, 13:40:42 UTC (v2.14.3), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Inspect Higher-Order Functions Query">Inspect Higher-Order Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are higher-order functions\
 _This query is requested with the type `inspect-higher-order`._\
 Run in the REPL: `:query @inspect-higher-order [(<crit>;...)] <code | file://path>`
-
 
 With this query you can identify which functions in the code are higher-order functions, i.e., either take a function as an argument or return a function.
 A parameter the body itself calls (`function(g) g()`, `function(g) lapply(x, g)`) counts as well, without any call site having to hand a function over.
@@ -12,60 +11,32 @@ Please note, that functions that are just identities (e.g., `function(x) x`) are
 
 Using the example code `f <- function() function(x) x; f()` the following query returns the information for all identified function definitions whether they are higher-order functions:
 
-
-
 ```json
 [ { "type": "inspect-higher-order" } ]
 ```
 
-
 (This can be shortened to `@inspect-higher-order` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (18ms)\
+Query: **inspect-higher-order** (4ms)\
 &nbsp;&nbsp;- Function **5** (1.17-29) is not a higher-order function\
 &nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
-_All queries together required ≈18 ms (1ms accuracy, total 21 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _20.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "inspect-higher-order": {
-    ".meta": {
-      "timing": 18
-    },
-    "higherOrder": {
-      "5": false,
-      "7": true
-    }
-  },
-  ".meta": {
-    "timing": 18
-  }
-}
+{"inspect-higher-order":{".meta":{},"higherOrder":{"5":false,"7":true}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 f <- function() function(x) x; f()
@@ -75,10 +46,8 @@ f <- function() function(x) x; f()
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _11.7 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -137,23 +106,11 @@ end
     10 -->|"calls"| 7
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-
-
 
 ```json
 [
@@ -166,53 +123,25 @@ This query also supports a slicing criterion based query mode that only returns 
 ]
 ```
 
-
 (This can be shortened to `@inspect-higher-order (1@function) "f <- function() function(x) x; f()"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (4ms)\
+Query: **inspect-higher-order** (2ms)\
 &nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
-_All queries together required ≈4 ms (1ms accuracy, total 8 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _8.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "inspect-higher-order": {
-    ".meta": {
-      "timing": 4
-    },
-    "higherOrder": {
-      "7": true
-    }
-  },
-  ".meta": {
-    "timing": 4
-  }
-}
+{"inspect-higher-order":{".meta":{},"higherOrder":{"7":true}},".meta":{}}
 ```
 
-
-
 </details>
-
-
-
-
-
-	
-		
 
 <details>
 

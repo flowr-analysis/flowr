@@ -110,7 +110,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 						{ nodeId: 14, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 18, name: 'return', type: ReferenceType.Function },
 						{ nodeId: 19, name: '{', type: ReferenceType.Function },
-
+						{ nodeId: 6, name: 'u', cds: [], type: ReferenceType.Variable }
 					],
 					out:               [],
 					unknownReferences: [],
@@ -159,7 +159,8 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 						{ nodeId: 11, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 15, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 23, name: 'on.exit', type: ReferenceType.Function },
-						{ nodeId: 25, name: '{', type: ReferenceType.Function }
+						{ nodeId: 25, name: '{', type: ReferenceType.Function },
+						{ nodeId: 19, name: 'y', cds: [], type: ReferenceType.Variable }
 					],
 					out:               [],
 					unknownReferences: [],
@@ -186,7 +187,8 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 						{ nodeId: 12, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 8, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 23, name: 'on.exit', type: ReferenceType.Function },
-						{ nodeId: 25, name: '{', type: ReferenceType.Function }
+						{ nodeId: 25, name: '{', type: ReferenceType.Function },
+						{ nodeId: 16, name: 'y', cds: [], type: ReferenceType.Variable }
 					],
 					out:               [],
 					unknownReferences: [],
@@ -213,7 +215,8 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 						{ nodeId: 12, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 8, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 26, name: 'on.exit', type: ReferenceType.Function },
-						{ nodeId: 28, name: '{', type: ReferenceType.Function }
+						{ nodeId: 28, name: '{', type: ReferenceType.Function },
+						{ nodeId: 16, name: 'y', cds: [], type: ReferenceType.Variable }
 					],
 					out:               [],
 					unknownReferences: [],
@@ -240,7 +243,8 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 						{ nodeId: 15, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 11, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 29, name: 'on.exit', type: ReferenceType.Function },
-						{ nodeId: 31, name: '{', type: ReferenceType.Function }
+						{ nodeId: 31, name: '{', type: ReferenceType.Function },
+						{ nodeId: 19, name: 'y', cds: [], type: ReferenceType.Variable }
 					],
 					out:               [],
 					unknownReferences: [],
@@ -266,7 +270,8 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 						{ nodeId: 15, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 11, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 29, name: 'on.exit', type: ReferenceType.Function },
-						{ nodeId: 31, name: '{', type: ReferenceType.Function }
+						{ nodeId: 31, name: '{', type: ReferenceType.Function },
+						{ nodeId: 19, name: 'y', cds: [], type: ReferenceType.Variable }
 					],
 					out:               [],
 					unknownReferences: [],

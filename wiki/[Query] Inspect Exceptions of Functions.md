@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-24, 07:43:32 UTC (v2.14.3), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
 _This query is requested with the type `inspect-exception`._\
 Run in the REPL: `:query @inspect-exception [(<crit>;...)] <code | file://path>`
-
 
 With this query you can identify which functions in the code throw exceptions (known to flowR).
 
@@ -25,73 +24,34 @@ safeFail <- function(x) {
 
 the following query returns the information for all identified function definitions whether they throw exceptions:
 
-
-
 ```json
 [ { "type": "inspect-exception" } ]
 ```
 
-
 (This can be shortened to `@inspect-exception` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **inspect-exception** (7ms)\
+Query: **inspect-exception** (5ms)\
 &nbsp;&nbsp;- Function **20** (1.12-4.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
 &nbsp;&nbsp;- Function **40** (8.13-30) does not throw exceptions.\
 &nbsp;&nbsp;- Function **44** (5.13-10.1) does not throw exceptions.\
-_All queries together required ≈9 ms (1ms accuracy, total 9 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _9.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "inspect-exception": {
-    ".meta": {
-      "timing": 7
-    },
-    "exceptions": {
-      "20": [
-        {
-          "id": 11,
-          "cds": [
-            {
-              "id": 18,
-              "when": true
-            }
-          ]
-        }
-      ],
-      "40": [],
-      "44": []
-    }
-  },
-  ".meta": {
-    "timing": 9
-  }
-}
+{"inspect-exception":{".meta":{},"exceptions":{"20":[{"id":11,"cds":[{"id":18,"when":true}]}],"40":[],"44":[]}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 mayFail <- function(x) {
@@ -110,10 +70,8 @@ safeFail <- function(x) {
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _6.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -202,7 +160,6 @@ subgraph "flow-40" [function 40]
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 38 stroke:purple,stroke-width:4px; 
-    style 39 stroke:purple,stroke-width:4px; 
 end
     41(["`*#91;RArgument#93;* **error**
       *8.5-9* (**id: 41**)`"])
@@ -212,12 +169,19 @@ end
     built-in:tryCatch["`Built-In:
 tryCatch`"]
     style built-in:tryCatch stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    43[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
-      *5.25* (**id: 43**)
-    arg: (42)`"]]
+    %% Environment of anon-40 [level: 1]:
+    %% Built-in
+    %% 1----------------------------------------
+    %% 2----------------------------------------
+    %%   x: {**x** (id: 23, type: Parameter, def. @24)}
+    anon-40[["`??
+      *??-??* (**id: anon-40**)`"]]
     built-in:_["`Built-In:
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    43[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
+      *5.25* (**id: 43**)
+    arg: (42)`"]]
     style 31 stroke:purple,stroke-width:4px; 
     style 42 stroke:purple,stroke-width:4px; 
     style 43 stroke:purple,stroke-width:4px; 
@@ -290,6 +254,7 @@ end
     31 -->|"calls"| 20
     31 -->|"returns"| 11
     31 -->|"returns"| 18
+    31 -->|"reads"| 0
     34 -.->|"flow"| 38
     linkStyle 0 stroke:gray,color:gray;
     38 -.->|"flow"| 39
@@ -300,47 +265,42 @@ end
 40 -.-|function| flow-40
 
     40 -.->|"flow"| 41
-    linkStyle 14 stroke:gray,color:gray;
+    linkStyle 15 stroke:gray,color:gray;
     41 -->|"reads, calls"| 40
     41 -.->|"flow"| 42
-    linkStyle 16 stroke:gray,color:gray;
+    linkStyle 17 stroke:gray,color:gray;
+    41 -->|"calls"| anon-40
     42 -->|"returns, arg"| 31
     42 -->|"reads, calls, arg"| 41
+    42 -->|"reads, calls"| 40
     42 -->|"returns"| 38
     42 -.->|"reads, calls"| built-in:tryCatch
-    linkStyle 20 stroke:gray;
+    linkStyle 23 stroke:gray;
     42 -.->|"flow"| 43
-    linkStyle 21 stroke:gray,color:gray;
+    linkStyle 24 stroke:gray,color:gray;
+    anon-40 -->|"reads, calls"| 40
+    anon-40 -.->|"reads"| built-in:_
+    linkStyle 26 stroke:gray;
+    anon-40 -->|"returns"| 38
     43 -->|"returns, arg"| 42
     43 -.->|"reads, calls"| built-in:_
-    linkStyle 23 stroke:gray;
+    linkStyle 29 stroke:gray;
 44 -.-|function| flow-44
 
     44 -.->|"flow"| 22
-    linkStyle 58 stroke:gray,color:gray;
+    linkStyle 64 stroke:gray,color:gray;
     22 -->|"defined-by, flow"| 45
     22 -->|"defined-by"| 44
     45 -->|"reads, arg"| 44
     45 -->|"returns, arg"| 22
     45 -.->|"reads, calls"| built-in:_-
-    linkStyle 63 stroke:gray;
+    linkStyle 69 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

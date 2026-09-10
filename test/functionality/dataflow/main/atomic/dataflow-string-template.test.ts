@@ -16,7 +16,7 @@ import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-
 describe('Dataflow', withTreeSitter(ts => {
 	describe('string templates', () => {
 		function assertLinked(name: string, code: string, criterion: SlicingCriterion, linked: boolean): void {
-			test(label(name, ['function-calls', 'built-in-evaluation'], ['dataflow']), async() => {
+			test(label(name, ['function-calls', 'built-in-evaluation', 'string-templates'], ['dataflow']), async() => {
 				const analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> =
 					await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
 				const graph = analysis.dataflow.graph;
@@ -49,13 +49,13 @@ describe('Dataflow', withTreeSitter(ts => {
 		assertLinked('cli interpolates plain braces', 'library(cli)\nx <- 5\ncli_alert_info("v={x}")', '2@x', true);
 		assertLinked('cli markup wraps an interpolation', 'library(cli)\nx <- 5\ncli_alert_info("{.val {x}}")', '2@x', true);
 		assertLinked('cli markup text is no code', 'library(cli)\nthing <- 5\ncli_text("{.strong thing}")', '2@thing', false);
-		test(label('cli_abort stays an error exit rather than a template', ['function-calls', 'built-in-evaluation'], ['dataflow']), async() => {
+		test(label('cli_abort stays an error exit rather than a template', ['function-calls', 'built-in-evaluation', 'string-templates'], ['dataflow']), async() => {
 			const analysis = await createDataflowPipeline(ts, { context: contextFromInput('library(cli)\ncli_abort("boom")') }).allRemainingSteps();
 			const call = [...analysis.dataflow.graph.verticesOfType(VertexType.FunctionCall)].find(([id]) => NodeId.recoverName(id, analysis.dataflow.graph.idMap) === 'cli_abort');
 			assert.isTrue((call?.[1].origin as readonly string[] | undefined)?.includes(BuiltInProcName.Stop));
 		});
 
-		test(label('every interpolation of one template gets a vertex of its own', ['function-calls', 'built-in-evaluation'], ['dataflow']), async() => {
+		test(label('every interpolation of one template gets a vertex of its own', ['function-calls', 'built-in-evaluation', 'string-templates'], ['dataflow']), async() => {
 			const code = 'library(glue)\nuser <- 1\nn <- 2\nglue("hi {user}, {n} items")';
 			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
 			const graph = analysis.dataflow.graph;

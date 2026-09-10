@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowR &middot; capabilities</title>
+<meta name="description" content="What flowR knows about R. <!--SUMMARY--> Every capability with its id, the tests that demonstrate it, and an example you can open in the playground.">
+<link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!--CHROME-SCRIPT-->
+<style>
+<!--THEME-LIGHT
+	--fully: #2e9e5b; --partially: #b8923f; --not: #c0392b;
+	--ref-advr: #2c7a5d; --ref-rlang: #4054a4;
+	--tk-comment: #6a737d; --tk-string: #227a3d; --tk-number: #9b4dca; --tk-keyword: #a63446; --tk-call: #1f5fa8;
+-->
+<!--THEME-DARK
+	--fully: #3fbf74; --partially: #cbb069; --not: #e05a4a;
+	--ref-advr: #6fd3ae; --ref-rlang: #a9b6f7;
+	--tk-comment: #8b95a5; --tk-string: #7ec699; --tk-number: #c9a2f0; --tk-keyword: #ff7b72; --tk-call: #79c0ff;
+-->
+<!--THEME-CSS-->
+<!--BASE-CSS-->
+main { max-width: 64rem; margin: 0 auto; }
+/* links inside prose get a hairline underline instead of a color */
+.desc a, .example a, .sum a, li.cap p a {
+	color: inherit; border-bottom: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+}
+.desc a:hover, .example a:hover, li.cap p a:hover { color: var(--accent); border-bottom-color: var(--accent); text-decoration: none; }
+/* capref links stay on this page, so they get a dotted underline and # marker, not a color */
+a.capref { color: inherit; border-bottom: 1px dotted color-mix(in srgb, var(--accent) 55%, transparent); }
+a.capref::before { content: "#"; margin-right: .08em; color: var(--accent); opacity: .55; font-size: .9em; }
+a.capref:hover { color: var(--accent); border-bottom-style: solid; text-decoration: none; }
+a.capref:hover::before { opacity: 1; }
+/* external links get a trailing arrow icon */
+.desc a[href^="http"]::after, .example a[href^="http"]::after, .sum a[href^="http"]::after, li.cap p a[href^="http"]::after {
+	content: ""; display: inline-block; width: .62em; height: .62em; margin-left: .2em; opacity: .6;
+	background: currentColor; vertical-align: -.02em;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M4 1.6h6.4V8H8.9V4.2L3.1 10 2 8.9l5.8-5.8H4z'/%3E%3C/svg%3E") no-repeat center / contain;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M4 1.6h6.4V8H8.9V4.2L3.1 10 2 8.9l5.8-5.8H4z'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+.desc a[href^="http"]:hover::after, .example a[href^="http"]:hover::after, li.cap p a[href^="http"]:hover::after { opacity: 1; }
+h1 { font-size: clamp(1.5rem, 5vw, 2.1rem); line-height: 1.2; letter-spacing: -.02em; margin: 1.4rem 0 .4rem; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+<!--BAR-CSS-->
+#release {
+	font: inherit; font-size: .78rem; height: 2rem; padding: 0 .4rem; max-width: 11rem;
+	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted); cursor: pointer;
+}
+#release:hover { border-color: var(--accent); color: var(--accent); }
+
+p.lead { color: var(--muted); margin: 0 0 1.2rem; max-width: 52rem; }
+.search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.4rem; }
+.search input {
+	flex: 1 1 20rem; font: inherit; padding: .7rem .9rem; border-radius: .6rem;
+	border: 1px solid var(--border); background: var(--panel); color: var(--fg); box-shadow: var(--shadow);
+}
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.search select {
+	font: inherit; font-size: .9rem; padding: .7rem .6rem; border-radius: .6rem;
+	border: 1px solid var(--border); background: var(--panel); color: var(--fg); cursor: pointer;
+}
+.search select:hover { border-color: var(--accent); color: var(--accent); }
+
+/* one card per category; the card links into its full view */
+.cards { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
+.card {
+	position: relative; display: flex; flex-direction: column; gap: .45rem; color: inherit;
+	padding: 1rem 1.1rem; border: 1px solid var(--border); border-radius: .8rem;
+	background: var(--panel); box-shadow: var(--shadow);
+}
+.card:hover { border-color: var(--accent); }
+/* faint total count, meant to be glanced past, not read */
+.card .total {
+	position: absolute; top: .7rem; right: .9rem; font-size: 1.5rem; line-height: 1;
+	font-weight: 700; color: var(--fg); opacity: .13; font-variant-numeric: tabular-nums;
+}
+.card h3 { margin: 0; padding-right: 2.2rem; font-size: 1.02rem; line-height: 1.25; }
+.card h3 a { color: inherit; text-decoration: none; border: 0; }
+/* the card link covers the whole card; group links inside stay separately clickable */
+.card h3 a::after { content: ""; position: absolute; inset: 0; border-radius: .8rem; }
+.card:hover h3 a { color: var(--accent); }
+.card .sum { margin: 0; color: var(--muted); font-size: .87rem; }
+/* subs are a hint of contents, not real navigation, so kept quiet */
+.card .subs { position: relative; z-index: 1; display: block; margin: 0; font-size: .68rem; line-height: 1.5; color: var(--muted); }
+.card .subs a { color: var(--muted); text-decoration: none; border: 0; }
+.card .subs a:not(:last-of-type)::after { content: "\00b7"; margin: 0 .3em; opacity: .5; }
+.card .subs a:hover { color: var(--accent); }
+.card .subs .rest { opacity: .7; }
+/* meter and counts pinned to the card foot, laid out on one line */
+.card .foot { display: flex; flex-direction: column; gap: .35rem; margin-top: auto; padding-top: .2rem; }
+
+.meter { display: flex; height: .4rem; border-radius: .3rem; overflow: hidden; background: var(--sunk); min-width: 6rem; }
+.meter > span { display: block; height: 100%; }
+.counts { display: inline-flex; flex-wrap: wrap; gap: .5rem; font-size: .76rem; color: var(--muted); }
+.counts .c::before { content: ""; display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; margin-right: .3rem; }
+/* the state hues, said once for the meter's bars, the bullet badge and the two count rows */
+.meter .fully, .badge.fully, .counts .fully::before, .tally-mini .fully::before { background: var(--fully); }
+.meter .partially, .badge.partially, .counts .partially::before, .tally-mini .partially::before { background: var(--partially); }
+.meter .not, .badge.not, .counts .not::before, .tally-mini .not::before { background: var(--not); }
+
+section.cat { margin-top: .6rem; }
+.crumbs { margin: 0 0 .4rem; font-size: .85rem; }
+.crumbs a { color: var(--muted); text-decoration: none; }
+.crumbs a::before { content: "\2190"; margin-right: .35rem; }
+.crumbs a:hover { color: var(--accent); }
+section.cat > h2 { font-size: 1.5rem; margin: .2rem 0 .3rem; display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.tally { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; margin: 0 0 1rem; }
+.tally .meter { flex: 0 1 16rem; }
+
+ul.caps { list-style: none; margin: 0; padding-left: 1rem; }
+ul.caps ul.caps { padding-left: 1.6rem; border-left: 2px solid var(--border); margin-left: .45rem; }
+/* clicking the guide line collapses its group, hence the pointer cursor */
+details[open] > ul.caps { cursor: pointer; }
+details[open] > ul.caps > li.cap { cursor: auto; }
+/* hover highlights only the guide's own gutter, not the whole li it runs past */
+details[open] > ul.caps:hover { border-left-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+details[open] > ul.caps:has(> li.cap:hover) { border-left-color: var(--border); }
+li.cap { padding: .45rem 0 .45rem .1rem; }
+.head { position: relative; display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; }
+.name { font-weight: 600; scroll-margin-top: 2rem; }
+/* badge dot doubles as the bullet; the anchor swaps in on hover */
+.badge { display: block; width: .5rem; height: .5rem; border-radius: 50%; top: .55em; }
+.badge, .anchor { position: absolute; left: -.95rem; transition: opacity .12s; }
+.anchor { top: 0; color: var(--muted); text-decoration: none; opacity: 0; font-size: .9em; border: 0; }
+li.cap:hover > .head > .anchor, .anchor:focus { opacity: 1; }
+li.cap:hover > .head > .badge { opacity: 0; }
+.anchor:hover { color: var(--accent); }
+/* test id isn't meant to be read, so it's a tooltip on the name instead */
+.name[title] { cursor: help; }
+/* "since" is the R version required, not a flowR version */
+.since {
+	font-size: .72rem; color: var(--muted); border: 1px solid var(--border);
+	border-radius: 1rem; padding: 0 .4rem; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.desc { margin: .12rem 0; }
+p { margin: .2rem 0; }
+
+/* ref pills are colored by which source they link to */
+.refs { display: flex; flex-wrap: wrap; gap: .35rem; margin: .35rem 0; }
+a.ref {
+	display: inline-flex; align-items: baseline; gap: .3rem; text-decoration: none;
+	font-size: .76rem; padding: .12rem .55rem; border-radius: 1rem;
+	border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+}
+a.ref:hover { border-color: var(--accent); color: var(--accent); }
+a.ref .src { font-weight: 600; color: var(--fg); }
+/* the source hues come from the palette, so each theme keeps them clear of its own accent */
+a.ref.advr .src { color: var(--ref-advr); }
+a.ref.rlang .src { color: var(--ref-rlang); }
+a.ref.flowr .src { color: var(--accent); }
+a.ref:hover .src { color: var(--accent); }
+/* refs and the example toggle share one line; each opens its own detail below */
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; margin: .25rem 0; }
+.meta .refs { margin: 0; }
+/* shared chevron marker for every <details>, rotated when open */
+summary { cursor: pointer; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary::before {
+	content: ''; display: inline-block; width: .3rem; height: .3rem; margin-right: .4rem; vertical-align: middle;
+	border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+	transform: rotate(-45deg); transition: transform .15s; opacity: .55;
+}
+details[open] > summary::before { transform: rotate(45deg); }
+/* nested fold's chevron aligns with the guide line below it */
+li.cap > details > summary::before { margin-left: .3rem; margin-right: .55rem; }
+summary:hover::before, summary:focus-visible::before { opacity: 1; }
+details.demo > summary, details.proof > summary { gap: .3rem; font-size: .76rem; width: max-content; }
+details.demo > summary:hover, details.proof > summary:hover { color: var(--accent); }
+.meta details.demo[open], .head details.proof[open] { flex-basis: 100%; }
+.meta details.demo > .example { margin: .3rem 0 .1rem; }
+
+
+.example { margin: .5rem 0 .3rem; }
+figure { margin: .5rem 0; }
+figure.code pre, figure.diagram {
+	margin: 0; padding: .7rem .8rem; background: var(--panel); border: 1px solid var(--border);
+	border-radius: .6rem; overflow-x: auto;
+}
+figure.code pre { font-size: .84rem; line-height: 1.45; }
+figure.code figcaption { margin-top: .3rem; font-size: .78rem; }
+figure.diagram { padding: .8rem; text-align: center; }
+figure.diagram pre.mermaid { margin: 0; font-size: .8rem; text-align: left; }
+figure.diagram pre.mermaid[data-failed]::before {
+	content: "the diagram could not be drawn, its source follows"; display: block;
+	margin-bottom: .4rem; font: inherit; font-size: .75rem; color: var(--muted);
+}
+figure.diagram svg { max-width: 100%; height: auto; }
+.tk-comment { color: var(--tk-comment); font-style: italic; }
+.tk-string { color: var(--tk-string); }
+.tk-number { color: var(--tk-number); }
+.tk-keyword { color: var(--tk-keyword); font-weight: 600; }
+.tk-call { color: var(--tk-call); }
+.tk-op { color: var(--muted); }
+/* keep call-token styling on signature-browser links instead of link styling */
+.example a.tk-call { color: var(--tk-call); text-decoration: none; border: 0; cursor: pointer; }
+.example a.tk-call:hover, .example a.tk-call:focus-visible { text-decoration: underline; }
+/* long lists start collapsed; "more" expands, filtering always shows all */
+ul.caps[data-collapsed="yes"] > li.extra { display: none; }
+main.filtering ul.caps > li.extra:not([hidden]) { display: list-item; }
+main.filtering button.more { display: none; }
+main.filtering li.cap[data-self="yes"] > .head { box-shadow: inset .18rem 0 0 var(--accent); padding-left: .45rem; border-radius: .2rem; }
+main.filtering li.cap[data-self="yes"] > .head > .name { font-weight: 700; }
+mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; border-radius: .15rem; padding: 0 .1rem; }
+button.more {
+	font: inherit; font-size: .78rem; margin: .2rem 0 .4rem .3rem; padding: .15rem .7rem;
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted); cursor: pointer;
+}
+button.more:hover { border-color: var(--accent); color: var(--accent); }
+
+a.tests { font-size: .78rem; color: var(--muted); border-bottom: 1px dotted color-mix(in srgb, var(--muted) 60%, transparent); }
+a.tests:hover { color: var(--accent); border-bottom-color: var(--accent); text-decoration: none; }
+.ctx { font-size: .74rem; color: var(--muted); opacity: .8; }
+.ctx::before { content: "("; }
+.ctx::after { content: ")"; }
+
+/* proof tests are a footnote to the capability, kept visually secondary */
+svg.ico { width: 14px; height: 14px; }
+details.proof { margin: .2rem 0; line-height: 1; align-self: center; }
+/* mini tally stays one line; labels only show on hover */
+.tally-mini { display: inline-flex; gap: .4rem; font-size: .74rem; font-variant-numeric: tabular-nums; }
+.tally-mini .c::before { content: ""; display: inline-block; width: .45rem; height: .45rem; border-radius: 50%; margin-right: .25rem; }
+details.proof > summary { align-items: center; margin: .1rem 0; }
+details.proof > summary svg { display: block; }
+details.proof > summary span { opacity: 0; transition: opacity .12s; }
+details.proof > summary:hover span, details.proof[open] > summary span { opacity: 1; }
+details.proof > p { margin: .1rem 0 .3rem 1.1rem; font-size: .8rem; color: var(--muted); }
+
+figure.code { position: relative; }
+figure.code a.try {
+	position: absolute; top: .45rem; right: .55rem; z-index: 1; display: inline-flex;
+	color: var(--muted); opacity: .55; border: 0;
+}
+figure.code:hover a.try, figure.code a.try:focus { opacity: 1; color: var(--accent); }
+
+.bar a.where, h1 a { color: inherit; text-decoration: none; border: 0; }
+.bar a.where:hover, h1 a:hover { color: var(--accent); text-decoration: none; }
+
+details > summary { color: var(--muted); font-size: .82rem; margin: .3rem 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; white-space: nowrap; }
+details > summary .meter { flex: 0 1 8rem; }
+#empty { color: var(--muted); }
+
+.framed, .framed body { margin: 0; height: 100%; overflow: hidden; }
+.release-view { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+footer { margin: 3.5rem auto 1.5rem; max-width: 64rem; }
+<!--FOOTER-CSS-->
+</style>
+</head>
+<body>
+<main>
+
+<div class="bar">
+	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="where" href="#" title="back to the overview">Capabilities</a><!--VERSION-LINK--></h2>
+	<nav>
+		<!--NAV:capabilities-->
+	</nav>
+	<span class="controls">
+		<select id="release" title="view the capabilities of an earlier release" aria-label="Release to view"><option value="">this release</option></select>
+		<!--CONTROLS:capabilities-->
+	</span>
+</div>
+
+<h1><a href="#" title="back to the overview">Capabilities</a></h1>
+<p class="lead">
+	Qualitative overview of flowR's support for R.
+	Please keep in mind that the capabilities are a qualitative measure.
+	Statements like "flowR can fully handle 50/80 capabilities" are discouraged as some capabilities have a vastly different granularity (and different levels of real-world presence).
+	<br/>
+	Missing something? <a href="https://github.com/flowr-analysis/flowr/issues/new?labels=enhancement&amp;template=generic-feature-request.md&amp;title=Capability%3A%20" target="_blank" rel="noopener">Suggest a capability!</a>
+</p>
+
+<div class="search">
+	<input type="search" id="filter" placeholder="filter by name or id, e.g. closures or dollar-access" autocomplete="off" aria-label="Filter capabilities">
+	<select id="level" aria-label="Level of support">
+		<option value="">any support</option>
+		<option value="fully">fully supported</option>
+		<option value="partially">partially supported</option>
+		<option value="not">not supported</option>
+	</select>
+</div>
+
+<p id="empty" hidden>Nothing matches that.</p>
+
+<!--CAPABILITIES-->
+</main>
+<!--FOOTER:capabilities-->
+<script>
+	const overview = document.getElementById('overview');
+	const sections = [...document.querySelectorAll('section.cat')];
+	const caps = [...document.querySelectorAll('li.cap')];
+	const filter = document.getElementById('filter');
+	const level = document.getElementById('level');
+	const empty = document.getElementById('empty');
+
+	function reveal(element) {
+		for(let up = element; up; up = up.parentElement) {
+			if(up.tagName === 'DETAILS') { up.open = true; }
+			if(up.tagName === 'LI') { up.hidden = false; }
+		}
+	}
+
+	/* overview and category sections share one page, addressed by hash */
+	function route() {
+		const id = decodeURIComponent(location.hash.slice(1));
+		const target = id === '' ? null : document.getElementById(id);
+		const section = target ? target.closest('section.cat') : null;
+		overview.hidden = section !== null;
+		for(const s of sections) { s.hidden = s !== section; }
+		if(section === null) {
+			scrollTo({ top: 0 });
+		} else {
+			reveal(target);
+			if(target.closest('section.cat') === section && target.tagName !== 'H2') {
+				target.scrollIntoView({ block: 'center' });
+			} else {
+				scrollTo({ top: 0 });
+			}
+		}
+		draw();
+	}
+
+	/* clear previous <mark> highlights before applying new ones */
+	function unmark() {
+		for(const m of document.querySelectorAll('li.cap > .head > .name mark')) {
+			const owner = m.parentElement;
+			m.replaceWith(m.textContent);
+			owner.normalize();
+		}
+	}
+
+	/* undo everything filtering hid, or categories reappear without their entries */
+	function clearFilter() {
+		unmark();
+		for(const cap of caps) {
+			cap.hidden = false;
+			delete cap.dataset.self;
+		}
+		document.querySelector('main').classList.remove('filtering');
+		empty.hidden = true;
+	}
+
+	function apply() {
+		const needle = filter.value.trim().toLowerCase();
+		const want = level.value;
+		if(needle === '' && want === '') {
+			clearFilter();
+			route();
+			return;
+		}
+		unmark();
+		document.querySelector('main').classList.add('filtering');
+		let hits = 0;
+		for(const cap of caps) {
+			const self = (needle === '' || cap.dataset.name.includes(needle))
+				&& (want === '' || cap.dataset.supported === want);
+			cap.dataset.self = self ? 'yes' : 'no';
+			cap.hidden = !self;
+		}
+		/* reveal ancestors of each hit so it stays visible in context */
+		for(const cap of caps) {
+			if(cap.dataset.self !== 'yes') { continue; }
+			hits++;
+			reveal(cap.parentElement);
+			const name = needle === '' ? null : cap.querySelector(':scope > .head > .name');
+			const at = name ? name.textContent.toLowerCase().indexOf(needle) : -1;
+			if(at >= 0) {
+				const text = name.textContent;
+				const hit = document.createElement('mark');
+				hit.textContent = text.slice(at, at + needle.length);
+				name.replaceChildren(text.slice(0, at), hit, text.slice(at + needle.length));
+			}
+		}
+		overview.hidden = true;
+		for(const s of sections) {
+			s.hidden = s.querySelector('li.cap:not([hidden])') === null
+				&& !(needle !== '' && s.dataset.name.includes(needle));
+		}
+		empty.hidden = hits > 0 || sections.some(s => !s.hidden);
+		history.replaceState(null, '', needle === '' ? location.pathname : '?q=' + encodeURIComponent(needle));
+		draw();
+	}
+
+	filter.addEventListener('input', apply);
+	level.addEventListener('change', apply);
+	addEventListener('hashchange', () => {
+		if(filter.value.trim() === '' && level.value === '') { route(); }
+	});
+
+	document.addEventListener('toggle', e => { if(e.target.tagName === 'DETAILS') { draw(); } }, true);
+
+	/* one handler for the whole page; no two of these branches can match the same target */
+	document.addEventListener('click', e => {
+		/* theme toggle lives in shared chrome; redraw diagrams in the new colors */
+		if(e.target.closest('#theme')) {
+			redraw();
+		}
+		/* reset filter, url and view state when navigating back to the overview */
+		if(e.target.closest('a[href="#"]')) {
+			e.preventDefault();
+			filter.value = '';
+			level.value = '';
+			clearFilter();
+			const url = new URL(location.href);
+			url.searchParams.delete('q');
+			history.replaceState(null, '', url.pathname + url.search);
+			route();
+		}
+		/* clicking the left guide strip, within its 12px, folds the group like an editor's indent guide */
+		const strip = e.target;
+		if(strip instanceof Element && strip.matches('ul.caps') && e.clientX - strip.getBoundingClientRect().left <= 12) {
+			const fold = strip.closest('details');
+			if(fold) { fold.open = false; }
+		}
+		const more = e.target.closest('button.more');
+		if(more) {
+			/* "more" button's list is whichever ul.caps precedes or contains it */
+			const list = more.previousElementSibling?.matches('ul.caps') ? more.previousElementSibling
+				: more.parentElement?.querySelector('ul.caps[data-collapsed="yes"]');
+			if(list) { list.dataset.collapsed = 'no'; }
+			more.remove();
+			draw();
+		}
+	});
+
+	/* mermaid loads lazily, once; only diagrams currently visible get drawn */
+	let mermaid = null, loading = null, drawn = null;
+	const dark = () => getComputedStyle(document.body).colorScheme === 'dark';
+	for(const pre of document.querySelectorAll('pre.mermaid')) { pre.dataset.src = pre.textContent; }
+
+	/* don't cache a failed load; retry on the next call */
+	async function load() {
+		if(mermaid) { return mermaid; }
+		loading ??= import('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs')
+			.then(m => {
+				mermaid = m.default;
+				return mermaid;
+			}, () => {
+				loading = null;
+				return null;
+			});
+		return loading;
+	}
+
+	/* skip diagrams with no layout width yet, e.g. inside a closed <details> */
+	async function draw() {
+		const pending = [...document.querySelectorAll('pre.mermaid')]
+			.filter(p => !p.dataset.done && p.offsetParent !== null);
+		if(pending.length === 0) { return; }
+		const m = await load();
+		if(m === null) {
+			/* fall back to showing the raw mermaid source */
+			for(const pre of pending) { pre.dataset.failed = 'yes'; }
+			return;
+		}
+		/* check theme now, not at load time, in case it changed meanwhile */
+		const want = dark() ? 'dark' : 'default';
+		if(want !== drawn) {
+			m.initialize({ startOnLoad: false, securityLevel: 'strict', theme: want });
+			drawn = want;
+		}
+		for(const pre of pending) { pre.dataset.done = 'yes'; }
+		await m.run({ nodes: pending });
+	}
+
+	/* svg colors are baked in by mermaid, so redraw fully on theme change */
+	async function redraw() {
+		if(!mermaid) { return; }
+		for(const pre of document.querySelectorAll('pre.mermaid')) {
+			if(!pre.dataset.done) { continue; }
+			delete pre.dataset.processed;
+			delete pre.dataset.done;
+			pre.textContent = pre.dataset.src;
+		}
+		await draw();
+	}
+
+	const start = new URLSearchParams(location.search).get('q');
+	if(start) { filter.value = start; apply(); } else { route(); }
+
+	/* older releases render in place so the shared url stays; pre-page releases fall back to github's markdown */
+	const repo = 'flowr-analysis/flowr';
+	const release = document.getElementById('release');
+	const here = document.getElementById('version').dataset.release;
+
+	async function show(tag) {
+		if(tag === '' || tag === here) { return; }
+		const answer = await fetch(`https://raw.githubusercontent.com/${repo}/${tag}/wiki/capabilities/index.html`).catch(() => null);
+		if(!answer || !answer.ok) {
+			/* release predates this page; fall back to its wiki markdown */
+			location.href = `https://github.com/${repo}/blob/${tag}/wiki/Capabilities.md`;
+			return;
+		}
+		/* use an iframe so the release's own scripts keep running, without replacing the document */
+		const frame = document.createElement('iframe');
+		frame.className = 'release-view';
+		frame.title = `flowR capabilities of ${tag}`;
+		frame.srcdoc = await answer.text();
+		document.body.replaceChildren(frame);
+		document.documentElement.classList.add('framed');
+	}
+
+	/* fetch the release list lazily, on first interaction */
+	let asked = false;
+	async function releases() {
+		if(asked) { return; }
+		asked = true;
+		const answer = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=40`).catch(() => null);
+		if(!answer || !answer.ok) { return; }
+		const wanted = new URLSearchParams(location.search).get('v');
+		for(const { tag_name: tag } of await answer.json()) {
+			if(tag === here) { continue; }
+			release.append(new Option(tag, tag, false, tag === wanted));
+		}
+	}
+	release.addEventListener('pointerdown', releases);
+	release.addEventListener('focus', releases);
+	release.addEventListener('change', () => {
+		const tag = release.value;
+		const url = new URL(location.href);
+		if(tag === '') { url.searchParams.delete('v'); } else { url.searchParams.set('v', tag); }
+		history.replaceState(null, '', url);
+		void show(tag);
+	});
+
+	const pinned = new URLSearchParams(location.search).get('v');
+	if(pinned && pinned !== here) {
+		release.append(new Option(pinned, pinned, true, true));
+		void show(pinned);
+	}
+</script>
+<!--VERSION-SCRIPT-->
+</body>
+</html>

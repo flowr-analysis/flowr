@@ -109,8 +109,8 @@ export function fileUrlToPath(s: string): string | undefined {
  * Check if the given path is an absolute path.
  */
 export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
-	if(regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || /[a-zA-Z]:[\\/]/.test(p)) {
-		return true;   // the second is a UNC path, the third a Windows one
+	if(regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('~') || isUrl(p)) {
+		return true;   // a UNC path, a Windows one, `~`, which R expands to the user's home, and any URL
 	}
 	/* where there is no file system there is nothing to resolve against, and a browser is such a place:
 	   without the check the stub answers every question with itself, and every path would look absolute */
@@ -148,4 +148,13 @@ export function* dottedSplits(name: string): Generator<readonly [prefix: string,
 	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
 		yield [name.slice(0, dot), name.slice(dot + 1)];
 	}
+}
+
+/**
+ * Orders two strings by code unit, which every machine agrees on. Use this wherever an order decides an
+ * analysis result: `localeCompare` reads the machine's locale and ICU build, so it would make two users
+ * analyzing the same code disagree (`da` orders `A` before `a`, `en-US` the other way round).
+ */
+export function compareByCodeUnit(a: string, b: string): number {
+	return a < b ? -1 : a > b ? 1 : 0;
 }

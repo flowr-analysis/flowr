@@ -226,6 +226,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/** cached {@link root}, fixed on first use as the ids built from it have to stay stable */
 	private rootCache:        string | undefined = undefined;
 	private rootResolved      = false;
+	private caseIndex:        Map<string, Map<string, FilePath>> | undefined = undefined;
+	private readonly readdirCache = new Map<string, readonly string[] | undefined>();
 
 	constructor(
 		context: FlowrAnalyzerContext,
@@ -250,6 +252,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.requestedRoots.length = 0;
 		this.rootCache = undefined;
 		this.rootResolved = false;
+		this.caseIndex = undefined;
+		this.readdirCache.clear();
 	}
 
 	/** The directory the analysis was asked about: a `project`'s folder, or the one holding the requested file(s). */
@@ -432,6 +436,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			const exist = this.files.get(f.path());
 			guard(exist === undefined || exist === f, `File ${f.path()} already added to the context.`);
 			this.files.set(f.path(), f);
+			this.caseIndex = undefined;
 		}
 
 		if(f.roles) {
@@ -452,6 +457,43 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && onDisk(path));
 	}
 
+	private fileIndex(): ReadonlyMap<string, ReadonlyMap<string, FilePath>> {
+		if(this.caseIndex === undefined) {
+			const index = new Map<string, Map<string, FilePath>>();
+			for(const f of this.files.keys()) {
+				const dir = path.dirname(f).toLowerCase();
+				let entries = index.get(dir);
+				if(entries === undefined) {
+					entries = new Map<string, FilePath>();
+					index.set(dir, entries);
+				}
+				const base = path.basename(f).toLowerCase();
+				if(!entries.has(base)) {
+					entries.set(base, f);
+				}
+			}
+			this.caseIndex = index;
+		}
+		return this.caseIndex;
+	}
+
+	private readdir(dir: string): readonly string[] | undefined {
+		const cached = this.readdirCache.get(dir);
+		if(cached !== undefined || this.readdirCache.has(dir)) {
+			return cached;
+		}
+		let entries: readonly string[] | undefined = undefined;
+		if(onDisk(dir)) {
+			try {
+				entries = fs.readdirSync(dir);
+			} catch(e) {
+				fileLog.warn(`Could not read '${dir}': ${e instanceof Error ? e.message : String(e)}`);
+			}
+		}
+		this.readdirCache.set(dir, entries);
+		return entries;
+	}
+
 	public exists(p: string, ignoreCase: boolean): string | undefined {
 		try {
 			if(!ignoreCase) {
@@ -460,37 +502,28 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(this.hasFile(p)) {
 				return p;
 			}
-			// walk the directory and find the first match
 			const dir = path.dirname(p);
-			const dirLower = dir.toLowerCase();
 			const file = path.basename(p).toLowerCase();
 			// try to find in local known files first
-			for(const f of this.files.keys()) {
-				if(path.dirname(f).toLowerCase() !== dirLower) {
-					continue;
-				}
-				const lf = path.basename(f).toLowerCase();
-				if(file === lf) {
-					return f;
-				}
+			const known = this.fileIndex().get(dir.toLowerCase())?.get(file);
+			if(known !== undefined) {
+				return known;
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
-				let files: string[] | undefined;
-				if(onDisk(dir)) {
-					files = fs.readdirSync(dir);
-				} else {
+				let realDir = dir;
+				let files = this.readdir(dir);
+				if(files === undefined) {
 					// try to find a dir in parent
 					const parentDir = path.dirname(dir);
-					if(onDisk(parentDir)) {
-						const parentFiles = fs.readdirSync(parentDir);
-						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
-						if(foundDir) {
-							files = fs.readdirSync(path.join(parentDir, foundDir));
-						}
+					const dirName = path.basename(dir).toLowerCase();
+					const foundDir = this.readdir(parentDir)?.find(f => f.toLowerCase() === dirName);
+					if(foundDir) {
+						realDir = path.join(parentDir, foundDir);
+						files = this.readdir(realDir);
 					}
 				}
 				const found = files?.find(f => f.toLowerCase() === file);
-				return found ? path.join(dir, found) : undefined;
+				return found ? path.join(realDir, found) : undefined;
 			}
 			return undefined;
 		} catch(e) {

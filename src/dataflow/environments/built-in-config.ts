@@ -72,12 +72,18 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
 	return builtIns;
 }
 
+/** The registered built-ins together with the definition list they were registered from. */
+export interface ConfiguredBuiltIns {
+	readonly builtIns:    BuiltIns;
+	readonly definitions: BuiltInDefinitions;
+}
+
 /**
  * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the given list of built-in definitions.
  * @param definitions  - the list of built-in definitions
  * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
  */
-export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessorMapper)[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): BuiltIns {
+export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessorMapper)[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): ConfiguredBuiltIns {
 	let builtIns = new BuiltIns();
 
 	if(loadDefaults) {
@@ -88,5 +94,6 @@ export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessor
 		builtIns.registerBuiltInDefinition(definition);
 	}
 
-	return builtIns;
+	return { builtIns, definitions: !loadDefaults ? definitions
+		: definitions.length === 0 ? DefaultBuiltinConfig : [...DefaultBuiltinConfig, ...definitions] };
 }

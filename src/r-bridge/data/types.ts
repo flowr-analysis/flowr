@@ -24,6 +24,8 @@ export interface FlowrCapability {
 	readonly url?:          { name: string, href: string }[]
 	/** The level of support for the capability, undefined if it is a meta-capability that does not need such an attribute */
 	readonly supported?:    'not' | 'partially' | 'fully'
+	/** Minimum R version the capability requires, if any */
+	readonly minRVersion?:  string
 	readonly capabilities?: readonly FlowrCapability[]
 }
 

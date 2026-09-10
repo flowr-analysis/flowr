@@ -16,13 +16,16 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { Top } from '../../abstract-interpretation/domains/lattice';
 
 interface DataFrameAccessOperation {
 	nodeId:        NodeId
 	operand?:      NodeId,
 	operandShape?: DataFrameDomain,
 	accessedCols?: (string | number)[],
-	accessedRows?: number[]
+	accessedRows?: number[],
+	partial?:      boolean
 }
 
 interface DataFrameAccess {
@@ -79,7 +82,8 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		const accesses: DataFrameAccessOperation[] = [];
 
 		for(const [nodeId, operations] of accessOperations) {
-			const access: DataFrameAccessOperation = { nodeId };
+			const node = normalize.idMap.get(nodeId);
+			const access: DataFrameAccessOperation = { nodeId, partial: RAccess.isNamed(node) && node.operator === '$' };
 
 			for(const operation of operations) {
 				access.operand ??= operation.operand;
@@ -139,7 +143,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		// this rule is unable to detect all cases of dataframe access, but sufficiently ensures returned results are valid
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Validates the existence of accessed columns and rows of dataframes.',
-		defaultConfig: { readLoadedData: false }
+		defaultConfig: () => ({ readLoadedData: false })
 	}
 } as const satisfies LintingRule<DataFrameAccessValidationResult, DataFrameAccessValidationMetadata, DataFrameAccessValidationConfig>;
 
@@ -158,8 +162,19 @@ function getAccessOperations(
 	);
 }
 
+function mayNameColumn(colnames: DataFrameDomain['colnames'], col: string, partial: boolean | undefined): boolean {
+	if(!partial) {
+		return colnames.satisfies([col], SetComparator.SubsetOrEqual) !== Ternary.Never;
+	}
+	if(!colnames.isValue()) {
+		return true;
+	}
+	const { must, may } = colnames.value;
+	return may === Top || [...must, ...may].some(name => name.startsWith(col));
+}
+
 function findInvalidDataFrameAccesses(
-	{ operandShape, accessedCols, accessedRows }: DataFrameAccessOperation
+	{ operandShape, accessedCols, accessedRows, partial }: DataFrameAccessOperation
 ): DataFrameAccess[] {
 	const invalidAccesses: DataFrameAccess[] = [];
 
@@ -170,7 +185,7 @@ function findInvalidDataFrameAccesses(
 			}
 		}
 		for(const col of accessedCols ?? []) {
-			if(typeof col === 'string' && operandShape.colnames.satisfies([col], SetComparator.SubsetOrEqual) === Ternary.Never) {
+			if(typeof col === 'string' && !mayNameColumn(operandShape.colnames, col, partial)) {
 				invalidAccesses.push({ type: 'column', accessed: col });
 			} else if(typeof col === 'number' && operandShape.cols.satisfies(col, NumericalComparator.LessOrEqual) === Ternary.Never) {
 				invalidAccesses.push({ type: 'column', accessed: col });

@@ -6,7 +6,7 @@ import { Unquote } from '../nse';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -24,6 +24,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { log } from '../../../../../../util/log';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { applyKills, cancelRevivedKills } from '../../../../../environments/apply-kill';
 
 /**
  * Configuration options for the basic R pipe
@@ -73,17 +74,36 @@ export function processPipe<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	{ pipePlaceholderName, assignLhs, returnLhs, rhsMightBeSymbol = false }: PipeConfiguration
 ): DataflowInformation {
-	const fCallInfo = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe });
-	const processedArguments = fCallInfo.processedArguments;
-	let information = fCallInfo.information;
 	if(args.length !== 2) {
 		dataflowLogger.warn(`Pipe ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
-		return information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe }).information;
 	}
 
 	const [lhs, rhs] = args.map(e => unpackNonameArg(e));
 
 	guard(lhs !== undefined && rhs !== undefined, () => `lhs and rhs must be present, but ${JSON.stringify(lhs)} and ${JSON.stringify(rhs)} were found instead.`);
+
+	const occurrenceIds: NodeId[] = [];
+	RNode.visitAst<OtherInfo & ParentInformation>(rhs, (node) => {
+		if(RSymbol.is(node) && node.content === pipePlaceholderName) {
+			occurrenceIds.push(node.info.id);
+		}
+		return false;
+	});
+	const pipedArgumentForRhs = RFunctionCall.is(rhs) && occurrenceIds.length === 0
+		? toUnnamedArgument(lhs, data.completeAst.idMap) : EmptyArgument;
+	const pipedArgument = RArgument.isUnnamed(pipedArgumentForRhs) ? { rootId: rhs.info.id, argument: pipedArgumentForRhs } : undefined;
+
+	const fCallInfo = processKnownFunctionCall({
+		name,
+		args,
+		rootId,
+		data,
+		origin:    BuiltInProcName.Pipe,
+		patchData: pipedArgument === undefined ? undefined : (d, i) => i === 1 ? { ...d, pipedArgument } : d
+	});
+	const processedArguments = fCallInfo.processedArguments;
+	let information = fCallInfo.information;
 
 
 	// If this is an assigning pipe (e.g., %<>%), perform the assignment writeback using the built-in
@@ -101,7 +121,8 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true });
+		const assignData = pipedArgument === undefined ? data : { ...data, pipedArgument };
+		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, assignData, { canBeReplacement: true, mayHaveMoreArgs: true });
 	}
 
 	let treatedAsFunctionCall = false;
@@ -130,15 +151,6 @@ export function processPipe<OtherInfo>(
 		// make the lhs an argument node (or link it to placeholders within the rhs call):
 		const argId = lhs.info.id;
 
-		// find all symbol occurrences inside the rhs function call AST that match the placeholder name
-		const occurrenceIds: NodeId[] = [];
-		RNode.visitAst<OtherInfo & ParentInformation>(rhs, (node) => {
-			if(RSymbol.is(node) && node.content === pipePlaceholderName) {
-				occurrenceIds.push(node.info.id);
-			}
-			return false;
-		});
-
 		if(occurrenceIds.length > 0) {
 			if(occurrenceIds.length !== 1) {
 				log.warn(`Expected exactly one occurrence of the pipe placeholder '${Identifier.toString(pipePlaceholderName)}' in the rhs of the pipe, but found ${occurrenceIds.length}. Linking all occurrences to the lhs.`);
@@ -166,15 +178,13 @@ export function processPipe<OtherInfo>(
 	}
 
 	const firstArgument = processedArguments[0];
+	const secondArgument = processedArguments[1];
 
 	// If requested, return the lhs value (tee/TPipe semantics): add a Returns edge to the lhs entry
 	if(firstArgument && returnLhs) {
 		information.graph.addEdge(rootId, firstArgument.entryPoint, EdgeType.Returns);
-	} else {
-		const secondArgument = processedArguments[1];
-		if(secondArgument && !returnLhs) {
-			information.graph.addEdge(rootId, secondArgument.entryPoint, EdgeType.Returns);
-		}
+	} else if(secondArgument && !returnLhs) {
+		information.graph.addEdge(rootId, secondArgument.entryPoint, EdgeType.Returns);
 	}
 
 	const uniqueIn = information.in.slice();
@@ -196,12 +206,16 @@ export function processPipe<OtherInfo>(
 		}
 	}
 
+	const kill = cancelRevivedKills((firstArgument?.kill ?? []).concat(secondArgument?.kill ?? []), uniqueOut);
+	const environment = kill.length > 0 ? applyKills(information.environment, kill) : information.environment;
 
 	return {
 		...information,
 		in:                uniqueIn,
 		out:               uniqueOut,
 		unknownReferences: uniqueUnknownReferences,
+		environment,
+		kill:              kill.length > 0 ? kill : information.kill,
 		entryPoint:        rootId,
 		cfgEntry:          information.cfgEntry
 	};

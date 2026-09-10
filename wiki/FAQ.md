@@ -1,9 +1,8 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-08-29, 17:39:06 UTC (v2.15.8, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
 
-	
 - [💮 <i>flowR</i> FAQ](#____i_flowR_/i__FAQ)
   - [🧑‍💻 <i>flowR</i> Development](#_______i_flowR_/i__Development)  
     
@@ -15,12 +14,9 @@ Answers regularly end up on this page, so asking helps everyone who wonders the 
 - [💻 Editor FAQ](#___Editor_FAQ)
   - [⚙️ Recommended Editor Configs](#___Recommended_Editor_Configs)  
     
-
-
 <h2 id="____i_flowR_/i__FAQ">💮 <i>flowR</i> FAQ</h2>
 
 <h3 id="_______i_flowR_/i__Development">🧑‍💻 <i>flowR</i> Development</h3>
-
 
 <details><summary>How do I run <b>all checks</b> before pushing?</summary>
 
@@ -29,13 +25,11 @@ Run a subset with the job ids (e.g. `npm run checkup -- lint tests`) or skip the
 
 </details>
 
-
 <details><summary>How to add a <b>linting rule</b>?</summary>
 
 To add a new linting rule, see [Create Linting Rules](https://github.com/flowr-analysis/flowr/wiki/Create-Linting-Rules).
 
 </details>
-
 
 <details><summary>How to create <b>new wiki</b> pages?</summary>
 
@@ -63,13 +57,11 @@ npm run wiki:watch
 
 </details>
 
-
 <details><summary>How to do <b>logging</b> in flowR?</summary>
 
 Check out the [Logging Section in the Linting and Testing wiki page](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#logging) for more information on how to do logging in *flowR*.
 
 </details>
-
 
 <details><summary>How to generate <b>mermaid diagrams</b>?</summary>
 
@@ -80,7 +72,6 @@ There are several ways to generate mermaid diagrams based on the input data that
 
 </details>
 
-
 <details><summary>How to get a REPL with debug-info/<b>hot-reload</b>?</summary>
 
 To enter the development repl, execute `npm run main-dev` in contrast to `npm run flowr`
@@ -90,18 +81,16 @@ To enter the development repl, execute `npm run main-dev` in contrast to `npm ru
 
 </details>
 
-
 <details><summary>How to get flowR to <b>talk</b>?</summary>
 
 When using flowR from the CLI, you can use the <span title="Description (Command Line Argument): Run with verbose logging (will be passed to the corresponding script)">`--verbose`</span> option to get more information about what flowR is doing.
 While coding, however, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/log.ts#L9"><code><span title="Update the minimum level of all flowr loggers.">setMinLevelOfAllLogs</span></code></a> function to set the minimum level of logs to be displayed (this works with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L22"><code>FlowrLogger</code></a> abstraction).
-In general, you can configure the levels of individual logs, such as the general `log` (obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L94"><code>getActiveLog</code></a>) or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/parser.ts#L13"><code>parseLog</code></a>.
+In general, you can configure the levels of individual logs, such as the general `log` (obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L94"><code>getActiveLog</code></a>) or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/parser.ts#L14"><code>parseLog</code></a>.
 Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
 If you are an implementor and want to add logging, please make sure there are no larger runtime implications when logging is disabled.
 Have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L6"><code>expensiveTrace</code></a> function for example, which uses a function to generate the log message only when the log level is reached.
 
 </details>
-
 
 <details><summary>How to run <b>tests</b> with <b>verbose</b> logging?</summary>
 
@@ -121,15 +110,13 @@ Both forms accept the usual vitest filters (e.g. `npm run test:verbose -- cli/se
 
 </details>
 
-
 <details><summary>What are <b>test labels</b>?</summary>
 
 Tests are labeled based on the *flowR* capabilities that they test for.
-The list of supported capabilities can be found on the [Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) wiki page.
+The list of supported capabilities can be found on the [capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
 For more extensive information on test labels, see the [test labels wiki section](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#test-labels).
 
 </details>
-
 
 <details><summary>Why can't I pass <b>arguments</b> when running flowR <b>with npm</b>?</summary>
 
@@ -143,7 +130,6 @@ npm run flowr -- --help
 
 <h3 id="__Using__i_flowR_/i_">✨ Using <i>flowR</i></h3>
 
-
 <details><summary>How to <b>query</b> an R project?</summary>
 
 For this you can use flowR's [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API).
@@ -151,7 +137,6 @@ If you want to create your own project using flowR as a library, check out the
 [flowr-analysis/sample-analyzer-project-query](https://github.com/flowr-analysis/sample-analyzer-project-query) repository for an example project setup.
 
 </details>
-
 
 <details><summary>How to <b>watch</b> a file for changes in the REPL?</summary>
 
@@ -170,7 +155,6 @@ For a folder, flowR uses the same project discovery as with `file://`:
 ```
 
 </details>
-
 
 <details><summary>How to configure flowR <b>per kind of project</b>?</summary>
 
@@ -198,31 +182,26 @@ Anything you configure directly wins over the value the project kind defaults to
 
 </details>
 
-
 <details><summary>Where do I find <b>all the helper objects</b>?</summary>
 
 flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
-thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L310"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
+thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L312"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
 ,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L49"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L50"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
 The [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) wiki page lists every one of them, grouped by what
 it is about, so you can find the one that answers your question without knowing where it lives.
 
 </details>
 
-
-
 <h2 id="___R_FAQ">🇷 R FAQ</h2>
 
 <h3 id="___R_Packages">📦 R Packages</h3>
-
 
 <details><summary>How does flowR know a <b>package's exports</b>?</summary>
 
 See the [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) wiki page.
 
 </details>
-
 
 <details><summary>How to get <b>documentation</b> for a function or package?</summary>
 
@@ -239,7 +218,6 @@ be downloaded directly from [cran](https://cran.r-project.org/).
 
 </details>
 
-
 <details><summary>What is the R <b>prelude</b> and R <b>base</b> package?</summary>
 
 The base package contains lots of base functions like `source` for example.
@@ -252,12 +230,9 @@ sections in the output of `sessionInfo()`.
 
 </details>
 
-
-
 <h2 id="___Editor_FAQ">💻 Editor FAQ</h2>
 
 <h3 id="___Recommended_Editor_Configs">⚙️ Recommended Editor Configs</h3>
-
 
 <details><summary>How can I launch the flowr repl form vs code?</summary>
 
@@ -289,7 +264,6 @@ You can use the following launch task (`.vscode/launch.json`):
 ```
 
 </details>
-
 
 <details><summary>How can I make eslint and ZED work together?</summary>
 

@@ -40,6 +40,7 @@ Additionally, they are exposed with some command line options (e.g., when using 
 
 - ${ctx.cliOption('flowr', 'engine.r-shell.disabled', false)} to disable the ${ctx.link(RShell)} engine
 - ${ctx.cliOption('flowr', 'engine.r-shell.r-path', false)} (which is the canonical version of ${ctx.cliOption('flowr', 'r-path')})
+- ${ctx.cliOption('flowr', 'engine.r-shell.pipe-bind', false)} to enable R's experimental pipe-bind operator \`=>\`
 - ${ctx.cliOption('flowr', 'engine.tree-sitter.disabled', false)} to disable the ${ctx.link(TreeSitterExecutor)} engine
 - ${ctx.cliOption('flowr', 'engine.tree-sitter.lax', false)} to use lax parsing with tree-sitter
 - ${ctx.cliOption('flowr', 'engine.tree-sitter.wasm-path', false)} pass the path to the wasm of the r grammar of tree-sitter (see [below](#tree-sitter))

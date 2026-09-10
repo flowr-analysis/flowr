@@ -21,6 +21,7 @@ export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${num
 /**
  * The helper object for slicing criteria: parsing, validating and resolving them, one
  * ({@link SlicingCriterion.parse}) or several ({@link SlicingCriterion.decodeAll}) at a time.
+ * @helper location
  */
 export const SlicingCriterion = {
 	name: 'SlicingCriterion',
@@ -104,6 +105,20 @@ export const SlicingCriterion = {
 			const line = parseLineNumber(base.slice(0, -1), idMap, file);
 			return line === undefined ? undefined : topLevelStatementToId(line, idMap, file);
 		}
+	},
+	/**
+	 * The line and the name a `<line>@<name>` criterion points at, `undefined` for every other form.
+	 * The counterpart of writing such a criterion down as a template literal.
+	 */
+	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: string } | undefined {
+		const split = splitFileFilter(criterion);
+		const at = split?.rest.indexOf('@') ?? -1;
+		if(split === undefined || at <= 0) {
+			return undefined;
+		}
+		const line = split.rest.slice(0, at);
+		const name = split.rest.slice(at + 1);
+		return /^\d+$/.test(line) && name.length > 0 && !name.startsWith('[') ? { line: Number(line), name } : undefined;
 	},
 	/**
 	 * Converts a node id to a slicing criterion in the form of `$id`

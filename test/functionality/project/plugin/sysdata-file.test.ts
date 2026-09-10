@@ -1,4 +1,5 @@
 import { assert, test } from 'vitest';
+import { decorateLabelContext, label, type TestLabel } from '../../_helper/label';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -42,8 +43,8 @@ function readsOf(graph: DataflowGraph, lexemeOf: (id: NodeId) => string | undefi
 const SaveSysdata = (root: string) => `secretTable <- c(1, 2, 3)\nsecretHelper <- function(x) x\nsave(secretTable, secretHelper, file = "${root}/R/sysdata.rda", version = 2)`;
 const Pkg = (name: string) => ({ DESCRIPTION: `Package: ${name}\nVersion: 1.0.0\n` });
 /** Writes `files` under `projectName` (running `rSetup` for the binary sysdata), then checks the loaded `dataFile` name, `objects` (sysdataObjects()) and/or what a read of `reads[0]` resolves to (filtered to built-ins). */
-function testSysdata(name: string, projectName: string, files: Record<string, string>, rSetup: ((root: string) => string) | undefined, expected: { dataFile?: string, objects?: unknown[], reads?: [string, string[]] }) {
-	test(name, async() => {
+function testSysdata(name: string | TestLabel, projectName: string, files: Record<string, string>, rSetup: ((root: string) => string) | undefined, expected: { dataFile?: string, objects?: unknown[], reads?: [string, string[]] }) {
+	test(decorateLabelContext(name, ['other']), async() => {
 		const root = project(projectName, files, rSetup);
 		const { dataflow, analyzer } = await analyze(root);
 		const filesCtx = analyzer.inspectContext().files;
@@ -61,8 +62,8 @@ function testSysdata(name: string, projectName: string, files: Record<string, st
 	});
 }
 
-testSysdata('a source package is tagged as data and states its objects with the types they were saved as', 'source-objects', { ...Pkg('mypkg'), 'R/main.R': 'h <- secretTable\n' }, SaveSysdata, { dataFile: 'sysdata.rda', objects: [{ name: 'secretTable', type: SexpType.RealSxp }, { name: 'secretHelper', type: SexpType.CloSxp }] });
-testSysdata('the package\'s own code reads them without anything bringing them in', 'source-reads', { ...Pkg('mypkg'), 'R/main.R': 'h <- secretTable\n' }, SaveSysdata, { reads: ['secretTable', ['built-in:mypkg:secretTable']] });
+testSysdata(label('a source package is tagged as data and states its objects with the types they were saved as', ['project-sysdata', 'handling-binary-riles']), 'source-objects', { ...Pkg('mypkg'), 'R/main.R': 'h <- secretTable\n' }, SaveSysdata, { dataFile: 'sysdata.rda', objects: [{ name: 'secretTable', type: SexpType.RealSxp }, { name: 'secretHelper', type: SexpType.CloSxp }] });
+testSysdata(label('the package\'s own code reads them without anything bringing them in', ['project-sysdata']), 'source-reads', { ...Pkg('mypkg'), 'R/main.R': 'h <- secretTable\n' }, SaveSysdata, { reads: ['secretTable', ['built-in:mypkg:secretTable']] });
 testSysdata('they are internal, so the `:::` spelling reaches them too', 'source-internal', { ...Pkg('mypkg'), 'R/main.R': 'h <- mypkg:::secretTable\n' }, SaveSysdata, { reads: ['secretTable', ['built-in:mypkg:secretTable']] });
 testSysdata('an assignment the package makes itself shadows them', 'source-shadowed', { ...Pkg('mypkg'), 'R/main.R': 'secretTable <- 5\nh <- secretTable\n' }, SaveSysdata, { reads: ['secretTable', []] });
 testSysdata('a project with no package namespace has nothing to lazy-load them into', 'no-package', { 'R/main.R': 'h <- secretTable\n' }, SaveSysdata, { reads: ['secretTable', []] });

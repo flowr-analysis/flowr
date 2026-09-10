@@ -13,7 +13,8 @@ import { attachedAlongside } from '../../../project/attached-packages';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
-import { BuiltInIndex, queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import type { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
+import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo, FnSig } from '../../../dataflow/environments/built-in-props';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, PkgName, ReferenceType } from '../../../dataflow/environments/identifier';
@@ -26,11 +27,10 @@ import { groupGenericMembers, groupGenericOf, isGroupGeneric } from '../../../da
 import { uniqueArray } from '../../../util/collections/arrays';
 import { dottedSplits } from '../../../util/text/strings';
 import { compactRecord } from '../../../util/objects';
+import { baseManualTopicUrl, cranMirrorRepoUrl, cranMirrorSourceUrl, cranPageUrl, rdrrTopicUrl, rSourceRef, rSourceUrl } from '../../../util/r-package-urls';
 
-/** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
-export function cranPageUrl(pkg: string): string {
-	return `https://cran.r-project.org/package=${encodeURIComponent(pkg)}`;
-}
+export { cranMirrorSourceUrl, cranPageUrl, rSourceRef, rSourceUrl };
+
 
 /** whether a pattern uses glob wildcards (`*`, `?`) */
 function hasGlob(pattern: string | undefined): boolean {
@@ -109,39 +109,6 @@ function releaseMatcher(spec: string): (entry: AvailableVersion) => boolean {
 	return e => byVersion(e.version);
 }
 
-/** read-only CRAN GitHub mirror base; `github.com/cran/<pkg>` mirrors every CRAN package and tags each release */
-const CranGithubMirror = 'https://github.com/cran';
-
-/** the mirror repository of a CRAN package */
-function cranMirrorRepoUrl(pkg: string): string {
-	return `${CranGithubMirror}/${encodeURIComponent(pkg)}`;
-}
-
-/** deep-link a definition into the CRAN mirror at the package's version tag (falling back to `HEAD`) */
-export function cranMirrorSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
-	const ref = version ? encodeURIComponent(version) : 'HEAD';
-	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
-	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
-}
-
-/** read-only GitHub mirror of R's own SVN; base packages live under `src/library/<pkg>` */
-const RSourceMirror = 'https://github.com/wch/r-source';
-
-/**
- * The mirror ref holding an R version: the mirror carries no tags, only a `R-<major>-<minor>-branch` per release
- * series (exact to the minor release, latest patch); `trunk` stands in when the version is unknown.
- */
-export function rSourceRef(version: string | undefined): string {
-	const series = /^(\d+)\.(\d+)/.exec(version ?? '');
-	return series ? `R-${series[1]}-${series[2]}-branch` : 'trunk';
-}
-
-/** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
-	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
-	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
-}
-
 /** function/topic names that map cleanly to a man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /**
@@ -152,13 +119,7 @@ export function helpPageUrl(pkg: string, fn: string, opts: { base: boolean, cran
 	if(!RdrrTopicName.test(fn)) {
 		return undefined;
 	}
-	if(opts.base) {
-		return `https://stat.ethz.ch/R-manual/R-devel/library/${pkg}/html/${fn}.html`;
-	}
-	if(opts.cran) {
-		return `https://rdrr.io/cran/${pkg}/man/${fn}.html`;
-	}
-	return undefined;
+	return opts.base ? baseManualTopicUrl(pkg, fn) : opts.cran ? rdrrTopicUrl(pkg, fn) : undefined;
 }
 
 /**
@@ -622,8 +583,8 @@ function builtInAsDecoded(name: string, sig: FnSig | undefined): DecodedFunction
 }
 
 /** the names flowR's own built-in configuration registers under `pkg`, which a lookup falls back to */
-function builtInNamesOf(pkg: string): string[] {
-	return BuiltInIndex.default().entries
+function builtInNamesOf(pkg: string, index: BuiltInIndex): string[] {
+	return index.entries
 		.filter(e => String(Identifier.getNamespace(e.name) ?? PkgName.Base) === pkg)
 		.map(e => String(Identifier.getName(e.name)));
 }
@@ -639,7 +600,7 @@ function builtInNamesOf(pkg: string): string[] {
  */
 function builtInMatches(
 	env: REnvironmentInformation | undefined, q: SignatureQuery, literalFunction: boolean,
-	seen: ReadonlySet<string>, room: number
+	seen: ReadonlySet<string>, room: number, index: BuiltInIndex
 ): SignatureMatchView[] {
 	/* only the definitions whose formals were read out of a real R state `NoDefault`, so a required-parameter
 	   count over the built-ins would be a mix of researched and unstated: the fallback stays out of that filter */
@@ -650,7 +611,7 @@ function builtInMatches(
 	const fnMatch = q.function ? nameMatcher(q.function, literalFunction) : () => true;
 	const paramPred = parameterFilter(q);
 	const found: SignatureMatchView[] = [];
-	for(const entry of BuiltInIndex.default().entries) {
+	for(const entry of index.entries) {
 		if(found.length >= room) {
 			break;
 		}
@@ -687,13 +648,13 @@ function builtInMatches(
  */
 function withBuiltInFallback(
 	found: Partial<SignatureQueryResult>, env: REnvironmentInformation | undefined,
-	q: SignatureQuery, literalFunction: boolean
+	q: SignatureQuery, literalFunction: boolean, index: BuiltInIndex
 ): Partial<SignatureQueryResult> {
 	if(found.matches === undefined || found.truncated) {
 		return found;
 	}
 	const seen = new Set(found.matches.map(m => `${m.package}::${m.name}`));
-	const extra = builtInMatches(env, q, literalFunction, seen, MaxMatches - found.matches.length);
+	const extra = builtInMatches(env, q, literalFunction, seen, MaxMatches - found.matches.length, index);
 	if(extra.length === 0) {
 		return found;
 	}
@@ -903,7 +864,9 @@ function collectShardStatus(sources: readonly PackageSignatureSource[]): ShardSt
 export async function executeSignatureQuery({ analyzer }: BasicQueryData, queries: readonly SignatureQuery[]): Promise<SignatureQueryResult> {
 	const start = Date.now();
 	const q = queries[queries.length - 1] ?? { type: 'signature' };
-	const deps = analyzer.inspectContext().deps;
+	const ctx = analyzer.inspectContext();
+	const deps = ctx.deps;
+	const builtIns = ctx.env.builtInIndex;
 	const databases: SignatureDatabaseView[] = deps.loadedSignatureDatabases()
 		.map(d => ({ scope: d.scope, version: d.version, date: d.date }));
 	// the plugin's loaded sources (bundled default + $FLOWR_SIGDB + anything added at runtime), so the query
@@ -918,13 +881,13 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
 	/* one clean environment for every built-in lookup of this query, as building one is not free */
 	let cleanEnv: REnvironmentInformation | undefined;
-	const env = () => cleanEnv ??= analyzer.inspectContext().env.makeCleanEnv();
+	const env = () => cleanEnv ??= ctx.env.makeCleanEnv();
 	/* the built-in environment answers for the primitives no package's sources contain, see flowrOnlyFunctionInfo */
 	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(env(), pkg, name);
 
 	if(!q.package) {
 		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here
-		return { ...meta(), shards: collectShardStatus(sources), builtInCount: BuiltInIndex.default().entries.length };
+		return { ...meta(), shards: collectShardStatus(sources), builtInCount: builtIns.entries.length };
 	}
 
 	// wildcard search: a glob in the package/function name, a version spec matching more than one release (a range or
@@ -935,7 +898,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		&& (isVerbatimFunction(sources, q.package, q.function, q.version) || builtIn(q.package, q.function) !== undefined);
 	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function) && !literalFunction) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
 		// what the databases record, then what only flowR's built-in configuration states (marked as such)
-		const found = withBuiltInFallback(searchSources(sources, packages, q, literalFunction), env(), q, literalFunction);
+		const found = withBuiltInFallback(searchSources(sources, packages, q, literalFunction), env(), q, literalFunction, builtIns);
 		// a version glob against a single concrete, known package that matched no release: point at the available versions
 		// (the same guidance the exact-version path gives) instead of a bare "0 matched"
 		if((found.matchCount === 0 || found.packages?.length === 0) && !hasGlob(q.package) && q.version !== undefined) {
@@ -986,7 +949,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 			...(resolvedSrc.functions(q.package, version) ?? resolvedSrc.functions(q.package) ?? []).map(f => f.name)
 		]);
 		// what the database cannot offer, flowR's own configuration still can; kept apart so the two are never confused
-		const fromBuiltIns = builtInNamesOf(q.package).filter(n => !universe.has(n));
+		const fromBuiltIns = builtInNamesOf(q.package, builtIns).filter(n => !universe.has(n));
 		return {
 			...meta(),
 			package:            signaturePackageInfo(resolvedSrc, q.package, version),

@@ -82,7 +82,7 @@ export const FILE_PATH_VALIDITY = {
 		const wdRootsFor = WorkingDirectory.rootsResolver(dfg, cfg, ctx);
 		const findings = await Promise.all(elements.getElements().map(async element => {
 			const matchingRead = results.read.find(r => r.nodeId === element.node.info.id);
-			if(!matchingRead) {
+			if(!matchingRead || matchingRead.nodeId === undefined) {
 				return [];
 			}
 			metadata.totalReads++;
@@ -143,7 +143,7 @@ export const FILE_PATH_VALIDITY = {
 			}
 
 			// check if any write to the same file happens before the read, and exclude this case if so
-			const writesToFile = results.write.filter(r => samePath(r.value as string, matchingRead.value as string, data.flowrConfig.solver.resolveSource?.ignoreCapitalization));
+			const writesToFile = results.write.filter((r): r is typeof r & { nodeId: NodeId } => r.nodeId !== undefined && samePath(r.value as string, matchingRead.value as string, data.flowrConfig.solver.resolveSource?.ignoreCapitalization));
 			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 			if(writesBefore.includes(Ternary.Always)) {
 				metadata.totalWritesBeforeAlways++;
@@ -183,12 +183,12 @@ export const FILE_PATH_VALIDITY = {
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
-		defaultConfig: {
+		defaultConfig: () => ({
 			additionalReadFunctions:  [],
 			additionalWriteFunctions: [],
 			includeUnknown:           false,
 			checkUrls:                false
-		}
+		})
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,

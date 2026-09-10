@@ -12,12 +12,11 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { FlowrFilter } from '../../search/flowr-search-filters';
-import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
-import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
+import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
 import { NodeValue } from '../../dataflow/eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
@@ -29,7 +28,7 @@ import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 export interface SeededRandomnessResult extends LintingResult {
@@ -63,7 +62,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 }
 
 export const SEEDED_RANDOMNESS = {
-	createSearch: (config) => Q.all().filter(VertexType.FunctionCall)
+	createSearch: (config, data) => Q.all().filter(VertexType.FunctionCall)
 		.with(Enrichment.CallTargets, {
 			onlyBuiltin:  true,
 			qualifyNames: false // we don't use qualified names for this rule yet
@@ -79,12 +78,12 @@ export const SEEDED_RANDOMNESS = {
 		})
 		.with(Enrichment.LastCall, [
 			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
-			{ callName: getDefaultAssignments().flatMap(b => b.names).map(Identifier.getName), cascadeIf: () => CascadeAction.Continue }
+			{ callName: data.inspectContext().env.deriveFromDefinitions(getDefaultAssignments).flatMap(b => b.names).map(Identifier.getName), cascadeIf: () => CascadeAction.Continue }
 		]),
 	processSearchResult: async(elements, config, data) => {
 		const dataflow = await data.dataflow();
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
-		const assignmentArgIndexes = new Map<string, number>(getDefaultAssignments().flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
+		const assignmentArgIndexes = new Map<string, number>(data.inspectContext().env.deriveFromDefinitions(getDefaultAssignments).flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
 		const metadata: SeededRandomnessMeta = {
 			consumerCalls:                 0,
 			callsWithFunctionProducers:    0,
@@ -176,16 +175,15 @@ export const SEEDED_RANDOMNESS = {
 		};
 	},
 	info: {
-		defaultConfig: {
+		defaultConfig: ctx => ({
 			randomnessProducers: RandomnessProducers,
 			randomnessConsumers: [
-				...BuiltInIndex.default().with(SemanticCallTag.Random).map(Identifier.getName)
-					.filter(n => !RandomnessProducers.some(p => p.name === n)),
-				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
+				...ctx.env.deriveFromIndex(randomnessConsumers),
+				'princomp', 'pointLabel', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
 				'rxor', 'rmvnorm', 'randomForest',
 				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n',
 			],
-		},
+		}),
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
 		// only finds proper randomness producers and consumers due to its config, but will not find all producers/consumers since not all existing deprecated functions will be in the config
 		certainty:   LintingRuleCertainty.BestEffort,
@@ -198,9 +196,14 @@ export const SEEDED_RANDOMNESS = {
 	}
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
-function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
-	return DefaultBuiltinConfig.filter((b): b is BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike> =>
+function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
+	return definitions.filter((b): b is BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike> =>
 		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
+}
+
+function randomnessConsumers(index: BuiltInIndex): string[] {
+	return index.with(SemanticCallTag.Random).map(Identifier.getName)
+		.filter(n => !RandomnessProducers.some(p => p.name === n));
 }
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {

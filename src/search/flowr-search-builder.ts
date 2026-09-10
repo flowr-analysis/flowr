@@ -38,6 +38,7 @@ function all(filePathRegex?: string): FlowrSearchBuilder<'all'> | FlowrSearchBui
 /**
  * This object holds all the methods to generate search queries.
  * For compatibility, please use the {@link Q} identifier object to access these methods.
+ * @helper api
  */
 export const FlowrSearchGenerator = {
 	name: 'FlowrSearchGenerator',

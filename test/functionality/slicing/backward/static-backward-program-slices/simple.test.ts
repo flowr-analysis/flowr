@@ -1,7 +1,7 @@
 import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { describe } from 'vitest';
 
 assumeLoadedPackages('data.table');
@@ -197,7 +197,7 @@ a <- 5
     `, ['3@a'], 'a <- 5', { skipTreeSitter: true /* directives aren't supported yet! */ });
 	});
 	describe('The classic', () => {
-		const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'strings', 'precedence'];
+		const capabilities: FlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'strings', 'precedence'];
 		const code = `
 sum <- 0
 product <- 1
@@ -277,6 +277,18 @@ product`
 			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
 			'x <- 2\nprint(x + 3)',
 			{ extendSlice: true }
+		);
+	});
+	describe('Removal through a call argument', () => {
+		assertSliced(label('nested rm', ['functions-with-global-side-effects']),
+			shell, 'x <- 1\nx <- 2\nrm(x)\nr <- exists("x")\nprint(r)', ['5@print'],
+			'r <- exists("x")\nprint(r)',
+			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE' }
+		);
+		assertSliced(label('piped rm', ['functions-with-global-side-effects', 'pipe-and-pipe-bind']),
+			shell, 'x <- 1\nx <- 2\nx |> rm()\nr <- exists("x")\nprint(r)', ['5@print'],
+			'r <- exists("x")\nprint(r)',
+			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE' }
 		);
 	});
 }));

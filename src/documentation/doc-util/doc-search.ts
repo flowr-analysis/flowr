@@ -1,7 +1,7 @@
 import type { RShell } from '../../r-bridge/shell';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock } from './doc-code';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -26,7 +26,7 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 	const duration = performance.now() - now;
 
 	const metaInfo = `
-The search required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
+The search${docTook(duration)} ran (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
 	const dataflow = await analyzer.dataflow();

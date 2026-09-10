@@ -9,7 +9,7 @@ import { contextFromInput } from '../../../../../src/project/context/flowr-analy
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { DfEdge } from '../../../../../src/dataflow/graph/edge';
 import { OriginType } from '../../../../../src/dataflow/origin/dfg-get-origin';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 
 assumeLoadedPackages('dplyr', 'ggplot2', 'rlang');
 
@@ -17,7 +17,7 @@ assumeLoadedPackages('dplyr', 'ggplot2', 'rlang');
 describe('Dataflow', withTreeSitter(ts => {
 	describe('non-standard evaluation', () => {
 		function assertReads(
-			name: string, capabilities: readonly SupportedFlowrCapabilityId[], code: string,
+			name: string, capabilities: readonly FlowrCapabilityId[], code: string,
 			expected: Record<SlicingCriterion, SlicingCriterion | readonly SlicingCriterion[] | undefined>
 		): void {
 			describe(label(name, capabilities, ['dataflow']), () => {

@@ -13,7 +13,7 @@ import { type ExplanationParameters, getAllEdges, getAllVertices, type SubExplan
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getTypesFromFolder, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
-import { codeBlock } from './doc-util/doc-code';
+import { codeBlock, jsonWithLimit } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -907,7 +907,7 @@ export class WikiDataflowGraph extends DocMaker<'wiki/Dataflow Graph.md'> {
 
 		return `
 This page briefly summarizes flowR's dataflow graph (${ctx.link(DataflowGraph)}).
-If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities')} page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('flowr:capabilities')}.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${ctx.link(DataflowGraphBuilder)}.
 In summary, we discuss the following topics in this wiki page:
 
@@ -1119,8 +1119,7 @@ However, the dataflow information contains more, quite a lot of information in f
 
 <summary style="color:gray">Dataflow Information as Json</summary>
 
-_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
-${codeBlock('text', JSON.stringify(result, jsonReplacer))}
+${jsonWithLimit(result, 0, '_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_')}
 
 </details>
 
@@ -1266,7 +1265,7 @@ Everything else lives on a helper object named after the thing it works on:
 These are the ones this page needs; the ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} page lists every helper object flowR has, grouped by what it is about.
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
-If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 

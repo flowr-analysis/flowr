@@ -4,7 +4,7 @@ import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 
 describe('S4 Function Calls', withTreeSitter(ts => {
-	assertDataflow(label('S4 setMethod', ['function-calls', 'oop-s4']), ts,
+	assertDataflow(label('S4 setMethod', ['function-calls', 'oop-s4', 'oop-s4-dispatch']), ts,
 		`
 setMethod("age", "Person", function(x) x)
 setMethod("age<-", "Person", function(x, value) x)
@@ -18,7 +18,7 @@ print(age(j))
 	);
 
 	/* `setClass` writes the string-keyed class registry, which is what `new` reads to build an instance */
-	assertDataflow(label('S4 new reads its class registration', ['function-calls', 'oop-s4']), ts,
+	assertDataflow(label('S4 new reads its class registration', ['function-calls', 'oop-s4', 'oop-s4-construction']), ts,
 		`
 setClass("P", representation(s = "numeric"))
 o <- new("P", s = 1)
@@ -28,7 +28,7 @@ o <- new("P", s = 1)
 	);
 
 	/* a method answers a generic that has to exist, so it reads whatever created it */
-	assertDataflow(label('S4 setMethod reads the generic it answers', ['function-calls', 'oop-s4']), ts,
+	assertDataflow(label('S4 setMethod reads the generic it answers', ['function-calls', 'oop-s4', 'oop-s4-dispatch']), ts,
 		`
 setGeneric("sz", function(x) standardGeneric("sz"))
 setMethod("sz", "numeric", function(x) x * 3)
@@ -38,7 +38,7 @@ setMethod("sz", "numeric", function(x) x * 3)
 	);
 
 	/* `contains =` names a class that has to be registered first */
-	assertDataflow(label('S4 setClass reads the class it extends', ['function-calls', 'oop-s4']), ts,
+	assertDataflow(label('S4 setClass reads the class it extends', ['function-calls', 'oop-s4', 'oop-s4-construction', 'oop-s4-inheritance']), ts,
 		`
 setClass("A", representation(x = "numeric"))
 setClass("B", contains = "A")

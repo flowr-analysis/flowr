@@ -3,6 +3,8 @@ import { SemanticCallTag } from '../../../../dataflow/environments/built-in-prop
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
 import { SourceFunctions } from './source-functions';
+import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
 
 const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'parse',                          argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
@@ -43,11 +45,13 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'shinyjs', name: 'extendShinyjs', argIdx: 0, argName: 'script', resolveValue: true, ignoreIf: 'arg-missing' }
 ] as const;
 
-/* the built-in configuration leads: it is where flowR states what a call does, and the entries below are the
-   exceptions that need more than a resource argument. For a call naming no package the first entry able to
-   apply answers, so a name several packages export is read the way the configuration states it.
-   `source` reads a file too, but it is the `sourced` category that reports it, so it stays out of this one */
-export const ReadFunctions: FunctionInfo[] = [
-	...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Reads], [...ReadFunctionsWithMore, ...OtherPathFunctions, ...SourceFunctions]),
-	...ReadFunctionsWithMore
-];
+/** The read entries the given built-in definitions imply, together with the ones written down here. */
+export function computeReadFunctions(definitions: BuiltInDefinitions): FunctionInfo[] {
+	return [
+		...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Reads], [...ReadFunctionsWithMore, ...OtherPathFunctions, ...SourceFunctions], definitions),
+		...ReadFunctionsWithMore
+	];
+}
+
+/** {@link computeReadFunctions} for the built-ins an analyzer registered, shared per built-in index. */
+export const readFunctions = (ctx: ReadOnlyFlowrAnalyzerContext): FunctionInfo[] => ctx.env.deriveFromDefinitions(computeReadFunctions);

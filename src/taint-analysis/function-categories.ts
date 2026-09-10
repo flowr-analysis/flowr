@@ -4,6 +4,7 @@ import { BuiltInIndex } from '../dataflow/environments/query-fn-props';
 import type { TaintConditionFunction, TaintMapper, TaintMapping, TaintParameterLocation } from './function-mapper';
 import { TaintRole } from './function-mapper';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { isNotUndefined } from '../util/assert';
 import type { Identifier } from '../dataflow/environments/identifier';
 
@@ -39,7 +40,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 			argSelection: 'ExactlyOne',
 		},
 		/** Pass through of incoming taint */
-		defaultHandler: ([_arg], [taint]) => taint
+		defaultHandler: ([_arg], [taint]) => taint.value
 	},
 	/** Pure functions which calculate their result on one or multiple arguments */
 	pureComputer: {
@@ -50,7 +51,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 			argSelection: 'AtLeastOne',
 		},
 		/** Least-upper bound of incoming taints */
-		defaultHandler: ([_arg], [taint]) => taint
+		defaultHandler: ([_arg], taints) => taints.length > 0 ? AbstractDomain.joinAll(taints).value : undefined
 	}
 };
 

@@ -25,7 +25,7 @@ export const scaleDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ..
 function constantAggregate(...elements: symbol[]): TaintCondition<typeof scaleDomain> {
 	return {
 		argTaints:   [{ pos: 0, name: 'x' }],
-		conditionFn: (_args, [taint]) => elements.includes(taint) ? Bottom : (taint ?? Top)
+		conditionFn: (_args, [taint]) => elements.includes(taint.value) ? Bottom : (taint.value ?? Top)
 	};
 }
 
@@ -45,7 +45,7 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 					} else if(center === true) {
 						return ZeroCentered;
 					} else if(center === false && scale === false) {
-						return taint ?? Top;
+						return taint.value ?? Top;
 					}
 					return Top;
 				}

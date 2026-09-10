@@ -16,6 +16,49 @@ import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SexpType } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 
+/** The expected subgraph for the variables `load` introduces, shared by the real-world and the generated rda tests. */
+function loadedVarsGraph(varsAndTypes: ReadonlyMap<string, string>) {
+	let graph = emptyGraph();
+	for(const [varName, varType] of varsAndTypes) {
+		const syntheticId = `3:loaded:${varName}`;
+		const cds = [{ id: '3', when: true }];
+		if(varType === SexpToRType[SexpType.CloSxp] || varType === SexpToRType[SexpType.SpecialSxp] || varType === SexpToRType[SexpType.BuiltInSxp]) {
+			const fdefId = `${syntheticId}:fdef`;
+			graph = graph.defineFunction(fdefId, [], {
+				entryPoint:        fdefId,
+				graph:             new Set(),
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				hooks:             [],
+				environment:       defaultEnv(),
+			}, { cds });
+			graph = graph.defineVariable(syntheticId, undefined, { cds });
+			graph = graph.definedBy(syntheticId, fdefId);
+		} else {
+			graph = graph.defineVariable(syntheticId, undefined, { cds });
+		}
+	}
+	return graph;
+}
+
+/** The expected subgraph for calling a closure that `load` introduced. */
+function loadedClosureCallGraph(closureName: string) {
+	return emptyGraph()
+		.defineVariable(`3:loaded:${closureName}`, undefined, { cds: [{ id: 3, when: true }] })
+		.defineFunction(`3:loaded:${closureName}:fdef`, [], {
+			entryPoint:        `3:loaded:${closureName}:fdef`,
+			graph:             new Set(),
+			out:               [],
+			in:                [],
+			unknownReferences: [],
+			hooks:             [],
+			environment:       defaultEnv()
+		}, { cds: [{ id: 3, when: true }] })
+		.definedBy(`3:loaded:${closureName}`, `3:loaded:${closureName}:fdef`)
+		.reads(`2@${closureName}`, `3:loaded:${closureName}`);
+}
+
 describe('load real-world', withTreeSitter(parser => {
 	const found = realWorldRdaFiles();
 	if(found.length === 0) {
@@ -36,34 +79,11 @@ describe('load real-world', withTreeSitter(parser => {
 				continue;
 			}
 
-			let graph = emptyGraph();
-			for(const [varName, varType] of varsAndTypesFromShell) {
-				const syntheticId = `3:loaded:${varName}`;
-				const cds = [{ id: '3', when: true }];
-
-				if(varType === SexpToRType[SexpType.CloSxp] || varType === SexpToRType[SexpType.SpecialSxp] || varType === SexpToRType[SexpType.BuiltInSxp]) {
-					const fdefId = `${syntheticId}:fdef`;
-					graph = graph.defineFunction(fdefId, [], {
-						entryPoint:        fdefId,
-						graph:             new Set(),
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						hooks:             [],
-						environment:       defaultEnv(),
-					}, { cds });
-					graph = graph.defineVariable(syntheticId, undefined, { cds });
-					graph = graph.definedBy(syntheticId, fdefId);
-				} else {
-					graph = graph.defineVariable(syntheticId, undefined, { cds });
-				}
-			}
-
 			assertDataflow(
 				label(`load defines variables from ${path.basename(file)}`, ['name-normal']),
 				parser,
 				`load("${file}")`,
-				graph,
+				loadedVarsGraph(varsAndTypesFromShell),
 				{ expectIsSubgraph: true }
 			);
 		}
@@ -123,19 +143,7 @@ describe('load real-world', withTreeSitter(parser => {
 				label(`function from load is callable in ${path.basename(file)}`, ['name-normal']),
 				parser,
 				`load("${file}")\n${closureName}()`,
-				emptyGraph()
-					.defineVariable(`3:loaded:${closureName}`, undefined, { cds: [{ id: 3, when: true }] })
-					.defineFunction(`3:loaded:${closureName}:fdef`, [], {
-						entryPoint:        `3:loaded:${closureName}:fdef`,
-						graph:             new Set(),
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						hooks:             [],
-						environment:       defaultEnv()
-					}, { cds: [{ id: 3, when: true }] })
-					.definedBy(`3:loaded:${closureName}`, `3:loaded:${closureName}:fdef`)
-					.reads(`2@${closureName}`, `3:loaded:${closureName}`),
+				loadedClosureCallGraph(closureName),
 				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 			);
 		}
@@ -197,27 +205,11 @@ describe('load random', withTreeSitter(parser => {
 			expect([...varsAndTypes.keys()].sort()).toEqual(vars.sort());
 		});
 
-		let graph = emptyGraph();
-		for(const [varName, varType] of varsAndTypes) {
-			const syntheticId = `3:loaded:${varName}`;
-			const cds = [{ id: '3', when: true }];
-			if(varType === SexpToRType[SexpType.CloSxp] || varType === SexpToRType[SexpType.SpecialSxp]  || varType === SexpToRType[SexpType.BuiltInSxp]) {
-				const fdefId = `${syntheticId}:fdef`;
-				graph = graph.defineFunction(fdefId, [], {
-					entryPoint: fdefId, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
-				}, { cds });
-				graph = graph.defineVariable(syntheticId, undefined, { cds });
-				graph = graph.definedBy(syntheticId, fdefId);
-			} else {
-				graph = graph.defineVariable(syntheticId, undefined, { cds });
-			}
-		}
-
 		assertDataflow(
 			label('load defines variables from generated rda', ['name-normal']),
 			parser,
 			`load("${file}")`,
-			graph,
+			loadedVarsGraph(varsAndTypes),
 			{ expectIsSubgraph: true }
 		);
 	});
@@ -306,13 +298,7 @@ describe('load random', withTreeSitter(parser => {
 				label('function from generated load is callable', ['name-normal']),
 				parser,
 				`load("${file}")\n${closureName}()`,
-				emptyGraph()
-					.defineVariable(`3:loaded:${closureName}`, undefined, { cds: [{ id: 3, when: true }] })
-					.defineFunction(`3:loaded:${closureName}:fdef`, [], {
-						entryPoint: `3:loaded:${closureName}:fdef`, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
-					}, { cds: [{ id: 3, when: true }] })
-					.definedBy(`3:loaded:${closureName}`, `3:loaded:${closureName}:fdef`)
-					.reads(`2@${closureName}`, `3:loaded:${closureName}`),
+				loadedClosureCallGraph(closureName),
 				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 			);
 		}

@@ -4,14 +4,6 @@ import { log } from './log';
 import LineByLine from 'n-readlines';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 
-/**
- * Represents a table, identified by a header and a list of rows.
- */
-export interface Table {
-	header: string[]
-	rows:   string[][]
-}
-
 /** Rethrows if the caller asked for it, otherwise reports the directory as skipped. */
 function skipUnreadableDir(dir: string, e: unknown, throwOnError: boolean): void {
 	if(throwOnError) {
@@ -81,12 +73,10 @@ const rFileRegex = /\.[rR]$/;
 /**
  * Retrieves all R files in a given directory (asynchronously)
  * @param input - directory-path to start the search from, can be a file as well. Will just return the file then.
- * @param limit - limit the number of files to be retrieved
- * @returns     Number of files processed (normally &le; `limit`, is &ge; `limit` if limit was reached).
- *          Will be `1`, if `input` is an R file (and `0` if it isn't).
+ * @returns     Number of files processed. Will be `1`, if `input` is an R file (and `0` if it isn't).
  * @see getAllFiles
  */
-export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
+export async function* allRFiles(input: string): AsyncGenerator<RParseRequestFromFile, number> {
 	let count = 0;
 	if(fs.statSync(input).isFile()) {
 		if(rFileRegex.test(input)) {
@@ -98,30 +88,8 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 	}
 
 	for await (const f of getAllFiles(input, rFileRegex)) {
-		if(++count > limit) {
-			return count;
-		}
+		++count;
 		yield { request: 'file', content: f };
-	}
-	return count;
-}
-
-/**
- * Retrieves all R files in a given set of directories and files (asynchronously)
- * @param inputs - Files or directories to validate for R-files
- * @param limit  - Limit the number of files to be retrieved
- * @returns      Number of files processed (&le; limit)
- * @see allRFiles
- */
-export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
-	limit ??= Number.MAX_VALUE;
-	if(inputs.length === 0) {
-		log.info('No inputs given, nothing to do');
-		return 0;
-	}
-	let count = 0;
-	for(const input of inputs) {
-		count += yield* allRFiles(input, limit - count);
 	}
 	return count;
 }

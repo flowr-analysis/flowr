@@ -9,7 +9,7 @@
  */
 
 import type { NoInfo, RNode } from '../model';
-import { guard, guardNesting } from '../../../../../util/assert';
+import { guardNesting } from '../../../../../util/assert';
 import type { SourceRange } from '../../../../../util/range';
 import { BiMap } from '../../../../../util/collections/bimap';
 import type { MergeableRecord } from '../../../../../util/objects';
@@ -17,7 +17,6 @@ import { RoleInParent } from './role';
 import { RType } from '../type';
 import { foldAstStateful } from './stateful-fold';
 import type { NodeId } from './node-id';
-import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import { RPipe } from '../nodes/r-pipe';
 import { EmptyArgument, type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall } from '../nodes/r-function-call';
@@ -47,31 +46,6 @@ export function sourcedDeterministicCountingIdGenerator(path: string, location: 
 	let id = start;
 	const [sl, sc] = location;
 	return () => `${path}:${sl}:${sc}-${id++}`;
-}
-
-function loc2Id([sl, sc, el, ec]: SourceRange): string {
-	return `${sl}:${sc}-${el}:${ec}`;
-}
-
-/**
- * Generates the location id, used by {@link deterministicLocationIdGenerator}.
- * @param data - the node to generate an id for, must have location information
- */
-export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo> | RDelimiter): NodeId {
-	const loc = data.location;
-	guard(loc !== undefined, 'location must be defined to generate a location id');
-	return loc2Id(loc);
-}
-
-/**
- * Generates unique ids based on the locations of the node (see {@link nodeToLocationId}).
- * If a node has no location information, it will be assigned a unique counter-value.
- * @param start - the start value for the counter, in case nodes do not have location information
- */
-export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenerator<OtherInfo> {
-	let id = start;
-	return (data:  RProject<OtherInfo> | RNode<OtherInfo>) =>
-		'location' in data && data.location !== undefined ? nodeToLocationId(data) : `${id++}`;
 }
 
 export interface ParentContextInfo extends MergeableRecord {

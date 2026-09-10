@@ -85,7 +85,7 @@ export enum CallProp {
 	Ffi        = 1 << 10,
 	/** produces a language object, like `quote` or `deparse` */
 	Lang       = 1 << 11,
-	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfFunction}) */
+	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfEach}) */
 	Strict     = 1 << 12,
 	/**
 	 * runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only
@@ -493,7 +493,7 @@ export interface BuiltInFnInfo extends StatedProps {
 	readonly keepEnvironment?: boolean
 	/**
 	 * What this call lets the function around it reach about its own formals without naming one of them, e.g.
-	 * `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRoles}.
+	 * `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRolesOf}.
 	 */
 	readonly frame?:           ArgProps
 }

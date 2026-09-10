@@ -12,6 +12,7 @@ import {
 	deterministicCountingIdGenerator,
 	type IdGenerator,
 	type NormalizedAst,
+	type ParentInformation,
 	type RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
@@ -539,6 +540,8 @@ interface TestCaseParams {
 	autoSelectIf:         AutoSelectPredicate,
 	/** Disable Tree-sitter tests */
 	skipTreeSitter:       boolean,
+	/** Whether to skip the shell/Tree-sitter AST comparison (only relevant when the divergence is a known issue) */
+	skipCompare:          boolean,
 	/** Which CFG properties to exclude for CFG checks */
 	cfgExcludeProperties: readonly CfgProperty[],
 	/** Denotes whether the tests should fail in all cases or only for shell or Tree-sitter tests */
@@ -597,6 +600,21 @@ export function assertSliced(
 			testConfig?.testCaseFailType === 'fail-both' || testConfig?.testCaseFailType === 'fail-tree-sitter',
 			'tree-sitter',
 			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testConfig?.testCaseFailType !== 'fail-both' && testConfig?.testCaseFailType !== 'fail-tree-sitter'),
+		);
+
+		testWrapper(
+			testConfig?.skipTreeSitter || testConfig?.skipCompare,
+			false,
+			'compare ASTs',
+			function() {
+				const tsAst = tsResult?.normalize.ast as RProject<ParentInformation>;
+				const shellAst = shellResult?.normalize.ast as RProject<ParentInformation>;
+				assertAstEqual(
+					tsAst, shellAst, true, true,
+					() => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`,
+					false
+				);
+			},
 		);
 
 		/* the cfg invariant must never run under `test.fails`, a regression in it is a real failure even for expected-fail slices */

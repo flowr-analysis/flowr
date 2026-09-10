@@ -97,15 +97,6 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 }
 
 /**
- * {@link FunctionSemantics.call.match.toSpec|Matches} the arguments against a parameter specification, returning the
- * arguments bound to each target.
- * @useInstead {@link FunctionSemantics.call.match.toSpec}
- */
-export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
-	return FunctionSemantics.call.match.toSpec(args, params);
-}
-
-/**
  * Links the function call arguments to the target function definition and returns a map from argument ids to parameter ids.
  */
 function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): Map<NodeId, NodeId> | undefined {

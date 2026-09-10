@@ -158,13 +158,4 @@ export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, {
 }
 
 
-/**
- * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
- * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
- * @deprecated use {@link exceptionsOfFunction} instead
- */
-export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction = {}): ExceptionsByFunction {
-	return exceptionsOfFunction(id, graph, { knownThrower });
-}
-
 const NoPoints: ReadonlyMap<NodeId, ExceptionPoint> = new Map();

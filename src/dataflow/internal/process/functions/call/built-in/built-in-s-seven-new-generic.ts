@@ -112,7 +112,7 @@ export function processMakeConstructor<OtherInfo>(
 		readonly mode?:      readonly ('s7' | 's3' | 's4')[],
 		readonly wrapIndex?: number,
 		readonly wrapName?:  string,
-		/** what the call declares about a class, see {@link classDeclarationOf} */
+		/** what the call declares about a class, see {@link classDeclarationOfImpl} */
 		readonly classDecl?: ClassDeclarationConfig
 	}
 ): DataflowInformation {

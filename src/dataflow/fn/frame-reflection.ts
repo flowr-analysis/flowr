@@ -32,7 +32,7 @@ export function* callsIn(definition: DataflowGraphVertexFunctionDefinition, grap
  * Recomputes `recompute(id)` for every node reachable from `seed` along the reverse of `successors`, so a
  * change at a node is carried on to whatever points at it, until nothing grows anymore. `recompute` updates
  * its node's value itself and reports whether it grew; shared by {@link propagateOverCalls} and
- * {@link calculateExceptionsOfFunction}, which differ only in what "grew" means for the value they carry, and
+ * {@link exceptionsOfFunction}, which differ only in what "grew" means for the value they carry, and
  * by {@link carriersOf} below, which grows a set rather than a bitfield.
  */
 export function propagateToFixpoint(seed: Iterable<NodeId>, successors: ReadonlyMap<NodeId, readonly NodeId[]>, recompute: (id: NodeId) => boolean): void {
@@ -85,16 +85,6 @@ export function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFun
 	return roles;
 }
 
-
-/**
- * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the
- * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none). `get("x", envir = e)` and
- * `e$x` are followed to the name directly; `as.list(environment())` and a frame handed elsewhere mean any formal.
- * @deprecated use {@link reflectiveRolesOf} instead
- */
-export function reflectiveRoles(definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup): ArgProps {
-	return reflectiveRolesOf(definition, graph, { known });
-}
 
 /** Whether the call was handed the frame to look at ({@link ArgProp.Handle}, as in `environment(g)`). */
 function handedAnotherFrame(vertex: DataflowGraphVertexFunctionCall, known: BuiltInLookup): boolean {

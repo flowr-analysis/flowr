@@ -67,7 +67,7 @@ export interface ProcessKnownFunctionCallResult {
 	/**
 	 * The arguments as recorded on the function call vertex.
 	 * They are also part of the information via the function call vertex adde, but sometimes useful separately.
-	 * For example, together with {@link pMatch} to do custom parameter matching.
+	 * For example, together with {@link FunctionSemantics.call.match.toSpec} to do custom parameter matching.
 	 */
 	readonly callArgs:           readonly FunctionArgument[]
 }

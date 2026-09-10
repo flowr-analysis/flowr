@@ -86,7 +86,7 @@ export const FunctionArgument = {
 		}
 		return arg.valueId;
 	},
-	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link pMatch} for that). */
+	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link FunctionSemantics.call.match.toSpec} for that). */
 	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
 		return FunctionArgument.isNamed(arg) && arg.name === name;
 	}

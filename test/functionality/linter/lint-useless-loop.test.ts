@@ -10,23 +10,23 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty: LintingResultCertainty.Certain,
 			name:      'for',
 			loc:       [1, 1, 1, 27]
-		}], undefined, undefined);
+		}]);
 
 		assertLinter('i in a scalar', parser, 'for(i in 1) { print(i) }', 'useless-loop', [{
 			certainty: LintingResultCertainty.Certain,
 			name:      'for',
 			loc:       [1, 1, 1, 24]
-		}], undefined, undefined);
+		}]);
 
 		/** Given a loop the linter checks, if the loop is always stopped after the first iteration */
 		assertLinter('always break', parser, 'for(i in c(1,2,3)) { print(i); break }', 'useless-loop', [{
 			certainty: LintingResultCertainty.Certain,
 			name:      'for',
 			loc:       [1, 1, 1, 38]
-		}], undefined, undefined);
+		}]);
 	});
 
 	describe('Not a Useless Loop', () => {
-		assertLinter('repeat with break', parser, 'repeat { x <- x + 2; if(u) { break } else {} }', 'useless-loop', [], undefined, undefined);
+		assertLinter('repeat with break', parser, 'repeat { x <- x + 2; if(u) { break } else {} }', 'useless-loop', []);
 	});
 }));

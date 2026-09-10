@@ -151,7 +151,7 @@ jobs:
         run: npm ci
 
       - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           # only the bundles, the shards unpacked next to them are re-derived on demand
           path: ~/.cache/flowr/sigdb/bundles
@@ -174,7 +174,7 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run --reporter=default --reporter=json --outputFile.json=coverage/flowr-mutation-test-results.json -- --make-summary"
 
       - name: "⬆️ Upload Test Label Details"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-label-details
           path: |
@@ -187,7 +187,7 @@ jobs:
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
         if: github.ref == 'refs/heads/main'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
@@ -241,7 +241,7 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
@@ -274,7 +274,7 @@ jobs:
           cache: npm
 
       - name: "⬇️ Get the Test Label Details"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         continue-on-error: true
         with:
           name: test-label-details
@@ -282,7 +282,7 @@ jobs:
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the release.yaml
       - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-artificial-r-shell
           path: benchmark-ai-r-shell/
@@ -331,7 +331,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (real-world, r-shell)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-real-world-r-shell
           path: benchmark-rw-r-shell
@@ -380,7 +380,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (artificial, tree-sitter)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-artificial-tree-sitter
           path: benchmark-ai-tree-sitter/
@@ -429,7 +429,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (real-world, tree-sitter)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-real-world-tree-sitter
           path: benchmark-rw-tree-sitter
@@ -478,7 +478,7 @@ jobs:
           auto-push: false
 
       - name: "⬆️ Upload Benchmark Graph Data"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results-graph-data
           path: wiki/stats/benchmark/

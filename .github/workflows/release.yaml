@@ -99,7 +99,7 @@ jobs:
       - name: "⬆️ Upload Test Label Details"
         # the test job is a matrix, so only one leg may claim the artifact name
         if: matrix.os == 'ubuntu-latest' && matrix.r-version == '4.5.0'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-label-details
           path: |
@@ -110,7 +110,7 @@ jobs:
           if-no-files-found: warn
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
@@ -345,7 +345,7 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 2 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
@@ -387,14 +387,14 @@ jobs:
 
       # the counters need node and the labels, so both have to be there before the first suite is touched
       - name: "⬇️ Get the Test Label Details"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         continue-on-error: true
         with:
           name: test-label-details
           path: test-labels/
 
       - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-artificial-r-shell
           path: benchmark-ai-r-shell/
@@ -443,7 +443,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (real-world, r-shell)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-real-world-r-shell
           path: benchmark-rw-r-shell/
@@ -490,7 +490,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (artificial, tree-sitter)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-artificial-tree-sitter
           path: benchmark-ai-tree-sitter/
@@ -539,7 +539,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (real-world, tree-sitter)"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: benchmark-results-real-world-tree-sitter
           path: benchmark-rw-tree-sitter/
@@ -595,7 +595,7 @@ jobs:
       # the data is not committed here: the wiki workflow picks the artifact up and folds it into its own
       # documentation commit, so a release produces one doc commit instead of two
       - name: "⬆️ Upload the benchmark data for the wiki workflow"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-data
           path: wiki/stats/benchmark/

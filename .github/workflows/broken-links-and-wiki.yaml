@@ -89,7 +89,7 @@ jobs:
           bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
       - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           # only the bundles, the shards unpacked next to them are re-derived on demand
           path: ~/.cache/flowr/sigdb/bundles
@@ -104,7 +104,7 @@ jobs:
       # the release workflow produces the data but does not commit it, so it lands in the same commit as the pages
       - name: "⬇️ Get the Benchmark Data from the Release Run"
         if: ${{ github.event_name == 'workflow_run' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         continue-on-error: true
         with:
           name: benchmark-data
@@ -282,7 +282,7 @@ jobs:
         run: npm ci
 
       - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           # only the bundles, the shards unpacked next to them are re-derived on demand
           path: ~/.cache/flowr/sigdb/bundles

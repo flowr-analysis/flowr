@@ -13,6 +13,8 @@ import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/n
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { cleanupSigTmpDirs, expFn, sigTmpDir, sigdbAnalyzer, ver, writeAndOpen } from '../../_helper/sigdb';
 import { SigDbBuilder } from '../../../../src/project/sigdb/build';
+import { SigDatabase } from '../../../../src/project/sigdb/reader';
+import { FnProp } from '../../../../src/project/sigdb/schema';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -45,8 +47,8 @@ function r(results: CallContextQuerySubKindResult[], kind = 'test-kind', subkind
 }
 
 describe('Call Context Query', withTreeSitter(parser => {
-	function testQuery(name: string, code: string, query: readonly CallContextQuery[], expected: QueryResultsWithoutMeta<CallContextQuery>) {
-		assertQuery(label(name), parser, code, query, expected);
+	function testQuery(name: string, code: string, query: readonly CallContextQuery[], expected: QueryResultsWithoutMeta<CallContextQuery>, database?: SigDatabase) {
+		assertQuery(label(name), parser, code, query, expected, false, database);
 	}
 	testQuery('No Call', '1', [q(/print/)], baseResult({}));
 	testQuery('No Call (Symbol)', 'print', [q(/print/)], baseResult({}));
@@ -165,13 +167,24 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('With compaction optimization', 'print(1)', new Array(10000).fill(q('print')), r([{ id: 3, name: 'print' }]));
 	});
 	describe('Arguments rely on criteria', () => {
+		function baseSigDb(){
+			const b = new SigDbBuilder();
+			b.addPackage('base', { latest: '4.5.3', core: true });
+			b.addVersion('base', '4.5.3', ver([{ name: 'print', props: FnProp.Exported, params: [{ name: 'x' }, { name: '...' }], callees: [], line: 1 },
+				{ name: '*', props: FnProp.Exported, params: [{ name: 'x' }, { name: 'y' }], callees: [], line: 1 },
+				{ name: '+', props: FnProp.Exported, params: [{ name: 'x' }, { name: 'y' }], callees: [], line: 1 },
+				{ name: 'length', props: FnProp.Exported, params: [{ name: 'x' }], callees: [], line: 1 },
+				{ name: 'getOption', props: FnProp.Exported, params: [{ name: 'x' }, { name: 'default' }], callees: [], line: 1 },
+				{ name: 'toString', props: FnProp.Exported, params: [{ name: 'x' }], callees: [], line: 1 }]));
+			return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
+		}
+		const sigDb = baseSigDb();
 		testQuery('Simple direct call', 'print(getOption("x", default = 1)); print(4)',
-			[q(/print/, { reliesOnCriteria: [{ name: 'x', calls: 'getOption' }] })], r([{ id: 9, name: 'print' }])
-		);
-		testQuery('Simple 2', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 17, name: 'print' }]));
-		testQuery('Simple 3', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }] })], r([{ id: 27, name: 'print' }]));
-		testQuery('Simple 4', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: 'x', calls: '\\+' }] })], r([{ id: 19, name: 'print' }]));
-		testQuery('Simple nested', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }, { name: '*', calls: '\\*' }] })], r([{ id: 19, name: 'print' }]));
+			[q(/print/, { reliesOnCriteria: [{ name: 'x', calls: 'getOption' }] })], r([{ id: 9, name: 'print' }]), sigDb);
+		testQuery('Simple 2', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 17, name: 'print' }]), sigDb);
+		testQuery('Simple 3', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }] })], r([{ id: 27, name: 'print' }]), sigDb);
+		testQuery('Simple 4', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: 'x', calls: '\\+' }] })], r([{ id: 19, name: 'print' }, { id: 27, name: 'print' }]), sigDb);
+		testQuery('Simple nested', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }, { name: '*', calls: '\\*' }] })], r([{ id: 19, name: 'print' }]), sigDb);
 		testQuery('Relies on with default value', `f <- function(x = foo())  {
   print(x)
 }
@@ -179,13 +192,13 @@ foo <- function() getOption("bar")
 f()
 f(x=42)
 f(42)
-f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: 'x', calls: 'getOption' }] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
+f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: 'x', calls: 'getOption' }] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]), sigDb);
 
 		testQuery('Direct call - own function', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
-f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 29, name: 'f' }]));
+f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 29, name: 'f' }]), sigDb);
 
 		testQuery('Relies on value', `f <- function(x = foo())  {
   print(x)
@@ -193,23 +206,32 @@ f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', calls: 'getO
 foo <- function() getOption("bar")
 a <- 2
 b <- a
-f(b)`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', value: '2' }] })], r([{ id: 31, name: 'f' }]));
+f(b)`, [q(/^f$/, { reliesOnCriteria: [{ name: '*', value: '2' }] })], r([{ id: 31, name: 'f' }]), sigDb);
 
 
-		testQuery('Relies on nested criteria', `f <- function(x = foo())  {
+		/*testQuery('Relies on nested criteria', `f <- function(x = foo())  {
+  print(x)
+}
+foo <- function() getOption("bar")
+f(getOption(length(4)))
+f(getOption("bar"))
+f(getOption(length(3)))`, [q(/f/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }, { name: '*', calls: 'length' }, { name: '*', value: '4' }] })], r([{ id: 31, name: 'f' }]), sigDb);
+*/
+		testQuery('Relies on nested criteria - toString', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
 f(getOption(toString(4)))
 f(getOption("bar"))
-f(getOption(toString(3)))`, [q(/f/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }, { name: '*', calls: 'toString' }, { name: '*', value: '4' }] })], r([{ id: 31, name: 'f' }]));
+f(getOption(toString(3)))`, [q(/f/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }, { name: '*', calls: 'toString' }, { name: '*', value: '4' }] })], r([{ id: 31, name: 'f' }]), sigDb);
+
 
 		testQuery('Relies on nested criteria - default values', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function(x = 5) print(y)
 f()
-f(4)`, [q(/^f$/, { reliesOnCriteria: [{ name: 'x', calls: 'foo' }, { name: 'x', value: '5' }] })], r([{ id: 26, name: 'f' }]));
+f(4)`, [q(/^f$/, { reliesOnCriteria: [{ name: 'x', calls: 'foo' }, { name: 'x', value: '5' }] })], r([{ id: 26, name: 'f' }]), sigDb);
 
 
 	});

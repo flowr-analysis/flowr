@@ -26,7 +26,6 @@ import { guard, isNotUndefined, isUndefined } from '../../../util/assert';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverContent, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { FunctionArgument } from '../../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
 import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../../../dataflow/graph/vertex';
 import type {
@@ -44,6 +43,7 @@ import type { KnownParser } from '../../../r-bridge/parser';
 import { unwrapRValueToString, unliftRValue } from '../../../util/r-value';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -317,47 +317,26 @@ async function sliceAfterDep(args: { name: string | undefined, id: NodeId }[], d
 }
 
 async function isDependentOn(parameter: string, dep: PromotedCallTest | undefined, value: string | undefined, fCall: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph, analyzer: ReadonlyFlowrAnalysisProvider): Promise<{ dep: true, call: Required<DataflowGraphVertexFunctionCall> | undefined } | { dep: false }> {
-	const astCall = graph.idMap?.get(fCall?.id) as RFunctionCall<ParentInformation> | undefined;
-	if(!RFunctionCall.is(astCall) && !RBinaryOp.is(astCall) && !RUnaryOp.is(astCall)) {
+	const astCall = graph.idMap?.get(fCall?.id) as RFunctionCall<ParentInformation> | undefined | RBinaryOp<ParentInformation> | RUnaryOp<ParentInformation>;
+	let defs: ReadonlyMap<string, RArgument<ParentInformation>> | undefined;
+	if(RBinaryOp.is(astCall)){
+		const map = new Map<string, RArgument<ParentInformation>>();
+		map.set('x', astCall.lhs as RArgument<ParentInformation>);
+		map.set('y', astCall.rhs as RArgument<ParentInformation>);
+		defs = map;
+	} else if(RUnaryOp.is(astCall)){
+		const map = new Map<string, RArgument<ParentInformation>>();
+		map.set('x', astCall.operand as RArgument<ParentInformation>);
+		defs = map;
+	} else if(RFunctionCall.is(astCall)){
+		defs = MatchArgs.toDefinition(astCall, graph, analyzer.inspectContext());
+	} else {
 		return { dep: false };
 	}
-	const defs = MatchArgs.toDefinition(astCall, graph, analyzer.inspectContext());
-	// TODO: match against signaue (so that we can for example slice for the x of a print)
 	const slicedParam = new Set<string>();
 	const isParam = parameter === '*' ? () => true : (p: string | undefined) => p === parameter;
-	//todo: den fall nachher raus?
 	if(defs === undefined){
-		if(isNotUndefined(dep)){
-			//e.g. f(getOption(x)), searching for dep 'getOption'
-			for(const arg of fCall.args){
-				if(!FunctionArgument.isEmpty(arg)){
-					const name = recoverName(arg.nodeId, graph.idMap);
-					const vertex = graph.getVertex(arg.nodeId);
-					if(name && dep(name) && FunctionCallVertex.is(vertex)){
-						return { dep: true, call: vertex };
-					}
-				}
-			}
-		}
-		const args = fCall.args.map(arg => {
-			if(!FunctionArgument.isEmpty(arg) && isParam(arg.name)){
-				return { name: arg.name, id: arg.nodeId };
-			}
-		}).filter(element => {
-			return isNotUndefined(element);
-		});
-		if(isNotUndefined(dep)){
-			const sliced = await sliceAfterDep(args, dep, graph, analyzer, slicedParam);
-			if(sliced.dep){
-				return sliced;
-			}
-		}
-		if(isNotUndefined(value)){
-			const resolved = resolveValueOfArgument(args, fCall, value, graph, analyzer);
-			if(resolved.dep){
-				return resolved;
-			}
-		}
+		return { dep: false };
 	} else {
 		const possibleArgs = defs.entries().filter(([param, _]) => {
 			return isParam(param);
@@ -375,7 +354,7 @@ async function isDependentOn(parameter: string, dep: PromotedCallTest | undefine
 			}
 		}
 		const args = possibleArgs.map(([param, arg]) => {
-			return { name: param, id: arg.info.id };
+			return { name: param, id: arg.value?.info.id ?? arg.info.id };
 		});
 		if(isNotUndefined(dep)){
 			const sliced = await sliceAfterDep(args, dep, graph, analyzer, slicedParam);

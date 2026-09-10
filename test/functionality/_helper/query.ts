@@ -15,6 +15,9 @@ import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
+import { sigdbAnalyzer } from './sigdb';
+import type { SigDatabase } from '../../../src/project/sigdb/reader';
+import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -34,6 +37,7 @@ function normalizeResults<Queries extends Query>(result: QueryResults<Queries['t
  * @param queries  - Queries to execute
  * @param expected - Expected result of the queries (without attached meta-information like timing), if this is empty, you just want to check that no exception has been thrown
  * @param runFull  - Whether to run the full analysis beforehand
+ * @param db       - Database the analyzer should be created with. Only works if {@link parser} is an instance of TreeSitterExecutor
  */
 export function assertQuery<
 	Queries extends Query,
@@ -44,7 +48,8 @@ export function assertQuery<
 	code: string,
 	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
 	expected?: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
-	runFull = false
+	runFull = false,
+	db?: SigDatabase
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
@@ -66,11 +71,10 @@ export function assertQuery<
 				assert.fail(`Invalid query: ${validationResult.error.message}`);
 			}
 		}
-
-
-		const analyzer = await new FlowrAnalyzerBuilder()
-			.setParser(parser)
-			.build();
+		const analyzer = db !== undefined && parser instanceof TreeSitterExecutor ? await sigdbAnalyzer(parser, db) :
+			await new FlowrAnalyzerBuilder()
+				.setParser(parser)
+				.build();
 		analyzer.addRequest(code);
 		if(runFull) {
 			// we run the dfa analysis to make sure normalization post-patches are ready!

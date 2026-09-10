@@ -170,7 +170,6 @@ function isCertainRemoval(refs: readonly IdentifierReference[]): boolean {
 
 function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[], killedBy: readonly NodeId[] | undefined): void {
 	if(isCertainRemoval(refs)) {
-		/* only a removal that took something away can reveal what was hidden underneath it */
 		const removed = env.lookup(Identifier.getName(name)) !== undefined;
 		env.remove(name);
 		if(removed && killedBy !== undefined) {

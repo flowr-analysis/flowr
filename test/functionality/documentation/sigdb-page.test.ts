@@ -5,7 +5,6 @@ import { assert, describe, test } from 'vitest';
 
 const Root = path.join(__dirname, '..', '..', '..');
 
-/** every element id and JSON script tag that scripts/sigdb-page/main.ts reads off the document */
 const Hooks = ['q', 'mode', 'sort', 'filters', 'scope', 'status', 'hits', 'data', 'kinds', 'stated', 'topics', 'formals', 'groups', 'generics', 'topics-complete'];
 
 describe('Signature database page', () => {
@@ -17,7 +16,6 @@ describe('Signature database page', () => {
 		}
 	});
 
-	/* the page needs a multi-gigabyte database untested here; this checks the bundle still reads every hook */
 	test('scripts/sigdb-page/main.ts bundles into a classic script that still reads every id', async() => {
 		const bundled = await build({
 			entryPoints: [path.join(Root, 'scripts', 'sigdb-page', 'main.ts')],

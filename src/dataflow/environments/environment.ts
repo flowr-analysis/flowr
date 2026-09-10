@@ -218,7 +218,6 @@ export class Environment implements IEnvironment {
 
 	/** Only sound on an environment nobody else holds yet. */
 	private apply(name: BrandedIdentifier, definition: IdentifierDefinition & { name: Identifier }): void {
-		/* writing the name again is what ends the removal that had revealed what lay beneath it */
 		if(anyRemovalMarker(name)) {
 			const marker = removalMarkerOf(name);
 			this.writableMemory.delete(marker);

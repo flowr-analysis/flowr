@@ -27,11 +27,10 @@ import { groupGenericMembers, groupGenericOf, isGroupGeneric } from '../../../da
 import { uniqueArray } from '../../../util/collections/arrays';
 import { dottedSplits } from '../../../util/text/strings';
 import { compactRecord } from '../../../util/objects';
+import { baseManualTopicUrl, cranMirrorRepoUrl, cranMirrorSourceUrl, cranPageUrl, rdrrTopicUrl, rSourceRef, rSourceUrl } from '../../../util/r-package-urls';
 
-/** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
-export function cranPageUrl(pkg: string): string {
-	return `https://cran.r-project.org/package=${encodeURIComponent(pkg)}`;
-}
+export { cranMirrorSourceUrl, cranPageUrl, rSourceRef, rSourceUrl };
+
 
 /** whether a pattern uses glob wildcards (`*`, `?`) */
 function hasGlob(pattern: string | undefined): boolean {
@@ -110,39 +109,6 @@ function releaseMatcher(spec: string): (entry: AvailableVersion) => boolean {
 	return e => byVersion(e.version);
 }
 
-/** read-only CRAN GitHub mirror base; `github.com/cran/<pkg>` mirrors every CRAN package and tags each release */
-const CranGithubMirror = 'https://github.com/cran';
-
-/** the mirror repository of a CRAN package */
-function cranMirrorRepoUrl(pkg: string): string {
-	return `${CranGithubMirror}/${encodeURIComponent(pkg)}`;
-}
-
-/** deep-link a definition into the CRAN mirror at the package's version tag (falling back to `HEAD`) */
-export function cranMirrorSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
-	const ref = version ? encodeURIComponent(version) : 'HEAD';
-	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
-	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
-}
-
-/** read-only GitHub mirror of R's own SVN; base packages live under `src/library/<pkg>` */
-const RSourceMirror = 'https://github.com/wch/r-source';
-
-/**
- * The mirror ref holding an R version: the mirror carries no tags, only a `R-<major>-<minor>-branch` per release
- * series (exact to the minor release, latest patch); `trunk` stands in when the version is unknown.
- */
-export function rSourceRef(version: string | undefined): string {
-	const series = /^(\d+)\.(\d+)/.exec(version ?? '');
-	return series ? `R-${series[1]}-${series[2]}-branch` : 'trunk';
-}
-
-/** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
-	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
-	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
-}
-
 /** function/topic names that map cleanly to a man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /**
@@ -153,13 +119,7 @@ export function helpPageUrl(pkg: string, fn: string, opts: { base: boolean, cran
 	if(!RdrrTopicName.test(fn)) {
 		return undefined;
 	}
-	if(opts.base) {
-		return `https://stat.ethz.ch/R-manual/R-devel/library/${pkg}/html/${fn}.html`;
-	}
-	if(opts.cran) {
-		return `https://rdrr.io/cran/${pkg}/man/${fn}.html`;
-	}
-	return undefined;
+	return opts.base ? baseManualTopicUrl(pkg, fn) : opts.cran ? rdrrTopicUrl(pkg, fn) : undefined;
 }
 
 /**
@@ -906,7 +866,6 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const q = queries[queries.length - 1] ?? { type: 'signature' };
 	const ctx = analyzer.inspectContext();
 	const deps = ctx.deps;
-	/* the built-ins this analyzer registered, so a configured or dropped built-in is what the query answers with */
 	const builtIns = ctx.env.builtInIndex;
 	const databases: SignatureDatabaseView[] = deps.loadedSignatureDatabases()
 		.map(d => ({ scope: d.scope, version: d.version, date: d.date }));

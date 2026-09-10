@@ -83,7 +83,6 @@ export const Deferred = {
 			for(const [id] of graph.verticesOfType(type)) {
 				const name = NodeId.recoverName(id, idMap);
 				if(name !== undefined) {
-					/* a name written as a string, the way `assign` and `get` take it, keeps its quotes in the lexeme */
 					add(index, removeRQuotes(name), id);
 				}
 			}

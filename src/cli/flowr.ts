@@ -130,8 +130,6 @@ function createConfig(): FlowrConfig {
 	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
 
-		/* the config may already carry this engine, and `getForEngine` answers with the first entry of a type,
-		 * so a second one would leave every flag below dead; what the command line states wins instead */
 		const engine = <E extends EngineConfig>(values: E): void => {
 			const engines = c.engines as EngineConfig[];
 			const at = engines.findIndex(e => e.type === values.type);

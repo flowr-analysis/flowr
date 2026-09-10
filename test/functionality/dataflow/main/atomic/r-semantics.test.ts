@@ -148,7 +148,6 @@ describe('R semantics we model', { concurrent: false }, withShell(shell => {
 		assert.strictEqual(said, 'TRUE', `R disagrees with what we model: ${claim.is}`);
 	});
 
-	/* a self-check of the table above, which grounds no capability of its own */
 	test(label('every claim carries the capability it grounds', [], ['other']), () => {
 		assert.isTrue(Claims.every(c => c.capabilities.length > 0));
 	});

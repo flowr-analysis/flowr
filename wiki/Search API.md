@@ -1,5 +1,4 @@
-_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8, R v4.6.1), do not edit directly._
-
+_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and the
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
@@ -8,33 +7,24 @@ Within code, you can execute a search using the <a href="https://github.com/flow
 
 For an initial motivation, let's have a look at the following example:
 
-
-
-
 ```ts
 Q.get({"name":"x"})
 ```
 
-
 <details style="color:gray"> <summary>Search Visualization</summary>
-
 
 ```mermaid
 flowchart LR
 0("<b>get</b>(filter: #123;#34;name#34;#58;#34;x#34;#125;)<br/>_generator_")
 ```
 
-
 In the code:
-
 
 ```r
 x <- x * x
 ```
 
-
 <details style="color:gray"> <summary>JSON Representation</summary>
-
 
 ```json
 {
@@ -51,11 +41,9 @@ x <- x * x
 }
 ```
 
-
 </details>
 
 </details>
-
 
  <details> <summary style="color:gray">Show Results</summary>
 
@@ -65,10 +53,6 @@ The query returns the following vetices (all references to `x` in the code):
 The search ran (including parsing and normalization and the query) within the generation environment.
 
 The returned results are highlighted thick and blue within the dataflow graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -108,40 +92,27 @@ flowchart LR
     linkStyle 10 stroke:gray;
 ```
 
-	
 (The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
-
-
-
 </details>
-
-	
 
 This returns all references to the variable `x` in the code.
 However, the search API is not limited to simple variable references and can do much more.
 
 For example, let's have every definition of `x` in the code but the first one:
 
-
-
-
 ```ts
 Q.get({"name":"x"}).filter(VertexType.VariableDefinition).skip(1)
 ```
 
-
 <details style="color:gray"> <summary>Search Visualization</summary>
-
 
 ```mermaid
 flowchart LR
 0("<b>get</b>(filter: #123;#34;name#34;#58;#34;x#34;#125;)<br/>_generator_") --> 1["<b>filter</b>(filter: #34;vdef#34;)<br/>_transformer_"] --> 2["<b>skip</b>(count: 1)<br/>_transformer_"]
 ```
 
-
 In the code:
-
 
 ```r
 x <- x * x
@@ -151,9 +122,7 @@ print(x)
 x <- 2
 ```
 
-
 <details style="color:gray"> <summary>JSON Representation</summary>
-
 
 ```json
 {
@@ -185,11 +154,9 @@ x <- 2
 }
 ```
 
-
 </details>
 
 </details>
-
 
  <details> <summary style="color:gray">Show Results</summary>
 
@@ -199,10 +166,6 @@ The query returns the following vetices (all references to `x` in the code):
 The search ran (including parsing and normalization and the query) within the generation environment.
 
 The returned results are highlighted thick and blue within the dataflow graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -318,15 +281,9 @@ print`"]
     linkStyle 40 stroke:gray;
 ```
 
-	
 (The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
-
-
-
 </details>
-
-	
 
 In summary, every search has two parts. It is initialized with a _generator_ (such as `Q.var('x')`)
 and can be further refined with _transformers_ or _modifiers_.
@@ -342,7 +299,6 @@ Additionally, inline code (code without a file path) is treated as having an emp
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L43"><code><span title="This object holds all the methods to generate search queries. For compatibility, please use the Q identifier object to access these methods.">FlowrSearchGenerator</span></code></a> provides several convenience functions for searching variables with file path filtering.
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L131"><code><span title="Short form of get with only the name filter: get({name}).">FlowrSearchGenerator::<b>var</b></span></code></a> and other functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L78"><code><span title="Returns all elements that match the given filters . You may pass a negative line number to count from the back. Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for 'production'.">FlowrSearchGenerator::<b>get</b></span></code></a>
 also allow you to pass in a regex to only match files that fit your specified pattern! 
-
 
 We offer the following generators:
 

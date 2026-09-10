@@ -45,10 +45,6 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'shinyjs', name: 'extendShinyjs', argIdx: 0, argName: 'script', resolveValue: true, ignoreIf: 'arg-missing' }
 ] as const;
 
-/* the built-in configuration leads: it is where flowR states what a call does, and the entries below are the
-   exceptions that need more than a resource argument. For a call naming no package the first entry able to
-   apply answers, so a name several packages export is read the way the configuration states it.
-   `source` reads a file too, but it is the `sourced` category that reports it, so it stays out of this one */
 /** The read entries the given built-in definitions imply, together with the ones written down here. */
 export function computeReadFunctions(definitions: BuiltInDefinitions): FunctionInfo[] {
 	return [

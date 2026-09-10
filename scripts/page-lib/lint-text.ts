@@ -1,7 +1,3 @@
-/**
- * One linter finding in the linter's own words, as both the landing page and the playground say it.
- * @module
- */
 import { LintingRules } from '../../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../../src/linter/linter-format';
 

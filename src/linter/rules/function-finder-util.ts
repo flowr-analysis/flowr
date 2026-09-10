@@ -122,7 +122,6 @@ export const functionFinderUtil = {
 };
 
 
-/** Whether the call writes the argument at all, by position or by name. */
 function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: string | undefined): boolean {
 	return call.args.some((arg, index) => arg !== EmptyArgument
 		&& (argName !== undefined ? arg.name === argName : index === argIdx));
@@ -150,8 +149,6 @@ export function hasArgumentValue(
 	// we obtain all values, at least one of them has to trigger for the request
 	const argValues: string[] = args ? args.values().flatMap(s => Array.from(s)).filter(isNotUndefined).toArray() : [];
 	if(argValues.length === 0) {
-		/* an argument the call does not supply takes the documented default -- `cat`'s `file = ""` is the
-		 * console, not a URL -- so only an argument that *is* there and does not resolve is a maybe */
 		return suppliesArgument(fnVertex, argIdx, argName) ? Ternary.Maybe : Ternary.Never;
 	} else if(argValues.some(v => test instanceof RegExp ? test.test(v) : v === test)) {
 		return Ternary.Always;

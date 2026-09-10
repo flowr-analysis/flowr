@@ -1,5 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-09-09, 15:40:41 UTC (v2.15.8, R v4.6.1), do not edit directly._
-
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L192"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -40,12 +39,7 @@ y <- x + 1
 y
 ```
 
-
 With this code, the corresponding dataflow graph looks like this:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -108,10 +102,7 @@ flowchart LR
     8 -->|"reads"| 3
 ```
 
-	
 (The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G&nbsp;=&nbsp;(V,&nbsp;E), 
 differentiating between 5 types of vertices&nbsp;V and
@@ -120,12 +111,7 @@ Two of these edge types carry the control flow rather than the data: the [Contro
 Additionally, every vertex lists the [control dependencies](#branches) it runs under, which is the same
 information a control edge carries, collected for the whole path that leads to the vertex.
 
-
 <details><summary>Simplified Version of the graph</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -173,10 +159,7 @@ flowchart LR
     8 -->|"reads"| 3
 ```
 
-	
 (The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
 
 </details>
 
@@ -187,7 +170,6 @@ The following vertices types exist:
 1. [`FunctionCall`](#fcall-vertex)
 1. [`VariableDefinition`](#vdef-vertex)
 1. [`FunctionDefinition`](#fdef-vertex)
-
 
 <details><summary>Class Diagram</summary>
 
@@ -206,12 +188,12 @@ class DataflowGraphVertexInfo{
     <<type>>
 }
 style DataflowGraphVertexInfo opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L194" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph. See; #60;code#62;DataflowGraphVertices#60;/code#62;; for an id#45;based mapping."
+click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L193" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph. See; #60;code#62;DataflowGraphVertices#60;/code#62;; for an id#45;based mapping."
 class DataflowGraphVertexArgument{
     <<type>>
 }
 style DataflowGraphVertexArgument opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L186" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
+click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L185" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
 class DataflowGraphVertexUse{
     <<interface>>
     tag#58; VertexType.Use
@@ -235,7 +217,7 @@ class DataflowGraphVertexVariableDefinition{
     par#58; true
     source#58; #123;#125;
 }
-click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L139" "Arguments required to construct a vertex which represents the definition of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
+click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L138" "Arguments required to construct a vertex which represents the definition of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionDefinition{
     <<interface>>
     tag#58; VertexType.FunctionDefinition
@@ -246,7 +228,7 @@ class DataflowGraphVertexFunctionDefinition{
     mode#58; #123;#125;
     returnEnvState#58; REnvironmentInformation
 }
-click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L153" "Arguments required to construct a vertex which represents the definition of a function in the; #60;code#62;dataflow graph#60;/code#62;; ."
+click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L152" "Arguments required to construct a vertex which represents the definition of a function in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionCall{
     <<interface>>
     tag#58; VertexType.FunctionCall
@@ -258,7 +240,7 @@ class DataflowGraphVertexFunctionCall{
     newEnvParent#58; REnvironmentInformation
     classDecl#58; ClassDeclaration
 }
-click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L96" "Arguments required to construct a vertex which represents the call to a function in the; #60;code#62;dataflow graph#60;/code#62;; . This describes all kinds of function calls, including calls to built#45;ins and control#45;flow structures such as #96;if#96; or #96;for#96; (they are treated as function calls in R)."
+click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95" "Arguments required to construct a vertex which represents the call to a function in the; #60;code#62;dataflow graph#60;/code#62;; . This describes all kinds of function calls, including calls to built#45;ins and control#45;flow structures such as #96;if#96; or #96;for#96; (they are treated as function calls in R)."
 class DataflowGraphVertexValue{
     <<interface>>
     tag#58; VertexType.Value
@@ -279,7 +261,6 @@ DataflowGraphVertexValue .. DataflowGraphVertexArgument
 DataflowGraphVertexBase <|-- DataflowGraphVertexValue
 ```
 
-
 </details>
 
 The following edges types exist, internally we use bitmasks to represent multiple types in a compact form, so you 
@@ -296,7 +277,6 @@ should use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/da
 1. [`NonStandardEvaluation` (256)](#9-nonstandardevaluation-edge)
 1. [`FlowEdge` (4096)](#10-flowedge-edge)
 1. [`ControlEdge` (8192)](#11-controledge-edge)
-
 
 <details><summary>Class Diagram</summary>
 
@@ -328,9 +308,7 @@ class EdgeType{
 click EdgeType href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L27" "Represents the relationship between the source and the target vertex in the dataflow graph. The actual value is represented as a bitmask, so please refer to; #60;code#62;DfEdge#60;/code#62;; for helpful functions."
 ```
 
-
 </details>
-
 
 From an implementation perspective all of these types are represented by respective interfaces, see [`./src/dataflow/graph/vertex.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts) and [`./src/dataflow/graph/edge.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts).
 
@@ -364,10 +342,6 @@ The following sections present details on the different types of vertices and ed
 Before we dive into the details of the different vertices and edges, let's briefly talk about how to read the visualizations.
 For this, let's have a look at a very simple graph, created for the number `42`:
 
-
-
-
-
 ```mermaid
 flowchart LR
     0{{"`*#91;RNumber#93;* **42**
@@ -375,16 +349,12 @@ flowchart LR
    %% No edges found for 0
 ```
 
-	
 (The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
 
 <h3 id="vtx-shape">Vertex Shape</h3>
 
 The _shape_ of the vertex tells you the type of the vertex in the dataflow graph using the following scheme (the types are 
 explained in more detail in the following sections):
-
 
 ```mermaid
 flowchart TD
@@ -398,7 +368,6 @@ flowchart TD
     end
    fdef-->fbox
 ```
-
 
 <h3 id="vtx-synt-type">Syntactic Types</h3>
 
@@ -418,10 +387,6 @@ You can access the lexeme too with <a href="https://github.com/flowr-analysis/fl
 
 In the second line, you will usually find the id (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a>) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form `*location* (**id: <id>**)` with the id in **bold**. This id links the vertex to the respective node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (and all other perspectives created by flowR).
 To give you an example, have a look at the following graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -448,9 +413,7 @@ if`"]
     linkStyle 5 stroke:gray;
 ```
 
-	
 (The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
 
 The `3+` tells you that `a` has a [control dependency](#branches) on the vertex with id `3`, the `if`,
 which only triggers when the condition is `true`; a `-` suffix marks the `false` case.
@@ -480,17 +443,11 @@ the mermaid graph layouting fumbles the order.
 1. [`VariableDefinition`](#vdef-vertex)
 1. [`FunctionDefinition`](#fdef-vertex)
 
-
 <a id='value-vertex'> </a>
 <a id='value-vertex'> </a>
 ### 1) Value Vertex
 
 Type: `value` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -499,7 +456,6 @@ flowchart LR
    %% No edges found for 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -507,17 +463,11 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 42
 ```
 
-
-
 </details>
-
-
-
 
 Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
@@ -530,7 +480,6 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
    <code>normalized AST</code>
    :
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L71">src/dataflow/graph/vertex.ts#L71</a></summary>
-   
    
    ```ts
    /**
@@ -554,7 +503,6 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
    }
    ```
    
-   
    </details>
    
     <details><summary>View more (DataflowGraphVertexBase)</summary>
@@ -564,7 +512,6 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -600,12 +547,9 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
      }
      ```
      
-     
      </details>
      
-
     </details>
-
 
 > [!NOTE]
 > 
@@ -614,17 +558,12 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
 > and ask for the value associated with it.
 > 				
 
-
 Please be aware that such nodes may be the result from language semantics as well, and not just from constants directly in the source.
 For example, an access operation like `df$column` will treat the column name as a constant value.
-
 
 <details><summary>Example: Semantics Create a Value</summary>
 
 In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what `df$column` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).
-
-
-
 
 ```mermaid
 flowchart LR
@@ -648,7 +587,6 @@ $`"]
     linkStyle 4 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -656,33 +594,19 @@ $`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 df$column
 ```
 
-
-
 </details>
-
-
 
 </details>
 		
-
-
-	
-
 <a id='use-vertex'> </a>
 <a id='use-vertex'> </a>
 ### 2) Use Vertex
 
 Type: `use` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -691,7 +615,6 @@ flowchart LR
    %% No edges found for 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -699,19 +622,12 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x
 ```
 
-
-
 </details>
 
-
-
-
-		
 Describes symbol/variable references which are read (or potentially read at a given position).
 Similar to the [value vertex](#value-vertex) described above, this is more a marker vertex as 
 you can see from the implementation.
@@ -722,7 +638,6 @@ you can see from the implementation.
    .
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L82">src/dataflow/graph/vertex.ts#L82</a></summary>
    
-   
    ```ts
    /**
     * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
@@ -732,11 +647,9 @@ you can see from the implementation.
        readonly tag:          VertexType.Use
        /** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
        readonly environment?: undefined
-       /** set on a synthesized by-name-lookup use whose name folded to a constant; not readonly, set post-graph */
        constantFallback?:     true
    }
    ```
-   
    
    </details>
    
@@ -747,7 +660,6 @@ you can see from the implementation.
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -783,12 +695,9 @@ you can see from the implementation.
      }
      ```
      
-     
      </details>
      
-
     </details>
-
 
 > [!NOTE]
 > 
@@ -803,18 +712,13 @@ you can see from the implementation.
 > 
 > 				
 
-
 Most often, you will see the _use_ vertex whenever a variable is read.
 However, similar to the [value vertex](#value-vertex), the _use_ vertex can also be the result of language semantics.
 Consider a case, in which we refer to a variable with a string, as in `get("x")`.
 
-
 <details><summary>Example: Semantics Create a Symbol</summary>
 
 In the following graph, the original type printed by mermaid is still `RString` (from the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a variable use! If you are unsure what `get` does, refer to the [documentation](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/get). Please note, that the lexeme being printed as `"x"` may be misleading (after all it is recovered from the AST), the quotes are not part of the reference.
-
-
-
 
 ```mermaid
 flowchart LR
@@ -833,7 +737,6 @@ get`"]
     linkStyle 2 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -841,29 +744,20 @@ get`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 get("x")
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 But now to the interesting stuff: how do we actually know which values are read by the respective variable use?
 This usually involves a [variable definition](#variable-definition-vertex) and a [reads edge](#reads-edge) linking the two.
 
-
 <details><summary>Example: Reads Edge Identifying a Single Definition</summary>
 
 In the following graph, the `x` is read from the definition `x <- 1`.
-
-
-
 
 ```mermaid
 flowchart LR
@@ -903,7 +797,6 @@ print`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -911,28 +804,18 @@ print`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
-
 ```r
 x <- 1
 print(x)
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 In general, there may be many such edges, identifying every possible definition of the variable.
 
-
 <details><summary>Example: Reads Edge Identifying Multiple Definitions (conditional)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1010,7 +893,6 @@ print`"]
     linkStyle 24 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -1018,26 +900,17 @@ print`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
 We encountered unknown side effects (with ids: 12 (linked)) during the analysis.
 
-
 ```r
 x <- 1
 if(u) x <- 2
 print(x)
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Reads Edge Identifying Multiple Definitions (loop)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1121,7 +994,6 @@ print`"]
     linkStyle 27 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -1129,26 +1001,17 @@ print`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered unknown side effects (with ids: 13 (linked)) during the analysis.
 
-
 ```r
 x <- 1
 for(i in v) x <- 2
 print(x)
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Reads Edge Identifying Multiple Definitions (side-effect)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1266,14 +1129,12 @@ print`"]
     linkStyle 36 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered unknown side effects (with ids: 18 (linked)) during the analysis.
-
 
 ```r
 f <- function() x <<- 2
@@ -1282,14 +1143,9 @@ if(u) f()
 print(x)
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 > [!IMPORTANT]
 > 
@@ -1298,22 +1154,11 @@ print(x)
 > 	In general, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (which is also available as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L53"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function explained below in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) will help you to get the information you need.
 > 	
 
-
-
-
-
-	
-
 <a id='function-call-vertex'> </a>
 <a id='fcall-vertex'> </a>
 ### 3) Function Call Vertex
 
 Type: `fcall` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1322,7 +1167,6 @@ flowchart LR
    %% No edges found for 1
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -1330,17 +1174,11 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 foo()
 ```
 
-
-
 </details>
-
-
-
 
 Describes any kind of function call, including unnamed calls and those that happen implicitly!
 In general the vertex provides you with information about
@@ -1352,14 +1190,13 @@ The graph caches what it resolved, with and without the base-R step, and drops t
 However, the implementation reveals that it may hold an additional `onlyBuiltin` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being `false` even though all calls resolve to builtins).
 	 
- * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L96)**   
+ * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95)**   
    Arguments required to construct a vertex which represents the call to a function in the
    <code>dataflow graph</code>
    .
    This describes all kinds of function calls, including calls to built-ins and control-flow structures such as `if` or `for` (they are
    treated as function calls in R).
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L96">src/dataflow/graph/vertex.ts#L96</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95">src/dataflow/graph/vertex.ts#L95</a></summary>
    
    ```ts
    /**
@@ -1405,7 +1242,6 @@ and it should not be relied on as it may under-approximate the actual calling ta
    }
    ```
    
-   
    </details>
    
     <details><summary>View more (DataflowGraphVertexBase)</summary>
@@ -1415,7 +1251,6 @@ and it should not be relied on as it may under-approximate the actual calling ta
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -1451,10 +1286,8 @@ and it should not be relied on as it may under-approximate the actual calling ta
      }
      ```
      
-     
      </details>
      
-
     </details>
 
 The related function argument references are defined like this:
@@ -1465,7 +1298,6 @@ The related function argument references are defined like this:
    helper functions to check for the specific types.
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L41">src/dataflow/graph/graph.ts#L41</a></summary>
    
-   
    ```ts
    /**
     * Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
@@ -1473,7 +1305,6 @@ The related function argument references are defined like this:
     */
    export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
    ```
-   
    
    </details>
    
@@ -1485,7 +1316,6 @@ The related function argument references are defined like this:
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L27">src/dataflow/graph/graph.ts#L27</a></summary>
      
-     
      ```ts
      /** A reference with a name, e.g. `a` and `b` in `foo(a = 3, b = 2)`, see {@link PositionalFunctionArgument}. */
      export interface NamedFunctionArgument extends IdentifierReference {
@@ -1493,7 +1323,6 @@ The related function argument references are defined like this:
          readonly valueId: NodeId | undefined
      }
      ```
-     
      
      </details>
      
@@ -1519,7 +1348,6 @@ The related function argument references are defined like this:
        <code>unknown (`unknownReferences`)</code>
        .
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L654">src/dataflow/environments/identifier.ts#L654</a></summary>
-       
        
        ```ts
        /**
@@ -1553,17 +1381,14 @@ The related function argument references are defined like this:
        }
        ```
        
-       
        </details>
        
-
       </details>
    * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L33)**   
      A reference without a name, e.g. the references to `3` and `2` in `foo(3, 2)`, see
      <code>NamedFunctionArgument</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L33">src/dataflow/graph/graph.ts#L33</a></summary>
-     
      
      ```ts
      /** A reference without a name, e.g. the references to `3` and `2` in `foo(3, 2)`, see {@link NamedFunctionArgument}. */
@@ -1572,10 +1397,8 @@ The related function argument references are defined like this:
      }
      ```
      
-     
      </details>
      
-
     </details>
 
 There is another element of potential interest to you, the `origin` property which records how flowR created the respective function call.
@@ -1583,15 +1406,9 @@ These origins may hold the name of any processor that is part of the <a href="ht
 The entry `function` signals that flowR used a processor for a user-defined function defined within the source code, `unnamed` signals that the function as an anonymous function definition.
 However, in general, flowR may use any fitting handler as an origin (see the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enum for a *complete* list). For example, within a access definition, flowR will correspondingly redefine the meaning of `:=` to that of the `table:assign`. 
 
-
 <details><summary>Example: Simple Function Call (unresolved)</summary>
 
-
 To get a better understanding, let's look at a simple function call without any known call target, like `foo(x,3,y=3,)`:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1620,7 +1437,6 @@ flowchart LR
     8 -->|"arg"| 7
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -1628,19 +1444,13 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 foo(x,3,y=3,)
 ```
 
-
-
 </details>
 
-
-
 In this case, we have a function call vertex with id `8` and the following arguments:
-
 
 ```json
 [
@@ -1661,7 +1471,6 @@ In this case, we have a function call vertex with id `8` and the following argum
   "<>"
 ]
 ```
-
 
 Of course now, this is hard to read in this form (although the ids of the arguments can be mapped pretty easily to the visualization),
 as the `type` of these references is a bit-mask, encoding one of the following reference types:
@@ -1694,7 +1503,6 @@ For more information on the types of references, please consult the implementati
    In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
    while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L595">src/dataflow/environments/identifier.ts#L595</a></summary>
-   
    
    ```ts
    /**
@@ -1738,13 +1546,9 @@ For more information on the types of references, please consult the implementati
    }
    ```
    
-   
    </details>
    
-	
-
 </details>
-
 
 > [!NOTE]
 > 
@@ -2303,7 +2107,7 @@ For more information on the types of references, please consult the implementati
 > </details>
 > 
 > Great, you should see a definition of `<-` which is constraint by the [control dependency](#branches) to the `if`.
-> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L299"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
+> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L286"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
 > the following target ids: { `built-in:*`, `built-in:<-`, `4` }.
 > This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 > Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L75"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
@@ -2316,18 +2120,13 @@ For more information on the types of references, please consult the implementati
 > </details>
 > 
 > 
-> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L299"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> function to find all possible definitions of a function call,
+> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L286"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> function to find all possible definitions of a function call,
 > as explained in the [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) section.
-
 
 Function calls are the most complicated mechanism in R as essentially everything is a function call.
 Even **control structures** like `if(p) a else b` are desugared into function calls (e.g., as `` `if`(p, a, b) ``).
 
 <details><summary>Example: <code>if</code> as a Function Call</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2358,7 +2157,6 @@ if`"]
     linkStyle 7 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2366,16 +2164,11 @@ if`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 if(p) a else b
 ```
 
-
-
 </details>
-
-
 
 </details>
 
@@ -2383,10 +2176,6 @@ Similarly, you should be aware of calls to **anonymous functions**, which may ap
 directly calling the return of another function call: `foo()()`.
 
 <details><summary>Example: Anonymous Function Call (given directly)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2422,7 +2211,6 @@ end
     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2430,25 +2218,15 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 (function() 1)()
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 <details><summary>Example: Anonymous Function Call (given indirectly)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2526,7 +2304,6 @@ end
     linkStyle 18 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2534,26 +2311,20 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 foo <- function() return(function() 3)
 foo()()
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 > [!NOTE]
 > Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
 > 
 > Unnamed functions have an array of signatures which you can use to identify them. 
-> But in short: the `origin` attribute of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L96"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> is `unnamed`.
+> But in short: the `origin` attribute of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> is `unnamed`.
 > Please be aware that unnamed functions still have a `name` property to give it a unique identifier that can be used for debugging and reference.
 > This name _always_ starts with `unnamed-fc-`.
 > 
@@ -2562,15 +2333,10 @@ foo()()
 > To know which function is called, please rely on the [`calls`](#calls) edge.
 > 	
 
-
 Another interesting case is a function with **side effects**, most prominently with the super-assignment `<<-`.
 In this case, you may encounter the [`side-effect-on-call`](#side-effect-on-call) as exemplified below.
 
 <details><summary>Example: Function Call with a Side-Effect</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2634,7 +2400,6 @@ end
     8 -->|"calls"| 5
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2642,35 +2407,20 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f <- function() x <<- 3
  f()
 ```
 
-
-
 </details>
-
-
 
 </details>
  
-
-
-
-	
-
 <a id='variable-definition-vertex'> </a>
 <a id='vdef-vertex'> </a>
 ### 4) Variable Definition Vertex
 
 Type: `vdef` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2694,7 +2444,6 @@ flowchart LR
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2702,26 +2451,15 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x <- 1
 ```
 
-
-
 </details>
-
-
-
 
 Defined variables most commonly occur in the context of an assignment, for example, with the `<-` operator as shown above.
 
-
 <details><summary>Example: Super Definition (<code><<-</code>)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2745,7 +2483,6 @@ flowchart LR
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2753,27 +2490,21 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x <<- 1
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 The implementation is relatively sparse and similar to the other marker vertices:
 
- * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L139)**   
+ * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L138)**   
    Arguments required to construct a vertex which represents the definition of a variable in the
    <code>dataflow graph</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L139">src/dataflow/graph/vertex.ts#L139</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L138">src/dataflow/graph/vertex.ts#L138</a></summary>
    
    ```ts
    /**
@@ -2791,7 +2522,6 @@ The implementation is relatively sparse and similar to the other marker vertices
    }
    ```
    
-   
    </details>
    
     <details><summary>View more (DataflowGraphVertexBase)</summary>
@@ -2801,7 +2531,6 @@ The implementation is relatively sparse and similar to the other marker vertices
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -2837,21 +2566,14 @@ The implementation is relatively sparse and similar to the other marker vertices
      }
      ```
      
-     
      </details>
      
-
     </details>
 Of only interest is `par`, which signals that the definitions is partial (e.g., in the case of `x[a] <- 1`).
 
 Of course, there are not just operators that define variables, but also functions, like `assign`.
 
-
 <details><summary>Example: Using <code>assign</code></summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2880,7 +2602,6 @@ assign`"]
     6 -->|"reads"| 1
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2888,16 +2609,12 @@ assign`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 assign("x", 1)
 x
 ```
 
-
-
 </details>
-
 
 The example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable `x` (without the quotes) as you can see with the [`reads`](#reads) edge.
 
@@ -2905,12 +2622,7 @@ The example may be misleading as the visualization prints the lexeme of the vari
 
 Please be aware, that the name of the symbol defined may differ from what you read in the program as R allows the assignments to strings, escaped names, and more:
 
-
 <details><summary>Example: Assigning with an Escaped Name</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2939,7 +2651,6 @@ flowchart LR
     3 -->|"reads"| 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -2947,25 +2658,16 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 `x` <- 1
 x
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Assigning with a String</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2994,7 +2696,6 @@ flowchart LR
     3 -->|"reads"| 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -3002,29 +2703,18 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 "x" <- 1
 x
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 Definitions may be constrained by conditionals (_flowR_ takes care of calculating the dominating front for you).
 
-
 <details><summary>Conditional Assignments</summary>
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -3107,7 +2797,6 @@ if`"]
     13 -->|"reads"| 8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -3115,18 +2804,13 @@ if`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x <- 0
 if(u) x <- 1 else x <- 2
 x
 ```
 
-
-
 </details>
-
-
 
 In this case, the definition of `x` is constrained by the conditional, which is reflected in the environment at the end of the analysis:
 
@@ -3142,24 +2826,13 @@ _Built-in Environment (652 entries)_
 
 As you can see, _flowR_ is able to recognize that the initial definition of `x` has no influence on the final value of the variable.
 		
-
 </details>
-
-
-
-
-	
 
 <a id='function-definition-vertex'> </a>
 <a id='fdef-vertex'> </a>
 ### 5) Function Definition Vertex
 
 Type: `fdef` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -3176,7 +2849,6 @@ end
 2 -.-|function| flow-2
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -3184,27 +2856,20 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 function() 1
 ```
 
-
-
 </details>
-
-
-
 
 Defining a function does do a lot of things:  1) it creates a new scope,  2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body,  3) it may access the enclosing environments and the callstack.
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
 
- * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L153)**   
+ * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L152)**   
    Arguments required to construct a vertex which represents the definition of a function in the
    <code>dataflow graph</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L153">src/dataflow/graph/vertex.ts#L153</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L152">src/dataflow/graph/vertex.ts#L152</a></summary>
    
    ```ts
    /**
@@ -3242,7 +2907,6 @@ The vertex object in the dataflow graph stores multiple things, including all ex
    }
    ```
    
-   
    </details>
    
     <details><summary>View more (DataflowGraphVertexBase)</summary>
@@ -3252,7 +2916,6 @@ The vertex object in the dataflow graph stores multiple things, including all ex
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -3288,10 +2951,8 @@ The vertex object in the dataflow graph stores multiple things, including all ex
      }
      ```
      
-     
      </details>
      
-
     </details>
 The subflow is defined like this:
  * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L24)   
@@ -3303,7 +2964,6 @@ The subflow is defined like this:
    vertex.
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L24">src/dataflow/graph/graph.ts#L24</a></summary>
    
-   
    ```ts
    /**
     * Describes the information we store per function body.
@@ -3312,11 +2972,9 @@ The subflow is defined like this:
    export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
    ```
    
-   
    </details>
    
     <details><summary>View more (Omit, DataflowInformation, 'graph' | 'exitPoints')</summary>
-
 
    * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225)**   
      The dataflow information is one of the fundamental structures we have in the dataflow analysis.
@@ -3328,7 +2986,6 @@ The subflow is defined like this:
      <code>DataflowInformation.initialize</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225">src/dataflow/info.ts#L225</a></summary>
-     
      
      ```ts
      /**
@@ -3377,7 +3034,6 @@ The subflow is defined like this:
      }
      ```
      
-     
      </details>
      
       <details><summary>View more (DataflowCfgInformation)</summary>
@@ -3385,7 +3041,6 @@ The subflow is defined like this:
      * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188)**   
        The control flow information for the current DataflowInformation.
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188">src/dataflow/info.ts#L188</a></summary>
-       
        
        ```ts
        /** The control flow information for the current DataflowInformation. */
@@ -3417,12 +3072,9 @@ The subflow is defined like this:
        }
        ```
        
-       
        </details>
        
-
       </details>
-
 
     </details>
 And if you are interested in the exit points, they are defined like this:
@@ -3430,7 +3082,6 @@ And if you are interested in the exit points, they are defined like this:
    An exit point describes the position which ends the current control flow structure.
    This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L129">src/dataflow/info.ts#L129</a></summary>
-   
    
    ```ts
    /**
@@ -3455,13 +3106,10 @@ And if you are interested in the exit points, they are defined like this:
    }
    ```
    
-   
    </details>
    
-
 Whenever we visualize a function definition, we use a dedicated node to represent the anonymous function object,
 and a subgraph (usually with the name `"function <id>"`) to encompass the body of the function (they are linked with a dotted line).
-
 
 > [!NOTE]
 > 
@@ -3731,11 +3379,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > </details>
 > 				
 
-
 Last but not least, please keep in mind that R offers another way of writing anonymous functions (using the backslash): 
-
-
-
 
 ```r
 \(x) x + 1
@@ -3747,8 +3391,6 @@ Last but not least, please keep in mind that R offers another way of writing ano
 
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -3785,19 +3427,9 @@ end
 6 -.-|function| flow-6
 ```
 
-	
-
-
 </details>
 
-
-
 Besides this being a theoretically "shorter" way of defining a function, this behaves similarly to the use of `function`. 
-
-
-
-
-	
 
 <h2 id="edges">Edges</h2>
 
@@ -3819,11 +3451,6 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 ### 1) Reads Edge
 
 Type: `1` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -3864,7 +3491,6 @@ print`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -3872,27 +3498,20 @@ print`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
-
 ```r
 x <- 2
 print(x)
 ```
 
-
-
 </details>
 
-
-
-
 Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) reads whatever is defined by the target vertex (usually a [variable definition](#variable-definition-vertex)).
-
 
 > [!NOTE]
 > 
 > A [`reads`](#reads) edge is not a transitive closure and only links the "directly read" definition(s).
 > Our abstract domains resolving transitive [`reads`](#reads) edges (and for that matter, following [`returns`](#returns) as well)
-> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L299"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a>,
+> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L286"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a>,
 > as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L270"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
 > Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
 > 
@@ -4080,24 +3699,16 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > </details>
 > 				
 
-
 Reads edges may point to built-in definitions as well, to signal that something relates to a built-in element of flowR.
 Their targets are not part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L192"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a> but only markers to signal that the respective definition is a built-in.
 
- 
 Please refer to the explanation of the respective vertices for more information.
-
-
 
 <details>
 
 <summary>Additional Cases</summary>
 
 #### Reads Edge (Call)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4144,7 +3755,6 @@ end
     7 -->|"calls"| 4
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4152,24 +3762,15 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 foo <- function() {}
 foo()
 ```
 
-
-
 </details>
-
-
 
 Named calls are resolved too, linking to the symbol that holds the anonymous function definition (indirectly or directly)
 #### Reads Edge (Parameter)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4221,7 +3822,6 @@ end
     linkStyle 12 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4229,19 +3829,13 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f <- function(x, y=x) {}
 ```
 
-
-
 </details>
 
-
-
 Parameters can read from each other as well.
-
 
 </details>
 	
@@ -4251,11 +3845,6 @@ Parameters can read from each other as well.
 ### 2) DefinedBy Edge
 
 Type: `2` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4281,7 +3870,6 @@ flowchart LR
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4289,25 +3877,15 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x <- y
 ```
 
-
-
 </details>
-
-
-
 
 The source vertex is usually a [`variable definition`](#variable-definition-vertex) linking the defined symbol to the entry point of the resulting side.
 
 <details><summary>In general, this does not have to be the right hand side of the operator.</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4331,7 +3909,6 @@ flowchart LR
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4339,33 +3916,21 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 3 -> x
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 However, nested definitions can carry it (in the nested case, `x` is defined by the return value of <code>\`<-\`(y, z)</code>). Additionally, we link the assignment function.
-
-
-
 
 <details>
 
 <summary>Additional Cases</summary>
 
 #### DefinedBy Edge (Nested)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4405,7 +3970,6 @@ flowchart LR
     linkStyle 11 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4413,23 +3977,14 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x <- y <- z
 ```
 
-
-
 </details>
-
-
 
 Nested definitions can carry the [`defined-by`](#defined-by) edge as well.
 #### DefinedBy Edge (Expression)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4470,7 +4025,6 @@ flowchart LR
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4478,19 +4032,13 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x <- y + z
 ```
 
-
-
 </details>
 
-
-
 Here, we define by the result of the `+` expression.
-
 
 </details>
 	
@@ -4500,11 +4048,6 @@ Here, we define by the result of the `+` expression.
 ### 3) Calls Edge
 
 Type: `4` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4551,7 +4094,6 @@ end
     linkStyle 10 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4559,36 +4101,23 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 foo <- function() {}
 foo()
 ```
 
-
-
 </details>
-
-
 
 Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
 		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
 		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L356"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
 		
-
-
-	
 <a id='returns'></a>
 <a id='returns-edge'> </a>
 <a id='8-vertex'> </a>
 ### 4) Returns Edge
 
 Type: `8` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4634,7 +4163,6 @@ end
     6 -->|"calls"| 3
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4642,29 +4170,19 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6->1, 4->0}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 foo <- function() x
 foo()
 ```
 
-
-
 </details>
-
-
 
 Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
 As you can see in the example, this happens for user-defined functions (like `foo`) as well as for built-in functions (like `<-`).
 However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
 For contrast, compare this to a use of, for example, `+`:
 		
-
 <details><summary>Example: No returns edge for +</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4688,7 +4206,6 @@ flowchart LR
     linkStyle 4 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4696,33 +4213,24 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 1 + 1
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 Here, we do not get a [`returns`](#returns) edge as this function call creates a new value based on its arguments.
-In these scenarios you should rely on the `args` property of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L96"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> 
+In these scenarios you should rely on the `args` property of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> 
 and use the arguments to calculate what you need to know. Alternatively, you can track the [`arg`](#arg) edges.
 
 In general, the [`returns`](#returns) edge already does most of the heavy lifting for you, by respecting control flow influences and
 (as long as flowR is able to detect it) dead code.
 
-
 <details><summary>Example: Tricky Returns</summary>
 
 We show the _simplified_ DFG for simplicity and highlight all [`returns`](#returns) edges involved in tracking the return of a call to `f` (as [`returns`](#returns) are never transitive and must hence be followed):
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4799,7 +4307,6 @@ end
     19 -->|"calls"| 16
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the (simplified) Dataflow Graph</summary>
@@ -4807,23 +4314,17 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {19->15, 15->14, 14->12, 14->11, 11->9, 9->7}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f <- function() { if(u) { return(3); 2 } else 42 }
 f()
 ```
 
-
-
 </details>
-
-
 
  Note, that the `2` should be completely absent of the dataflow graph (recognized as dead code).
 
 </details>
 <br/>
-
 
 > [!NOTE]
 > You might find it an inconvenience that there is no [`returns`](#returns) edge for _every_ function call. 
@@ -4833,21 +4334,12 @@ f()
 > but also the exit points of _all_ function calls. 
 > 
 
-		
-
-
-	
 <a id='def-on-call'></a>
 <a id='definesoncall-edge'> </a>
 <a id='16-vertex'> </a>
 ### 5) DefinesOnCall Edge
 
 Type: `16` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4912,7 +4404,6 @@ end
     12 -->|"calls"| 6
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -4920,17 +4411,12 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f <- function(x) {}
 f(x=1)
 ```
 
-
-
 </details>
-
-
 
 *This edge is usually joined with [`def-by-on-call`](#def-by-on-call)!*
 
@@ -4941,9 +4427,6 @@ f(x=1)
  Consider the following scenario in which we first define a function which returns the value of a variable named `x` and then define `x`
  only after we defined the function:
    
-
-
-
 ```r
 f <- function() x
 x <- 3
@@ -4956,8 +4439,6 @@ f()
 
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -5021,32 +4502,19 @@ end
     9 -->|"calls"| 3
 ```
 
-	
-
-
 </details>
-
-
 
  The final call evaluates to `3` (similar to if we defined `x` before the function definition).
  Within a dataflow graph you can see this with two edges. The `x` within the function body will have a [`def-by-on-call`](#def-by-on-call) 
  to every definition it _may_ refer to. In turn, each call vertex calling the function which encloses the use of `x` will have a
  [`def-on-call`](#def-on-call) edge to the definition(s) it causes to be active within the function body. 
  
-
-
-	
 <a id='def-by-on-call'></a>
 <a id='definedbyoncall-edge'> </a>
 <a id='32-vertex'> </a>
 ### 6) DefinedByOnCall Edge
 
 Type: `32` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5111,7 +4579,6 @@ end
     12 -->|"calls"| 6
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5119,35 +4586,23 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f <- function(x) {}
 f(x=1)
 ```
 
-
-
 </details>
-
-
 
 *This edge is usually joined with [`def-on-call`](#def-on-call)!*
 
  This represents the other part of the [`def-on-call`](#def-on-call) edge (e.g., links the parameter to the argument). Please look there for further documentation.
 
-
-	
 <a id='arg'></a>
 <a id='argument-edge'> </a>
 <a id='64-vertex'> </a>
 ### 7) Argument Edge
 
 Type: `64` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5168,7 +4623,6 @@ flowchart LR
     linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5176,35 +4630,22 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f(x,y)
 ```
 
-
-
 </details>
-
-
 
 Links a [function call](#function-call-vertex) to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!
 		
 The exception to this is the [function definition](#function-definition-vertex) which does no longer hold these argument relationships (as they are not implicit in the structure).
 		
-
-
-	
 <a id='side-effect-on-call'></a>
 <a id='sideeffectoncall-edge'> </a>
 <a id='128-vertex'> </a>
 ### 8) SideEffectOnCall Edge
 
 Type: `128` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5279,7 +4720,6 @@ end
     10 -->|"calls"| 7
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5287,33 +4727,21 @@ end
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f <- function() { x <<- 2 }
 f()
 ```
 
-
-
 </details>
-
-
 
 Links a global side effect to an affected function call (e.g., a super definition within the function body)
 
-
-	
 <a id='non-standard-evaluation'></a>
 <a id='nonstandardevaluation-edge'> </a>
 <a id='256-vertex'> </a>
 ### 9) NonStandardEvaluation Edge
 
 Type: `256` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5333,7 +4761,6 @@ quote`"]
     linkStyle 2 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5341,20 +4768,13 @@ quote`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 quote(x)
 ```
 
-
-
 </details>
 
-
-
-
 Marks cases in which R's non-standard evaluation mechanisms cause the default semantics to deviate (see the case below for multiple vertices)
-
 
 > [!NOTE]
 > 
@@ -5478,23 +4898,16 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > </details>
 > 
 > Three helpers decide what such a mark means once the graph is complete:
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L59"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L105"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L60"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L95"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/nse.ts#L98"><code><span title="The parts of a call R does not evaluate the standard way.">Nse</span></code></a> models the escapes a quoting function offers (rlang's `!!` and `bquote`'s `.(x)`), and
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L77"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.  Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so: a name it reads may read any definition of that name, and a name it writes may be read by any use of it. Tha...">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
 > 				
-
-
-
 
 <details>
 
 <summary>Additional Case</summary>
 
 #### Complete Expressions
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5529,7 +4942,6 @@ quote`"]
     linkStyle 8 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5537,19 +4949,13 @@ quote`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 quote(x + y)
 ```
 
-
-
 </details>
 
-
-
 This works, even if we have a larger expression in `quote`.
-
 
 </details>
 	
@@ -5559,11 +4965,6 @@ This works, even if we have a larger expression in `quote`.
 ### 10) FlowDependency Edge
 
 Type: `4096` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5604,7 +5005,6 @@ flowchart LR
     linkStyle 12 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5612,37 +5012,23 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 x <- 1
 y <- 2
 ```
 
-
-
 </details>
-
-
-
 
 Marks that the source is evaluated before the target, which is what the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) is a view on.
 The dataflow analysis records the control flow while it walks the program, so these edges (together with the
 [`branches-to`](#branches-to) edges) already carry the program's control flow and no separate extraction is needed.
 		
-
-
-	
 <a id='branches-to'></a>
 <a id='controldependency-edge'> </a>
 <a id='8192-vertex'> </a>
 ### 11) ControlDependency Edge
 
 Type: `8192` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5673,7 +5059,6 @@ if`"]
     linkStyle 7 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5681,25 +5066,15 @@ if`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 if(u) 1 else 2
 ```
 
-
-
 </details>
-
-
-
 
 The counterpart of the [`flows-to`](#flows-to) edge for everything that only happens under a condition:
 the edge names the vertex that decides (e.g. an `if`) and whether it is the branch taken when that decision holds.
 		
-
-
-	
-
 <h2 id="branches">Branches</h2>
 
 A <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L21"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> names the node that decides whether something is evaluated, together with a
@@ -5709,10 +5084,6 @@ Each vertex lists the ones it runs under in its `cds`, and the control flow puts
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L61"><code><span title="Like EdgeType.FlowEdge , pointing the way execution goes, but only taken when the condition the edge names evaluates to the value it names (e.g. one branch of an if-else).">EdgeType::<b>ControlEdge</b></span></code></a> edges, so the two never drift apart.
 
 As an example, consider the following dataflow graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5743,7 +5114,6 @@ if`"]
     linkStyle 7 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5751,16 +5121,11 @@ if`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 if(p) a else b
 ```
 
-
-
 </details>
-
-
 
 Control flow is drawn dashed and gray, and such an edge reads `branch` (it is a `branches-to` edge, called
 `branch on ... if T` in the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)).
@@ -5770,12 +5135,7 @@ Both `a` and `b` therefore depend on the `if` and not on the result of the condi
 general linkage point (and harmonizes with other control structures, especially those which are user-defined).
 See the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) for the view these edges make up.
 
-
 <details><summary>Example: Multiple Vertices (Assignment)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5817,7 +5177,6 @@ if`"]
     linkStyle 11 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5825,24 +5184,15 @@ if`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 if(p) a <- 1
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Multiple Vertices (Arithmetic Expression)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5884,7 +5234,6 @@ if`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5892,24 +5241,15 @@ if`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 if(p) 3 + 2
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Nested Conditionals</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5976,7 +5316,6 @@ c`"]
     linkStyle 19 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -5984,25 +5323,18 @@ c`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 if(x) { if(y) a else b } else c
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 <h2 id="dataflow-information">Dataflow Information</h2>
 
 Using _flowR's_ code interface (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page for more), you can generate the dataflow information
 for a given piece of R code (in this case `x <- 1; x + 1`) as follows:
-
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder().build();
@@ -6013,11 +5345,7 @@ analyzer.close();
 
 <i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L889">src/documentation/wiki-dataflow-graph.ts#L889</a></i>
 
-
 The call returns the dataflow _information_, with the graph in `result.graph`, which looks like this:
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6062,22 +5390,17 @@ flowchart LR
     linkStyle 12 stroke:gray;
 ```
 
-	
-
 However, the dataflow information contains more, quite a lot of information in fact.
 
 <details>
 
 <summary style="color:gray">Dataflow Information as Json</summary>
 
-
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
 {"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":1260,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
 ```
-
-
 
 </details>
 
@@ -6093,7 +5416,6 @@ You may be interested in its implementation:
    <code>DataflowInformation.initialize</code>
    .
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225">src/dataflow/info.ts#L225</a></summary>
-   
    
    ```ts
    /**
@@ -6142,7 +5464,6 @@ You may be interested in its implementation:
    }
    ```
    
-   
    </details>
    
     <details><summary>View more (DataflowCfgInformation)</summary>
@@ -6150,7 +5471,6 @@ You may be interested in its implementation:
    * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188)**   
      The control flow information for the current DataflowInformation.
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188">src/dataflow/info.ts#L188</a></summary>
-     
      
      ```ts
      /** The control flow information for the current DataflowInformation. */
@@ -6182,15 +5502,11 @@ You may be interested in its implementation:
      }
      ```
      
-     
      </details>
      
-
     </details>
 
 Let's start by looking at the properties of the dataflow information object: `unknownReferences`, `in`, `out`, `environment`, `graph`, `entryPoint`, `cfgEntry`, `cfgExit`, `exitPoints`, `hooks`, `kill`, `.meta`.
-
-
 
 There are three sets of references.
 **in** (ids: [2,5]) and **out** (ids: [0]) contain the 
@@ -6230,7 +5546,7 @@ Last but not least, the information contains the single **entry point** (2) and 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 
 Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L179"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
-It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L197"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
+It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L196"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
 A definition that such a removal undid is dropped from the outgoing references, so `x <- 1; rm(x)` has an empty **out** set (a conditional removal keeps the now maybe-defined `x`).
 
 ### Unknown Side Effects
@@ -6238,10 +5554,6 @@ A definition that such a removal undid is dropped from the outgoing references, 
 In case _flowR_ encounters a function call that it cannot handle, it marks the call as an unknown side effect.
 You can find these as part of the dataflow graph, specifically as `unknownSideEffects` (with a leading underscore if sesrialized as JSON).
 In the following graph, _flowR_ realizes that it is unable to correctly handle the impacts of the `load` call and therefore marks it as such (marked in bright red):
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6292,7 +5604,6 @@ print`"]
     linkStyle 11 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -6300,17 +5611,12 @@ print`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 3, 9 (linked)) during the analysis.
 
-
 ```r
 load("file")
 print(x + y)
 ```
 
-
-
 </details>
-
-
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API)) to handle these cases
 as they see fit.
@@ -6324,11 +5630,6 @@ You can disable this and always treat `load` as an unknown side effect with the 
 Not all side effects are created equal in the sense that they stem from a specific function call.
 Consider R's basic [`graphics`](https://www.rdocumentation.org/packages/graphics/) which
 implicitly draws on the current device and does not explicitly link a function like `points` to the last call opening a new graphic device. In such a scenario, we use a linked side effect to mark the relation:
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6368,7 +5669,6 @@ points`"]
     7 -->|"reads"| 3
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -6376,22 +5676,16 @@ points`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
-
 ```r
 plot(data)
 points(data2)
 ```
 
-
-
 </details>
-
-
 
 Such side effects are not marked explicitly (with a big edge) but they are part of the unknown side effects: [3 (linked)].
 Additionally, we express this by a [`reads`](#reads) edge.
 	
- 
 <h2 id="perspectives">Perspectives on the Dataflow Graph</h2>
 
 For certain questions, handling the *full* dataflow graph may be too complex or unnecessary, given that you might have to consider edge interactions, or trace
@@ -6407,17 +5701,11 @@ It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tr
 These graphs only contain function definitions and function calls as vertices, and [`calls`](#calls) edges.
 Consider the following example:
 
-
 ```r
 f <- function() f()
 ```
 
-
 The resulting call graph looks like this:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6457,7 +5745,6 @@ function`"]
     linkStyle 4 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Call Graph</summary>
@@ -6465,33 +5752,22 @@ function`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 f <- function() f()
 ```
 
-
-
 </details>
-
-
 
 Please note, that, due to the over-approximative nature of call-graphs, the call-graph may label some function calls that are *not*
 marked as such in the full dataflow graph (which may have more precise information).
 For example, if we call an unknown alias:
-
 
 ```r
 alias <- unknown
 alias(print)
 ```
 
-
 The resulting call graph looks like this:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6515,7 +5791,6 @@ assign`"]
     4 -->|"calls"| 1
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Call Graph</summary>
@@ -6523,23 +5798,14 @@ assign`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 alias <- unknown
 alias()
 ```
 
-
-
 </details>
 
-
-
 Here, `unknown` is a function call, while it is a symbol in the full dataflow graph (as we cannot resolve it):
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6572,7 +5838,6 @@ flowchart LR
     4 -->|"reads"| 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -6580,18 +5845,12 @@ flowchart LR
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
 ```r
 alias <- unknown
 alias()
 ```
 
-
-
 </details>
-
-
-
 
 <h2 id="dfg-working">Working with the Dataflow Graph</h2>
 
@@ -6625,12 +5884,12 @@ If you are interested in which features we support and which features are still 
 FlowR supports a [configurable](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value) and backed by two important functions:
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L167"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L666"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L166"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L665"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
 value resolution depending on if the environment is provided.
-The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L167"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
+The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L166"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)).
 
-Additionally, to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L167"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a>, we offer the aforementioned <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/identify-link-to-last-call-relation.ts#L103"><code><span title="Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.">getValueOfArgument</span></code></a> to retrieve the value of an argument in a function call.
+Additionally, to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L166"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a>, we offer the aforementioned <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/identify-link-to-last-call-relation.ts#L103"><code><span title="Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.">getValueOfArgument</span></code></a> to retrieve the value of an argument in a function call.
 Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](https://github.com/flowr-analysis/flowr/issues/new/choose) to request support for resolving
 multiple arguments at once.
 
@@ -6657,10 +5916,6 @@ The [edges](#edges) of the dataflow graph use bitmasks to represent an edge with
 difficult to check whether a given edge is a read edge. 
 Consider the following example:
 
-
-
-
-
 ```mermaid
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
@@ -6679,7 +5934,6 @@ print`"]
     linkStyle 2 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
@@ -6687,16 +5941,11 @@ print`"]
 The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
-
 ```r
 print(x)
 ```
 
-
-
 </details>
-
-
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
 `73`&mdash;which is usually not very helpful.
@@ -6713,11 +5962,9 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
  
    <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73">src/dataflow/origin/dfg-get-origin.ts#L73</a></summary>
    
-   
    ```ts
    export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
    ```
-   
    
    </details>
    
@@ -6727,7 +5974,6 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      An origin that indicates that the definition is read, written, or simply a constant.
      These origins only reference the 'direct' dependencies. There is no transitivity.
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31">src/dataflow/origin/dfg-get-origin.ts#L31</a></summary>
-     
      
      ```ts
      /**
@@ -6749,18 +5995,15 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      }
      ```
      
-     
      </details>
      
    * **[FunctionCallOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13)**   
    
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13">src/dataflow/origin/dfg-get-origin.ts#L13</a></summary>
      
-     
      ```ts
      FunctionCallOrigin = 2
      ```
-     
      
      </details>
      
@@ -6769,7 +6012,6 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10)**   
      
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10">src/dataflow/origin/dfg-get-origin.ts#L10</a></summary>
-       
        
        ```ts
        export const enum OriginType {
@@ -6781,20 +6023,16 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
        }
        ```
        
-       
        </details>
        
-
       </details>
    * **[BuiltInFunctionOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14)**   
    
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14">src/dataflow/origin/dfg-get-origin.ts#L14</a></summary>
      
-     
      ```ts
      BuiltInFunctionOrigin = 3
      ```
-     
      
      </details>
      
@@ -6803,7 +6041,6 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10)**   
      
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10">src/dataflow/origin/dfg-get-origin.ts#L10</a></summary>
-       
        
        ```ts
        export const enum OriginType {
@@ -6815,10 +6052,8 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
        }
        ```
        
-       
        </details>
        
-
       </details>
 
     </details>
@@ -6840,4 +6075,3 @@ Please note, the current structure of this function is biased by what implementa
 Hence, we do not just track definitions and constants, but also the origins of function calls, albeit we do not yet track the origins of values (only resorting to
 a constant origin). If you are confused by this please start a discussion&mdash;in a way we are still deciding on a good API for this.
 	
-

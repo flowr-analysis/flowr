@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
 _This query is requested with the type `inspect-exception`._\
 Run in the REPL: `:query @inspect-exception [(<crit>;...)] <code | file://path>`
-
 
 With this query you can identify which functions in the code throw exceptions (known to flowR).
 
@@ -25,20 +24,15 @@ safeFail <- function(x) {
 
 the following query returns the information for all identified function definitions whether they throw exceptions:
 
-
-
 ```json
 [ { "type": "inspect-exception" } ]
 ```
 
-
 (This can be shortened to `@inspect-exception` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **inspect-exception** (7ms)\
+Query: **inspect-exception** (5ms)\
 &nbsp;&nbsp;- Function **20** (1.12-4.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
 &nbsp;&nbsp;- Function **40** (8.13-30) does not throw exceptions.\
@@ -51,41 +45,13 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
-{
-  "inspect-exception": {
-    ".meta": {},
-    "exceptions": {
-      "20": [
-        {
-          "id": 11,
-          "cds": [
-            {
-              "id": 18,
-              "when": true
-            }
-          ]
-        }
-      ],
-      "40": [],
-      "44": []
-    }
-  },
-  ".meta": {}
-}
+{"inspect-exception":{".meta":{},"exceptions":{"20":[{"id":11,"cds":[{"id":18,"when":true}]}],"40":[],"44":[]}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 mayFail <- function(x) {
@@ -106,8 +72,6 @@ safeFail <- function(x) {
 
 The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -333,21 +297,10 @@ end
     linkStyle 69 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

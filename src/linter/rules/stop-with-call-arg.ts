@@ -18,7 +18,6 @@ import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../dataflow/environments/identifier';
 
-/** base R's constructors of condition objects, which `stop` signals as they are */
 const ConditionConstructors: ReadonlySet<string> = new Set(['simpleCondition', 'simpleError', 'simpleWarning', 'simpleMessage', 'errorCondition', 'warningCondition']);
 
 export type StopWithCallResult = LintingResult;
@@ -40,7 +39,6 @@ export const STOP_WITH_CALL_ARG = {
 			results:
 				elements.getElements()
 					.filter(element => {
-						/* R appends the call only when there is one: a top-level `stop` reports the message alone */
 						const idMap = dataflow.graph.idMap;
 						if(idMap !== undefined && RNode.findEnclosing(element.node.info.id, idMap, RFunctionDefinition.is) === undefined) {
 							return false;
@@ -63,7 +61,6 @@ export const STOP_WITH_CALL_ARG = {
 							'domain': 'domain'
 						} as const;
 						const mapping = FunctionSemantics.call.match.toSpec(fCall.args, stopParamMap);
-						/* a condition object carries its own call, so `call.` is ignored for it */
 						const signaled = idMap?.get(mapping.get('...')?.[0] as NodeId);
 						if(RFunctionCall.isNamed(signaled) && ConditionConstructors.has(Identifier.getName(signaled.functionName.content))) {
 							return false;

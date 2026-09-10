@@ -25,7 +25,6 @@ interface DataFrameAccessOperation {
 	operandShape?: DataFrameDomain,
 	accessedCols?: (string | number)[],
 	accessedRows?: number[],
-	/** the access matches a column name by prefix, as `$` does */
 	partial?:      boolean
 }
 
@@ -163,7 +162,6 @@ function getAccessOperations(
 	);
 }
 
-/** Whether `col` can name a column: `$` matches a unique prefix of a column name, so `df$val` reaches `value` */
 function mayNameColumn(colnames: DataFrameDomain['colnames'], col: string, partial: boolean | undefined): boolean {
 	if(!partial) {
 		return colnames.satisfies([col], SetComparator.SubsetOrEqual) !== Ternary.Never;

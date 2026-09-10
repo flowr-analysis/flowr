@@ -149,10 +149,6 @@ export function attachClassDeclaration<OtherInfo>(
 	}
 }
 
-/**
- * Mark the wrapped function of an eager higher-order wrapper (`Negate`/`Vectorize`/`partial`) as called, and let
- * the wrapper's body call it: whoever runs the wrapper later runs what it wraps.
- */
 function linkWrappedFunction<OtherInfo>(
 	info: DataflowInformation,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

@@ -617,7 +617,6 @@ export function assertSliced(
 			},
 		);
 
-		/* the cfg invariant must never run under `test.fails`, a regression in it is a real failure even for expected-fail slices */
 		testWrapper(
 			testConfig?.skipTreeSitter,
 			false,

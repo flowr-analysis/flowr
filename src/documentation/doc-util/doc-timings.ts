@@ -7,7 +7,6 @@ import { printAsMs } from '../../util/text/time';
  */
 export const ShowDocTimings = process.env.FLOWR_DOC_TIMINGS === '1';
 
-/** The fields a result carries a measurement in, which is what makes a serialized result differ between runs. */
 const TimingFields = ['timing', 'searchTimeMs', 'processTimeMs'] as const;
 
 /** A {@link JSON.stringify} replacer dropping every {@link TimingFields} entry, `undefined` when the numbers are wanted. */

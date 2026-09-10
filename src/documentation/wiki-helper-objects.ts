@@ -6,7 +6,6 @@ import { Mermaid } from '../util/mermaid/mermaid';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 
-/** A category of helper objects, the ones whose `@helper` tag names it, that answer questions about the same thing. */
 interface HelperCategory {
 	readonly id:      string;
 	readonly title:   string;
@@ -32,7 +31,6 @@ const Categories: readonly HelperCategory[] = [
 	{ id: 'output',       title: 'Output' }
 ];
 
-/** A helper object as its source declares it: where it is, and what its `@helper` tag says about it. */
 interface DeclaredHelper {
 	readonly file:      string;
 	readonly category?: string;
@@ -40,12 +38,7 @@ interface DeclaredHelper {
 	readonly summary?:  string;
 }
 
-/**
- * The first sentence of a helper object's own documentation, which is what the table shows when the
- * `@helper` tag names only a category: the helper states what it is, and the tag does not repeat it.
- */
 function summarize(doc: string): string {
-	/* a `{@link X}` arrives wrapped in `<code>` and spaced off the punctuation behind it, which a description does not want */
 	const text = doc.replace(/<\/?code>/g, '').replace(/\s+/g, ' ').replace(/ (?=[.,;:!?)])|(?<=\() /g, '').trim();
 	const stop = /(?<!e\.g|i\.e|etc|vs)\.\s/.exec(text);
 	return (stop ? text.slice(0, stop.index + 1) : text).trim();

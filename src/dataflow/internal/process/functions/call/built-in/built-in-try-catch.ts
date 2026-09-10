@@ -40,7 +40,6 @@ export function processTryCatch<OtherInfo>(
 			error?:   string,
 			finally?: string
 		},
-		/** does a handler firing abort the protected expression? `withCallingHandlers` resumes it instead */
 		aborts?: boolean
 	}
 ): DataflowInformation {
@@ -68,8 +67,6 @@ export function processTryCatch<OtherInfo>(
 	const blockArg = new Set(argMaps.get('block'));
 	const errorArg = new Set(argMaps.get('error'));
 	const finallyArg = new Set(argMaps.get('finally'));
-	/* R matches every other named argument to the class of the condition it handles, whatever that class is
-	 * called (`warning`, `message`, or one the program defined), so each of them names a handler that runs */
 	const dots = new Set(argMaps.get('...'));
 	const otherHandlerArg = new Set(res.callArgs
 		.filter((a): a is NamedFunctionArgument => FunctionArgument.isNamed(a) && dots.has(a.nodeId))
@@ -209,7 +206,6 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 	}
 	if(anonymous) {
 		info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
-		/* the handler is called, but only a function-call vertex carries that call's side effects back to us */
 		const syntheticCall = 'anon-' + functionId;
 		info.graph.addVertex({
 			tag:         VertexType.FunctionCall,
@@ -225,7 +221,6 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 		info.graph.addEdge(syntheticCall, functionId, EdgeType.Calls | EdgeType.Reads);
 		info.graph.addEdge(call, functionId, EdgeType.Calls | EdgeType.Reads);
 
-		/* the handler runs, so what it captures is read here -- and stays in a slice that prints the call */
 		const handler = info.graph.getVertex(functionId);
 		if(DfgVertex.isFunctionDefinition(handler)) {
 			ClosureRefs.resolveOpenIngoing(info.graph, syntheticCall, handler, data.environment);

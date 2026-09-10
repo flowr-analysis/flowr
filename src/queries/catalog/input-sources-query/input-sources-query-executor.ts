@@ -24,7 +24,6 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	const results: Record<string, InputSources> = {};
 	const nast = await analyzer.normalize();
 	const df = await analyzer.dataflow();
-	// flowR's defaults over the built-ins this analyzer registered, extended by whatever the (possibly project-kind specialized) configuration adds
 	const ctx = analyzer.inspectContext();
 	const defaultConfig = addAll(
 		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),

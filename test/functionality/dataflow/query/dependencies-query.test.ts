@@ -107,19 +107,16 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Through the dataflow', () => {
-		/* a handle stands for the file it was opened on */
 		testQuery('a handle reads what it was opened on', 'con <- file("a.txt", "r")\nl <- readLines(con)', {
 			read: [{ nodeId: '1@file', functionName: 'file', value: 'a.txt' }, { nodeId: '2@readLines', functionName: 'readLines', value: 'a.txt' }]
 		});
 		testQuery('a handle writes what it was opened on', 'con <- file("o.txt", "w")\nwriteLines("a", con)', {
 			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
 		});
-		/* a call leaving the parameter out reads the default */
 		testQuery('a default parameter names the file', 'ld <- function(p = "def.csv") read.csv(p)\nld()', {
 			read:  [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'def.csv' }],
 			write: [{ nodeId: '2@ld', functionName: 'ld', value: 'stdout', implicit: true }]
 		});
-		/* a user function hands its result back as its last call does, so nothing is echoed here */
 		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
 			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv' }]
 		});
@@ -194,7 +191,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				{ nodeId: '2@y', functionName: ':::', value: 'bar' }
 			] }, {}, ['accessing-exported-names', 'accessing-internal-names']);
 
-		// stats::median would work too; nothing here flags ::: as unnecessary against the sigdb
 		testQuery('an exported name accessed with ::: resolves the same, unflagged', 'stats:::median(1:3)', {
 			write:   [{ nodeId: 5, functionName: Identifier.make('median' as never, 'stats' as never, true), value: 'stdout', implicit: true }],
 			library: [{ nodeId: '1@median', functionName: ':::', value: 'stats' }]
@@ -640,7 +636,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Overwritten Function', () => {
-		/* `print` hands its argument back invisibly, and so does the function ending in it: nothing is echoed twice */
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", {
 			read:  [],
 			write: [
@@ -955,8 +950,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('Assumed base packages', () => {
 		testQuery('off by default', 'x <- median(1:10)', {});
 
-		/* base is reported like the rest but flagged: it is always attached and can never be asked for.
-		   Its linkedIds are given as plain ids, as the operators that pull it in have no useful criterion */
 		testQuery('reports an assumed base package used without library()', 'x <- median(1:10)', {
 			library: [
 				{ nodeId: undefined, functionName: Attached, value: 'base', implicit: true, alwaysAttached: true, linkedIds: [4, 7] },

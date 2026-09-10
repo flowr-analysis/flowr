@@ -248,12 +248,6 @@ export function processKnownFunctionCall<OtherInfo>(
 		}
 	}
 
-	/*
-	 * an argument that itself removes a variable (e.g. `rm(x)` passed to another call, or spliced in by a
-	 * pipe) does so in the caller's frame, same as any other argument side effect; environment merging is
-	 * additive only and cannot express a removal, so the kill has to be re-applied here explicitly and
-	 * bubbled up for whichever construct merges branches or iterations next
-	 */
 	let kill: KillReference[] | undefined = undefined;
 	for(const p of processedArguments) {
 		const kills = p?.kill;

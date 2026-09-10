@@ -153,7 +153,6 @@ print(df3${access})
 		});
 
 		describe('Partial matching', () => {
-			/* `$` matches a unique prefix of a column name, `[[` matches exactly */
 			assertLinter('dollar matches a prefix', parser, 'df <- data.frame(id = 1:5, value = "A")\ndf$val', 'dataframe-access-validation', []);
 			assertLinter('double bracket does not', parser, 'df <- data.frame(id = 1:5, value = "A")\ndf[["val"]]', 'dataframe-access-validation',
 				[{ type: 'column', accessed: 'val', access: '[[', operand: 'df', loc: [2, 1, 2, 11], certainty: LintingResultCertainty.Certain }]);

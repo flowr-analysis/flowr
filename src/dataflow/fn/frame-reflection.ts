@@ -2,12 +2,13 @@ import type { DataflowGraph } from '../graph/graph';
 import { FunctionArgument } from '../graph/graph';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../graph/edge';
+import { Dataflow } from '../graph/df-helper';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { DfgVertex } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
-import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
 /** What flowR states about the built-in a call names, see {@link BuiltInFnInfo}. */
@@ -94,7 +95,7 @@ function handedAnotherFrame(vertex: DataflowGraphVertexFunctionCall, known: Buil
 
 /** Whether every consumer of what the reflective call at `frame` handed out resolves to a formal, and there is at least one. */
 function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
-	const formals = new Set(Object.keys(definition.params).map(NodeId.normalize));
+	const formals = new Set(Dataflow.parametersOf(definition));
 	const carrying = carriersOf(frame, definition, graph);
 	let consumers = 0;
 	for(const node of definition.subflow.graph) {
@@ -156,13 +157,11 @@ function argumentsOf(vertex: DataflowGraphVertexFunctionCall): NodeId[] {
 	return ids;
 }
 
-/** true when `node` names its target outright: a literal, or a by-name lookup whose name folded to one */
 function isFixedName(node: NodeId, graph: DataflowGraph): boolean {
 	const vtx = graph.getVertex(node);
 	return DfgVertex.isValue(vtx) || (DfgVertex.isUse(vtx) && vtx.constantFallback === true);
 }
 
-/** whether the access reads a formal directly or via a fixed name (constant or folded get/exists/match.fun) */
 function resolvedToAFormal(vertex: DataflowGraphVertexFunctionCall, formals: ReadonlySet<NodeId>, graph: DataflowGraph): boolean {
 	for(const node of [vertex.id, ...argumentsOf(vertex)]) {
 		if(node !== vertex.id && !isFixedName(node, graph)) {

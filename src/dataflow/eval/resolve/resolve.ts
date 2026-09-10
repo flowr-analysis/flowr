@@ -34,7 +34,6 @@ function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | 
 	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
 }
 
-/** Whether any built-in of that name declares a handler at all, so that only those walk the search path. */
 function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const defs = ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
 		?? ctx.env.statedDefinitionsOf(name);
@@ -52,11 +51,6 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 	if(!EvalNodeTypes.includes(node.type)) {
 		return undefined;
 	} else if(graph === undefined) {
-		/*
-		 * While the graph is still being built there are no origins to ask. The syntax says which name is
-		 * called, and the environment says whether that name still refers to the built-in. Only a name that
-		 * folds at all is looked up, as most calls of a program are to something that does not.
-		 */
 		const named = RExpressionList.is(node) ? RExpressionList.groupStart(node)?.content
 			: RFunctionCall.isNamed(node) ? node.functionName.content : undefined;
 		return named !== undefined && environment !== undefined && foldsThroughBuiltIn(named, ctx)

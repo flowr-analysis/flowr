@@ -86,13 +86,11 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 		emptyGraph().addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 
-	// `$5` is the `x = 42` argument of the list, which is where the binding is anchored
 	assertDataflow(label('list2env(envir = globalenv()) inside a function reaches the global', ['search-path', 'dynamic-environment-resolution']), ts,
 		'f <- function() list2env(list(x = 42), envir = globalenv())\nf()\nx',
 		emptyGraph().addEdge('3@x', '$5', EdgeType.Reads),
 		opts);
 
-	// within() has no env method in real R, but flowR routes it like with(e, ...) for consistency
 	assertDataflow(label('within(globalenv(), ...) inside a function reaches the global', ['search-path', 'dynamic-environment-resolution', 'environment-with']), ts,
 		'f <- function() within(globalenv(), { y <- 42 })\nf()\ny',
 		emptyGraph().addEdge('3@y', '1@y', EdgeType.Reads),

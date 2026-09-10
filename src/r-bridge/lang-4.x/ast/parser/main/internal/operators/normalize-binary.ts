@@ -128,10 +128,6 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 	}
 }
 
-/**
- * Desugars a pipe-bind rhs `name => body` into `(function(name) body)(x)`, mirroring R's own `gram.y`
- * desugaring, so the pipe built-in can treat it like any other pipe into an anonymous function.
- */
 function desugarPipeBindRhs(rhs: RNode): RNode {
 	if(!RBinaryOp.is(rhs) || rhs.operator !== '=>') {
 		return rhs;

@@ -62,7 +62,6 @@ ${loop} {
 print(x)`, ['7@x'], loop === 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${loop} x <- 2
 x`,
 				{
-					/* shell and tree-sitter asts diverge for this loop, see https://github.com/flowr-analysis/flowr/issues/1209 */
 					skipCompare:          true,
 					/* they have dead code, the repeat loop never reaches the exit */
 					cfgExcludeProperties: ['entry-reaches-all', 'exit-reaches-all', ...(loop === 'repeat' ? ['has-entry-and-exit' as const] : [])],

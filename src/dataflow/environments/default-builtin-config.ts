@@ -1193,7 +1193,6 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['f', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['e', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['loadcmp', PkgName.Compiler])],                                                processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, sig: [['file', ArgProp.NoDefault], ['envir', 0], ['chdir', 0]] } },
-	/* `setNames` hands back a renamed copy, while data.table's `set*` family modifies its first argument in place */
 	{ type: 'function', names: [Identifier.from(['setNames', PkgName.Base]), Identifier.from(['setNames', PkgName.FastUtils])], processor: BuiltInProcName.Default, config: { props: CallProp.Pure, sig: [['object', ArgProp.Forced | ArgProp.Value], ['nm', ArgProp.Forced | ArgProp.Value]] } },
 	{ type: 'function', names: Identifier.fromAll(PkgName.DataTable, ['setnames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr']), processor: BuiltInProcName.Assignment, config: { canBeReplacement: false, targetVariable: false, makeMaybe: true, mayHaveMoreArgs: true, readTarget: true, props: CallProp.Invisible, sig: [['x', ArgProp.Forced | ArgProp.Value | ArgProp.Written | ArgProp.Alias], ['...', ArgProp.Forced | ArgProp.Value]] } },
 	{
@@ -1310,7 +1309,6 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.CohortBuilder, ['cohort', 'set_source', 'add_source', 'update_source', 'add_filter', 'update_filter', 'rm_filter', 'bind_key', 'bind_keys', 'as.tblist', 'tblist', 'step', 'add_step', 'rm_step', 'run', 'restore']), processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Pure, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	/* they are all mapped to `<-` but we separate super assignments */
 	{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[[', ...Identifier.fromAll(PkgName.Base, ['names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'environment', 'length', 'dim'])], config: { readIndices: true, props: CallProp.Scope } },
-	/* what these install is language the function evaluates whenever it is called */
 	{ type: 'replacement', suffixes: ['<-', '<<-'], names: Identifier.fromAll(PkgName.Base, ['body', 'formals']), config: { readIndices: true, props: CallProp.Scope | CallProp.Lang } },
 	{ type: 'replacement', suffixes: ['<-', '<<-'], names: [Identifier.from(['method', PkgName.S7])], config: { readIndices: true, constructName: 's7' } },
 	{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['$', '@'], config: { readIndices: false, props: CallProp.Scope } },

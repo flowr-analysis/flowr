@@ -393,7 +393,6 @@ print(x)`,  emptyGraph()
 
 		assertDataflow(label('Read later definition', ['formals-named', 'name-normal', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities]), shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }', emptyGraph()
 			.use('1', 'b', undefined, false)
-			/* the default is a promise: it reads the `b` of the moment it is forced, so both forces of `a` count */
 			.reads('1', ['8', '11', '15'])
 			.use('11', 'a', undefined, false)
 			.reads('11', '0')

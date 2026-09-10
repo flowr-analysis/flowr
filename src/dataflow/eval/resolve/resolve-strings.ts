@@ -129,13 +129,6 @@ function foldStringCall<Info>(this: void, node: RNamedFunctionCall<Info>, resolv
 	return args.length > 0 ? known.fold(...args) : undefined;
 }
 
-/**
- * The single string an argument resolves to: a genuine string constant, or -- for the joining calls
- * (`paste`/`paste0`/`file.path`/`here`) only -- what `as.character()` renders a non-string constant as, which is
- * how `paste0("v", 1)` folds to `"v1"` (whole numbers below `1e5`, R switches to `1e+05` from there, and the two
- * logicals). Resolves the argument exactly once: a second, separately-blocked attempt at the same id is how a
- * self-referential redefinition (`p <- paste0(p, ...)`) turned into unbounded recursion here before.
- */
 function argAsString(this: void, id: NodeId, against: BuiltInEvalHandlerArgs, coerce: boolean): string | undefined {
 	const sole = NodeValue.sole(NodeValue.setOf(id, against));
 	if(sole === undefined) {

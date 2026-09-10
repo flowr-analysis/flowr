@@ -33,9 +33,24 @@ export enum WikiChangeType {
 	Identical
 }
 
-/** Strips `\r` and the measurements of {@link withoutTimings} so a regenerated page only differs when its content does. */
+/** Runs of blank lines render as one, so a page carries one; what is inside a code fence is content and stays. */
+function collapseBlankLines(text: string): string {
+	const out: string[] = [];
+	let inFence = false;
+	for(const line of text.split('\n')) {
+		if(/^\s*(?:`{3,}|~{3,})/.test(line)) {
+			inFence = !inFence;
+		} else if(!inFence && line.trim() === '' && out[out.length - 1]?.trim() === '') {
+			continue;
+		}
+		out.push(line);
+	}
+	return out.join('\n');
+}
+
+/** Strips `\r`, the blank lines that render as one, and the measurements of {@link withoutTimings} so a regenerated page only differs when its content does. */
 export function normalizeLineEndings(text: string): string {
-	return withoutTimings(text.replace(/\r\n/g, '\n'));
+	return withoutTimings(collapseBlankLines(text.replace(/\r\n/g, '\n')));
 }
 
 export interface DocMakerLike<Target extends string = string> {

@@ -226,9 +226,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/** cached {@link root}, fixed on first use as the ids built from it have to stay stable */
 	private rootCache:        string | undefined = undefined;
 	private rootResolved      = false;
-	/** case-insensitive index of {@link files}, lazily built; cleared when files change */
 	private caseIndex:        Map<string, Map<string, FilePath>> | undefined = undefined;
-	/** readdir results cached per directory; undefined marks an unreadable one */
 	private readonly readdirCache = new Map<string, readonly string[] | undefined>();
 
 	constructor(
@@ -459,7 +457,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && onDisk(path));
 	}
 
-	/** {@link files} indexed by lowercased dir+basename; first path wins on collision */
 	private fileIndex(): ReadonlyMap<string, ReadonlyMap<string, FilePath>> {
 		if(this.caseIndex === undefined) {
 			const index = new Map<string, Map<string, FilePath>>();
@@ -480,7 +477,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.caseIndex;
 	}
 
-	/** entries of `dir`, cached; undefined if not a readable directory */
 	private readdir(dir: string): readonly string[] | undefined {
 		const cached = this.readdirCache.get(dir);
 		if(cached !== undefined || this.readdirCache.has(dir)) {

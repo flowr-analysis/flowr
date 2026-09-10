@@ -10,7 +10,6 @@ import { slicerLogger } from './static-slicer';
 /** How many nodes the traversal visits between two {@link GasFeatureKey.Slicer|gas} checks. */
 const GasCheckEvery = 512;
 
-/** The two {@link VisitingQueue#add} entries an id and environment can be seen under, see {@link VisitingQueue#seen}. */
 const enum SeenAs {
 	Normal     = 1,
 	SideEffect = 2
@@ -19,8 +18,6 @@ const enum SeenAs {
 export class VisitingQueue {
 	private readonly threshold:      number;
 	private timesHitThreshold:       number                   = 0;
-	/* keyed apart so the common case, an id already seen in the same environment, needs no fingerprint string:
-	 * the inner value is the set of {@link SeenAs} entries that exist for the pair */
 	private readonly seen:           Map<NodeId, Map<Fingerprint, number>> = new Map();
 	private readonly seenByCache:    Set<NodeId>              = new Set();
 	private readonly idThreshold:    Map<NodeId, number>      = new Map();

@@ -106,7 +106,6 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 		if(DfgVertex.isFunctionCall(vertex) && isUnbound(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
 		} else if(DfgVertex.isUse(vertex) && isUnbound(graph, id)) {
-			/* an export handed on as a value, `f <- aes`, is used just as well as one that is called */
 			const name = NodeId.recoverName(id, graph.idMap);
 			if(name !== undefined) {
 				unbound.add(Identifier.getName(name));
@@ -147,7 +146,6 @@ export const UNUSED_IMPORT = {
 		// one call may name more than one package, so the query can report it several times under the same id
 		const attachedBy = new Map<NodeId, DependencyInfo[]>();
 		for(const info of elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library) {
-			/* an assumed base package (not requested here, `assumedPackages` defaults off) names no call node */
 			if(info.nodeId === undefined) {
 				continue;
 			}

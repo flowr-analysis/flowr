@@ -19,7 +19,6 @@ const fn = (name: string, opts: Partial<SigFunctionInfo> = {}): SigFunctionInfo 
 	name, props: FnProp.Exported, params: [], callees: [], line: 1, ...opts
 });
 
-/** two CRAN packages that both export `shared`, plus one exporting only `onlyA` - enough to test package restriction */
 async function buildDb(dir: string): Promise<void> {
 	const b = new SigDbBuilder();
 	b.addPackage('pkgA', { latest: '1.0.0', downloads: 10 });
@@ -47,8 +46,6 @@ describe('Function Info Query', withTreeSitter(parser => {
 		});
 
 		test('a name a later entry deliberately overrides is reported once, not once per entry', async() => {
-			// `median` is declared once in the general "x carries the data" group and once more with `overrides: true`
-			// for a precise signature (see WrittenBuiltinDefinitions); only the winning one should come back
 			const models = builtinModelsOf('median', await contextOf());
 			expect(models).toHaveLength(1);
 			expect(models[0].namespace).toBe('stats');
@@ -87,7 +84,6 @@ describe('Function Info Query', withTreeSitter(parser => {
 		beforeAll(async() => {
 			tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-function-info-query-'));
 			await buildDb(tmp);
-			// point the query's source resolution at just our temp database, exactly like the signature query tests
 			prevSigDb = process.env.FLOWR_SIGDB;
 			prevDisable = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
 			process.env.FLOWR_SIGDB = path.join(tmp, `db${SigDbExt}`);
@@ -104,8 +100,6 @@ describe('Function Info Query', withTreeSitter(parser => {
 		});
 
 		async function runQuery(query: readonly FunctionInfoQuery[]): Promise<FunctionInfoQueryResult> {
-			// no file/request added at all: the executor's own `getDependency` warm-up must resolve the sigdb
-			// plugin sources on its own, even on a completely fresh analyzer
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 			return (await executeQueries({ analyzer }, query))['function-info'];
 		}

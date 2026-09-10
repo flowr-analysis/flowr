@@ -1,40 +1,31 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Location Map Query">Location Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simple mapping of ids to their location in the source file\
 _This query is requested with the type `location-map`._\
 Run in the REPL: `:query @location-map [(<crit>;...)] [token|full|statement] <code | file://path>`
 
-
 A query like the [Id-Map Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Id-Map) query can return a huge result, especially for larger scripts.
 If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
 
 Consider you have the following code:
-
 
 ```r
 x + 1
 x * 2
 ```
 
-
 The following query then gives you the aforementioned mapping:
-
-
-
 
 ```json
 [ { "type": "location-map" } ]
 ```
 
-
 (This can be shortened to `@location-map` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **location-map** (0 ms)\
+Query: **location-map** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {<span title="['0','1','2','3','4','5','2-arg','5-arg','0-arg','1-arg','3-arg','4-arg']">0, 1, 2, 3, 4, 5, 2-arg, ... (see JSON)</span>}\
@@ -46,125 +37,25 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "location-map": {
     ".meta": {},
     "map": {
-      "files": {
-        "0": "@inline"
-      },
+      "files": {"0":"@inline"},
       "ids": {
-        "0": [
-          0,
-          [
-            1,
-            1,
-            1,
-            1
-          ]
-        ],
-        "1": [
-          0,
-          [
-            1,
-            5,
-            1,
-            5
-          ]
-        ],
-        "2": [
-          0,
-          [
-            1,
-            3,
-            1,
-            3
-          ]
-        ],
-        "3": [
-          0,
-          [
-            2,
-            1,
-            2,
-            1
-          ]
-        ],
-        "4": [
-          0,
-          [
-            2,
-            5,
-            2,
-            5
-          ]
-        ],
-        "5": [
-          0,
-          [
-            2,
-            3,
-            2,
-            3
-          ]
-        ],
-        "2-arg": [
-          0,
-          [
-            1,
-            3,
-            1,
-            3
-          ]
-        ],
-        "5-arg": [
-          0,
-          [
-            2,
-            3,
-            2,
-            3
-          ]
-        ],
-        "0-arg": [
-          0,
-          [
-            1,
-            1,
-            1,
-            1
-          ]
-        ],
-        "1-arg": [
-          0,
-          [
-            1,
-            5,
-            1,
-            5
-          ]
-        ],
-        "3-arg": [
-          0,
-          [
-            2,
-            1,
-            2,
-            1
-          ]
-        ],
-        "4-arg": [
-          0,
-          [
-            2,
-            5,
-            2,
-            5
-          ]
-        ]
+        "0": [0,[1,1,1,1]],
+        "1": [0,[1,5,1,5]],
+        "2": [0,[1,3,1,3]],
+        "3": [0,[2,1,2,1]],
+        "4": [0,[2,5,2,5]],
+        "5": [0,[2,3,2,3]],
+        "2-arg": [0,[1,3,1,3]],
+        "5-arg": [0,[2,3,2,3]],
+        "0-arg": [0,[1,1,1,1]],
+        "1-arg": [0,[1,5,1,5]],
+        "3-arg": [0,[2,1,2,1]],
+        "4-arg": [0,[2,5,2,5]]
       }
     }
   },
@@ -172,33 +63,19 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 }
 ```
 
-
-
 </details>
 
-
-
-
-
-	
-
 The query also accepts a list of slice criteria to filter the results to only include the locations of specific nodes. For example:
-
-
-
 
 ```json
 [ { "type": "location-map",   "ids": [ "1@x",    "2@x" ] } ]
 ```
 
-
 (This can be shortened to `@location-map (1@x;2@x) "x + 1\nx * 2"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **location-map** (0 ms)\
+Query: **location-map** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {0, 3}\
@@ -210,55 +87,13 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
-{
-  "location-map": {
-    ".meta": {},
-    "map": {
-      "files": {
-        "0": "@inline"
-      },
-      "ids": {
-        "0": [
-          0,
-          [
-            1,
-            1,
-            1,
-            1
-          ]
-        ],
-        "3": [
-          0,
-          [
-            2,
-            1,
-            2,
-            1
-          ]
-        ]
-      }
-    }
-  },
-  ".meta": {}
-}
+{"location-map":{".meta":{},"map":{"files":{"0":"@inline"},"ids":{"0":[0,[1,1,1,1]],"3":[0,[2,1,2,1]]}}},".meta":{}}
 ```
-
-
 
 </details>
 
-
-
-
-
-	
-
 All locations are given as a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L31"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> paired with the file id in the format `[file-id, [start-line, start-column, end-line, end-column]]`.
-
-		
 
 <details>
 

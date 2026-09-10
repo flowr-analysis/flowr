@@ -114,7 +114,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		const envWithX1 = `${newEnv}\nassign("x1", 1, envir = e)`;
 		const nestedLs = 'r <- length(ls(e))';
 		const pipedLs = 'r <- e |> ls() |> length()';
-		/* a piped `e` must resolve for ls() the same way the nested form `ls(e)` does */
 		assertSliced(label('nested: ls(e) resolves the custom env', ['dynamic-environment-resolution']),
 			shell,
 			`${envWithX1}\n${nestedLs}\nprint(r)`,
@@ -129,7 +128,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			`${envWithX1}\n${pipedLs}\nr`
 		);
 
-		/* R binds `all.names` by name and only then fills `name` positionally, so `e` is the environment listed */
 		const lsAfterNamed = 'r <- length(ls(all.names = TRUE, e))';
 		assertSliced(label('a named argument before the environment does not shift what ls lists', ['dynamic-environment-resolution']),
 			shell,
@@ -138,7 +136,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			`${envWithX1}\n${lsAfterNamed}\nr`
 		);
 
-		/* the same for `get`, where the environment reaches the `pos` slot (`envir = as.environment(pos)`) */
 		keepsAll('named arguments before the environment do not shift what get reads', ['dynamic-environment-resolution', 'name-created-resolved'],
 			`${envWithX}\nget("x", mode = "any", inherits = TRUE, e)`, ['3@get']);
 	});
@@ -154,7 +151,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			`${newEnv}\n${nestedList2env}\n${getR}\nr`
 		);
 
-		/* a positional envir is list2env's second argument, so the bindings land in `e`, not in the current scope */
 		const countInE = 'n <- length(ls(e))';
 		assertSliced(label('a positional envir routes the bindings into the custom env', ['dynamic-environment-resolution', 'name-created-resolved']),
 			shell,
@@ -163,7 +159,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			`${newEnv}\n${nestedList2env}\n${countInE}\nn`
 		);
 
-		/* the piped list patches in after dispatch, so the envir argument must be read from the effective args */
 		assertSliced(label('piped: list(...) |> list2env(e) binds the same way as the nested form', ['dynamic-environment-resolution', 'name-created-resolved', 'pipe-and-pipe-bind']),
 			shell,
 			`${newEnv}\n${pipedList2env}\n${getR}\nprint(r)`,
@@ -178,9 +173,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 
 		const parentGlobal = 'e <- new.env(parent = globalenv())';
 		const getW = 'r <- get("w", envir = e)';
-		/* real R prints "[1] 42", the slice errors: a free name in a function body is only linked to its definition
-		   on call (DefinedByOnCall), which a criterion inside the body never reaches -- a plain `r <- w` slices the
-		   very same way, so this is the closure model, not the environment parent */
 		assertSliced(label('a free name reached through a custom env is linked on call only, so w is dropped', ['environment-parent']),
 			shell,
 			`w <- 42\nf <- function() {\n  ${parentGlobal}\n  ${getW}\n  print(r)\n}\nf()`,
@@ -195,7 +187,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 
 		const getViaAlias = 'r <- get("x", envir = alias)';
 		const assignX5 = 'assign("x", 5, envir = e)';
-		/* an environment is a reference, so a write through the original is seen through the alias (R prints 5) */
 		assertSliced(label('an assign to the original after the alias is reflected through it', ['environment-alias']),
 			shell,
 			[newEnv, aliasOfE, assignX5, getViaAlias, 'print(r)'].join('\n'),
@@ -229,7 +220,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		const localGlobalenv = 'local(x <- 2, envir = globalenv())';
 		const localDotGlobalEnv = 'local(x <- 2, envir = .GlobalEnv)';
 		const list2envGlobalenv = 'f <- function() list2env(list(x = 1), envir = globalenv())';
-		/* the assignment lands in .GlobalEnv, so the slice keeps local() and drops the shadowed `x <- 1` */
 		assertSliced(label('local(x <- 2, envir = globalenv()) writes into the real global scope', ['local-envir-argument']),
 			shell,
 			`x <- 1\n${localGlobalenv}\nprint(x)`,
@@ -244,7 +234,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			`${localDotGlobalEnv}\nx`
 		);
 
-		/* list2env() binds into .GlobalEnv even though it runs inside f() */
 		assertSliced(label('list2env(envir = globalenv()) inside a function writes into the real global scope', ['local-envir-argument']),
 			shell,
 			`${list2envGlobalenv}\nf()\nprint(x)`,
@@ -254,13 +243,6 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 	});
 
 	describe('envir argument is a function parameter (unresolvable at definition time)', () => {
-		/* `en` carries no envState inside f's body -- a parameter is whatever its caller passes, so routing
-		 * the write precisely would be a guess; the call becomes an unknown side effect, and
-		 * linkEnvironmentArgumentsWrittenByCallee (extractor.ts) carries that mark out to f's call site once it
-		 * sees `e` (the argument bound to `en`) is a tracked environment -- same as it already does for a
-		 * replacement write through a parameter (`en$a <- 42`), so no includeCallees is needed here either.
-		 * Each program is also kept with includeCallees explicitly set: the unknown-side-effect-driven boundary
-		 * must not depend on this option, but the option must keep working alongside it either way */
 		keepsAllWithAndWithoutCallees('assign(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
 			paramEnvProgram('a', 'assign("a", 42, envir = en)'), ['6@print']);
 
@@ -276,15 +258,11 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		keepsAllWithAndWithoutCallees('makeActiveBinding(env=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
 			[newEnv, 'f <- function(en) makeActiveBinding("x", function() 42, env = en)', 'f(e)', 'r <- get("x", envir = e)', 'print(r)'].join('\n'), ['5@print']);
 
-		/* `sys.source` states its `envir` as written just like `assign` does, so the same boundary has to hold for it */
 		keepsAllWithAndWithoutCallees('sys.source(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
 			[newEnv, 'f <- function(en) sys.source("setup.R", envir = en)', 'f(e)', 'r <- get("x", envir = e)', 'print(r)'].join('\n'), ['5@print']);
 	});
 
 	describe('several reaching definitions for the envir argument', () => {
-		/* both branches bind the same kind of environment, so the merged resolution keeps pointing at the
-		 * global frame and the write lands there; when they disagree, no routing is right for both, so the
-		 * call turns into an unknown side effect instead of silently taking the custom-env path */
 		const agreeing = ['p <- runif(1) > 0.5', 'if(p) e <- globalenv() else e <- globalenv()', assignX1, 'x'].join('\n');
 		assertSliced(label('two agreeing globalenv() definitions still reach the global x', ['dynamic-environment-resolution', 'environment-sharing']),
 			shell, agreeing, ['4@x'],

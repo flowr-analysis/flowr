@@ -344,11 +344,9 @@ export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<st
 			const list = owners.get(name) ?? [];
 			owners.set(name, list);
 			/* `12` is package twelve; `12:tn:3:topic:4:88` adds its flags, its parameter count, the help
-			   topic when that differs from the name, and which of the package's files holds it at which
-			   line, both in base 36. Trailing parts are left off when there is nothing to say. */
-			/* a topic can hold a comma or a colon (`[,hyperSpec-method`), which are exactly the separators
-			   this list uses, so it travels encoded */
-			/* the file and the line are read back as numbers either way, so they travel in the shortest base */
+			   topic (encoded, as it may hold the separators itself) when that differs from the name, and
+			   which of the package's files holds it at which line, both in base 36. Trailing parts are
+			   left off when there is nothing to say. */
 			const parts = [String(index), entry.flags, entry.params > 0 ? String(entry.params) : '',
 				entry.topic ? encodeURIComponent(entry.topic) : '',
 				entry.file !== undefined ? entry.file.toString(36) : '',

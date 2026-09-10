@@ -132,7 +132,6 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 		expect(namespaceEnv(df, 'stats')?.memory.has('arima')).toBe(true);
 	});
 
-	/* `detach` is not known to us, so the attach it should undo stays in place for the rest of the file */
 	test(label('detach does not undo the attach, so a later call still resolves through the package', ['library-unloading', 'search-path'], ['dataflow']), async() => {
 		const { df } = await analyze(ts, 'library(stats)\ndetach("package:stats")\narima()', buildDb());
 		expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(true);

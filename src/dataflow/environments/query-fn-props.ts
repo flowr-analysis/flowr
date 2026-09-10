@@ -340,7 +340,6 @@ function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
 					continue;
 				}
 				const info = d.config as BuiltInFnInfo | undefined;
-				/* the memory is keyed by the registered name (a replacement carries its suffix), the definition keeps the namespace */
 				const name = d.name === undefined || Identifier.getName(d.name) === registered
 					? d.name ?? registered : Identifier.make(registered, Identifier.getNamespace(d.name));
 				out.push({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable: d.evalHandler !== undefined });
@@ -400,7 +399,6 @@ export class BuiltInIndex {
 	/** namespace to name to entry, so a qualified name is two lookups and no string built to ask */
 	private readonly byNamespace = new Map<string, Map<string, BuiltInEntry>>();
 	private readonly cache = new Map<string, readonly Identifier[]>();
-	/** tables derived from this index, keyed by what derived them, see {@link FlowrAnalyzerEnvironmentContext#derive} */
 	public readonly derived = new Map<unknown, unknown>();
 
 	private constructor(definitions: readonly IndexedEntry[]) {

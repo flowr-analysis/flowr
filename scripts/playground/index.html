@@ -17,7 +17,6 @@
 	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; color-scheme: dark;
 -->
 <!--THEME-CSS:own-->
-<!--FOOTER-CSS-->
 * { box-sizing: border-box; }
 /* every list here gives its rows a `display` of their own, and that beats what `hidden` states: said once
    for the page, so nothing has to remember it again */
@@ -488,9 +487,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	.pane { border-right: 0; border-bottom: 1px solid var(--border); }
 	#editor, #config { min-height: 18rem; }
 }
-/* panes fill the viewport; keep footer minimal */
-footer { flex: none; padding: .6rem 1rem; }
-footer .ends { gap: .5rem 1.2rem; }
 </style>
 </head>
 <body>
@@ -556,7 +552,6 @@ footer .ends { gap: .5rem 1.2rem; }
 	</div>
 </div>
 
-<!--FOOTER:playground-->
 
 <script type="text/plain" id="sample"><!--SAMPLE--></script>
 <script type="text/plain" id="sigs"><!--SIGS--></script>

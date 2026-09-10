@@ -12,21 +12,16 @@ export function executeFunctionInfoQuery({ analyzer }: BasicQueryData, queries: 
 	const start = Date.now();
 	const query = queries[queries.length - 1];
 	const deps = analyzer.inspectContext().deps;
-	/* `packagesExporting` answers from the version plugins, which only resolve their sources once a dependency
-	   has actually been asked for; a `getDependency` no-op is the public way to force that the very first time */
 	deps.getDependency(query.name);
 	const sigDb = deps.signatures();
 	const exporting = sigDb.packagesExporting(query.name);
 	const candidates = query.packages;
 	const matching = candidates === undefined ? exporting : exporting.filter(p => candidates.includes(p));
-	/* base R carries no download count to rank by, yet a base package exporting the name is the likeliest answer */
 	const packages: FunctionInfoPackageHit[] = [...matching.filter(p => isBaseRPackage(p)), ...matching.filter(p => !isBaseRPackage(p))].map(pkg => {
 		const id = Identifier.make(query.name, pkg);
 		const fn = sigDb.functionOf(id) ?? sigDb.rawFunctionOf(id);
 		return {
 			package:    pkg,
-			/* `packagesExporting` already means the package's export list carries the name; a missing decoded
-			   entry (a database gap) does not make that untrue, so `exported` defaults to true rather than false */
 			exported:   fn?.exported ?? true,
 			parameters: fn?.signature.map(p => p.name),
 			file:       fn?.file,

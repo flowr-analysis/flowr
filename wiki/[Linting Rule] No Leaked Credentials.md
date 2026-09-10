@@ -1,14 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="no-leaked-credentials">No Leaked Credentials&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
-
 
 This rule is a `best-effort` rule.
  
 Detects hardcoded credentials assigned to variables whose names suggest they hold passwords, tokens, or API keys, or whose values match known credential formats (AWS, GitHub, Slack, Stripe, SSH).\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L43">src/linter/rules/no-leaked-credentials.ts</a>._
-
 
 ### Configuration
 
@@ -22,25 +20,15 @@ Pattern matched against string literal values to detect known credential formats
 
 ### Examples
 
-
 ```r
 password <- "s3cr3t"
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "no-leaked-credentials",     "config": {} } ] } ]
 ```
-
-
-
-
-
 
 _Results (prettified and summarized):_
 
@@ -56,54 +44,23 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "linter": {
-    "results": {
-      "no-leaked-credentials": {
-        "results": [
-          {
-            "certainty": "uncertain",
-            "involvedId": 0,
-            "variableName": "password",
-            "loc": [
-              1,
-              1,
-              1,
-              8
-            ]
-          }
-        ],
-        ".meta": {
-          "totalChecked": 1
-        }
-      }
-    },
+    "results": {"no-leaked-credentials":{"results":[{"certainty":"uncertain","involvedId":0,"variableName":"password","loc":[1,1,1,8]}],".meta":{"totalChecked":1}}},
     ".meta": {}
   },
   ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-no-leaked-credentials.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts)
 
-
 <h4 id="Test_Case:_no_credentials">Test Case: no credentials</h4>
-
 
 Given the following input:
 
@@ -111,19 +68,13 @@ Given the following input:
 x <- 42
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L8) for the test-case implementation.
 		
 <h4 id="Test_Case:_password_assignment">Test Case: password assignment</h4>
-
 
 Given the following input:
 
@@ -131,19 +82,13 @@ Given the following input:
 password <- "s3cr3t"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'password', loc: [1, 1, 1, 8] }]
-```
-
+* uncertain at 1.1-1.8: variableName = `'password'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L14) for the test-case implementation.
 		
 <h4 id="Test_Case:_api_key_assignment">Test Case: api_key assignment</h4>
-
 
 Given the following input:
 
@@ -151,19 +96,13 @@ Given the following input:
 api_key <- "abc123-xyz"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'api_key', loc: [1, 1, 1, 7] }]
-```
-
+* uncertain at 1.1-1.7: variableName = `'api_key'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L20) for the test-case implementation.
 		
 <h4 id="Test_Case:_token_assignment">Test Case: token assignment</h4>
-
 
 Given the following input:
 
@@ -171,19 +110,13 @@ Given the following input:
 auth_token <- "Bearer abc123"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'auth_token', loc: [1, 1, 1, 10] }]
-```
-
+* uncertain at 1.1-1.10: variableName = `'auth_token'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L26) for the test-case implementation.
 		
 <h4 id="Test_Case:_case_insensitive_match">Test Case: case insensitive match</h4>
-
 
 Given the following input:
 
@@ -191,19 +124,13 @@ Given the following input:
 PASSWORD <- "hunter2"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'PASSWORD', loc: [1, 1, 1, 8] }]
-```
-
+* uncertain at 1.1-1.8: variableName = `'PASSWORD'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L32) for the test-case implementation.
 		
 <h4 id="Test_Case:_non-string_value_not_flagged">Test Case: non-string value not flagged</h4>
-
 
 Given the following input:
 
@@ -211,19 +138,13 @@ Given the following input:
 password <- getPass()
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L38) for the test-case implementation.
 		
 <h4 id="Test_Case:_numeric_value_not_flagged">Test Case: numeric value not flagged</h4>
-
 
 Given the following input:
 
@@ -231,19 +152,13 @@ Given the following input:
 secret <- 42
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L44) for the test-case implementation.
 		
 <h4 id="Test_Case:_unrelated_variable_with_plain_string_not_flagged">Test Case: unrelated variable with plain string not flagged</h4>
-
 
 Given the following input:
 
@@ -251,19 +166,13 @@ Given the following input:
 greeting <- "hello world"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L50) for the test-case implementation.
 		
 <h4 id="Test_Case:_multiple_assignments">Test Case: multiple assignments</h4>
-
 
 Given the following input:
 
@@ -273,19 +182,13 @@ password <- "mypass"
 y <- 1
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'password', loc: [2, 1, 2, 8] }]
-```
-
+* uncertain at 2.1-2.8: variableName = `'password'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L56) for the test-case implementation.
 		
 <h4 id="Test_Case:_api.key_with_dot_separator">Test Case: api.key with dot separator</h4>
-
 
 Given the following input:
 
@@ -293,19 +196,13 @@ Given the following input:
 api.key <- "tok_12345"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'api.key', loc: [1, 1, 1, 7] }]
-```
-
+* uncertain at 1.1-1.7: variableName = `'api.key'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L62) for the test-case implementation.
 		
 <h4 id="Test_Case:_custom_name_pattern">Test Case: custom name pattern</h4>
-
 
 Given the following input:
 
@@ -313,24 +210,18 @@ Given the following input:
 mysupersecretvar <- "secret"
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ credentialNamePattern: 'mysupersecretvar' }
+{credentialNamePattern: 'mysupersecretvar'}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'mysupersecretvar', loc: [1, 1, 1, 16] }]
-```
-
+* uncertain at 1.1-1.16: variableName = `'mysupersecretvar'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L68) for the test-case implementation.
 		
 <h4 id="Test_Case:_aws_access_key_id_detected_by_value">Test Case: aws access key id detected by value</h4>
-
 
 Given the following input:
 
@@ -338,19 +229,13 @@ Given the following input:
 x <- "AKIAIOSFODNN7EXAMPLE"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'x', loc: [1, 1, 1, 1] }]
-```
-
+* uncertain at 1.1-1.1: variableName = `'x'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L75) for the test-case implementation.
 		
 <h4 id="Test_Case:_github_pat_detected_by_value">Test Case: github pat detected by value</h4>
-
 
 Given the following input:
 
@@ -358,19 +243,13 @@ Given the following input:
 connection <- "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'connection', loc: [1, 1, 1, 10] }]
-```
-
+* uncertain at 1.1-1.10: variableName = `'connection'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L81) for the test-case implementation.
 		
 <h4 id="Test_Case:_pem_private_key_detected_by_value">Test Case: pem private key detected by value</h4>
-
 
 Given the following input:
 
@@ -378,19 +257,13 @@ Given the following input:
 data <- "-----BEGIN RSA PRIVATE KEY-----"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'data', loc: [1, 1, 1, 4] }]
-```
-
+* uncertain at 1.1-1.4: variableName = `'data'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L87) for the test-case implementation.
 		
 <h4 id="Test_Case:_slack_token_detected_by_value">Test Case: slack token detected by value</h4>
-
 
 Given the following input:
 
@@ -398,19 +271,13 @@ Given the following input:
 bot <- "xoxb-1234567890-abcdefghijklmn"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'bot', loc: [1, 1, 1, 3] }]
-```
-
+* uncertain at 1.1-1.3: variableName = `'bot'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L93) for the test-case implementation.
 		
 <h4 id="Test_Case:_stripe_key_detected_by_value">Test Case: stripe key detected by value</h4>
-
 
 Given the following input:
 
@@ -418,19 +285,13 @@ Given the following input:
 client <- "sk_live_12345abcdefghijklmnopqrs"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'client', loc: [1, 1, 1, 6] }]
-```
-
+* uncertain at 1.1-1.6: variableName = `'client'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L99) for the test-case implementation.
 		
 <h4 id="Test_Case:_name_and_value_both_match">Test Case: name and value both match</h4>
-
 
 Given the following input:
 
@@ -438,13 +299,8 @@ Given the following input:
 api_key <- "AKIAIOSFODNN7EXAMPLE"
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Uncertain, variableName: 'api_key', loc: [1, 1, 1, 7] }]
-```
-
+* uncertain at 1.1-1.7: variableName = `'api_key'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L105) for the test-case implementation.

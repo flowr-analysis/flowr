@@ -116,7 +116,6 @@ export const SlicingCriterion = {
 		if(split === undefined || at <= 0) {
 			return undefined;
 		}
-		/* the same line and name {@link SlicingCriterion.tryParse} accepts, so that what is read back resolves */
 		const line = split.rest.slice(0, at);
 		const name = split.rest.slice(at + 1);
 		return /^\d+$/.test(line) && name.length > 0 && !name.startsWith('[') ? { line: Number(line), name } : undefined;

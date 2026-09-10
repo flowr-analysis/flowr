@@ -48,7 +48,6 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		}
 
 		const vector = NodeValue.soleOf(vectorOfLoop.nodeId, Resolve.info(dataflow, ctx));
-		/* a scalar is a vector of length one, so `for(i in 1)` runs its body once as well */
 		const once = vector === undefined ? false
 			: vector.type === 'vector' ? isValue(vector.elements) && vector.elements.length === 1
 				: vector.type === 'interval' ? isValue(vector.start) && isValue(vector.end) && vector.startInclusive && vector.endInclusive

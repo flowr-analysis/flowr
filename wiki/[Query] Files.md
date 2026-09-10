@@ -1,23 +1,17 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Files Query">Files Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the files matching the given criteria.\
 _This query is requested with the type `files`._\
 Run in the REPL: `:query @files [role:<r1>,<r2>,...] <code | file://path>`
 
-
 This query returns the files that match the given criteria.
-
-
 
 ```json
 [ { "type": "files" } ]
 ```
 
-
 (This can be shortened to `@files` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
@@ -31,27 +25,13 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
-{
-  "files": {
-    ".meta": {},
-    "files": []
-  },
-  ".meta": {}
-}
+{"files":{".meta":{},"files":[]},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 
@@ -64,27 +44,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
-
-
 ```mermaid
 flowchart LR
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

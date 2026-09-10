@@ -708,6 +708,11 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly iterated?:        boolean
 }
 
+/** Whether a definition holds a tracked environment, i.e. carries an {@link InGraphIdentifierDefinition#envState}. */
+export function hasEnvState(definition: IdentifierDefinition | undefined): definition is InGraphIdentifierDefinition & { envState: REnvironmentInformation } {
+	return (definition as InGraphIdentifierDefinition | undefined)?.envState !== undefined;
+}
+
 /**
  * A narrowed variant of {@link InGraphIdentifierDefinition} that is guaranteed to have a non-undefined `name`.
  * Prefer this over the inline intersection `InGraphIdentifierDefinition & { name: Identifier }`.

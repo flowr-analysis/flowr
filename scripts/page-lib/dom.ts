@@ -1,7 +1,3 @@
-/**
- * The two element helpers every generated page builds its DOM with.
- * @module
- */
 
 /** a new element with its class and text set in one line, the two properties most creations want */
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {

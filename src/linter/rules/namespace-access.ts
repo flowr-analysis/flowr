@@ -9,9 +9,7 @@ import { LintingRuleTag } from '../linter-tags';
 
 /** kind of mismatch between the `::`/`:::` written and what the package actually exports */
 export type NamespaceAccessKind =
-	/** `pkg:::name`, but `name` is exported by `pkg` - `::` already reaches it */
 	| 'unnecessary-internal'
-	/** `pkg::name`, but `name` is not exported by `pkg` - this throws in R at runtime */
 	| 'not-exported';
 
 export interface NamespaceAccessResult extends LintingResult {
@@ -50,7 +48,6 @@ export const NAMESPACE_ACCESS = {
 				if(pkg === undefined) {
 					continue;
 				}
-				// rawFunctionOf skips the exported check - that's exactly what we're cross-checking here
 				const raw = db.rawFunctionOf(node.content);
 				if(raw === undefined) {
 					unresolved++;

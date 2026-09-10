@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Dice Query">Dice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reduces the code to the parts that carry information from a given start point to a given end point.\
 _This query is requested with the type `dice`._\
 Run in the REPL: `:query @dice (<crit>;...->crit;...)[iIcB] <code | file://path>`
-
 
 While the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice) answers "what affects this point?" (or "what does this point affect?"),
 a _dice_ answers the two-sided question: **which parts of the program carry information from A to B?**
@@ -24,12 +23,8 @@ w <- z * 2
 print(z)
 ```
 
-
 Asking what connects the definition of `x` to the definition of `z` drops `y <- 2` (it never depends on `x`)
 as well as `w <- z * 2` and `print(z)` (they are not on a path _into_ the `to` criterion):
-
-
-
 
 ```json
 [
@@ -45,10 +40,7 @@ as well as `w <- z * 2` and `print(z)` (they are not on a path _into_ the `to` c
 ]
 ```
 
-
 (This can be shortened to `@dice (1@x->3@z) "x <- 1\ny <- 2\nz <- x + y\nw <- z * 2\nprint(z)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
@@ -62,40 +54,14 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "dice": {
     ".meta": {},
     "results": {
       "1@x->3@z": {
-        "slice": {
-          "timesHitThreshold": 0,
-          "result": [
-            0,
-            2,
-            7,
-            9,
-            10,
-            6
-          ],
-          "slicedFor": [
-            0,
-            6
-          ],
-          ".meta": {}
-        },
-        "reconstruct": {
-          "code": "x <- 1\nz <- x + y",
-          "files": [
-            {
-              "code": "x <- 1\nz <- x + y"
-            }
-          ],
-          "linesWithAutoSelected": 0,
-          ".meta": {}
-        }
+        "slice": {"timesHitThreshold":0,"result":[0,2,7,9,10,6],"slicedFor":[0,6],".meta":{}},
+        "reconstruct": {"code":"x <- 1\nz <- x + y","files":[{"code":"x <- 1\nz <- x + y"}],"linesWithAutoSelected":0,".meta":{}}
       }
     }
   },
@@ -103,25 +69,15 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 Beyond `from` and `to`, the dice query understands the same options as the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice)
 (`noReconstruction`, `noMagicComments`, `inlineSources`, `inlineFull`, and `includeCallees`), as both share the
 `SliceQueryOptions` of [`./src/queries/catalog/slice-query-options.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/slice-query-options.ts).
 
-
 <details><summary>Multiple Criteria per Side</summary>
 
 Each side accepts several criteria, which are seeded together:
-
 
 ```json
 [
@@ -138,11 +94,6 @@ Each side accepts several criteria, which are seeded together:
 ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
 x <- 1\
@@ -157,46 +108,14 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "dice": {
     ".meta": {},
     "results": {
       "1@x,2@y->5@print": {
-        "slice": {
-          "timesHitThreshold": 0,
-          "result": [
-            0,
-            3,
-            5,
-            8,
-            9,
-            10,
-            6,
-            17,
-            19,
-            2,
-            7
-          ],
-          "slicedFor": [
-            0,
-            3,
-            19
-          ],
-          ".meta": {}
-        },
-        "reconstruct": {
-          "code": "x <- 1\ny <- 2\nz <- x + y\nprint(z)",
-          "files": [
-            {
-              "code": "x <- 1\ny <- 2\nz <- x + y\nprint(z)"
-            }
-          ],
-          "linesWithAutoSelected": 0,
-          ".meta": {}
-        }
+        "slice": {"timesHitThreshold":0,"result":[0,3,5,8,9,10,6,17,19,2,7],"slicedFor":[0,3,19],".meta":{}},
+        "reconstruct": {"code":"x <- 1\ny <- 2\nz <- x + y\nprint(z)","files":[{"code":"x <- 1\ny <- 2\nz <- x + y\nprint(z)"}],"linesWithAutoSelected":0,".meta":{}}
       }
     }
   },
@@ -204,19 +123,10 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 </details>
 		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

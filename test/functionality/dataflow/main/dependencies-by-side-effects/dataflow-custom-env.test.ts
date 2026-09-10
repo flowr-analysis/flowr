@@ -10,7 +10,6 @@ import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import type { DataflowGraph } from '../../../../../src/dataflow/graph/graph';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../../../src/project/flowr-analyzer';
 
-/** the symbol a `get`-like call synthesizes for the name it resolves, named by the call instead of by its id */
 function withGetNames(build: (getName: (call: SlicingCriterion) => NodeId) => DataflowGraph): (analyzer: ReadonlyFlowrAnalysisProvider) => Promise<DataflowGraph> {
 	return async analyzer => {
 		const idMap = (await analyzer.normalize()).idMap;
@@ -122,7 +121,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			}
 		);
 
-		/* the piped name is assign's first formal, so `x` binds in `e` just as in the nested form (R prints 42) */
 		assertDataflow(label('a piped name binds in the envir the assign was given', ['dynamic-environment-resolution', 'name-created-resolved', 'pipe-and-pipe-bind']),
 			shell,
 			'e <- new.env()\n"x" |> assign(42, envir = e)\nget("x", envir = e)',
@@ -214,7 +212,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/* `as.environment(1)` is the global environment, so the write leaves the function frame (R prints 2, not 99) */
 		assertDataflow(label('assign with pos 1 in a function writes the global environment', ['dynamic-environment-resolution']),
 			shell,
 			'x <- 99\nf <- function() assign("x", 2, 1)\nf()\nx',
@@ -224,7 +221,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['4@x', '1@x']] }
 		);
 
-		/* every other position names a package on the search path, which we do not model: not a local write */
 		assertDataflow(label('assign with an unmodelled pos does not write the current scope', ['dynamic-environment-resolution']),
 			shell,
 			'assign("x", 42, 3)\nx',
@@ -291,7 +287,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/* `envir` sits at a different slot per function, so it has to be looked up by the signature, not by a fixed index */
 		assertDataflow(label('get0 takes envir as its second formal, positionally', ['dynamic-environment-resolution', 'name-created-resolved']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\nget0("x", e)',
@@ -312,7 +307,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/* R's `envir = as.environment(pos)`, so an environment handed to `pos` is the environment to read from */
 		assertDataflow(label('get reads from an environment handed to its pos slot', ['dynamic-environment-resolution', 'name-created-resolved']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", e)',
@@ -353,26 +347,25 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
-				.reads(16, '2@"x1"'),
+				.reads('3@ls', '2@"x1"'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 	});
 
 	describe('get() resolves a name held in a variable', () => {
-		// get(nm) folds nm to its string value and reads the named identifier, not just nm itself
 		assertDataflow(label('get reads the definition of the name it resolves to', ['name-created', 'name-created-resolved']),
 			shell,
 			'x <- 1\nnm <- "x"\nr <- get(nm)\nprint(r)',
-			emptyGraph()
-				.defineVariable(0, 'x')
-				.call(10, 'get', [argumentInCall('10-get-name'), argumentInCall(8)], {
-					returns:     ['10-get-name'],
-					reads:       ['10-get-name', 8, NodeId.toBuiltIn('get')],
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@x', 'x')
+				.call('3@get', 'get', [argumentInCall(getName('3@get')), argumentInCall('3@nm')], {
+					returns:     [getName('3@get')],
+					reads:       [getName('3@get'), '3@nm', NodeId.toBuiltIn('get')],
 					onlyBuiltIn: true
 				})
-				.calls(10, NodeId.toBuiltIn('get'))
-				.reads('10-get-name', 0),
-			{ expectIsSubgraph: true }
+				.calls('3@get', NodeId.toBuiltIn('get'))
+				.reads(getName('3@get'), '1@x')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 	});
 
@@ -549,7 +542,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			emptyGraph()
 				.defineVariable('1@x', 'x')
 				.use('3@x').reads('3@x', '1@x')
-				/* a field of an environment binds the value written into it, so a read of it reads that value */
 				.use('4@foo').reads('4@foo', '2@42')
 				.defineVariable('5@foo', 'foo')
 				.use('6@foo').reads('6@foo', '5@foo')

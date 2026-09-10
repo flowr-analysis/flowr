@@ -106,7 +106,6 @@ describe('flowR linter', withTreeSitter(parser => {
 	describe('Unescaped Evaluation', () => {
 		assertLinter('constant evaluation', parser, 'eval(parse(text = "1+1"))', 'unescaped-arguments', []);
 		assertLinter('bounded evaluation', parser, 'eval(parse(text = match.arg(x, c("a", "b"))))', 'unescaped-arguments', []);
-		/* the name is a constant, so an attacker cannot steer this lookup even if "x" is undefined */
 		assertLinter('constant symbol lookup', parser, 'get("x")', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup of a known variable', parser, 'x <- 2\nget("x")', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup with a folded name', parser, 'i <- "x"\nget(i)', 'unescaped-arguments', []);

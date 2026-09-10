@@ -1,18 +1,15 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Origin Query">Origin Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Retrieve the origin of a variable, function call, ...\
 _This query is requested with the type `origin`._\
 Run in the REPL: `:query @origin (<criterion>) <code | file://path>`
 
-
 With this query you can use flowR's origin tracking to find out the read origins of a variable,
 the functions called by a call, and more.
 
 Using the example code `x <- 1
 print(x)` (with the `print(x)` in the second line), the following query returns the origins of `x` in the code:
-
-
 
 ```json
 [
@@ -23,14 +20,11 @@ print(x)` (with the `print(x)` in the second line), the following query returns 
 ]
 ```
 
-
 (This can be shortened to `@origin (2@x) "x <- 1\nprint(x)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **origin** (1 ms)\
+Query: **origin** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ Origins for {2@x}\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ {"type":0,"id":0}\
 
@@ -41,34 +35,13 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
-{
-  "origin": {
-    ".meta": {},
-    "results": {
-      "2@x": [
-        {
-          "type": 0,
-          "id": 0
-        }
-      ]
-    }
-  },
-  ".meta": {}
-}
+{"origin":{".meta":{},"results":{"2@x":[{"type":0,"id":0}]}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 x <- 1
@@ -81,8 +54,6 @@ print(x)
 
 The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -122,21 +93,10 @@ print`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

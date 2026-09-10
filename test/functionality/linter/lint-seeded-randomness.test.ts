@@ -123,7 +123,6 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		describe('a name that only looks like a consumer', () => {
-			/* `some` is purrr's predicate helper; only `car::some` samples rows, and consumers match by bare name */
 			assertLinter('some is not a randomness consumer', parser, 'some(1:3, is.numeric)', 'seeded-randomness', [],
 				{ consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 		});

@@ -148,7 +148,6 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(dep?.candidates).not.toContain('1.0');
 	});
 
-	// naming a class via structure(..., class = ...) counts as a use of that class
 	test(label('a class named where an object is constructed counts as a use of that class', ['oop-class-dependency-attribution', 'class-owner-s3', 'oop-s3-construction'], ['query']), async() => {
 		const dep = await guessDep(ts, {
 			code:     'library(zoo)\nx <- structure(1, class = "yearmon")',

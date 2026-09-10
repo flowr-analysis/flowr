@@ -1,14 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="software-has-license">Software Has License&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments."><a href='#documentation'>![documentation](https://img.shields.io/badge/documentation-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
-
 
 This rule is a `best-effort` rule.
  
 Checks whether the software project provides a license (via a LICENSE file or the DESCRIPTION file License field).\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/software-has-license.ts#L20">src/linter/rules/software-has-license.ts</a>._
-
 
 ### Configuration
 
@@ -20,29 +18,19 @@ Whether to also inspect the DESCRIPTION file for a License field
 
 ### Examples
 
-
 ```r
 cat("a project without a license")
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "software-has-license",     "config": {} } ] } ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Software Has License** (software-has-license):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No license found in the project\
@@ -54,51 +42,23 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "linter": {
-    "results": {
-      "software-has-license": {
-        "results": [
-          {
-            "certainty": "certain",
-            "loc": [
-              -1,
-              -1,
-              -1,
-              -1
-            ],
-            "message": "No license found in the project"
-          }
-        ],
-        ".meta": {}
-      }
-    },
+    "results": {"software-has-license":{"results":[{"certainty":"certain","loc":[-1,-1,-1,-1],"message":"No license found in the project"}],".meta":{}}},
     ".meta": {}
   },
   ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-software-has-license.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts)
 
-
 <h4 id="Test_Case:_no_license_in_plain_script">Test Case: no license in plain script</h4>
-
 
 Given the following input:
 
@@ -106,166 +66,122 @@ Given the following input:
 cat("hello")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No license found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No license found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L9) for the test-case implementation.
 		
 <h4 id="Test_Case:_license_file_present">Test Case: license file present</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/LICENSE', 'MIT License')] }
+{addFiles: [new FlowrInlineTextFile('/project/LICENSE', 'MIT License')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L15) for the test-case implementation.
 		
 <h4 id="Test_Case:_license.md_present">Test Case: license.md present</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/LICENSE.md', '## License\nMIT')] }
+{addFiles: [new FlowrInlineTextFile('/project/LICENSE.md', '## License\nMIT')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L22) for the test-case implementation.
 		
 <h4 id="Test_Case:_unrelated_file_does_not_count">Test Case: unrelated file does not count</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/README.md', 'no license here')] }
+{addFiles: [new FlowrInlineTextFile('/project/README.md', 'no license here')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No license found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No license found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L29) for the test-case implementation.
 		
 <h4 id="Test_Case:_description_file_with_license">Test Case: description file with license</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/DESCRIPTION', 'Package: Foo\nVersion: 1.0\nLicense: MIT\n')] }
+{addFiles: [new FlowrInlineTextFile('/project/DESCRIPTION', 'Package: Foo\nVersion: 1.0\nLicense: MIT\n')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L36) for the test-case implementation.
 		
 <h4 id="Test_Case:_description_file_without_license_field">Test Case: description file without license field</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/DESCRIPTION', 'Package: Foo\nVersion: 1.0\n')] }
+{addFiles: [new FlowrInlineTextFile('/project/DESCRIPTION', 'Package: Foo\nVersion: 1.0\n')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No license found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No license found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L43) for the test-case implementation.
 		
 <h4 id="Test_Case:_description_check_disabled">Test Case: description check disabled</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{
-	addFiles:             [new FlowrInlineTextFile('/project/DESCRIPTION', 'Package: Foo\nVersion: 1.0\nLicense: MIT\n')],
-	checkDescriptionFile: false
-}
+{addFiles: [new FlowrInlineTextFile('/project/DESCRIPTION', 'Package: Foo\nVersion: 1.0\nLicense: MIT\n')], checkDescriptionFile: false}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No license found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No license found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L50) for the test-case implementation.

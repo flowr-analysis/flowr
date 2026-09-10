@@ -551,40 +551,43 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			);
 			assertDataflow(label('setNames hands back a renamed copy and leaves its argument alone', ['name-normal', 'strings', 'unnamed-arguments', 'call-normal', 'newlines']),
 				shell, 'df <- data.frame(1:5)\nsetNames(df, "id")', emptyGraph()
-					.constant(2)
-					.constant(3)
-					.call(4, ':', [argumentInCall(2), argumentInCall(3)], { returns: [], reads: [2, 3, NodeId.toBuiltIn(':')], onlyBuiltIn: true })
-					.argument(4, [2, 3])
-					.calls(4, NodeId.toBuiltIn(':'))
-					.call(6, 'data.frame', [argumentInCall(4)], { returns: [], reads: [4, NodeId.toBuiltIn('data.frame')], onlyBuiltIn: true })
-					.argument(6, 4)
-					.calls(6, NodeId.toBuiltIn('data.frame'))
-					.call(7, '<-', [argumentInCall(0), argumentInCall(6)], { returns: [0], reads: [6, NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
-					.argument(7, [0, 6])
-					.calls(7, NodeId.toBuiltIn('<-'))
-					.defineVariable(0, 'df', { definedBy: [7, 6] })
-					.use(9, 'df')
-					.reads(9, 0)
-					.constant(11)
-					.call(13, 'setNames', [argumentInCall(9), argumentInCall(11)], { returns: [], reads: [9, 11, NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
-					.argument(13, [9, 11])
-					.calls(13, NodeId.toBuiltIn('setNames'))
+					.constant('1:18')
+					.constant('1:20')
+					.call('1:19', ':', [argumentInCall('1:18'), argumentInCall('1:20')], { returns: [], reads: ['1:18', '1:20', NodeId.toBuiltIn(':')], onlyBuiltIn: true })
+					.argument('1:19', ['1:18', '1:20'])
+					.calls('1:19', NodeId.toBuiltIn(':'))
+					.call('1@data.frame', 'data.frame', [argumentInCall('1:19')], { returns: [], reads: ['1:19', NodeId.toBuiltIn('data.frame')], onlyBuiltIn: true })
+					.argument('1@data.frame', '1:19')
+					.calls('1@data.frame', NodeId.toBuiltIn('data.frame'))
+					.call('1:4', '<-', [argumentInCall('1@df'), argumentInCall('1@data.frame')], { returns: ['1@df'], reads: ['1@data.frame', NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
+					.argument('1:4', ['1@df', '1@data.frame'])
+					.calls('1:4', NodeId.toBuiltIn('<-'))
+					.defineVariable('1@df', 'df', { definedBy: ['1:4', '1@data.frame'] })
+					.use('2@df', 'df')
+					.reads('2@df', '1@df')
+					.constant('2:14')
+					.call('2@setNames', 'setNames', [argumentInCall('2@df'), argumentInCall('2:14')], { returns: [], reads: ['2@df', '2:14', NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
+					.argument('2@setNames', ['2@df', '2:14'])
+					.calls('2@setNames', NodeId.toBuiltIn('setNames')),
+				{ resolveIdsAsCriterion: true }
 			);
 			assertDataflow(label('replacement call with a named argument points its argument edge at a real vertex', ['name-normal', 'numbers', 'named-arguments', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']),
 				shell, 'v <- 1\ng(v, k = 2) <- 3', emptyGraph()
-					.constant(1)
-					.call(2, '<-', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
-					.calls(2, NodeId.toBuiltIn('<-'))
-					.defineVariable(0, 'v', { definedBy: [1, 2] })
-					.constant(7)
+					.constant('1:6')
+					.call('1:3', '<-', [argumentInCall('1@v'), argumentInCall('1:6')], { returns: ['1@v'], reads: [NodeId.toBuiltIn('<-'), '1:6'], onlyBuiltIn: true })
+					.calls('1:3', NodeId.toBuiltIn('<-'))
+					.defineVariable('1@v', 'v', { definedBy: ['1:6', '1:3'] })
+					.constant('2:10')
+					/* the named argument's own vertex, which no criterion names: it shares its position with the name */
 					.use(8)
-					.reads(8, 7)
-					.constant(10)
-					.call(9, 'g<-', [argumentInCall(4), argumentInCall(8), argumentInCall(10)],
-						{ returns: [4], reads: [10, 7, NodeId.toBuiltIn('g<-')], origin: [BuiltInProcName.Replacement], link: { origin: [11] } })
-					.calls(9, NodeId.toBuiltIn('g<-'))
-					.defineVariable(4, 'v', { definedBy: [10, 9] })
-					.reads(4, [9, 0])
+					.reads(8, '2:10')
+					.constant('2:16')
+					.call('2@g', 'g<-', [argumentInCall('2@v'), argumentInCall(8), argumentInCall('2:16')],
+						{ returns: ['2@v'], reads: ['2:16', '2:10', NodeId.toBuiltIn('g<-')], origin: [BuiltInProcName.Replacement], link: { origin: ['2:13'] } })
+					.calls('2@g', NodeId.toBuiltIn('g<-'))
+					.defineVariable('2@v', 'v', { definedBy: ['2:16', '2@g'] })
+					.reads('2@v', ['2@g', '1@v']),
+				{ resolveIdsAsCriterion: true }
 			);
 		});
 	});

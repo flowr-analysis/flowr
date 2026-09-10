@@ -95,7 +95,6 @@ function enclosingStatement(idMap: AstIdMap, id: NodeId): RNode<ParentInformatio
 	return undefined;
 }
 
-/** `id`, or the outermost loop around it that `definition` is not in as well: a close inside that loop would run every iteration. */
 function liftedOutOfLoops(idMap: AstIdMap, id: NodeId, definition: NodeId): NodeId {
 	let lifted = id;
 	for(let node = idMap.get(id); node !== undefined; node = RNode.directParent(node, idMap)) {

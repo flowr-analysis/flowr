@@ -16,7 +16,6 @@ import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SexpType } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 
-/** The expected subgraph for the variables `load` introduces, shared by the real-world and the generated rda tests. */
 function loadedVarsGraph(varsAndTypes: ReadonlyMap<string, string>) {
 	let graph = emptyGraph();
 	for(const [varName, varType] of varsAndTypes) {
@@ -42,7 +41,6 @@ function loadedVarsGraph(varsAndTypes: ReadonlyMap<string, string>) {
 	return graph;
 }
 
-/** The expected subgraph for calling a closure that `load` introduced. */
 function loadedClosureCallGraph(closureName: string) {
 	return emptyGraph()
 		.defineVariable(`3:loaded:${closureName}`, undefined, { cds: [{ id: 3, when: true }] })
@@ -66,7 +64,6 @@ describe('load real-world', withTreeSitter(parser => {
 		return;
 	}
 
-	// forward slashes so the path survives interpolation into R strings (`\` is an escape there) on Windows
 	const files = found.map(rPath);
 
 	describe('defines variables', () => {

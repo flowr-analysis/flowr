@@ -21,7 +21,6 @@ import { attachClassDeclaration } from './built-in-s-seven-new-generic';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
-/** The arguments carrying the members that hold data rather than functions. */
 const FieldListArguments = ['fields', 'private'];
 
 /** Processes an `R6Class`/`setRefClass` generator call, tagging it so the assignment layer can record its method list. */
@@ -46,7 +45,6 @@ export function resolveClassMethodsToEnvState<OtherInfo>(
 		return undefined;
 	}
 	let envState: REnvironmentInformation | undefined;
-	/* the instance holds its fields next to its methods, and `o$n` has to resolve to one just as `o$m()` does */
 	for(const [names, values] of [[MethodListArguments, false], [FieldListArguments, true]] as const) {
 		const list = source.arguments.find(arg => arg !== EmptyArgument && arg.name !== undefined && names.includes(arg.name.content));
 		const resolved = list && list !== EmptyArgument && list.value !== undefined

@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Signature Query">Signature Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Inspects the signature database: packages, function signatures, source and documentation links.\
 _This query is requested with the type `signature`._\
 Run in the REPL: `:query @signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--cg-max <n>] [--help]`
-
 
 This query is the read-side interface to flowR's [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database)&mdash;the very same database
 that resolves `library()` and `::` calls during the dataflow analysis. It lets you ask what flowR actually _knows_ about a package
@@ -29,11 +28,7 @@ library(dplyr)
 lead(1:10, n = 1)
 ```
 
-
 we can inspect the signature of the function it calls:
-
-
-
 
 ```json
 [
@@ -45,14 +40,11 @@ we can inspect the signature of the function it calls:
 ]
 ```
 
-
-
-
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
-Query: **signature** (10 ms)\
+Query: **signature** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ **dplyr**::**lead** v1.2.1\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **lead**(_x_, _n_ = _1L_, _default_ = _NULL_, _order_by_ = _NULL_, ...)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ exported  _can-throw_\
@@ -67,29 +59,11 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "signature": {
     ".meta": {},
-    "databases": [
-      {
-        "scope": "current",
-        "version": 2,
-        "date": "2026-07-19"
-      },
-      {
-        "scope": "base",
-        "version": 2,
-        "date": "2026-07-19"
-      },
-      {
-        "scope": "history",
-        "version": 2,
-        "date": "2026-07-19"
-      }
-    ],
+    "databases": [{"scope":"current","version":2,"date":"2026-07-19"},{"scope":"base","version":2,"date":"2026-07-19"},{"scope":"history","version":2,"date":"2026-07-19"}],
     "packageCount": 23765,
     "sourceCount": 3,
     "function": {
@@ -97,43 +71,15 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       "package": "dplyr",
       "version": "1.2.1",
       "exported": true,
-      "properties": [
-        "exported",
-        "can-throw"
-      ],
+      "properties": ["exported","can-throw"],
       "parameters": [
-        {
-          "name": "x",
-          "props": 2
-        },
-        {
-          "name": "n",
-          "props": 0,
-          "default": "1L"
-        },
-        {
-          "name": "default",
-          "props": 0,
-          "default": "NULL"
-        },
-        {
-          "name": "order_by",
-          "props": 0,
-          "default": "NULL"
-        },
-        {
-          "name": "...",
-          "props": 2
-        }
+        {"name":"x","props":2},
+        {"name":"n","props":0,"default":"1L"},
+        {"name":"default","props":0,"default":"NULL"},
+        {"name":"order_by","props":0,"default":"NULL"},
+        {"name":"...","props":2}
       ],
-      "callees": [
-        "-",
-        "<",
-        "abort",
-        "shift",
-        "check_number_whole",
-        "check_dots_empty0"
-      ],
+      "callees": ["-","<","abort","shift","check_number_whole","check_dots_empty0"],
       "file": "R/lead-lag.R",
       "line": 74,
       "sourceUrl": "https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74",
@@ -145,26 +91,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 }
 ```
 
-
-
 </details>
 
-
-
 </details>
-
-	
 
 The `parameters` and `requiredParameters` properties additionally filter by the _shape_ of a function, which is useful to find
 functions you only half-remember: `{ package: '*', parameters: ['data', 'mapping'] }` finds every known function taking both of these.
-
 
 > [!NOTE]
 > The results depend on which database shards are mounted; with none available the query reports that no database is loaded rather than failing.
 > See the [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) page for the storage format, the configuration under <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (object): Resolving library exports from a signature database."><code>solver.sigdb</code></a>, and how to obtain further shards.
 > To find out what a script _uses_, reach for the [Dependencies Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies); to find out which versions it is compatible with, see the [Guess Dependency Versions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Guess-Dependency-Versions).
-
-		
 
 <details>
 

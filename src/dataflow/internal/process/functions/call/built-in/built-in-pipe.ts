@@ -83,7 +83,6 @@ export function processPipe<OtherInfo>(
 
 	guard(lhs !== undefined && rhs !== undefined, () => `lhs and rhs must be present, but ${JSON.stringify(lhs)} and ${JSON.stringify(rhs)} were found instead.`);
 
-	/* find placeholder occurrences first; if none, splice the piped value in as pipedArgument */
 	const occurrenceIds: NodeId[] = [];
 	RNode.visitAst<OtherInfo & ParentInformation>(rhs, (node) => {
 		if(RSymbol.is(node) && node.content === pipePlaceholderName) {
@@ -152,7 +151,6 @@ export function processPipe<OtherInfo>(
 		// make the lhs an argument node (or link it to placeholders within the rhs call):
 		const argId = lhs.info.id;
 
-		// occurrenceIds was already computed above, before dispatch
 		if(occurrenceIds.length > 0) {
 			if(occurrenceIds.length !== 1) {
 				log.warn(`Expected exactly one occurrence of the pipe placeholder '${Identifier.toString(pipePlaceholderName)}' in the rhs of the pipe, but found ${occurrenceIds.length}. Linking all occurrences to the lhs.`);
@@ -208,9 +206,6 @@ export function processPipe<OtherInfo>(
 		}
 	}
 
-	/* a removal performed by either side (e.g. a piped `rm()`) is bookkept as a kill, not a value, so it escapes
-	   neither through processKnownFunctionCall's out nor through the in/out merge above; re-apply it here instead.
-	   %<>% then writes the result back to the same name, which revives it - cancelRevivedKills accounts for that */
 	const kill = cancelRevivedKills((firstArgument?.kill ?? []).concat(secondArgument?.kill ?? []), uniqueOut);
 	const environment = kill.length > 0 ? applyKills(information.environment, kill) : information.environment;
 

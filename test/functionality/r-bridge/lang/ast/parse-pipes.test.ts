@@ -8,7 +8,6 @@ import { SourceRange } from '../../../../../src/util/range';
 import { RShell } from '../../../../../src/r-bridge/shell';
 
 describe('Parse Pipes', { concurrent: false }, withShell(shell => {
-	// pipe-bind is off by default like R; enable it via pipeBind for this session only
 	const pipeBindShell = new RShell({ type: 'r-shell', pipeBind: true });
 	afterAll(() => pipeBindShell.close());
 	assertAst(label('x |> f()', ['name-normal', 'pipe-and-pipe-bind', 'call-normal']),
@@ -115,7 +114,6 @@ describe('Parse Pipes', { concurrent: false }, withShell(shell => {
 		}),
 		{ minRVersion: MIN_VERSION_PIPE }
 	);
-	// pipe-bind has no tree-sitter grammar support yet, so this case only runs against the shell
 	assertAst(label('x |> y => f(y)', ['name-normal', 'pipe-and-pipe-bind', 'pipe-bind', 'call-normal']),
 		pipeBindShell, 'x |> y => f(y)', exprList({
 			type:     RType.Pipe,
@@ -136,7 +134,6 @@ describe('Parse Pipes', { concurrent: false }, withShell(shell => {
 					info:     {}
 				}
 			},
-			// `x |> y => f(y)` desugars (just as R's own parser does) into `(function(y) f(y))(x)`
 			rhs: {
 				type:           RType.FunctionCall,
 				named:          undefined,

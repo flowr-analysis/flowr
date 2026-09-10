@@ -10,7 +10,6 @@ import os from 'os';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 
-/** the real-world corpus `setup.sh` downloads; it is never committed, so the skip names how to obtain it */
 const RealWorldRdaDir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
 export const MissingRealWorldRda = `no .rda/.rdata fixture in ${RealWorldRdaDir}: run test/functionality/project/plugin/load-pipeline/setup.sh with a zenodo/zenodo_files.csv (see that folder's README.md) to download it`;
 /** every real-world `.rda`/`.rdata` fixture on disk, empty where the corpus was never downloaded */

@@ -52,11 +52,6 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: r
 	}
 }
 
-/**
- * Whether the callee tokens name the function directly, which is either a bare name or a namespace access.
- * R's lexer tags any symbol followed by `(` as `SYMBOL_FUNCTION_CALL`, so `x$f(1)` looks like `pkg::f(1)`
- * here; only the operator in between tells them apart, and everything else is an expression to evaluate.
- */
 function isNamedCallee(namedSymbolContent: readonly NamedJsonEntry[]): boolean {
 	if(namedSymbolContent.length === 1) {
 		return namedSymbolContent[0].name === RawRType.SymbolFunctionCall;

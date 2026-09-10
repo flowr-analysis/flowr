@@ -244,7 +244,6 @@ function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' |
 	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), worthKeeping);
 }
 
-/** value side of the assignment `node` belongs to (`<-`/`<<-`/`=`/`->`/`->>`); undefined if not one */
 function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): { statement: RNode<ParentInformation>, value: RNode<ParentInformation> } | undefined {
 	const parent = RNode.directParent(node, ast.idMap);
 	if(!RBinaryOp.is(parent)) {
@@ -259,7 +258,6 @@ function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): 
 	return undefined;
 }
 
-/** true if `node` is a direct child of a program/`{ }` block, where removing it leaves valid syntax */
 function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAst): boolean {
 	if(node.info.role !== RoleInParent.ExpressionListChild) {
 		return false;
@@ -284,7 +282,6 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, variable.info.parent))
-		/* a side effect is recorded from what it writes *to* the call performing it, so it is an ingoing edge */
 		|| definedBys.some(e => Array.from(dfg.edgesTo(e)).some(([, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets)))
 		|| definedBys.flatMap(e => Array.from(dfg.edgesFrom(e)))
 			.some(([target, e]) => {
@@ -317,10 +314,8 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 		return [{ type: 'remove', loc: totalRangeToRemove, description }];
 	}
 
-	/* not a standalone statement (e.g. `print(x <- get(...))`); keep the value, drop only the binding */
 	const replacement = assignment !== undefined ? assignment.value.info.fullLexeme ?? assignment.value.lexeme : undefined;
 	if(replacement === undefined) {
-		/* nothing safe to keep in its place, so offer no fix at all */
 		return undefined;
 	}
 	return [{

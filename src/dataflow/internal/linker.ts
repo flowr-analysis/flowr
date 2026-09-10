@@ -6,7 +6,7 @@ import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type InGraphIdentifierDefinition, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
+import { type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
 import type { FunctionArgument, DataflowGraph } from '../graph/graph';
 import { NoEdges } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -115,19 +115,11 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 
 const NoCalleeEnvironments: readonly REnvironmentInformation[] = [];
 
-/** The environments a called function was given of its own, as `environment(f) <- e` gives one. */
 function environmentsOfCallee(info: DataflowGraphVertexFunctionCall): readonly REnvironmentInformation[] {
 	if(info.name === undefined || info.environment === undefined) {
 		return NoCalleeEnvironments;
 	}
-	const found: REnvironmentInformation[] = [];
-	for(const def of Resolve.byName(info.name, info.environment) ?? []) {
-		const state = (def as InGraphIdentifierDefinition).envState;
-		if(state !== undefined) {
-			found.push(state);
-		}
-	}
-	return found;
+	return (Resolve.byName(info.name, info.environment) ?? []).filter(hasEnvState).map(d => d.envState);
 }
 
 /**
@@ -142,7 +134,6 @@ export function linkFunctionCallWithSingleTarget(
 	const id = info.id;
 	const environment = info.environment;
 	if(environment !== undefined) {
-		/* `environment(f) <- e` decides where the body looks its free names up, so that env comes first */
 		let callee: readonly REnvironmentInformation[] | undefined = undefined;
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of fnSubflow.in) {
@@ -150,8 +141,6 @@ export function linkFunctionCallWithSingleTarget(
 			if(name === undefined) {
 				continue;
 			}
-			/* what the callee itself wrote is not what it read: `f` reading `x` cannot mean the `x <<- ` inside `f`,
-			 * however the environment looks once that write has been folded back into the caller */
 			callee ??= environmentsOfCallee(info);
 			let defs: readonly IdentifierDefinition[] | undefined = undefined;
 			for(const env of callee) {
@@ -172,8 +161,6 @@ export function linkFunctionCallWithSingleTarget(
 					if(envState !== undefined) {
 						bindAccessedField(graph, ingoing.nodeId, envState, idMap);
 					}
-					/* a binding that is no name of its own -- an environment field binds the value node -- has nothing
-					 * leading back to the statement that wrote it, so the call has to read that statement itself */
 					if(definedAt !== undefined && definedAt !== nodeId && !NodeId.isBuiltIn(definedAt)
 						&& graph.hasVertex(definedAt) && !DfgVertex.isVariableDefinition(graph.getVertex(nodeId))) {
 						graph.addEdge(id, definedAt, EdgeType.Reads);
@@ -318,8 +305,6 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 			functionCallDefs = Resolve.byNameAndType(info.name, known, refType)?.map(d => d.nodeId) ?? [];
 		}
 	}
-	/* a call that kept no environment still knows the user definitions it was linked to, and those are targets;
-	 * an unnamed call has nothing to look up, so what its callee expression reads is where its targets come from */
 	const followBits = info.origin.includes(BuiltInProcName.Unnamed) ? FCallLinkReadBits : EdgeType.Calls;
 	for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 		if(DfEdge.includesType(outgoingEdge, followBits) && DfEdge.doesNotIncludeType(outgoingEdge, EdgeType.Argument) && (known !== undefined || !NodeId.isBuiltIn(target))) {
@@ -359,11 +344,8 @@ export function getAllLinkedFunctionDefinitions(
 		return [result, builtIns];
 	}
 
-	/* `viaAccess` records that the traversal passed through a subsetting call, where the question is no longer
-	 * whether the variable *is* a function but what `x$f`/`x[[i]]` holds, so a partial definition still counts */
 	const potential: [NodeId, boolean][] = Array.from(functionDefinitionReadIds, id => [id, false]);
 	const visited = new Set<NodeId>();
-	/* expanding a state again can only push what its first expansion already did */
 	const expanded = new Set<NodeId>();
 	const expandedViaAccess = new Set<NodeId>();
 
@@ -611,7 +593,6 @@ export function accessedFieldName(fieldNode: RNode<ParentInformation> | undefine
 export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean): void {
 	for(const fd of fieldDefs ?? []) {
 		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
-		/* the field name alone carries no value, so the call that wrote it is what the access depends on */
 		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
 			graph.addEdge(accessId, fd.definedAt, EdgeType.Reads);
 		}

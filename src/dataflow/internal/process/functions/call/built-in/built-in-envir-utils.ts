@@ -8,7 +8,7 @@ import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { unpackArg } from '../argument/unpack-argument';
 import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition, Identifier } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
@@ -27,7 +27,6 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { MatchArgs } from '../../../../../graph/match-args';
 import { FnSig } from '../../../../../environments/built-in-props';
 
-/** Which real stack environment (rather than a private custom env) a tracked env is, if it is one at all. */
 function stackKindOf(envState: REnvironmentInformation): StackEnv | undefined {
 	return envState.current.globalEnv === true ? 'global' : envState.current.builtInEnv === true ? 'base' : undefined;
 }
@@ -48,12 +47,6 @@ export interface EnvirResolution<OtherInfo> {
 }
 
 
-/**
- * Maps a list of identifier definitions (from {@link Resolve.byNameAndType}) to an {@link EnvirResolution}, merging the
- * envStates of multiple reaching definitions. The stack-env flags only survive the merge when every reaching definition
- * binds the same kind of environment; when they disagree, no routing is right for all of them, so the result is
- * `'ambiguous'` instead of a guess.
- */
 function resolveDefsToEnvirResolution<OtherInfo>(
 	defs:   readonly IdentifierDefinition[] | undefined,
 	nodeId: NodeId,
@@ -71,17 +64,16 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 		const envDef = inDefs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: stackKindOf(envState) };
 	}
-	if(!inDefs.every(d => d.envState !== undefined)) {
+	if(!inDefs.every(hasEnvState)) {
 		return undefined;
 	}
-	/* the kind of environment a tracked envState stands for is what the reaching definitions have to agree on */
-	const stack = stackKindOf(inDefs[0].envState as REnvironmentInformation);
-	if(inDefs.some(d => stackKindOf(d.envState as REnvironmentInformation) !== stack)) {
+	const stack = stackKindOf(inDefs[0].envState);
+	if(inDefs.some(d => stackKindOf(d.envState) !== stack)) {
 		return 'ambiguous';
 	}
-	let mergedEnvState = inDefs[0].envState as REnvironmentInformation;
+	let mergedEnvState = inDefs[0].envState;
 	for(let i = 1; i < inDefs.length; i++) {
-		for(const [, varDefs] of (inDefs[i].envState as REnvironmentInformation).current.memory) {
+		for(const [, varDefs] of (inDefs[i].envState).current.memory) {
 			for(const varDef of varDefs) {
 				const named = varDef as InGraphIdentifierDefinition & { name: Identifier };
 				if(named.name !== undefined) {
@@ -139,8 +131,6 @@ export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): string | undefined {
-	/* pass the (possibly desugared) node itself, not its id: the desugared call is synthesized and never makes
-	 * it into the id map, so looking it back up by id would hand back the original, un-desugared call */
 	const piped = pipedCall(node, data);
 	return NodeValue.singleStringOf(piped ?? node, data);
 }
@@ -161,9 +151,8 @@ export function envirOf<OtherInfo>(routing: EnvirArgRouting<OtherInfo>): EnvirRe
 	return routing === 'ambiguous' ? undefined : routing;
 }
 
-/** a reaching definition that carries no envState only because we cannot see what it will be bound to, not because it is known to not be an environment */
 function isAmbiguousEnvirDef(d: InGraphIdentifierDefinition): boolean {
-	return d.type === ReferenceType.Parameter && d.envState === undefined;
+	return d.type === ReferenceType.Parameter && !hasEnvState(d);
 }
 
 /** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirArgRouting}. */
@@ -212,11 +201,6 @@ function stackEnvirResolution<OtherInfo>(
  */
 export const EnvirPositionFormals: readonly string[] = ['pos', 'where'];
 
-/**
- * The argument bound to the `formal` parameter, matched the way R matches: named arguments (exact, then pmatch)
- * first, the rest filling the still-free formals positionally. Without a `sig` to state the formals only the
- * named forms can be told apart, as a raw index is not the formal index once any earlier argument is named.
- */
 function envirArgOf<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	bound:  BoundFormals<OtherInfo> | undefined,
@@ -233,7 +217,6 @@ function envirArgOf<OtherInfo>(
 	return undefined;
 }
 
-/** What `sig` binds each of its formals to, matched once, as the binding depends on the arguments alone. */
 type BoundFormals<OtherInfo> = ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>;
 
 function bindFormals<OtherInfo>(
@@ -268,10 +251,6 @@ export function suppliesArg<OtherInfo>(
 	return formals.some(formal => envirArgOf(args, bound, formal) !== undefined);
 }
 
-/**
- * `as.environment(1)` is the global environment wherever it is asked for, so a `pos` of exactly `1` names it
- * even from within a function; every other position names a package on the search path, which flowR does not model.
- */
 function globalPositionOf<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -331,7 +310,6 @@ export function resolveSymbolToEnvir<OtherInfo>(
 	return envirOf(resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable), nodeId, data));
 }
 
-/** the writes to route into the resolved envir */
 function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): readonly NamedInGraphIdentifierDefinition[] {
 	return result.out.filter(
 		(d): d is NamedInGraphIdentifierDefinition =>
@@ -340,10 +318,6 @@ function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): 
 	);
 }
 
-/**
- * Every variable in scope that holds `envState`, `envDef` included. An R environment is a reference, so
- * `alias <- e` makes both names see the same frame and a write through one has to be visible through the other.
- */
 function holdersOf(
 	environment: REnvironmentInformation,
 	envDef:      NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }
@@ -366,7 +340,6 @@ function holdersOf(
 	return holders;
 }
 
-/** Moves definitions written into a custom environment from the caller's scope into `envDef`'s tracked `envState`, re-defining every variable that holds it. */
 function routeWrittenToCustomEnv(
 	result:    DataflowInformation,
 	envDef:    NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation },
@@ -420,9 +393,6 @@ export function routeWrittenToEnvir<OtherInfo>(
 ): DataflowInformation {
 	let routed: DataflowInformation;
 	if(resolution.stack !== undefined) {
-		/* only the global frame is ours to write: `baseenv()`/`emptyenv()` hand out the built-in environment,
-		 * which is shared and never cloned, so defining into it would corrupt every later lookup (R errors on
-		 * such a write anyway) */
 		routed = resolution.stack === 'global' ? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt) : result;
 	} else {
 		routed = routeWrittenToCustomEnv(result, resolution.envDef, rootId, definedAt);

@@ -121,8 +121,6 @@ export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOpti
 	return {
 		pathToRExecutable:  config?.rPath ?? DEFAULT_R_PATH,
 		pipeBind:           config?.pipeBind ?? false,
-		// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
-		// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
 		commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
 		cwd:                process.cwd(),
 		env:                DEFAULT_R_SHELL_ENV ??= { ...process.env, LC_CTYPE: process.env.LC_ALL ?? process.env.LC_CTYPE ?? 'C.UTF-8' },
@@ -298,7 +296,6 @@ export class RShell implements AsyncParser<string> {
 		const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig);
 		expensiveTrace(this.log, () => `> ${JSON.stringify(command)}`);
 
-		/* requestQueue serializes collectors, so the shared postamble is always unique to the current one */
 		const marker = config.postamble;
 
 		const output = await this.session.collectLinesUntil(config.from, {
@@ -375,8 +372,6 @@ class RShellSession {
 	private readonly sessionStdErr: readline.Interface;
 	private readonly options:       DeepReadonly<RShellSessionOptions>;
 	private collectionTimeout:      NodeJS.Timeout | undefined;
-	/* serializes collectLinesUntil calls: a new listener attaches only after the previous one detaches,
-	 * so an abandoned slow collector can't catch a later, unrelated request's output */
 	private requestQueue:           Promise<unknown> = Promise.resolve();
 
 	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
@@ -437,11 +432,8 @@ class RShellSession {
 	 * @param action  - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
 	 */
 	public collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
-		/* next request attaches only once this one has actually stopped listening, not just when we
-		 * tell our own caller we're done (a caller-facing timeout may fire before R actually answers) */
 		const previousDrain = this.requestQueue;
 		let releaseNext: () => void = () => {
-			/* replaced below */
 		};
 		this.requestQueue = new Promise<void>(res => {
 			releaseNext = res;
@@ -450,17 +442,11 @@ class RShellSession {
 		return previousDrain.then(run, run);
 	}
 
-	/**
-	 * Worker behind {@link collectLinesUntil}, run one at a time via {@link requestQueue}.
-	 * `onDrained` fires when the listener here actually detaches (marker seen or session exit), not merely
-	 * when the returned promise settles by timeout - so a timed-out caller still holds the stream until then.
-	 */
 	private collectLinesUntilExclusive(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action: (() => void) | undefined, onDrained: () => void): Promise<string[]> {
 		const result: string[] = [];
 		let handler: (data: string) => void;
 		let error: (code: number) => void;
 		let drained = false;
-		/* set once our caller gave up; further lines are seen but belong to nobody */
 		let abandoned = false;
 
 		const detach = (): void => {
@@ -481,7 +467,6 @@ class RShellSession {
 				} else {
 					reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`));
 				}
-				/* no detach() here: R may still be working, keep listening silently until the marker or exit */
 				abandoned = true;
 				result.length = 0;
 			}, timeout.ms);

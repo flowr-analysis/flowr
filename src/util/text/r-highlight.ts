@@ -1,7 +1,3 @@
-/**
- * Shared R tokenizer for the capabilities doc and the landing page's demo, both colored via `tk-*` classes.
- * @module
- */
 
 /** kind {@link tokenizeR} assigns; `text` is the untouched gap between real tokens */
 export type RTokenKind = 'text' | 'comment' | 'string' | 'quoted' | 'number' | 'keyword' | 'call' | 'name' | 'op';
@@ -18,7 +14,6 @@ const rKeywords = new Set([
 	'TRUE', 'FALSE', 'NULL', 'NA', 'NA_integer_', 'NA_real_', 'NA_character_', 'Inf', 'NaN'
 ]);
 
-/** the pieces an R snippet is colored by, in the order a scanner has to try them */
 const rToken = /(#[^\n]*)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(`[^`]*`)|(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?[Li]?)|([A-Za-z._][A-Za-z0-9._]*)|(%[^%\s]*%|<<-|->>|<-|->|\|>|[<>=!]=|::?:?|[-+*/^$@!&|~?=])/g;
 
 /** splits R source into tokens for {@link highlightR}; gaps between matches are kept as plain `text` */
@@ -54,11 +49,9 @@ export function tokenizeR(code: string): RToken[] {
 
 /** escapes html-significant characters so R source can sit in an attribute or text node */
 export function escapeHtml(text: string): string {
-	/* we also scape \r to avoid CLRF detection */
 	return text.replace(/[&<>"\r]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\r': '&#13;' })[c] as string);
 }
 
-/** the `tk-*` class a token's kind carries; `text` gaps carry none */
 const tokenClass: Partial<Record<RTokenKind, string>> = {
 	comment: 'tk-comment', string:  'tk-string',  quoted:  'tk-name', number:  'tk-number',
 	keyword: 'tk-keyword', call:    'tk-call',   name:    'tk-name', op:      'tk-op'
@@ -79,11 +72,9 @@ export function renderRToken(token: RToken, knownNames?: KnownNames): string {
 	return `<span class="${tokenClass[token.kind]}">${escapeHtml(token.text)}</span>`;
 }
 
-/** names a snippet binds itself; never linked even if otherwise a known call */
 function boundIn(tokens: readonly RToken[]): ReadonlySet<string> {
 	const bound = new Set<string>();
 	const next = (at: number) => tokens.slice(at + 1).find(t => t.text.trim() !== '');
-	/* `=` binds only outside a call, as `f(x = 1)` names an argument rather than defining `x` */
 	let depth = 0;
 	for(let at = 0; at < tokens.length; at++) {
 		const token = tokens[at];

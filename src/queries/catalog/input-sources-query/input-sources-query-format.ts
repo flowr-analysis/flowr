@@ -44,10 +44,6 @@ export const defaultInputClassifierConfig = (ctx: ReadOnlyFlowrAnalyzerContext):
 const inputClassifierConfigOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): InputClassifierConfig => {
 	const builtIns = env.builtInIndex;
 	return {
-		/*
-		 * every {@link CallProp.Pure} built-in is in here (a test checks it), but the label alone is too narrow: what matters for provenance is that the call invents no data of its own, not that it has no effect at all -- `x <- z <- 'x'` stays constant across the assignments, and `print(x)` hands `x` back, yet neither is `Pure` (they rebind a name, write to the console).
-		 * So the set is every built-in that states its props and claims none of the {@link InputProps}.
-		 */
 		[InputTraceType.Pure]:   builtIns.without(InputProps),
 		[InputType.File]:        [...env.deriveFromDefinitions(computeReadFunctions).map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
 		[InputType.TempFile]:    builtIns.with(SemanticCallTag.TempFile),

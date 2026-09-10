@@ -1,5 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-09-09, 15:40:41 UTC (v2.15.8, R v4.6.1), do not edit directly._
-
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
@@ -47,38 +46,30 @@ The functionality tests represent conventional unit (and depending on your termi
 We use [vitest](https://vitest.dev/) as our testing framework.
 You can run the tests by issuing (some quick benchmarks may be available with `npm run test:bench`):
 
-
 ```shell
 npm run test
 ```
-
 
 Within the commandline,
 this should automatically drop you into a watch mode which will automatically re-run (potentially) affected tests if you change the code.
 If, at any time there are too many errors for you to comprehend, you can use `--bail=<value>` to stop the tests after a certain number of errors.
 For example:
 
-
 ```shell
 npm run test -- --bail=1
 ```
 
-
 If you want to run the tests without the watch mode, you can use:
-
 
 ```shell
 npm run test -- --no-watch
 ```
 
-
 To run all tests, including a coverage report and label summary, run:
-
 
 ```shell
 npm run test:full
 ```
-
 
 However, depending on your local version of&nbsp;R, your network connection, and other factors (each test may have a set of criteria), 
 some tests may be skipped automatically as they do not apply to your current system setup (or cannot be tested with the current prerequisites). 
@@ -96,7 +87,6 @@ This folder contains three special and important elements:
 - `_helper/` folder which contains helper functions to be used by other tests.
 - `test-summary.ts` which may produce a summary of the covered capabilities.
 
-
 > [!WARNING]
 > 
 > We name all test files using the `.test.ts` suffix and try to run them in parallel.
@@ -111,7 +101,6 @@ This folder contains three special and important elements:
 > 
 > Vitest deprecated the `describe.sequential` form in favour of that option, so please do not reintroduce it.
 > 
-
 
 <a id='test-labels'></a>
 #### 🏷️ Test Labels
@@ -144,7 +133,7 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
-Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L391"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L366"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L34"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
+Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L391"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L319"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L34"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
@@ -168,7 +157,6 @@ assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilit
 	}
 );
 ```
-
 
 <a id='running-only-some-tests'></a>
 #### 🤏 Running Only Some Tests
@@ -204,11 +192,9 @@ answer for rather than the program itself.
 
 Run the suite with:
 
-
 ```shell
 npm run test:mutations
 ```
-
 
 It lives in its own set ([test/mutations](https://github.com/flowr-analysis/flowr/tree/main/test/mutations), with its own `vitest.config.mts`) and is
 deliberately excluded from `npm run test`, the same arrangement as the [system tests](#system-tests), so
@@ -248,7 +234,6 @@ The passes fall into a few categories:
 A pass is a `MutationPass`, an object naming what its mutants are called and a function rewriting the
 target, or returning `undefined` where it does not apply:
 
-
 ```typescript
 interface MutationPass {
 	name:  string;
@@ -257,12 +242,10 @@ interface MutationPass {
 }
 ```
 
-
 [test/functionality/_helper/r-mutations.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/r-mutations.ts) carries helpers most passes are built from,
 notably `rewriteAssignments`, which rewrites every simple assignment a pass accepts and leaves the rest of the
 program (and the criterion's line number) alone, and `mapLines`, which rewrites the lines of a program and
 moves the criterion's line along with them.
-
 
 > [!WARNING]
 > 
@@ -278,7 +261,6 @@ moves the criterion's line along with them.
 > - a pass must not join the criterion's own line with another line naming the same variable, or the
 >   `line@name` criterion becomes ambiguous about which of the two occurrences it means.
 > 
-
 
 There is no list of mutants flowR is allowed to fail on: a pass surfacing a genuine flowR bug should be
 reported and the bug fixed, not silenced.
@@ -300,11 +282,9 @@ Although we measure wall time in the CI (which is subject to rather large variat
 Furthermore, the respective scripts can be used locally as well.
 To run them, issue:
 
-
 ```shell
 npm run test:performance
 ```
-
 
 See [test/performance](https://github.com/flowr-analysis/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark).
 
@@ -353,19 +333,15 @@ We explain the most important workflows in the following:
 There are two linting scripts.
 The main one:
 
-
 ```shell
 npm run lint
 ```
 
-
 And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](https://github.com/flowr-analysis/flowr/tree/main/.githooks/pre-push) as explained in the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md):
-
 
 ```shell
 npm run lint-local
 ```
-
 
 Besides checking coding style (as defined in the [package.json](https://github.com/flowr-analysis/flowr/tree/main/package.json)), the *full* linter runs the [license checker](#license-checker).
 
@@ -373,12 +349,10 @@ In case you are unaware,
 eslint can automatically fix several linting problems[](https://eslint.org/docs/latest/use/command-line-interface#fix-problems).
 So you may be fine by just running:
 
-
 ```shell
 npm run lint-local -- --fix
 ```
 
- 
 <a id='oh-no-the-linter-fails'></a>
 ### 💥 Oh no, the linter fails
 
@@ -402,7 +376,6 @@ Each is fixed on the spot where the replacement is already imported, and offered
 A function that only exists to be wired into a helper object names its replacement, and every reference outside its own
 file is then reported:
 
-
 ```ts
 /**
  * Every definition the identifier may refer to.
@@ -410,7 +383,6 @@ file is then reported:
  */
 export function resolveByNameAnyType(/* ... */) { /* ... */ }
 ```
-
 
 Never reported are the references that make the replacement exist: the wiring in an object literal
 (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L59"><code><span title="Every definition the identifier may refer to, whatever its type.">Resolve::<b>byName</b></span></code></a> pointing at `resolveByNameAnyType`), re-exports, and files declaring the helper itself.
@@ -471,4 +443,3 @@ You can also set the `Auto Attach Filter` setting to automatically attach the de
 option. Throughout *flowR*, we use the `log` object (or subloggers of it) for logging.
 To create your own logger, you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L26"><code>FlowrLogger::<i>getSubLogger</i></code></a>.
 For example, check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/static/static-slicer.ts#L21"><code>slicerLogger</code></a> for the static slicer.
-

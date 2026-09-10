@@ -166,12 +166,7 @@ export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependenc
 
 
 export interface DependencyInfo extends Record<string, unknown> {
-	/** absent for an assumed base package (see {@link Attached}): it names no single call to hang a node on */
 	nodeId?:             NodeId
-	/**
-	 * Set on the `base` entry of an assumed-package report: unlike the other attached base packages, `base` is
-	 * always on the search path and cannot be dropped by `R_DEFAULT_PACKAGES`. There is no library call for base necessary.
-	 */
 	alwaysAttached?:     boolean
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
@@ -214,7 +209,6 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
 		if(i.nodeId === undefined) {
-			/* an assumed base package names no call of its own; the calls that pulled it in are in linkedIds */
 			const uses = i.linkedIds?.length ? `, used at ${i.linkedIds.join(', ')}` : '';
 			const how = i.alwaysAttached ? 'always attached by R' : 'attached by R at startup';
 			result.push(`     ${value}${version} ${faint(`${how}${uses}`, formatter)}`);

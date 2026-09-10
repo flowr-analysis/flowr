@@ -25,11 +25,6 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { FnSig } from '../../../../../environments/built-in-props';
 
-/**
- * The names an expression in name position denotes: the one it folds to, or every element of a `c(...)` of such,
- * which is what `mget` is handed. Empty when a part does not fold, since reading fewer names than the call may
- * would let a definition it needs fall out of a slice.
- */
 function namesDenotedBy<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -61,28 +56,20 @@ export function processGet<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: {
-		/** whether the call hands back what the name is bound to; `exists` only asks whether it is bound */
 		returnsValue?: boolean
-		/** the formals of the call, so a positional environment argument is found at the slot it really has */
 		sig?:          FnSig
 	} = {}
 ): DataflowInformation {
-	/* the custom environment reaches the call through `envir` or, since `envir = as.environment(pos)`, through the
-	 * `pos`/`where` slot; only a value that really resolves to an environment is taken from the latter, as
-	 * `get("x", 1)` names a search-path position instead */
 	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', ...EnvirPositionFormals]);
 
-	/* the first arg must name the variable(s) to retrieve */
 	const firstArg = args.length >= 1 ? args[0] : undefined;
 	const retrieve = firstArg !== undefined && firstArg !== EmptyArgument
 		? unpackNonameArg(firstArg)
 		: undefined;
 
 	const targets: RSymbol<OtherInfo & ParentInformation>[] = [];
-	/* set when the names had to be computed, so the expression that produced them still has to be evaluated */
 	let nameExpression: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
 	if(retrieve !== undefined) {
-		/* a string literal names itself, anything else has to be folded to the name(s) it denotes */
 		const literal = RString.is(retrieve);
 		const names = literal ? [removeRQuotes(retrieve.lexeme)] : namesDenotedBy(retrieve, data);
 		const location = literal ? retrieve.location : retrieve.location ?? name.location ?? SourceRange.invalid();
@@ -109,7 +96,6 @@ export function processGet<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
 	}
 
-	/* the resolved name replaced args[0], so the real args start at 1 */
 	const remainingArgs = args.slice(1);
 
 	/* resolve in the custom environment if one was found, else the global one.
@@ -131,7 +117,6 @@ export function processGet<OtherInfo>(
 	for(const target of named) {
 		if(target) {
 			information.graph.addEdge(rootId, target.entryPoint, returns);
-			/* mark the fallback so an unresolved name still reports a constant origin (see constantFallback) */
 			const targetVtx = information.graph.getVertex(target.entryPoint);
 			if(DfgVertex.isUse(targetVtx)) {
 				targetVtx.constantFallback = true;
@@ -139,7 +124,6 @@ export function processGet<OtherInfo>(
 		}
 	}
 
-	/* the expression that produced the name is evaluated, so it and everything it needs stay reachable */
 	const nameExpressionProcessed = nameExpression !== undefined ? processedArguments[targets.length] : undefined;
 	if(nameExpressionProcessed) {
 		information.graph.addEdge(rootId, nameExpressionProcessed.entryPoint, EdgeType.Reads);
@@ -148,7 +132,6 @@ export function processGet<OtherInfo>(
 	if(resolution) {
 		information.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 	} else if(suppliesArg(args, config.sig, EnvirPositionFormals)) {
-		/* the value comes from a search-path position we do not model, so the local resolution is a guess */
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 	}
 

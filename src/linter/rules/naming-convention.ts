@@ -223,7 +223,6 @@ export const NAMING_CONVENTION = {
 				id:             m.node.info.id
 			})).filter(e => isNotUndefined(e.loc));
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
-		/* renaming onto a name the program uses already would change what that name refers to */
 		const taken = new Set<string | undefined>();
 		for(const [id] of dataflow.graph.vertices(true)) {
 			taken.add(dataflow.graph.idMap?.get(id)?.lexeme);

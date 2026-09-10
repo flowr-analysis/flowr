@@ -123,14 +123,11 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 		return group === undefined ? undefined : reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v)));
 	};
 
-	/* like functionOf but keeps the entry's raw exported bit */
 	const rawFunctionOf = (id: Identifier, version?: string): DecodedFunction | undefined => {
 		const [name, pkg] = Identifier.toArray(id);
 		if(pkg === undefined) {
 			return undefined; // without a package there is nothing to look the function up in
 		}
-		/* no group-generic fallback here: `setMethod('Math', ...)` binds no `sin`, so its export bit says
-		 * nothing about `sin`, and a caller asking about this very name would be told about another one */
 		return answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
 	};
 

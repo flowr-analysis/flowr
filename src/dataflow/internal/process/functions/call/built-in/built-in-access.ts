@@ -100,7 +100,6 @@ export function processAccess<OtherInfo>(
 				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
 				: undefined;
 			linkFieldReads(info.graph, name.info.id, fieldDefs, stackEnvState === undefined);
-			/* a field of the caller's frame is a free name of this function, bound wherever it is called */
 			if(fieldName !== undefined && !fieldDefs?.length && stackEnvKindOf(head.value, data) === StackEnvKind.CallerFrame) {
 				info.in = [...info.in, { name: fieldName, nodeId: name.info.id, type: ReferenceType.Variable, cds: data.cds }];
 			}

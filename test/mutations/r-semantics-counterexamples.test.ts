@@ -14,18 +14,14 @@ interface Counterexample extends MutationTarget {
 }
 
 const generatedMutants = new Set<string>();
-/** every mutant test that ran, so a run collecting only part of the corpus can be told apart */
 const attemptedMutants = new Set<string>();
 const usedPasses = new Set<string>();
-/** what the corpus below spans, collected while the cases are registered */
 const knownGroups = new Set<string>();
 const knownTargets = new Set<string>();
 const knownCapabilities = new Set<string>();
 
-/** counts a full run leaves for test-label-counts.ts, folded into the benchmark page as facts */
 const MutationDetailsFile = 'coverage/flowr-mutation-details.json';
 
-/** slices code for criterion, checks R's printed output (not slice shape) for the case and its mutants */
 function counterexamples(shell: RShell, group: string, cases: readonly Counterexample[]): void {
 	knownGroups.add(group);
 	for(const { name, capabilities } of cases) {
@@ -34,14 +30,9 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 			knownCapabilities.add(capability);
 		}
 	}
-	/**
-	 * runs on a real R shell (handle with care); tryCatch keeps it alive when a slice errors,
-	 * and eval as one expression avoids stray auto-print from a dropped assignment target.
-	 */
 	async function run(what: string): Promise<string> {
 		const guarded = `tryCatch(eval(parse(text = ${JSON.stringify(what)})), error = function(e) cat("R error:", conditionMessage(e), "\n"))`;
 		const lines = await shell.sendCommandWithOutput(guarded, { automaticallyTrimOutput: true });
-		/* `clearEnvironment` keeps what `ls()` hides, and a binding left behind would answer the next program */
 		await shell.sendCommandWithOutput('rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
 		return lines.join('\n');
 	}
@@ -51,7 +42,6 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		assert.strictEqual(await run(target.code), target.expected, `the input does not print what this test claims it does, ${what}`);
 		const output = await run(sliced);
 		const slicedIs = `${what}\nand its slice is:\n${sliced}`;
-		/* nothing reads what a mutation adds, so a slice keeping it says more than the criterion needs */
 		assert.notMatch(sliced, /\bmut_[abc]\b/, `the slice keeps a binding nothing reads, ${slicedIs}`);
 		assert.strictEqual(output, target.expected, `the slice does not print what the input does, ${slicedIs}`);
 	}
@@ -68,7 +58,6 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 						attemptedMutants.add(id);
 						const mutant = await mutate(shell, counterexample, pass);
 						if(mutant === undefined) {
-							/* the pass has nothing to rewrite in this program */
 							ctx.skip();
 							return;
 						}
@@ -100,30 +89,23 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 	]);
 
 	counterexamples(shell, 'Functions as values', [
-		/* a function's value is its body, so a slice keeps it whole unless trimmed at the call */
 		{ name: 'a function read as a value keeps its body', capabilities: ['normal-definition', 'get-function-structure'], code: 'f <- function() { x <- 1; x + 1 }\nr <- length(deparse(f))\nprint(r)', criterion: '3@r', expected: '[1] 5' },
-		/* the wrapper a higher-order built-in hands back calls what it wraps */
 		{ name: 'a function wrapped by Negate is called through the wrapper', capabilities: ['closures', 'normal-definition'], code: 'thr <- 3\nsmall <- function(x) x < thr\nr <- Filter(Negate(small), 1:5)\nprint(r)', criterion: '4@r', expected: '[1] 3 4 5' },
 		{ name: 'a function wrapped by Vectorize is called through the wrapper', capabilities: ['closures', 'normal-definition'], code: 'base <- 5\nf <- function(x) x + base\nr <- sapply(1:2, Vectorize(f))\nprint(r)', criterion: '4@r', expected: '[1] 6 7' },
-		/* a closure no call is linked to still runs somewhere, and binds its free names lexically */
 		{ name: 'functions stored in a list keep their free names', capabilities: ['closures', 'call-anonymous'], code: 'k <- 10\nfs <- list(a = function(x) x + k, b = function(x) x * k)\nr <- unname(sapply(fs, function(f) f(2)))\nprint(r)', criterion: '4@r', expected: '[1] 12 20' },
 	]);
 
 	counterexamples(shell, 'Closures', [
 		{ name: 'a sibling closure sees a write made through <<-', capabilities: ['closure-capture', 'dollar-access'], code: 'make <- function() {\n  x <- 1\n  list(get = function() x, set = function(v) x <<- v)\n}\no <- make()\no$set(5)\nr <- o$get()\nprint(r)', criterion: '8@r', expected: '[1] 5' },
-		/* c1/c2 keep independent state; flowR over-approximates the shared <<- target (imprecise, not wrong) */
 		{ name: 'two instances of the same factory still print correctly', capabilities: ['closures'], code: 'counter <- function() {\n  i <- 0\n  function() {\n    i <<- i + 1\n    i\n  }\n}\nc1 <- counter()\nc2 <- counter()\nc1()\nc1()\nr <- c2()\nprint(r)', criterion: '13@r', expected: '[1] 1' },
 	]);
 
 	counterexamples(shell, 'Pure built-ins', [
-		/* `setNames` hands back a renamed copy, so its argument is not redefined and the slice drops the call */
 		{ name: 'setNames leaves its argument alone', capabilities: ['normal-definition'], code: 'df1 <- data.frame(id = 1:5, name = "A")\ndf2 <- setNames(df1, c("A", "B"))\nprint(names(df1))', criterion: '3@print', expected: '[1] "id"   "name"' },
 	]);
 
 	counterexamples(shell, 'Reflection', [
-		/* body(f) <- quote(k) puts a name into the function; what it's bound to is read on the call */
 		{ name: 'a body written in reads what it names', capabilities: ['modify-function-structure', 'built-in-quoting'], code: 'k <- 7\nf <- function() 0\nbody(f) <- quote(k)\nr <- f()\nprint(r)', criterion: '5@r', expected: '[1] 7' },
-		/* a replacement keeps the target a function, so the call reads what the replacement made of it */
 		{ name: 'a nested replacement of the formals reaches the call', capabilities: ['modify-function-structure', 'replacement-functions'], code: 'f <- function(x) x + 1\nformals(f)$x <- 10\nr <- f()\nprint(r)', criterion: '4@r', expected: '[1] 11' },
 		{ name: 'a nested replacement of the body reaches the call', capabilities: ['modify-function-structure', 'replacement-functions'], code: 'f <- function() list(a = 1)\nbody(f)$a <- 5\nr <- f()$a\nprint(r)', criterion: '4@r', expected: '[1] 5' },
 	]);
@@ -132,7 +114,6 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 		{ name: 'get with the name in a variable', capabilities: ['name-created-resolved', 'built-in-evaluation'], code: 'nm <- "vv"\nvv <- 8\nr <- get(nm)\nprint(r)', criterion: '4@r', expected: '[1] 8' },
 		{ name: 'get0 with the name in a variable', capabilities: ['name-created', 'name-created-resolved', 'built-in-evaluation'], code: 'nm <- "vv"\nvv <- 8\nr <- get0(nm)\nprint(r)', criterion: '4@r', expected: '[1] 8' },
 		{ name: 'match.fun with the name in a variable', capabilities: ['name-created-resolved', 'built-in-evaluation'], code: 's <- "sum"\nf <- match.fun(s)\nr <- f(1:4)\nprint(r)', criterion: '4@r', expected: '[1] 10' },
-		/* R pastes with as.character, so a numeric part names a variable just as a string one does */
 		{ name: 'get with a name pasted from a number', capabilities: ['name-created-resolved', 'string-templates'], code: 'i <- 1\nv1 <- 5\nr <- get(paste0("v", i))\nprint(r)', criterion: '4@r', expected: '[1] 5' },
 		{ name: 'get0 with a name pasted from a number', capabilities: ['name-created', 'name-created-resolved', 'string-templates'], code: 'i <- 1\nv1 <- 5\nr <- get0(paste0("v", i))\nprint(r)', criterion: '4@r', expected: '[1] 5' },
 		{ name: 'mget reads every name it is given', capabilities: ['name-created-resolved', 'built-in-evaluation'], code: 'a <- 1\nb <- 2\nr <- sum(unlist(mget(c("a","b"))))\nprint(r)', criterion: '4@r', expected: '[1] 3' },
@@ -144,19 +125,15 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 	counterexamples(shell, 'Environments', [
 		{ name: 'field written through $ on an environment', capabilities: ['environment-sharing', 'dollar-access'], code: 'e <- new.env()\ne$a <- 1\nr <- e$a\nprint(r)', criterion: '4@r', expected: '[1] 1' },
 		{ name: 'function written through $ on an environment', capabilities: ['environment-sharing', 'dollar-access'], code: 'e <- new.env()\ne$f <- function() 15\nr <- e$f()\nprint(r)', criterion: '4@r', expected: '[1] 15' },
-		/* a closure written inside a function binds what it captures where that function is called */
 		{ name: 'a closure inside a function keeps what it captures', capabilities: ['closures', 'super-left-assignment', 'exceptions-and-errors'], code: 'tally <- 0\nsafe <- function(f) tryCatch(f(), error = function(e) { tally <<- tally + 1; NA })\nignore <- safe(function() stop(\'x\'))\nprint(tally)', criterion: '4@print', expected: '[1] 1' },
 		{ name: 'field of an environment read inside a function', capabilities: ['environment-sharing', 'closures'], code: 'e <- new.env()\ne$a <- function() 1\ne$b <- function() e$a() + 1\nr <- e$b()\nprint(r)', criterion: '5@r', expected: '[1] 2' },
-		/* an environment is not copied on modify, so the callee writes the caller's object */
 		{ name: 'environment modified by a callee', capabilities: ['environment-sharing', 'functions-with-global-side-effects'], code: 'e <- new.env()\ne$a <- 1\nf <- function(en) en$a <- 42\nf(e)\nr <- e$a\nprint(r)', criterion: '6@r', expected: '[1] 42' },
 		{ name: 'ls sees what was assigned into the environment', capabilities: ['environment-sharing', 'search-path'], code: 'e <- new.env()\nassign("x1", 1, envir = e)\nr <- length(ls(e))\nprint(r)', criterion: '4@r', expected: '[1] 1' },
 		{ name: 'environment<- decides where the body looks up', capabilities: ['environment-sharing', 'modify-function-structure'], code: 'f <- function() x\ne <- new.env()\nassign("x", 77, envir = e)\nenvironment(f) <- e\nr <- f()\nprint(r)', criterion: '6@r', expected: '[1] 77' },
 		{ name: 'writing into a closure environment', capabilities: ['environment-sharing', 'closures'], code: 'f <- function() { y <- 3; function() y }\ng <- f()\nenvironment(g)$y <- 10\nr <- g()\nprint(r)', criterion: '5@r', expected: '[1] 10' },
 		{ name: 'list2env defines each element as a binding', capabilities: ['environment-sharing', 'dynamic-environment-resolution'], code: 'l <- list(p = 3, q = 4)\ninvisible(list2env(l, envir = environment()))\nr <- p + q\nprint(r)', criterion: '4@r', expected: '[1] 7' },
 		{ name: 'makeActiveBinding creates a binding', capabilities: ['environment-sharing', 'closures'], code: 'v <- 13\nmakeActiveBinding("ab", function() v, environment())\nr <- ab\nprint(r)', criterion: '4@r', expected: '[1] 13' },
-		/* every read of an active binding runs its function */
 		{ name: 'reading an active binding runs its function', capabilities: ['environment-sharing', 'closures', 'super-left-assignment'], code: 'n <- 0\nmakeActiveBinding("tick", function() { n <<- n + 1; n }, environment())\ntick\ntick\nprint(n)', criterion: '5@n', expected: '[1] 2' },
-		/* a field of the caller's frame is a free name of the function, bound where it is called */
 		{ name: 'parent.frame()$x reads the caller\'s variable', capabilities: ['parent-frame', 'dollar-access'], code: 'f <- function() { g <- function() parent.frame()$z; z <- 4; g() }\nr <- f()\nprint(r)', criterion: '3@r', expected: '[1] 4' },
 		{ name: 'eval.parent assigns in the caller', capabilities: ['built-in-evaluation', 'parent-frame'], code: 'f <- function() eval.parent(quote(pp <- 3))\nf()\nr <- pp\nprint(r)', criterion: '4@r', expected: '[1] 3' },
 	]);
@@ -178,9 +155,7 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 	]);
 
 	counterexamples(shell, 'Lazy evaluation', [
-		/* `a` is forced only after the body ran, so it sees the super-assigned value, not the one at the call */
 		{ name: 'a promise is forced after the body assigned', capabilities: ['formals-promises', 'super-left-assignment'], code: 'f <- function(a) { x <<- 99; a }\nx <- 1\nr <- f(x)\nprint(r)', criterion: '4@r', expected: '[1] 99' },
-		/* the default is evaluated in the function's own environment, so it uses `a` as the body left it */
 		{ name: 'a default argument sees the reassigned parameter', capabilities: ['formals-default', 'formals-promises'], code: 'f <- function(a, b = a * 2) { a <- 10; b }\nr <- f(3)\nprint(r)', criterion: '3@r', expected: '[1] 20' },
 	]);
 
@@ -194,20 +169,16 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 		{ name: 'readRDS depends on the matching saveRDS', capabilities: ['i-o', 'handling-binary-riles'], code: 'f <- tempfile()\nsaveRDS(11, f)\nr <- readRDS(f)\nprint(r)', criterion: '4@r', expected: '[1] 11' },
 	]);
 
-	/* both checks read what the tests above recorded, so they only mean something once all of them ran */
 	describe('bookkeeping', () => {
-		/* a run narrowed by `-t`, a shard or a bail collects part of the corpus, and a part states nothing */
 		const partialRun = () => attemptedMutants.size < knownTargets.size * MutationPasses.length;
 		test('every pass mutates at least one counterexample', ctx => {
 			if(partialRun()) {
 				ctx.skip();
 				return;
 			}
-			/* a pass the host's R is too old for never got the chance to apply */
 			const idle = MutationPasses.filter(passIsAvailable).map(p => p.name).filter(name => !usedPasses.has(name));
 			assert.deepStrictEqual(idle, [], 'these passes never applied, so nothing they claim to check is checked');
 		});
-		/* only a run of the whole file knows these, so they are written where they are complete */
 		test('record what this run exercised', ctx => {
 			if(partialRun()) {
 				ctx.skip();

@@ -249,7 +249,6 @@ describe('flowR linter', withTreeSitter(parser => {
 				's3://my-bucket/data.csv',
 				'gs://my-bucket/data.csv'
 			];
-			/* a remote URL names an absolute location, so every one of them is reported once URLs are not ignored */
 			const urlsMatchingAbsPath = remoteUrls;
 
 			describe('ignoreUrls=true (default)', () => {

@@ -177,7 +177,6 @@ describe('flowR linter', withTreeSitter(parser => {
 		], undefined, { caseing: CasingConvention.PascalCase });
 
 		/** The rule can be configured to automaticaly detect the most used casing style. The file will be linted according to the detected style */
-		/* `testVar` is taken, so renaming `test_var` onto it would merge the two variables and no fix is offered */
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,

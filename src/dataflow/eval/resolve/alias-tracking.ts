@@ -54,7 +54,6 @@ export interface ResolveInfo {
 	blocked?:     Set<NodeId>;
 }
 
-/** the name a node is keyed under; a symbol's lexeme keeps backticks, its content doesn't */
 function environmentNameOf(sourceId: NodeId, idMap: AstIdMap | undefined): Identifier | undefined {
 	const node = idMap?.get(sourceId);
 	return RSymbol.is(node) ? node.content : node?.lexeme;
@@ -256,7 +255,6 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 		} else if(def.type === ReferenceType.BuiltInFunction) {
 			// Tracked in #1207
 		} else if(def.value === undefined && graph !== undefined && !NodeId.isBuiltIn(def.nodeId)) {
-			/* the environment holds no value for a parameter, but the graph knows its default and what calls pass */
 			const value = trackAliasesInGraph(def.nodeId, graph, ctx, idMap, blocked);
 			if(isTop(value)) {
 				return Top;
@@ -346,11 +344,6 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return RNode.iterateParents(node, ast).some(RLoopConstructs.is);
 }
 
-/**
- * What a node that is (or sits in) a parameter's default means for the parameter's value: `applies` when a
- * known call leaves the parameter out, `overridden` when every known call passes something, and `unknown`
- * when no call is known at all, as any call site may then override it.
- */
 function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMap, graph: DataflowGraph): 'applies' | 'overridden' | 'unknown' {
 	const parameter = node === undefined ? undefined
 		: [node, ...RNode.iterateParents(node, idMap)].find(p => p.info.role === RoleInParent.ParameterDefaultValue)?.info.parent;
@@ -480,7 +473,6 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
 			if(isFn) {
-				/* Returns may share a target with Argument/Reads (e.g. get("y")), so match the bit, not the exact type */
 				if(DfEdge.includesType(edge, EdgeType.Returns) || DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) || DfEdge.isOnlyType(edge, EdgeType.DefinedBy)) {
 					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 				}

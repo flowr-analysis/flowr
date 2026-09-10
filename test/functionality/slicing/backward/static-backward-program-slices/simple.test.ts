@@ -280,13 +280,11 @@ product`
 		);
 	});
 	describe('Removal through a call argument', () => {
-		/* a plain `rm(x)` statement kills x in the analyzed scope */
 		assertSliced(label('nested rm', ['functions-with-global-side-effects']),
 			shell, 'x <- 1\nx <- 2\nrm(x)\nr <- exists("x")\nprint(r)', ['5@print'],
 			'r <- exists("x")\nprint(r)',
 			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE' }
 		);
-		/* the same removal happening in the rhs of a pipe must kill x just the same, not keep the dead x <- 2 */
 		assertSliced(label('piped rm', ['functions-with-global-side-effects', 'pipe-and-pipe-bind']),
 			shell, 'x <- 1\nx <- 2\nx |> rm()\nr <- exists("x")\nprint(r)', ['5@print'],
 			'r <- exists("x")\nprint(r)',

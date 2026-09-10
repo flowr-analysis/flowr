@@ -90,7 +90,6 @@ export function processLocal<OtherInfo>(
 	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
 		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
 	);
-	/* a write only leaves this frame because there is one: dropping the call would turn `<<-` into a global write */
 	for(const escaped of escaping) {
 		dfExpr.graph.addEdge(escaped.nodeId, rootId, EdgeType.Reads);
 	}
@@ -112,9 +111,7 @@ export function processLocal<OtherInfo>(
 		unknownReferences: []
 	};
 
-	/* body writes stay scoped locally above so nothing leaks, but they may really escape into whatever envir turns out to be */
 	unknownIfAmbiguous(envirRouting, baseResult, rootId);
 
-	/* route body writes to wherever envir resolved: the real stack frame or the custom env's tracked state */
 	return envirResolution ? routeWrittenToEnvir(baseResult, envirResolution, rootId, data.environment) : baseResult;
 }

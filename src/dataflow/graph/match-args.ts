@@ -151,7 +151,6 @@ export const MatchArgs = {
 	 * @returns         The value ids of the matching arguments.
 	 */
 	findWithProps(this: void, args: readonly FunctionArgument[], signature: FnSig, props: ArgProps): NodeId[] {
-		/* `bound` names formals, so a formal after `...` keeps its own props and is not read as the dots */
 		const bound = matchArgumentsToParameters(args.map(FunctionArgument.getName), signature.map(([param]) => param));
 		return args
 			.filter((_, index) => bound[index] !== undefined && (signature[bound[index]][1] & props) !== 0)

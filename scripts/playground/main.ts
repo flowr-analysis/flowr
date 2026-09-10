@@ -65,7 +65,6 @@ const setShown = StateEffect.define<{ ranges: readonly ShownRange[], fresh: bool
 /** a place a link points at; every one of them is shown in the one colour a highlight has */
 interface ShownRange { from: number, to: number, line: boolean }
 
-/** a decoration field that answers one effect: whatever it marks is redrawn from that effect's value */
 function marksFrom<T>(effect: StateEffectType<T>, draw: (value: T, tr: Transaction) => DecorationSet): StateField<DecorationSet> {
 	return StateField.define<DecorationSet>({
 		create: () => Decoration.none,
@@ -82,7 +81,6 @@ function marksFrom<T>(effect: StateEffectType<T>, draw: (value: T, tr: Transacti
 	});
 }
 
-/** the lines the panel row under the pointer stands for, lit up in the code */
 const linkMarks = marksFrom(setLinked, (value, tr) => {
 	const lines = (value ?? []).filter(l => l >= 1 && l <= tr.state.doc.lines).sort((a, b) => a - b);
 	return lines.length === 0 ? Decoration.none : Decoration.set(lines.map(l => {
@@ -120,7 +118,6 @@ const lintMarks = marksFrom(setLints, value =>
 
 /** what a link points at, kept apart from every mark an analysis produces so nothing overwrites it */
 const shownMarks = marksFrom(setShown, value => {
-	/* the mark says so once as the page opens, which is when nobody knows yet where to look */
 	const fresh = value.fresh ? ' fresh' : '';
 	return Decoration.set(value.ranges.map(at => at.line
 		? Decoration.line({ class: `cm-shown-line${fresh}` }).range(at.from)
@@ -762,7 +759,6 @@ const configTips = hoverTooltip((view, pos) => {
 	};
 });
 
-/* the configuration flowR runs with, as JSON: invalid text keeps the last one that worked */
 /**
  * A short script and a changed configuration live in the page's own url, so a link is the example: paste it
  * to someone and they open what you were looking at. Only what stays within {@link MaxShared} is kept, since

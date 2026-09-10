@@ -11,11 +11,13 @@
 <style>
 <!--THEME-CSS-->
 <!--BASE-CSS-->
-main { max-width: 62rem; margin: 0 auto; }
+body { display: flex; flex-direction: column; min-height: 100vh; }
+main { max-width: 62rem; margin: 0 auto; width: 100%; flex: 1 0 auto; }
 h1 { font-size: clamp(1.5rem, 5vw, 2.1rem); line-height: 1.2; letter-spacing: -.02em; margin: 1.4rem 0 .4rem; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 <!--BAR-CSS-->
+footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; }
 <!--FOOTER-CSS-->
 
 p.lead { color: var(--muted); margin: 0 0 1.2rem; }

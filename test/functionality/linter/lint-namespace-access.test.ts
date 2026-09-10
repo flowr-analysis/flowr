@@ -6,7 +6,6 @@ import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import type { DecodedFunction } from '../../../src/project/sigdb/decode';
 import type { LibraryExports } from '../../../src/project/sigdb/schema';
 
-/** signature source with a definite exported/internal answer per name, for the `::`/`:::` cross-check */
 function sigDbWithNames(pkg: string, names: Record<string, boolean>): PackageSignatureSource {
 	const fnOf = (name: string, exported: boolean): DecodedFunction => ({ name, line: 1, exported, props: [], signature: [], callees: [] });
 	const exported = Object.keys(names).filter(n => names[n]);
@@ -47,7 +46,6 @@ describe('flowR linter', withTreeSitter(parser => {
 				'namespace-access', [{ certainty: LintingResultCertainty.Certain, pkg: 'stats', name: 'C_cor', kind: 'not-exported', loc: [1, 1, 1, 12] }],
 				undefined, { sigDb: sigDbWithNames('stats', { C_cor: false }) });
 
-			// the same mismatches inside a call, not just a plain value read
 			assertLinter('unnecessary `:::` in a call', parser, 'stats:::median(1:3)',
 				'namespace-access', [{ certainty: LintingResultCertainty.Certain, pkg: 'stats', name: 'median', kind: 'unnecessary-internal', loc: [1, 1, 1, 19] }],
 				undefined, { sigDb: sigDbWithNames('stats', { median: true }) });
@@ -66,18 +64,15 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		describe('conservative: absence is never read as "not exported"', () => {
-			// the package is not in the database at all
 			assertLinter('unknown package is not flagged', parser, 'notAPackage:::secret',
 				'namespace-access', [], undefined, { sigDb: sigDbWithNames('stats', { median: true }) });
 
-			// package is known, but controlledSigDb never stored this name: functionByName answers undefined
 			assertLinter('name absent from the database is not flagged', parser, 'stats:::undocumentedInternal',
 				'namespace-access', [], undefined, { sigDb: controlledSigDb('stats', ['median']) });
 
 			assertLinter('`::` on a name absent from the database is not flagged either', parser, 'stats::undocumentedInternal',
 				'namespace-access', [], undefined, { sigDb: controlledSigDb('stats', ['median']) });
 
-			// no signature database mounted at all
 			assertLinter('no signature database mounted', parser, 'stats:::median',
 				'namespace-access', [], undefined, { noSigDb: true });
 		});

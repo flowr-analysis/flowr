@@ -1,9 +1,7 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8, R v4.6.1), do not edit directly._
-
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-
 
 > [!NOTE]
 > There are many ways to query a dataflow graph created by flowR.
@@ -11,7 +9,6 @@ Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interfac
 > with a running flowR server, or the <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span> command in the flowR [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#-using-the-repl).
 > 
 > Also, check out the [flowr-analysis/sample-analyzer-project-query](https://github.com/flowr-analysis/sample-analyzer-project-query) repository for a complete example project using the query API.
-
 
 ## The Query Format
 
@@ -93,7 +90,6 @@ Similarly, we support the following **virtual** queries:
     Combines multiple queries of the same type into one, specifying common arguments.
 
 <details>
-
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
@@ -553,10 +549,6 @@ print(mean(data2$k))
 ```
 
 <details> <summary>Dataflow Graph of the Example</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1478,10 +1470,7 @@ points`"]
     linkStyle 129 stroke:gray;
 ```
 
-	
 (The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
 
 </details>
 
@@ -1500,9 +1489,6 @@ For the specific use-case stated, you could use the [Call-Context Query](https:/
 
 Just as an example, the following [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) finds all calls to `read_csv` that are not overwritten:
 
-
-
-
 ```json
 [
   {
@@ -1515,14 +1501,9 @@ Just as an example, the following [Call-Context Query](https://github.com/flowr-
 ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
 
@@ -1533,47 +1514,13 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
-  "call-context": {
-    ".meta": {},
-    "kinds": {
-      "input": {
-        "subkinds": {
-          "csv-file": [
-            {
-              "id": 16,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            },
-            {
-              "id": 22,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            }
-          ]
-        }
-      }
-    }
-  },
+  "call-context": {".meta":{},"kinds":{"input":{"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}}}},
   ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 Every query is explained in detail on its own wiki page, linked from the overviews above.

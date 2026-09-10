@@ -53,27 +53,20 @@ describe('Resolve Value Query', withTreeSitter(parser => {
 		f1 <- data.frame(col)
 		print(col)`, ['8@col'], [[Top]]);
 
-	// coercion behavior: what the value domain does and does not coerce
 	testQuery('a logical coerces to a number in arithmetic', 'x <- TRUE + 1', ['1@x'], [[setFrom(intervalFrom(2, 2))]], ['types-coercion']);
 	testQuery('an integer division still yields a double', 'x <- 1L / 2L', ['1@x'], [[setFrom(intervalFrom(0.5, 0.5))]], ['types-coercion']);
 	testQuery('an explicit converter is not evaluated', 'x <- as.integer("3")', ['1@x'], [[Top]], ['types-coercion']);
 
-	// elementwise arithmetic over a known vector
 	testQuery('a vector times a scalar is elementwise', 'v <- 1:3\nx <- v * 2', ['2@x'], [[setFrom(vectorFrom([intervalFrom(2, 2), intervalFrom(4, 4), intervalFrom(6, 6)]))]], ['vectorized-operator-or-functions', 'built-in-sequencing']);
 	testQuery('a reduction is not evaluated', 'v <- 1:3\nx <- sum(v)', ['2@x'], [[Top]], ['vectorized-operator-or-functions']);
-	// R recycles the shorter operand, we do not
 	testQuery('two vectors of different length are not recycled', 'x <- c(1, 2, 3, 4) + c(10, 20)', ['1@x'], [[Top]], ['recycling']);
 
-	// nothing of R's type system is resolved
 	testQuery('typeof is not evaluated', 'x <- typeof(1L)', ['1@x'], [[Top]], ['types-primitive']);
 	testQuery('mode is not evaluated either', 'x <- mode("a")', ['1@x'], [[Top]], ['types-primitive']);
-	// composite/structured values are not resolved as types either
 	testQuery('class of a list is not evaluated', 'x <- class(list(1, 2))', ['1@x'], [[Top]], ['types-non-primitive']);
-	// we never infer a type from the code, so a type predicate cannot narrow a branch
 	testQuery('a type predicate does not narrow a branch condition', 'if(is.numeric(1)) { y <- 1 } else { y <- "a" }\nz <- y', ['2@z'],
 		[[setFrom(stringFrom('a'), intervalFrom(1, 1))]], ['types-inference']);
 
-	// a locked binding is not modeled, so the assignment R would reject is treated as an ordinary one
 	testQuery('an assignment to a locked binding still redefines it', 'x <- 1\nlockBinding("x", environment())\nx <- 2\ny <- x', ['4@y'], [[setFrom(intervalFrom(2, 2))]], ['locked-bindings']);
 
 	testQuery('Local defined by a call', 'p <- file.path("data", "x.csv")\nread.csv(p)', ['2@p'], [[setFrom(stringFrom('data/x.csv'))]]);
@@ -98,7 +91,6 @@ describe('Resolve Value Query', withTreeSitter(parser => {
 		testQuery('No call-sites with calculated parameter', 'f <- function(x=42+1) { \nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with maybe parameter', 'f <- function(x=42) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with maybe parameter and calc', 'f <- function(x=42+1) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
-		/* a call leaving the parameter out is what makes the default the value */
 		testQuery('Call without the argument uses the default', 'f <- function(x=42) {\nprint(x)}\nf()', ['2@x'], [[setFrom(intervalFrom(42, 42))]]);
 		testQuery('Call with the argument overrides the default', 'f <- function(x=42) {\nprint(x)}\nf(1)', ['2@x'], [[setFrom(intervalFrom(1, 1))]]);
 	});

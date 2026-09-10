@@ -66,7 +66,6 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 		const lateCodeB = 'f <- function(a=b, b=3) { b <- 1; a; b <- 5; a + 1 }\nf()\n';
 		assertSliced(label('Late bindings of parameter in parameters', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'newlines', 'binary-operator', 'infix-calls', 'numbers', 'call-normal', ...OperatorDatabase['+'].capabilities, 'semicolons']),
-			/* the bare `a` is what forces the default, and it does so while `b` is still 1, so it has to stay */
 			shell, lateCodeB, ['2@f'], 'f <- function(a=b, b=3) {\n        b <- 1\n        a\n        a + 1\n    }\nf()',
 			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 		assertSliced(label('Parameters binding context', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
@@ -266,10 +265,8 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 				shell, 'a <- 5\nf <- function(a = get("a")) {\n  a\n}\nf()', ['5@f'], 'f <- function(a=get("a")) a\nf()');
 			assertSliced(label('exists with the name in a variable', ['name-normal', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created', 'name-created-resolved']),
 				shell, 'x <- 1\nnm <- "x"\nr <- exists(nm)\nprint(r)', ['4@r'], 'x <- 1\nnm <- "x"\nr <- exists(nm)\nr');
-			/* a piped name reaches get() the same way a nested call argument does, so resolution must match */
 			assertSliced(label('get with a piped, computed name resolves the same as the nested form', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created-resolved', 'pipe-and-pipe-bind']),
 				shell, 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nprint(r)', ['4@r'], 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nr');
-			/* nm can't be folded to a constant, so get(nm) is a blind spot and its definition gets dropped */
 			assertSliced(label('get with an unresolvable name drops the definition it reads', ['name-created']),
 				shell, 'x <- 1\nnm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nprint(get(nm))', ['3@get'], 'nm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nget(nm)');
 		});
@@ -381,7 +378,6 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 			function groupedCase(name: string, extraCaps: FlowrCapabilityId[], code: string, criterion: SlicingCriterion, expected: string, out: string) {
 				assertSliced(label(name, [...caps, ...extraCaps]), shell, code, [criterion], expected, { expectedOutput: out, expectedSliceOutput: out });
 			}
-			/* the grouped condition folds to `TRUE`, so the slice keeps the branch it decides on and nothing of the other */
 			groupedCase('Parenthesized if condition', ['if', 'logical'], 'a <- TRUE\nif((a)) { v <- 1 } else { v <- 2 }\nv', '3@v', 'v <- 1\nv', '[1] 1');
 			groupedCase('Parenthesized while condition', ['while-loop', ...OperatorDatabase['<'].capabilities, ...OperatorDatabase['+'].capabilities], 'i <- 0\nwhile((i < 2)) { i <- i + 1 }\nv <- i\nv', '4@v', 'i <- 0\nwhile((i < 2)) i <- i + 1\nv <- i\nv', '[1] 2');
 			groupedCase('Parenthesized for vector', ['for-loop', ...OperatorDatabase[':'].capabilities, ...OperatorDatabase['+'].capabilities], 's <- 0\nfor(i in (1:3)) { s <- s + i }\nv <- s\nv', '4@v', 's <- 0\nfor(i in (1:3)) s <- s + i\nv <- s\nv', '[1] 6');
@@ -608,7 +604,6 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 		replCase('a user redefinition of a known replacement rebinds its target', [], '`levels<-` <- function(x, value) x + value\ny <- 1\nlevels(y) <- 5\nv <- y\nv', '5@v', '[1] 6');
 		/* control: a built-in replacement is unaffected */
 		replCase('a built-in replacement is unchanged', ['built-in-sequencing', 'single-bracket-access', 'strings'], 'x <- c(1, 2)\nnames(x) <- c("a", "b")\nv <- names(x)[1]\nv', '4@v', '[1] "a"');
-		/* setting an attribute is a replacement too, so the object it names is redefined by it */
 		replCase('setting an attribute rebinds the object', ['user-defined', 'strings'], 'x <- 1\nattr(x, "unit") <- "cm"\nv <- attr(x, "unit")\nv', '4@v', '[1] "cm"');
 		/* the super-assigning form binds outside the frame it is called in */
 		assertSliced(label('a super-assigning user replacement binds outside the frame', [...replCaps, ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call']), shell, '`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() { s(y) <<- 5 }\nf()\nv <- y\nv', ['6@v'], '`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() s(y) <<- 5\nf()\nv <- y\nv', { expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });

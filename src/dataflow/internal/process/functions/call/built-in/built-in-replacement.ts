@@ -119,7 +119,6 @@ export function processReplacementFunction<OtherInfo>(
 				if(RArgument.isEmpty(a)) {
 					return undefined;
 				}
-				/* a named argument (e.g. `k = 2`) has no unnamed value to unpack, its own node is the entry point */
 				const entry = a.name === undefined ? unpackNonameArg(a) : a;
 				return entry === undefined ? undefined : { entryPoint: entry.info.id };
 			}),

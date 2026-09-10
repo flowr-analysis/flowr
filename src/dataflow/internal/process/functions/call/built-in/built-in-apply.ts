@@ -168,7 +168,6 @@ export function processApply<OtherInfo>(
 		}, data.ctx.env.cleanEnv);
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
-		/* the synthetic call has to state which definition it calls, or its side effects never reach the caller */
 		information.graph.addEdge(functionId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information = {
 			...information,
@@ -177,7 +176,6 @@ export function processApply<OtherInfo>(
 				{ type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }
 			]
 		};
-		/* the callback runs, so what it captures is read here -- and stays in a slice that prints the call */
 		const called = information.graph.getVertex(rootFnId);
 		if(DfgVertex.isFunctionDefinition(called)) {
 			ClosureRefs.resolveOpenIngoing(information.graph, functionId, called, data.environment);
@@ -197,7 +195,6 @@ export function processApply<OtherInfo>(
 	}
 
 	for(const [i, arg] of processedArguments.entries()) {
-		/* the callee is what the synthetic call calls, not one of its arguments */
 		if(arg && !(anonymous && i === index)) {
 			information.graph.addEdge(functionId, arg.entryPoint, EdgeType.Argument);
 		}

@@ -4,10 +4,6 @@ import { flowrCapabilities } from './data';
 
 type CapabilityIdFilter<T extends FlowrCapability, Filter> = T extends Filter ? T['id'] : never;
 
-/**
- * Recursively extract all valid identifiers (which have the given support predicate).
- * A group capability always contributes its own id even when filtered out, since it may move freely.
- */
 type ExtractAllIds<T extends FlowrCapability, Filter = FlowrCapability> =
 	T extends { readonly capabilities: infer U }
 		? U extends readonly FlowrCapability[]

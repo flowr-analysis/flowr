@@ -1,8 +1,3 @@
-/**
- * Metamorphic mutations for R programs. A pass rewrites a program together with the criterion pointing into it
- * and the output it is known to print. Most passes keep that output, {@link shiftCriterionValue} changes it.
- * @module
- */
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -42,7 +37,6 @@ export interface MutationPass {
 	readonly apply:        (target: MutationTarget, occurrencesOf: Occurrences) => Promise<MutationTarget | undefined> | MutationTarget | undefined;
 }
 
-/** whether the R the tests run against is at least `version`; an unknown version satisfies nothing */
 function rVersionAtLeast(version: string): boolean {
 	return !!globalThis.rVersion && semver.satisfies(globalThis.rVersion, `>=${version}`);
 }
@@ -52,19 +46,14 @@ export function passIsAvailable(pass: MutationPass): boolean {
 	return pass.minRVersion === undefined || rVersionAtLeast(pass.minRVersion);
 }
 
-/** the version {@link nestedCallToPipe} declares and checks, so the two cannot drift apart */
 const PipeVersion = RPipe.availableFromRVersion().toString();
 
-/** prefix of the names a pass introduces; a dotted one would survive {@link RShell#clearEnvironment}'s `ls()` */
 const MutationPrefix = 'mut_';
 
-/** an assignment of one expression to a plain name */
 const SimpleAssignment = /^([A-Za-z.][\w.]*) <- (.+)$/;
 
-/** what stands before the parentheses of a head like `function(x)`, whose body is whatever comes next */
 const OpenHeadKeyword = /(^|[^\w.])(if|for|while|function|\\)\s*$/;
 
-/** whether the line ends in the head of a construct, so that R reads its body from the next line */
 function endsWithOpenHead(line: string): boolean {
 	const trimmed = line.trimEnd();
 	if(/(^|[^\w.])(repeat|else)$/.test(trimmed)) {
@@ -82,7 +71,6 @@ function endsWithOpenHead(line: string): boolean {
 	return false;
 }
 
-/** whether the line holds one whole statement, so that rewriting it cannot spill into the next one */
 function isWholeStatement(line: string): boolean {
 	let depth = 0;
 	for(const c of line) {
@@ -90,11 +78,9 @@ function isWholeStatement(line: string): boolean {
 	}
 	return depth === 0 && !line.includes('#') && !endsWithOpenHead(line)
 		&& (line.match(/"/g)?.length ?? 0) % 2 === 0 && (line.match(/'/g)?.length ?? 0) % 2 === 0
-		/* a trailing operator asks R for the rest of the expression on the next line */
 		&& !/([-+*/^,~|&<>=!:]|%[^%]*%)$/.test(line.trimEnd());
 }
 
-/** rewrites the lines of a program and moves the criterion along, unless a line spans more than its own statement */
 function mapLines(target: MutationTarget, map: (lines: readonly string[]) => string[], criterionLine: (line: number) => number): MutationTarget | undefined {
 	const at = SlicingCriterion.nameAt(target.criterion);
 	const lines = target.code.split('\n');
@@ -102,7 +88,6 @@ function mapLines(target: MutationTarget, map: (lines: readonly string[]) => str
 		: { ...target, code: map(lines).join('\n'), criterion: `${criterionLine(at.line)}@${at.name}` };
 }
 
-/** rewrites every assignment the pass accepts; a `;` on the right holds another statement and is left alone */
 function rewriteAssignments(target: MutationTarget, rewrite: (name: string, rhs: string, line: number) => string | undefined): MutationTarget | undefined {
 	let changed = false;
 	const mutated = mapLines(target, lines => lines.map((l, index) => {
@@ -114,16 +99,11 @@ function rewriteAssignments(target: MutationTarget, rewrite: (name: string, rhs:
 	return changed ? mutated : undefined;
 }
 
-/** prepends bindings nothing reads, shifting every line the criterion may point at */
 const leadingNoise: MutationPass = {
 	name:  'leading noise',
 	apply: target => mapLines(target, lines => [`${MutationPrefix}a <- 1`, `${MutationPrefix}b <- ${MutationPrefix}a + 1`, ...lines], line => line + 2)
 };
 
-/**
- * Appends a binding nothing reads, only where the program prints explicitly. The whole program is evaluated as
- * one expression, so an invisible assignment after a bare value would take the print of that value away.
- */
 const trailingNoise: MutationPass = {
 	name:  'trailing noise',
 	apply: target => /^(print|invisible|cat)\(/.test(target.code.split('\n').at(-1) ?? '') ?
@@ -140,43 +120,32 @@ const blankLines: MutationPass = {
 	apply: target => mapLines(target, lines => lines.flatMap(l => ['', l]), line => line * 2)
 };
 
-/** puts the first two statements on one line, so that the criterion no longer has a line of its own */
 const joinFirstTwo: MutationPass = {
 	name:  'first two statements joined',
 	apply: target => {
-		/* on the joined line the criterion would name the first of the two occurrences, which is another node */
 		const at = SlicingCriterion.nameAt(target.criterion);
 		const lines = target.code.split('\n');
-		/* an empty line holds no statement, and `; x <- 1` is not a program */
 		return lines.length < 2 || at === undefined || at.line <= 2 || lines[0].trim() === '' || lines[1].trim() === '' ? undefined
 			: mapLines(target, ls => [`${ls[0]}; ${ls[1]}`, ...ls.slice(2)], line => line - 1);
 	}
 };
 
-/**
- * `e -> x` binds what `x <- e` binds, except where R's grammar lets the value run past the arrow. The body of a
- * `function`, `\(`, `if`, `for`, `while` and `repeat` extends as far as it can, so `function() 1 -> f` assigns
- * within the body instead of assigning the function.
- */
 const OpenBody = /^(function\b|\\\(|if\b|for\b|while\b|repeat\b)/;
 const rightAssign: MutationPass = {
 	name:  'right assignment',
 	apply: target => rewriteAssignments(target, (name, rhs) => rhs.includes('->') || OpenBody.test(rhs) ? undefined : `${rhs} -> ${name}`)
 };
 
-/** a grouping evaluates to what it wraps */
 const groupedRhs: MutationPass = {
 	name:  'grouped right hand side',
 	apply: target => rewriteAssignments(target, (name, rhs) => `${name} <- (${rhs})`)
 };
 
-/** a block evaluates to its last expression */
 const bracedRhs: MutationPass = {
 	name:  'braced right hand side',
 	apply: target => rewriteAssignments(target, (name, rhs) => `${name} <- { ${rhs} }`)
 };
 
-/** index just past `open`'s matching `)`, quote-aware; `-1` if unbalanced */
 function matchingCloseParen(text: string, open: number): number {
 	let depth = 0;
 	let quote: string | undefined;
@@ -203,7 +172,6 @@ function matchingCloseParen(text: string, open: number): number {
 	return -1;
 }
 
-/** `text` if it is entirely one call `name(args)`, i.e. nothing comes before or after it */
 function soleCall(text: string): { name: string, args: string } | undefined {
 	const head = /^([A-Za-z.][\w.]*)\(/.exec(text);
 	if(head === null) {
@@ -213,7 +181,6 @@ function soleCall(text: string): { name: string, args: string } | undefined {
 	return close === text.length - 1 ? { name: head[1], args: text.slice(head[1].length + 1, close) } : undefined;
 }
 
-/** `text` split on its top-level commas (none inside nested `()`/`[]`/`{}` or a quoted string) */
 function splitTopLevelArgs(text: string): string[] {
 	const parts: string[] = [];
 	let depth = 0;
@@ -243,7 +210,6 @@ function splitTopLevelArgs(text: string): string[] {
 	return parts.map(p => p.trim()).filter(p => p !== '');
 }
 
-/** `f(g(x, ...))` reads as `x |> g(...) |> f()`; only rewrites an rhs shaped as one call wrapping one call */
 const nestedCallToPipe: MutationPass = {
 	name:        'nested call rewritten as a pipe',
 	minRVersion: PipeVersion,
@@ -263,40 +229,33 @@ const nestedCallToPipe: MutationPass = {
 		})
 };
 
-/** `assign("x", e)` binds what `x <- e` binds, the way an obfuscator hides a binding */
 const assignCall: MutationPass = {
 	name:  'assign call',
 	apply: target => {
-		/* the name is only a string afterwards, so a criterion naming that line would resolve to nothing */
 		const criterionLine = SlicingCriterion.nameAt(target.criterion)?.line;
 		return rewriteAssignments(target, (name, rhs, line) => line === criterionLine ? undefined : `assign("${name}", ${rhs})`);
 	}
 };
 
-/** `=` binds at the top level just as `<-` does */
 const equalsAssign: MutationPass = {
 	name:  'equals assignment',
 	apply: target => rewriteAssignments(target, (name, rhs) => `${name} = ${rhs}`)
 };
 
-/** a name the search path already answers, which `<<-` would write in the package that holds it */
 function shadowsAttachedBase(name: string): boolean {
 	const owner = baseRExportOwner(name);
 	return owner !== undefined && AttachedBasePackageSet.has(owner);
 }
 
-/** top level `x <<- e` binds in globalenv like `<-`, unless the name is exported by an attached base package */
 const superAssign: MutationPass = {
 	name:  'top level super assignment',
 	apply: target => rewriteAssignments(target, (name, rhs) => shadowsAttachedBase(name) ? undefined : `${name} <<- ${rhs}`)
 };
 
-/** the same place may be reported by more than one search element, and rewriting it twice doubles it */
 function distinctPlaces(places: readonly SourceRange[]): SourceRange[] {
 	return [...new Map(places.map(p => [SourceRange.format(p), p])).values()];
 }
 
-/** rewrites the given places, back to front so that the earlier ones keep their columns */
 function renameOccurrences(code: string, places: readonly SourceRange[], to: string): string {
 	const lines = code.split('\n');
 	for(const [line, column, , endColumn] of distinctPlaces(places).sort((a, b) => SourceRange.compare(b, a))) {
@@ -305,18 +264,14 @@ function renameOccurrences(code: string, places: readonly SourceRange[], to: str
 	return lines.join('\n');
 }
 
-/** the text as a regex matches it literally, as an R name may hold a `.` */
 function escapeRegex(text: string): string {
 	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** renames the variable the criterion points at to `to`, unless a rename of the symbols misses a place */
 async function renameCriterionTo(target: MutationTarget, occurrencesOf: Occurrences, to: string): Promise<MutationTarget | undefined> {
 	const at = SlicingCriterion.nameAt(target.criterion);
 	if(at === undefined
-		/* a criterion may name a call rather than a variable of the program (`3@print`) */
 		|| !target.code.split('\n').some(l => SimpleAssignment.exec(l)?.[1] === at.name)
-		/* a name a string spells out is read by `get` and its kin, which no rename of the symbols reaches */
 		|| new RegExp(String.raw`(["'])[^"']*(?<![\w.])${escapeRegex(at.name)}(?![\w.])[^"']*\1`).test(target.code)) {
 		return undefined;
 	}
@@ -325,22 +280,18 @@ async function renameCriterionTo(target: MutationTarget, occurrencesOf: Occurren
 		: { ...target, code: renameOccurrences(target.code, places, to), criterion: `${at.line}@${to}` };
 }
 
-/** renames what the criterion points at, the way an obfuscator would */
 const renameCriterion: MutationPass = {
 	name:  'renamed criterion variable',
 	apply: (target, occurrencesOf) => renameCriterionTo(target, occurrencesOf, `${MutationPrefix}v`)
 };
 
-/** the same rename, to a name only valid in backticks; the criterion keeps the backticks in its lexeme */
 const renameCriterionNonSyntactic: MutationPass = {
 	name:  'non-syntactic criterion name',
 	apply: (target, occurrencesOf) => renameCriterionTo(target, occurrencesOf, `\`${MutationPrefix}non syntactic\``)
 };
 
-/** these decide what to do with a literal before it is evaluated, so a `paste0` is another thing entirely */
 const LiteralTakenAsWritten = /\b(library|require|quote|substitute|bquote|expression|deparse)\(\s*([\w.]+\s*=\s*)?$/;
 
-/** splits the first string literal, the way an obfuscator hides a name that is only known at run time */
 const splitString: MutationPass = {
 	name:  'split string literal',
 	apply: target => {
@@ -355,11 +306,6 @@ const splitString: MutationPass = {
 	}
 };
 
-/**
- * The one pass that changes the output. A slice keeps the value of the criterion, so adding one to the value it
- * is bound to adds one to what is printed. Only whole numbers are shifted, as R prints those without a format
- * change, and only where the criterion line prints the name and that name is bound once and read once.
- */
 const shiftCriterionValue: MutationPass = {
 	name:  'criterion value shifted by one',
 	apply: async(target, occurrencesOf) => {
@@ -384,13 +330,11 @@ const shiftCriterionValue: MutationPass = {
 	}
 };
 
-/** a comment after a statement belongs to it, and what it says changes nothing about the program */
 const trailingComments: MutationPass = {
 	name:  'trailing comments',
 	apply: target => mapLines(target, lines => lines.map(l => l.trim() === '' ? l : `${l} # ${MutationPrefix}note`), line => line)
 };
 
-/** `{ e }` evaluates to `e`, so bracing keeps a statement's printed value; skips multi-statement lines */
 const statementBlocks: MutationPass = {
 	name:  'every statement in a block',
 	apply: target => {
@@ -404,17 +348,14 @@ const statementBlocks: MutationPass = {
 	}
 };
 
-/** a statement the top level prints nothing of, so that one block around all of them hides no output */
 const PrintsNothing = /^([A-Za-z.][\w.]* (<-|=) |print\(|cat\(|invisible\(|library\(|require\(|for\(|while\()/;
 
-/** wraps the whole program in one block; unlike {@link statementBlocks}, needs no earlier print */
 const wholeProgramBlock: MutationPass = {
 	name:  'whole program in a block',
 	apply: target => target.code.split('\n').slice(0, -1).every(l => PrintsNothing.test(l)) ?
 		mapLines(target, lines => ['{', ...lines, '}'], line => line + 1) : undefined
 };
 
-/** `;` joins statements like a newline; keeps criterion's line separate, avoiding an ambiguous name\@line */
 const semicolonJoined: MutationPass = {
 	name:  'semicolon-separated statements',
 	apply: target => {
@@ -437,7 +378,6 @@ const semicolonJoined: MutationPass = {
 	}
 };
 
-/** which bracket closes the one at `open` in `text`, skipping quoted text; `undefined` if it is never closed */
 const BracketClose: Readonly<Record<string, string>> = { '(': ')', '{': '}' };
 function findMatchingBracket(text: string, open: number): number | undefined {
 	const closeChar = BracketClose[text[open]];
@@ -467,7 +407,6 @@ function findMatchingBracket(text: string, open: number): number | undefined {
 	return undefined;
 }
 
-/** the head of a single-line `if`, `for`, `while` or named `function`/`\(` definition, up to its closing paren */
 const ControlHeader = /^([A-Za-z.][\w.]* (<-|=) )?(if|for|while|function|\\)\s*\(/;
 interface ControlHead {
 	readonly keyword: 'if' | 'for' | 'while' | 'function' | '\\';
@@ -483,7 +422,6 @@ function controlHead(line: string): ControlHead | undefined {
 	return close === undefined ? undefined : { keyword: m[3] as ControlHead['keyword'], header: line.slice(0, close + 1), rest: line.slice(close + 1) };
 }
 
-/** splits at a top level ` else `, the one that belongs to this very `if` rather than one nested inside it */
 function topLevelElseSplit(text: string): readonly [string, string] | undefined {
 	let depth = 0;
 	let quote: string | undefined;
@@ -510,7 +448,6 @@ function topLevelElseSplit(text: string): readonly [string, string] | undefined 
 	return undefined;
 }
 
-/** wraps the body of a single-line `if`/`for`/`while` in braces, keeping its value and visibility */
 function addBraces(line: string): string | undefined {
 	const head = controlHead(line);
 	if(head === undefined) {
@@ -532,7 +469,6 @@ function addBraces(line: string): string | undefined {
 	return `${head.header} { ${rest} }`;
 }
 
-/** metaprogramming reads a body as it is written, so a brace around it is another program */
 const ReadsCodeAsWritten = /\b(body|deparse|substitute|quote|bquote|args|match\.call)\s*\(/;
 
 const bracesAdded: MutationPass = {
@@ -551,7 +487,6 @@ const bracesAdded: MutationPass = {
 	}
 };
 
-/** `\(x)` reads exactly as `function(x)` does, from the R version that introduced the shorthand onward */
 const lambdaShorthand: MutationPass = {
 	name:        'lambda shorthand',
 	minRVersion: MIN_VERSION_LAMBDA,
@@ -586,7 +521,6 @@ export const MutationPasses: readonly MutationPass[] = [
 	nestedCallToPipe
 ];
 
-/** one analysis per program and parser, as every pass and every query asks the same questions of it again */
 const analyzers = new WeakMap<KnownParser, Map<string, Promise<FlowrAnalyzer>>>();
 function analyzerFor(parser: KnownParser, code: string): Promise<FlowrAnalyzer> {
 	const known = analyzers.get(parser) ?? new Map<string, Promise<FlowrAnalyzer>>();
@@ -607,7 +541,6 @@ export async function slice(parser: KnownParser, { code, criterion }: MutationTa
 export async function mutate(parser: KnownParser, target: MutationTarget, pass: MutationPass): Promise<MutationTarget | undefined> {
 	return pass.apply(target, async name => {
 		const analyzer = await analyzerFor(parser, target.code);
-		/* the search reports every node of that lexeme, but only a symbol is a place where the name is written */
 		return (await analyzer.runSearch(Q.var(name).build())).getElements()
 			.flatMap(e => RSymbol.is(e.node) && e.node.location !== undefined ? [e.node.location] : []);
 	});
@@ -619,7 +552,6 @@ export type QueryObservation = Readonly<Record<string, readonly string[]>>;
 function dependenciesOf(result: DependenciesQueryResult): string[] {
 	return Object.entries(result).filter(([category]) => category !== '.meta')
 		.flatMap(([category, found]) => (found as DependencyInfo[]).map(({ functionName, value, lexemeOfArgument }) => {
-			/* an unnamed call is named by its id, which every mutation moves */
 			const name = String(functionName).startsWith(UnnamedFunctionCallPrefix) ? UnnamedFunctionCallPrefix : String(functionName);
 			return `${category}: ${name} ${value ?? lexemeOfArgument ?? '?'}`;
 		})).sort();

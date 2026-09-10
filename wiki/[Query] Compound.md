@@ -1,9 +1,8 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Compound Query">Compound Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Combines multiple queries of the same type into one, specifying common arguments.\
 _This query is requested with the type `compound`._
-
 
 A compound query comes in use, whenever we want to state multiple queries of the same type with a set of common arguments.
 It offers the following properties of interest:
@@ -14,9 +13,6 @@ It offers the following properties of interest:
 
 For example, consider the following compound query that combines two call-context queries for `mean` and `print`, both of which are to be
 assigned to the kind `visualize` and the subkind `text` (using the example code from above):
-
-
-
 
 ```json
 [
@@ -39,10 +35,42 @@ assigned to the kind `visualize` and the subkind `text` (using the example code 
 ]
 ```
 
+_Results (prettified and summarized):_
 
+Query: **call-context** (0 ms)\
+&nbsp;&nbsp;&nbsp;╰ **visualize** (4 hits):\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (4 hits): _`mean(data$x)`_ (L.9), _`print(m)`_ (L.10), _`mean(data2$k)`_ (L.19), _`print(mean(data2$k))`_ (L.19)\
 
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+```json
+{
+  "call-context": {".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean"},{"id":36,"name":"print"},{"id":87,"name":"mean"},{"id":89,"name":"print"}]}}}},
+  ".meta": {}
+}
+```
+
+</details>
+
+Of course, in this specific scenario, the following query would be equivalent:
+
+```json
+[
+  {
+    "type": "call-context",
+    "callName": "^(mean|print)$",
+    "kind": "visualize",
+    "subkind": "text"
+  }
+]
+```
+
+ <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
@@ -57,137 +85,21 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
-  "call-context": {
-    ".meta": {},
-    "kinds": {
-      "visualize": {
-        "subkinds": {
-          "text": [
-            {
-              "id": 31,
-              "name": "mean"
-            },
-            {
-              "id": 36,
-              "name": "print"
-            },
-            {
-              "id": 87,
-              "name": "mean"
-            },
-            {
-              "id": 89,
-              "name": "print"
-            }
-          ]
-        }
-      }
-    }
-  },
+  "call-context": {".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean"},{"id":36,"name":"print"},{"id":87,"name":"mean"},{"id":89,"name":"print"}]}}}},
   ".meta": {}
 }
 ```
 
-
-
 </details>
 
-
-
-
-
-	
-
-Of course, in this specific scenario, the following query would be equivalent:
-
-
-
-
-```json
-[
-  {
-    "type": "call-context",
-    "callName": "^(mean|print)$",
-    "kind": "visualize",
-    "subkind": "text"
-  }
-]
-```
-
-
-
-
- <details> <summary style="color:gray">Show Results</summary>
-
-_Results (prettified and summarized):_
-
-Query: **call-context** (1 ms)\
-&nbsp;&nbsp;&nbsp;╰ **visualize** (4 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (4 hits): _`mean(data$x)`_ (L.9), _`print(m)`_ (L.10), _`mean(data2$k)`_ (L.19), _`print(mean(data2$k))`_ (L.19)\
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
-```json
-{
-  "call-context": {
-    ".meta": {},
-    "kinds": {
-      "visualize": {
-        "subkinds": {
-          "text": [
-            {
-              "id": 31,
-              "name": "mean"
-            },
-            {
-              "id": 36,
-              "name": "print"
-            },
-            {
-              "id": 87,
-              "name": "mean"
-            },
-            {
-              "id": 89,
-              "name": "print"
-            }
-          ]
-        }
-      }
-    }
-  },
-  ".meta": {}
-}
-```
-
-
-
 </details>
-
-
-
-</details>
-
-	
 
 However, compound queries become more useful whenever common arguments can not be expressed as a union in one of their properties.
 Additionally, you can still overwrite default arguments.
 In the following, we (by default) want all calls to not resolve to a local definition, except for those to `print` for which we explicitly
 want to resolve to a local definition:
-
-
-
 
 ```json
 [
@@ -212,11 +124,6 @@ want to resolve to a local definition:
 ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
 Query: **call-context** (0 ms)\
@@ -230,52 +137,16 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
-  "call-context": {
-    ".meta": {},
-    "kinds": {
-      "visualize": {
-        "subkinds": {
-          "text": [
-            {
-              "id": 31,
-              "name": "mean",
-              "calls": [
-                "built-in"
-              ]
-            },
-            {
-              "id": 87,
-              "name": "mean",
-              "calls": [
-                "built-in"
-              ]
-            }
-          ]
-        }
-      }
-    }
-  },
+  "call-context": {".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean","calls":["built-in"]},{"id":87,"name":"mean","calls":["built-in"]}]}}}},
   ".meta": {}
 }
 ```
 
-
-
 </details>
 
-
-
-
-
-	
-
 Now, the results no longer contain calls to `plot` that are not defined locally.
-
-		
 
 <details>
 

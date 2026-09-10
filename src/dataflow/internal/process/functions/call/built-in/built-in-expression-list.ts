@@ -45,7 +45,6 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 	return cds !== undefined && happensInEveryBranch(cds);
 }
 
-/** whether reading the definition at `id` runs a function, as an active binding does */
 function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
 	if(!DfgVertex.isVariableDefinition(graph.getVertex(id))) {
 		return false;
@@ -58,7 +57,6 @@ function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
 	return false;
 }
 
-/** `activeReads` collects the reads that turn out to run a function, see {@link callsOnRead} */
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]) {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
 	const probableTarget = readName ? Resolve.byNameAndType(readName, environments, read.type) : undefined;
@@ -82,7 +80,6 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 
 	const rid = read.nodeId;
 	const isFunc = read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction;
-	/* what this name means now may be what a removal uncovered, so dropping that removal would change it back */
 	if(readName !== undefined) {
 		for(const removal of removalsOf(readName, environments)) {
 			nextGraph.addEdge(rid, removal, EdgeType.Reads);
@@ -217,11 +214,6 @@ function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: 
 	return true;
 }
 
-/**
- * Whether the write at `node` happens as part of the call `call`, which is what tells a write the call itself
- * performed from one the surrounding expression makes afterwards; only the latter shadows what the call wrote.
- * A synthetic call vertex has no node of its own, and stands for the callee, so everything it does counts.
- */
 function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean {
 	if(!idMap.has(call)) {
 		return true;
@@ -274,7 +266,6 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				current = current.parent;
 			}
 			if(hasUpdate) {
-				// link all definitions to the corresponding function call, but ignore writes made after it
 				const shadowing = localDefs.filter(d => isNotUndefined(d.name) && !writtenWithinCall(functionCall, d.nodeId, idMap));
 				if(shadowing.length > 0) {
 					environment = {
@@ -353,7 +344,6 @@ export function processExpressionList<OtherInfo>(
 		for(const read of processed.unknownReferences) {
 			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads);
 		}
-		/* a read of an active binding runs the bound function, so it is linked and folded like the call it is */
 		for(const read of activeReads) {
 			nextGraph.updateToFunctionCall({ tag: VertexType.FunctionCall, id: read.nodeId, name: read.name as Identifier, args: [], environment, onlyBuiltin: false, cds: read.cds, origin: [BuiltInProcName.Function] });
 		}

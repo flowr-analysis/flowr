@@ -13,6 +13,7 @@ import type { IdentifierReference } from '../../../../environments/identifier';
 import { Identifier } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
+import { Dataflow } from '../../../../graph/df-helper';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../graph/vertex';
@@ -73,24 +74,13 @@ export const Quoted = {
 	/** Every expression the value at `id` may hold, with the call that captured it. Several is normal. */
 	sourcesOf(this: void, graph: DataflowGraph, id: NodeId): readonly CapturedExpression[] {
 		const found: CapturedExpression[] = [];
-		const seen = new Set<NodeId>([id]);
-		const pending: NodeId[] = [id];
-		while(pending.length > 0) {
-			const current = pending.pop() as NodeId;
-			const captured = Quoted.capturedBy(graph, current);
-			if(captured.length > 0) {
-				for(const expr of captured) {
-					found.push({ expr, at: current });
-				}
-				continue;
+		Dataflow.reachable(graph, id, { follow: ValueFlow, stopAt: at => {
+			const captured = Quoted.capturedBy(graph, at);
+			for(const expr of captured) {
+				found.push({ expr, at });
 			}
-			for(const [target, edge] of graph.edgesFrom(current)) {
-				if(DfEdge.includesType(edge, ValueFlow) && !seen.has(target)) {
-					seen.add(target);
-					pending.push(target);
-				}
-			}
-		}
+			return captured.length > 0;
+		} });
 		return found;
 	},
 
@@ -143,8 +133,6 @@ export const Quoted = {
 					names ??= Deferred.indexOf(graph, idMap);
 					Deferred.link(graph, escaped, names, idMap);
 				}
-				/* an argument the callee writes over before reading it is forced on the written value, not the
-				 * one the call site handed in: `f(x)` with `f <- function(a) { x <<- 99; a }` yields 99 */
 				if(sideEffectsOnce().has(id)) {
 					const flow = cfgOnce();
 					if(flow !== undefined) {
@@ -190,10 +178,6 @@ function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: Nod
 	}
 }
 
-/**
- * The captured language a call evaluates because a replacement working on language installed it into what the call
- * reads: after `body(f) <- quote(k)`, every `f()` evaluates `k`.
- */
 function* installedLanguageOf(graph: DataflowGraph, id: NodeId, installers: () => ReadonlySet<NodeId>): Generator<NodeId> {
 	for(const [definition, edge] of graph.edgesFrom(id)) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads) || !DfgVertex.isVariableDefinition(graph.getVertex(definition))) {
@@ -218,7 +202,6 @@ function* installedLanguageOf(graph: DataflowGraph, id: NodeId, installers: () =
 	}
 }
 
-/** The replacement calls working on language, which are what {@link installedLanguageOf} looks for. */
 function languageInstallersOf(graph: DataflowGraph, environment: REnvironmentInformation): ReadonlySet<NodeId> {
 	const installers = new Set<NodeId>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -310,7 +293,6 @@ function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierRe
 }
 
 
-/** The calls that write something outside their own frame, which is what can outrun a promise. */
 function callsWithSideEffects(graph: DataflowGraph): ReadonlySet<NodeId> {
 	const calls = new Set<NodeId>();
 	for(const [id] of graph.vertices(true)) {
@@ -323,21 +305,11 @@ function callsWithSideEffects(graph: DataflowGraph): ReadonlySet<NodeId> {
 	return calls;
 }
 
-/** The arguments of `id` paired with the parameter they are bound to, for every definition the call resolves to. */
 function* forcedParameters(graph: DataflowGraph, id: NodeId): Generator<readonly [NodeId, NodeId]> {
-	for(const [target, edge] of graph.edgesFrom(id)) {
-		if(!DfEdge.includesType(edge, EdgeType.Calls)) {
-			continue;
-		}
-		const callee = graph.getVertex(target);
-		if(!DfgVertex.isFunctionDefinition(callee)) {
-			continue;
-		}
-		for(const parameter of Object.keys(callee.params ?? {}).map(NodeId.normalize)) {
-			for(const [argument, paramEdge] of graph.edgesFrom(parameter)) {
-				if(DfEdge.includesType(paramEdge, EdgeType.DefinedByOnCall)) {
-					yield [argument, parameter];
-				}
+	for(const callee of Dataflow.calleesOf(graph, id)) {
+		for(const parameter of Dataflow.parametersOf(callee)) {
+			for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
+				yield [argument, parameter];
 			}
 		}
 	}
@@ -356,7 +328,6 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 		if(elsewhere) {
 			const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id };
 			Deferred.link(graph, expr, { definitions: bindings, uses: names.uses }, idMap, forces);
-			/* the frame it writes in is not ours to know, so a later use of that name may be the one it wrote */
 			Deferred.publish(graph, expr, names, idMap, id, undefined);
 		} else {
 			const open = linkExpressionIn(graph, expr, environment, idMap);
@@ -390,21 +361,13 @@ function sourcesHandedTo<Info>(graph: DataflowGraph, call: DataflowGraphVertexFu
  * body itself (what `force` is for) is settled during the call and stays where it is.
  */
 function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId> {
-	for(const [target, edge] of graph.edgesFrom(id)) {
-		if(!DfEdge.includesType(edge, EdgeType.Calls)) {
-			continue;
-		}
-		const callee = graph.getVertex(target);
-		if(!DfgVertex.isFunctionDefinition(callee)) {
-			continue;
-		}
+	for(const callee of Dataflow.calleesOf(graph, id)) {
 		for(const exit of callee.exitPoints) {
 			const closure = graph.getVertex(exit.nodeId);
 			if(!DfgVertex.isFunctionDefinition(closure)) {
 				continue;
 			}
-			for(const key of Object.keys(callee.params)) {
-				const parameter = NodeId.normalize(key);
+			for(const parameter of Dataflow.parametersOf(callee)) {
 				let escapes = true;
 				for(const [reader, edge] of graph.edgesTo(parameter)) {
 					if(DfEdge.includesType(edge, EdgeType.Reads) && !closure.subflow.graph.has(reader)) {
@@ -415,11 +378,7 @@ function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId>
 				if(!escapes) {
 					continue;
 				}
-				for(const [argument, edge] of graph.edgesFrom(parameter)) {
-					if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall)) {
-						yield argument;
-					}
-				}
+				yield* Dataflow.argumentsBoundTo(graph, parameter);
 			}
 		}
 	}

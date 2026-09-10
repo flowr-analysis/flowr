@@ -26,9 +26,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-/** the calls turning a string into the symbol it names, whose evaluation is a plain variable read */
 const SymbolConstructors: ReadonlySet<string> = new Set(['as.name', 'as.symbol']);
-/** a name that can be written as code as it stands, so the generated read is the one R would perform */
 const SyntacticName = /^[.a-zA-Z][.a-zA-Z0-9_]*$/;
 
 /** the formals of `eval(expr, envir, enclos)` */
@@ -47,9 +45,7 @@ export function processEvalCall<OtherInfo>(
 		includeFunctionCall?: boolean
 		/** if selected processes evalText function call, else processes eval*/
 		supportFunctionCall?: boolean
-		/** the formals of the call, when they are not `eval`'s own; `eval.parent(expr, n)` counts its frames, not an environment */
 		parameterNames?:      readonly string[]
-		/** does the call write in the frame of its caller, as `eval.parent` does? */
 		parentFrame?:         boolean
 	}
 ): DataflowInformation {
@@ -122,7 +118,6 @@ export function processEvalCall<OtherInfo>(
 }
 
 
-/** Whether the environment argument names the caller's frame, as `eval(expr, parent.frame())` does. */
 function namesParentFrame<OtherInfo>(
 	envir: RNode<OtherInfo & ParentInformation> | undefined,
 	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -132,10 +127,6 @@ function namesParentFrame<OtherInfo>(
 		&& Resolve.isBuiltIn(envir.functionName.content, data.environment, ReferenceType.Function);
 }
 
-/**
- * Records what an expression evaluated in the caller's frame writes there, which is the same effect `<<-` has:
- * the definitions leave this frame, so a call to the enclosing function carries them to whoever made it.
- */
 function escapeWritesToParentFrame<OtherInfo>(
 	expr:        RNode<OtherInfo & ParentInformation>,
 	rootId:      NodeId,
@@ -159,14 +150,12 @@ function escapeWritesToParentFrame<OtherInfo>(
 	if(written.length === 0) {
 		return;
 	}
-	/* same fold + Reads edge as routeWrittenToStackEnv; written comes from the AST walk above, not result.out */
 	const routed = routeWrittenToStackEnv({ ...information, out: written }, information.environment, rootId);
 	information.environment = routed.environment;
 	information.out = [...information.out, ...written];
 }
 
 function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
-	/* match the call a pipe desugars to (e.g. `nm |> as.name()`), not the pipe node itself */
 	const val = pipedCall(evalArgument, data) ?? evalArgument;
 
 	if(config.supportFunctionCall) {
@@ -186,7 +175,6 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 			return getAsString(arg.value, data);
 		} else if(RFunctionCall.isNamed(val) && SymbolConstructors.has(Identifier.getName(val.functionName.content))
 			&& Resolve.isBuiltIn(val.functionName.content, data.environment, ReferenceType.Function)) {
-			/* evaluating the symbol a string names is the same as running that name as code */
 			const arg = RFunctionCall.soleArgument(val.arguments);
 			const named = arg?.value ? resolveConstantString(arg.value, data) : undefined;
 			return named !== undefined && SyntacticName.test(named) ? [named] : undefined;

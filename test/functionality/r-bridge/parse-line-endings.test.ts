@@ -15,10 +15,8 @@ const lexemes = (ast: NormalizedAst): string[] => {
 	return out;
 };
 
-// covers assignments, calls, control flow, function definitions, strings and comments
 const program = 'x <- 1\ny <- x + 2\n# a comment\nif(y > 0) {\n  print("hi")\n}\nf <- function(a) a * 2\nz <- f(y)';
 
-/* escaped so this file stays plain ASCII while the program under test is not */
 const Staerke = 'st\u00e4rke';
 const NonAsciiString = '"caf\u00e9 \u4e2d\u6587"';
 const NonAscii = `${Staerke} <- ${NonAsciiString} # \u00fcber\nprint(${Staerke})`;
@@ -56,7 +54,6 @@ describe('Parsing is robust to line endings', { concurrent: false }, withShell(s
 	});
 }));
 
-// tree-sitter skips a leading BOM; r-shell does not, so BOM support is only partial
 describe('Parsing is robust to a byte-order mark', withTreeSitter(parser => {
 	test(label('a leading BOM does not change the program', ['byte-order-mark'], ['parse']), async() => {
 		const plain = await retrieveNormalizedAst(parser, 'x <- 1\ny <- x');

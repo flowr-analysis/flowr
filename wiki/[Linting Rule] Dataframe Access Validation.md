@@ -1,25 +1,22 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="dataframe-access-validation">Dataframe Access Validation&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
 
-
 This rule is a `best-effort` rule.
  
 Validates the existence of accessed columns and rows of dataframes.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L62">src/linter/rules/dataframe-access-validation.ts</a>._
-
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L61">src/linter/rules/dataframe-access-validation.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `dataframe-access-validation` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L50"><code><span title="Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if undefined)">readLoadedData</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L49"><code><span title="Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if undefined)">readLoadedData</span></code></a>\
 Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if `undefined`)
 
 ### Examples
-
 
 ```r
 
@@ -27,24 +24,15 @@ df <- data.frame(id = 1:5, name = 6:10)
 df[6, "value"]
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "dataframe-access-validation",     "config": {} } ] } ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **linter** (6 ms)\
+Query: **linter** (10 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Access of row 6 of `df` at 3.1-14\
@@ -57,48 +45,16 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "linter": {
     "results": {
       "dataframe-access-validation": {
         "results": [
-          {
-            "type": "row",
-            "accessed": 6,
-            "involvedId": 19,
-            "access": "[",
-            "operand": "df",
-            "loc": [
-              3,
-              1,
-              3,
-              14
-            ],
-            "certainty": "certain"
-          },
-          {
-            "type": "column",
-            "accessed": "value",
-            "involvedId": 19,
-            "access": "[",
-            "operand": "df",
-            "loc": [
-              3,
-              1,
-              3,
-              14
-            ],
-            "certainty": "certain"
-          }
+          {"type":"row","accessed":6,"involvedId":19,"access":"[","operand":"df","loc":[3,1,3,14],"certainty":"certain"},
+          {"type":"column","accessed":"value","involvedId":19,"access":"[","operand":"df","loc":[3,1,3,14],"certainty":"certain"}
         ],
-        ".meta": {
-          "numOperations": 1,
-          "numAccesses": 2,
-          "totalAccessed": 2
-        }
+        ".meta": {"numOperations":1,"numAccesses":2,"totalAccessed":2}
       }
     },
     ".meta": {}
@@ -107,24 +63,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-dataframe-access-validation.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts)
 
-
 <h4 id="Test_Case:_dollar_matches_a_prefix">Test Case: dollar matches a prefix</h4>
-
-> `$` matches a unique prefix of a column name, `[[` matches exactly
 
 Given the following input:
 
@@ -133,19 +78,13 @@ df <- data.frame(id = 1:5, value = "A")
 df$val
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L157) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L156) for the test-case implementation.
 		
 <h4 id="Test_Case:_double_bracket_does_not">Test Case: double bracket does not</h4>
-
 
 Given the following input:
 
@@ -154,16 +93,11 @@ df <- data.frame(id = 1:5, value = "A")
 df[["val"]]
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ type: 'column', accessed: 'val', access: '[[', operand: 'df', loc: [2, 1, 2, 11], certainty: LintingResultCertainty.Certain }]
-```
+* certain at 2.1-2.11: type = `'column'`, accessed = `'val'`, access = `'[['`, operand = `'df'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L158) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L157) for the test-case implementation.
 		
 <h4 id="Test_Case:_Column_access_by_name">Test Case: Column access by name</h4>
 
@@ -176,16 +110,11 @@ df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65
 print(df$skill)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ type: 'column', accessed: 'skill', access: '$', operand: 'df', loc: [2, 7, 2, 14], certainty: LintingResultCertainty.Certain }]
-```
+* certain at 2.7-2.14: type = `'column'`, accessed = `'skill'`, access = `'$'`, operand = `'df'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L164) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L163) for the test-case implementation.
 		
 <h4 id="Test_Case:_Column_access_by_index">Test Case: Column access by index</h4>
 
@@ -198,16 +127,11 @@ df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65
 print(df[3:4])
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ type: 'column', accessed: 4, access: '[', operand: 'df', loc: [2, 7, 2, 13], certainty: LintingResultCertainty.Certain }]
-```
+* certain at 2.7-2.13: type = `'column'`, accessed = `4`, access = `'['`, operand = `'df'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L173) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L172) for the test-case implementation.
 		
 <h4 id="Test_Case:_Row_access_by_index">Test Case: Row access by index</h4>
 
@@ -220,16 +144,11 @@ df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65
 print(df[[5, "score"]])
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ type: 'row', accessed: 5, access: '[[', operand: 'df', loc: [2, 7, 2, 22], certainty: LintingResultCertainty.Certain }]
-```
+* certain at 2.7-2.22: type = `'row'`, accessed = `5`, access = `'[['`, operand = `'df'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L182) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L181) for the test-case implementation.
 		
 <h4 id="Test_Case:_Filter_access">Test Case: Filter access</h4>
 
@@ -242,16 +161,11 @@ df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65
 df <- dplyr::filter(df, level > 70)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ type: 'column', accessed: 'level', access: 'dplyr::filter', operand: 'df', loc: [2, 7, 2, 35], certainty: LintingResultCertainty.Certain }]
-```
+* certain at 2.7-2.35: type = `'column'`, accessed = `'level'`, access = `'dplyr::filter'`, operand = `'df'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L191) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L190) for the test-case implementation.
 		
 <h4 id="Test_Case:_Select_access">Test Case: Select access</h4>
 
@@ -264,16 +178,11 @@ df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65
 df <- dplyr::select(df, id, age, score)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ type: 'column', accessed: 'age', access: 'dplyr::select', operand: 'df', loc: [2, 7, 2, 39], certainty: LintingResultCertainty.Certain }]
-```
+* certain at 2.7-2.39: type = `'column'`, accessed = `'age'`, access = `'dplyr::select'`, operand = `'df'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L200) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L199) for the test-case implementation.
 		
 <h4 id="Test_Case:_Code_example">Test Case: Code example</h4>
 
@@ -297,17 +206,12 @@ df2 <- df1 %>%
 print(df2[1:5, 3])
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- type: 'column', accessed: 'age', access: 'filter', operand: 'df1', loc: [9, 5, 9, 20], certainty: LintingResultCertainty.Certain },
-{ type: 'column', accessed: 'skill', access: 'mutate', loc: [10, 5, 10, 27], certainty: LintingResultCertainty.Certain },
-{ type: 'column', accessed: 'name', access: 'select', loc: [11, 5, 11, 17], certainty: LintingResultCertainty.Certain },
-{ type: 'row', accessed: 5, access: '[', operand: 'df2', loc: [13, 7, 13, 17], certainty: LintingResultCertainty.Certain },
-{ type: 'column', accessed: 3, access: '[', operand: 'df2', loc: [13, 7, 13, 17], certainty: LintingResultCertainty.Certain
-```
+* certain at 9.5-9.20: type = `'column'`, accessed = `'age'`, access = `'filter'`, operand = `'df1'`
+* certain at 10.5-10.27: type = `'column'`, accessed = `'skill'`, access = `'mutate'`
+* certain at 11.5-11.17: type = `'column'`, accessed = `'name'`, access = `'select'`
+* certain at 13.7-13.17: type = `'row'`, accessed = `5`, access = `'['`, operand = `'df2'`
+* certain at 13.7-13.17: type = `'column'`, accessed = `3`, access = `'['`, operand = `'df2'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L209) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L208) for the test-case implementation.

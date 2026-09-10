@@ -47,7 +47,6 @@ export function teardown() {
 		/* if we do not find the summary, then this is not a big problem */
 	}
 
-	// ensure the target folder exists, whichever suite points DetailedInfoFile at it
 	fs.mkdirSync(path.dirname(DetailedInfoFile), { recursive: true });
 	fs.writeFileSync(DetailedInfoFile, JSON.stringify([...labelMap.entries()], jsonReplacer));
 }

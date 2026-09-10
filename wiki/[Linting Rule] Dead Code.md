@@ -1,43 +1,29 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="dead-code">Dead Code&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
-
 
 This rule is a `best-effort` rule.
  
 Marks areas of code that are never reached during execution.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dead-code.ts#L29">src/linter/rules/dead-code.ts</a>._
 
-
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `dead-code` rule accepts the following configuration options:
 
-
-
 ### Examples
-
 
 ```r
 if(TRUE) 1 else 2
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "dead-code",     "config": {} } ] } ]
 ```
-
-
-
-
-
 
 _Results (prettified and summarized):_
 
@@ -53,54 +39,17 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
-{
-  "linter": {
-    "results": {
-      "dead-code": {
-        "results": [
-          {
-            "certainty": "certain",
-            "involvedId": [
-              3,
-              4
-            ],
-            "loc": [
-              1,
-              17,
-              1,
-              17
-            ]
-          }
-        ],
-        ".meta": {}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
+{"linter":{"results":{"dead-code":{"results":[{"certainty":"certain","involvedId":[3,4],"loc":[1,17,1,17]}],".meta":{}}},".meta":{}},".meta":{}}
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-dead-code.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts)
 
-
 <h4 id="Test_Case:_none">Test Case: none</h4>
-
 
 Given the following input:
 
@@ -108,19 +57,13 @@ Given the following input:
 x <- 1
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L11) for the test-case implementation.
 		
 <h4 id="Test_Case:_always">Test Case: always</h4>
-
 
 Given the following input:
 
@@ -128,19 +71,13 @@ Given the following input:
 if(TRUE) 1 else 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 17]
-```
-
+* certain at 1.17-1.17
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L12) for the test-case implementation.
 		
 <h4 id="Test_Case:_never">Test Case: never</h4>
-
 
 Given the following input:
 
@@ -148,14 +85,9 @@ Given the following input:
 if(FALSE) 1 else 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11]
-```
-
+* certain at 1.11-1.11
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L15) for the test-case implementation.
 		
@@ -171,24 +103,18 @@ Given the following input:
 if(FALSE) 1 else 2
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ simplificationPasses: DefaultCfgSimplificationOrder }
+{simplificationPasses: DefaultCfgSimplificationOrder}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11]
-```
-
+* certain at 1.11-1.11
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L22) for the test-case implementation.
 		
 <h4 id="Test_Case:_stopifnot_true">Test Case: stopifnot true</h4>
-
 
 Given the following input:
 
@@ -196,19 +122,13 @@ Given the following input:
 if(TRUE) 1; stopifnot(TRUE); 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L28) for the test-case implementation.
 		
 <h4 id="Test_Case:_stopifnot_false">Test Case: stopifnot false</h4>
-
 
 Given the following input:
 
@@ -216,19 +136,13 @@ Given the following input:
 if(TRUE) 1; stopifnot(FALSE); 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 31, 1, 31] },
-```
-
+* certain at 1.31-1.31
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L29) for the test-case implementation.
 		
 <h4 id="Test_Case:_stop_condition">Test Case: stop condition</h4>
-
 
 Given the following input:
 
@@ -245,19 +159,13 @@ print(2)
 `
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [6, 3, 6, 8]
-```
-
+* certain at 6.3-6.8
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L32) for the test-case implementation.
 		
 <h4 id="Test_Case:_return">Test Case: return</h4>
-
 
 Given the following input:
 
@@ -266,19 +174,13 @@ function() {
 return(); 2}
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [2, 11, 2, 11]
-```
-
+* certain at 2.11-2.11
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L44) for the test-case implementation.
 		
 <h4 id="Test_Case:_try">Test Case: try</h4>
-
 
 Given the following input:
 
@@ -286,19 +188,13 @@ Given the following input:
 try(stop(1)); 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L47) for the test-case implementation.
 		
 <h4 id="Test_Case:_try_complex">Test Case: try complex</h4>
-
 
 Given the following input:
 
@@ -306,19 +202,13 @@ Given the following input:
 f <- function() { try(stop(1)); 2 }; f(); stop(1); 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 52, 1, 52]
-```
-
+* certain at 1.52-1.52
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L48) for the test-case implementation.
 		
 <h4 id="Test_Case:_always">Test Case: always</h4>
-
 
 Given the following input:
 
@@ -326,19 +216,13 @@ Given the following input:
 x <- TRUE; if(x) 1 else 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 25, 1, 25]
-```
-
+* certain at 1.25-1.25
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L54) for the test-case implementation.
 		
 <h4 id="Test_Case:_never">Test Case: never</h4>
-
 
 Given the following input:
 
@@ -346,19 +230,13 @@ Given the following input:
 x <- FALSE; if(x) 1 else 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 19, 1, 19]
-```
-
+* certain at 1.19-1.19
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L57) for the test-case implementation.
 		
 <h4 id="Test_Case:_TRUE_FALSE">Test Case: TRUE FALSE</h4>
-
 
 Given the following input:
 
@@ -366,19 +244,13 @@ Given the following input:
 if(TRUE) 1 else if (FALSE) 2 else 3
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 35], involvedId: ['1@[2]if', '1@FALSE', '1@2', '1@3', '$5', '$7', '$9']
-```
-
+* certain at 1.17-1.35: involvedId = `['1@[2]if', '1@FALSE', '1@2', '1@3', '$5', '$7', '$9']`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L63) for the test-case implementation.
 		
 <h4 id="Test_Case:_FALSE_FALSE">Test Case: FALSE FALSE</h4>
-
 
 Given the following input:
 
@@ -386,20 +258,14 @@ Given the following input:
 if(FALSE) 1 else if (FALSE) 2 else 3
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], involvedId: ['1@1', '$2'] },
-{ certainty: LintingResultCertainty.Certain, loc: [1, 29, 1, 29], involvedId: ['1@2', '$5']
-```
-
+* certain at 1.11-1.11: involvedId = `['1@1', '$2']`
+* certain at 1.29-1.29: involvedId = `['1@2', '$5']`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L66) for the test-case implementation.
 		
 <h4 id="Test_Case:_FALSE_TRUE">Test Case: FALSE TRUE</h4>
-
 
 Given the following input:
 
@@ -407,20 +273,14 @@ Given the following input:
 if(FALSE) 1 else if (TRUE) 2 else 3
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], involvedId: ['1@1', '$2'] },
-{ certainty: LintingResultCertainty.Certain, loc: [1, 35, 1, 35], involvedId: ['1@3', '$7']
-```
-
+* certain at 1.11-1.11: involvedId = `['1@1', '$2']`
+* certain at 1.35-1.35: involvedId = `['1@3', '$7']`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L70) for the test-case implementation.
 		
 <h4 id="Test_Case:_ifelse_constant">Test Case: ifelse constant</h4>
-
 
 Given the following input:
 
@@ -428,19 +288,13 @@ Given the following input:
 ifelse(TRUE, 1, 2)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L77) for the test-case implementation.
 		
 <h4 id="Test_Case:_ifelse_non-constant">Test Case: ifelse non-constant</h4>
-
 
 Given the following input:
 
@@ -449,19 +303,13 @@ x <- 1
 ifelse(x > 0, x, -x)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L78) for the test-case implementation.
 		
 <h4 id="Test_Case:_fifelse_constant">Test Case: fifelse constant</h4>
-
 
 Given the following input:
 
@@ -469,19 +317,13 @@ Given the following input:
 fifelse(TRUE, 1, 2)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L79) for the test-case implementation.
 		
 <h4 id="Test_Case:_if_else_constant">Test Case: if_else constant</h4>
-
 
 Given the following input:
 
@@ -489,14 +331,9 @@ Given the following input:
 if_else(TRUE, 1, 2)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L80) for the test-case implementation.
 		
@@ -514,19 +351,13 @@ f <- function() {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L85) for the test-case implementation.
 		
 <h4 id="Test_Case:_sibling_arms_after_a_stop_arm_stay_live">Test Case: sibling arms after a stop arm stay live</h4>
-
 
 Given the following input:
 
@@ -538,19 +369,13 @@ f <- function(k) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L89) for the test-case implementation.
 		
 <h4 id="Test_Case:_code_after_a_switch_with_a_stop_arm_stays_live">Test Case: code after a switch with a stop arm stays live</h4>
-
 
 Given the following input:
 
@@ -561,19 +386,13 @@ f <- function(k) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L90) for the test-case implementation.
 		
 <h4 id="Test_Case:_in-arm_code_after_a_stop_is_dead">Test Case: in-arm code after a stop is dead</h4>
-
 
 Given the following input:
 
@@ -583,19 +402,13 @@ f <- function(k) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [2, 30, 2, 35]
-```
-
+* certain at 2.30-2.35
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L91) for the test-case implementation.
 		
 <h4 id="Test_Case:_stop_in_the_default_arm_keeps_siblings_and_after_live">Test Case: stop in the default arm keeps siblings and after live</h4>
-
 
 Given the following input:
 
@@ -607,19 +420,13 @@ f <- function(k) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L94) for the test-case implementation.
 		
 <h4 id="Test_Case:_all_arms_return_makes_the_tail_dead">Test Case: all arms return makes the tail dead</h4>
-
 
 Given the following input:
 
@@ -631,20 +438,14 @@ f <- function(k) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [3, 3, 3, 12] },
-{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 7]
-```
-
+* certain at 3.3-3.12
+* certain at 4.3-4.7
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L95) for the test-case implementation.
 		
 <h4 id="Test_Case:_empty_fall-through_arms_are_not_dead">Test Case: empty fall-through arms are not dead</h4>
-
 
 Given the following input:
 
@@ -656,19 +457,13 @@ f <- function(k) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L99) for the test-case implementation.
 		
 <h4 id="Test_Case:_constant_selector_kills_the_other_arms">Test Case: constant selector kills the other arms</h4>
-
 
 Given the following input:
 
@@ -679,22 +474,16 @@ f <- function() {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [2, 20, 2, 20] },
-{ certainty: LintingResultCertainty.Certain, loc: [2, 24, 2, 24] },
-{ certainty: LintingResultCertainty.Certain, loc: [2, 34, 2, 34] },
-{ certainty: LintingResultCertainty.Certain, loc: [2, 38, 2, 38]
-```
-
+* certain at 2.20-2.20
+* certain at 2.24-2.24
+* certain at 2.34-2.34
+* certain at 2.38-2.38
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L103) for the test-case implementation.
 		
 <h4 id="Test_Case:_no_match_no_default_kills_all_arms">Test Case: no match no default kills all arms</h4>
-
 
 Given the following input:
 
@@ -706,22 +495,16 @@ f <- function() {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [2, 15, 2, 15] },
-{ certainty: LintingResultCertainty.Certain, loc: [2, 19, 2, 19] },
-{ certainty: LintingResultCertainty.Certain, loc: [2, 22, 2, 22] },
-{ certainty: LintingResultCertainty.Certain, loc: [2, 26, 2, 26]
-```
-
+* certain at 2.15-2.15
+* certain at 2.19-2.19
+* certain at 2.22-2.22
+* certain at 2.26-2.26
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L109) for the test-case implementation.
 		
 <h4 id="Test_Case:_no_match_selects_the_default">Test Case: no match selects the default</h4>
-
 
 Given the following input:
 
@@ -732,20 +515,14 @@ f <- function() {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [2, 20, 2, 20] },
-{ certainty: LintingResultCertainty.Certain, loc: [2, 24, 2, 24]
-```
-
+* certain at 2.20-2.20
+* certain at 2.24-2.24
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L115) for the test-case implementation.
 		
 <h4 id="Test_Case:_constant_selector_into_an_empty_fall-through_arm">Test Case: constant selector into an empty fall-through arm</h4>
-
 
 Given the following input:
 
@@ -756,19 +533,13 @@ f <- function() {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L119) for the test-case implementation.
 		
 <h4 id="Test_Case:_non-constant_selector_prunes_nothing">Test Case: non-constant selector prunes nothing</h4>
-
 
 Given the following input:
 
@@ -779,19 +550,13 @@ f <- function(k) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L120) for the test-case implementation.
 		
 <h4 id="Test_Case:____return_guard">Test Case: || return guard</h4>
-
 
 Given the following input:
 
@@ -803,19 +568,13 @@ f <- function(x) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L124) for the test-case implementation.
 		
 <h4 id="Test_Case:____stop_guard">Test Case: && stop guard</h4>
-
 
 Given the following input:
 
@@ -827,14 +586,9 @@ f <- function(x) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L125) for the test-case implementation.
 		
@@ -854,19 +608,13 @@ f <- function(x) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 15]
-```
-
+* certain at 5.3-5.15
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L130) for the test-case implementation.
 		
 <h4 id="Test_Case:_live_switch_but_dead_tail">Test Case: live switch but dead tail</h4>
-
 
 Given the following input:
 
@@ -879,19 +627,13 @@ classify <- function(type, value) {
 }
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 24]
-```
-
+* certain at 5.3-5.24
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L133) for the test-case implementation.
 		
 <h4 id="Test_Case:_after_infinite_repeat">Test Case: after infinite repeat</h4>
-
 
 Given the following input:
 
@@ -899,19 +641,13 @@ Given the following input:
 repeat{ foo }; 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 16, 1, 16]
-```
-
+* certain at 1.16-1.16
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L139) for the test-case implementation.
 		
 <h4 id="Test_Case:_after_infinite_while">Test Case: after infinite while</h4>
-
 
 Given the following input:
 
@@ -919,13 +655,8 @@ Given the following input:
 while(TRUE){ foo }; 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, loc: [1, 21, 1, 21]
-```
-
+* certain at 1.21-1.21
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L142) for the test-case implementation.

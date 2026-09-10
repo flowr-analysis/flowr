@@ -85,7 +85,6 @@ export enum CallProp {
 	Ffi        = 1 << 10,
 	/** produces a language object, like `quote` or `deparse` */
 	Lang       = 1 << 11,
-	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfEach}) */
 	Strict     = 1 << 12,
 	/**
 	 * runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only
@@ -510,7 +509,6 @@ export interface SigLayout {
 	readonly any:   ArgProps
 	/** the position of the {@link ArgProp.Alias} argument, handed back as the result, `-1` if there is none */
 	readonly alias: number
-	/** what {@link forcedArgs} answered for an argument count, kept since the answer only depends on the two */
 	forced?:        (readonly boolean[])[]
 }
 

@@ -227,29 +227,7 @@ export const Dataflow = {
 	 * @see {@link Dataflow.provenanceGraph} - for a convenience wrapper to directly obtain the graph of the provenance.
 	 */
 	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall): Set<NodeId> {
-		const queue = [id];
-		const visited = new Set<NodeId>();
-
-		while(queue.length > 0) {
-			const nodeId = queue.pop();
-			if(nodeId === undefined || visited.has(nodeId) || (consider && !consider.has(nodeId))) {
-				continue;
-			}
-			visited.add(nodeId);
-			const vtx = graph.get(nodeId);
-			if(vtx === undefined) {
-				continue;
-			}
-			for(const [to, types] of vtx[1]) {
-				if(followEdges === undefined || DfEdge.includesType(types, followEdges)) {
-					queue.push(to);
-				}
-			}
-			for(const cd of vtx[0].cds ?? []) {
-				queue.push(cd.id);
-			}
-		}
-		return visited;
+		return GraphHelper.reachable(graph, id, { follow: followEdges, consider, cds: true });
 	},
 	/**
 	 * A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only

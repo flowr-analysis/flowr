@@ -83,7 +83,6 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	/* phylogeny / sequence */
 ] as const;
 
-/* the configuration leads here too, see {@link readFunctions} */
 /** The write entries the given built-in definitions imply, together with the ones written down here. */
 export function computeWriteFunctions(definitions: BuiltInDefinitions, read: FunctionInfo[] = computeReadFunctions(definitions)): FunctionInfo[] {
 	return [

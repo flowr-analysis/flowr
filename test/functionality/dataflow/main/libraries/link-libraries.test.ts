@@ -474,7 +474,6 @@ describe('Link libraries', withTreeSitter(ts => {
 }));
 
 describe('Dynamic search path', withTreeSitter(ts => {
-	// search() is not a recognized built-in; it resolves as an unknown call, not linked to library()
 	assertDataflow(label('search() is an ordinary call, not linked to library()', ['dynamic-search-path']), ts, 'library(tools)\nn <- search()',
 		emptyGraph().call('2@search', 'search', []),
 		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }

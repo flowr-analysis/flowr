@@ -15,7 +15,7 @@ import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '..
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
-import { Identifier, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { hasEnvState, Identifier, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
@@ -149,15 +149,11 @@ export function processFunctionDefinition<OtherInfo>(
 
 	subgraph.mergeWith(body.graph);
 
-	/* a default that names an earlier parameter binds to it right here, which hides that the promise is still
-	 * forced later: `function(a, b = a * 2) { a <- 10; b }` evaluates the default after the body reassigned `a` */
 	for(const param of parameters) {
 		const parameter = param !== EmptyArgument && RParameter.is(param.value) ? param.value : undefined;
 		if(parameter?.defaultValue === undefined) {
 			continue;
 		}
-		/* which of those writes the default sees depends on where the promise is forced, so every read of the
-		 * parameter has to stay: dropping a `force(b)` would move the evaluation past the write it precedes */
 		const forcedAt: NodeId[] = [];
 		for(const [reader, edge] of subgraph.edgesTo(parameter.name.info.id)) {
 			if(DfEdge.includesType(edge, EdgeType.Reads)) {
@@ -258,7 +254,6 @@ export function processFunctionDefinition<OtherInfo>(
 				break;
 			}
 			const epNode = subgraph.idMap?.get(ep.nodeId);
-			/* a factory handing back a `list(...)` of functions is what a `$`-call on its result resolves against */
 			if(DfgVertex.hasOrigin(epVertex, BuiltInProcName.List) && epNode !== undefined) {
 				returnEnvState = resolveListToEnvState(epNode, { environment: outEnvironment });
 				if(returnEnvState) {
@@ -273,7 +268,7 @@ export function processFunctionDefinition<OtherInfo>(
 			}
 			if(RSymbol.is(epNode)) {
 				const defs = Resolve.byNameAndType(epNode.content, outEnvironment, ReferenceType.Variable);
-				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+				const def = defs?.find(hasEnvState);
 				if(def?.envState) {
 					returnEnvState = def.envState;
 					break;
@@ -387,10 +382,6 @@ function resolveIngoingRefs(
 }
 
 
-/**
- * Update the closure links of all nested function definitions. What stays open in them is open in the enclosing
- * function as well (`openReads`), so it binds where that function is called, before its own writes fold back.
- */
 function updateNestedFunctionClosures(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
@@ -398,9 +389,7 @@ function updateNestedFunctionClosures(
 	openReads: IdentifierReference[]
 ) {
 	const open = new Set(openReads.map(r => r.nodeId));
-	/* bound to built-ins alone right here, so nothing further out can bind them */
 	const settled = new Set<NodeId>();
-	/* the closures here share this frame, so one of them may have written a name before another reads it */
 	const superWrites = superAssignedInFrame(graph);
 	// track *all* function definitions, including those nested within, resolving their 'in' via the lowest scope (popped after this definition)
 	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
@@ -422,8 +411,6 @@ function updateNestedFunctionClosures(
 					graph.addEdge(ingoing.nodeId, write, EdgeType.Reads);
 				}
 			}
-			/* a name this frame knows only through what its closures super-assign was bound outside before they ran,
-			   as `tally <<- tally + 1` reads the outer `tally` on the first call, so the read stays open to the caller */
 			if(allBuiltIn && resolved.length > 0 && !allClosureWrites) {
 				settled.add(ingoing.nodeId);
 			}
@@ -440,11 +427,6 @@ function updateNestedFunctionClosures(
 	}
 }
 
-/**
- * The names the closures of this frame super-assign, mapped to the nodes they write. A closure only runs when it
- * is called, so such a write may equally well have happened before another closure of the same frame reads that
- * name -- which is what makes `mk()$inc(); mk()$get()` see the incremented counter.
- */
 function superAssignedInFrame(graph: DataflowGraph): ReadonlyMap<Identifier, NodeId[]> {
 	const written = new Map<Identifier, NodeId[]>();
 	for(const [, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
@@ -659,8 +641,6 @@ export function updateNestedFunctionCalls(
 			}
 		}
 	}
-	/* a definition no call was linked to runs where the analysis cannot see it, through a container or a parameter,
-	 * and R binds its free names lexically then: the environment as it ends up stands in for that scope */
 	const called = new Set<NodeId>();
 	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
 		for(const [target, edge] of graph.edgesFrom(id)) {
@@ -714,7 +694,6 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 	return { ...data, environment: env };
 }
 
-/** Groups body writes by name, earliest first, so `linkParameterReadToBodyWrites` sees the one a promise meets first. */
 function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, IdentifierReference[]> {
 	const named = out.filter((o): o is IdentifierReference & { name: Identifier } => o.name !== undefined);
 	const byName = arraysGroupBy(named, o => o.name);

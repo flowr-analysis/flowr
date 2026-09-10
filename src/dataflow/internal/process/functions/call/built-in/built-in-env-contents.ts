@@ -32,7 +32,6 @@ export function processEnvContents<OtherInfo>(
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.EnvContents }).information;
 
-	/* `ls(name)` takes the environment in its first formal, `ls(envir = e)` in the one named for it */
 	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', 'name']);
 	if(!resolution) {
 		return result;
@@ -48,7 +47,6 @@ export function processEnvContents<OtherInfo>(
 	return result;
 }
 
-/** The `list(...)` call a node stands for, following a variable to the literal it was assigned. */
 function listLiteralOf<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation> | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -108,7 +106,6 @@ export function processListToEnv<OtherInfo>(
 			definedAt: rootId,
 			cds:       data.cds
 		});
-		/* the binding is defined by its value and by the call, so reading it keeps the `list2env` call itself */
 		result.graph.addEdge(arg.info.id, arg.value.info.id, EdgeType.DefinedBy);
 		result.graph.addEdge(arg.info.id, rootId, EdgeType.DefinedBy);
 		result.graph.addEdge(rootId, arg.value.info.id, EdgeType.Reads);
@@ -124,7 +121,6 @@ export function processListToEnv<OtherInfo>(
 	}
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 
-	/* a target environment of its own (stack frame or custom env) takes the bindings instead of current scope */
 	const envirResolution = envirOf(envirRouting);
 	return envirResolution ? routeWrittenToEnvir(defined, envirResolution, rootId, data.environment, rootId) : defined;
 }

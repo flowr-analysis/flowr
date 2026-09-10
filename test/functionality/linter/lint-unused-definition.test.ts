@@ -106,7 +106,6 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 		});
 
 		describe('a definition whose value came from a side effect', () => {
-			/* removing `r <- bump()` would drop the `<<-` the call performs, so it is reported without a fix */
 			assertLinter('call with a super-assignment offers no fix', parser,
 				'counter <- 0\nbump <- function() { counter <<- counter + 1; counter }\nr <- bump()\nprint(counter)',
 				'unused-definitions',
@@ -115,7 +114,6 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 		});
 
 		describe('a definition nested inside a larger expression', () => {
-			/* removing the whole assignment here would leave `print()`, which is not the same program (and errors) */
 			assertLinter('assignment nested in a call argument keeps its value', parser,
 				'`my var` <- 1\n`my var` + 1\nprint(x <- get("my var"))',
 				'unused-definitions',
@@ -165,7 +163,6 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 					loc:          [2, 2, 2, 2],
 					quickFix:     [{ type: 'remove', loc: [2, 2, 2, 7], description: 'Remove unused definition of `x`' }]
 				}]);
-			/* top-level 'x <- 2' full removal is already covered by the table above */
 		});
 	});
 }));

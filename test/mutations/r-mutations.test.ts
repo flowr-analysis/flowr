@@ -10,24 +10,19 @@ function passOf(name: string): MutationPass {
 	return pass;
 }
 
-/** whether R reads the code as a program, which every mutant has to remain */
 async function parses(shell: RShell, code: string): Promise<boolean> {
 	return await evaluate(shell, `tryCatch({ parse(text = ${JSON.stringify(code)}); "yes" }, error = function(e) "no")`) === 'yes';
 }
 
-/** what R says about `expression`, so that what a pass rests on is checked against R rather than argued */
 async function evaluate(shell: RShell, expression: string): Promise<string> {
 	const out = await shell.sendCommandWithOutput(`cat(${expression}, "\\n")`);
 	return out.join('').trim();
 }
 
 describe('R mutations', { concurrent: false }, withShell(shell => {
-	/** programs a pass must either reject or rewrite into something R still reads */
 	const programs: readonly MutationTarget[] = [
 		{ code: 'x <- 5\nprint(x)', criterion: '2@x', expected: '[1] 5' },
-		/* the body of the function is on the next line, so the first line is not a statement of its own */
 		{ code: 'f <- function()\n5\nr <- f()\nprint(r)', criterion: '4@r', expected: '[1] 5' },
-		/* the same for an operator R does not read as the end of the expression */
 		{ code: 'x <- 1:\n3\nr <- sum(x)\nprint(r)', criterion: '4@r', expected: '[1] 6' },
 		{ code: 'if(TRUE)\nx <- 2\nprint(x)', criterion: '3@x', expected: '[1] 2' },
 		{ code: '\nx <- 1\ny <- x\nprint(y)', criterion: '4@y', expected: '[1] 1' },
@@ -37,7 +32,6 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 	];
 	describe('every mutant is a program R reads', () => {
 		for(const pass of MutationPasses) {
-			/* a pass the host's R is too old for rewrites nothing, which says nothing about the pass */
 			test.skipIf(!passIsAvailable(pass))(pass.name, async() => {
 				let applied = 0;
 				for(const program of programs) {

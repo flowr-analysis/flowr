@@ -71,7 +71,6 @@ function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
 	});
 }
 
-/** GitHub stops rendering a wiki page well before the megabyte, so a page around this size is about to break */
 const GitHubPageCharacterLimit = 450_000;
 
 function warnIfNearGitHubLimit(file: string): void {

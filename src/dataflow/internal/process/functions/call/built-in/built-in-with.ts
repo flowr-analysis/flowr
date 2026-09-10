@@ -77,7 +77,6 @@ export function processWithEnv<OtherInfo>(
 		return fallback;
 	}
 
-	/* evaluate data arg in the caller's scope (it is just read); a piped one is already processed and linked by processPipe */
 	const pipedData = isPipedArgument(dataArg, rootId, data);
 	const dfDataArg = pipedData ? DataflowInformation.initialize(rootId, data) : processDataflowFor(dataArg.value, data);
 
@@ -115,7 +114,6 @@ export function processWithEnv<OtherInfo>(
 		[{ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function }]
 	);
 
-	/* within routes writes back into the data environment (stack frame or custom env); with discards them */
 	const isWithin = Identifier.getName(name.content) === 'within';
 	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	let resultEnv = data.environment;

@@ -26,16 +26,13 @@ function callHas(id: NodeId, dataflow: DataflowInformation, props: PropSelector)
  * ({@link SemanticCallTag.Closes}), and the order is the one the source states.
  */
 export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: DependencyInfo[], dataflow: DataflowInformation, ast: NormalizedAst): void {
-	/* write/visualize entries always come from a real call; only the assumed-base-package `library` entries lack one */
 	const opened = new Map(written
 		.filter(w => w.nodeId !== undefined && w.value !== undefined && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
 		.map(w => [w.nodeId as NodeId, w.value as string]));
 	const closed = new Set(dataflow.graph.vertexIdsOfType(VertexType.FunctionCall)
 		.filter(id => callHas(id, dataflow, SemanticCallTag.Closes)));
 	const plotAt = new Map<NodeId, number>();
-	/* an addon points at the creation it belongs to, a creation points at nothing */
 	const linkOf = new Map<NodeId, readonly NodeId[]>();
-	/* `at` indexes `plots` itself, so a later rewrite lands on the entry the id came from */
 	plots.forEach(({ nodeId, linkedIds }, at) => {
 		if(nodeId !== undefined) {
 			plotAt.set(nodeId, at);
@@ -44,7 +41,6 @@ export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: De
 			}
 		}
 	});
-	/* a call may hold two of these roles, and is then walked once, under the first one that claims it */
 	const located = [...new Set([...opened.keys(), ...closed, ...plotAt.keys()])]
 		.flatMap(id => {
 			const at = ast.idMap.get(id)?.location; return at ? [[id, at] as const] : [];

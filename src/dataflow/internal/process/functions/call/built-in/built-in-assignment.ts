@@ -20,7 +20,7 @@ import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../..
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
@@ -105,13 +105,8 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 }
 
 
-/** The processors whose call hands back an environment, which a write into it therefore changes in place. */
 const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName.NewEnv, BuiltInProcName.StackEnv, BuiltInProcName.ListToEnv];
 
-/**
- * Whether the expression denotes an environment: its call is processed as one that creates or names an
- * environment, or it is `environment()`, R's accessor for the environment a closure carries.
- */
 function yieldsEnvironment<OtherInfo>(
 	node:  RNode<OtherInfo & ParentInformation>,
 	graph: DataflowGraph,
@@ -267,10 +262,6 @@ export function processAssignment<OtherInfo>(
 	return information;
 }
 
-/**
- * Links the function a binding is made of against the scope it was written in, which is what a call to it would
- * do: `makeActiveBinding("ab", function() v, e)` runs that function on every read of `ab`, so `v` is read here.
- */
 function linkSourceAsCalled<OtherInfo>(
 	args:        readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId:      NodeId,
@@ -282,7 +273,6 @@ function linkSourceAsCalled<OtherInfo>(
 	const vertex = source ? information.graph.getVertex(source.info.id) : undefined;
 	if(vertex && DfgVertex.isFunctionDefinition(vertex)) {
 		ClosureRefs.resolveOpenIngoing(information.graph, rootId, vertex, data.environment);
-		/* the binding itself calls the function, which is what turns every later read of it into a call */
 		for(const written of information.out) {
 			information.graph.addEdge(written.nodeId, vertex.id, EdgeType.Calls);
 		}
@@ -345,7 +335,6 @@ function processAssignmentTarget<OtherInfo>(
 			information:              res.information,
 		});
 		if(config.readTarget && RSymbol.is(target)) {
-			/* just like a replacement function, the call works on the old value of its target */
 			info.graph.addEdge(target.info.id, rootId, EdgeType.Reads);
 			return { ...info, in: [...info.in, { name: target.content, type: ReferenceType.Variable, nodeId: target.info.id, cds: data.cds }] };
 		}
@@ -374,7 +363,6 @@ function processAssignmentTarget<OtherInfo>(
 		}
 		const replaced = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 		if(yieldsEnvironment(target.accessed, replaced.graph, data)) {
-			/* an environment is not copied on modify, so this writes a frame we do not hold, not a new value */
 			handleUnknownSideEffect(replaced.graph, replaced.environment, rootId);
 		}
 		return replaced;
@@ -556,7 +544,6 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 
 	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
-	/* the binding is the value, not the name written down: a later `e$f` has to reach what was assigned */
 	const isFunction = holdsFunction(source, data.environment);
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		type:      isFunction ? ReferenceType.Function : ReferenceType.Variable,
@@ -592,11 +579,8 @@ function tryRouteToCustomEnv<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation | undefined {
-	/* `envir = as.environment(pos)`, so an environment handed to `pos`/`where` is the target too; anything there that
-	 * does not resolve to one names a search-path position rather than an unknown environment, so it leaves the call untouched */
 	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, config.sig, config.environmentArg)
 		?? resolveFirstEnvirArg(args, data, config.sig, EnvirPositionFormals);
-	/* the target frame is out of reach, so the write lands somewhere we cannot name: it must not become a local one */
 	if(envirRouting === 'ambiguous' || (!envirRouting && suppliesArg(args, config.sig, EnvirPositionFormals))) {
 		const info = processKnownFunctionCall({
 			name, args, rootId, data,
@@ -610,7 +594,6 @@ function tryRouteToCustomEnv<OtherInfo>(
 	}
 
 	if(envirRouting.stack === 'global') {
-		/* the global env: route as super-assignment so processAssignment's own tagging applies (post-hoc can't) */
 		const globalResult = processAssignment(name, args, rootId, data, {
 			...config,
 			environmentArg:  undefined,   // prevent re-entry
@@ -697,7 +680,6 @@ export function markAsAssignment<OtherInfo>(
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
 	const kindOfValue = checkTargetReferenceType(sourceArg, config.modesForFn);
-	/* a replacement keeps the kind of its target; only a function value tells that kind for sure */
 	const referenceType = config.replacement && kindOfValue === ReferenceType.Variable ? ReferenceType.Unknown : kindOfValue;
 	const useSourceIds = [sourceArg.graph.hasVertex(source.info.id) ? source.info.id : sourceArg.entryPoint];
 
@@ -724,7 +706,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			envState = stackEnv;
 		} else if(RSymbol.is(source)) {
 			const defs = Resolve.byNameAndType(source.content, data.environment, ReferenceType.Variable);
-			envState = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined)?.envState
+			envState = defs?.find(hasEnvState)?.envState
 				?? findReturnsEnvState(defs);
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);

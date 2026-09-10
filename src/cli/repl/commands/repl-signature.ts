@@ -50,7 +50,6 @@ async function runQuery(output: ReplOutput, analyzer: ReplAnalyzer, args: readon
 	output.stdout(await asciiSummaryOfQueryResult(output.formatter, Date.now() - start, results, analyzer, queries));
 }
 
-/** `:signature info <name> [<package>...]` -- where a function comes from: exporting packages, their signature, and flowR's own built-in definition (if any) */
 async function runInfo(output: ReplOutput, analyzer: ReplAnalyzer, args: readonly string[]): Promise<void> {
 	const f = output.formatter;
 	const parsed = FunctionInfoQueryDefinition.fromLine(output, args, analyzer.flowrConfig).query;

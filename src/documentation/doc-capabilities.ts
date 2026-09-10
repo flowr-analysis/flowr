@@ -10,10 +10,8 @@ import { OperatorDatabase } from '../r-bridge/lang-4.x/ast/model/operators';
 import { highlightR, escapeHtml, type KnownNames } from '../util/text/r-highlight';
 import { DefaultMap } from '../util/collections/defaultmap';
 
-/* mutations suite writes its own file so the two test runs don't clobber each other */
 const detailedInfoFiles = ['coverage/flowr-test-details.json', 'coverage/flowr-test-details-mutations.json'];
 const testSourceFolders = ['test/functionality', 'test/mutations'];
-/** how many tests we link as a demonstration of a single capability */
 const maxSignatureTests = 3;
 
 interface SignatureTest {
@@ -26,7 +24,6 @@ interface SignatureTest {
 	readonly opaque:  boolean;
 }
 
-/** the labeled tests of flowR, located in their sources so that we can link to the line they start at */
 interface TestSourceIndex {
 	readonly byCapability: DefaultMap<string, SignatureTest[]>;
 	readonly byName:       DefaultMap<string, SignatureTest[]>;
@@ -40,17 +37,10 @@ interface CapabilityInformation {
 	readonly knownNames?: KnownNames
 }
 
-/**
- * matches `label('name', ['id', ...])`, the way a test claims the capabilities it demonstrates.
- * The array may contain a nested access like `OperatorDatabase['<-'].capabilities`, so we allow one level of brackets.
- */
 const labelCallRegex = /\blabel\(\s*(['"`])((?:\\.|(?!\1)[^])*?)\1\s*,\s*\[((?:[^[\]]|\[[^[\]]*\])*)\]/g;
-/** every quoted string in the label array */
 const quotedStringRegex = /(['"])((?:\\.|(?!\1)[^])*?)\1/g;
-/** matches `...OperatorDatabase['op'].capabilities` spreads in the array */
 const operatorSpreadRegex = /\.{3}\s*OperatorDatabase\[\s*(['"])((?:\\.|(?!\1)[^])*?)\1\s*]\s*\.capabilities/g;
 
-/** capability ids a label array claims, resolving any operator spreads */
 function claimedCapabilities(array: string): { ids: string[], opaque: boolean } {
 	const ids = [...array.matchAll(quotedStringRegex)].map(([,, id]) => id).filter(id => capabilityNames.has(id));
 	for(const [, , operator] of array.matchAll(operatorSpreadRegex)) {
@@ -88,20 +78,16 @@ function indexTestSources(): TestSourceIndex {
 	return { byCapability, byName };
 }
 
-/** test name with template holes replaced by "..." since we can't run it */
 function displayName(name: string): string {
 	return name.replace(/\$\{[^}]*}/g, '...').trim();
 }
 
-/** the tests that claim the fewest capabilities, as those demonstrate the one at hand rather than a mix */
 function pickSignatureTests(tests: readonly SignatureTest[]): SignatureTest[] {
 	const unique = [...new Map(tests.map(t => [`${t.file}:${t.line}`, t])).values()];
 	const literal = unique.filter(t => !t.name.includes('${'));
-	/* skip names that are only a template hole, they identify nothing */
 	const named = literal.length > 0 ? literal : unique.filter(t => /[A-Za-z0-9]/.test(displayName(t.name)));
 	const picked = new Map<string, SignatureTest>();
 	for(const test of named.sort((a, b) => a.claimed - b.claimed || a.name.length - b.name.length || a.file.localeCompare(b.file) || a.line - b.line)) {
-		/* dedupe by display name, keep the first match */
 		const key = displayName(test.name).toLowerCase();
 		if(!picked.has(key)) {
 			picked.set(key, test);
@@ -110,10 +96,6 @@ function pickSignatureTests(tests: readonly SignatureTest[]): SignatureTest[] {
 	return [...picked.values()].slice(0, maxSignatureTests);
 }
 
-/**
- * A capability may be claimed by a spread (e.g., `OperatorDatabase['<-'].capabilities`) which we can not
- * read from the sources, so we fall back to the recorded test runs and locate those tests by their name.
- */
 function signatureTestsFor(info: CapabilityInformation, capability: FlowrCapability): SignatureTest[] {
 	const direct = info.tests.byCapability.get(capability.id);
 	if(direct.length > 0) {
@@ -122,7 +104,6 @@ function signatureTestsFor(info: CapabilityInformation, capability: FlowrCapabil
 	const byName: SignatureTest[] = [];
 	for(const { name } of info.info?.get(capability.id) ?? []) {
 		const locations = info.tests.byName.get(name);
-		/* skip opaque tests, their name doesn't reliably match this capability */
 		if(locations.length === 1 && !locations[0].opaque) {
 			byName.push(locations[0]);
 		}
@@ -134,7 +115,6 @@ function capabilitySearchUrl(id: string): string {
 	return `https://github.com/search?q=${encodeURIComponent(`repo:${FlowrGithubGroupName}/flowr "'${id}'"`)}&type=code`;
 }
 
-/** capability id to name, for rendering links by name instead of raw id */
 const capabilityNames: ReadonlyMap<string, string> = (() => {
 	const names = new Map<string, string>();
 	const walk = (capabilities: readonly FlowrCapability[]): void => {
@@ -149,22 +129,16 @@ const capabilityNames: ReadonlyMap<string, string> = (() => {
 	return names;
 })();
 
-/** renders a markdown link; a link to another capability shows its name, not its id */
 function linkHtml(label: string, href: string): string {
 	const name = href.startsWith('#') ? capabilityNames.get(href.slice(1)) : undefined;
 	if(name === undefined) {
 		return `<a href="${escapeHtml(href)}"${/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`;
 	}
 	const id = href.slice(1);
-	/* label may include punctuation around the id, e.g. "function-definitions'" */
 	const shown = label.includes(id) ? label.replace(id, escapeHtml(name)) : escapeHtml(name);
 	return `<a class="capref" href="${escapeHtml(href)}" title="${id}">${shown}</a>`;
 }
 
-/**
- * The markdown a capability writes within a line, which is code spans, links and emphasis. A code span is put
- * aside while the rest is converted, as the `_` of a name like `new_environment` is no emphasis of its own.
- */
 function inlineMarkdown(text: string): string {
 	const spans: string[] = [];
 	return escapeHtml(text)
@@ -174,17 +148,14 @@ function inlineMarkdown(text: string): string {
 		.replace(/\0(\d+)\0/g, (_, at: string) => spans[Number(at)]);
 }
 
-/** like {@link inlineMarkdown} but strips links, for text already inside a link */
 function inlineText(text: string): string {
 	return inlineMarkdown(text).replace(/<a\b[^>]*>|<\/a>/g, '');
 }
 
-/** references an icon symbol defined once in {@link iconDefs}; `.ico` gives it its size */
 function icon(id: string): string {
 	return `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`;
 }
 
-/** icon symbol defs, shared once instead of repeated per use */
 const iconDefs = `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
 	Object.entries({
 		'i-play':  '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>',
@@ -193,7 +164,6 @@ const iconDefs = `<svg width="0" height="0" style="position:absolute" aria-hidde
 	}).map(([id, path]) => `<symbol id="${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</symbol>`).join('')
 }</defs></svg>`;
 
-/** renders a fenced block: mermaid diagram, highlighted+runnable R, or plain text */
 function fencedHtml(language: string, code: string, knownNames?: KnownNames): string {
 	if(language === 'mermaid') {
 		return `<figure class="diagram"><pre class="mermaid">${escapeHtml(code)}</pre></figure>`;
@@ -206,7 +176,6 @@ function fencedHtml(language: string, code: string, knownNames?: KnownNames): st
 	return `<figure class="code"><pre><code>${escapeHtml(code)}</code></pre></figure>`;
 }
 
-/** renders paragraphs, bullet lists, and raw html blocks (e.g. generated graphs) */
 function textHtml(text: string): string {
 	const out: string[] = [];
 	for(const block of text.split(/\n[ \t]*\n/)) {
@@ -215,7 +184,6 @@ function textHtml(text: string): string {
 			continue;
 		}
 		if(/^\s*</.test(lines[0])) {
-			/* raw html block, e.g. a generated graph; pass through as-is */
 			out.push(lines.join('\n'));
 		} else if(/^\s*[-*]\s/.test(lines[0])) {
 			const items: string[] = [];
@@ -223,7 +191,6 @@ function textHtml(text: string): string {
 				if(/^\s*[-*]\s/.test(line)) {
 					items.push(inlineMarkdown(line.replace(/^\s*[-*]\s/, '')));
 				} else if(items.length > 0) {
-					/* an indented line continues the bullet above it */
 					items[items.length - 1] += ' ' + inlineMarkdown(line.trim());
 				}
 			}
@@ -235,9 +202,7 @@ function textHtml(text: string): string {
 	return out.join('\n');
 }
 
-/** renders an example's markdown: text, lists, highlighted R, and diagrams */
 function exampleHtml(markdown: string, knownNames?: KnownNames): string {
-	/* splitting on the fence alternates between the text around an example and the example itself */
 	return markdown.split('```').map((block, at) => {
 		const fenced = at % 2 === 1 ? /^(\w*)\n([\s\S]*?)\n?$/.exec(block) : null;
 		return fenced === null ? textHtml(block) : fencedHtml(fenced[1], fenced[2], knownNames);
@@ -257,10 +222,8 @@ function obtainDetailedInfos(): DefaultMap<string, TestLabel[]> | undefined {
 	return foundAny ? out : undefined;
 }
 
-/** contexts shown before the rest collapse into "and N more" */
 const shownContextCount = 3;
 
-/** how many tests claim the capability, linking to all of them, and in which contexts they check it */
 function testDetails(info: CapabilityInformation, capability: FlowrCapability): string {
 	const unique = info.info?.get(capability.id)?.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 	if(unique === undefined || unique.length === 0) {
@@ -272,7 +235,6 @@ function testDetails(info: CapabilityInformation, capability: FlowrCapability): 
 			grouped.set(c, (grouped.get(c) ?? 0) + 1);
 		}
 	}
-	/* both desugar contexts check the same thing on the two engines, so they are one number */
 	if(grouped.get('desugar-tree-sitter') !== undefined && grouped.get('desugar-tree-sitter') === grouped.get('desugar-shell')) {
 		grouped.set('desugar', grouped.get('desugar-tree-sitter') ?? 0);
 		grouped.delete('desugar-shell');
@@ -287,12 +249,10 @@ function testDetails(info: CapabilityInformation, capability: FlowrCapability): 
 		+ (contexts.length === 0 ? '' : `<span class="ctx"${rest > 0 ? ` title="${escapeHtml(where)}"` : ''}>${escapeHtml(shown)}</span>`);
 }
 
-/** title + aria-label for an icon control, from one string */
 function iconLabel(what: string): string {
 	return ` title="${escapeHtml(what)}" aria-label="${escapeHtml(what)}"`;
 }
 
-/** collapsible wrapper so tests/example don't crowd the description */
 function foldHtml(cssClass: string, icon: string, tooltip: string, label: string, content: string, open = false): string {
 	return `<details class="${cssClass}"${open ? ' open' : ''}><summary title="${escapeHtml(tooltip)}">${icon}<span>${label}</span></summary>${content}</details>`;
 }
@@ -309,12 +269,10 @@ function signatureTestsHtml(info: CapabilityInformation, capability: FlowrCapabi
 	return foldHtml('proof', icon('i-proof'), 'the tests that demonstrate this capability', 'signature tests', `<p>${links.join(', ')}</p>`);
 }
 
-/** the three support states, in the order every meter, tally and count row lists them */
 const supportStates = ['fully', 'partially', 'not'] as const;
 
 type ChildrenSummary = Record<typeof supportStates[number], number>;
 
-/** how many capabilities the summary covers */
 function totalOf(summary: ChildrenSummary): number {
 	return summary.fully + summary.partially + summary.not;
 }
@@ -335,27 +293,22 @@ function summarizeChildren(capabilities: readonly FlowrCapability[]): ChildrenSu
 	return summary;
 }
 
-/** the summary of a capability's children, or of the capability itself when it has none */
 function summaryOf(capability: FlowrCapability): ChildrenSummary {
 	return summarizeChildren(capability.capabilities ?? [capability]);
 }
 
-/** minimum R version badge, for capabilities R gained later */
 function versionHtml(capability: FlowrCapability): string {
 	return capability.minRVersion === undefined ? ''
 		: `<span class="since" title="R ${escapeHtml(capability.minRVersion)} or newer is needed for this">R ${escapeHtml(capability.minRVersion)}+</span>`;
 }
 
-/** classifies a reference url: language docs, book, source, or issue */
 const referenceKinds: readonly { readonly match: RegExp, readonly kind: string }[] = [
 	{ match: /adv-r\.hadley\.nz/, kind: 'advr' },
 	{ match: /cran\.r-project\.org\/doc\/manuals/, kind: 'rlang' },
-	/* flowr source links point at implementing code, not an issue */
 	{ match: /github\.com\/[^/]+\/flowr\/(?:blob|tree)\//, kind: 'flowr' },
 	{ match: /github\.com/, kind: 'issue' }
 ];
 
-/** renders reference urls as pills labeled by source */
 function referencesHtml(capability: FlowrCapability): string {
 	if(capability.url === undefined || capability.url.length === 0) {
 		return '';
@@ -370,12 +323,10 @@ function referencesHtml(capability: FlowrCapability): string {
 	return `<p class="refs">${pills.join('')}</p>`;
 }
 
-/** summary sentence used as tooltip by meterHtml and summaryPills */
 function summarySentence(summary: ChildrenSummary): string {
 	return supportStates.map(state => `${summary[state]} ${state}`).join(', ') + ' supported';
 }
 
-/** support bar for a group, readable without counting */
 function meterHtml(summary: ChildrenSummary): string {
 	const total = totalOf(summary);
 	const share = (n: number) => total === 0 ? 0 : (n / total * 100).toFixed(1);
@@ -384,7 +335,6 @@ function meterHtml(summary: ChildrenSummary): string {
 		+ '</span>';
 }
 
-/** support counts as pills; without room for labels (`tally-mini`) the sentence becomes the tooltip */
 function summaryPills(summary: ChildrenSummary, variant: 'counts' | 'tally-mini'): string {
 	const withLabel = variant === 'counts';
 	return `<span class="${variant}"${withLabel ? '' : ` title="${summarySentence(summary)}"`}>`
@@ -392,7 +342,6 @@ function summaryPills(summary: ChildrenSummary, variant: 'counts' | 'tally-mini'
 		+ '</span>';
 }
 
-/** the example a capability carries, already rendered */
 async function exampleOf(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
 	if(!capability.example) {
 		return '';
@@ -401,7 +350,6 @@ async function exampleOf(info: CapabilityInformation, capability: FlowrCapabilit
 	return exampleHtml(example, info.knownNames);
 }
 
-/** references and example folded together on one line */
 async function metaHtml(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
 	const refs = referencesHtml(capability);
 	const example = await exampleOf(info, capability);
@@ -416,7 +364,6 @@ async function metaHtml(info: CapabilityInformation, capability: FlowrCapability
 	return `<div class="meta">${refs}${fold}</div>`;
 }
 
-/** lowercase name+id, used as the search-filter key */
 function searchKey(capability: FlowrCapability): string {
 	return escapeHtml((capability.name + ' ' + capability.id).toLowerCase());
 }
@@ -442,13 +389,11 @@ async function capabilityHtml(info: CapabilityInformation, capability: FlowrCapa
 		parts.push('</details>');
 	}
 	return `<li class="cap${extra ? ' extra' : ''}" data-supported="${support ?? 'group'}" data-name="${searchKey(capability)}">`
-		+ parts.filter(p => p.length > 0).join('\n') + '</li>';
+		+ parts.filter(p => p.length > 0).join('') + '</li>';
 }
 
-/** children shown before collapsing behind "show more" */
 const shownChildren = 8;
 
-/** depth at which nested groups start collapsed */
 const openDepth = 2;
 
 async function capabilitiesHtml(info: CapabilityInformation, capabilities: readonly FlowrCapability[], collapse = true, depth = 0): Promise<string> {
@@ -461,10 +406,8 @@ async function capabilitiesHtml(info: CapabilityInformation, capabilities: reado
 		+ (hidden > 0 ? `<button type="button" class="more">show ${hidden} more</button>` : '');
 }
 
-/** groups named on an overview card before the rest collapse */
 const shownGroups = 7;
 
-/** lists a category's subgroups on its overview card */
 function groupsHtml(capability: FlowrCapability): string {
 	const groups = (capability.capabilities ?? []).filter(c => c.capabilities !== undefined);
 	if(groups.length === 0) {
@@ -476,7 +419,6 @@ function groupsHtml(capability: FlowrCapability): string {
 	return `<p class="subs">${shown.join('')}${rest > 0 ? `<span class="rest">and ${rest} more</span>` : ''}</p>`;
 }
 
-/** overview card for a category, linking into its full view */
 function cardHtml(capability: FlowrCapability): string {
 	const summary = summaryOf(capability);
 	const total = totalOf(summary);
@@ -489,7 +431,6 @@ function cardHtml(capability: FlowrCapability): string {
 		+ `<span class="foot">${meterHtml(summary)}${summaryPills(summary, 'counts')}</span></div>`;
 }
 
-/** a category in full, shown once someone picks it on the overview */
 async function categoryHtml(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
 	const summary = summaryOf(capability);
 	const parts = [
@@ -506,7 +447,7 @@ async function categoryHtml(info: CapabilityInformation, capability: FlowrCapabi
 		parts.push(await capabilitiesHtml(info, capability.capabilities, false));
 	}
 	return `<section class="cat" data-id="${capability.id}" data-name="${searchKey(capability)}" hidden>`
-		+ parts.filter(p => p.length > 0).join('\n') + '</section>';
+		+ parts.filter(p => p.length > 0).join('') + '</section>';
 }
 
 /**

@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-08, 08:11:27 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Guess Dependency Versions Query">Guess Dependency Versions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Guesses the version range each dependency must have, from declared constraints and actual code usage.\
 _This query is requested with the type `guess-dep-versions`._\
 Run in the REPL: `:query @guess-dep-versions [<pkg> ...] [(clean | <=YYYY.MM.DD)] [--date YYYY.MM.DD] [--max <n>] [--iterations <n>] [--disabled <letters>] [--explode [--oldest] [--limit <n>] [--prefer <pkg>=<ver>]] <code | file://path>`
-
 
 A script rarely says which version of a package it needs, but it shows you. If it passes an argument that a function only
 gained in some release, it cannot run on anything older. This query turns that observation into a concrete version range per dependency.
@@ -25,12 +24,8 @@ library(dplyr)
 mutate(mtcars, across(everything(), round))
 ```
 
-
 `across` was only introduced in dplyr 1.0.0, so the script cannot run on anything older. The result names the function
 that produced the bound:
-
-
-
 
 ```json
 [
@@ -40,14 +35,13 @@ that produced the bound:
 ]
 ```
 
-
 (This can be shortened to `@guess-dep-versions` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
-Query: **guess-dep-versions** (1269 ms)\
+Query: **guess-dep-versions** (1175 ms)\
 &nbsp;&nbsp;&nbsp;╰ R _4.5.3_ _(config)_\
 &nbsp;&nbsp;&nbsp;_evidence_: d declared  t transitive  s signature  D date  b base-r  # available  i indirect\
 &nbsp;&nbsp;&nbsp;▶ **sample** _(newest)_: base@4.5.3, dplyr@1.2.1, tidyselect@1.2.1 (works with all newest versions)\
@@ -68,8 +62,6 @@ The analysis ran (including parsing and normalization and the query) within the 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
 ```json
 {
   "guess-dep-versions": {
@@ -85,44 +77,12 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         "candidateCount": 136,
         "totalVersions": 136,
         "constrained": false,
-        "candidates": [
-          "0.62.1",
-          "0.62.2",
-          "0.62.3",
-          "0.62.4",
-          "0.63.1",
-          "0.63.2",
-          "0.63.3",
-          "0.64.0",
-          "0.64.1",
-          "0.64.2",
-          "0.65.0",
-          "0.65.1",
-          "0.90.0",
-          "0.90.1",
-          "0.99.0",
-          "0.99.0a"
-        ],
+        "candidates": ["0.62.1","0.62.2","0.62.3","0.62.4","0.63.1","0.63.2","0.63.3","0.64.0","0.64.1","0.64.2","0.65.0","0.65.1","0.90.0","0.90.1","0.99.0","0.99.0a"],
         "truncated": true,
         "evidence": [
-          {
-            "source": "available",
-            "origin": "signature database",
-            "detail": "data available from 0.62.1",
-            "bound": ">=0.62.1"
-          },
-          {
-            "source": "available",
-            "origin": "signature database",
-            "detail": "data available up to 4.5.3",
-            "bound": "<=4.5.3"
-          },
-          {
-            "source": "base-r",
-            "origin": "R 4.5.3",
-            "detail": "base package bounded by R 4.5.3",
-            "bound": "<=4.5.3"
-          }
+          {"source":"available","origin":"signature database","detail":"data available from 0.62.1","bound":">=0.62.1"},
+          {"source":"available","origin":"signature database","detail":"data available up to 4.5.3","bound":"<=4.5.3"},
+          {"source":"base-r","origin":"R 4.5.3","detail":"base package bounded by R 4.5.3","bound":"<=4.5.3"}
         ],
         "used": true
       },
@@ -135,38 +95,11 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         "maxVersion": "1.2.1",
         "candidateCount": 18,
         "totalVersions": 47,
-        "candidates": [
-          "1.0.0",
-          "1.0.1",
-          "1.0.2",
-          "1.0.3",
-          "1.0.4",
-          "1.0.5",
-          "1.0.6",
-          "1.0.7",
-          "1.0.8",
-          "1.0.9",
-          "1.0.10",
-          "1.1.0",
-          "1.1.1",
-          "1.1.2",
-          "1.1.3",
-          "1.1.4"
-        ],
+        "candidates": ["1.0.0","1.0.1","1.0.2","1.0.3","1.0.4","1.0.5","1.0.6","1.0.7","1.0.8","1.0.9","1.0.10","1.1.0","1.1.1","1.1.2","1.1.3","1.1.4"],
         "truncated": true,
         "evidence": [
-          {
-            "source": "available",
-            "origin": "signature database",
-            "detail": "data available from 0.1",
-            "bound": ">=0.1"
-          },
-          {
-            "source": "available",
-            "origin": "signature database",
-            "detail": "data available up to 1.2.1",
-            "bound": "<=1.2.1"
-          },
+          {"source":"available","origin":"signature database","detail":"data available from 0.1","bound":">=0.1"},
+          {"source":"available","origin":"signature database","detail":"data available up to 1.2.1","bound":"<=1.2.1"},
           {
             "source": "signature",
             "origin": "dplyr::across",
@@ -177,9 +110,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "location": "2:16"
           }
         ],
-        "coupledWith": [
-          "tidyselect"
-        ],
+        "coupledWith": ["tidyselect"],
         "used": true
       },
       {
@@ -191,65 +122,19 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         "maxVersion": "1.2.1",
         "candidateCount": 5,
         "totalVersions": 13,
-        "candidates": [
-          "1.1.0",
-          "1.1.1",
-          "1.1.2",
-          "1.2.0",
-          "1.2.1"
-        ],
+        "candidates": ["1.1.0","1.1.1","1.1.2","1.2.0","1.2.1"],
         "evidence": [
-          {
-            "source": "available",
-            "origin": "signature database",
-            "detail": "data available from 0.1.1",
-            "bound": ">=0.1.1"
-          },
-          {
-            "source": "available",
-            "origin": "signature database",
-            "detail": "data available up to 1.2.1",
-            "bound": "<=1.2.1"
-          },
-          {
-            "source": "transitive",
-            "origin": "dplyr",
-            "detail": "dplyr requires tidyselect >= 1.1.0",
-            "bound": ">= 1.1.0"
-          }
+          {"source":"available","origin":"signature database","detail":"data available from 0.1.1","bound":">=0.1.1"},
+          {"source":"available","origin":"signature database","detail":"data available up to 1.2.1","bound":"<=1.2.1"},
+          {"source":"transitive","origin":"dplyr","detail":"dplyr requires tidyselect >= 1.1.0","bound":">= 1.1.0"}
         ],
-        "coupledWith": [
-          "dplyr"
-        ],
+        "coupledWith": ["dplyr"],
         "orphan": true,
-        "orphanFunctions": [
-          "everything"
-        ],
-        "orphanEvidence": [
-          {
-            "function": "everything",
-            "location": "2:23",
-            "reason": "most downloaded",
-            "exporters": 3
-          }
-        ],
+        "orphanFunctions": ["everything"],
+        "orphanEvidence": [{"function":"everything","location":"2:23","reason":"most downloaded","exporters":3}],
         "orphanAlternatives": [
-          {
-            "package": "poorman",
-            "range": ">=0.1.10 <=0.2.7",
-            "minVersion": "0.1.10",
-            "maxVersion": "0.2.7",
-            "candidateCount": 10,
-            "totalVersions": 11
-          },
-          {
-            "package": "rfoaas",
-            "range": ">=0.0.4 <=2.3.3",
-            "minVersion": "0.0.4",
-            "maxVersion": "2.3.3",
-            "candidateCount": 16,
-            "totalVersions": 16
-          }
+          {"package":"poorman","range":">=0.1.10 <=0.2.7","minVersion":"0.1.10","maxVersion":"0.2.7","candidateCount":10,"totalVersions":11},
+          {"package":"rfoaas","range":">=0.0.4 <=2.3.3","minVersion":"0.0.4","maxVersion":"2.3.3","candidateCount":16,"totalVersions":16}
         ],
         "used": true
       }
@@ -264,15 +149,9 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 }
 ```
 
-
-
 </details>
 
-
-
 </details>
-
-	
 
 The guess can be narrowed further:
 
@@ -298,13 +177,10 @@ shrinks neither range, yet the versions are not free. Each package lists its `co
 and, where the project declares constraints, against `declaredCombinations` (what those alone leave, so the share
 says how much the guess added).
 
-
 > [!NOTE]
 > This query needs the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database), and specifically a database carrying the _history_ of a package,
 > since bounding a version means comparing releases. Without one it returns no guesses and says so in its `message`.
 > See the [Signature Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Signature) to inspect the signatures the guess is drawn from.
-
-		
 
 <details>
 

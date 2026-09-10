@@ -82,7 +82,6 @@ export function getArgumentStringValue(
 	return undefined;
 }
 
-/** What the handle an argument holds was opened on: `readLines(con)` after `con <- file("a.txt")` reads `a.txt`. */
 function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph, argument: NodeId, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	for(const id of Dataflow.provenance(argument, graph, undefined, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall)) {
 		const vertex = graph.getVertex(id);

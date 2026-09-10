@@ -38,7 +38,6 @@ export function resolveAsGet(this: void, args: BuiltInEvalHandlerArgs): Value {
 	if(known === undefined) {
 		return Top;
 	}
-	/* `mypkg::get` is not `base::get`; a bare call has already been resolved */
 	const ns = Identifier.getNamespace(node.functionName.content);
 	if(ns !== undefined && ns !== PkgName.Base) {
 		return Top;
@@ -51,6 +50,5 @@ export function resolveAsGet(this: void, args: BuiltInEvalHandlerArgs): Value {
 	if(name === undefined) {
 		return Top;
 	}
-	/* the set the tracked name folds to is flattened into the one the caller wraps this in */
 	return trackAliasInEnvironments(name, environment, args);
 }

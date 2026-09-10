@@ -47,7 +47,6 @@ function toModel(def: AnyBuiltInDefinition, namespace: string | undefined): Buil
 	}
 }
 
-/** indexes the definitions by bare name, then by namespace, once per definition table */
 function byBareName(definitions: BuiltInDefinitions): Map<string, Map<string | undefined, BuiltinModel>> {
 	const known = new Map<string, Map<string | undefined, BuiltinModel>>();
 	for(const def of definitions as readonly AnyBuiltInDefinition[]) {
@@ -56,8 +55,6 @@ function byBareName(definitions: BuiltInDefinitions): Map<string, Map<string | u
 			const namespace = Identifier.getNamespace(id);
 			const byNamespace = known.get(bare) ?? new Map<string | undefined, BuiltinModel>();
 			known.set(bare, byNamespace);
-			/* a later entry for the same (namespace, name) deliberately restates an earlier one (`overrides:
-			   true`, see WrittenBuiltinDefinitions) and wins, exactly like BuiltIns.set() overwriting the map */
 			byNamespace.set(namespace, toModel(def, namespace));
 		}
 	}

@@ -13,10 +13,6 @@ function stamp(iso: string): string {
 	return iso.replace('T', ', ').replace(/\.\d+Z$/, ' UTC');
 }
 
-/**
- * When the pages were generated, taken from the repository so that rebuilding alone does not restamp every
- * page: the wiki is committed, and a wall-clock stamp made each rebuild a diff of all 75 of them.
- */
 let generatedAt: string | undefined;
 function lastCommitted(): string {
 	generatedAt ??= (() => {

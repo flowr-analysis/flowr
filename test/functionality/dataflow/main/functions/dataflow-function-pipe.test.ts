@@ -99,7 +99,6 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});
-	// pipe-bind has no tree-sitter grammar production, so we only check it is reported as unsupported
 	test(decorateLabelContext(label('Pipe-bind has no tree-sitter grammar production', ['pipe-bind']), ['dataflow']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({ getId: deterministicCountingIdGenerator(0) })
@@ -111,7 +110,6 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 }));
 
 describe('Function Call Pipe-Bind (disabled by default)', withShell(shell => {
-	// pipeBind defaults off, like R's own _R_USE_PIPEBIND_; a => program must fail cleanly, not silently
 	test(decorateLabelContext(label('Pipe-bind is disabled unless engine.r-shell.pipeBind is enabled', ['pipe-bind']), ['dataflow']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({ getId: deterministicCountingIdGenerator(0) })
@@ -123,7 +121,6 @@ describe('Function Call Pipe-Bind (disabled by default)', withShell(shell => {
 }));
 
 describe('Function Call Pipe-Bind (real R engine only)', () => {
-	// requires a real R build supporting _R_USE_PIPEBIND_, plus engine.r-shell.pipeBind enabled
 	const pipeBindShell = new RShell({ type: 'r-shell', pipeBind: true });
 	afterAll(() => pipeBindShell.close());
 	const pipeBindConfig = { minRVersion: RPipe.hasPipeBindFromRVersion().toString(), expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;

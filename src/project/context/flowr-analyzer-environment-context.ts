@@ -85,16 +85,12 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	 */
 	readonly builtInDefinitions: BuiltInDefinitions;
 
-	/** The {@link BuiltInIndex} over exactly {@link builtInDefinitions}, built on first use. */
 	get builtInIndex(): BuiltInIndex;
 
-	/** A table derived from the registered built-ins, computed once per {@link builtInIndex} rather than once per analysis. */
 	derive<T>(compute: (env: ReadOnlyFlowrAnalyzerEnvironmentContext) => T): T;
 
-	/** {@link derive}, but over the {@link builtInIndex} alone. */
 	deriveFromIndex<T>(compute: (index: BuiltInIndex) => T): T;
 
-	/** {@link derive}, but over the {@link builtInDefinitions} alone. */
 	deriveFromDefinitions<T>(compute: (definitions: BuiltInDefinitions) => T): T;
 }
 

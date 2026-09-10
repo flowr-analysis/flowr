@@ -94,7 +94,6 @@ function qualifiedName(node: RFunctionCall<ParentInformation>, dataflow: Dataflo
 		? Dataflow.qualify(node.info.id, dataflow.graph, false) ?? vertex.name : undefined;
 }
 
-/** the name of a call that reaches stdout, `undefined` if it returns invisibly, draws, or asserts; a user function does as its last call does */
 function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, seen = new Set<NodeId>()): Identifier | undefined {
 	const name = qualifiedName(node, dataflow);
 	if(name === undefined) {
@@ -105,7 +104,6 @@ function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfo
 		|| (props === undefined && returnsInvisibly(node.info.id, dataflow, seen)) ? undefined : name;
 }
 
-/** whether every definition the call reaches ends in a call handing its result back invisibly */
 function returnsInvisibly(id: NodeId, dataflow: DataflowInformation, seen: Set<NodeId>): boolean {
 	const idMap = dataflow.graph.idMap;
 	if(idMap === undefined || seen.has(id)) {

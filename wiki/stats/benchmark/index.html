@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowR Benchmark History</title>
+<meta name="description" content="Performance history of the flowR static analyzer for R, measured on every release.">
+<script>try{const t=new URLSearchParams(location.hash.replace(/^#/,"")).get("theme")||localStorage.getItem("flowr-theme");(t==="light"||t==="dark")&&(document.documentElement.dataset.theme=t)}catch{}addEventListener("storage",e=>{e.key==="flowr-theme"&&(e.newValue?document.documentElement.dataset.theme=e.newValue:delete document.documentElement.dataset.theme)});let themeBefore=null;document.addEventListener("click",e=>{e.target.closest?.("#theme")&&(themeBefore=document.documentElement.dataset.theme)},!0),document.addEventListener("click",e=>{if(!e.target.closest?.("#theme")||document.documentElement.dataset.theme!==themeBefore)return;const t=getComputedStyle(document.body).colorScheme==="dark"?"light":"dark";document.documentElement.dataset.theme=t;try{localStorage.setItem("flowr-theme",t)}catch{}});</script>
+<link rel="icon" href="../../img/flowR-mark-red.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<style>.bar{display:flex;gap:.5rem 1rem;align-items:center;justify-content:space-between;padding:.8rem 0 .6rem;border-bottom:1px solid var(--border)}.bar h2{margin:0;flex:none;font-size:1.15rem;line-height:1.2;display:inline-flex;align-items:center}.bar h2 a.brand{display:inline-flex;align-items:center;gap:.45rem;text-decoration:none;color:var(--fg)}.bar .where{color:var(--muted);font-weight:400;font-size:1.05rem;white-space:nowrap}.bar .where:before{content:"/";margin:0 .5rem;opacity:.55}.bar .version{margin-left:.55rem;font-size:.82rem;font-weight:400;color:var(--muted);text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums}.bar .version:hover{color:var(--fg)}.mark{flex:none}.bar nav{display:flex;flex-wrap:nowrap;gap:.1rem .2rem;margin-left:auto;overflow-x:auto;scrollbar-width:none}.bar nav::-webkit-scrollbar{display:none}.bar nav a{display:inline-flex;align-items:center;height:2rem;padding:0 .5rem;white-space:nowrap;border-radius:.5rem;color:var(--muted);text-decoration:none;font-size:.82rem}.bar nav a:hover{background:color-mix(in srgb,var(--fg) 6%,transparent);color:var(--fg)}.bar .controls{display:inline-flex;align-items:center;gap:.35rem;flex:none}@media(max-width:46rem){.bar{flex-wrap:wrap}.bar nav{flex-wrap:wrap;margin-left:-.5rem;order:3;flex-basis:100%;overflow-x:visible;gap:.1rem}.bar .controls{margin-left:auto}}@media(max-width:21rem){.bar nav{display:grid;grid-template-columns:1fr 1fr;justify-items:start}}.bar .controls .gh,.bar .controls .gh:hover{color:#181717}.bar .controls .gh{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:.5rem}.bar .controls .gh:hover{background:color-mix(in srgb,var(--fg) 10%,transparent)}:root[data-theme=dark] .bar .controls .gh,:root[data-theme=dark] .bar .controls .gh:hover{color:#fff}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .bar .controls .gh,:root:not([data-theme=light]) .bar .controls .gh:hover{color:#fff}}.bar .controls .gh svg{display:block;width:auto;height:auto}#theme{display:grid;place-items:center;width:2rem;height:2rem;padding:0;flex:none;font:inherit;font-size:1rem;line-height:1;cursor:pointer;border-radius:.5rem;border:1px solid var(--border);background:var(--panel);color:var(--fg)}#theme:hover{border-color:var(--accent);color:var(--accent)}#theme svg{display:block;width:auto;height:auto}#theme .sun{display:none}:root[data-theme=dark] #theme .sun{display:block}:root[data-theme=dark] #theme .moon{display:none}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) #theme .sun{display:block}:root:not([data-theme=light]) #theme .moon{display:none}}footer{border-top:1px solid var(--border);padding-top:1.5rem}footer .ends{display:grid;gap:1.2rem;grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:52rem){footer .ends{grid-template-columns:repeat(2,minmax(0,1fr))}}footer .ends>div{display:flex;flex-direction:column;gap:.3rem}footer b{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}footer a{color:var(--fg);text-decoration:none;font-size:.9rem}footer a:hover{color:var(--accent);text-decoration:underline}footer .notes{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:1rem 0 0;padding-top:1rem;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted)}footer .notes a{color:var(--fg)}footer .notes a:hover{color:var(--accent)}footer .notes button{font:inherit;font-size:.85rem;cursor:pointer;padding:.15rem .7rem;border-radius:1rem;border:1px solid var(--border);background:var(--panel);color:var(--fg)}footer .notes button:hover{border-color:var(--accent);color:var(--accent)}</style>
+</head>
+<body>
+<header class="bar">
+<h2><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><a class="version" id="version" data-release="v2.15.8" href="https://github.com/flowr-analysis/flowr/commit/81c3999337d001a682eadf251ea1d0836a7f2e98" target="_blank" rel="noopener" title="a development build of flowR, 10 commits after v2.15.8 (81c3999)">v2.15.8*</a></h2>
+<nav>
+<a href="../../../" target="_blank" rel="noopener">Landing Page</a>
+<a href="../../playground/" target="_blank" rel="noopener">Playground</a>
+<a href="../../sigdb/" target="_blank" rel="noopener">Signature DB</a>
+<a href="../../capabilities/" target="_blank" rel="noopener">Capabilities</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+</nav>
+<span class="controls">
+<a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
+<svg class="moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+<svg class="sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+</button>
+</span>
+</header>
+<p id="status" class="status" hidden></p>
+<main>
+<aside id="controls">
+<details class="panel" id="panel-data" open>
+<summary><span class="panel-title">Data</span><span class="digest" id="digest-data"></span></summary>
+<label class="field"><span>Suite</span><select id="suite"></select></label>
+<label class="field"><span>Engine</span><select id="engine"></select></label>
+<label class="field"><span>Time range</span><select id="range"><option value="6">Last 6 months</option><option value="12" selected>Last year</option><option value="24">Last two years</option><option value="0">Everything</option></select></label>
+<p class="hint" id="range-note"></p>
+</details>
+<details class="panel" id="panel-view" open>
+<summary><span class="panel-title">View</span><span class="digest" id="digest-view"></span></summary>
+<label class="field"><span>Values</span><select id="mode"><option value="absolute">Absolute</option><option value="delta">Delta vs. recent median</option></select></label>
+<label class="field" id="baseline-field"><span>Baseline: last <output id="baseline-out">3</output> releases</span><input id="baseline" type="range" min="1" max="25" step="1" value="3"></label>
+<label class="field" id="smooth-field"><span>Smoothing window: <output id="smooth-out">1 run</output></span><input id="smooth" type="range" min="1" max="15" step="2" value="1"></label>
+<label class="check"><input id="band" type="checkbox"><span>Error band (standard deviation)</span></label>
+<label class="check" id="calibrate-field" hidden><input id="calibrate" type="checkbox" checked><span>Divide timings by calibration</span></label>
+<p class="hint" id="calibration-note" hidden></p>
+</details>
+<details class="panel" id="panel-layout" open>
+<summary><span class="panel-title">Layout</span><span class="digest" id="digest-layout"></span></summary>
+<label class="check"><input id="lock" type="checkbox"><span>Lock the tiles</span></label>
+<div class="buttons"><button type="button" id="reset-layout">Reset</button><button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button></div>
+<p class="hint">Unlock to drag the tiles into another order. The corner button folds tiles away.</p>
+</details>
+<details class="panel" id="panel-download" open>
+<summary><span class="panel-title">Download</span><span class="digest" id="digest-download"></span></summary>
+<div class="buttons"><button type="button" id="dl-suite">Suite JSON</button><button type="button" id="dl-csv">Visible CSV</button><button type="button" id="dl-all">Full data.js</button></div>
+</details>
+</aside>
+<section id="charts"></section>
+</main>
+<footer>
+<div class="ends">
+<div>
+<b>Learn</b>
+<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Setup</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">Interface</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
+<a href="../../../doc/" target="_blank" rel="noopener">API docs</a>
+</div>
+<div>
+<b>R references</b>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-lang.html" target="_blank" rel="noopener">R Language Definition</a>
+<a href="https://adv-r.hadley.nz/" target="_blank" rel="noopener">Advanced R</a>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-ints.html" target="_blank" rel="noopener">R Internals</a>
+</div>
+<div>
+<b>Pages</b>
+<a href="../../../" target="_blank" rel="noopener">Landing Page</a>
+<a href="../../playground/" target="_blank" rel="noopener">Playground</a>
+<a href="../../sigdb/" target="_blank" rel="noopener">Signature DB</a>
+<a href="../../capabilities/" target="_blank" rel="noopener">Capabilities</a>
+</div>
+<div>
+<b>Project</b>
+<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">Source on GitHub</a>
+<a href="https://github.com/flowr-analysis/flowr/releases" target="_blank" rel="noopener">Releases</a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?labels=enhancement&amp;template=generic-feature-request.md&amp;title=Capability%3A%20" target="_blank" rel="noopener">Suggest a capability!</a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?labels=bug&amp;template=bug-report.yaml" target="_blank" rel="noopener">Report a bug</a>
+<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">Security policy</a>
+<a href="https://doi.org/10.1145/3763087" target="_blank" rel="noopener">Cite flowR</a>
+</div>
+</div>
+<p class="notes"><span id="source-note"></span> |
+<span id="watch-note"></span>
+<button type="button" id="fullscreen" aria-pressed="false">Fullscreen</button></p>
+</footer>
+<div id="tooltip" hidden></div>
+<script src="data.js" onerror="window.BENCH_NO_DATA_FILE = true"></script>
+<script src="stats.js"></script>
+<script src="viewer.js"></script>
+<script>(function(){const e=document.getElementById("version");if(!e||!e.dataset.release)return;const i=e.title,r=e.textContent.trim().endsWith("*");let n=!1;const a=()=>{n||(n=!0,fetch("https://api.github.com/repos/flowr-analysis/flowr/releases/tags/"+e.dataset.release).then(t=>t.ok?t.json():Promise.reject(t.status)).then(t=>{if(t.name){const s=t.published_at?new Date(t.published_at).toLocaleDateString(void 0,{year:"numeric",month:"short",day:"numeric"}):"",o=s?t.name+", released "+s:t.name;e.title=r?i+" \xB7 "+o:o}}).catch(()=>{}))};e.addEventListener("pointerenter",a),e.addEventListener("focus",a)})();</script>
+<script>(function(){if(/(^|\/)index\.html$/.test(location.pathname))for(const t of document.querySelectorAll('a[href$="/"]')){const e=t.getAttribute("href");/^[a-z]+:|^\/\//i.test(e)||t.setAttribute("href",e+"index.html")}})();</script>
+</body>
+</html>

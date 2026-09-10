@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-09-10, 11:06:05 UTC (v2.15.8, R v4.5.0), do not edit directly._
 
 # Signature Database
 
@@ -152,11 +152,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | n/a |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | n/a |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | n/a |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | n/a |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | n/a |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 520 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 4.1 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 13 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 220 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 420 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from
@@ -185,4 +185,4 @@ The extractor produces the bundle from its analysis of CRAN.
 
 The dictionary is read once, the reader then seeks straight to each requested package, and consumers cache
 what they derive (the `base`-package list is precomputed when flowR is bundled, so it costs nothing at
-analysis time). Opening the bundle is a one-off cost paid once per analysis, and a warmed per-package export lookup is a matter of microseconds. Each `library()` or `::` in a script is then one cached lookup.
+analysis time). After the one-time load a per-package lookup is O(1), so each `library()` or `::` a script uses is a single cached lookup.

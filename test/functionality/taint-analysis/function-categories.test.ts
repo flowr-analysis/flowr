@@ -51,8 +51,8 @@ const reclassAnalysis = TaintAnalysisDefinition.create('reclassify', reclassLatt
 // Custom handlers that evaluate the incoming taint: aliasing calls relabel the raw source to TaintA but leave
 // any already-classified taint untouched, while computing calls escalate a TaintA argument to Top.
 const evalAnalysis = TaintAnalysisDefinition.create('reclassify-eval', reclassLattice)
-	.on(TaintFnCategory.pureAlias, (_args, [incoming]) => incoming === Src ? TaintA : incoming)
-	.on(TaintFnCategory.pureComputer, (_args, [incoming]) => incoming === TaintA ? Top : incoming)
+	.on(TaintFnCategory.pureAlias, (_args, [incoming]) => incoming.value === Src ? TaintA : incoming.value)
+	.on(TaintFnCategory.pureComputer, (_args, [incoming]) => incoming.value === TaintA ? Top : incoming.value)
 	.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
 
 function testCategory(

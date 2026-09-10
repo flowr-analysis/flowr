@@ -58,8 +58,7 @@ export interface TaintAnalysisThroughStage<Name extends string = string, Domain 
 export interface TaintAnalysisFromStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
 	from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
-	/** Adds functions from TODO */
-	/** TODO Make accessible from TaintAnalyzer? Provide defaults? */
+	/** Add rules for function categories (i.e. sets of functions from {@link BuiltInIndex} fulfilling certain properties) */
 	on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): TaintAnalysisFromStage<Name, Domain>;
 }
 

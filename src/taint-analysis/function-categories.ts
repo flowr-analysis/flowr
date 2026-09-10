@@ -12,9 +12,7 @@ export type TaintArgSelector = {
 	/** Argument properties of the function category */
 	argProps:     ArgProps,
 	/**
-	 * How many arguments are of interest
-	 * - ExactlyOne: The matching functions need to have exactly one argument fulfilling the {@link TaintArgSelector.argProps}
-	 * - AtLeastOne: The matching functions should have at least one argument fulfilling the {@link TaintArgSelector.argProps}
+	 * How many arguments need to match the {@link TaintArgSelector.argProps}
 	 */
 	argSelection: 'ExactlyOne' | 'AtLeastOne',
 };
@@ -56,7 +54,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 };
 
 /**
- *
+ * Get the whole set of taint mappings for a given {@link TaintFnCategory}.
  */
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): TaintMapper<Domain> {
 	const idx = BuiltInIndex.default();

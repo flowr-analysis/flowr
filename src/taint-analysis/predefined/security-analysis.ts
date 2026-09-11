@@ -118,7 +118,8 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 			],
 			condition: {
 				argTaints:   [{ pos: 0 }],
-				conditionFn: (_args, [taint]) => (taint === UserInput || taint === NetworkInput || taint === FileInput) ? Bottom : undefined
+				conditionFn: (_args, [taint]) =>
+					(taint.value === UserInput || taint.value === NetworkInput || taint.value === FileInput) ? Bottom : taint.value
 			}
 		}
 	])

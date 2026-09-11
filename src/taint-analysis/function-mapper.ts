@@ -13,10 +13,9 @@ import {
 import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument, RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Top } from '../abstract-interpretation/domains/lattice';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { isNotUndefined } from '../util/assert';
+import { isNotUndefined, isUndefined } from '../util/assert';
 import { taintLogger } from './logger';
 
 /**
@@ -111,18 +110,17 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 
 	const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
 		const arg = getFunctionArgument(allArgs, location, resolveInfo);
-		if(!arg) {
+		if(isNotUndefined(arg)) {
 			taintLogger.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
 		}
 		return arg;
 	}) : [];
 
 	const incomingTaints = taintArgs
-		.map(arg => (arg === EmptyArgument || !arg?.value?.info) ? domain.create(Top) : projectArg(arg.value.info.id))
-		.filter((value) => isNotUndefined(value))
-		.map(value => value.value as AbstractValue<Domain>);
+		.map(arg => (arg === EmptyArgument || !arg?.value?.info) ? domain.top() : projectArg(arg.value.info.id))
+		.map((value) => isUndefined(value) ? domain.top() : value);
 
-	return mapping.condition.conditionFn(valArgs, incomingTaints);
+	return mapping.condition.conditionFn(valArgs, incomingTaints as unknown as TaintConditionDomain<Domain>[]);
 }
 
 export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];
@@ -148,6 +146,7 @@ export type TaintConditionMapping<Domain extends AnyAbstractDomain> = TaintMappi
 	condition: TaintCondition<Domain>;
 };
 
+/** Mapping of incoming function arguments and taints to a resulting taint */
 export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
 	argValues?:  FunctionParameterLocation<unknown>[],
 	argTaints?:  TaintParameterLocation[],
@@ -158,8 +157,12 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
 	| TaintFixedMapping<Domain>
 	| TaintConditionMapping<Domain>;
 
+type TaintConditionDomain<Domain extends AnyAbstractDomain> =
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? AbstractDomain<Value, Top, Bot> : never;
+
+/** Function describing how the resulting taint is calculated from incoming arguments and taints */
 export type TaintConditionFunction<Domain extends AnyAbstractDomain> =
-	( args: unknown[], taints: AbstractValue<Domain>[]) => AbstractValue<Domain> | undefined;
+	( args: unknown[], taints: TaintConditionDomain<Domain>[]) => AbstractValue<Domain> | undefined;
 
 export interface TaintParameterLocation {
 	pos:   number,

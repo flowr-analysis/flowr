@@ -28,7 +28,7 @@ const argumentTaintAnalysis = new TaintAnalysisDefinition('arguments-eval', latt
 				argTaints: [
 					{ pos: 0 }
 				],
-				condition: ([arg1, arg2], [taint]) => {
+				conditionFn: ([arg1, arg2], [taint]) => {
 					if(arg1 && arg2) {
 						return taint3;
 					} else if(arg1) {

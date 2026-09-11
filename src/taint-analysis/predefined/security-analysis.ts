@@ -53,8 +53,8 @@ export const securityAnalysis = new TaintAnalysisDefinition('security', security
 				Identifier.make('read.delim2', 'utils'),
 			],
 			condition: {
-				argValues: [{ pos: 0, name: 'file' }],
-				condition: ([path]) => protocolTaint(path)
+				argValues:   [{ pos: 0, name: 'file' }],
+				conditionFn: ([path]) => protocolTaint(path)
 			}
 		},
 		{
@@ -63,8 +63,8 @@ export const securityAnalysis = new TaintAnalysisDefinition('security', security
 				Identifier.make('gzcon', 'base')
 			],
 			condition: {
-				argValues: [{ pos: 0, name: 'con' }],
-				condition: ([path]) => protocolTaint(path)
+				argValues:   [{ pos: 0, name: 'con' }],
+				conditionFn: ([path]) => protocolTaint(path)
 			}
 		},
 	])
@@ -103,21 +103,21 @@ export const securityAnalysis = new TaintAnalysisDefinition('security', security
 				Identifier.make('write.table', 'utils'),
 				Identifier.make('write.csv', 'utils'),
 				Identifier.make('write.csv2', 'utils'),
-				Identifier.make('pdf', 'grDevices')
+				Identifier.make('pdf', 'grDevices'),
 
-				//Identifier.make('load', 'base'),
-				//Identifier.make('socketConnection', 'base'),
-				//Identifier.make('read.table', 'base'),
-				//Identifier.make('read.csv', 'utils'),
-				//Identifier.make('read.csv2', 'utils'),
-				//Identifier.make('read.delim', 'utils'),
-				//Identifier.make('read.delim2', 'utils'),
-				//Identifier.make('download.file', 'utils'),
-				//Identifier.make('url', 'base'),
+				Identifier.make('load', 'base'),
+				Identifier.make('socketConnection', 'base'),
+				Identifier.make('read.table', 'base'),
+				Identifier.make('read.csv', 'utils'),
+				Identifier.make('read.csv2', 'utils'),
+				Identifier.make('read.delim', 'utils'),
+				Identifier.make('read.delim2', 'utils'),
+				Identifier.make('download.file', 'utils'),
+				Identifier.make('url', 'base'),
 			],
 			condition: {
-				argTaints: [{ pos: 0 }],
-				condition: (_args, [taint]) => (taint === UserInput || taint === NetworkInput || taint === FileInput) ? Bottom : taint
+				argTaints:   [{ pos: 0 }],
+				conditionFn: (_args, [taint]) => (taint === UserInput || taint === NetworkInput || taint === FileInput) ? Bottom : undefined
 			}
 		}
 	])

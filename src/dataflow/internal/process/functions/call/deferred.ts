@@ -83,7 +83,7 @@ export const Deferred = {
 			for(const [id] of graph.verticesOfType(type)) {
 				const name = NodeId.recoverName(id, idMap);
 				if(name !== undefined) {
-					add(index, name, id);
+					add(index, removeRQuotes(name), id);
 				}
 			}
 		}

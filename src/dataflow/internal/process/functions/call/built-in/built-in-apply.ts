@@ -168,6 +168,7 @@ export function processApply<OtherInfo>(
 		}, data.ctx.env.cleanEnv);
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
+		information.graph.addEdge(functionId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information = {
 			...information,
 			in: [
@@ -175,9 +176,9 @@ export function processApply<OtherInfo>(
 				{ type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }
 			]
 		};
-		const dfVert = information.graph.getVertex(rootId);
-		if(dfVert && DfgVertex.isFunctionDefinition(dfVert)) {
-			ClosureRefs.resolveOpenIngoing(information.graph, rootId, dfVert, data.environment);
+		const called = information.graph.getVertex(rootFnId);
+		if(DfgVertex.isFunctionDefinition(called)) {
+			ClosureRefs.resolveOpenIngoing(information.graph, functionId, called, data.environment);
 		}
 	} else {
 		/* identify it as a full-blown function call :) */
@@ -193,8 +194,8 @@ export function processApply<OtherInfo>(
 		});
 	}
 
-	for(const arg of processedArguments) {
-		if(arg) {
+	for(const [i, arg] of processedArguments.entries()) {
+		if(arg && !(anonymous && i === index)) {
 			information.graph.addEdge(functionId, arg.entryPoint, EdgeType.Argument);
 		}
 	}

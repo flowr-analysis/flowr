@@ -1,24 +1,19 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Happens-Before Query">Happens-Before Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Check whether one normalized AST node happens before another in the CFG.\
 _This query is requested with the type `happens-before`._
 
-
 With this query you can analyze the control flow graph:
 
 Using the example code:
-
 
 ```r
 x <- 1
 y <- 2
 ```
 
-
 the following query returns that the first assignment happens always before the other:
-
-
 
 ```json
 [
@@ -30,52 +25,25 @@ the following query returns that the first assignment happens always before the 
 ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **happens-before** (2 ms)\
+Query: **happens-before** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ **1@x** happens before **2@y**: always\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "happens-before": {
-    ".meta": {
-      "timing": 2
-    },
-    "results": {
-      "1@x<2@y": "always"
-    }
-  },
-  ".meta": {
-    "timing": 2
-  }
-}
+{"happens-before":{".meta":{},"results":{"1@x<2@y":"always"}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 x <- 1
@@ -86,10 +54,8 @@ y <- 2
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -130,21 +96,10 @@ flowchart LR
     linkStyle 12 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

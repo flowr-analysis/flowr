@@ -4,14 +4,6 @@ import { log } from './log';
 import LineByLine from 'n-readlines';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 
-/**
- * Represents a table, identified by a header and a list of rows.
- */
-export interface Table {
-	header: string[]
-	rows:   string[][]
-}
-
 /** Rethrows if the caller asked for it, otherwise reports the directory as skipped. */
 function skipUnreadableDir(dir: string, e: unknown, throwOnError: boolean): void {
 	if(throwOnError) {
@@ -67,7 +59,7 @@ export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp 
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			if(!ignoreDirs?.test(toPosixPath(path.relative(relativeTo, res)))) {
+			if(!ignoreDirs?.test(RPath.of(path.relative(relativeTo, res)))) {
 				yield* getAllFilesSync(res, suffix, ignoreDirs, relativeTo, throwOnError);
 			}
 		} else if(suffix.test(subEntries.name)) {
@@ -81,12 +73,10 @@ const rFileRegex = /\.[rR]$/;
 /**
  * Retrieves all R files in a given directory (asynchronously)
  * @param input - directory-path to start the search from, can be a file as well. Will just return the file then.
- * @param limit - limit the number of files to be retrieved
- * @returns     Number of files processed (normally &le; `limit`, is &ge; `limit` if limit was reached).
- *          Will be `1`, if `input` is an R file (and `0` if it isn't).
+ * @returns     Number of files processed. Will be `1`, if `input` is an R file (and `0` if it isn't).
  * @see getAllFiles
  */
-export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
+export async function* allRFiles(input: string): AsyncGenerator<RParseRequestFromFile, number> {
 	let count = 0;
 	if(fs.statSync(input).isFile()) {
 		if(rFileRegex.test(input)) {
@@ -98,30 +88,8 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 	}
 
 	for await (const f of getAllFiles(input, rFileRegex)) {
-		if(++count > limit) {
-			return count;
-		}
+		++count;
 		yield { request: 'file', content: f };
-	}
-	return count;
-}
-
-/**
- * Retrieves all R files in a given set of directories and files (asynchronously)
- * @param inputs - Files or directories to validate for R-files
- * @param limit  - Limit the number of files to be retrieved
- * @returns      Number of files processed (&le; limit)
- * @see allRFiles
- */
-export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
-	limit ??= Number.MAX_VALUE;
-	if(inputs.length === 0) {
-		log.info('No inputs given, nothing to do');
-		return 0;
-	}
-	let count = 0;
-	for(const input of inputs) {
-		count += yield* allRFiles(input, limit - count);
 	}
 	return count;
 }
@@ -193,12 +161,33 @@ export function getParentDirectory(directory: string): string {
 }
 
 /**
- * A path with backslashes rewritten to forward slashes, i.e. POSIX form. R accepts these on every OS, so this is
- * also how a filesystem path is made safe to interpolate into an R string literal (where a raw `\` would escape).
+ * Paths as R spells them on every OS: forward slashes throughout, which R accepts on Windows as well and which
+ * survive interpolation into an R string literal, where a raw `\` would escape.
+ * @helper location Paths as R spells them on every OS, with forward slashes throughout.
  */
-export function toPosixPath(p: string): string {
-	return p.replaceAll('\\', '/');
-}
+export const RPath = {
+	name: 'RPath',
+	/** `p` with every backslash rewritten to a forward slash */
+	of(this: void, p: string): string {
+		return p.replaceAll('\\', '/');
+	},
+	join(this: void, ...parts: string[]): string {
+		return path.posix.join(...parts.map(RPath.of));
+	},
+	normalize(this: void, p: string): string {
+		return path.posix.normalize(RPath.of(p));
+	},
+	basename(this: void, p: string): string {
+		return path.posix.basename(RPath.of(p));
+	},
+	dirname(this: void, p: string): string {
+		return path.posix.dirname(RPath.of(p));
+	},
+	/** the path `to` is reached under from `from`, spelled so it reads as relative (`./data/x.csv`) */
+	relative(this: void, from: string, to: string): string {
+		return `./${RPath.of(path.relative(from, to))}`;
+	}
+} as const;
 
 /**
  * The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none.
@@ -225,7 +214,7 @@ export function commonDirectory(paths: readonly string[]): string | undefined {
  * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
  */
 export function relativeTo(root: string, filePath: string): string {
-	const relative = toPosixPath(path.relative(root, filePath));
+	const relative = RPath.of(path.relative(root, filePath));
 	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
 }
 

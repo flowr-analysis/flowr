@@ -1,4 +1,5 @@
 import { describe } from 'vitest';
+import { label } from '../_helper/label';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
@@ -32,7 +33,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:       SourceRange.from(1, 1, 1, 19),
 			sources:   [{ id: 5, trace: InputTraceType.Known, types: [InputType.Unknown, InputType.DerivedConstant] }]
 		}]);
-		assertLinter('unknown system', parser, 'system(x)', 'problematic-inputs', [{
+		assertLinter(label('unknown system', ['system-calls'], ['linter']), parser, 'system(x)', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Uncertain,
 			name:      'system',
 			loc:       SourceRange.from(1, 1, 1, 9),

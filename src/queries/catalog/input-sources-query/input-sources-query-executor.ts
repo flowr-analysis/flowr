@@ -1,5 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
-import { DefaultInputClassifierConfig, type InputSourcesQuery, type InputSourcesQueryResult } from './input-sources-query-format';
+import { defaultInputClassifierConfig, type InputSourcesQuery, type InputSourcesQueryResult } from './input-sources-query-format';
 import { log } from '../../../util/log';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -24,10 +24,10 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	const results: Record<string, InputSources> = {};
 	const nast = await analyzer.normalize();
 	const df = await analyzer.dataflow();
-	// flowR's defaults, extended by whatever the (possibly project-kind specialized) configuration adds
+	const ctx = analyzer.inspectContext();
 	const defaultConfig = addAll(
-		await resolveSearches(analyzer, DefaultInputClassifierConfig),
-		await resolveSearches(analyzer, analyzer.inspectContext().config.inputSources ?? {})
+		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),
+		await resolveSearches(analyzer, ctx.config.inputSources ?? {})
 	);
 	const packages = attachedPackages(analyzer, df.environment);
 

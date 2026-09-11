@@ -220,6 +220,10 @@ export interface FlowrConfig {
 			readonly linkedVersionGroups?: string[][]
 		}
 		readonly transitiveSideEffectRounds?: number
+		/**
+		 * Packages to treat as attached without a `library()` call, on top of the base packages R attaches on
+		 * startup (see {@link AttachedBasePackages}, which a bare name resolves against without this option).
+		 */
 		readonly assumeAttachedPackages?:     string[]
 		readonly instrument: {
 			/**
@@ -330,9 +334,19 @@ export interface TreeSitterEngineConfig extends MergeableRecord {
 }
 
 export interface RShellEngineConfig extends MergeableRecord {
-	readonly type:   'r-shell'
+	readonly type:      'r-shell'
 	/** The path to the R executable to use; defaults to {@link DEFAULT_R_PATH}. */
-	readonly rPath?: string
+	readonly rPath?:    string
+	/**
+	 * Whether to enable R's experimental pipe-bind operator `=>` (`x |> name => body`) by setting
+	 * `_R_USE_PIPEBIND_` for the R session. R itself keeps this off by default, as the operator is
+	 * experimental and has never shipped in a release version of R; off by default here as well.
+	 * @example
+	 * ```ts
+	 * new FlowrAnalyzerBuilder().setEngine('r-shell').configure('engine.r-shell.pipeBind', true)
+	 * ```
+	 */
+	readonly pipeBind?: boolean
 }
 
 export type EngineConfig = TreeSitterEngineConfig | RShellEngineConfig;
@@ -519,6 +533,7 @@ function expandPath(path: string, within: unknown): string | undefined {
 /**
  * flowR's configuration: its default, reading one from disk, and getting or setting a single value at a
  * dotted path (an {@link EngineConfigPath} included).
+ * @helper project
  */
 export const FlowrConfig = {
 	name: 'FlowrConfig',
@@ -697,8 +712,9 @@ export const FlowrConfig = {
 				lax:                Joi.boolean().optional().description('Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.')
 			}).description('The configuration for the tree sitter engine.'),
 			Joi.object({
-				type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
-				rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
+				type:     Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
+				rPath:    Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.'),
+				pipeBind: Joi.boolean().optional().description('Whether to enable R\'s experimental pipe-bind operator "=>" by setting _R_USE_PIPEBIND_ for the R session (default false); R itself keeps this off by default, as it is experimental and has never shipped in a release version of R.')
 			}).description('The configuration for the R shell engine.')
 		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
 		defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
@@ -735,7 +751,7 @@ export const FlowrConfig = {
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
 			}).description('Policies for reasoning about dependency versions.'),
-			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code.'),
+			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code. The base packages R attaches on startup already resolve without it.'),
 			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
 			instrument:                 Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')

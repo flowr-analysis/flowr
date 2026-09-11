@@ -1,5 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-09-01, 11:38:13 UTC (v2.15.8, R v4.6.1), please do not edit directly._
-
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_of_the_Analyzer)  
@@ -23,8 +22,6 @@ _<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-anal
   - [Incremental Analysis Context](#Incremental_Analysis_Context)  
 - [Caching](#Caching)
 
-
-
 <h2 id="Overview">Overview</h2>
 
 No matter whether you want to analyze a single R script, a couple of R notebooks, a complete project, or an R package,
@@ -32,7 +29,7 @@ your journey starts with the <a href="https://github.com/flowr-analysis/flowr/tr
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
 what [engine](https://github.com/flowr-analysis/flowr/wiki/Engines) to use for the analysis.
 
-When building the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance, the builder will take care to
+When building the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance, the builder will take care to
 
 * load the [requested plugins](#Plugins)
 * setup an initial [context](#Context_Information)
@@ -53,14 +50,13 @@ The builder provides two methods for building the analyzer:
 <h3 id="Overview_of_the_Analyzer">Overview of the Analyzer</h3>
 
 Once you have created an analyzer instance, you can add R files, folders, or even entire projects for analysis using the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L282"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L281"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method.
 All loaded [plugins](#Plugins) will be applied fully automatically during the analysis.
 Please note that adding new files _after_ you already requested analysis results may cause bigger invalidations and cause re-analysis of previously analyzed files.
 With the [files context](#Files_Context), you can also add virtual files to the analysis to consider, or *overwrite* existing files with modified content.
 For this, have a look at the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L298"><code>FlowrAnalyzer::<b>addFile</b></code></a> method.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L297"><code>FlowrAnalyzer::<b>addFile</b></code></a> method.
 
-	
 > [!NOTE]
 > If you want to quickly try out the analyzer, you can use the following code snippet that analyzes a simple R expression:
 > 
@@ -81,29 +77,28 @@ For this, have a look at the
 > 
 > 
 
-
-To reset the analysis (e.g., to provide new requests) you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L246"><code>FlowrAnalyzer::<b>reset</b></code></a>.
-If you need to pre-compute analysis results (e.g., to speed up future queries), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L344"><code>FlowrAnalyzer::<b>runFull</b></code></a>.
+To reset the analysis (e.g., to provide new requests) you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L245"><code>FlowrAnalyzer::<b>reset</b></code></a>.
+If you need to pre-compute analysis results (e.g., to speed up future queries), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L343"><code>FlowrAnalyzer::<b>runFull</b></code></a>.
 
 <h3 id="Conducting_Analyses">Conducting Analyses</h3>
 
 Please make sure to add all of the files, folder, and projects you want to analyze using the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L282"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method (or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L298"><code>FlowrAnalyzer::<b>addFile</b></code></a> for virtual files).
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L281"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method (or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L297"><code>FlowrAnalyzer::<b>addFile</b></code></a> for virtual files).
 Afterwards, you can request different kinds of analysis results, such as:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L320"><code>FlowrAnalyzer::<b>parse</b></code></a> to get the parsed information by the respective [engine](https://github.com/flowr-analysis/flowr/wiki/Engines)\
-You can also use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L324"><code>FlowrAnalyzer::<i>peekParse</i></code></a> to inspect the parse information if it was already computed (but without triggering a computation).
-With <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L233"><code>FlowrAnalyzer::<i>parserInformation</i></code></a>, you get additional information on the parser used for the analysis.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L328"><code>FlowrAnalyzer::<b>normalize</b></code></a> to compute the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)\
-Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L332"><code>FlowrAnalyzer::<i>peekNormalize</i></code></a> returns the normalized AST if it was already computed but without triggering a computation.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L336"><code>FlowrAnalyzer::<b>dataflow</b></code></a> to compute the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)\
-Again, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L340"><code>FlowrAnalyzer::<i>peekDataflow</i></code></a> allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L349"><code>FlowrAnalyzer::<b>controlflow</b></code></a> to compute the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)\
-Also, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L353"><code>FlowrAnalyzer::<i>peekControlflow</i></code></a> returns the control flow graph if it was already computed but without triggering a computation.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L357"><code>FlowrAnalyzer::<b>callGraph</b></code></a> to compute the [call graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) of the analyzed code\
-Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L361"><code>FlowrAnalyzer::<i>peekCallGraph</i></code></a> allows you to inspect the call graph if it was already computed (but without triggering a computation).
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L365"><code>FlowrAnalyzer::<b>query</b></code></a> to run [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) on the analyzed code.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L371"><code>FlowrAnalyzer::<b>runSearch</b></code></a> to run a search query on the analyzed code using the [search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L319"><code>FlowrAnalyzer::<b>parse</b></code></a> to get the parsed information by the respective [engine](https://github.com/flowr-analysis/flowr/wiki/Engines)\
+You can also use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L323"><code>FlowrAnalyzer::<i>peekParse</i></code></a> to inspect the parse information if it was already computed (but without triggering a computation).
+With <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L232"><code>FlowrAnalyzer::<i>parserInformation</i></code></a>, you get additional information on the parser used for the analysis.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L327"><code>FlowrAnalyzer::<b>normalize</b></code></a> to compute the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)\
+Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L331"><code>FlowrAnalyzer::<i>peekNormalize</i></code></a> returns the normalized AST if it was already computed but without triggering a computation.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L335"><code>FlowrAnalyzer::<b>dataflow</b></code></a> to compute the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)\
+Again, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L339"><code>FlowrAnalyzer::<i>peekDataflow</i></code></a> allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L348"><code>FlowrAnalyzer::<b>controlflow</b></code></a> to compute the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)\
+Also, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L352"><code>FlowrAnalyzer::<i>peekControlflow</i></code></a> returns the control flow graph if it was already computed but without triggering a computation.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L356"><code>FlowrAnalyzer::<b>callGraph</b></code></a> to compute the [call graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) of the analyzed code\
+Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L360"><code>FlowrAnalyzer::<i>peekCallGraph</i></code></a> allows you to inspect the call graph if it was already computed (but without triggering a computation).
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L364"><code>FlowrAnalyzer::<b>query</b></code></a> to run [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) on the analyzed code.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L370"><code>FlowrAnalyzer::<b>runSearch</b></code></a> to run a search query on the analyzed code using the [search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
@@ -129,13 +124,11 @@ With the builder you can either provide a complete configuration or amend the de
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L101"><code><span title="Set a specific value in the configuration used by the resulting analyzer. Besides the configuration's own paths this takes an EngineConfigPath , so an engine option that lives in an array entry is reachable the same way as everything else:">FlowrAnalyzerBuilder::<b>configure</b></span></code></a> to set the value of a specific key in the config
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L67"><code><span title="Apply an amendment to the configuration the builder currently holds. This is mostly intended for more complex logic to transform the config. Please consider using FlowrAnalyzerBuilder.configure to set/amend individual values Per default, the value returned by FlowrConfig.default is used.">FlowrAnalyzerBuilder::<b>amendConfig</b></span></code></a> to amend the default configuration
 
-By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L529"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
-
+By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L544"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
 
 > [!NOTE]
-> During the analysis with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can also access the configuration with
-> 		 the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L121"><code><span title="This summarizes the other context layers used by the FlowrAnalyzer . Have a look at the attributes and layers listed below (e.g., files and deps ) to get an idea of the capabilities provided by this context. Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods. In general, you do not have to worry about these details, as the Flow...">FlowrAnalyzerContext</span></code></a>.
-
+> During the analysis with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can also access the configuration with
+> 		 the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L125"><code><span title="This summarizes the other context layers used by the FlowrAnalyzer . Have a look at the attributes and layers listed below (e.g., files and deps ) to get an idea of the capabilities provided by this context. Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods. In general, you do not have to worry about these details, as the Flow...">FlowrAnalyzerContext</span></code></a>.
 
 <h3 id="Configuring_the_Engine">Configuring the Engine</h3>
 
@@ -156,7 +149,6 @@ please ensure that the engine has already been initialized before calling this m
 There are various ways for you to register plugins with the builder, exemplified by the following snippet
 relying on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L150"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a> method:
 
-
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder(false)
     .registerPlugins(
@@ -167,10 +159,9 @@ const analyzer = await new FlowrAnalyzerBuilder(false)
     .build();
 ```
 
-
 This indicates three ways to add a new plugin:
 
-1. By using a predefined name (e.g., `file:description` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L31"><code><span title="This plugin provides support for R DESCRIPTION files.">FlowrAnalyzerDescriptionFilePlugin</span></code></a>)\
+1. By using a predefined name (e.g., `file:description` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L34"><code><span title="This plugin provides support for R DESCRIPTION files.">FlowrAnalyzerDescriptionFilePlugin</span></code></a>)\
    These mappings are controlled by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L146"><code><span title="Register a new Flowr Analyzer plugin for the registry, to be used by the FlowrAnalyzerBuilder and FlowrAnalyzer .">registerPluginMaker</span></code></a> function in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L138"><code><span title="The registry of built-in and user-registered Flowr Analyzer plugins. Used by the FlowrAnalyzerBuilder and FlowrAnalyzer to instantiate plugins by name.">PluginRegistry</span></code></a>.
    Under the hood, this relies on <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L175"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> to create the plugin instance from the name.
 2. By providing an already instantiated plugin (e.g., the new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin.ts#L8"><code><span title="The plugin provides support for Quarto R Markdown (.qmd) files">FlowrAnalyzerQmdFilePlugin</span></code></a> instance).\
@@ -178,9 +169,8 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., `['file:rmd', [/.*.rmd/i]]` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin.ts#L9"><code><span title="The plugin provides support for R Markdown (.rmd) files">FlowrAnalyzerRmdFilePlugin</span></code></a>).\
    This will also use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L175"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> function under the hood to create the plugin instance.
 
-Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L379"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L393"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L164"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a> method.
-
 
 > [!NOTE]
 > If you directly access the API, please prefer creating the objects yourself by instantiating the respective classes instead of relying on the plugin registry.
@@ -188,7 +178,6 @@ If you want to unregister specific plugins, you can use the <a href="https://git
 > Moreover, this allows you to directly provide custom configuration to the plugin constructors in a readable fashion,
 > *and* to re-use plugin instances.
 > Instantiation by text is mostly for serialized communications (e.g., via a CLI or config format).
-
 
 For more information on the different plugin types and how to create new plugins, please refer to the [Plugins](#Plugins) section below.
 
@@ -278,7 +267,7 @@ Currently, flowR supports the following plugin types built-in:
 | <code>file-roles:test</code> | <code>file-load</code> | Loads test files. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-test-file-plugin.ts#L11"><code><span title="This plugin provides supports for the identification of test files. If you use multiple plugins, this should be included *before* other plugins.">FlowrAnalyzerMetaTestFilesPlugin</span></code></a> |
 | <code>file-roles:vignette</code> | <code>file-load</code> | Loads vignette files. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-vignette-file-plugin.ts#L11"><code><span title="This plugin provides supports for the loading of Vignette files. If you use multiple plugins, this should be included *before* other plugins.">FlowrAnalyzerMetaVignetteFilesPlugin</span></code></a> |
 | <code>file:datalist</code> | <code>file-load</code> | Reads data/datalist into the objects each dataset provides. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-rd-file-plugin.ts#L111"><code><span title="Support for a package's data/datalist: the only place a data(<set>) binding differently named objects is written down.">FlowrAnalyzerDataListFilePlugin</span></code></a> |
-| <code>file:description</code> | <code>file-load</code> | Reads DESCRIPTION files into key-value pairs. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L31"><code><span title="This plugin provides support for R DESCRIPTION files.">FlowrAnalyzerDescriptionFilePlugin</span></code></a> |
+| <code>file:description</code> | <code>file-load</code> | Reads DESCRIPTION files into key-value pairs. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L34"><code><span title="This plugin provides support for R DESCRIPTION files.">FlowrAnalyzerDescriptionFilePlugin</span></code></a> |
 | <code>file:ipynb</code> | <code>file-load</code> | Parses Jupyter files | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin.ts#L12"><code><span title="The plugin provides support for Jupyter (.ipynb) files">FlowrAnalyzerJupyterFilePlugin</span></code></a> |
 | <code>file:license</code> | <code>file-load</code> | Loads license files. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-license-file-plugin.ts#L11"><code><span title="This plugin provides supports for the identification of license files.">FlowrAnalyzerLicenseFilePlugin</span></code></a> |
 | <code>file:namespace</code> | <code>file-load</code> | Reads NAMESPACE files into the NAMESPACE format. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-namespace-files-plugin.ts#L12"><code><span title="This plugin provides support for R NAMESPACE files.">FlowrAnalyzerNamespaceFilesPlugin</span></code></a> |
@@ -316,13 +305,12 @@ Currently, flowR supports the following plugin types built-in:
 | <code>versions:renv</code> | <code>package-versions</code> | Extracts package versions from an renv.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L25"><code><span title="Reads package versions from an renv.lock (JSON). renv pins are exact.">FlowrAnalyzerPackageVersionsRenvPlugin</span></code></a> |
 | <code>versions:rv</code> | <code>package-versions</code> | Extracts package versions from an rv.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L104"><code><span title="Reads package versions from an rv.lock (the resolved rv project lockfile, TOML). rv pins are exact.">FlowrAnalyzerPackageVersionsRvPlugin</span></code></a> |
 | <code>versions:session-info</code> | <code>package-versions</code> | Extracts package and R versions from a pasted sessionInfo() output block. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-session-info-plugin.ts#L31"><code><span title="Reads package (and R) versions from a pasted sessionInfo() output block within a source file (typically inside a comment). This is how R users record a reproducible environment, so when present it pins exact versions, just like a lockfile. Detection is conservative: we only act once we see the R version line and/or one of sessionInfo()'s package-listing headers, and additionally require at least o...">FlowrAnalyzerPackageVersionsSessionInfoPlugin</span></code></a> |
-| <code>versions:sigdb</code> | <code>package-versions</code> | Resolves library exports (and versioned base R) from precomputed flowr-sigdb databases. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L108"><code><span title="Resolves library(pkg) / use(pkg, fn) from precomputed flowr-sigdb databases via the PackageSignatureSource contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a .br/manifest source needs preload ; on by default.">FlowrAnalyzerPackageVersionsSigDbPlugin</span></code></a> |
+| <code>versions:sigdb</code> | <code>package-versions</code> | Resolves library exports (and versioned base R) from precomputed flowr-sigdb databases. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L109"><code><span title="Resolves library(pkg) / use(pkg, fn) from precomputed flowr-sigdb databases via the PackageSignatureSource contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a .br/manifest source needs preload ; on by default.">FlowrAnalyzerPackageVersionsSigDbPlugin</span></code></a> |
 | <code>versions:uvr</code> | <code>package-versions</code> | Extracts package versions from a uvr.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L121"><code><span title="Reads package versions from a uvr.lock (TOML). uvr pins are exact, the dev-dependencies among them.">FlowrAnalyzerPackageVersionsUvrPlugin</span></code></a> |
-
 
 <h3 id="Plugin_Types">Plugin Types</h3>
 
-During the construction of a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, plugins of different types are applied at different stages of the analysis.
+During the construction of a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, plugins of different types are applied at different stages of the analysis.
 These plugins are grouped by their <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/flowr-analyzer-plugin.ts#L29"><code><span title="Based on *when* and *what-for* the plugin is applied during the analysis, plugins are categorized into different types.  Consult this diagram for an overview of orders and (implicit or explicit) dependencies:    ┌───────────┐ ┌───────────────────┐ ┌─────────────┐ ┌───────────────┐ ┌───────┐ │ │ │ │ │ │ │ │ │ │ │ *Builder* ├──▶│ Project Discovery ├──▶│ File Loader ├──▶│ Dependencies ├──▶│ *DFA* │ │...">PluginType</span></code></a> and are applied in the following order (as shown in the documentation of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/flowr-analyzer-plugin.ts#L29"><code><span title="Based on *when* and *what-for* the plugin is applied during the analysis, plugins are categorized into different types.  Consult this diagram for an overview of orders and (implicit or explicit) dependencies:    ┌───────────┐ ┌───────────────────┐ ┌─────────────┐ ┌───────────────┐ ┌───────┐ │ │ │ │ │ │ │ │ │ │ │ *Builder* ├──▶│ Project Discovery ├──▶│ File Loader ├──▶│ Dependencies ├──▶│ *DFA* │ │...">PluginType</span></code></a>):
 
 ```text
@@ -357,7 +345,7 @@ Please note that all project discovery plugins should conform to the <a href="ht
 
 These plugins register for every file encountered by the [files context](#Files_Context) and determine whether and _how_ they can process the file.
 They are responsible for transforming the raw file content into a representation that flowR can work with during the analysis.
-For example, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L31"><code><span title="This plugin provides support for R DESCRIPTION files.">FlowrAnalyzerDescriptionFilePlugin</span></code></a> adds support for R `DESCRIPTION` files by parsing their content into key-value pairs.
+For example, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L34"><code><span title="This plugin provides support for R DESCRIPTION files.">FlowrAnalyzerDescriptionFilePlugin</span></code></a> adds support for R `DESCRIPTION` files by parsing their content into key-value pairs.
 These can then be used by other plugins, e.g. the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin.ts#L12"><code><span title="This plugin extracts package versions from R DESCRIPTION files. It looks at the Depends and Imports fields to find package names and their version constraints.">FlowrAnalyzerPackageVersionsDescriptionFilePlugin</span></code></a> that extracts package version information from these files.
 
 If multiple file plugins could apply (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-file-plugin.ts#L40"><code>DefaultFlowrAnalyzerFilePlugin::<b>applies</b></code></a>) to the same file,
@@ -397,25 +385,24 @@ Otherwise, users will have to provide an instance of your plugin class directly.
 
 <h2 id="Context_Information">Context Information</h2>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> provides various context information during the analysis.
-You can access the context with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L238"><code>FlowrAnalyzer::<b>inspectContext</b></code></a>
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> provides various context information during the analysis.
+You can access the context with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L237"><code>FlowrAnalyzer::<b>inspectContext</b></code></a>
 to receive a read-only view of the current analysis context.
-Likewise, you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L332"><code><span title="Get a read-only version of this context. This is useful if you want to pass the context to a place where you do not want it to be modified or just to reduce the available methods.">FlowrAnalyzerContext::<b>inspect</b></span></code></a> to get a read-only view of a given context.
+Likewise, you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L336"><code><span title="Get a read-only version of this context. This is useful if you want to pass the context to a place where you do not want it to be modified or just to reduce the available methods.">FlowrAnalyzerContext::<b>inspect</b></span></code></a> to get a read-only view of a given context.
 These read-only views prevent you from accidentally modifying the context during the analysis which may cause inconsistencies (this should be done either by
 wrapping methods or by [plugins](#Plugins)).
 The context is divided into multiple sub-contexts, each responsible for a specific aspect of the analysis.
 These sub-contexts are described in more detail below.
 
-For the general structure from an implementation perspective, please have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L121"><code><span title="This summarizes the other context layers used by the FlowrAnalyzer . Have a look at the attributes and layers listed below (e.g., files and deps ) to get an idea of the capabilities provided by this context. Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods. In general, you do not have to worry about these details, as the Flow...">FlowrAnalyzerContext</span></code></a>.
+For the general structure from an implementation perspective, please have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L125"><code><span title="This summarizes the other context layers used by the FlowrAnalyzer . Have a look at the attributes and layers listed below (e.g., files and deps ) to get an idea of the capabilities provided by this context. Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods. In general, you do not have to worry about these details, as the Flow...">FlowrAnalyzerContext</span></code></a>.
 
 > [!TIP]
 > If you need a context for testing or to create analyses with lower-level components, you can use
-> either <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L365"><code><span title="Lifting requestFromInput to create a full FlowrAnalyzerContext from input requests. Please use this only for a 'quick' setup, or to have compatibility with the pre-project flowR era. Otherwise, refer to a FlowrAnalyzerBuilder to create a fully customized FlowrAnalyzer instance.">contextFromInput</span></code></a> to create a context from input data (which lifts the old <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/retriever.ts#L67"><code>requestFromInput</code></a>) or
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L389"><code><span title="Create a FlowrAnalyzerContext from a set of source code strings.">contextFromSources</span></code></a> to create a context from source files (e.g., if you need a virtual file system).
-
+> either <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L373"><code><span title="Lifting requestFromInput to create a full FlowrAnalyzerContext from input requests. Please use this only for a 'quick' setup, or to have compatibility with the pre-project flowR era. Otherwise, refer to a FlowrAnalyzerBuilder to create a fully customized FlowrAnalyzer instance.">contextFromInput</span></code></a> to create a context from input data (which lifts the old <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/retriever.ts#L56"><code>requestFromInput</code></a>) or
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L397"><code><span title="Create a FlowrAnalyzerContext from a set of source code strings.">contextFromSources</span></code></a> to create a context from source files (e.g., if you need a virtual file system).
 
 If for whatever reason you need to reset the context during an analysis, you can use
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L339"><code><span title="Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.">FlowrAnalyzerContext::<b>reset</b></span></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L347"><code><span title="Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.">FlowrAnalyzerContext::<b>reset</b></span></code></a>.
 
 <h3 id="Files_Context">Files Context</h3>
 
@@ -463,26 +450,23 @@ First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/t
    
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41">src/project/cache/flowr-cache.ts#L41</a>)</i>
      
-
     </details>
 
 Using the available [plugins](#Plugins),
 the files context categorizes files by their <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-file.ts#L18"><code><span title="Some files have a special meaning in R projects, e.g., the DESCRIPTION file in R packages. This list may be extended in the future and reflects files that the FlowrAnalyzer can do something interesting with. If you add an interesting file that is only part of your plugin infrastructure, please use the other role.">FileRole</span></code></a> (e.g., source files or DESCRIPTION files)
-and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L589"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
-It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L451"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L455"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
-and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L537"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
+and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L622"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
+It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L456"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L497"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
+and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L570"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
 
 For legacy reasons it also provides the list of files considered by the dataflow analysis via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L286"><code><span title="Get all files that have been considered during dataflow analysis.">FlowrAnalyzerFilesContext::<i>consideredFilesList</i></span></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L290"><code><span title="Get all files that have been considered during dataflow analysis.">FlowrAnalyzerFilesContext::<i>consideredFilesList</i></span></code></a>.
 
 <h3 id="Loading_Order_Context">Loading Order Context</h3>
-
 
 > [!NOTE]
 > Please be aware that the loading order is inherently tied to the files context (as it determines which files are available for ordering).
 > Hence, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-loading-order-context.ts#L50"><code><span title="This context is responsible for managing the loading order of script files in a project, including guesses and known orders provided by FlowrAnalyzerLoadingOrderPlugin s. If you are interested in inspecting these orders, refer to ReadOnlyFlowrAnalyzerLoadingOrderContext . Plugins, however, can use this context directly to modify order guesses.">FlowrAnalyzerLoadingOrderContext</span></code></a> is accessible (only) via the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L205"><code><span title="This is the analyzer file context to be modified by all plugins that affect the files. If you are interested in inspecting these files, refer to ReadOnlyFlowrAnalyzerFilesContext . Plugins, however, can use this context directly to modify files.">FlowrAnalyzerFilesContext</span></code></a>.
-
 
 Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-loading-order-context.ts#L50"><code><span title="This context is responsible for managing the loading order of script files in a project, including guesses and known orders provided by FlowrAnalyzerLoadingOrderPlugin s. If you are interested in inspecting these orders, refer to ReadOnlyFlowrAnalyzerLoadingOrderContext . Plugins, however, can use this context directly to modify order guesses.">FlowrAnalyzerLoadingOrderContext</span></code></a> that provides access to the identified loading order of files:
 
@@ -524,7 +508,6 @@ Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tr
      directly.
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-loading-order-context.ts#L14">src/project/context/flowr-analyzer-loading-order-context.ts#L14</a>)</i>
      
-
     </details>
 
 Using the available [plugins](#Plugins), the loading order context determines the order in which files are loaded and analyzed by flowR's analyzer.
@@ -570,7 +553,6 @@ including the version of R:
    
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41">src/project/cache/flowr-cache.ts#L41</a>)</i>
      
-
     </details>
 
 Probably the most important method is
@@ -622,7 +604,6 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
      directly.
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L32">src/project/context/flowr-analyzer-functions-context.ts#L32</a>)</i>
      
-
     </details>
 
 Probably the most important method is
@@ -631,29 +612,28 @@ that allows you to query for a specific function by name.
 
 <h3 id="Environment_Context">Environment Context</h3>
 
-Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L83"><code><span title="Provides the built-in environment, created from the FlowrAnalyzerContext configuration.">FlowrAnalyzerEnvironmentContext</span></code></a> that provides access to the built-in environment:
+Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L100"><code><span title="Provides the built-in environment, created from the FlowrAnalyzerContext configuration.">FlowrAnalyzerEnvironmentContext</span></code></a> that provides access to the built-in environment:
 
- * [FlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L83)   
+ * [FlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L100)   
    Provides the built-in environment, created from the
    <code>FlowrAnalyzerContext</code>
    configuration.
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L83">src/project/context/flowr-analyzer-environment-context.ts#L83</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L100">src/project/context/flowr-analyzer-environment-context.ts#L100</a>)</i>
    
     <details><summary>View more (ReadOnlyFlowrAnalyzerEnvironmentContext)</summary>
 
-   * **[ReadOnlyFlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L16)**   
+   * **[ReadOnlyFlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L18)**   
      Read-only interface to the
      <code>FlowrAnalyzerEnvironmentContext</code>
      .
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L16">src/project/context/flowr-analyzer-environment-context.ts#L16</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L18">src/project/context/flowr-analyzer-environment-context.ts#L18</a>)</i>
      
-
     </details>
 
 The environment context provides access to the built-in environment via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L175"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L218"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
 It also provides the empty built-in environment, which only contains primitives, via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L189"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L232"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
 
 <h3 id="Meta_Context">Meta Context</h3>
 
@@ -682,7 +662,6 @@ This <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/cont
    
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41">src/project/cache/flowr-cache.ts#L41</a>)</i>
      
-
     </details>
 
 You can access the project name via
@@ -717,13 +696,11 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
        Read-only gas context exposed via `ctx.gas`.
        <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L90">src/project/context/flowr-analyzer-gas-context.ts#L90</a>)</i>
        
-
       </details>
    * **[InvalidationEventReceiver](https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41)**   
    
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41">src/project/cache/flowr-cache.ts#L41</a>)</i>
      
-
     </details>
 
 Expensive analysis sites ask for the current resource pressure with
@@ -735,18 +712,16 @@ configured for that key (see <a href="https://github.com/flowr-analysis/flowr/tr
 Registered <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/gas-plugins/flowr-analyzer-gas-plugin.ts#L19"><code><span title="Base class for gas plugins, queried on-demand by FlowrAnalyzerGasContext.checkGas . Override process to provide a custom resource-pressure assessment for a feature key. Return undefined to defer to the built-in memory and time checks. Multiple Gas plugins are combined by taking the maximum ( GasLevel ) returned by any plugin or by the built-in checks. A gas plugin is the right place to add domain-...">FlowrAnalyzerGasPlugin</span></code></a>s may escalate the level for any key.
 
 Every operation gets a contingent of its own, and anything beginning a new analysis (an added file, a cache
-invalidation, a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L339"><code><span title="Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.">FlowrAnalyzerContext::<b>reset</b></span></code></a>) restarts it. To restart it between your own
+invalidation, a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L347"><code><span title="Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.">FlowrAnalyzerContext::<b>reset</b></span></code></a>) restarts it. To restart it between your own
 phases, call <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L151"><code><span title="Restart the contingent, so what follows is measured from now. Supported API: call it between phases that should each get the full allowance (analyzer.context().gas.reset()).  flowR calls it itself whenever a new analysis begins, so a caller only has to split its *own* phases. Operations in flight keep their contingent, as restarting a running traversal's clock would defeat the guard bounding it.">FlowrAnalyzerGasContext::<i>reset</i></span></code></a> on the
 writeable context (`analyzer.context().gas.reset()`). To bound a single call, pass `gas` overrides to it
 (`analyzer.query([...], { gas: { slicer: { critical: 30_000 } } })`) or derive a bounded view with
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L189"><code>FlowrAnalyzerGasContext::<i>scope</i></code></a>.
 
-
 > [!NOTE]
 > Gas is disabled for every feature by default, and with no gas plugins registered
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L276"><code>FlowrAnalyzerGasContext::<i>checkGas</i></code></a> returns `GasLevel.Normal` without measuring anything.
 > See the [gas section of the Core wiki page](https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard) for the levels, the configuration, and how to write a gas plugin.
-
 
 <h3 id="Incremental_Analysis_Context">Incremental Analysis Context</h3>
 
@@ -766,7 +741,6 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
    
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41">src/project/cache/flowr-cache.ts#L41</a>)</i>
      
-
     </details>
 
 This context is not an analysis-result cache by itself.
@@ -808,7 +782,6 @@ For one file, the incremental state follows a fixed lifecycle:
 
 This context is planned to also support future incremental dataflow graph computation.
 
-
 <h2 id="Caching">Caching</h2>
 
 To speed up analyses, flowR provides a caching mechanism that stores intermediate results of the analysis.
@@ -816,5 +789,5 @@ The cache is maintained by the <a href="https://github.com/flowr-analysis/flowr/
 Underlying, it relies on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L97"><code><span title="**Please note:** The PipelineExecutor is now considered to be a rather low-level API for flowR. While it still works and is the basis for all other layers, we strongly recommend using the FlowrAnalyzer and its builder to create and use an analyzer instance that is pre-configured for your use-case. The pipeline executor allows to execute arbitrary pipelines in a step-by-step fashion. If you are not...">PipelineExecutor</span></code></a> to cache results of different pipeline stages.
 
 Usually, you do not have to worry about the cache, as it is managed automatically by the analyzer.
-If you want to overwrite cache information, the analysis methods in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> (see [Conducting Analyses](#Conducting_Analyses) above)
+If you want to overwrite cache information, the analysis methods in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> (see [Conducting Analyses](#Conducting_Analyses) above)
 usually provide an optional `force` parameter to control whether to use the cache or recompute the results.

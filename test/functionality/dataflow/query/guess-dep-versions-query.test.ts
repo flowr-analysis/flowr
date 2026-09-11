@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { label } from '../../_helper/label';
 import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type GuessScenario } from '../../_helper/guess-dep-versions';
 import { FlowrConfig } from '../../../../src/config';
@@ -89,7 +90,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res, 'zoo')?.used).toBe(true);
 	});
 
-	test('an S3 method registered for a class the sigdb marks as owned marks that package as used (no direct call)', async() => {
+	test(label('an S3 method registered for a class the sigdb marks as owned marks that package as used (no direct call)', ['oop-class-dependency-attribution', 'class-owner-s3'], ['query']), async() => {
 		// mirrors tseries's `S3method("as.irts","zoo")`: the analyzed project never calls zoo directly, but its own
 		// NAMESPACE registers a method for class `zoo`, which the sigdb says the `zoo` package OWNS (it exports a
 		// same-named constructor `zoo` and registers an S3 method for it)
@@ -100,7 +101,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res, 'zoo')?.used).toBe(true);
 	});
 
-	test('a class owned by a declared but never called dependency is resolved without scanning the database', async() => {
+	test(label('a class owned by a declared but never called dependency is resolved without scanning the database', ['oop-class-dependency-attribution', 'class-owner-s3'], ['query']), async() => {
 		// `dbpkg` also owns the class, and comes first in the database; the declared `zoo` is the answer that is in play
 		const res = await guessWithNamespace({
 			code:     'x <- 1',
@@ -114,7 +115,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res, 'dbpkg')).toBeUndefined();
 	});
 
-	test('an S3 method registered for a class NOT owned by any package does not mark anything used', async() => {
+	test(label('an S3 method registered for a class NOT owned by any package does not mark anything used', ['oop-class-dependency-attribution', 'class-owner-s3'], ['query']), async() => {
 		// force `zoo` into the guessed set (it is neither called nor a declared dependency) so `used` is reported at all
 		const res = await guessWithNamespace({
 			code:     'x <- 1',
@@ -125,7 +126,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res, 'zoo')?.used).toBe(false);
 	});
 
-	test('a bare class-name string in code does NOT introduce an unrelated package (weak evidence)', async() => {
+	test(label('a bare class-name string in code does NOT introduce an unrelated package (weak evidence)', ['oop-class-dependency-attribution', 'class-owner-s3'], ['query']), async() => {
 		const analyzer = await buildGuessAnalyzer(ts, {
 			code:     'inherits(x, "zoo")',
 			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { zoo: [] }, s3Classes: ['zoo'] } } } }
@@ -134,9 +135,22 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res['guess-dep-versions'], 'zoo')).toBeUndefined();
 	});
 
-	test('a class used in code narrows an already-known dependency by the constructor that first carries it', async() => {
+	test(label('a class used in code narrows an already-known dependency by the constructor that first carries it', ['oop-class-dependency-attribution', 'class-owner-s3'], ['query']), async() => {
 		const dep = await guessDep(ts, {
 			code:     'library(zoo)\ninherits(x, "yearmon")',
+			packages: { zoo: { versions: {
+				'1.0': { date: '2019-01-01', fns: { zoo: [] }, s3Classes: ['zoo'] },
+				'2.0': { date: '2020-01-01', fns: { zoo: [], yearmon: [] }, s3Classes: ['zoo', 'yearmon'] }
+			} } }
+		}, 'zoo');
+		expect(dep?.used).toBe(true);
+		expect(dep?.minVersion).toBe('2.0');
+		expect(dep?.candidates).not.toContain('1.0');
+	});
+
+	test(label('a class named where an object is constructed counts as a use of that class', ['oop-class-dependency-attribution', 'class-owner-s3', 'oop-s3-construction'], ['query']), async() => {
+		const dep = await guessDep(ts, {
+			code:     'library(zoo)\nx <- structure(1, class = "yearmon")',
 			packages: { zoo: { versions: {
 				'1.0': { date: '2019-01-01', fns: { zoo: [] }, s3Classes: ['zoo'] },
 				'2.0': { date: '2020-01-01', fns: { zoo: [], yearmon: [] }, s3Classes: ['zoo', 'yearmon'] }
@@ -772,8 +786,11 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		const assignments = (await runGuess(ts, scenario)).assignments;
 		expect(assignments).toBeDefined();
 		expect(assignments).not.toContainEqual({ versions: { pkgA: '2.0.0', pkgB: '1.0.0' } });
+		expect(assignments?.length ?? 0).toBeGreaterThan(0);
 		for(const { versions } of assignments ?? []) {
-			expect(versions.pkgA === '2.0.0' ? versions.pkgB : '2.0.0').toBe('2.0.0');
+			if(versions.pkgA === '2.0.0') {
+				expect(versions.pkgB).toBe('2.0.0');
+			}
 		}
 	});
 

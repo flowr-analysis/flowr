@@ -89,7 +89,7 @@ jobs:
           bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
       - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           # only the bundles, the shards unpacked next to them are re-derived on demand
           path: ~/.cache/flowr/sigdb/bundles
@@ -99,12 +99,12 @@ jobs:
         # without it every sigdb-backed page says "No signature database is loaded" instead of showing a result
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sync:sigdb
+        run: npm run sigdb:sync
 
       # the release workflow produces the data but does not commit it, so it lands in the same commit as the pages
       - name: "⬇️ Get the Benchmark Data from the Release Run"
         if: ${{ github.event_name == 'workflow_run' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         continue-on-error: true
         with:
           name: benchmark-data
@@ -124,7 +124,7 @@ jobs:
           # so the documentation job builds that one straight onto gh-pages instead
           FLOWR_LANDING_ONLY=1 npm run gen:landing
           # the signature browser is gitignored on purpose (megabytes); only the page and its samples are committed
-          for LANDING in index.html wiki/landing/index.html; do
+          for LANDING in index.html wiki/landing/index.html wiki/capabilities/index.html; do
               if [ -n "$(git status --porcelain -- "$LANDING")" ]; then CHANGED_FILES+=("$LANDING"); fi
           done
           # read in everything from /tmp/flowr-wiki-changed-files.txt and add to CHANGED_FILES
@@ -282,7 +282,7 @@ jobs:
         run: npm ci
 
       - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           # only the bundles, the shards unpacked next to them are re-derived on demand
           path: ~/.cache/flowr/sigdb/bundles
@@ -292,7 +292,7 @@ jobs:
         # the signature browser is built from it; without the shards it is skipped and the page 404s
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sync:sigdb
+        run: npm run sigdb:sync
 
       - name: "🛠️ Build the documentation"
         run: bash .github/workflows/scripts/run-flowr-command.sh doc

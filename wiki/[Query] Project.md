@@ -1,48 +1,35 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-23, 13:40:41 UTC (v2.14.3), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Project Query">Project Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns information about the analyzed project\
 _This query is requested with the type `project`._
 
-
 This query returns the information about the analyzed project.
 If present, it will incorporate plugins to, e.g., extract author and license information from R package DESCRIPTION files.
-
-
-
 
 ```json
 [ { "type": "project" } ]
 ```
 
-
 (This can be shortened to `@project` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
 Query: **project** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ Kind: unknown\
 &nbsp;&nbsp;&nbsp;╰ Dataflow not performed (run `:df#`, then re-run this query, or pass "withDf": true)\
-_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
 {
   "project": {
-    ".meta": {
-      "timing": 0
-    },
+    ".meta": {},
     "files": [],
     "roleCounts": {
       "description": 0,
@@ -63,21 +50,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     },
     "kind": "unknown"
   },
-  ".meta": {
-    "timing": 1
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 x + 1
@@ -87,10 +66,8 @@ x + 1
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _3.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -114,21 +91,10 @@ flowchart LR
     linkStyle 4 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

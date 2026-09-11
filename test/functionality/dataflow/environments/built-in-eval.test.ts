@@ -7,6 +7,7 @@ import { CallProp, InputProps } from '../../../../src/dataflow/environments/buil
 import { ComparisonOps, LogicalOps } from '../../../../src/dataflow/eval/resolve/resolve-operators';
 import { NumericFns } from '../../../../src/dataflow/eval/resolve/resolve-numbers';
 import { StringFns } from '../../../../src/dataflow/eval/resolve/resolve-strings';
+import { GetFns } from '../../../../src/dataflow/eval/resolve/resolve-get';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { label } from '../../_helper/label';
 
@@ -22,7 +23,8 @@ const FoldedBy: Record<BuiltInEvalName, readonly string[]> = {
 	[BuiltInEvalName.StringFn]:   Object.keys(StringFns),
 	[BuiltInEvalName.Seq]:        [':'],
 	[BuiltInEvalName.Vector]:     ['c'],
-	[BuiltInEvalName.Group]:      ['(']
+	[BuiltInEvalName.Group]:      ['(', '{'],
+	[BuiltInEvalName.Get]:        Object.keys(GetFns)
 };
 
 const handlerOf = new Map(Object.entries(BuiltInEvalHandlerMapper).map(([name, handler]) => [handler, name as BuiltInEvalName]));

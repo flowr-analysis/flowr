@@ -30,7 +30,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				certainty:     LintingRuleCertainty.Exact,
 				description:   'Always Throws',
 				tags:          [LintingRuleTag.Experimental],
-				defaultConfig: {}
+				defaultConfig: () => ({})
 			}
 		} as const satisfies LintingRule<LintingResult, MergeableRecord, MergeableRecord>;
 

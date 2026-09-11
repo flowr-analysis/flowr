@@ -42,7 +42,8 @@ export default defineConfig({
 		exclude: [
 			...configDefaults.exclude,
 			'dist/**',
-			'test/system-tests/**'
+			'test/system-tests/**',
+			'test/mutations/**'
 		],
 		include: ['test/functionality/**/*.test.ts']
 	},

@@ -4,7 +4,7 @@ import { assertCfg } from '../../_helper/controlflow/assert-control-flow-graph';
 import { ControlFlowGraph } from '../../../../src/control-flow/control-flow-graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { canReach } from '../../../../src/control-flow/simple-visitor';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 assumeLoadedPackages('foreach', 'rlang');
@@ -12,7 +12,7 @@ assumeLoadedPackages('foreach', 'rlang');
 interface CfgDeadCodeArgs {
 	readonly reachableFromStart:   readonly NodeId[];
 	readonly unreachableFromStart: readonly NodeId[];
-	readonly ids?:                 readonly SupportedFlowrCapabilityId[];
+	readonly ids?:                 readonly FlowrCapabilityId[];
 }
 
 describe('Control Flow Graph', withTreeSitter(parser => {

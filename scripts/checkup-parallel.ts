@@ -1,6 +1,5 @@
-// Run the checkup jobs (lint, functionality + system tests, wiki, docker) concurrently, each to a log file,
-// with live progress and a structured summary. Exits non-zero if any fails.
-//   npm run checkup [-- --no-docker | lint tests ...]
+// Runs checkup jobs (lint, tests, wiki, docker) concurrently to log files; exits non-zero if any fails.
+//   npm run checkup [-- --no-docker | lint tests system mutations wiki labels pages docker]
 
 import { spawn } from 'child_process';
 import fs from 'fs';
@@ -30,13 +29,14 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 /** every job: a stable id, a label, and the argv to run (all forced into no-watch / one-shot mode) */
 const allJobs: Job[] = [
-	{ id: 'lint',   label: 'lint',                 argv: [npm, 'run', 'lint'] },
-	{ id: 'tests',  label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'] },
-	{ id: 'system', label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'] },
-	{ id: 'wiki',   label: 'wiki generation',      argv: [npm, 'run', 'wiki'] },
-	{ id: 'labels', label: 'generic labels',       argv: [npm, 'run', 'check:generic-labels'] },
-	{ id: 'pages',  label: 'landing pages',        argv: [npm, 'run', 'gen:landing'] },
-	{ id: 'docker', label: 'docker build + smoke', argv: [npm, 'run', 'test:docker'] }
+	{ id: 'lint',      label: 'lint',                 argv: [npm, 'run', 'lint'] },
+	{ id: 'tests',     label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'] },
+	{ id: 'system',    label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'] },
+	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'] },
+	{ id: 'wiki',      label: 'wiki generation',      argv: [npm, 'run', 'wiki'] },
+	{ id: 'labels',    label: 'generic labels',       argv: [npm, 'run', 'check:generic-labels'] },
+	{ id: 'pages',     label: 'landing pages',        argv: [npm, 'run', 'gen:landing'] },
+	{ id: 'docker',    label: 'docker build + smoke', argv: [npm, 'run', 'test:docker'] }
 ];
 
 const args = process.argv.slice(2);
@@ -53,10 +53,8 @@ if(jobs.length === 0) {
 	process.exit(2);
 }
 
-// the jobs run concurrently and the vitest ones (tests, system) would each spawn a worker per core, so the
-// combined pools would heavily oversubscribe the machine. Split the cores across the concurrently-running
-// vitest jobs (keeping ~1 core of headroom for lint/wiki/docker + this orchestrator) via `--maxWorkers`.
-const vitestIds = new Set(['tests', 'system']);
+// split cores across concurrent vitest jobs via --maxWorkers so they don't oversubscribe the machine.
+const vitestIds = new Set(['tests', 'system', 'mutations']);
 const cores = Math.max(1, os.availableParallelism?.() ?? os.cpus().length);
 const runningVitest = Math.max(1, jobs.filter(j => vitestIds.has(j.id)).length);
 const perVitest = Math.max(1, Math.floor((cores - 1) / runningVitest));

@@ -11,9 +11,9 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig, lintingRuleConfig);
+		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig(input.inspectContext()), lintingRuleConfig);
 
-		const ruleSearch = rule.createSearch(fullConfig);
+		const ruleSearch = rule.createSearch(fullConfig, input);
 
 		const searchStart = Date.now();
 		const searchResult = await runSearch(ruleSearch, input);

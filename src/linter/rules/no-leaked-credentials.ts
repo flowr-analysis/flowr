@@ -87,9 +87,9 @@ export const NO_LEAKED_CREDENTIALS = {
 		description:   'Detects hardcoded credentials assigned to variables whose names suggest they hold passwords, tokens, or API keys, or whose values match known credential formats (AWS, GitHub, Slack, Stripe, SSH).',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Experimental, LintingRuleTag.Smell],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
+		defaultConfig: () => ({
 			credentialNamePattern:  defaultCredentialNamePattern,
 			credentialValuePattern: defaultCredentialValuePattern
-		}
+		})
 	}
 } as const satisfies LintingRule<NoLeakedCredentialsResult, NoLeakedCredentialsMetadata, NoLeakedCredentialsConfig>;

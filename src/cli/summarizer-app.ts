@@ -12,12 +12,9 @@ export interface SummarizerCliOptions {
 	verbose:         boolean
 	help:            boolean
 	'ultimate-only': boolean
-	categorize:      boolean
 	input:           string
-	type:            string
 	output?:         string
 	graph?:          boolean
-	'project-skip':  number
 }
 
 const options = processCommandLineArgs<SummarizerCliOptions>('summarizer', ['input'], {

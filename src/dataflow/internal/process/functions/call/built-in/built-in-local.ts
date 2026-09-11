@@ -2,6 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
+import { EdgeType } from '../../../../../graph/edge';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -14,7 +15,7 @@ import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../enviro
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
 
 
@@ -46,14 +47,16 @@ export function processLocal<OtherInfo>(
 		'...':              '...'
 	};
 	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
-	const env = unpackArg(RArgument.getWithId(args, argMaps.get('env')?.[0]));
+	const envArg = RArgument.getWithId(args, argMaps.get('env')?.[0]);
+	const env = unpackArg(envArg);
 	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
 	if(!expr) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* when envir resolves to a tracked environment, evaluate expr inside it */
-	const envirResolution = env ? resolveEnvirArg(args, data, config.args.env) : undefined;
+	const envirRouting = envArg ? resolveArgToEnvirOrAmbiguous(envArg, data) : undefined;
+	const envirResolution = envirOf(envirRouting);
 
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
 	if(ControlFlow.alwaysExits(dfEnv)) {
@@ -78,7 +81,7 @@ export function processLocal<OtherInfo>(
 		rootId,
 		name,
 		data,
-		argumentProcessResult: [dfExpr, dfEnv],
+		argumentProcessResult: env ? [dfExpr, dfEnv] : [dfExpr],
 		origin:                BuiltInProcName.Local
 	});
 
@@ -87,6 +90,9 @@ export function processLocal<OtherInfo>(
 	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
 		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
 	);
+	for(const escaped of escaping) {
+		dfExpr.graph.addEdge(escaped.nodeId, rootId, EdgeType.Reads);
+	}
 
 	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
@@ -105,9 +111,7 @@ export function processLocal<OtherInfo>(
 		unknownReferences: []
 	};
 
-	/* move all definitions made inside the body into the custom env's tracked state */
-	if(envirResolution) {
-		return routeWrittenToCustomEnv(baseResult, envirResolution.envDef, rootId);
-	}
-	return baseResult;
+	unknownIfAmbiguous(envirRouting, baseResult, rootId);
+
+	return envirResolution ? routeWrittenToEnvir(baseResult, envirResolution, rootId, data.environment) : baseResult;
 }

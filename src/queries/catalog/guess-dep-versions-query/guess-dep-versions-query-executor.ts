@@ -1,4 +1,5 @@
 import type { Range } from 'semver';
+import { compareByCodeUnit } from '../../../util/text/strings';
 import type { BasicQueryData } from '../../base-query-format';
 import {
 	DefaultCandidateCap,
@@ -339,7 +340,7 @@ export async function executeGuessDepVersionsQuery(
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
-		const orphanCalls = [...orphans.attributed.get(g.name) ?? []].sort(([a], [b]) => a.localeCompare(b));
+		const orphanCalls = [...orphans.attributed.get(g.name) ?? []].sort(([a], [b]) => compareByCodeUnit(a, b));
 		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, {
 			used:               usage.has(g.name),
 			linkedWith:         linkedWith.get(g.name),

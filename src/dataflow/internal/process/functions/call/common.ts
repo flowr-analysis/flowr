@@ -110,6 +110,19 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
 }
 
 /**
+ * Whether `arg` is the value the pipe handed to the call `functionRootId`, which {@link processNamedCall}
+ * spliced into its arguments. The pipe processes and links that value itself, so processing it here again
+ * would duplicate it.
+ */
+export function isPipedArgument<OtherInfo>(
+	arg:            unknown,
+	functionRootId: NodeId,
+	data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
+): boolean {
+	return data.pipedArgument?.rootId === functionRootId && data.pipedArgument.argument === arg;
+}
+
+/**
  * Processes all arguments for a function call, updating the given final graph and environment.
  */
 export function processAllArguments<OtherInfo>(
@@ -128,6 +141,10 @@ export function processAllArguments<OtherInfo>(
 		data = patchData?.(data, i) ?? data;
 		if(RArgument.isEmpty(arg)) {
 			callArgs.push(EmptyArgument);
+			processedArguments.push(undefined);
+			continue;
+		}
+		if(isPipedArgument(arg, functionRootId, data)) {
 			processedArguments.push(undefined);
 			continue;
 		}

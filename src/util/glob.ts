@@ -3,7 +3,7 @@
  * @module
  */
 import type ignore from 'ignore';
-import { toPosixPath } from './files';
+import { RPath } from './files';
 import { log } from './log';
 
 const rbuildignoreLog = log.getSubLogger({ name: 'rbuildignore' });
@@ -17,7 +17,7 @@ export function loadIgnore(): typeof ignore {
 
 /** `ignore` rejects absolute and windows paths */
 function relative(filePath: string): string {
-	return toPosixPath(filePath).replace(/^([a-zA-Z]:)?\/+/, '');
+	return RPath.of(filePath).replace(/^([a-zA-Z]:)?\/+/, '');
 }
 
 /**

@@ -127,9 +127,13 @@ const VersionScript = `<script>
 	})();
 </script>`;
 
+/** the version link every page shows; hover triggers a GitHub lookup for the rest */
+const VersionLink = '<a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a>';
+
 /** Fills the version placeholders of a page template with the given marker. */
 export function fillVersion(page: string, marker: VersionMarker): string {
 	return page
+		.replaceAll('<!--VERSION-LINK-->', VersionLink)
 		.replaceAll('<!--VERSION-HREF-->', marker.href)
 		.replaceAll('<!--VERSION-TITLE-->', marker.title)
 		.replaceAll('<!--VERSION-RELEASE-->', marker.release)

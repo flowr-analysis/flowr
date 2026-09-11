@@ -1,4 +1,5 @@
 import { afterAll, assert, beforeAll, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -13,13 +14,13 @@ import { ctxWithFiles } from './plugin-test-helper';
 describe('Rprofile-file', function() {
 	const ctxWith = (...files: string[]) => ctxWithFiles(new FlowrAnalyzerRprofileFilePlugin(), ...files);
 
-	test('.Rprofile and Rprofile.site are tagged Startup and Source', () => {
+	test(label('.Rprofile and Rprofile.site are tagged Startup and Source', ['project-startup-files'], ['other']), () => {
 		const ctx = ctxWith('.Rprofile', 'Rprofile.site');
 		assert.sameMembers(ctx.files.getFilesByRole(FileRole.Startup).map(f => f.path()), ['.Rprofile', 'Rprofile.site']);
 		assert.sameMembers(ctx.files.getFilesByRole(FileRole.Source).map(f => f.path()), ['.Rprofile', 'Rprofile.site']);
 	});
 
-	test('.Renviron and Renviron.site are tagged Environment but not Source', () => {
+	test(label('.Renviron and Renviron.site are tagged Environment but not Source', ['project-startup-files'], ['other']), () => {
 		const ctx = ctxWith('.Renviron', 'Renviron.site');
 		assert.sameMembers(ctx.files.getFilesByRole(FileRole.Environment).map(f => f.path()), ['.Renviron', 'Renviron.site']);
 		assert.lengthOf(ctx.files.getFilesByRole(FileRole.Source), 0);
@@ -71,7 +72,7 @@ describe('Rprofile-file', function() {
 			assert.lengthOf(ctx.files.getFilesByRole(FileRole.Environment), 0);
 		});
 
-		test('a discovered .Rprofile is loaded first', async() => {
+		test(label('a discovered .Rprofile is loaded first', ['project-startup-files'], ['other']), async() => {
 			const ctx = await analyze();
 			const order = ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? path.basename(r.content) : '<inline>');
 			assert.strictEqual(order[0], '.Rprofile');

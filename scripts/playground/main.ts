@@ -4,7 +4,7 @@
  */
 import { EditorView, basicSetup } from 'codemirror';
 import { Decoration, hoverTooltip, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import { StateEffect, StateField, type EditorState } from '@codemirror/state';
+import { StateEffect, StateField, type EditorState, type StateEffectType, type Transaction } from '@codemirror/state';
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { HighlightStyle, StreamLanguage, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { highlightCode, tags } from '@lezer/highlight';
@@ -15,14 +15,13 @@ import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree
 import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { stringifyValue } from '../../src/dataflow/eval/values/r-value';
 import { LintingRules } from '../../src/linter/linter-rules';
-import { LintingPrettyPrintContext } from '../../src/linter/linter-format';
 import type { LintQuickFix } from '../../src/linter/linter-format';
 import { LintQuickFixes } from '../../src/linter/linter-fix';
 import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../../src/dataflow/environments/default-builtin-config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
 import { Identifier } from '../../src/dataflow/environments/identifier';
-import { DefaultDependencyCategories } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { DefaultDependencyCategoryNames } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { SliceDirection } from '../../src/util/slice-direction';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
@@ -39,6 +38,8 @@ import { cfgToMermaid } from '../../src/util/mermaid/cfg';
 import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
 import treeSitterWasm from '../../node_modules/web-tree-sitter/tree-sitter.wasm';
 import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
+import { blank, el } from '../page-lib/dom';
+import { explain } from '../page-lib/lint-text';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -64,23 +65,28 @@ const setShown = StateEffect.define<{ ranges: readonly ShownRange[], fresh: bool
 /** a place a link points at; every one of them is shown in the one colour a highlight has */
 interface ShownRange { from: number, to: number, line: boolean }
 
-/** the lines the panel row under the pointer stands for, lit up in the code */
-const linkMarks = StateField.define<DecorationSet>({
-	create: () => Decoration.none,
-	update(marks, tr) {
-		marks = marks.map(tr.changes);
-		for(const effect of tr.effects) {
-			if(effect.is(setLinked)) {
-				const lines = (effect.value ?? []).filter(l => l >= 1 && l <= tr.state.doc.lines).sort((a, b) => a - b);
-				marks = lines.length === 0 ? Decoration.none : Decoration.set(lines.map(l => {
-					const doc = tr.state.doc.line(l);
-					return Decoration.line({ class: 'cm-linked' }).range(doc.from);
-				}), true);
+function marksFrom<T>(effect: StateEffectType<T>, draw: (value: T, tr: Transaction) => DecorationSet): StateField<DecorationSet> {
+	return StateField.define<DecorationSet>({
+		create: () => Decoration.none,
+		update(marks, tr) {
+			marks = marks.map(tr.changes);
+			for(const change of tr.effects) {
+				if(change.is(effect)) {
+					marks = draw(change.value, tr);
+				}
 			}
-		}
-		return marks;
-	},
-	provide: field => EditorView.decorations.from(field)
+			return marks;
+		},
+		provide: field => EditorView.decorations.from(field)
+	});
+}
+
+const linkMarks = marksFrom(setLinked, (value, tr) => {
+	const lines = (value ?? []).filter(l => l >= 1 && l <= tr.state.doc.lines).sort((a, b) => a - b);
+	return lines.length === 0 ? Decoration.none : Decoration.set(lines.map(l => {
+		const doc = tr.state.doc.line(l);
+		return Decoration.line({ class: 'cm-linked' }).range(doc.from);
+	}), true);
 });
 
 /** lights up the lines a panel row stands for, and the row itself, while the pointer rests on it */
@@ -107,58 +113,23 @@ function linkRow(cells: readonly HTMLElement[], lines: readonly (number | undefi
 	return cells;
 }
 
-const lintMarks = StateField.define<DecorationSet>({
-	create: () => Decoration.none,
-	update(marks, tr) {
-		marks = marks.map(tr.changes);
-		for(const effect of tr.effects) {
-			if(effect.is(setLints)) {
-				marks = Decoration.set(effect.value.map(l => Decoration.mark({ class: 'cm-lint' }).range(l.from, l.to)), true);
-			}
-		}
-		return marks;
-	},
-	provide: field => EditorView.decorations.from(field)
-});
+const lintMarks = marksFrom(setLints, value =>
+	Decoration.set(value.map(l => Decoration.mark({ class: 'cm-lint' }).range(l.from, l.to)), true));
 
 /** what a link points at, kept apart from every mark an analysis produces so nothing overwrites it */
-const shownMarks = StateField.define<DecorationSet>({
-	create: () => Decoration.none,
-	update(marks, tr) {
-		marks = marks.map(tr.changes);
-		for(const effect of tr.effects) {
-			if(effect.is(setShown)) {
-				/* the mark says so once as the page opens, which is when nobody knows yet where to look */
-				const fresh = effect.value.fresh ? ' fresh' : '';
-				marks = Decoration.set(effect.value.ranges.map(at => at.line
-					? Decoration.line({ class: `cm-shown-line${fresh}` }).range(at.from)
-					: Decoration.mark({ class: `cm-shown${fresh}` }).range(at.from, at.to)), true);
-			}
-		}
-		return marks;
-	},
-	provide: field => EditorView.decorations.from(field)
+const shownMarks = marksFrom(setShown, value => {
+	const fresh = value.fresh ? ' fresh' : '';
+	return Decoration.set(value.ranges.map(at => at.line
+		? Decoration.line({ class: `cm-shown-line${fresh}` }).range(at.from)
+		: Decoration.mark({ class: `cm-shown${fresh}` }).range(at.from, at.to)), true);
 });
 
 /** lines outside the current slice step back, so what is left reads as the answer */
-const sliceMarks = StateField.define<DecorationSet>({
-	create: () => Decoration.none,
-	update(marks, tr) {
-		marks = marks.map(tr.changes);
-		for(const effect of tr.effects) {
-			if(effect.is(setSlice)) {
-				const kept = effect.value;
-				marks = kept === undefined ? Decoration.none : Decoration.set(
-					Array.from({ length: tr.state.doc.lines }, (_, i) => i + 1)
-						.filter(line => !kept.includes(line) && tr.state.doc.line(line).text.trim().length > 0)
-						.map(line => Decoration.line({ class: 'cm-outside' }).range(tr.state.doc.line(line).from)),
-					true);
-			}
-		}
-		return marks;
-	},
-	provide: field => EditorView.decorations.from(field)
-});
+const sliceMarks = marksFrom(setSlice, (kept, tr) => kept === undefined ? Decoration.none : Decoration.set(
+	Array.from({ length: tr.state.doc.lines }, (_, i) => i + 1)
+		.filter(line => !kept.includes(line) && tr.state.doc.line(line).text.trim().length > 0)
+		.map(line => Decoration.line({ class: 'cm-outside' }).range(tr.state.doc.line(line).from)),
+	true));
 
 /* CodeMirror ships a light theme of its own; these are the page's own colours, so both modes match */
 const look = EditorView.theme({
@@ -297,8 +268,7 @@ function lintsOver(from: number, to: number): readonly { rule: string, message: 
 
 /** a finding as the page writes it: the rule as its own chip, and what it said next to it */
 function complaint(found: { rule: string, message: string }, cls: string): HTMLElement {
-	const at = document.createElement('div');
-	at.className = cls;
+	const at = el('div', cls);
 	const chip = tag(found.rule, 'rule');
 	chip.dataset.category = category(found.rule);
 	at.append(chip, document.createTextNode(found.message.replace(`${found.rule}: `, '')));
@@ -428,12 +398,8 @@ function signatureOf(name: string, pkg?: string): Signature | undefined {
 
 /** a plain outward link, in the same shape as the little labels around it */
 function link(text: string, href: string, cls: string): HTMLElement {
-	const at = document.createElement('a');
-	at.className = cls;
-	at.textContent = text;
+	const at = blank(el('a', cls, text));
 	at.href = href;
-	at.target = '_blank';
-	at.rel = 'noopener';
 	return at;
 }
 
@@ -448,13 +414,9 @@ function showSignature(name: string, known: ReturnType<typeof signatureOf>): voi
 	if(known === undefined) {
 		return;
 	}
-	const head = document.createElement('h3');
-	head.textContent = 'Signature';
-	const call = document.createElement('div');
-	call.className = 'scall';
-	call.textContent = known.call;
-	const about = document.createElement('div');
-	about.className = 'sabout';
+	const head = el('h3', undefined, 'Signature');
+	const call = el('div', 'scall', known.call);
+	const about = el('div', 'sabout');
 	for(const prop of known.props.split(' ').filter(p => p.length > 0)) {
 		about.append(tag(prop.replace(/-/g, ' '), 'prop'));
 	}
@@ -530,15 +492,10 @@ function packageHead(info: PackageInfo): string {
 
 /** the hover card of a package: its version, what came with it, and what the linter said here */
 function packageTip(info: PackageInfo, complaints: readonly { rule: string, message: string }[]): HTMLElement {
-	const dom = document.createElement('div');
-	dom.className = 'cm-valuetip';
-	const head = document.createElement('div');
-	head.className = 'tcall';
-	head.textContent = packageHead(info);
+	const dom = el('div', 'cm-valuetip');
+	const head = el('div', 'tcall', packageHead(info));
 	dom.append(head);
-	const about = document.createElement('div');
-	about.className = 'tabout';
-	about.textContent = packageFacts(info).join(' · ');
+	const about = el('div', 'tabout', packageFacts(info).join(' · '));
 	dom.append(about);
 	for(const found of complaints) {
 		dom.append(complaint(found, 'tlint'));
@@ -554,13 +511,9 @@ function showPackage(info: PackageInfo): void {
 	}
 	at.replaceChildren();
 	at.hidden = false;
-	const head = document.createElement('h3');
-	head.textContent = 'Package';
-	const call = document.createElement('div');
-	call.className = 'scall';
-	call.textContent = packageHead(info);
-	const about = document.createElement('div');
-	about.className = 'sabout';
+	const head = el('h3', undefined, 'Package');
+	const call = el('div', 'scall', packageHead(info));
+	const about = el('div', 'sabout');
 	for(const fact of packageFacts(info)) {
 		about.append(tag(fact, 'prop'));
 	}
@@ -570,12 +523,9 @@ function showPackage(info: PackageInfo): void {
 
 /** the hover card: what the database knows about the name, then what flowR made of this script */
 function tip(known: ReturnType<typeof signatureOf>, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
-	const dom = document.createElement('div');
-	dom.className = 'cm-valuetip';
+	const dom = el('div', 'cm-valuetip');
 	const line = (text: string, cls: string): void => {
-		const at = document.createElement('div');
-		at.className = cls;
-		at.textContent = text;
+		const at = el('div', cls, text);
 		dom.append(at);
 	};
 	if(known !== undefined) {
@@ -611,15 +561,10 @@ function showPointed(name: string, said: string | undefined, known?: ReturnType<
 		return;
 	}
 	at.replaceChildren();
-	const label = document.createElement('a');
-	label.className = 'pname';
-	label.textContent = name;
+	const label = blank(el('a', 'pname', name));
 	label.href = `../sigdb/?q=${encodeURIComponent(name.split('$').pop() ?? name)}`;
-	label.target = '_blank';
-	label.rel = 'noopener';
 	label.title = 'look this name up in the signature database';
-	const value = document.createElement('span');
-	value.className = 'pvalue';
+	const value = el('span', 'pvalue');
 	/* a name flowR cannot put a value on is still a name it knows something about: what it calls, and
 	   from where. Only when there is neither is there nothing to say. */
 	value.textContent = said ?? (known === undefined ? 'nothing known about it'
@@ -802,16 +747,11 @@ const configTips = hoverTooltip((view, pos) => {
 		end:    key.to,
 		above:  true,
 		create: () => {
-			const dom = document.createElement('div');
-			dom.className = 'cm-valuetip';
-			const head = document.createElement('div');
-			head.className = 'tcall';
-			head.textContent = `${key.path.join('.')}${info.t === undefined ? '' : `: ${info.t}`}`;
+			const dom = el('div', 'cm-valuetip');
+			const head = el('div', 'tcall', `${key.path.join('.')}${info.t === undefined ? '' : `: ${info.t}`}`);
 			dom.append(head);
 			if(said.length > 0) {
-				const rest = document.createElement('div');
-				rest.className = 'tabout';
-				rest.textContent = said;
+				const rest = el('div', 'tabout', said);
 				dom.append(rest);
 			}
 			return { dom };
@@ -819,7 +759,6 @@ const configTips = hoverTooltip((view, pos) => {
 	};
 });
 
-/* the configuration flowR runs with, as JSON: invalid text keeps the last one that worked */
 /**
  * A short script and a changed configuration live in the page's own url, so a link is the example: paste it
  * to someone and they open what you were looking at. Only what stays within {@link MaxShared} is kept, since
@@ -1012,16 +951,16 @@ document.getElementById('configreset')?.addEventListener('click', () => {
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
 });
 
-for(const tab of document.querySelectorAll('.tab')) {
+for(const tab of document.querySelectorAll<HTMLElement>('.tab')) {
 	tab.addEventListener('click', () => {
-		for(const other of document.querySelectorAll('.tab')) {
+		for(const other of document.querySelectorAll<HTMLElement>('.tab')) {
 			const wanted = other === tab;
 			other.setAttribute('aria-selected', String(wanted));
-			const pane = document.getElementById(other.getAttribute('data-tab') ?? '');
+			const pane = document.getElementById(other.dataset.tab ?? '');
 			if(pane !== null) {
 				pane.hidden = !wanted;
 			}
-			if(other.getAttribute('data-tab') === 'config') {
+			if(other.dataset.tab === 'config') {
 				/* the link and the reset only make sense next to the configuration */
 				for(const id of ['confighelp', 'configreset']) {
 					const at = document.getElementById(id);
@@ -1199,16 +1138,6 @@ function markUnderPointer(event: MouseEvent): string | undefined {
 	return targetAt(line.text, line.number, at - line.from)?.criterion ?? String(line.number);
 }
 
-
-document.getElementById('theme')?.addEventListener('click', () => {
-	const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-	const next = (document.documentElement.dataset.theme || (dark ? 'dark' : 'light')) === 'dark' ? 'light' : 'dark';
-	document.documentElement.dataset.theme = next;
-	try {
-		localStorage.setItem('flowr-theme', next);
-	} catch{ /* private mode forgets the choice */ }
-});
-
 /** the name under the cursor, as the criterion flowR slices for; the first name on the line otherwise */
 function cursorCriterion(): string | undefined {
 	const at = editor.state.selection.main.head;
@@ -1234,16 +1163,13 @@ function section(title: string, box: PlaygroundBox, aside?: string, end?: Node):
 	foldable(head, box);
 	head.append(title);
 	if(aside !== undefined) {
-		const said = document.createElement('span');
-		said.className = 'aside';
-		said.textContent = aside;
+		const said = el('span', 'aside', aside);
 		head.append(said);
 	}
 	if(end !== undefined) {
 		head.append(end);
 	}
-	const body = document.createElement('div');
-	body.className = 'sbody';
+	const body = el('div', 'sbody');
 	body.dataset.foldBody = box;
 	panel.append(head, body);
 	return body;
@@ -1309,11 +1235,8 @@ function issueUrl(): string {
 
 /* the linter is only as good as its rules, so the heading offers a way to ask for another one */
 function suggestRule(): HTMLElement {
-	const link = document.createElement('a');
-	link.className = 'suggest';
+	const link = blank(el('a', 'suggest'));
 	link.href = IssueTemplate;
-	link.target = '_blank';
-	link.rel = 'noopener';
 	/* the script travels with the report, so it is read again where the link is followed, not before */
 	link.addEventListener('mousedown', () => link.href = issueUrl());
 	link.append(document.createTextNode('suggest'), tag(' a new rule', 'wide'));
@@ -1322,17 +1245,13 @@ function suggestRule(): HTMLElement {
 }
 
 function row(...cells: (string | Node)[]): HTMLElement {
-	const line = document.createElement('div');
-	line.className = 'row';
+	const line = el('div', 'row');
 	line.append(...cells);
 	return line;
 }
 
 function tag(text: string, cls = 'kind'): HTMLElement {
-	const el = document.createElement('span');
-	el.className = cls;
-	el.textContent = text;
-	return el;
+	return el('span', cls, text);
 }
 
 /** how many dependencies of one category the panel shows before the rest are folded away */
@@ -1342,11 +1261,9 @@ const expandedKinds = new Set<string>();
 
 /** the row that stands for the dependencies of a category the panel folded away */
 function expander(kind: string, rest: number, open: boolean): HTMLElement {
-	const more = document.createElement('button');
+	const more = el('button', 'more', open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`);
 	more.type = 'button';
-	more.className = 'more';
 	more.dataset.expand = kind;
-	more.textContent = open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`;
 	more.addEventListener('click', () => toggleKind(kind));
 	return more;
 }
@@ -1369,10 +1286,7 @@ function toggleKind(kind: string, open = !expandedKinds.has(kind)): void {
 }
 
 function nothing(text: string): HTMLElement {
-	const el = document.createElement('p');
-	el.className = 'empty';
-	el.textContent = text;
-	return el;
+	return el('p', 'empty', text);
 }
 
 /**
@@ -1460,8 +1374,7 @@ function applyFixes(fixes: readonly LintQuickFix[]): void {
 
 /** the button on the lint heading, which carries out every fix the findings below offer */
 function fixButton(fixes: readonly LintQuickFix[], label: string, title: string): HTMLElement {
-	const button = document.createElement('button');
-	button.className = 'fix';
+	const button = el('button', 'fix');
 	button.type = 'button';
 	button.textContent = label;
 	button.title = title;
@@ -1471,17 +1384,6 @@ function fixButton(fixes: readonly LintQuickFix[], label: string, title: string)
 		applyFixes(fixes);
 	});
 	return button;
-}
-
-/** the finding in the linter's own words, the same text the REPL and the extension show */
-function explain(rule: string, finding: unknown, meta: unknown): string {
-	const rules = LintingRules as unknown as Record<string, { prettyPrint: Record<string, (r: never, m: never) => string> }>;
-	const print = rules[rule]?.prettyPrint;
-	if(print === undefined) {
-		return rule;
-	}
-	const say = print[LintingPrettyPrintContext.Full] ?? print[LintingPrettyPrintContext.Query];
-	return say(finding as never, meta as never).replace(/\s+at \d+\.\d+(-\d+)?/g, '').trim();
 }
 
 /** a data frame shape as a sentence: `6 rows, 2 columns (id, value)` beats the raw intervals */
@@ -1605,9 +1507,9 @@ function liveUrl(code: string): string {
 	return `https://mermaid.live/edit#base64:${toBase64(new TextEncoder().encode(state))}`;
 }
 
-for(const button of document.querySelectorAll('[data-view]')) {
+for(const button of document.querySelectorAll<HTMLElement>('[data-view]')) {
 	button.addEventListener('click', () => {
-		const which = button.getAttribute('data-view') ?? '';
+		const which = button.dataset.view ?? '';
 		/* the tab has to open on the click itself, or the browser takes it for a popup */
 		const tab = window.open('', '_blank');
 		showTook(`building the ${button.textContent ?? which}…`);
@@ -1655,21 +1557,17 @@ async function analyze(): Promise<number> {
 	lastKept = keptLines;
 	editor.dispatch({ effects: setSlice.of(dimOutside && keptLines.length > 0 ? keptLines : undefined) });
 
-	const head = document.createElement('h3');
-	head.textContent = asked === undefined ? 'Program slice' : `Program slice · ${asked}`;
+	const head = el('h3', undefined, asked === undefined ? 'Program slice' : `Program slice · ${asked}`);
 	/* the same pair the landing page offers: what this value is built from, or what depends on it */
-	const ways = document.createElement('span');
-	ways.className = 'ways';
+	const ways = el('span', 'ways');
 	ways.setAttribute('role', 'group');
 	ways.setAttribute('aria-label', 'which way to slice');
 	for(const [value, label, hint] of [
 		[SliceDirection.Backward, 'origin', 'what this value is built from'],
 		[SliceDirection.Forward, 'impact', 'what depends on this value']
 	] as const) {
-		const button = document.createElement('button');
+		const button = el('button', 'way', label);
 		button.type = 'button';
-		button.className = 'way';
-		button.textContent = label;
 		button.title = hint;
 		button.setAttribute('aria-pressed', String(value === direction));
 		button.addEventListener('click', () => {
@@ -1682,8 +1580,7 @@ async function analyze(): Promise<number> {
 		ways.append(button);
 	}
 	head.append(ways);
-	const dimmer = document.createElement('label');
-	dimmer.className = 'toggle';
+	const dimmer = el('label', 'toggle');
 	const box = document.createElement('input');
 	box.type = 'checkbox';
 	box.checked = dimOutside;
@@ -1697,15 +1594,12 @@ async function analyze(): Promise<number> {
 	foldable(head, PlaygroundBox.Slice);
 	/* the slice is built here, where the answer is, and put in below what the panel says about the script */
 	const sliceBlock = document.createDocumentFragment();
-	const sliceBody = document.createElement('div');
-	sliceBody.className = 'sbody';
+	const sliceBody = el('div', 'sbody');
 	sliceBody.dataset.foldBody = PlaygroundBox.Slice;
 	sliceBlock.append(head, sliceBody);
 	if(code !== undefined) {
-		const copy = document.createElement('button');
+		const copy = el('button', 'copy', 'copy');
 		copy.type = 'button';
-		copy.className = 'copy';
-		copy.textContent = 'copy';
 		copy.addEventListener('click', () => {
 			void navigator.clipboard?.writeText(code).then(() => {
 				copy.textContent = 'copied';
@@ -1714,8 +1608,7 @@ async function analyze(): Promise<number> {
 		});
 		head.append(copy);
 	}
-	const slice = document.createElement('div');
-	slice.className = 'card';
+	const slice = el('div', 'card');
 	const shown = document.createElement('pre');
 	if(code === undefined) {
 		shown.textContent = 'put the cursor on a name to slice for it';
@@ -1727,11 +1620,9 @@ async function analyze(): Promise<number> {
 	/* the panel is not where someone reads a whole script: what is left of the window decides how much of
 	   one it shows, and the rest waits behind the button */
 	const length = code?.split('\n').length ?? 0;
-	const more = document.createElement('button');
+	const more = el('button', 'unfold', `show all ${length} lines`);
 	more.type = 'button';
-	more.className = 'unfold';
 	more.hidden = true;
-	more.textContent = `show all ${length} lines`;
 	more.addEventListener('click', () => {
 		wholeSlice = true;
 		slice.classList.remove('folded');
@@ -1750,7 +1641,7 @@ async function analyze(): Promise<number> {
 	sliceBody.append(slice);
 
 	/* whatever the dependencies query answers with, so a new category shows up here without a second list */
-	const kinds = Object.keys(DefaultDependencyCategories);
+	const kinds = [...DefaultDependencyCategoryNames];
 	const deps: DepRow[] = kinds.flatMap(kind => (answers.dependencies?.[kind] ?? []).map(entry => {
 		const at = idMap?.get(entry.nodeId as never)?.location;
 		const call = entry.functionName === undefined ? undefined : String(Identifier.getName(entry.functionName));
@@ -1798,13 +1689,11 @@ async function analyze(): Promise<number> {
 	});
 	const depBody = section(`Dependencies: ${deps.length}`, PlaygroundBox.Deps, '(click to slice)');
 	const shownDep = (d: DepRow, part: boolean, repeat = false): HTMLElement => {
-		const what = document.createElement('span');
-		what.className = 'what';
+		const what = el('span', 'what');
 		if(d.value !== undefined) {
 			/* an implicit echo says the same `stdout` as a `print()` call, and it is worth telling the two apart */
 			if(d.implicit) {
-				const echo = document.createElement('span');
-				echo.className = 'echo';
+				const echo = el('span', 'echo');
 				echo.title = 'auto-printed: this result reaches stdout on its own';
 				echo.append(d.value);
 				what.append(echo);
@@ -1839,8 +1728,7 @@ async function analyze(): Promise<number> {
 		return line;
 	};
 	if(deps.length > 0) {
-		const rows = document.createElement('div');
-		rows.className = 'deps';
+		const rows = el('div', 'deps');
 		rows.dataset.mark = PlaygroundBox.Deps;
 		/* the query answers by category, so the rows are already in that order: this only cuts each of them
 		   down to what one can take in at a glance, and keeps the rest a click away */
@@ -1887,8 +1775,7 @@ async function analyze(): Promise<number> {
 	editor.dispatch({ effects: setLints.of(marked) });
 	shownLints = marked;
 	const fixable = found.flatMap(f => f.quickFix);
-	const acts = document.createElement('span');
-	acts.className = 'acts';
+	const acts = el('span', 'acts');
 	if(fixable.length > 0) {
 		acts.append(fixButton(fixable, `fix ${fixable.length}`,
 			[...new Set(fixable.map(fix => fix.description))].join('\n')));
@@ -1902,15 +1789,11 @@ async function analyze(): Promise<number> {
 		showMarks();
 		return took;
 	}
-	const lints = document.createElement('div');
-	lints.className = 'lints';
+	const lints = el('div', 'lints');
 	lints.dataset.mark = PlaygroundBox.Lints;
 	for(const f of found) {
-		const said = document.createElement('span');
-		said.className = 'says';
-		said.textContent = f.message;
-		const chip = document.createElement('span');
-		chip.className = 'rule';
+		const said = el('span', 'says', f.message);
+		const chip = el('span', 'rule');
 		chip.dataset.category = category(f.rule);
 		chip.append(tag(f.rule, 'rulename'));
 		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
@@ -1929,8 +1812,7 @@ async function analyze(): Promise<number> {
 		}
 		/* one element per finding, so the hover lights the whole row; the columns still line up
 		   because the row borrows the surrounding grid */
-		const line = document.createElement('div');
-		line.className = 'lint';
+		const line = el('div', 'lint');
 		/* alt-click makes a link out of this one finding, which is how a new rule gets shown off */
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'alt-click to highlight this finding in the link';
@@ -2090,19 +1972,14 @@ function say(text: string, how?: 'said' | 'bad'): void {
 	if(replOut === null || text.length === 0) {
 		return;
 	}
-	const line = document.createElement('div');
-	if(how !== undefined) {
-		line.className = how;
-	}
+	const line = el('div', how);
 	for(const [at, part] of text.split(Url).entries()) {
 		if(at % 2 === 0) {
 			line.append(part);
 			continue;
 		}
-		const link = document.createElement('a');
+		const link = blank(el('a'));
 		link.href = part;
-		link.target = '_blank';
-		link.rel = 'noopener';
 		/* the whole base64 of a graph is unreadable and endless, so the link says where it goes */
 		link.textContent = part.length > 60 ? `${part.slice(0, part.indexOf('#') + 1) || part.slice(0, 40)}…` : part;
 		link.title = part;

@@ -73,7 +73,8 @@ export function processReplacementFunction<OtherInfo>(
 		{
 			superAssignment:  config.assignmentOperator === '<<-',
 			makeMaybe:        config.makeMaybe,
-			canBeReplacement: true
+			canBeReplacement: true,
+			replacement:      true
 		}
 	);
 
@@ -114,7 +115,13 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => RArgument.isEmpty(a) ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
+			args.map(a => {
+				if(RArgument.isEmpty(a)) {
+					return undefined;
+				}
+				const entry = a.name === undefined ? unpackNonameArg(a) : a;
+				return entry === undefined ? undefined : { entryPoint: entry.info.id };
+			}),
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});

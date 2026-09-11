@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import {
@@ -56,7 +57,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 	ctx.addRequests([{ request: 'file', content: 'test.R' }]);
 
 	describe('Basic exports', function() {
-		test('Functions are exported', () => {
+		test(label('Functions are exported', ['project-namespace'], ['other']), () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.isDefined(ctx.deps.functionsContext.getFunctionInfo('current', 'ggplot'));
@@ -120,7 +121,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 	});
 
 	describe('Correct Imports', function() {
-		test('Imports are registered correctly', () => {
+		test(label('Imports are registered correctly', ['project-namespace'], ['other']), () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 
@@ -135,7 +136,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('stats'), ['setNames']);
 		});
 
-		test('importClassesFrom / importMethodsFrom register their source package (S4)', () => {
+		test(label('importClassesFrom / importMethodsFrom register their source package (S4)', ['project-namespace', 'class-owner-s4'], ['other']), () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('Matrix'), ['dgCMatrix']);

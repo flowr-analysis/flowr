@@ -58,8 +58,9 @@ export interface FlowrCliOptions {
 	ws:                 boolean
 	'default-engine':   string
 
-	'engine.r-shell.disabled': boolean
-	'engine.r-shell.r-path':   string | undefined
+	'engine.r-shell.disabled':  boolean
+	'engine.r-shell.r-path':    string | undefined
+	'engine.r-shell.pipe-bind': boolean
 
 	'engine.tree-sitter.disabled':              boolean
 	'engine.tree-sitter.wasm-path':             string | undefined
@@ -129,12 +130,27 @@ function createConfig(): FlowrConfig {
 	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
 
+		const engine = <E extends EngineConfig>(values: E): void => {
+			const engines = c.engines as EngineConfig[];
+			const at = engines.findIndex(e => e.type === values.type);
+			const given = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
+			if(at < 0) {
+				engines.push(given as E);
+			} else {
+				engines[at] = { ...engines[at], ...given };
+			}
+		};
+
 		if(!options['engine.r-shell.disabled']) {
-			c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
+			engine({
+				type:     'r-shell',
+				rPath:    options['r-path'] || options['engine.r-shell.r-path'],
+				pipeBind: options['engine.r-shell.pipe-bind']
+			});
 		}
 
 		if(!options['engine.tree-sitter.disabled']) {
-			c.engines.push({
+			engine({
 				type:               'tree-sitter',
 				wasmPath:           options['engine.tree-sitter.wasm-path'],
 				treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],

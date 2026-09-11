@@ -1,5 +1,4 @@
-_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-08-29, 18:14:18 UTC (v2.15.8, R v4.6.1), please do not edit directly._
-
+_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 # Create Linting Rules
 
@@ -13,42 +12,48 @@ Before implementing a new linting rule, open a corresponding [linting rule issue
 
 ## Step 2: Define the types for the rule
 
-For new rules, the central interface is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L49"><code><span title="The base interface for a linting rule, which contains all of its relevant settings. The registry of valid linting rules is stored in LintingRules .">LintingRule</span></code></a>. Its type parameters are documented directly as part of the interface.
+For new rules, the central interface is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L51"><code><span title="The base interface for a linting rule, which contains all of its relevant settings. The registry of valid linting rules is stored in LintingRules .">LintingRule</span></code></a>. Its type parameters are documented directly as part of the interface.
 
 ## Step 3: Define the rule itself
 
-A new linting rule must implement the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L49"><code><span title="The base interface for a linting rule, which contains all of its relevant settings. The registry of valid linting rules is stored in LintingRules .">LintingRule</span></code></a> interface. It consists of the following main parts:
+A new linting rule must implement the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L51"><code><span title="The base interface for a linting rule, which contains all of its relevant settings. The registry of valid linting rules is stored in LintingRules .">LintingRule</span></code></a> interface. It consists of the following main parts:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L54"><code><span title="Creates a flowR search that will then be executed and whose results will be passed to processSearchResult . In the future, additional optimizations and transformations may be applied to the search between this function and processSearchResult .">LintingRule::<b>createSearch</b></span></code></a> Creates a flowR search that will then be executed and whose results will be passed to
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L58"><code><span title="Creates a flowR search that will then be executed and whose results will be passed to processSearchResult . The analyzer the rule runs on is handed in as well, so a search built from flowR's built-ins can read the ones its FlowrConfig registered rather than the defaults. In the future, additional optimizations and transformations may be applied to the search between this function and processSearch...">LintingRule::<b>createSearch</b></span></code></a> Creates a flowR search that will then be executed and whose results will be passed to
 <code>processSearchResult</code>
 .
+The analyzer the rule runs on is handed in as well, so a search built from flowR's built-ins can read the ones
+its
+<code>FlowrConfig</code>
+registered rather than the defaults.
 In the future, additional optimizations and transformations may be applied to the search between this function and
 <code>processSearchResult</code>
 .
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L59"><code><span title="Processes the search results of the search created through createSearch . This function is expected to return the linting results from this rule for the given search, ie usually the given script file.">LintingRule::<b>processSearchResult</b></span></code></a> Processes the search results of the search created through
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L63"><code><span title="Processes the search results of the search created through createSearch . This function is expected to return the linting results from this rule for the given search, ie usually the given script file.">LintingRule::<b>processSearchResult</b></span></code></a> Processes the search results of the search created through
 <code>createSearch</code>
 .
 This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L67"><code><span title="A set of functions used to pretty-print the given linting result. By default, the LintingResult#certainty and whether any LintingResult#quickFix values are available is automatically printed alongside this information.">LintingRule::<b>prettyPrint</b></span></code></a> A set of functions used to pretty-print the given linting result.
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L71"><code><span title="A set of functions used to pretty-print the given linting result. By default, the LintingResult#certainty and whether any LintingResult#quickFix values are available is automatically printed alongside this information.">LintingRule::<b>prettyPrint</b></span></code></a> A set of functions used to pretty-print the given linting result.
 By default, the
 <code>LintingResult#certainty</code>
 and whether any
 <code>LintingResult#quickFix</code>
 values are available is automatically printed alongside this information.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L68"><code>LintingRule::<b>info</b></code></a> 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L72"><code>LintingRule::<b>info</b></code></a> 
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L68"><code>LintingRule::<b>info</b></code></a> field has type <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L15"><code>LinterRuleInformation</code></a> and contains:
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L72"><code>LintingRule::<b>info</b></code></a> field has type <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L16"><code>LinterRuleInformation</code></a> and contains:
 
-  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L17"><code><span title="Human-Readable name of the linting rule.">LinterRuleInformation::<b>name</b></span></code></a> Human-Readable name of the linting rule.
-  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L26"><code><span title="A short list of tags that describe and categorize the linting rule.">LinterRuleInformation::<b>tags</b></span></code></a> A short list of tags that describe and categorize the linting rule.
-  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L30"><code><span title="The linting rule's certainty in terms of the rule's calculations' precision and recall.">LinterRuleInformation::<b>certainty</b></span></code></a> The linting rule's certainty in terms of the rule's calculations' precision and recall.
-  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L35"><code><span title="A short description of the linting rule. This is used to display the rule in the UI and to provide a brief overview of what the rule does.">LinterRuleInformation::<b>description</b></span></code></a> A short description of the linting rule.
+  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L18"><code><span title="Human-Readable name of the linting rule.">LinterRuleInformation::<b>name</b></span></code></a> Human-Readable name of the linting rule.
+  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L28"><code><span title="A short list of tags that describe and categorize the linting rule.">LinterRuleInformation::<b>tags</b></span></code></a> A short list of tags that describe and categorize the linting rule.
+  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L32"><code><span title="The linting rule's certainty in terms of the rule's calculations' precision and recall.">LinterRuleInformation::<b>certainty</b></span></code></a> The linting rule's certainty in terms of the rule's calculations' precision and recall.
+  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L37"><code><span title="A short description of the linting rule. This is used to display the rule in the UI and to provide a brief overview of what the rule does.">LinterRuleInformation::<b>description</b></span></code></a> A short description of the linting rule.
 This is used to display the rule in the UI and to provide a brief overview of what the rule does.
-  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L22"><code><span title="The default config for this linting rule. This config is combined with the user config when executing the rule.">LinterRuleInformation::<b>defaultConfig</b></span></code></a> The default config for this linting rule.
+  - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L24"><code><span title="The default config for this linting rule, derived from the analyzer's context so that a rule reading flowR's built-ins answers for the ones the FlowrConfig actually registered. This config is combined with the user config when executing the rule.">LinterRuleInformation::<b>defaultConfig</b></span></code></a> The default config for this linting rule, derived from the analyzer's context so that a rule reading
+flowR's built-ins answers for the ones the
+<code>FlowrConfig</code>
+actually registered.
 This config is combined with the user config when executing the rule.
 
 The following example shows the basic structure of a linting rule:
-
 
 ```ts
 const MY_NEW_RULE = {
@@ -69,23 +74,20 @@ const MY_NEW_RULE = {
         description:   'Detects something.',
         tags:          [],
         certainty:     LintingRuleCertainty.BestEffort,
-        defaultConfig: {}
+        defaultConfig: () => ({})
     }
 } as const satisfies LintingRule<MyRuleResult, MyRuleMetadata, MyRuleConfig>;
 ```
 
 <i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts#L23">src/documentation/wiki-create-linting-rules.ts#L23</a></i>
 
-
-
 ## Step 4: Register the rule
 
-After implementing the rule, register it by adding it to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-rules.ts#L28"><code><span title="The registry of currently supported linting rules. A linting rule can be executed on a dataflow pipeline result using executeLintingRule .">LintingRules</span></code></a>.
-
+After implementing the rule, register it by adding it to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-rules.ts#L29"><code><span title="The registry of currently supported linting rules. A linting rule can be executed on a dataflow pipeline result using executeLintingRule .">LintingRules</span></code></a>.
 
 ## Step 5: Add the rule to the linter wiki generation
 
-After registering the rule, add a corresponding `rule` entry to the linter wiki generation in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts#L412"><code><span title="https://github.com/flowr-analysis/flowr/wiki/Linter">WikiLinter</span></code></a>. These entries are used to generate the linter overview and the individual wiki pages for linting rules, which can then be inspected through [Linter](https://github.com/flowr-analysis/flowr/wiki/Linter).
+After registering the rule, add a corresponding `rule` entry to the linter wiki generation in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts#L552"><code><span title="https://github.com/flowr-analysis/flowr/wiki/Linter">WikiLinter</span></code></a>. These entries are used to generate the linter overview and the individual wiki pages for linting rules, which can then be inspected through [Linter](https://github.com/flowr-analysis/flowr/wiki/Linter).
 
 ## Step 6: Add tests for the rule
 

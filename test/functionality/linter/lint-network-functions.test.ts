@@ -162,5 +162,15 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ noSigDb: true }
 			);
 		});
+
+		describe('a call that writes no file argument writes to the console', () => {
+			assertLinter('cat without file', parser, 'cat("hello\n")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
+			assertLinter('writeLines without con', parser, 'writeLines("x")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
+			assertLinter('cat to a local file', parser, 'cat("hello", file = "out.txt")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
+			assertLinter('cat to a url', parser, 'cat("hello", file = "https://example.com")', 'network-functions',
+				[{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 42] }],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 }
+			);
+		});
 	});
 }));

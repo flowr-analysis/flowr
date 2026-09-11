@@ -20,31 +20,22 @@ It offers a wide variety of features, for example:
   of these libraries has to have, by combining the constraints your project declares with the functions your code actually calls.
   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&h=deps&p=12:1 "run the dependency example in flowR's playground, no setup")&nbsp;)
 
-  
-      
     <details><summary>Example: Dependency Analysis with flowR</summary>
-    
     
     The following showcases the dependency view of the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr):
     
     ![Dependency Analysis](https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png)
       
-      
-    
     </details> 
 
 * 🐞 **code linting**\
    Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/Linter) for more information on the currently supported linters).
    (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&h=lint:unused-definitions&f=deps&p=10:1 "run the linter example in flowR's playground, no setup")&nbsp;)
 
-
-	    
     <details><summary>Example: Linting code with flowR</summary>
     
     To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
     	
-    
-    
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
     flowR repl v2.15.8, R grammar v14 (tree-sitter engine)
@@ -54,9 +45,8 @@ It offers a wide variety of features, for example:
     <details>
     <summary style='color:gray'>Output</summary>
     
-    
     ```text
-    Query: linter (7 ms)
+    Query: linter (8 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -74,39 +64,30 @@ It offers a wide variety of features, for example:
        ╰ Unused Import (unused-import): no findings
        ╰ Unclosed Connection (unclosed-connection): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
-    All queries together required ≈7 ms (1ms accuracy, total 7 ms)
+       ╰ Namespace Access Validity (namespace-access): no findings
+    All queries together required ≈8 ms (1ms accuracy, total 8 ms)
     ```
-    
-    
     
     The linter will analyze the code and return any issues found.
     Formatted more nicely, this returns:
-    
-    
-    
     
     ```json
     [ { "type": "linter" } ]
     ```
     
-    
     (This can be shortened to `@linter` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-    
-    
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (10 ms)\
+    Query: **linter** (11 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 1\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -120,243 +101,66 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
-    _All queries together required ≈10 ms (1ms accuracy, total 11 ms)_
+    &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
+    _All queries together required ≈11 ms (1ms accuracy, total 12 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _10.6 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis ran (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-    
-    
-    
     
     ```json
     {
       "linter": {
         "results": {
-          "deprecated-functions": {
-            "results": [],
-            ".meta": {
-              "builtin": 0,
-              "sigdb": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
-            }
-          },
+          "deprecated-functions": {"results":[],".meta":{"builtin":0,"sigdb":0}},
           "file-path-validity": {
-            "results": [
-              {
-                "involvedId": 3,
-                "loc": [
-                  1,
-                  1,
-                  1,
-                  23
-                ],
-                "filePath": "/root/x.txt",
-                "certainty": "certain"
-              }
-            ],
-            ".meta": {
-              "totalReads": 1,
-              "totalUnknown": 0,
-              "totalWritesBeforeAlways": 0,
-              "totalValid": 0,
-              "searchTimeMs": 1,
-              "processTimeMs": 1
-            }
+            "results": [{"involvedId":3,"loc":[1,1,1,23],"filePath":"/root/x.txt","certainty":"certain"}],
+            ".meta": {"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}
           },
           "seeded-randomness": {
             "results": [],
-            ".meta": {
-              "consumerCalls": 0,
-              "callsWithFunctionProducers": 0,
-              "callsWithAssignmentProducers": 0,
-              "callsWithNonConstantProducers": 0,
-              "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
+            ".meta": {"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"callsWithOtherBranchProducers":0}
           },
-          "absolute-file-paths": {
-            "results": [
-              {
-                "certainty": "certain",
-                "filePath": "/root/x.txt",
-                "loc": [
-                  1,
-                  1,
-                  1,
-                  23
-                ]
-              }
-            ],
-            ".meta": {
-              "totalConsidered": 1,
-              "totalUnknown": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "unused-definitions": {
-            "results": [],
-            ".meta": {
-              "totalConsidered": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "network-functions": {
-            "results": [],
-            ".meta": {
-              "totalCalls": 0,
-              "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "dataframe-access-validation": {
-            "results": [],
-            ".meta": {
-              "numOperations": 0,
-              "numAccesses": 0,
-              "totalAccessed": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
-            }
-          },
-          "dead-code": {
-            "results": [],
-            ".meta": {
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "useless-loop": {
-            "results": [],
-            ".meta": {
-              "numOfUselessLoops": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "problematic-inputs": {
-            "results": [],
-            ".meta": {
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "stop-call": {
-            "results": [],
-            ".meta": {
-              "consideredNodes": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "roxygen-arguments": {
-            "results": [],
-            ".meta": {
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "no-leaked-credentials": {
-            "results": [],
-            ".meta": {
-              "totalChecked": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
+          "absolute-file-paths": {"results":[{"certainty":"certain","filePath":"/root/x.txt","loc":[1,1,1,23]}],".meta":{"totalConsidered":1,"totalUnknown":0}},
+          "unused-definitions": {"results":[],".meta":{"totalConsidered":0}},
+          "network-functions": {"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}},
+          "dataframe-access-validation": {"results":[],".meta":{"numOperations":0,"numAccesses":0,"totalAccessed":0}},
+          "dead-code": {"results":[],".meta":{}},
+          "useless-loop": {"results":[],".meta":{"numOfUselessLoops":0}},
+          "problematic-inputs": {"results":[],".meta":{}},
+          "stop-call": {"results":[],".meta":{"consideredNodes":0}},
+          "roxygen-arguments": {"results":[],".meta":{}},
+          "no-leaked-credentials": {"results":[],".meta":{"totalChecked":0}},
           "undefined-symbol": {
             "results": [],
-            ".meta": {
-              "totalFunctionCalls": 1,
-              "totalVariableUses": 0,
-              "suppressed": {
-                "installed": 0,
-                "loadedPackage": 0,
-                "enclosingScope": 0,
-                "nonStandardEval": 0,
-                "subscript": 0
-              },
-              "searchTimeMs": 0,
-              "processTimeMs": 3
-            }
+            ".meta": {"totalFunctionCalls":1,"totalVariableUses":0,"suppressed":{"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0}}
           },
-          "unused-import": {
-            "results": [],
-            ".meta": {
-              "totalConsidered": 0,
-              "totalUnresolved": 0,
-              "totalMultiPackage": 0,
-              "totalUnused": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "unclosed-connection": {
-            "results": [],
-            ".meta": {
-              "totalOpened": 0,
-              "totalClosed": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "unescaped-arguments": {
-            "results": [],
-            ".meta": {
-              "totalCriticalArguments": 0,
-              "totalEscapedArguments": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
-            }
-          }
+          "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
+          "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
+          "unescaped-arguments": {"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},
+          "namespace-access": {"results":[],".meta":{"unresolved":0}}
         },
-        ".meta": {
-          "timing": 10
-        }
+        ".meta": {}
       },
-      ".meta": {
-        "timing": 10
-      }
+      ".meta": {}
     }
     ```
     
-    
+    </details>
     
     </details>
     
-    
-    
-    
-    
-    	
-    		
-    
     </details>
-    
-    
-    	   
-    	   
-    
-    </details>
-
 
 * 🍕 **program slicing**\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
    for the computation of the point of interest.
    (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zM4VwtgBAPAtBAMAoADgJwPYBMQGMAu0cAjIgO6EQDsiAchUUogGbqoQAUAlhJwHYREAXOxowiASnEQA3oggRQkWAvAQA1D3URSciGiy4Cy-dnwQAVD0QBfRIhwBDPOwBEAZXCCXAGhVhfLgA6vC7i9k6uAAoYpnheviaGAcGhiEA&h=slice&f=deps&v=,,d&p=11:13 "run the slicing example in flowR's playground, no setup")&nbsp;)
 
-
-    
     <details><summary>Example: Slicing with flowR</summary>
-    
     
     The simplest way to retrieve slices is with flowR's [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr).
     However, you can slice using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) as well.
@@ -364,7 +168,6 @@ It offers a wide variety of features, for example:
     what is happening in the code.
     
     For this, let's have a look at the example file, located at [test/testfiles/example.R](https://github.com/flowr-analysis/flowr/tree/main/test/testfiles/example.R):
-    
     
     ```r
     sum <- 0
@@ -381,11 +184,8 @@ It offers a wide variety of features, for example:
     cat("Product:", product, "\n")
     ```
     
-    
     Let's suppose we are interested only in the `sum` which is printed in line 11.
     To get a slice for this, you can use the following command:
-    
-    
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
@@ -396,24 +196,16 @@ It offers a wide variety of features, for example:
     <details>
     <summary style='color:gray'>Output</summary>
     
-    
     ```text
     sum <- 0
     w <- 7
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
     ```
     
-    
-    
-    
     </details>
-    
-    
-       
-       
     
     </details>
 
@@ -423,16 +215,12 @@ It offers a wide variety of features, for example:
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg).
   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&p=13:1 "run this script in flowR's playground, no setup")&nbsp;)
 
-
-    
     <details><summary>Example: Generating a dataflow graph with flowR</summary>
-    
     
     You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl).
     Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for a given R script.
     
     Let's have a look at the following example:
-    
     
     ```r
     sum <- 0
@@ -449,10 +237,7 @@ It offers a wide variety of features, for example:
     cat("Product:", product, "\n")
     ```
     
-    
     To get the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for this script, you can use the following command:
-    
-    
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
@@ -463,18 +248,12 @@ It offers a wide variety of features, for example:
     <details>
     <summary style='color:gray'>Output</summary>
     
-    
     ```text
     'test/testfiles/example.R' looks like a path, analyzing file://test/testfiles/example.R (repl.autoUseFileProtocol is set).
     https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKiowKipcbiAgICAgICoxLjgqICgqKmlkOiAxKiopYFwifX1cbiAgICAwW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqc3VtKipcbiAgICAgICoxLjEtMyogKCoqaWQ6IDAqKiwgdjogMSlgXCJdXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICoxLjEtOCogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46Xy1bXCJgQnVpbHQtSW46XG4jNjA7IzQ1O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfLSBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDR7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMSoqXG4gICAgICAqMi4xMiogKCoqaWQ6IDQqKilgXCJ9fVxuICAgIDNbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipwcm9kdWN0KipcbiAgICAgICoyLjEtNyogKCoqaWQ6IDMqKiwgdjogNClgXCJdXG4gICAgNVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICoyLjEtMTIqICgqKmlkOiA1KiopXG4gICAgYXJnOiAoMywgNClgXCJdXVxuICAgIDd7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqNyoqXG4gICAgICAqMy42KiAoKippZDogNyoqKWBcIn19XG4gICAgNltcImAqIzkxO1JTeW1ib2wjOTM7KiAqKncqKlxuICAgICAgKjMuMSogKCoqaWQ6IDYqKiwgdjogNylgXCJdXG4gICAgOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICozLjEtNiogKCoqaWQ6IDgqKilcbiAgICBhcmc6ICg2LCA3KWBcIl1dXG4gICAgMTB7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMTAqKlxuICAgICAgKjQuNi03KiAoKippZDogMTAqKilgXCJ9fVxuICAgIDlbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipOKipcbiAgICAgICo0LjEqICgqKmlkOiA5KiosIHY6IDEwKWBcIl1cbiAgICAxMVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICo0LjEtNyogKCoqaWQ6IDExKiopXG4gICAgYXJnOiAoOSwgMTApYFwiXV1cbiAgICAxMltcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmkqKlxuICAgICAgKjYuNiogKCoqaWQ6IDEyKiosIHY6IDIwKWBcIl1cbiAgICAxM3t7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICo2LjExKiAoKippZDogMTMqKilgXCJ9fVxuICAgIDE2KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKk4qKlxuICAgICAgKjYuMTQqICgqKmlkOiAxNioqKWBcIl0pXG4gICAgMTd7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMSoqXG4gICAgICAqNi4xNiogKCoqaWQ6IDE3KiopYFwifX1cbiAgICAxOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0NTsqKlxuICAgICAgKjYuMTQtMTYqICgqKmlkOiAxOCoqKVxuICAgIGFyZzogKDE2LCAxNylgXCJdXVxuICAgIGJ1aWx0LWluOi1bXCJgQnVpbHQtSW46XG4jNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOi0gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICAxOVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKigqKlxuICAgICAgKjYuMTMqICgqKmlkOiAxOSoqKVxuICAgIGFyZzogKDE4KWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1JbjpcbihgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDIwW1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzU4OyoqXG4gICAgICAqNi4xMS0xNyogKCoqaWQ6IDIwKiopXG4gICAgYXJnOiAoMTMsIDE5KWBcIl1dXG4gICAgYnVpbHQtaW46OltcImBCdWlsdC1JbjpcbiM1ODtgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46OiBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDI0KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqNy4xMC0xMiogKCoqaWQ6IDI0KiosIDM2KylgXCJdKVxuICAgIDI1KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmkqKlxuICAgICAgKjcuMTYqICgqKmlkOiAyNSoqLCAzNispYFwiXSlcbiAgICAyNltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MzsqKlxuICAgICAgKjcuMTAtMTYqICgqKmlkOiAyNioqLCAzNispXG4gICAgYXJnOiAoMjQsIDI1KWBcIl1dXG4gICAgMjcoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqdyoqXG4gICAgICAqNy4yMCogKCoqaWQ6IDI3KiosIDM2KylgXCJdKVxuICAgIDI4W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzQzOyoqXG4gICAgICAqNy4xMC0yMCogKCoqaWQ6IDI4KiosIDM2KylcbiAgICBhcmc6ICgyNiwgMjcpYFwiXV1cbiAgICAyM1tcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqNy4zLTUqICgqKmlkOiAyMyoqLCAzNissIHY6IDI4KWBcIl1cbiAgICAyOVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICo3LjMtMjAqICgqKmlkOiAyOSoqLCAzNispXG4gICAgYXJnOiAoMjMsIDI4KWBcIl1dXG4gICAgMzEoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqcHJvZHVjdCoqXG4gICAgICAqOC4xNC0yMCogKCoqaWQ6IDMxKiosIDM2KylgXCJdKVxuICAgIDMyKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmkqKlxuICAgICAgKjguMjQqICgqKmlkOiAzMioqLCAzNispYFwiXSlcbiAgICAzM1tbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MjsqKlxuICAgICAgKjguMTQtMjQqICgqKmlkOiAzMyoqLCAzNispXG4gICAgYXJnOiAoMzEsIDMyKWBcIl1dXG4gICAgMzBbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipwcm9kdWN0KipcbiAgICAgICo4LjMtOSogKCoqaWQ6IDMwKiosIDM2KywgdjogMzMpYFwiXVxuICAgIDM0W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjguMy0yNCogKCoqaWQ6IDM0KiosIDM2KylcbiAgICBhcmc6ICgzMCwgMzMpYFwiXV1cbiAgICAzNVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKiMxMjM7KipcbiAgICAgICo2LjIwKiAoKippZDogMzUqKiwgMzYrKVxuICAgIGFyZzogKDI5LCAzNClgXCJdXVxuICAgIDM2W1tcImAqIzkxO1JGb3JMb29wIzkzOyogYmFzZSM1ODsjNTg7Kipmb3IqKlxuICAgICAgKjYuMS05LjEqICgqKmlkOiAzNioqKVxuICAgIGFyZzogKDEyLCAyMCwgMzUpYFwiXV1cbiAgICBidWlsdC1pbjpmb3JbXCJgQnVpbHQtSW46XG5mb3JgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Zm9yIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMzh7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1N1bSM1ODsjMzQ7KipcbiAgICAgICoxMS41LTEwKiAoKippZDogMzgqKilgXCJ9fVxuICAgIDQwKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqMTEuMTMtMTUqICgqKmlkOiA0MCoqKWBcIl0pXG4gICAgYnVpbHQtaW46c3VtW1wiYEJ1aWx0LUluOlxuc3VtYFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOnN1bSBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDQye3tcImAqIzkxO1JTdHJpbmcjOTM7KiAqKiMzNDtcbiMzNDsqKlxuICAgICAgKjExLjE4LTIxKiAoKippZDogNDIqKilgXCJ9fVxuICAgIDQ0W1tcImAqIzkxO1JGdW5jdGlvbkNhbGwjOTM7KiBiYXNlIzU4OyM1ODsqKmNhdCoqXG4gICAgICAqMTEuMS0yMiogKCoqaWQ6IDQ0KiopXG4gICAgYXJnOiAoMzgsIDQwLCA0MilgXCJdXVxuICAgIGJ1aWx0LWluOmNhdFtcImBCdWlsdC1JbjpcbmNhdGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpjYXQgc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICA0Nnt7XCJgKiM5MTtSU3RyaW5nIzkzOyogKiojMzQ7UHJvZHVjdCM1ODsjMzQ7KipcbiAgICAgICoxMi41LTE0KiAoKippZDogNDYqKilgXCJ9fVxuICAgIDQ4KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnByb2R1Y3QqKlxuICAgICAgKjEyLjE3LTIzKiAoKippZDogNDgqKilgXCJdKVxuICAgIDUwe3tcImAqIzkxO1JTdHJpbmcjOTM7KiAqKiMzNDtcbiMzNDsqKlxuICAgICAgKjEyLjI2LTI5KiAoKippZDogNTAqKilgXCJ9fVxuICAgIDUyW1tcImAqIzkxO1JGdW5jdGlvbkNhbGwjOTM7KiBiYXNlIzU4OyM1ODsqKmNhdCoqXG4gICAgICAqMTIuMS0zMCogKCoqaWQ6IDUyKiopXG4gICAgYXJnOiAoNDYsIDQ4LCA1MClgXCJdXVxuICAgIDEgLS4tPnxcImZsb3dcInwgMFxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5LCBmbG93XCJ8IDJcbiAgICAwIC0tPnxcImRlZmluZWQtYnlcInwgMVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLT58XCJyZXR1cm5zLCBhcmdcInwgMFxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfLVxuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5O1xuICAgIDIgLS4tPnxcImZsb3dcInwgNFxuICAgIGxpbmtTdHlsZSA2IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNCAtLi0+fFwiZmxvd1wifCAzXG4gICAgbGlua1N0eWxlIDcgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAzIC0tPnxcImRlZmluZWQtYnksIGZsb3dcInwgNVxuICAgIDMgLS0+fFwiZGVmaW5lZC1ieVwifCA0XG4gICAgNSAtLT58XCJyZWFkcywgYXJnXCJ8IDRcbiAgICA1IC0tPnxcInJldHVybnMsIGFyZ1wifCAzXG4gICAgNSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDEyIHN0cm9rZTpncmF5O1xuICAgIDUgLS4tPnxcImZsb3dcInwgN1xuICAgIGxpbmtTdHlsZSAxMyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDcgLS4tPnxcImZsb3dcInwgNlxuICAgIGxpbmtTdHlsZSAxNCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDYgLS0+fFwiZGVmaW5lZC1ieSwgZmxvd1wifCA4XG4gICAgNiAtLT58XCJkZWZpbmVkLWJ5XCJ8IDdcbiAgICA4IC0tPnxcInJlYWRzLCBhcmdcInwgN1xuICAgIDggLS0+fFwicmV0dXJucywgYXJnXCJ8IDZcbiAgICA4IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgMTkgc3Ryb2tlOmdyYXk7XG4gICAgOCAtLi0+fFwiZmxvd1wifCAxMFxuICAgIGxpbmtTdHlsZSAyMCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDEwIC0uLT58XCJmbG93XCJ8IDlcbiAgICBsaW5rU3R5bGUgMjEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICA5IC0tPnxcImRlZmluZWQtYnksIGZsb3dcInwgMTFcbiAgICA5IC0tPnxcImRlZmluZWQtYnlcInwgMTBcbiAgICAxMSAtLT58XCJyZWFkcywgYXJnXCJ8IDEwXG4gICAgMTEgLS0+fFwicmV0dXJucywgYXJnXCJ8IDlcbiAgICAxMSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDI2IHN0cm9rZTpncmF5O1xuICAgIDExIC0uLT58XCJmbG93XCJ8IDEzXG4gICAgbGlua1N0eWxlIDI3IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAyMFxuICAgIDEyIC0uLT58XCJicmFuY2ggKHdoZW46IHRydWUpXCJ8IDI0XG4gICAgbGlua1N0eWxlIDI5IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMTIgLS4tPnxcImJyYW5jaCAod2hlbjogZmFsc2UpXCJ8IDM2XG4gICAgbGlua1N0eWxlIDMwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMTMgLS4tPnxcImZsb3dcInwgMTZcbiAgICBsaW5rU3R5bGUgMzEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAxNiAtLT58XCJyZWFkc1wifCA5XG4gICAgMTYgLS4tPnxcImZsb3dcInwgMTdcbiAgICBsaW5rU3R5bGUgMzMgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAxNyAtLi0+fFwiZmxvd1wifCAxOFxuICAgIGxpbmtTdHlsZSAzNCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDE4IC0tPnxcInJlYWRzLCBhcmdcInwgMTZcbiAgICAxOCAtLT58XCJyZWFkcywgYXJnXCJ8IDE3XG4gICAgMTggLS4tPnxcImZsb3dcInwgMTlcbiAgICBsaW5rU3R5bGUgMzcgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAxOCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOi1cbiAgICBsaW5rU3R5bGUgMzggc3Ryb2tlOmdyYXk7XG4gICAgMTkgLS0+fFwicmV0dXJucywgYXJnXCJ8IDE4XG4gICAgMTkgLS4tPnxcInJlYWRzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNDAgc3Ryb2tlOmdyYXk7XG4gICAgMTkgLS4tPnxcImZsb3dcInwgMjBcbiAgICBsaW5rU3R5bGUgNDEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAyMCAtLT58XCJyZWFkcywgYXJnXCJ8IDEzXG4gICAgMjAgLS0+fFwicmVhZHMsIGFyZ1wifCAxOVxuICAgIDIwIC0uLT58XCJmbG93XCJ8IDEyXG4gICAgbGlua1N0eWxlIDQ0IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjAgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjo6XG4gICAgbGlua1N0eWxlIDQ1IHN0cm9rZTpncmF5O1xuICAgIDI0IC0tPnxcInJlYWRzXCJ8IDBcbiAgICAyNCAtLi0+fFwiZmxvd1wifCAyNVxuICAgIGxpbmtTdHlsZSA0NyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI0IC0tPnxcInJlYWRzXCJ8IDIzXG4gICAgMjUgLS0+fFwicmVhZHNcInwgMTJcbiAgICAyNSAtLi0+fFwiZmxvd1wifCAyNlxuICAgIGxpbmtTdHlsZSA1MCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI2IC0tPnxcInJlYWRzLCBhcmdcInwgMjRcbiAgICAyNiAtLT58XCJyZWFkcywgYXJnXCJ8IDI1XG4gICAgMjYgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDUzIHN0cm9rZTpncmF5O1xuICAgIDI2IC0uLT58XCJmbG93XCJ8IDI3XG4gICAgbGlua1N0eWxlIDU0IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjcgLS0+fFwicmVhZHNcInwgNlxuICAgIDI3IC0uLT58XCJmbG93XCJ8IDI4XG4gICAgbGlua1N0eWxlIDU2IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjggLS0+fFwicmVhZHMsIGFyZ1wifCAyNlxuICAgIDI4IC0tPnxcInJlYWRzLCBhcmdcInwgMjdcbiAgICAyOCAtLi0+fFwiZmxvd1wifCAyM1xuICAgIGxpbmtTdHlsZSA1OSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI4IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA2MCBzdHJva2U6Z3JheTtcbiAgICAyMyAtLT58XCJkZWZpbmVkLWJ5LCBmbG93XCJ8IDI5XG4gICAgMjMgLS0+fFwiZGVmaW5lZC1ieVwifCAyOFxuICAgIDI5IC0tPnxcInJlYWRzLCBhcmdcInwgMjhcbiAgICAyOSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMjNcbiAgICAyOSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDY1IHN0cm9rZTpncmF5O1xuICAgIDI5IC0uLT58XCJmbG93XCJ8IDMxXG4gICAgbGlua1N0eWxlIDY2IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzEgLS0+fFwicmVhZHNcInwgM1xuICAgIDMxIC0uLT58XCJmbG93XCJ8IDMyXG4gICAgbGlua1N0eWxlIDY4IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzEgLS0+fFwicmVhZHNcInwgMzBcbiAgICAzMiAtLT58XCJyZWFkc1wifCAxMlxuICAgIDMyIC0uLT58XCJmbG93XCJ8IDMzXG4gICAgbGlua1N0eWxlIDcxIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzMgLS0+fFwicmVhZHMsIGFyZ1wifCAzMVxuICAgIDMzIC0tPnxcInJlYWRzLCBhcmdcInwgMzJcbiAgICAzMyAtLi0+fFwiZmxvd1wifCAzMFxuICAgIGxpbmtTdHlsZSA3NCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDMzIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA3NSBzdHJva2U6Z3JheTtcbiAgICAzMCAtLT58XCJkZWZpbmVkLWJ5LCBmbG93XCJ8IDM0XG4gICAgMzAgLS0+fFwiZGVmaW5lZC1ieVwifCAzM1xuICAgIDM0IC0tPnxcInJlYWRzLCBhcmdcInwgMzNcbiAgICAzNCAtLT58XCJyZXR1cm5zLCBhcmdcInwgMzBcbiAgICAzNCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDgwIHN0cm9rZTpncmF5O1xuICAgIDM0IC0uLT58XCJmbG93XCJ8IDM1XG4gICAgbGlua1N0eWxlIDgxIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzUgLS0+fFwiYXJnXCJ8IDI5XG4gICAgMzUgLS0+fFwicmV0dXJucywgYXJnXCJ8IDM0XG4gICAgMzUgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDg0IHN0cm9rZTpncmF5O1xuICAgIDM1IC0uLT58XCJmbG93XCJ8IDEyXG4gICAgbGlua1N0eWxlIDg1IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzYgLS0+fFwiYXJnXCJ8IDEyXG4gICAgMzYgLS0+fFwicmVhZHMsIGFyZ1wifCAyMFxuICAgIDM2IC0tPnxcImFyZywgbm9uLXN0YW5kYXJkLWV2YWx1YXRpb25cInwgMzVcbiAgICAzNiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOmZvclxuICAgIGxpbmtTdHlsZSA4OSBzdHJva2U6Z3JheTtcbiAgICAzNiAtLi0+fFwiZmxvd1wifCAzOFxuICAgIGxpbmtTdHlsZSA5MCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDM4IC0uLT58XCJmbG93XCJ8IDQwXG4gICAgbGlua1N0eWxlIDkxIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNDAgLS0+fFwicmVhZHNcInwgMFxuICAgIDQwIC0tPnxcInJlYWRzXCJ8IDIzXG4gICAgNDAgLS4tPnxcInJlYWRzXCJ8IGJ1aWx0LWluOnN1bVxuICAgIGxpbmtTdHlsZSA5NCBzdHJva2U6Z3JheTtcbiAgICA0MCAtLi0+fFwiZmxvd1wifCA0MlxuICAgIGxpbmtTdHlsZSA5NSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDQyIC0uLT58XCJmbG93XCJ8IDQ0XG4gICAgbGlua1N0eWxlIDk2IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNDQgLS0+fFwicmVhZHMsIGFyZ1wifCAzOFxuICAgIDQ0IC0tPnxcInJlYWRzLCBhcmdcInwgNDBcbiAgICA0NCAtLT58XCJyZWFkcywgYXJnXCJ8IDQyXG4gICAgNDQgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpjYXRcbiAgICBsaW5rU3R5bGUgMTAwIHN0cm9rZTpncmF5O1xuICAgIDQ0IC0uLT58XCJmbG93XCJ8IDQ2XG4gICAgbGlua1N0eWxlIDEwMSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDQ2IC0uLT58XCJmbG93XCJ8IDQ4XG4gICAgbGlua1N0eWxlIDEwMiBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDQ4IC0tPnxcInJlYWRzXCJ8IDNcbiAgICA0OCAtLT58XCJyZWFkc1wifCAzMFxuICAgIDQ4IC0uLT58XCJmbG93XCJ8IDUwXG4gICAgbGlua1N0eWxlIDEwNSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDUwIC0uLT58XCJmbG93XCJ8IDUyXG4gICAgbGlua1N0eWxlIDEwNiBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDUyIC0tPnxcInJlYWRzLCBhcmdcInwgNDZcbiAgICA1MiAtLT58XCJyZWFkcywgYXJnXCJ8IDQ4XG4gICAgNTIgLS0+fFwicmVhZHMsIGFyZ1wifCA1MFxuICAgIDUyIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Y2F0XG4gICAgbGlua1N0eWxlIDExMCBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
     ```
     
-    
-    
     Following the link output should show the following:
-    
-    
-    
     
     ```mermaid
     flowchart LR
@@ -764,16 +543,9 @@ It offers a wide variety of features, for example:
         linkStyle 110 stroke:gray;
     ```
     
-    	
-    (The analysis required _3.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-    
-    
+    (The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     </details>
-    
-    
-       
-       
     
     </details>
 
@@ -785,21 +557,17 @@ If you want to use flowR and the features it provides, feel free to check out th
 - [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server)
 - [NPM package](https://www.npmjs.com/package/@eagleoutice/flowr): include flowR in your TypeScript and JavaScript projects
  
-
 If you are already using flowR and want to give feedback, please consider filling out our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLScKFhgnh9LGVU7QzqLvFwZe1oiv_5jNhkIO-G-zND0ppqsMxQ/viewform).
 
- 
 ## ⭐ Getting Started
 
 To get started with _flowR_ and its features, please check out the [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview) wiki page. 
 The [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page explains how you can download and setup _flowR_ on your system. 
 With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the read-eval-print loop):
 
-
 ```shell
 docker run -it --rm eagleoutice/flowr
 ```
-
 
 You can enter <span title="Description (Repl Command): Show help information (aliases: :h, :?)">`:help`</span> to gain more information on its capabilities.
 
@@ -833,7 +601,6 @@ please check out the following publications (if you find that a paper is missing
   This refers to an updated tool demonstration of the framework. Preprint available at <a href="https://doi.org/10.48550/arXiv.2604.15963" target="_blank">arXiv:2604.15963</a>.
   <details><summary>BibTeX</summary>
   
-   
    ```bibtex
    @article{10.1145/3803437.3806402,
    	author = {Sihler, Florian and Gerstl, Oliver and Pfrenger, Lars and Schubert, Julian and Tichy, Matthias},
@@ -843,14 +610,12 @@ please check out the following publications (if you find that a paper is missing
    }
    ```
    
-  
   </details>
 
 * [Statically Analyzing the Dataflow of R Programs (OOPSLA '25)](https://doi.org/10.1145/3763087)  
   **Please cite this paper if you are using flowR in your research.**
   <details><summary>BibTeX</summary>
   
-   
    ```bibtex
    @article{10.1145/3763087,
    	author = {Sihler, Florian and Tichy, Matthias},
@@ -872,14 +637,12 @@ please check out the following publications (if you find that a paper is missing
    }
    ```
    
-  
   </details>
 
 * [flowR: A Static Program Slicer for R (ASE '24, Tool)](https://doi.org/10.1145/3691620.3695359)  
   This refers to the tool-demonstration of the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr" target="_blank">VS Code Extension</a>.
   <details><summary>BibTeX</summary>
   
-   
    ```bibtex
    @inproceedings{DBLP:conf/kbse/SihlerT24,
      author       = {Florian Sihler and
@@ -902,14 +665,12 @@ please check out the following publications (if you find that a paper is missing
    }
    ```
    
-  
   </details>
 
 * [On the Anatomy of Real-World R Code for Static Analysis (MSR '24)](https://doi.org/10.1145/3643991.3644911)  
   This paper lays the foundation for flowR by analyzing the characteristics of real-world R code.
   <details><summary>BibTeX</summary>
   
-   
    ```bibtex
    
    
@@ -937,12 +698,10 @@ please check out the following publications (if you find that a paper is missing
    }
    ```
    
-  
   </details>
 
  Works using flowR include:
 [Computational Reproducibility of R Code Supplements on OSF](https://doi.org/10.36190/2025.49) and [Multi-View Structural Graph Summaries](https://doi.org/10.1109/WI-IAT62293.2024.00037).
-
 
 ## 🚀 Contributing
 

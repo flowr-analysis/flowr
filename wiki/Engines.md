@@ -1,5 +1,4 @@
-_<span title="an overview of flowR's engines">Generated</span> from '[wiki-engine.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-engine.ts "src/documentation/wiki-engine.ts")' on 2026-08-29, 13:20:36 UTC (v2.15.8, R v4.6.1), please do not edit directly._
-
+_<span title="an overview of flowR's engines">Generated</span> from '[wiki-engine.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-engine.ts "src/documentation/wiki-engine.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 To analyze R scripts, flowR needs to parse the R code and for that, we require a parser.
 Originally, flowR shipped with an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a>, an asynchronous interface to the R interpreter, still available today.
@@ -15,7 +14,6 @@ Engines can be loaded with [flowR's configuration file](https://github.com/flowr
 engine's own options are set on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L37"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> under the same names, so lax parsing (see
 [below](#tree-sitter)) is one call:
 
-
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder()
     .setEngine('tree-sitter')
@@ -23,11 +21,11 @@ const analyzer = await new FlowrAnalyzerBuilder()
     .build();
 ```
 
-
 Additionally, they are exposed with some command line options (e.g., when using the docker image of flowR):
 
 - <span title="Description (Command Line Argument): Disable the R shell engine">`--engine.r-shell.disabled`</span> to disable the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> engine
 - <span title="Description (Command Line Argument): The path to the R executable to use. Defaults to your PATH.">`--engine.r-shell.r-path`</span> (which is the canonical version of <span title="Description (Command Line Argument): The path to the R executable to use. Defaults to your PATH. This option is being phased out in favor of the engine configuration option &quot;engine.r-shell.r-path&quot;, which should be used instead.">`--r-path`</span>)
+- <span title="Description (Command Line Argument): Enable R&#39;s experimental pipe-bind operator &quot;=&gt;&quot; by setting _R_USE_PIPEBIND_ for the R session.">`--engine.r-shell.pipe-bind`</span> to enable R's experimental pipe-bind operator `=>`
 - <span title="Description (Command Line Argument): Disable the tree-sitter engine">`--engine.tree-sitter.disabled`</span> to disable the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor.ts#L20"><code><span title="Synchronous and (way) faster alternative to the RShell using tree-sitter.">TreeSitterExecutor</span></code></a> engine
 - <span title="Description (Command Line Argument): Use the lax parser for parsing R code (allowing for syntax errors).">`--engine.tree-sitter.lax`</span> to use lax parsing with tree-sitter
 - <span title="Description (Command Line Argument): The path to the tree-sitter-r WASM binary to use. Defaults to the one shipped with flowR.">`--engine.tree-sitter.wasm-path`</span> pass the path to the wasm of the r grammar of tree-sitter (see [below](#tree-sitter))
@@ -50,10 +48,8 @@ The selection and preparation of the engine just reflects what the flowR analysi
 <a id="tree-sitter"></a>
 ## Dealing with the Tree-Sitter Engine
 
-
 > [!WARNING]
 > As the tree-sitter engine is only for parsing, it cannot execute R code. This engine is now the default.
-
 
 In general, there is no need for you to pass custom paths using either
 <span title="Description (Command Line Argument): The path to the tree-sitter-r WASM binary to use. Defaults to the one shipped with flowR.">`--engine.tree-sitter.wasm-path`</span> or
@@ -70,7 +66,5 @@ you first must build the new wasm file. For this you have to:
 
 For tree-sitter, please rely on the [releases](https://github.com/tree-sitter/tree-sitter/releases).
 
-
 > [!NOTE]
 > The tree-sitter grammar may not be able to parse all valid R code due to some bugs in the parser grammar. In that case, please report these to the [tree-sitter-r repository](https://github.com/r-lib/tree-sitter-r).
-

@@ -12,6 +12,13 @@ import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Identifier } from '../../dataflow/environments/identifier';
+
+const ConditionConstructors: ReadonlySet<string> = new Set(['simpleCondition', 'simpleError', 'simpleWarning', 'simpleMessage', 'errorCondition', 'warningCondition']);
 
 export type StopWithCallResult = LintingResult;
 
@@ -32,6 +39,10 @@ export const STOP_WITH_CALL_ARG = {
 			results:
 				elements.getElements()
 					.filter(element => {
+						const idMap = dataflow.graph.idMap;
+						if(idMap !== undefined && RNode.findEnclosing(element.node.info.id, idMap, RFunctionDefinition.is) === undefined) {
+							return false;
+						}
 						//only built-in functions
 						const origins = Dataflow.origin(dataflow.graph, element.node.info.id);
 						if(isNotUndefined(origins)) {
@@ -50,6 +61,10 @@ export const STOP_WITH_CALL_ARG = {
 							'domain': 'domain'
 						} as const;
 						const mapping = FunctionSemantics.call.match.toSpec(fCall.args, stopParamMap);
+						const signaled = idMap?.get(mapping.get('...')?.[0] as NodeId);
+						if(RFunctionCall.isNamed(signaled) && ConditionConstructors.has(Identifier.getName(signaled.functionName.content))) {
+							return false;
+						}
 						const mappedToStop = mapping.get('call.') ?? [];
 						for(const argId of mappedToStop) {
 							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
@@ -80,6 +95,6 @@ export const STOP_WITH_CALL_ARG = {
 		tags:          [LintingRuleTag.Smell],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Checks whether stop calls without call. argument set to FALSE are used.',
-		defaultConfig: {}
+		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<StopWithCallResult, StopWithCallMetadata, StopWithCallConfig>;

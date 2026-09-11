@@ -1,6 +1,6 @@
 // Regenerate the committed link file `src/data/sigdb/sigdb.remote.json`: the release tag + repo + each
 // downloadable shard's sha256 + size, which the runtime uses to fetch and verify them.
-//   npm run gen:sigdb-remote -- --tag=sigdb-v2.11.2 [--repo=flowr-analysis/flowr]
+//   npm run sigdb:remote -- --tag=sigdb-v2.11.2 [--repo=flowr-analysis/flowr]
 
 import fs from 'fs';
 import path from 'path';
@@ -69,7 +69,7 @@ function downloadableShards(bundleDir: string): string[] {
 }
 
 /**
- * Whether the committed link file already matches the local shards, so `sync:sigdb` can skip re-hashing the
+ * Whether the committed link file already matches the local shards, so `sigdb:sync` can skip re-hashing the
  * (large) shards on every build. Cheap check only: same tag/repo, same shard set + byte sizes, and the pointer
  * is at least as new as every shard (mtime). Any mismatch re-hashes and rewrites via {@link writeRemotePointer}.
  */
@@ -99,7 +99,7 @@ export function remotePointerUpToDate(opts: WriteRemotePointerOptions = {}): boo
 }
 
 /**
- * (Re)write the link file for the downloadable shards in the bundle dir. Shared by `sync:sigdb`
+ * (Re)write the link file for the downloadable shards in the bundle dir. Shared by `sigdb:sync`
  * and `publish-sigdb.ts` so the pointer and the uploaded assets can never drift.
  */
 export async function writeRemotePointer(opts: WriteRemotePointerOptions = {}): Promise<WriteRemotePointerResult> {
@@ -150,10 +150,10 @@ if(require.main === module) {
 			const opts = parseArgs(process.argv.slice(2));
 			if(!remotePointerUpToDate(opts)) {
 				const { out, downloadable, totalBytes } = await writeRemotePointer(opts);
-				info(`sync:sigdb: wrote ${path.relative(RepoRoot, out)} -- ${downloadable.length} shards (${(totalBytes / 1e6).toFixed(1)} MB)`);
+				info(`sigdb:sync: wrote ${path.relative(RepoRoot, out)} -- ${downloadable.length} shards (${(totalBytes / 1e6).toFixed(1)} MB)`);
 			}
 		} catch(e) {
-			info(`sync:sigdb: skipped -- ${(e as Error).message}`);
+			info(`sigdb:sync: skipped -- ${(e as Error).message}`);
 		}
 	})();
 }

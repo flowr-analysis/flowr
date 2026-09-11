@@ -88,6 +88,8 @@ export interface RShellExecutionOptions extends MergeableRecord {
 	readonly env:                NodeJS.ProcessEnv | undefined
 	/** The path to the library directory, use undefined to let R figure that out for itself */
 	readonly homeLibPath:        string | undefined
+	/** Enable R's experimental pipe-bind operator `=>` for this session; off by default like R itself. */
+	readonly pipeBind:           boolean
 }
 
 export interface RShellSessionOptions extends RShellExecutionOptions {
@@ -99,7 +101,7 @@ export interface RShellSessionOptions extends RShellExecutionOptions {
 
 /**
  * Configuration of an {@link RShell} instance.
- * See {@link DEFAULT_R_SHELL_OPTIONS} for the default values used by {@link RShell}.
+ * See {@link getDefaultRShellOptions} for the default values used by {@link RShell}.
  */
 export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
@@ -107,29 +109,27 @@ export interface RShellOptions extends RShellSessionOptions {
 
 export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R';
 
-let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
-
-
 /**
- * Get the default RShell options, possibly using the given config to override some values
+ * R reads its character type from the environment before it runs a line of ours, so ask for UTF-8 here as well:
+ * `Sys.setlocale` in the init (see `init.ts`) can only try names this host may not have, and a non-UTF-8
+ * character type makes `getParseData` escape non-ASCII source unparseably. Copied once, as `process.env` is large.
  */
+let DEFAULT_R_SHELL_ENV: NodeJS.ProcessEnv | undefined = undefined;
+
+/** Default RShell options from `config`, built fresh each call so later config changes are seen. */
 export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOptions {
-	if(!DEFAULT_R_SHELL_OPTIONS) {
-		DEFAULT_R_SHELL_OPTIONS = {
-			pathToRExecutable:  config?.rPath ?? DEFAULT_R_PATH,
-			// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
-			// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
-			commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
-			cwd:                process.cwd(),
-			env:                undefined,
-			eol:                '\n',
-			homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
-			sessionName:        'default',
-			revive:             RShellReviveOptions.Never,
-			onRevive:           () => { /* do nothing */ }
-		};
-	}
-	return DEFAULT_R_SHELL_OPTIONS;
+	return {
+		pathToRExecutable:  config?.rPath ?? DEFAULT_R_PATH,
+		pipeBind:           config?.pipeBind ?? false,
+		commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
+		cwd:                process.cwd(),
+		env:                DEFAULT_R_SHELL_ENV ??= { ...process.env, LC_CTYPE: process.env.LC_ALL ?? process.env.LC_CTYPE ?? 'C.UTF-8' },
+		eol:                '\n',
+		homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
+		sessionName:        'default',
+		revive:             RShellReviveOptions.Never,
+		onRevive:           () => { /* do nothing */ }
+	};
 }
 
 /**
@@ -151,7 +151,6 @@ export class RShell implements AsyncParser<string> {
 	private versionCache:    SemVer | null = null;
 	// should never be more than one, but let's be sure
 	private tempDirs = new Set<string>();
-
 	public constructor(config?: RShellEngineConfig, options?: Partial<RShellOptions>) {
 		this.options = { ...getDefaultRShellOptions(config), ...options };
 		this.log = log.getSubLogger({ name: this.options.sessionName });
@@ -297,15 +296,17 @@ export class RShell implements AsyncParser<string> {
 		const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig);
 		expensiveTrace(this.log, () => `> ${JSON.stringify(command)}`);
 
+		const marker = config.postamble;
+
 		const output = await this.session.collectLinesUntil(config.from, {
-			predicate:       data => data === config.postamble,
+			predicate:       data => data === marker,
 			includeInResult: config.keepPostamble // we do not want the postamble
 		}, config.timeout, () => {
 			this._sendCommand(command);
 			if(config.from === 'stderr') {
-				this._sendCommand(`cat("${config.postamble}${this.options.eol}",file=stderr())`);
+				this._sendCommand(`cat("${marker}${this.options.eol}",file=stderr())`);
 			} else {
-				this._sendCommand(`cat("${config.postamble}${this.options.eol}")`);
+				this._sendCommand(`cat("${marker}${this.options.eol}")`);
 			}
 		});
 		if(config.automaticallyTrimOutput) {
@@ -371,6 +372,7 @@ class RShellSession {
 	private readonly sessionStdErr: readline.Interface;
 	private readonly options:       DeepReadonly<RShellSessionOptions>;
 	private collectionTimeout:      NodeJS.Timeout | undefined;
+	private requestQueue:           Promise<unknown> = Promise.resolve();
 
 	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
 		this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
@@ -396,7 +398,7 @@ class RShellSession {
 		});
 		this.options = options;
 		// initialize the session
-		this.writeLine(initCommand(options.eol));
+		this.writeLine(initCommand(options.eol, options.pipeBind));
 
 		if(log.settings.minLevel <= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {
@@ -423,35 +425,62 @@ class RShellSession {
 	/**
 	 * Collect lines from the selected streams until the given condition is met or the timeout is reached
 	 *
-	 * This method does allow other listeners to consume the same input
+	 * Serialized: `action` fires only after every earlier request has detached, avoiding response mixups.
 	 * @param from    - The stream(s) to collect the information from
 	 * @param until   - If the predicate returns true, this will stop the collection and resolve the promise
 	 * @param timeout - Configuration for how and when to timeout
 	 * @param action  - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
 	 */
-	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+	public collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+		const previousDrain = this.requestQueue;
+		let releaseNext: () => void = () => {
+		};
+		this.requestQueue = new Promise<void>(res => {
+			releaseNext = res;
+		});
+		const run = (): Promise<string[]> => this.collectLinesUntilExclusive(from, until, timeout, action, releaseNext);
+		return previousDrain.then(run, run);
+	}
+
+	private collectLinesUntilExclusive(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action: (() => void) | undefined, onDrained: () => void): Promise<string[]> {
 		const result: string[] = [];
 		let handler: (data: string) => void;
 		let error: (code: number) => void;
+		let drained = false;
+		let abandoned = false;
 
-		return await new Promise<string[]>((resolve, reject) => {
+		const detach = (): void => {
+			if(drained) {
+				return;
+			}
+			drained = true;
+			this.removeListener(from, 'line', handler);
+			this.bareSession.removeListener('exit', error);
+			this.bareSession.stdin.removeListener('error', error);
+			onDrained();
+		};
+
+		return new Promise<string[]>((resolve, reject) => {
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
 				if(timeout.onTimeout) {
 					timeout.onTimeout(resolve, reject, result);
 				} else {
 					reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`));
 				}
+				abandoned = true;
+				result.length = 0;
 			}, timeout.ms);
 			this.collectionTimeout = makeTimer();
 
 			handler = (data: string): void => {
 				const end = until.predicate(data);
-				if(!end || until.includeInResult) {
+				if(!abandoned && (!end || until.includeInResult)) {
 					result.push(data);
 				}
 				if(end) {
 					clearTimeout(this.collectionTimeout);
 					resolve(result);
+					detach();
 				} else if(timeout.resetOnNewData) {
 					clearTimeout(this.collectionTimeout);
 					this.collectionTimeout = makeTimer();
@@ -460,14 +489,11 @@ class RShellSession {
 
 			error = () => {
 				resolve(result);
+				detach();
 			};
 			this.onExit(error);
 			this.on(from, 'line', handler);
 			action?.();
-		}).finally(() => {
-			this.removeListener(from, 'line', handler);
-			this.bareSession.removeListener('exit', error);
-			this.bareSession.stdin.removeListener('error', error);
 		});
 	}
 

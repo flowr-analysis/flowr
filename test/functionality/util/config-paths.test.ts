@@ -45,6 +45,11 @@ describe('Config paths', () => {
 			const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'engine.tree-sitter.lax', true);
 			assert.isTrue(FlowrConfig.getForEngine(config, 'tree-sitter')?.lax);
 		});
+		test('the r-shell pipe-bind option is reachable the same way, and off by default', () => {
+			assert.isUndefined(FlowrConfig.getForEngine(FlowrConfig.default(), 'r-shell')?.pipeBind);
+			const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'engine.r-shell.pipeBind', true);
+			assert.isTrue(FlowrConfig.getForEngine(config, 'r-shell')?.pipeBind);
+		});
 		test('naming one engine does not narrow the analysis to it', () => {
 			assert.deepStrictEqual(FlowrConfig.default().engines, [], 'the default stands for every engine');
 			const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'engine.tree-sitter.lax', true);

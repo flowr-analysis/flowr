@@ -5,36 +5,23 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>flowR Benchmark History</title>
 	<meta name="description" content="Performance history of the flowR static analyzer for R, measured on every release.">
-	<script>
-		/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
-		(function() {
-			try {
-				var url = new URLSearchParams(location.hash.replace(/^#/, ''));
-				var theme = url.get('theme') || localStorage.getItem('flowr-bench-theme');
-				if(theme === 'light' || theme === 'dark') {
-					document.documentElement.setAttribute('data-theme', theme);
-				}
-			} catch(e) { /* private mode keeps the system theme */ }
-		})();
-	</script>
+	<!--CHROME-SCRIPT-->
 	<link rel="icon" href="../../img/flowR-mark-red.svg" type="image/svg+xml">
 	<link rel="stylesheet" href="style.css">
+	<style>
+	<!--BAR-CSS-->
+	<!--FOOTER-CSS-->
+	</style>
 </head>
 <body>
-<header>
-	<div class="titles">
-		<div class="title-row">
-			<h1><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h1>
-		</div>
-		<p class="intro">
-			One point per release, measured on a shared CI runner.
-			<a href="../../../" target="_blank" rel="noopener">Landing Page</a>
-		</p>
-	</div>
-	<div class="theme">
-		<label for="theme">Theme</label>
-		<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
-	</div>
+<header class="bar">
+	<h2><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><!--VERSION-LINK--></h2>
+	<nav>
+		<!--NAV:benchmark-->
+	</nav>
+	<span class="controls">
+		<!--CONTROLS:benchmark-->
+	</span>
 </header>
 
 <p id="status" class="status" hidden></p>
@@ -75,14 +62,12 @@
 	<section id="charts"></section>
 </main>
 
-<footer>
-	<a href="https://github.com/flowr-analysis/flowr">flowr-analysis/flowr</a> |
-	<a href="https://github.com/flowr-analysis/flowr/wiki">wiki</a> |
-	<a href="https://github.com/flowr-analysis/flowr/wiki/Interface">interface docs</a> |
-	<span id="source-note"></span> |
-	<span id="watch-note"></span>
-	<button type="button" id="fullscreen" aria-pressed="false">Fullscreen</button>
-</footer>
+<!--FOOTER-NOTES
+<span id="source-note"></span> |
+<span id="watch-note"></span>
+<button type="button" id="fullscreen" aria-pressed="false">Fullscreen</button>
+-->
+<!--FOOTER:benchmark-->
 
 <div id="tooltip" hidden></div>
 

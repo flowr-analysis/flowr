@@ -23,6 +23,7 @@ import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
+import { RPath } from '../../../../../../util/files';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../../../../gas';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -60,16 +61,14 @@ const AnyPathSeparator = /[/\\]/g;
  * @see {@link platformDirname} - for the dirname counterpart
  */
 export function platformBasename(p: string): string {
-	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
-	return path.posix.basename(normalized);
+	return RPath.basename(p);
 }
 
 /**
  * Return the dirname of a path in a platform-agnostic way
  */
 export function platformDirname(p: string): string {
-	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
-	return path.posix.dirname(normalized);
+	return RPath.dirname(p);
 }
 
 function returnPlatformPath(p: string): string {

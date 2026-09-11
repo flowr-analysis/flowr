@@ -152,7 +152,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 
 		if(!onlyForSideEffects) {
-			if(DfgVertex.isFunctionCall(currentVertex) && !currentVertex.onlyBuiltin) {
+			if(DfgVertex.isFunctionCall(currentVertex)) {
 				sliceForCall(current, currentVertex, info, queue, ctx);
 			}
 
@@ -201,6 +201,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const result = ctx.config.solver.slicer?.autoExtend ? extendSlices(status.result, idMap) : status.result;
 	return { ...status, slicedFor: ids, result, freeNames: freeNamesOf(result, info.graph) };
 }
+
 
 /**
  * The names the slice reads without defining them: a use whose definitions all stayed outside meets that name

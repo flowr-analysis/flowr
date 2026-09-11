@@ -6,34 +6,17 @@
 <title>flowR &middot; playground</title>
 <meta name="description" content="Run flowR on your own R code, in your browser: what a script touches, what the linter says, and the part that computes one value.">
 <link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
-<script>
-	try {
-		const theme = localStorage.getItem('flowr-theme');
-		if(theme) { document.documentElement.dataset.theme = theme; }
-	} catch(e) { /* private mode keeps the system theme */ }
-	/* every flowR page reads the same key, so a change here follows you to the others */
-	addEventListener('storage', e => {
-		if(e.key === 'flowr-theme') {
-			if(e.newValue) { document.documentElement.dataset.theme = e.newValue; }
-			else { delete document.documentElement.dataset.theme; }
-		}
-	});
-</script>
+<!--CHROME-SCRIPT-->
 <style>
-:root {
+<!--THEME-LIGHT
 	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
 	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; --mark: #e0a300; --markline: #b07d00; color-scheme: light;
-}
-:root[data-theme="dark"] {
+-->
+<!--THEME-DARK
 	--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
 	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; color-scheme: dark;
-}
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) {
-		--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
-		--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; color-scheme: dark;
-	}
-}
+-->
+<!--THEME-CSS:own-->
 * { box-sizing: border-box; }
 /* every list here gives its rows a `display` of their own, and that beats what `hidden` states: said once
    for the page, so nothing has to remember it again */
@@ -44,17 +27,16 @@ body {
 	font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 a {
-	color: var(--accent); text-decoration: underline;
+	color: var(--accent); text-decoration: none;
 	text-decoration-thickness: from-font; text-underline-offset: .16em;
-	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
-	transition: color .12s, text-decoration-color .12s, opacity .12s;
+	transition: color .12s, border-color .12s, opacity .12s;
 }
-a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { a { transition: none; } }
 code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .top {
-	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .5rem 1rem; flex: none;
+	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .8rem 1rem .6rem; flex: none;
 	border-bottom: 1px solid var(--border); background: var(--panel);
 }
 /* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
@@ -84,21 +66,21 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 @media (max-width: 21rem) { .top .links { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
 @media (max-width: 42rem) { .top .version { display: none; } }
 .top a.link {
-	display: inline-flex; align-items: center; height: 1.9rem; padding: 0 .5rem; white-space: nowrap;
+	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
 	color: var(--muted); text-decoration: none; font-size: .85rem; border-radius: .45rem;
 }
 .top a.link:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 7%, transparent); }
 /* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
    page colours; only the backdrop reacts to the pointer */
 .top a.gh, .top a.gh:hover { color: #181717; }
-.top a.gh { justify-content: center; width: 1.9rem; padding: 0; }
+.top a.gh { justify-content: center; width: 2rem; padding: 0; }
 :root[data-theme="dark"] .top a.gh, :root[data-theme="dark"] .top a.gh:hover { color: #fff; }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) .top a.gh, :root:not([data-theme="light"]) .top a.gh:hover { color: #fff; }
 }
 .top a.gh svg { display: block; }
 #theme {
-	display: grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0; cursor: pointer;
+	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; cursor: pointer;
 	border-radius: .45rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
 #theme:hover { border-color: var(--accent); color: var(--accent); }
@@ -513,23 +495,16 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	<span class="ident">
 		<a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a>
 		<span class="where">Playground</span>
-		<a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a>
+		<!--VERSION-LINK-->
 	</span>
 	<span class="grow"></span>
 	<span class="note">Fully local, selected features, use the
 		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> for more.</span>
 	<nav class="links">
-		<a class="link" href="../../" target="_blank" rel="noopener">Landing Page</a>
-		<a class="link" href="../sigdb/" target="_blank" rel="noopener">Signature DB</a>
-		<a class="link" href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
-		<a class="link" href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+		<!--NAV:playground-->
 	</nav>
 	<span class="controls">
-		<a class="link gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
-		<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
-			<svg class="moon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
-			<svg class="sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
-		</button>
+		<!--CONTROLS:playground-->
 	</span>
 </div>
 
@@ -576,6 +551,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 		</div>
 	</div>
 </div>
+
 
 <script type="text/plain" id="sample"><!--SAMPLE--></script>
 <script type="text/plain" id="sigs"><!--SIGS--></script>

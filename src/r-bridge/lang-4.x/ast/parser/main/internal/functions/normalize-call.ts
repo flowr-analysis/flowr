@@ -44,12 +44,21 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: r
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
 		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content);
-	} else if(!namedSymbolContent.some(x => x.name === RawRType.SymbolFunctionCall)) {
+	} else if(!isNamedCallee(namedSymbolContent)) {
 		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`);
 		return tryParseUnnamedFunctionCall(data, mappedWithName, location, content);
 	} else {
 		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content);
 	}
+}
+
+function isNamedCallee(namedSymbolContent: readonly NamedJsonEntry[]): boolean {
+	if(namedSymbolContent.length === 1) {
+		return namedSymbolContent[0].name === RawRType.SymbolFunctionCall;
+	}
+	const op = namedSymbolContent.length === 3 ? namedSymbolContent[1].content.text : undefined;
+	return (op === RawRType.NsGet || op === RawRType.NsGetInt)
+		&& namedSymbolContent[2].name === RawRType.SymbolFunctionCall;
 }
 
 function parseArguments(mappedWithName: readonly NamedJsonEntry[], data: NormalizerData): (RArgument | undefined)[] {

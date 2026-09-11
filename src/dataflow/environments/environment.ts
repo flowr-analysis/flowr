@@ -10,6 +10,7 @@ import type {
 	IdentifierDefinition,
 	InGraphIdentifierDefinition
 } from './identifier';
+import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
 import { Identifier, PkgName } from './identifier';
 import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
@@ -217,6 +218,11 @@ export class Environment implements IEnvironment {
 
 	/** Only sound on an environment nobody else holds yet. */
 	private apply(name: BrandedIdentifier, definition: IdentifierDefinition & { name: Identifier }): void {
+		if(anyRemovalMarker(name)) {
+			const marker = removalMarkerOf(name);
+			this.writableMemory.delete(marker);
+			this.cache?.delete(marker);
+		}
 		/* isolate the cds from the originating reference, which may still be updated in place */
 		if(definition.cds !== undefined) {
 			definition = { ...definition, cds: definition.cds.slice() };
@@ -597,6 +603,7 @@ function attachedPackagesOf(this: void, env: Environment): Set<string> {
 
 /**
  * Helpers for navigating and manipulating {@link REnvironmentInformation|environments} around the global environment and attached-package search path.
+ * @helper api
  */
 export const REnvironment = {
 	name:             'REnvironment',

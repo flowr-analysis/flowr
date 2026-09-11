@@ -10,10 +10,15 @@ import { slicerLogger } from './static-slicer';
 /** How many nodes the traversal visits between two {@link GasFeatureKey.Slicer|gas} checks. */
 const GasCheckEvery = 512;
 
+const enum SeenAs {
+	Normal     = 1,
+	SideEffect = 2
+}
+
 export class VisitingQueue {
 	private readonly threshold:      number;
 	private timesHitThreshold:       number                   = 0;
-	private readonly seen:           Map<Fingerprint, NodeId> = new Map();
+	private readonly seen:           Map<NodeId, Map<Fingerprint, number>> = new Map();
 	private readonly seenByCache:    Set<NodeId>              = new Set();
 	private readonly idThreshold:    Map<NodeId, number>      = new Map();
 	private readonly queue:          NodeToSlice[] = [];
@@ -58,20 +63,29 @@ export class VisitingQueue {
 		}
 
 		/* we do not include the in call part in the fingerprint as it is 'deterministic' from the source position */
-		const print = fingerprint(target, envFingerprint, onlyForSideEffects);
+		const seenAs = onlyForSideEffects ? SeenAs.SideEffect : SeenAs.Normal;
+		let seenIn = this.seen.get(target);
+		if(seenIn === undefined) {
+			seenIn = new Map();
+			this.seen.set(target, seenIn);
+		}
+		const seenBefore = seenIn.get(envFingerprint) ?? 0;
+		if((seenBefore & seenAs) !== 0) {
+			return;
+		}
+		seenIn.set(envFingerprint, seenBefore | seenAs);
 
-		if(!this.seen.has(print)) {
-			const cached = this.cache?.get(print);
+		if(this.cache !== undefined) {
+			const cached = this.cache.get(fingerprint(target, envFingerprint, onlyForSideEffects));
 			if(cached) {
 				this.seenByCache.add(target);
 				for(const id of cached) {
 					this.queue.push({ id, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 				}
 			}
-			this.idThreshold.set(target, idCounter + 1);
-			this.seen.set(print, target);
-			this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 		}
+		this.idThreshold.set(target, idCounter + 1);
+		this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 	}
 
 	public next(): NodeToSlice {
@@ -114,7 +128,7 @@ export class VisitingQueue {
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set([...this.seen.values(), ...this.seenByCache]),
+			result:            new Set([...this.seen.keys(), ...this.seenByCache]),
 			...(this.stoppedEarly ? { stoppedEarly: true, progress: { visited: this.visited, frontier: this.queue.length } } : {})
 		};
 	}

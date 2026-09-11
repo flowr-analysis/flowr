@@ -9,7 +9,7 @@ import type { FlowrAnalyzer } from '../../../../src/project/flowr-analyzer';
 import { fileProtocol } from '../../../../src/r-bridge/retriever';
 import type { FlowrAnalyzerFilePlugin } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-file-plugin';
 import { label } from '../../_helper/label';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import type { RdIndex, RdTopicMatch } from '../../../../src/project/plugins/file-plugins/files/flowr-rd-file';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
@@ -22,7 +22,7 @@ type TestCaseEntries = [string, LoadFn][];
 type ConstructTo<T> = new (...args: any) => T;
 
 /** Tests loading `testFilePath` (which `pluginType` registers as a `pluginFileType`) via the file protocol, a direct path, and a duplicate request; `expectedContent` is what `content()` should then report, `supp` labels the case. */
-export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P extends ConstructTo<FlowrAnalyzerFilePlugin>>(pluginType: P, pluginFileType: F, testFilePath: string, expectedContent: string, supp: SupportedFlowrCapabilityId[]) {
+export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P extends ConstructTo<FlowrAnalyzerFilePlugin>>(pluginType: P, pluginFileType: F, testFilePath: string, expectedContent: string, supp: FlowrCapabilityId[]) {
 	const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').registerPlugins(new pluginType()).build();
 
 	test.each([

@@ -28,6 +28,7 @@ body:
         - Dead Code
         - Deprecated Functions
         - File Path Validity
+        - Namespace Access Validity
         - Naming Convention
         - Network Functions
         - No Leaked Credentials

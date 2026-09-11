@@ -1,7 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackNonameArg } from '../argument/unpack-argument';
+import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -11,12 +11,36 @@ import { dataflowLogger } from '../../../../../logger';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
-import { Identifier } from '../../../../../environments/identifier';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { DfgVertex } from '../../../../../graph/vertex';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveConstantString, resolveEnvirArg } from './built-in-envir-utils';
+import { EnvirPositionFormals, resolveConstantString, resolveFirstEnvirArg, suppliesArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { isNotUndefined } from '../../../../../../util/assert';
+import type { FnSig } from '../../../../../environments/built-in-props';
+
+function namesDenotedBy<OtherInfo>(
+	node: RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): string[] {
+	const folded = resolveConstantString(node, data);
+	if(folded !== undefined) {
+		return [folded];
+	}
+	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'c'
+		&& Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function)) {
+		const parts = node.arguments.map(arg => RArgument.isEmpty(arg) ? undefined : unpackArg(arg))
+			.map(value => value !== undefined ? resolveConstantString(value, data) : undefined);
+		return parts.every(isNotUndefined) ? parts : [];
+	}
+	return [];
+}
 
 /**
  * Processes a built-in 'get' function call.
@@ -31,68 +55,90 @@ export function processGet<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: {
+		returnsValue?: boolean
+		sig?:          FnSig
+	} = {}
 ): DataflowInformation {
-	/* use the custom environment for resolution when envir points to a tracked env */
-	const resolution = resolveEnvirArg(args, data);
+	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', ...EnvirPositionFormals]);
 
-	/* the first arg must be a string naming the variable to retrieve */
 	const firstArg = args.length >= 1 ? args[0] : undefined;
 	const retrieve = firstArg !== undefined && firstArg !== EmptyArgument
 		? unpackNonameArg(firstArg)
 		: undefined;
 
-	let treatTargetAsSymbol: RSymbol<OtherInfo & ParentInformation> | undefined = undefined;
-	if(retrieve !== undefined && RString.is(retrieve)) {
-		treatTargetAsSymbol = {
-			type:     RType.Symbol,
-			info:     retrieve.info,
-			content:  removeRQuotes(retrieve.lexeme),
-			lexeme:   retrieve.lexeme,
-			location: retrieve.location
-		};
-	} else if(retrieve !== undefined) {
-		const resolvedName = resolveConstantString(retrieve, data);
-		if(resolvedName !== undefined) {
-			const synthId = rootId + '-get-name';
+	const targets: RSymbol<OtherInfo & ParentInformation>[] = [];
+	let nameExpression: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
+	if(retrieve !== undefined) {
+		const literal = RString.is(retrieve);
+		const names = literal ? [removeRQuotes(retrieve.lexeme)] : namesDenotedBy(retrieve, data);
+		const location = literal ? retrieve.location : retrieve.location ?? name.location ?? SourceRange.invalid();
+		for(const [i, resolvedName] of names.entries()) {
+			const synthId = `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
 			const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
-				type:     RType.Symbol,
-				info:     { ...retrieve.info, id: synthId },
-				content:  resolvedName,
-				lexeme:   resolvedName,
-				location: retrieve.location ?? name.location ?? SourceRange.invalid()
+				type:    RType.Symbol,
+				info:    { ...retrieve.info, id: synthId },
+				content: resolvedName,
+				lexeme:  literal ? retrieve.lexeme : resolvedName,
+				location
 			};
 			data.completeAst.idMap.set(synthId, synthSymbol);
-			treatTargetAsSymbol = synthSymbol;
+			targets.push(synthSymbol);
+		}
+		if(!literal && targets.length > 0) {
+			nameExpression = firstArg;
 		}
 	}
 
-	if(treatTargetAsSymbol === undefined) {
-		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has not 1 string argument, skipping`);
+	if(targets.length === 0) {
+		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has no resolvable name argument, skipping`);
 		// dynamic, unresolvable name: reached-but-unknown rather than dropped
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
 	}
+
+	const remainingArgs = args.slice(1);
 
 	/* resolve in the custom environment if one was found, else the global one.
 	 * Pass remaining original args (e.g. envir=e) so they appear as Use vertices in the graph. */
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
-		args:   [...wrapArgumentsUnnamed([treatTargetAsSymbol], data.completeAst.idMap), ...args.slice(1)],
+		args: [
+			...wrapArgumentsUnnamed(targets, data.completeAst.idMap),
+			...(nameExpression !== undefined ? [nameExpression] : []),
+			...remainingArgs
+		],
 		rootId,
 		data:   resolution ? resolution.envirData : data,
 		origin: BuiltInProcName.Get
 	});
 
-	const firstProcessed = processedArguments[0];
-	if(firstProcessed) {
-		information.graph.addEdge(rootId, firstProcessed.entryPoint, EdgeType.Returns | EdgeType.Reads);
+	const named = processedArguments.slice(0, targets.length);
+	const returns = config.returnsValue === false ? EdgeType.Reads : EdgeType.Returns | EdgeType.Reads;
+	for(const target of named) {
+		if(target) {
+			information.graph.addEdge(rootId, target.entryPoint, returns);
+			const targetVtx = information.graph.getVertex(target.entryPoint);
+			if(DfgVertex.isUse(targetVtx)) {
+				targetVtx.constantFallback = true;
+			}
+		}
+	}
+
+	const nameExpressionProcessed = nameExpression !== undefined ? processedArguments[targets.length] : undefined;
+	if(nameExpressionProcessed) {
+		information.graph.addEdge(rootId, nameExpressionProcessed.entryPoint, EdgeType.Reads);
 	}
 
 	if(resolution) {
 		information.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+	} else if(suppliesArg(args, config.sig, EnvirPositionFormals)) {
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 	}
 
 	const isolatedTarget = resolution?.envirData.environment.current.builtInEnv === true;
-	const readsToDrop = isolatedTarget && firstProcessed ? new Set([firstProcessed.entryPoint]) : undefined;
+	const readsToDrop = isolatedTarget
+		? new Set(named.filter(isNotUndefined).map(t => t.entryPoint))
+		: undefined;
 
 	/* restore the caller's (global) environment so we don't leak envState upward */
 	return {

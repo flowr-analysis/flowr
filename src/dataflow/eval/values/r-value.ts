@@ -172,6 +172,7 @@ export function stringifyValue(value: Lift<Value>): string {
  * This is the constant-folding view: it answers "is this one known constant" and nothing else. It runs no
  * fixpoint, knows no control flow, and widens nothing. For an abstract state that does, use the dedicated
  * abstract interpretation in `src/abstract-interpretation/`.
+ * @helper values
  */
 export const RValue = {
 	name:            'RValue',

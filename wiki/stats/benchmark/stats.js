@@ -307,6 +307,11 @@
 		if(sig) {
 			return capitalize(sig[1]);
 		}
+		// the same for the mutation tile, which is already titled for them
+		const mut = /^mutation (.+)$/.exec(String(name));
+		if(mut) {
+			return capitalize(mut[1]);
+		}
 		const per = /^(.*?)( per 100 lines)$/.exec(String(name));
 		if(per) {
 			return shortName(per[1]) + per[2];
@@ -619,7 +624,8 @@
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload', folded: true },
 		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
-		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true }
+		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true },
+		{ id: 'mutations', title: 'Metamorphic mutations', about: 'the rewrites every counterexample is sliced through', perVersion: true, facts: true }
 	];
 
 	const PER_SLICE = ['static slicing', 'reconstruct code'];
@@ -637,6 +643,10 @@
 		}
 		if(n === 'tests' || n.startsWith('tests ')) {
 			return 'tests';
+		}
+		// what the counterexample suite carries, which is a property of the version and not of this run
+		if(n.startsWith('mutation ')) {
+			return 'mutations';
 		}
 		// the totals dwarf the single phases and add nothing the phases do not show
 		if(n.startsWith('total ')) {
@@ -697,6 +707,10 @@
 		// a larger database is neither better nor worse, it just describes more
 		if(n.startsWith('signature database')) {
 			return 'flat';
+		}
+		// a mutant that is still sliced wrongly is a debt, every other mutation counter is coverage
+		if(n.startsWith('mutation ')) {
+			return n.includes('known-wrong') ? 'down' : 'up';
 		}
 		if(n.includes('reduction') || n === 'data frame shapes (exact)') {
 			return 'up';

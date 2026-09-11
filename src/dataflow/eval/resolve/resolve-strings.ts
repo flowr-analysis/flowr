@@ -1,14 +1,15 @@
 import type { RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { Identifier, PkgName } from '../../environments/identifier';
-import { Top, type Value } from '../values/r-value';
+import { isValue, RValue, Top, type Value } from '../values/r-value';
 import { stringFrom } from '../values/string/string-constants';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { matchCallArguments } from './match-arguments';
-import { Resolve } from '../../environments/resolve-helper';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { NodeValue } from './node-value';
 
 /** everything after the last separator, with trailing separators dropped first (`a/b/` is `b`, `/` is the empty string) */
 function basename(path: string): string {
@@ -128,17 +129,40 @@ function foldStringCall<Info>(this: void, node: RNamedFunctionCall<Info>, resolv
 	return args.length > 0 ? known.fold(...args) : undefined;
 }
 
+function argAsString(this: void, id: NodeId, against: BuiltInEvalHandlerArgs, coerce: boolean): string | undefined {
+	const sole = NodeValue.sole(NodeValue.setOf(id, against));
+	if(sole === undefined) {
+		return undefined;
+	}
+	if(sole.type === 'string' && isValue(sole.value)) {
+		return sole.value.str;
+	}
+	if(!coerce) {
+		return undefined;
+	}
+	const num = RValue.numberOf(sole);
+	if(num !== undefined) {
+		return Number.isInteger(num) && Math.abs(num) < 1e5 ? String(num) : undefined;
+	}
+	if(sole.type === 'logical' && isValue(sole.value) && sole.value !== 'maybe') {
+		return sole.value ? 'TRUE' : 'FALSE';
+	}
+	return undefined;
+}
+
 /**
  * Resolves any call of a {@link StringFns} entry to a {@link Value}, with its arguments in any order R accepts:
- * a join like `paste0("cfg_", k)` when every part resolves to a single string constant, and a transformation
- * like `basename(p)` when its argument does. Anything that does not resolve stays `Top`.
+ * a join like `paste0("cfg_", k)` when every part resolves to a single string constant (coercing a joined
+ * number or logical the way `as.character` would), and a transformation like `basename(p)` when its argument
+ * does. Anything that does not resolve stays `Top`.
  */
 function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
 	if(!RFunctionCall.is(node) || !node.named) {
 		return Top;
 	}
-	const folded = foldStringCall(node, arg => Resolve.toSingleString(arg.info.id, args));
+	const joined = PasteLikeCalls.has(Identifier.getName(node.functionName.content));
+	const folded = foldStringCall(node, arg => argAsString(arg.info.id, args, joined));
 	if(folded === undefined) {
 		return Top;
 	}

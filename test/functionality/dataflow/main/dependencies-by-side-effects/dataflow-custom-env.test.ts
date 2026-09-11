@@ -6,6 +6,16 @@ import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processin
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { FlowrConfig } from '../../../../../src/config';
+import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import type { DataflowGraph } from '../../../../../src/dataflow/graph/graph';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../../../src/project/flowr-analyzer';
+
+function withGetNames(build: (getName: (call: SlicingCriterion) => NodeId) => DataflowGraph): (analyzer: ReadonlyFlowrAnalysisProvider) => Promise<DataflowGraph> {
+	return async analyzer => {
+		const idMap = (await analyzer.normalize()).idMap;
+		return build(call => `${SlicingCriterion.parse(call, idMap)}-get-name`);
+	};
+}
 
 describe('Custom Environment Tracking', withTreeSitter(shell => {
 
@@ -111,7 +121,16 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			}
 		);
 
-		assertDataflow(label('assign in both if-then-else branches: each branch reads e, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-conditionals']),
+		assertDataflow(label('a piped name binds in the envir the assign was given', ['dynamic-environment-resolution', 'name-created-resolved', 'pipe-and-pipe-bind']),
+			shell,
+			'e <- new.env()\n"x" |> assign(42, envir = e)\nget("x", envir = e)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@e', 'e')
+				.reads(getName('3@get'), '2@"x"')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('assign in both if-then-else branches: each branch reads e, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-control-flow']),
 			shell,
 			'e <- new.env()\nflag <- sample(c(TRUE, FALSE), 1)\nif (flag) {\n  assign("x", 1, envir=e)\n} else {\n  assign("x", 2, envir=e)\n}\nx',
 			emptyGraph()
@@ -126,7 +145,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			}
 		);
 
-		assertDataflow(label('assign in if-then-else to two separate envs: each branch reads its own env variable', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-conditionals']),
+		assertDataflow(label('assign in if-then-else to two separate envs: each branch reads its own env variable', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-control-flow']),
 			shell,
 			'e1 <- new.env()\ne2 <- new.env()\nflag <- sample(c(TRUE, FALSE), 1)\nif (flag) {\n  assign("result", 1, envir=e1)\n} else {\n  assign("result", 2, envir=e2)\n}\nget("result", envir=e1)',
 			emptyGraph()
@@ -138,7 +157,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('assign in for-loop to custom env: e read in each iteration, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-loops']),
+		assertDataflow(label('assign in for-loop to custom env: e read in each iteration, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-control-flow']),
 			shell,
 			'e <- new.env()\nfor (i in 1:3) {\n  assign("x", i, envir=e)\n}\nx',
 			emptyGraph()
@@ -152,7 +171,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			}
 		);
 
-		assertDataflow(label('assign in while-loop to custom env: e read in body, val not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'while-loop', 'environment-in-loops']),
+		assertDataflow(label('assign in while-loop to custom env: e read in body, val not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'while-loop', 'environment-in-control-flow']),
 			shell,
 			'e <- new.env()\ni <- 0\nwhile (i < 3) {\n  assign("val", i, envir=e)\n  i <- i + 1\n}\nval',
 			emptyGraph()
@@ -167,52 +186,185 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 		);
 	});
 
+	describe('positional environment arguments', () => {
+		assertDataflow(label('assign takes envir as its fourth formal, after pos', ['dynamic-environment-resolution', 'environment-sharing']),
+			shell,
+			'e <- new.env()\nassign("y", 1, -1L, e)\ny',
+			emptyGraph()
+				.use('3@y'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['3@y', '2@"y"']] }
+		);
+
+		assertDataflow(label('assign writes into an environment handed to its pos slot', ['dynamic-environment-resolution', 'environment-sharing']),
+			shell,
+			'e <- new.env()\nassign("x", 42, e)\nx',
+			emptyGraph()
+				.use('3@x'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['3@x', '2@"x"']] }
+		);
+
+		assertDataflow(label('assign with a numeric pos stays in the current scope', ['dynamic-environment-resolution']),
+			shell,
+			'assign("x", 42, 1)\nx',
+			emptyGraph()
+				.use('2@x')
+				.reads('2@x', '1@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('assign with pos 1 in a function writes the global environment', ['dynamic-environment-resolution']),
+			shell,
+			'x <- 99\nf <- function() assign("x", 2, 1)\nf()\nx',
+			emptyGraph()
+				.use('4@x')
+				.reads('4@x', '2@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['4@x', '1@x']] }
+		);
+
+		assertDataflow(label('assign with an unmodelled pos does not write the current scope', ['dynamic-environment-resolution']),
+			shell,
+			'assign("x", 42, 3)\nx',
+			emptyGraph()
+				.use('2@x'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['2@x', '1@"x"']] }
+		);
+
+		assertDataflow(label('makeActiveBinding takes env as its third formal, positionally', ['dynamic-environment-resolution', 'environment-sharing']),
+			shell,
+			'e <- new.env()\nf <- function() 5\nmakeActiveBinding("mb", f, e)\nmb',
+			emptyGraph()
+				.use('4@mb'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['4@mb', '3@"mb"']] }
+		);
+	});
+
 	describe('get() with envir=', () => {
-		assertDataflow(label('get resolves x from custom env and e is read', ['dynamic-environment-resolution', 'name-created']),
+		assertDataflow(label('get resolves x from custom env and e is read', ['dynamic-environment-resolution', 'name-created-resolved']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", envir=e)',
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
 				.use('3@e').reads('3@e', '1@e')
-				.reads('3@"x"', '2@"x"'),
+				.reads(getName('3@get'), '2@"x"')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('get without envir resolves from global scope', ['dynamic-environment-resolution', 'name-created']),
+		assertDataflow(label('get without envir resolves from global scope', ['dynamic-environment-resolution', 'name-created-resolved']),
 			shell,
 			'x <- 10\nget("x")',
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@x', 'x')
-				.use('2@"x"')
-				.reads('2@"x"', '1@x'),
+				.use(getName('2@get'))
+				.reads(getName('2@get'), '1@x')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('get result drives if-then-else condition: val reads from get, if reads val', ['dynamic-environment-resolution', 'name-created', 'if']),
+		assertDataflow(label('get result drives if-then-else condition: val reads from get, if reads val', ['dynamic-environment-resolution', 'name-created-resolved', 'if']),
 			shell,
 			'e <- new.env()\nassign("flag", TRUE, envir=e)\nval <- get("flag", envir=e)\nif (val) {\n  x <- 1\n} else {\n  x <- 2\n}',
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
 				.use('3@e').reads('3@e', '1@e')
-				.reads('3@"flag"', '2@"flag"')
+				.reads(getName('3@get'), '2@"flag"')
 				.defineVariable('3@val', 'val')
-				.use('4@val').reads('4@val', '3@val'),
+				.use('4@val').reads('4@val', '3@val')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('multiple gets from same env each independently read e and resolve their names', ['dynamic-environment-resolution', 'name-created', 'environment-sharing']),
+		assertDataflow(label('multiple gets from same env each independently read e and resolve their names', ['dynamic-environment-resolution', 'name-created-resolved', 'environment-sharing']),
 			shell,
 			'e <- new.env()\nassign("mu", 0, envir=e)\nassign("sigma", 1, envir=e)\nmu_val <- get("mu", envir=e)\nsigma_val <- get("sigma", envir=e)\nresult <- mu_val + sigma_val',
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
 				.use('3@e').reads('3@e', '1@e')
 				.use('4@e').reads('4@e', '1@e')
 				.use('5@e').reads('5@e', '1@e')
-				.reads('4@"mu"', '2@"mu"')
-				.reads('5@"sigma"', '3@"sigma"'),
+				.reads(getName('4@get'), '2@"mu"')
+				.reads(getName('5@get'), '3@"sigma"')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('get0 takes envir as its second formal, positionally', ['dynamic-environment-resolution', 'name-created-resolved']),
+			shell,
+			'e <- new.env()\nassign("x", 42, envir=e)\nget0("x", e)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('3@e').reads('3@e', '1@e')
+				.reads(getName('3@get0'), '2@"x"')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('mget takes envir as its second formal, positionally', ['dynamic-environment-resolution', 'name-created-resolved']),
+			shell,
+			'e <- new.env()\nassign("x", 42, envir=e)\nmget("x", e)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('3@e').reads('3@e', '1@e')
+				.reads(getName('3@mget'), '2@"x"')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('get reads from an environment handed to its pos slot', ['dynamic-environment-resolution', 'name-created-resolved']),
+			shell,
+			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", e)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('3@e').reads('3@e', '1@e')
+				.reads(getName('3@get'), '2@"x"')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('get takes envir as its third formal, after pos', ['dynamic-environment-resolution', 'name-created-resolved']),
+			shell,
+			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", -1L, e)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('3@e').reads('3@e', '1@e')
+				.reads(getName('3@get'), '2@"x"')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+	});
+
+	describe('get()/ls() through a pipe (no placeholder): the pipe only patches the piped value onto the ' +
+		'finished call vertex, so these built-ins must still see it while inspecting their own args', () => {
+		assertDataflow(label('get: the piped value is the name, still resolves in the custom env', ['dynamic-environment-resolution', 'name-created-resolved', 'pipe-and-pipe-bind']),
+			shell,
+			'e <- new.env()\nassign("x", 42, envir=e)\n"x" |> get(envir=e)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@e').reads('3@e', '1@e')
+				.reads(getName('3@get'), '2@"x"')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('ls: the piped value is the envir, still reads what was assigned into it', ['dynamic-environment-resolution', 'pipe-and-pipe-bind']),
+			shell,
+			'e <- new.env()\nassign("x1", 1, envir = e)\ne |> ls() |> length()',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.reads('3@ls', '2@"x1"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+	});
+
+	describe('get() resolves a name held in a variable', () => {
+		assertDataflow(label('get reads the definition of the name it resolves to', ['name-created', 'name-created-resolved']),
+			shell,
+			'x <- 1\nnm <- "x"\nr <- get(nm)\nprint(r)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@x', 'x')
+				.call('3@get', 'get', [argumentInCall(getName('3@get')), argumentInCall('3@nm')], {
+					returns:     [getName('3@get')],
+					reads:       [getName('3@get'), '3@nm', NodeId.toBuiltIn('get')],
+					onlyBuiltIn: true
+				})
+				.calls('3@get', NodeId.toBuiltIn('get'))
+				.reads(getName('3@get'), '1@x')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 	});
@@ -252,7 +404,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			}
 		);
 
-		assertDataflow(label('local with if-then-else body in custom env: neither branch leaks to global scope', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-conditionals']),
+		assertDataflow(label('local with if-then-else body in custom env: neither branch leaks to global scope', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-control-flow']),
 			shell,
 			'e <- new.env()\nlocal({\n  x <- if (TRUE) 10 else 20\n  y <- x + 1\n}, envir=e)\nx\ny',
 			emptyGraph()
@@ -262,6 +414,42 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,
 				mustNotHaveEdges:      [['6@x', '3@x'], ['7@y', '4@y']]
+			}
+		);
+
+		assertDataflow(label('local(x <- 2, envir = globalenv()) writes into the real global scope', ['local-envir-argument']),
+			shell,
+			'x <- 1\nlocal(x <- 2, envir = globalenv())\nx',
+			emptyGraph()
+				.use('3@x')
+				.reads('3@x', '2@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '1@x']]
+			}
+		);
+
+		assertDataflow(label('local takes envir as its second formal, positionally', ['local-envir-argument', 'dynamic-environment-resolution']),
+			shell,
+			'e <- new.env()\nlocal(x <- 42, e)\nget("x", envir=e)',
+			withGetNames(getName => emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('3@e').reads('3@e', '1@e')
+				.reads(getName('3@get'), '2@x')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('local(x <- 2, envir = .GlobalEnv) writes into the real global scope', ['local-envir-argument']),
+			shell,
+			'x <- 1\nlocal(x <- 2, envir = .GlobalEnv)\nx',
+			emptyGraph()
+				.use('3@x')
+				.reads('3@x', '2@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '1@x']]
 			}
 		);
 	});
@@ -279,7 +467,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			}
 		);
 
-		assertDataflow(label('e$x <- val then get("x", envir=e) resolves correctly', ['dynamic-environment-resolution', 'name-created']),
+		assertDataflow(label('e$x <- val then get("x", envir=e) resolves correctly', ['dynamic-environment-resolution', 'name-created-resolved']),
 			shell,
 			'e <- new.env()\ne$x <- 42\nget("x", envir=e)',
 			emptyGraph()
@@ -291,7 +479,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	});
 
 	describe('dollar-sign read (e$x)', () => {
-		assertDataflow(label('e$x resolves to x in envState, both define and use linked', ['dynamic-environment-resolution', 'name-created']),
+		assertDataflow(label('e$x resolves to x in envState, both define and use linked', ['dynamic-environment-resolution']),
 			shell,
 			[
 				'e <- new.env()',
@@ -354,10 +542,10 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			emptyGraph()
 				.defineVariable('1@x', 'x')
 				.use('3@x').reads('3@x', '1@x')
-				.use('4@foo').reads('4@foo', '2@foo')
+				.use('4@foo').reads('4@foo', '2@42')
 				.defineVariable('5@foo', 'foo')
 				.use('6@foo').reads('6@foo', '5@foo')
-				.use('8@foo').reads('8@foo', '2@foo'),
+				.use('8@foo').reads('8@foo', '2@42'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,
@@ -367,7 +555,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	});
 
 	describe('complex programs', () => {
-		assertDataflow(label('configuration manager: multi-assign then conditional update then selective get', ['dynamic-environment-resolution', 'environment-sharing', 'name-created', 'if', 'environment-in-conditionals']),
+		assertDataflow(label('configuration manager: multi-assign then conditional update then selective get', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved', 'if', 'environment-in-control-flow']),
 			shell,
 			[
 				'cfg <- new.env()',
@@ -383,21 +571,21 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'result <- paste(method, n)',
 				'result',
 			].join('\n'),
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@cfg', 'cfg')
 				.use('2@cfg').reads('2@cfg', '1@cfg')
 				.use('3@cfg').reads('3@cfg', '1@cfg')
 				.use('4@cfg').reads('4@cfg', '1@cfg')
 				.use('5@cfg').reads('5@cfg', '1@cfg')
-				.reads('5@"threshold"', '2@"threshold"')
+				.reads(getName('5@get'), '2@"threshold"')
 				.use('7@cfg').reads('7@cfg', '1@cfg')
 				.use('9@cfg').reads('9@cfg', '1@cfg')
 				.use('10@cfg').reads('10@cfg', '1@cfg')
-				.reads('10@"n_iter"', '3@"n_iter"'),
+				.reads(getName('10@get'), '3@"n_iter"')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('two-env pipeline: data and config environments are independent', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
+		assertDataflow(label('two-env pipeline: data and config environments are independent', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved']),
 			shell,
 			[
 				'data_env <- new.env()',
@@ -409,21 +597,21 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'assign("scaled", raw_val * scale_val, envir=data_env)',
 				'get("scaled", envir=data_env)',
 			].join('\n'),
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@data_env', 'data_env')
 				.defineVariable('2@cfg_env', 'cfg_env')
 				.use('3@data_env').reads('3@data_env', '1@data_env')
 				.use('4@cfg_env').reads('4@cfg_env', '2@cfg_env')
 				.use('5@data_env').reads('5@data_env', '1@data_env')
-				.reads('5@"raw"', '3@"raw"')
+				.reads(getName('5@get'), '3@"raw"')
 				.use('6@cfg_env').reads('6@cfg_env', '2@cfg_env')
-				.reads('6@"scale"', '4@"scale"')
+				.reads(getName('6@get'), '4@"scale"')
 				.use('7@data_env').reads('7@data_env', '1@data_env')
-				.use('8@data_env').reads('8@data_env', '1@data_env'),
+				.use('8@data_env').reads('8@data_env', '1@data_env')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('results and metrics envs: conditional summary strategy based on count from metrics env', ['dynamic-environment-resolution', 'environment-sharing', 'name-created', 'if', 'environment-in-conditionals']),
+		assertDataflow(label('results and metrics envs: conditional summary strategy based on count from metrics env', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved', 'if', 'environment-in-control-flow']),
 			shell,
 			[
 				'results <- new.env()',
@@ -439,22 +627,22 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'}',
 				'get("summary", envir=results)',
 			].join('\n'),
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@results', 'results')
 				.defineVariable('2@metrics', 'metrics')
 				.use('4@metrics').reads('4@metrics', '2@metrics')
 				.use('5@results').reads('5@results', '1@results')
 				.use('6@metrics').reads('6@metrics', '2@metrics')
-				.reads('6@"n"', '4@"n"')
+				.reads(getName('6@get'), '4@"n"')
 				.defineVariable('6@n_val', 'n_val')
 				.use('7@n_val').reads('7@n_val', '6@n_val')
 				.use('8@results').reads('8@results', '1@results')
 				.use('10@results').reads('10@results', '1@results')
-				.use('12@results').reads('12@results', '1@results'),
+				.use('12@results').reads('12@results', '1@results')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('for-loop populates env with dynamic keys: e read in body and after loop', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-loops']),
+		assertDataflow(label('for-loop populates env with dynamic keys: e read in body and after loop', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-control-flow']),
 			shell,
 			[
 				'e <- new.env()',
@@ -470,7 +658,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('chained get-assign-get across two envs: full provenance chain', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
+		assertDataflow(label('chained get-assign-get across two envs: full provenance chain', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved']),
 			shell,
 			[
 				'src <- new.env()',
@@ -479,18 +667,18 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'assign("val", get("val", envir=src), envir=dst)',
 				'get("val", envir=dst)',
 			].join('\n'),
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@src', 'src')
 				.defineVariable('2@dst', 'dst')
 				.use('3@src').reads('3@src', '1@src')
 				.use('4@src').reads('4@src', '1@src')
-				.reads('5@"val"', '4@"val"')
+				.reads(getName('5@get'), '4@"val"')
 				.use('4@dst').reads('4@dst', '2@dst')
-				.use('5@dst').reads('5@dst', '2@dst'),
+				.use('5@dst').reads('5@dst', '2@dst')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('parallel accumulation in two envs inside for-loop: reads isolated per env', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-loops']),
+		assertDataflow(label('parallel accumulation in two envs inside for-loop: reads isolated per env', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-control-flow']),
 			shell,
 			[
 				'evens <- new.env()',
@@ -629,11 +817,11 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'cfg <- make_cfg(42)',
 				'get("setting", envir=cfg)',
 			].join('\n'),
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@make_cfg', 'make_cfg')
 				.defineVariable('6@cfg', 'cfg')
 				.use('7@cfg').reads('7@cfg', '6@cfg')
-				.reads('7@"setting"', '3@"setting"'),
+				.reads(getName('7@get'), '3@"setting"')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 	});
@@ -647,13 +835,13 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'alias <- e',
 				'get("x", envir=alias)',
 			].join('\n'),
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
 				.defineVariable('3@alias', 'alias')
 				.use('3@e').reads('3@e', '1@e')
 				.use('4@alias').reads('4@alias', '3@alias')
-				.reads('4@"x"', '2@"x"'),
+				.reads(getName('4@get'), '2@"x"')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
@@ -666,7 +854,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'alias2 <- alias1',
 				'get("x", envir=alias2)',
 			].join('\n'),
-			emptyGraph()
+			withGetNames(getName => emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
 				.defineVariable('3@alias1', 'alias1')
@@ -674,7 +862,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				.defineVariable('4@alias2', 'alias2')
 				.use('4@alias1').reads('4@alias1', '3@alias1')
 				.use('5@alias2').reads('5@alias2', '4@alias2')
-				.reads('5@"x"', '2@"x"'),
+				.reads(getName('5@get'), '2@"x"')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
@@ -735,6 +923,20 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				.use('5@alias').reads('5@alias', '3@alias')
 				.reads('5@x', '2@"x"'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['5@x', '4@x']] }
+		);
+
+		assertDataflow(label('e |> with(x): the piped value is the data, and still resolves in the custom env', ['dynamic-environment-resolution', 'environment-with', 'pipe-and-pipe-bind']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("v", 9, envir=e)',
+				'e |> with(v)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.reads('3@v', '2@"v"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
 		assertDataflow(label('with untracked env falls through to default handling', ['dynamic-environment-resolution', 'environment-with']),

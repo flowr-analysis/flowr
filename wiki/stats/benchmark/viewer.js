@@ -23,27 +23,34 @@
 
 	/* ---------- chrome ---------- */
 
+	/* the system theme until a reader picks one, which is then the choice every flowR page reads */
+	let themeMode = 'system';
+
 	function setTheme(mode) {
+		themeMode = mode;
 		if(mode === 'system') {
-			document.documentElement.removeAttribute('data-theme');
+			delete document.documentElement.dataset.theme;
 		} else {
-			document.documentElement.setAttribute('data-theme', mode);
+			document.documentElement.dataset.theme = mode;
 		}
 		try {
-			localStorage.setItem('flowr-bench-theme', mode);
-			localStorage.setItem('flowr-theme', mode === 'system' ? '' : mode);
+			if(mode === 'system') {
+				localStorage.removeItem('flowr-theme');
+			} else {
+				localStorage.setItem('flowr-theme', mode);
+			}
 		} catch{ /* private mode, keep going */ }
 	}
 
 	function initTheme() {
 		let stored = 'system';
 		try {
-			stored = localStorage.getItem('flowr-bench-theme') || localStorage.getItem('flowr-theme') || 'system';
+			stored = localStorage.getItem('flowr-theme') || localStorage.getItem('flowr-bench-theme') || 'system';
 		} catch{ /* ignore */ }
-		ui.theme.value = ['light', 'dark', 'system'].includes(stored) ? stored : 'system';
-		setTheme(ui.theme.value);
-		ui.theme.addEventListener('change', () => {
-			setTheme(ui.theme.value);
+		setTheme(['light', 'dark'].includes(stored) ? stored : 'system');
+		ui.theme.addEventListener('click', () => {
+			const dark = themeMode === 'system' ? matchMedia('(prefers-color-scheme: dark)').matches : themeMode === 'dark';
+			setTheme(dark ? 'light' : 'dark');
 			writeUrl();
 		});
 	}
@@ -726,8 +733,8 @@
 				p.set(key, ui[key].checked ? '1' : '0');
 			}
 		}
-		if(ui.theme.value !== 'system') {
-			p.set('theme', ui.theme.value);
+		if(themeMode !== 'system') {
+			p.set('theme', themeMode);
 		}
 		/* the screen a dashboard fills is part of the dashboard, even if only a click can grant it */
 		if(filling() || wantsFullscreen) {
@@ -783,7 +790,6 @@
 		}
 		const theme = p.get('theme');
 		if(theme && ['light', 'dark', 'system'].includes(theme)) {
-			ui.theme.value = theme;
 			setTheme(theme);
 		}
 		wantsFullscreen = p.get('full') === '1';
@@ -915,7 +921,7 @@
 		});
 		b.setAttribute('aria-label', b.title);
 		b.setAttribute('aria-expanded', String(!on));
-		const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
+		const chevron = tag('svg', { class: 'chevron', viewBox: '2 3.5 8 5', 'aria-hidden': 'true' });
 		chevron.appendChild(tag('path', { d: 'M3 4.5 L6 8 L9 4.5' }));
 		b.appendChild(chevron);
 		b.addEventListener('click', () => setCollapsed(group.id, !on));
@@ -1239,7 +1245,7 @@
 	function subtitleOf(group, series, runs, isDelta) {
 		const dirs = new Set(series.map(s => s.better));
 		const dir = dirs.size === 1 ? betterText(series[0].better) : '';
-		const units = [...new Set(series.map(s => s.unit).filter(Boolean))].join(', ');
+		const units = [...new Set(series.map(s => s.unit).filter(Boolean))].map(u => u === '#' ? 'count' : u).join(', ');
 		const statistic = group.facts ? '' : statisticOf(series, runs);
 		const parts = [
 			group.about,
@@ -1606,7 +1612,7 @@
 		const foot = dom('div', { className: 'tags-foot' });
 		if(tags.length > top) {
 			const open = barsExpanded.has(key);
-			const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
+			const chevron = tag('svg', { class: 'chevron', viewBox: '2 3.5 8 5', 'aria-hidden': 'true' });
 			chevron.appendChild(tag('path', { d: 'M3 4.5 L6 8 L9 4.5' }));
 			const more = dom('button', { type: 'button', className: 'unfold' + (open ? ' open' : '') },
 				chevron, open ? 'show the top ' + top : 'all ' + tags.length + ' ' + spec.more);
@@ -1776,6 +1782,19 @@
 			rest: [],
 			splits: [],
 			trend: 'tests overall',
+			track: null
+		},
+		/* what the counterexample suite rewrites and what of it is still sliced wrongly */
+		mutations: {
+			lead: [
+				['mutation mutants', 'mutants sliced'],
+				['mutation passes', 'rewrites applied to each'],
+				/* the suite no longer records it, so only a run that still carries the number states it */
+				['mutation known-wrong mutants', 'still sliced wrongly']
+			],
+			rest: [['mutation tests', 'tests run by the suite']],
+			splits: [],
+			trend: 'mutation mutants',
 			track: null
 		}
 	};

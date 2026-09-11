@@ -1,7 +1,8 @@
 import { describe, test } from 'vitest';
 import type { TaintAnalysisExpectation } from '../helper';
 import { testPredefinedTaintAnalysis } from '../helper';
-import { Random, Deterministic } from '../../../../src/taint-analysis/predefined/randomness-analysis';
+import { randomnessAnalysis, Random, Deterministic } from '../../../../src/taint-analysis/predefined/randomness-analysis';
+import { testLoopFixpoint } from '../loop-helper';
 
 const testRandomnessAnalysis =
 	(code: string, expectation: TaintAnalysisExpectation) => testPredefinedTaintAnalysis(code, 'randomness', expectation);
@@ -32,5 +33,11 @@ describe('Taint Analysis Randomness', () => {
 
 	test('randomness generated inside a closure passed to sapply propagates to the result', async() => {
 		await testRandomnessAnalysis('y <- sapply(1:5, function(i) runif(1))', { '1@y': Random });
+	});
+
+	describe('Loops preserve the taint (no unexpected widening)', () => {
+		testLoopFixpoint(randomnessAnalysis, 'a random source re-drawn each iteration stays Random', 'x <- runif(5)', 'x <- runif(5)', Random);
+		testLoopFixpoint(randomnessAnalysis, 'Random forwarded through the loop stays Random', 'x <- runif(5)', 'x <- x', Random);
+		testLoopFixpoint(randomnessAnalysis, 'Deterministic forwarded through the loop stays Deterministic', 'x <- c(1, 2, 3)', 'x <- x', Deterministic);
 	});
 });

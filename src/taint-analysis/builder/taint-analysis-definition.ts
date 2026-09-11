@@ -38,11 +38,33 @@ export interface ComposeOptions {
 	report?:     string;
 }
 
+export interface TaintAnalysisReportStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisToStage<Name, Domain> {
+	/** Sets the message reported when the analysis produces a finding. */
+	report(msg: string): TaintAnalysisDefinition<Name, Domain>;
+}
+
+export interface TaintAnalysisToStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisThroughStage<Name, Domain> {
+	/** Adds sink rules signaling findings by yielding Bottom. */
+	to(fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain>;
+}
+
+export interface TaintAnalysisThroughStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisFromStage<Name, Domain> {
+	/** Adds propagator or sanitizer rules that determine the resulting taint of matching calls. */
+	through(fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain>;
+}
+
+export interface TaintAnalysisFromStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
+	/** Adds propagator or sanitizer rules that determine the resulting taint of matching calls. */
+	from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
+}
+
 /**
  * Fluent builder class for defining new taint analyses.
+ * Use {@link TaintAnalysisDefinition.create} to obtain an instance;
+ * The methods {@link TaintAnalysis.from}, {@link TaintAnalysis.through},
+ * {@link TaintAnalysis.to}, and {@link TaintAnalysis.report} have to be called in order.
  */
-export class TaintAnalysisDefinition<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
-implements RunnableTaintAnalysisDefinition<Name> {
+export class TaintAnalysisDefinition<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration> implements TaintAnalysisReportStage<Name, Domain> {
 	public readonly domain: Domain;
 	public mapper:          TaintMapper<Domain> = [];
 	public name:            Name;
@@ -54,31 +76,36 @@ implements RunnableTaintAnalysisDefinition<Name> {
 		return this._msg;
 	}
 
-	constructor(name: Name, domain: Domain, config?: Config) {
+	private constructor(name: Name, domain: Domain, config?: Config) {
 		this.name = name;
 		this.domain = domain;
 		this.config = config;
 	}
 
-	/** Adds source rules that determine the resulting taint of matching calls. */
-	public from(fnMapping: TaintMapper<Domain>): this {
+	/**
+	 * Create a new taint analysis builder. {@link run} is unreachable on the result until at least
+	 * one of {@link add}, {@link addComposite}, or {@link addPredefined} has been called on it.
+	 */
+	public static create<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>(name: Name, domain: Domain, config?: Config): TaintAnalysisFromStage<Name, Domain> {
+		return new TaintAnalysisDefinition(name, domain, config);
+	}
+
+	public from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain> {
 		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Source })));
 		return this;
 	}
 
-	/** Adds propagator or sanitizer rules that determine the resulting taint of matching calls. */
-	public through(fnMapping: TaintMapper<Domain>): this {
+	public through(fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain> {
 		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Transformer })));
 		return this;
 	}
 
-	/** Adds sink rules whose conditions check argument taints and signal findings by yielding Bottom. */
-	public to(fnMapping: TaintMapper<Domain>): this {
+	public to(fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain> {
 		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Sink })));
 		return this;
 	}
 
-	public report(msg: string): this {
+	public report(msg: string): TaintAnalysisDefinition<Name, Domain> {
 		this._msg = msg;
 		return this;
 	}
@@ -97,7 +124,7 @@ implements RunnableTaintAnalysisDefinition<Name> {
 	 */
 	public static compose<Name extends string>(
 		name: Name,
-		definitions: readonly TaintAnalysisDefinition<string>[],
+		definitions: readonly TaintAnalysisDefinition[],
 		options?: ComposeOptions
 	): CompositeTaintAnalysisDefinition<Name> {
 		return new CompositeTaintAnalysisDefinition(name, definitions, options);

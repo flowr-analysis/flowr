@@ -3,7 +3,7 @@ import { assert, describe, test } from 'vitest';
 import { run } from '../utility/utility';
 import { allPredefinedTaintAnalysisNames } from '../../../src/taint-analysis/predefined/predefined';
 import type { LoggedFnCallInfo } from '../../../src/taint-analysis/eval/instrumentation';
-import { TaintRole } from '../../../src/taint-analysis/function-mapper';
+import { TaintRole } from '../../../src/taint-analysis/taint-mapping';
 
 type ParsedTrace = Record<string, Record<string, LoggedFnCallInfo>>;
 type ParsedCallInfo = LoggedFnCallInfo['unmappedCalls'][number];

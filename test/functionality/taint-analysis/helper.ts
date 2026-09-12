@@ -14,6 +14,7 @@ import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builde
 import { CompositeTaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
 import type { MultiValueDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
 import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
+import type { TaintAnalysisBuilder } from '../../../src/taint-analysis/builder/taint-analysis';
 
 export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>;
 
@@ -55,21 +56,27 @@ export async function testPredefinedTaintAnalysis(code: string, name: AnyPredefi
  * @param analyses - Map of analyses and their corresponding expectations
  * @param wideningThreshold - Optional override for the number of loop-head visits after which widening is forced
  */
-export async function testTaintAnalyses(code: string, analyses: Set<[string, TaintAnalysisDefinition, TaintAnalysisExpectation]>, wideningThreshold?: number) {
-	const builder = new FlowrAnalyzerBuilder()
+export async function testTaintAnalyses(
+	code: string,
+	analyses: Set<[string, TaintAnalysisDefinition, TaintAnalysisExpectation]>,
+	wideningThreshold?: number,
+	configure?: (builder: TaintAnalysisBuilder<string[]>) => unknown
+) {
+	const flowrBuilder = new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter');
 
 	if(wideningThreshold !== undefined) {
-		builder.configure('abstractInterpretation.wideningThreshold', wideningThreshold);
+		flowrBuilder.configure('abstractInterpretation.wideningThreshold', wideningThreshold);
 	}
 
-	const analyzer = await builder.build();
+	const analyzer = await flowrBuilder.build();
 
 	analyzer.addRequest(code.trim());
 	const defs = analyses.keys()
 		.map(([_name, def, _expectation]) => def);
-	const analysis = analyzer.taint().add(...defs);
-	const results = await analysis.run();
+	const builder = analyzer.taint<string[]>().add(...defs);
+	configure?.(builder);
+	const results = await builder.run();
 
 	assert.equal(results.size, analyses.size);
 

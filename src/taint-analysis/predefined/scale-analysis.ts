@@ -1,8 +1,8 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
 import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
-import type { TaintCondition } from '../function-mapper';
 import { Identifier } from '../../dataflow/environments/identifier';
+import type { TaintCondition } from '../taint-mapping';
 
 export const MinMax = Symbol('Min-Max');
 export const ZeroCentered = Symbol('Zero Centered');

@@ -200,7 +200,8 @@ function proseCode(code: string, prose?: Prose): string {
 		}
 		at += replacement === undefined ? 0 : 2;
 	}
-	return out.push(escapeHtml(code.slice(at))) > 0 ? out.join('') : '';
+	out.push(escapeHtml(code.slice(at)));
+	return out.join('');
 }
 
 function linkHtml(label: string, href: string): string {

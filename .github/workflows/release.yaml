@@ -103,10 +103,9 @@ jobs:
         with:
           name: test-label-details
           path: |
-            coverage/flowr-test-details.json
+            coverage/flowr-test-details*.json
             coverage/flowr-test-results.json
             coverage/flowr-mutation-details.json
-            coverage/flowr-test-details-mutations.json
           if-no-files-found: warn
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
@@ -201,6 +200,7 @@ jobs:
           echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # apparently, putting the message into an env variable first sanitizes it
           # (see https://github.com/flowr-analysis/flowr/security/code-scanning/29)
           MESSAGE: ${{ github.event.head_commit.message }}

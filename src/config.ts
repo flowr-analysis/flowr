@@ -7,6 +7,7 @@ import { type AutocompletablePaths,
 	getOnPath,
 	setOnPath
 } from './util/objects';
+import { DefaultMaxOverlayDepth } from './dataflow/environments/frame-memory';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -220,6 +221,8 @@ export interface FlowrConfig {
 			readonly linkedVersionGroups?: string[][]
 		}
 		readonly transitiveSideEffectRounds?: number
+		/** How many binding overlays may stack on one environment frame before a write flattens them (default {@link DefaultMaxOverlayDepth}); trades lookup cost against copy cost and never changes a result. */
+		readonly maxOverlayDepth?:            number
 		/**
 		 * Packages to treat as attached without a `library()` call, on top of the base packages R attaches on
 		 * startup (see {@link AttachedBasePackages}, which a bare name resolves against without this option).
@@ -602,6 +605,7 @@ export const FlowrConfig = {
 					assumeFilesExist:      false
 				},
 				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
+				maxOverlayDepth:            DefaultMaxOverlayDepth,
 				instrument:                 {
 					dataflowExtractors: undefined
 				},
@@ -753,6 +757,7 @@ export const FlowrConfig = {
 			}).description('Policies for reasoning about dependency versions.'),
 			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code. The base packages R attaches on startup already resolve without it.'),
 			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
+			maxOverlayDepth:            Joi.number().min(0).optional().description(`How many binding overlays may stack on one environment frame before a write flattens them (default ${DefaultMaxOverlayDepth}); a pure performance knob, trading lookup cost against copy cost without changing any result.`),
 			instrument:                 Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),

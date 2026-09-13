@@ -88,6 +88,18 @@ jobs:
           rm -f "/tmp/flowr-label-summary.json"
           bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
+      # the run above excludes this suite, so without it the capabilities page below (and the one the
+      # documentation job builds from the artifact) would be missing every label the mutation tests claim
+      - name: "⚗️ Mutation Tests (for data)"
+        run: npx vitest --run --config test/mutations/vitest.config.mts -- --make-summary
+
+      - name: "⬆️ Upload the Test Label Details"
+        uses: actions/upload-artifact@v6
+        with:
+          name: wiki-test-label-details
+          path: coverage/flowr-test-details*.json
+          if-no-files-found: warn
+
       - name: "💾 Cache the Signature Database Bundles"
         uses: actions/cache@v5
         with:
@@ -120,13 +132,11 @@ jobs:
           
           # Generate all wiki pages
           npm run wiki
-          # the landing page is generated too, from real flowR output; the signature browser is megabytes,
-          # so the documentation job builds that one straight onto gh-pages instead
-          FLOWR_LANDING_ONLY=1 npm run gen:landing
-          # the signature browser is gitignored on purpose (megabytes); only the page and its samples are committed
-          for LANDING in index.html wiki/landing/index.html wiki/capabilities/index.html; do
-              if [ -n "$(git status --porcelain -- "$LANDING")" ]; then CHANGED_FILES+=("$LANDING"); fi
-          done
+          # the capabilities page is committed, so it is regenerated here, with the test details the run above
+          # produced; the landing page, the benchmark page, the signature browser and the playground are
+          # gitignored on purpose (megabytes) and the documentation job builds those straight onto gh-pages
+          npx ts-node --transpile-only scripts/gen-capabilities.ts
+          if [ -n "$(git status --porcelain -- wiki/capabilities/index.html)" ]; then CHANGED_FILES+=("wiki/capabilities/index.html"); fi
           # read in everything from /tmp/flowr-wiki-changed-files.txt and add to CHANGED_FILES
           if [ -f /tmp/flowr-wiki-changed-files.txt ]; then
                 while IFS= read -r line; do
@@ -148,7 +158,7 @@ jobs:
           echo "====== Benchmark Data (if any) ======"
           if [ -n "$(git status --porcelain -- wiki/stats/benchmark/)" ]; then
               echo "New benchmark data!"
-              git add -f wiki/stats/benchmark/
+              git add wiki/stats/benchmark/
               CHANGED_ANY=true
               echo "CHANGED=true" >> $GITHUB_ENV
               CHANGED_FILES+=("benchmark-data")
@@ -293,6 +303,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run sigdb:sync
+
+      # the upload warns rather than fails when the run produced no label file, so there may be no artifact to
+      # get; the page then keeps the test summaries it was committed with instead of the deploy going down
+      - name: "⬇️ Get the Test Label Details from the Wiki Run"
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: wiki-test-label-details
+          path: coverage/
 
       - name: "🛠️ Build the documentation"
         run: bash .github/workflows/scripts/run-flowr-command.sh doc

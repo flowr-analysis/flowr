@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -116,6 +116,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         "versionManagement": {"linkedVersionGroups":[]},
         "resolveSource": {"dropPaths":"no","ignoreCapitalization":true,"inferWorkingDirectory":"active-script","searchPath":[],"repeatedSourceLimit":2,"assumeFilesExist":false},
         "transitiveSideEffectRounds": 32,
+        "maxOverlayDepth": 4,
         "instrument": {},
         "slicer": {"threshold":50,"autoExtend":false}
       },
@@ -200,6 +201,8 @@ Query: config (0 ms)
            Should we include eval(parse(text="...")) calls in the dataflow graph?
        - solver.instrument (object)
            - dataflowExtractors: undefined (any)
+       - solver.maxOverlayDepth (number): 4
+           How many binding overlays may stack on one environment frame before a write flattens them (default 4); a pure performance knob, trading lookup cost against copy cost without changing any result.
        - solver.resolveSource (object)
            If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.
            - dropPaths:             "no" (string)

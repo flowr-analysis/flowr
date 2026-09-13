@@ -1,10 +1,11 @@
 import { configDefaults, defineConfig } from 'vitest/config';
+import { TestSuites } from '../functionality/summary-def';
 
 /*
  * set here since globalSetup runs before workers see test.env, and this file shares that process.
  * keeps this suite's run from overwriting the functionality suite's own test-details file.
  */
-process.env.FLOWR_TEST_DETAILS_FILE = 'coverage/flowr-test-details-mutations.json';
+process.env.FLOWR_TEST_DETAILS_FILE = TestSuites.mutations.details;
 
 export default defineConfig({
 	test: {
@@ -15,8 +16,8 @@ export default defineConfig({
 			setupFiles: 'parallel'
 		},
 		/* reuse the functionality suite's setup so `label(...)` claims and the summary pipeline stay identical */
-		setupFiles:  ['./test/functionality/test-setup.ts'],
-		globalSetup: ['./test/functionality/test-setup-global.ts'],
+		setupFiles:  [`./${TestSuites.functionality.folder}/test-setup.ts`],
+		globalSetup: [`./${TestSuites.functionality.folder}/test-setup-global.ts`],
 		reporters:   process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['dot'],
 		isolate:     false,
 		pool:        'threads',
@@ -37,6 +38,6 @@ export default defineConfig({
 			...configDefaults.exclude,
 			'dist/**'
 		],
-		include: ['test/mutations/**/*.test.ts']
+		include: [`${TestSuites.mutations.folder}/**/*.test.ts`]
 	},
 });

@@ -57,19 +57,22 @@ const tokenClass: Partial<Record<RTokenKind, string>> = {
 	keyword: 'tk-keyword', call:    'tk-call',   name:    'tk-name', op:      'tk-op'
 };
 
-/** call name to tooltip text, for calls a page can link to */
-export type KnownNames = ReadonlyMap<string, string>;
+/** name to tooltip text, for the names a page can link to */
+export interface KnownNames {
+	get(name: string): string | undefined
+}
+
+const linkedKinds: ReadonlySet<RTokenKind> = new Set(['call', 'op', 'keyword', 'quoted']);
 
 /** renders one token as html; a known call links to the signature browser instead of a plain span */
-export function renderRToken(token: RToken, knownNames?: KnownNames): string {
-	if(token.kind === 'text') {
-		return escapeHtml(token.text);
+export function renderRToken(token: RToken, knownNames?: KnownNames, name?: string): string {
+	const shown = token.kind === 'text' ? escapeHtml(token.text) : `<span class="${tokenClass[token.kind]}">${escapeHtml(token.text)}</span>`;
+	const lookup = name ?? (linkedKinds.has(token.kind) ? token.text.replace(/^`|`$/g, '') : undefined);
+	const known = lookup === undefined ? undefined : knownNames?.get(lookup);
+	if(lookup === undefined || known === undefined) {
+		return shown;
 	}
-	const known = token.kind === 'call' ? knownNames?.get(token.text) : undefined;
-	if(known !== undefined) {
-		return `<a class="tk-call" title="${escapeHtml(known)}" href="../sigdb/?q=${encodeURIComponent(token.text)}">${escapeHtml(token.text)}</a>`;
-	}
-	return `<span class="${tokenClass[token.kind]}">${escapeHtml(token.text)}</span>`;
+	return `<a class="tk-link" title="${escapeHtml(known)}" href="../sigdb/?q=${encodeURIComponent(lookup)}" target="_blank" rel="noopener">${shown}</a>`;
 }
 
 function boundIn(tokens: readonly RToken[]): ReadonlySet<string> {
@@ -99,6 +102,79 @@ function boundIn(tokens: readonly RToken[]): ReadonlySet<string> {
 /** colors R source so a reader can spot the call, name, and string they're looking for */
 export function highlightR(code: string, knownNames?: KnownNames): string {
 	const tokens = tokenizeR(code);
+	if(knownNames === undefined) {
+		return tokens.map(t => renderRToken(t)).join('');
+	}
 	const bound = boundIn(tokens);
-	return tokens.map(t => renderRToken(t, bound.has(t.text) ? undefined : knownNames)).join('');
+	const atoms: RToken[] = tokens.flatMap(t => t.kind !== 'text' ? [t] : t.text.split(/(\[\[|[[\](){}])/).filter(p => p !== '').map(p => ({ kind: 'text' as const, text: p })));
+	const openers = new Set(['(', '[', '[[', '{']);
+	const closer = new Map<number, number>();
+	const open: { at: number, need: number }[] = [];
+	atoms.forEach((a, at) => {
+		if(a.kind === 'text' && openers.has(a.text)) {
+			open.push({ at, need: a.text === '[[' ? 2 : 1 });
+		} else if(a.kind === 'text' && /^[)\]}]$/.test(a.text) && open.length > 0) {
+			const top = open[open.length - 1];
+			if(--top.need === 0) {
+				open.pop();
+				closer.set(top.at, at);
+			}
+		}
+	});
+	const significant = (at: number, step: 1 | -1): number => {
+		for(let i = at + step; i >= 0 && i < atoms.length; i += step) {
+			if(atoms[i].kind !== 'comment' && atoms[i].text.trim() !== '') {
+				return i;
+			}
+		}
+		return -1;
+	};
+	const replacement = (head: string, end: number | undefined): string => {
+		const next = end === undefined ? -1 : significant(end, 1);
+		const name = next >= 0 && atoms[next].kind === 'op' ? head + atoms[next].text : undefined;
+		return name !== undefined && knownNames.get(name) !== undefined ? name : head;
+	};
+	const grouping = (at: number): boolean => {
+		const prev = significant(at, -1);
+		if(prev < 0 || atoms[prev].kind === 'op' || atoms.slice(prev + 1, at).some(a => a.text.includes('\n'))) {
+			return true;
+		}
+		return atoms[prev].kind === 'text' && (openers.has(atoms[prev].text) || /[,;]$/.test(atoms[prev].text.trim()));
+	};
+	const stack: string[] = [];
+	const linkOf = (a: RToken, at: number): string | undefined => {
+		switch(a.kind) {
+			case 'text':
+				if(a.text === '[' || a.text === '[[') {
+					return replacement(a.text, closer.get(at));
+				}
+				return a.text === '{' || (a.text === '(' && grouping(at)) ? a.text : undefined;
+			case 'call':
+				return atoms[at + 1]?.text === '(' ? replacement(a.text, closer.get(at + 1)) : a.text;
+			case 'quoted':
+				return a.text.replace(/^`|`$/g, '');
+			case 'op':
+				if(a.text === '=' && ['(', '[', '[['].includes(stack[stack.length - 1] ?? '')) {
+					return undefined;
+				}
+				if(a.text === '$' || a.text === '@') {
+					const target = significant(at, 1);
+					return target >= 0 && ['name', 'call', 'quoted', 'string'].includes(atoms[target].kind) ? replacement(a.text, target) : a.text;
+				}
+				return a.text;
+			case 'keyword':
+				return a.text;
+			default:
+				return undefined;
+		}
+	};
+	return atoms.map((a, at) => {
+		const link = linkOf(a, at);
+		if(a.kind === 'text' && openers.has(a.text)) {
+			stack.push(...(a.text === '[[' ? ['[[', '[['] : [a.text]));
+		} else if(a.kind === 'text' && /^[)\]}]$/.test(a.text)) {
+			stack.pop();
+		}
+		return link === undefined || bound.has(link) ? renderRToken(a) : renderRToken(a, knownNames, link);
+	}).join('');
 }

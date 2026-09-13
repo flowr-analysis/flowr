@@ -4,6 +4,8 @@
  * If started with arguments, it may be used to run a single of the flowR scripts.
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
+/* must stay first: it caches the compilation of everything loaded after it */
+import './compile-cache';
 import type { DeepReadonly } from 'ts-essentials';
 import type { Server } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';

@@ -178,8 +178,7 @@ jobs:
         with:
           name: test-label-details
           path: |
-            coverage/flowr-test-details.json
-            coverage/flowr-test-details-mutations.json
+            coverage/flowr-test-details*.json
             coverage/flowr-test-results.json
             coverage/flowr-mutation-details.json
             coverage/flowr-mutation-test-results.json

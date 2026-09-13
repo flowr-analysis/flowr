@@ -4,6 +4,7 @@
  * @module
  */
 import fs from 'fs';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import { transformSync } from 'esbuild';
 import { fillVersion, versionMarker } from './version-marker';
@@ -172,12 +173,24 @@ export function compact(page: string): string {
 const LocalLinks = `<script>
 	(function() {
 		if(!/(^|\\/)index\\.html$/.test(location.pathname)) { return; }
-		for(const a of document.querySelectorAll('a[href$="/"]')) {
+		for(const a of document.querySelectorAll('a[href]')) {
 			const href = a.getAttribute('href');
-			if(!/^[a-z]+:|^\\/\\//i.test(href)) { a.setAttribute('href', href + 'index.html'); }
+			const folder = /^([^?#]*\\/)([?#].*)?$/.exec(href);
+			if(folder && !/^[a-z]+:|^\\/\\//i.test(href)) { a.setAttribute('href', folder[1] + 'index.html' + (folder[2] ?? '')); }
 		}
 	})();
 </script>`;
+
+/** `, not committed` when git ignores `target`, so a write says whether it ends up in the repository */
+export function committedNote(target: string): string {
+	try {
+		execFileSync('git', ['check-ignore', '-q', target], { stdio: 'ignore' });
+		return ', not committed';
+	} catch(e) {
+		/* 1 is the answer "not ignored"; anything else is git failing to answer, which is not the same thing */
+		return (e as { status?: number }).status === 1 ? '' : ', commit state unknown';
+	}
+}
 
 /** writes `page` compacted to `target`, creating its folder, and returns the bytes written */
 export function writePage(target: string, page: string): number {

@@ -3,16 +3,17 @@ import { flowrCapabilities } from '../r-bridge/data/data';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import path from 'path';
-import type { SerializedTestLabel, TestLabel } from '../../test/functionality/_helper/label';
+import type { SerializedTestLabel, TestLabel, TestLabelContext } from '../../test/functionality/_helper/label';
+import { TestSuites } from '../../test/functionality/summary-def';
 import { FlowrGithubGroupName, flowrSourceFileUrl } from './doc-util/doc-files';
 import { Playground } from '../util/text/playground-link';
 import { OperatorDatabase } from '../r-bridge/lang-4.x/ast/model/operators';
-import { highlightR, escapeHtml, type KnownNames } from '../util/text/r-highlight';
+import { highlightR, renderRToken, escapeHtml, type KnownNames } from '../util/text/r-highlight';
 import { DefaultMap } from '../util/collections/defaultmap';
 
-const detailedInfoFiles = ['coverage/flowr-test-details.json', 'coverage/flowr-test-details-mutations.json'];
-const testSourceFolders = ['test/functionality', 'test/mutations'];
+const testSuites = Object.values(TestSuites);
 const maxSignatureTests = 3;
+const preferredContext: TestLabelContext = 'dataflow';
 
 interface SignatureTest {
 	readonly name:    string;
@@ -52,7 +53,7 @@ function claimedCapabilities(array: string): { ids: string[], opaque: boolean } 
 function indexTestSources(): TestSourceIndex {
 	const byCapability = new DefaultMap<string, SignatureTest[]>(() => []);
 	const byName = new DefaultMap<string, SignatureTest[]>(() => []);
-	for(const testSourceFolder of testSourceFolders) {
+	for(const { folder: testSourceFolder } of testSuites) {
 		if(!fs.existsSync(testSourceFolder)) {
 			continue;
 		}
@@ -82,12 +83,13 @@ function displayName(name: string): string {
 	return name.replace(/\$\{[^}]*}/g, '...').trim();
 }
 
-function pickSignatureTests(tests: readonly SignatureTest[]): SignatureTest[] {
+function pickSignatureTests(tests: readonly SignatureTest[], preferred: ReadonlySet<string>): SignatureTest[] {
 	const unique = [...new Map(tests.map(t => [`${t.file}:${t.line}`, t])).values()];
 	const literal = unique.filter(t => !t.name.includes('${'));
 	const named = literal.length > 0 ? literal : unique.filter(t => /[A-Za-z0-9]/.test(displayName(t.name)));
 	const picked = new Map<string, SignatureTest>();
-	for(const test of named.sort((a, b) => a.claimed - b.claimed || a.name.length - b.name.length || a.file.localeCompare(b.file) || a.line - b.line)) {
+	const rank = (t: SignatureTest) => preferred.has(t.name.toLowerCase()) ? 0 : 1;
+	for(const test of named.sort((a, b) => rank(a) - rank(b) || a.claimed - b.claimed || a.name.length - b.name.length || a.file.localeCompare(b.file) || a.line - b.line)) {
 		const key = displayName(test.name).toLowerCase();
 		if(!picked.has(key)) {
 			picked.set(key, test);
@@ -97,37 +99,110 @@ function pickSignatureTests(tests: readonly SignatureTest[]): SignatureTest[] {
 }
 
 function signatureTestsFor(info: CapabilityInformation, capability: FlowrCapability): SignatureTest[] {
+	const recorded = info.info?.get(capability.id) ?? [];
+	const preferred = new Set(recorded.filter(l => l.context.has(preferredContext)).map(l => l.name));
 	const direct = info.tests.byCapability.get(capability.id);
 	if(direct.length > 0) {
-		return pickSignatureTests(direct);
+		return pickSignatureTests(direct, preferred);
 	}
 	const byName: SignatureTest[] = [];
-	for(const { name } of info.info?.get(capability.id) ?? []) {
+	for(const { name } of recorded) {
 		const locations = info.tests.byName.get(name);
 		if(locations.length === 1 && !locations[0].opaque) {
 			byName.push(locations[0]);
 		}
 	}
-	return pickSignatureTests(byName);
+	return pickSignatureTests(byName, preferred);
 }
 
 function capabilitySearchUrl(id: string): string {
 	return `https://github.com/search?q=${encodeURIComponent(`repo:${FlowrGithubGroupName}/flowr "'${id}'"`)}&type=code`;
 }
 
-const capabilityNames: ReadonlyMap<string, string> = (() => {
+const { capabilityNames, capabilityOfCode }: {
+	capabilityNames:  ReadonlyMap<string, string>,
+	capabilityOfCode: ReadonlyMap<string, string>
+} = (() => {
 	const names = new Map<string, string>();
+	const codes = new Map<string, string>();
 	const walk = (capabilities: readonly FlowrCapability[]): void => {
 		for(const capability of capabilities) {
 			names.set(capability.id, capability.name);
+			for(const code of capability.code ?? []) {
+				const other = codes.get(code);
+				if(other !== undefined) {
+					throw new Error(`both '${other}' and '${capability.id}' claim the code '${code}'`);
+				}
+				codes.set(code, capability.id);
+			}
 			if(capability.capabilities) {
 				walk(capability.capabilities);
 			}
 		}
 	};
 	walk(flowrCapabilities.capabilities);
-	return names;
+	return { capabilityNames: names, capabilityOfCode: codes };
 })();
+
+interface Prose {
+	readonly knownNames?: KnownNames;
+	readonly self?:       string;
+	readonly linked:      Set<string>;
+}
+
+function proseOf(info: CapabilityInformation, self?: string): Prose {
+	return { knownNames: info.knownNames, self, linked: new Set<string>() };
+}
+
+function caprefHtml(id: string, label: string): string {
+	return `<a class="capref" href="#${escapeHtml(id)}" title="${escapeHtml(id)}">${label}</a>`;
+}
+
+function capabilityFor(code: string, prose?: Prose): string | undefined {
+	const id = capabilityOfCode.get(code);
+	if(prose === undefined || id === undefined || id === prose.self || prose.linked.has(id)) {
+		return undefined;
+	}
+	prose.linked.add(id);
+	return id;
+}
+
+const proseCodeToken = /\.{3}|%[^%\s]*%|[A-Za-z._][A-Za-z0-9._]*|<<-|->>|<-|->|\|>|=>|&&|\|\||:::|::|:=|:|\\\(|\[\[|\[|\$|@|~/g;
+
+function proseCode(code: string, prose?: Prose): string {
+	const out: string[] = [];
+	let at = 0;
+	for(const match of code.matchAll(proseCodeToken)) {
+		if(match.index < at) {
+			continue;
+		}
+		const token = match[0];
+		out.push(escapeHtml(code.slice(at, match.index)));
+		at = match.index + token.length;
+		const rest = code.slice(at);
+		if(code[match.index - 1] === '/') {
+			out.push(escapeHtml(token));
+			continue;
+		}
+		const isName = /^[A-Za-z.]/.test(token) && token !== '...';
+		const replacement = isName && rest.startsWith('<-') ? token + '<-' : undefined;
+		const shown = escapeHtml(replacement ?? token);
+		const key = token.startsWith('%') ? '%%' : replacement ?? token;
+		const id = capabilityFor(key, prose);
+		const linkable = replacement !== undefined || !isName || capabilityOfCode.has(key) || /^\s*\(/.test(rest);
+		const known = linkable ? prose?.knownNames : undefined;
+		if(id !== undefined) {
+			out.push(caprefHtml(id, shown));
+		} else if(isName && known?.get(replacement ?? token) !== undefined) {
+			out.push(renderRToken({ kind: 'call', text: replacement ?? token }, known));
+		} else {
+			out.push(shown);
+		}
+		at += replacement === undefined ? 0 : 2;
+	}
+	out.push(escapeHtml(code.slice(at)));
+	return out.join('');
+}
 
 function linkHtml(label: string, href: string): string {
 	const name = href.startsWith('#') ? capabilityNames.get(href.slice(1)) : undefined;
@@ -135,21 +210,36 @@ function linkHtml(label: string, href: string): string {
 		return `<a href="${escapeHtml(href)}"${/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`;
 	}
 	const id = href.slice(1);
-	const shown = label.includes(id) ? label.replace(id, escapeHtml(name)) : escapeHtml(name);
+	const shown = label.includes(id) ? label.replace(id, escapeHtml(name)) : label;
 	return `<a class="capref" href="${escapeHtml(href)}" title="${id}">${shown}</a>`;
 }
 
-function inlineMarkdown(text: string): string {
-	const spans: string[] = [];
-	return escapeHtml(text)
-		.replace(/(`+)([\s\S]+?)\1/g, (_, __: string, code: string) => `\0${spans.push(`<code>${code.replace(/^ (.*) $/s, '$1')}</code>`) - 1}\0`)
-		.replace(/\[([^\]]+)]\(([^)]+)\)/g, (_, label: string, href: string) => linkHtml(label, href))
-		.replace(/(^|\s)_([^\n]+?)_(?=[\s.,;:)]|$)/g, (_, before: string, italic: string) => `${before}<em>${italic}</em>`)
-		.replace(/\0(\d+)\0/g, (_, at: string) => spans[Number(at)]);
+/** Drops every anchor from `html`, keeping what they wrap. */
+function withoutLinks(html: string): string {
+	return html.replace(/<a\b[^>]*>|<\/a>/g, '');
 }
 
-function inlineText(text: string): string {
-	return inlineMarkdown(text).replace(/<a\b[^>]*>|<\/a>/g, '');
+function inlineMarkdown(text: string, prose?: Prose): string {
+	const spans: string[] = [];
+	/* a code span in a link label: its own links would nest inside that link */
+	const withinALink = new Set<number>();
+	for(const [, id] of text.matchAll(/]\(#([^)]+)\)/g)) {
+		prose?.linked.add(id);
+	}
+	return escapeHtml(text.replace(/(`+)([\s\S]+?)\1/g, (_, __: string, code: string) =>
+		`\0${spans.push(`<code>${proseCode(code.replace(/^ (.*) $/s, '$1'), prose)}</code>`) - 1}\0`))
+		.replace(/\[([^\]]+)]\(([^)]+)\)/g, (_, label: string, href: string) => {
+			for(const [, at] of label.matchAll(/\0(\d+)\0/g)) {
+				withinALink.add(Number(at));
+			}
+			return linkHtml(label, href);
+		})
+		.replace(/(^|\s)_([^\n]+?)_(?=[\s.,;:)]|$)/g, (_, before: string, italic: string) => `${before}<em>${italic}</em>`)
+		.replace(/\0(\d+)\0/g, (_, at: string) => withinALink.has(Number(at)) ? withoutLinks(spans[Number(at)]) : spans[Number(at)]);
+}
+
+function inlineText(text: string, prose?: Prose): string {
+	return withoutLinks(inlineMarkdown(text, prose));
 }
 
 function icon(id: string): string {
@@ -176,7 +266,7 @@ function fencedHtml(language: string, code: string, knownNames?: KnownNames): st
 	return `<figure class="code"><pre><code>${escapeHtml(code)}</code></pre></figure>`;
 }
 
-function textHtml(text: string): string {
+function textHtml(text: string, prose?: Prose): string {
 	const out: string[] = [];
 	for(const block of text.split(/\n[ \t]*\n/)) {
 		const lines = block.split('\n').filter(l => l.trim().length > 0);
@@ -189,30 +279,30 @@ function textHtml(text: string): string {
 			const items: string[] = [];
 			for(const line of lines) {
 				if(/^\s*[-*]\s/.test(line)) {
-					items.push(inlineMarkdown(line.replace(/^\s*[-*]\s/, '')));
+					items.push(inlineMarkdown(line.replace(/^\s*[-*]\s/, ''), prose));
 				} else if(items.length > 0) {
-					items[items.length - 1] += ' ' + inlineMarkdown(line.trim());
+					items[items.length - 1] += ' ' + inlineMarkdown(line.trim(), prose);
 				}
 			}
 			out.push(`<ul>${items.map(i => `<li>${i}</li>`).join('')}</ul>`);
 		} else {
-			out.push(`<p>${lines.map(l => inlineMarkdown(l.trim())).join(' ')}</p>`);
+			out.push(`<p>${lines.map(l => inlineMarkdown(l.trim(), prose)).join(' ')}</p>`);
 		}
 	}
 	return out.join('\n');
 }
 
-function exampleHtml(markdown: string, knownNames?: KnownNames): string {
+function exampleHtml(markdown: string, prose?: Prose): string {
 	return markdown.split('```').map((block, at) => {
 		const fenced = at % 2 === 1 ? /^(\w*)\n([\s\S]*?)\n?$/.exec(block) : null;
-		return fenced === null ? textHtml(block) : fencedHtml(fenced[1], fenced[2], knownNames);
+		return fenced === null ? textHtml(block, prose) : fencedHtml(fenced[1], fenced[2], prose?.knownNames);
 	}).filter(b => b.length > 0).join('\n');
 }
 
 function obtainDetailedInfos(): DefaultMap<string, TestLabel[]> | undefined {
 	const out = new DefaultMap<string, TestLabel[]>(() => []);
 	let foundAny = false;
-	for(const file of detailedInfoFiles.filter(f => fs.existsSync(f))) {
+	for(const file of testSuites.map(s => s.details).filter(f => fs.existsSync(f))) {
 		foundAny = true;
 		const base = JSON.parse(fs.readFileSync(file).toString()) as [string, SerializedTestLabel[]][];
 		for(const [key, values] of base) {
@@ -225,12 +315,16 @@ function obtainDetailedInfos(): DefaultMap<string, TestLabel[]> | undefined {
 const shownContextCount = 3;
 
 function testDetails(info: CapabilityInformation, capability: FlowrCapability): string {
-	const unique = info.info?.get(capability.id)?.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-	if(unique === undefined || unique.length === 0) {
+	const tests = new Map<string, Set<string>>();
+	for(const { name, capabilities, context } of info.info?.get(capability.id) ?? []) {
+		const key = `${name}\0${[...capabilities].sort().join(',')}`;
+		tests.set(key, new Set([...tests.get(key) ?? [], ...context]));
+	}
+	if(tests.size === 0) {
 		return '';
 	}
 	const grouped = new Map<string, number>();
-	for(const { context } of unique) {
+	for(const context of tests.values()) {
 		for(const c of context) {
 			grouped.set(c, (grouped.get(c) ?? 0) + 1);
 		}
@@ -245,7 +339,7 @@ function testDetails(info: CapabilityInformation, capability: FlowrCapability): 
 	const where = contexts.length === 0 ? 'every test that claims this id' : `where they run: ${contexts.join(', ')}`;
 	const rest = contexts.length - shownContextCount;
 	const shown = rest <= 0 ? contexts.join(', ') : `${contexts.slice(0, shownContextCount).join(', ')} and ${rest} more`;
-	return `<a class="tests" href="${capabilitySearchUrl(capability.id)}" title="${escapeHtml(where)}">${unique.length} test${unique.length === 1 ? '' : 's'}</a>`
+	return `<a class="tests" href="${capabilitySearchUrl(capability.id)}" title="${escapeHtml(where)}">${tests.size} test${tests.size === 1 ? '' : 's'}</a>`
 		+ (contexts.length === 0 ? '' : `<span class="ctx"${rest > 0 ? ` title="${escapeHtml(where)}"` : ''}>${escapeHtml(shown)}</span>`);
 }
 
@@ -342,17 +436,17 @@ function summaryPills(summary: ChildrenSummary, variant: 'counts' | 'tally-mini'
 		+ '</span>';
 }
 
-async function exampleOf(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
+async function exampleOf(info: CapabilityInformation, capability: FlowrCapability, prose: Prose): Promise<string> {
 	if(!capability.example) {
 		return '';
 	}
 	const example = typeof capability.example === 'string' ? capability.example : await capability.example(info.parser);
-	return exampleHtml(example, info.knownNames);
+	return exampleHtml(example, prose);
 }
 
-async function metaHtml(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
+async function metaHtml(info: CapabilityInformation, capability: FlowrCapability, prose: Prose): Promise<string> {
 	const refs = referencesHtml(capability);
-	const example = await exampleOf(info, capability);
+	const example = await exampleOf(info, capability, prose);
 	if(refs === '' && example === '') {
 		return '';
 	}
@@ -370,6 +464,7 @@ function searchKey(capability: FlowrCapability): string {
 
 async function capabilityHtml(info: CapabilityInformation, capability: FlowrCapability, extra = false, depth = 0): Promise<string> {
 	const support = capability.supported;
+	const prose = proseOf(info, capability.id);
 	const parts = [
 		`<div class="head"><a class="anchor" href="#${capability.id}"${iconLabel('link to this capability')}>#</a>`,
 		support ? `<span class="badge ${support}" title="${support} supported"></span>` : '',
@@ -378,8 +473,8 @@ async function capabilityHtml(info: CapabilityInformation, capability: FlowrCapa
 		testDetails(info, capability),
 		signatureTestsHtml(info, capability),
 		'</div>',
-		capability.description ? `<p class="desc">${inlineMarkdown(capability.description)}</p>` : '',
-		await metaHtml(info, capability)
+		capability.description ? `<p class="desc">${inlineMarkdown(capability.description, prose)}</p>` : '',
+		await metaHtml(info, capability, prose)
 	];
 	if(capability.capabilities) {
 		const summary = summarizeChildren(capability.capabilities);
@@ -419,10 +514,10 @@ function groupsHtml(capability: FlowrCapability): string {
 	return `<p class="subs">${shown.join('')}${rest > 0 ? `<span class="rest">and ${rest} more</span>` : ''}</p>`;
 }
 
-function cardHtml(capability: FlowrCapability): string {
+function cardHtml(capability: FlowrCapability, prose?: Prose): string {
 	const summary = summaryOf(capability);
 	const total = totalOf(summary);
-	const about = capability.description ? inlineText(capability.description) : '';
+	const about = capability.description ? inlineText(capability.description, prose) : '';
 	return `<div class="card" data-name="${searchKey(capability)}">`
 		+ `<span class="total" title="${total} capabilities in this category">${total}</span>`
 		+ `<h3><a href="#${capability.id}">${escapeHtml(capability.name)}</a></h3>`
@@ -433,15 +528,16 @@ function cardHtml(capability: FlowrCapability): string {
 
 async function categoryHtml(info: CapabilityInformation, capability: FlowrCapability): Promise<string> {
 	const summary = summaryOf(capability);
+	const prose = proseOf(info, capability.id);
 	const parts = [
 		'<p class="crumbs"><a href="#" class="back">All categories</a></p>',
 		`<h2 id="${capability.id}" title="${escapeHtml(capability.id)}">${escapeHtml(capability.name)}`
 			+ versionHtml(capability) + testDetails(info, capability) + '</h2>',
 		`<p class="tally">${meterHtml(summary)}${summaryPills(summary, 'counts')}</p>`,
-		capability.description ? `<p class="desc">${inlineMarkdown(capability.description)}</p>` : '',
+		capability.description ? `<p class="desc">${inlineMarkdown(capability.description, prose)}</p>` : '',
 		referencesHtml(capability),
 		signatureTestsHtml(info, capability),
-		await exampleOf(info, capability)
+		await exampleOf(info, capability, prose)
 	];
 	if(capability.capabilities) {
 		parts.push(await capabilitiesHtml(info, capability.capabilities, false));
@@ -455,12 +551,12 @@ async function categoryHtml(info: CapabilityInformation, capability: FlowrCapabi
  * Renders a card per category plus each category's full view, swapped in by id.
  */
 export async function capabilitiesAsHtml(parser: KnownParser, knownNames?: KnownNames): Promise<{ body: string, summary: ChildrenSummary & { total: number } }> {
-	if(!detailedInfoFiles.some(f => fs.existsSync(f))) {
+	if(!testSuites.some(s => fs.existsSync(s.details))) {
 		console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test:full) to generate it.\x1b[m');
 	}
 	const info: CapabilityInformation = { parser, info: obtainDetailedInfos(), tests: indexTestSources(), knownNames };
 	const categories: readonly FlowrCapability[] = flowrCapabilities.capabilities;
-	const cards = categories.map(c => cardHtml(c));
+	const cards = categories.map(c => cardHtml(c, proseOf(info, c.id)));
 	const sections = [];
 	for(const category of categories) {
 		sections.push(await categoryHtml(info, category));

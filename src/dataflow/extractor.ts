@@ -359,9 +359,11 @@ function extractDataFlowGraph<OtherInfo>(
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
+	/* carried across the rounds, so a definition already folded in does not read as growth again */
+	const foldedIn = new Set<string>();
 	const rounds = ctx.config.solver.transitiveSideEffectRounds ?? DefaultTransitiveSideEffectRounds;
 	for(let round = 0; round < rounds; round++) {
-		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx);
+		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx, foldedIn);
 		(df as { environment: REnvironmentInformation }).environment = environment;
 		for(const n of roundNames) {
 			escapedNames.add(n);

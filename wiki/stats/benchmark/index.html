@@ -12,7 +12,7 @@
 </head>
 <body>
 <header class="bar">
-<h2><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><a class="version" id="version" data-release="v2.15.8" href="https://github.com/flowr-analysis/flowr/commit/db21c7032698a111607116e52681415c9a02468c" target="_blank" rel="noopener" title="a development build of flowR, 10 commits after v2.15.8 (db21c70)">v2.15.8*</a></h2>
+<h2><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><a class="version" id="version" data-release="v2.15.8" href="https://github.com/flowr-analysis/flowr/commit/4c1807cc5a6009bdcc27c70fceb2586453bce6a4" target="_blank" rel="noopener" title="a development build of flowR, 17 commits after v2.15.8 (4c1807c)">v2.15.8*</a></h2>
 <nav>
 <a href="../../../" target="_blank" rel="noopener">Landing Page</a>
 <a href="../../playground/" target="_blank" rel="noopener">Playground</a>
@@ -102,6 +102,6 @@
 <script src="stats.js"></script>
 <script src="viewer.js"></script>
 <script>(function(){const e=document.getElementById("version");if(!e||!e.dataset.release)return;const i=e.title,r=e.textContent.trim().endsWith("*");let n=!1;const a=()=>{n||(n=!0,fetch("https://api.github.com/repos/flowr-analysis/flowr/releases/tags/"+e.dataset.release).then(t=>t.ok?t.json():Promise.reject(t.status)).then(t=>{if(t.name){const s=t.published_at?new Date(t.published_at).toLocaleDateString(void 0,{year:"numeric",month:"short",day:"numeric"}):"",o=s?t.name+", released "+s:t.name;e.title=r?i+" \xB7 "+o:o}}).catch(()=>{}))};e.addEventListener("pointerenter",a),e.addEventListener("focus",a)})();</script>
-<script>(function(){if(/(^|\/)index\.html$/.test(location.pathname))for(const t of document.querySelectorAll('a[href$="/"]')){const e=t.getAttribute("href");/^[a-z]+:|^\/\//i.test(e)||t.setAttribute("href",e+"index.html")}})();</script>
+<script>(function(){if(/(^|\/)index\.html$/.test(location.pathname))for(const e of document.querySelectorAll("a[href]")){const r=e.getAttribute("href"),t=/^([^?#]*\/)([?#].*)?$/.exec(r);t&&!/^[a-z]+:|^\/\//i.test(r)&&e.setAttribute("href",t[1]+"index.html"+(t[2]??""))}})();</script>
 </body>
 </html>

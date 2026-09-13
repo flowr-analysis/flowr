@@ -162,6 +162,20 @@ export class Environment implements IEnvironment {
 		this.sharedMemory = true;
 	}
 
+	/** Takes `frame` as the bindings, owned outright unless `shared`, where a write has to fork it first. */
+	private adoptFrame(frame: Frame, shared?: boolean): void {
+		this.frame = frame;
+		this.sharedMemory = shared ? true : undefined;
+		this.tailCache = undefined;
+	}
+
+	/** What a merge writes its result into: {@link Frame.forWrite} overlays a big frame instead of copying it, so the cost follows what the merge changes, not what it keeps. */
+	private mergedFrame(): Frame {
+		/* the result may keep this frame as its base, so a later write here has to fork */
+		this.sharedMemory = true;
+		return this.frame.forWrite();
+	}
+
 	/** {@link memory} ready to be written to. Every write goes through here, since {@link clone} shares the frame. */
 	public get writableMemory(): Frame {
 		this.tailCache = undefined;
@@ -326,13 +340,18 @@ export class Environment implements IEnvironment {
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		const map = new Map(this.memory);
+		/* nothing on the other side leaves these bindings as the result, so they are shared rather than merged */
+		const keep = other.memory.size === 0;
+		const frame = keep ? this.frame : this.mergedFrame();
+		if(keep) {
+			this.sharedMemory = true;
+		}
 		for(const [key, values] of other.memory) {
 			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
 			if(hasMaybe) {
-				const old = map.get(key);
+				const old = frame.get(key);
 				if(!old && applyCds === undefined) {
-					map.set(key, values);
+					frame.set(key, values);
 					continue;
 				}
 				// we need to make a copy to avoid side effects for old reference in other environments
@@ -351,9 +370,9 @@ export class Environment implements IEnvironment {
 						});
 					}
 				}
-				map.set(key, updated);
+				frame.set(key, updated);
 			} else {
-				map.set(key, values);
+				frame.set(key, values);
 			}
 		}
 
@@ -363,7 +382,7 @@ export class Environment implements IEnvironment {
 		out.t = this.t;
 		out.globalEnv = this.globalEnv;
 		out.superMemory = this.superMemory ?? other.superMemory;
-		out.adoptMap(map);
+		out.adoptFrame(frame, keep);
 		return out;
 	}
 
@@ -376,13 +395,17 @@ export class Environment implements IEnvironment {
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		const map = new Map(this.memory);
+		const keep = other.memory.size === 0;
+		const frame = keep ? this.frame : this.mergedFrame();
+		if(keep) {
+			this.sharedMemory = true;
+		}
 		for(const [key, value] of other.memory) {
-			const old = map.get(key);
+			const old = frame.get(key);
 			if(old) {
-				map.set(key, uniqueMergeValuesInDefinitions(old, value));
+				frame.set(key, uniqueMergeValuesInDefinitions(old, value));
 			} else {
-				map.set(key, value);
+				frame.set(key, value);
 			}
 		}
 
@@ -392,7 +415,7 @@ export class Environment implements IEnvironment {
 		out.t = this.t;
 		out.globalEnv = this.globalEnv;
 		out.superMemory = this.superMemory ?? other.superMemory;
-		out.adoptMap(map);
+		out.adoptFrame(frame, keep);
 		return out;
 	}
 

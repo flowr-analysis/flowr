@@ -9,7 +9,7 @@ import { build, type Plugin } from 'esbuild';
 import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
 import { rSourceUrl, helpPageUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
-import { template, writePage } from './html-page';
+import { template, writePage, committedNote } from './html-page';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier } from '../src/dataflow/environments/identifier';
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `
-		+ `${Math.round(exports.length / 1024)} kB of package exports, not committed)`);
+		+ `${Math.round(exports.length / 1024)} kB of package exports${committedNote(Target)})`);
 }
 
 void main();

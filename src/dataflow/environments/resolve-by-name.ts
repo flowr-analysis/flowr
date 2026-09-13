@@ -116,7 +116,6 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		if(target === ReferenceType.S3MethodPrefix || target === ReferenceType.S7MethodPrefix) {
 			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
 			const prefix = name + (target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator);
-			/* keys first: an attached package binds lazily, so asking every name for its value materializes the whole package */
 			const hits: IdentifierDefinition[] = [];
 			for(const defName of current.memory.keys()) {
 				if(defName.startsWith(prefix)) {

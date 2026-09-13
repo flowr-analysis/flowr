@@ -24,7 +24,6 @@ const OverlayThreshold = 64;
 /**
  * How many overlays may stack before a write copies instead. A lookup walks the stack, so this bounds what a
  * miss costs; a frame deep enough to reach it is one written to over and over, where a copy pays off.
- * Trades lookup cost against copy cost; no result depends on it.
  * @see {@link setMaxOverlayDepth} - to override it from `solver.maxOverlayDepth`
  */
 export const DefaultMaxOverlayDepth = 4;

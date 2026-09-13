@@ -23,7 +23,7 @@ The list of supported capabilities can be found on the ${ctx.linkPage('flowr:cap
 For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
 `)
 		.addFaq('How do I run *all checks* before pushing?', `
-Run \`npm run checkup\`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run \`npm run checkup\`: it runs the linter, the functionality, system, and mutation tests, the wiki and landing page generation, and the docker image build + smoke test concurrently (the landing pages wait for the functionality and mutation test results), then prints one pass/fail summary.
 Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip the container build with \`npm run checkup -- --no-docker\`.
 `)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `

@@ -13,7 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
 import { encode, pack, readSigIndex } from './sigdb-index';
-import { template, writePage } from './html-page';
+import { template, writePage, committedNote } from './html-page';
 
 /** bundles sigdb-page/main.ts as iife; module scripts are CORS-blocked when opened from disk */
 async function pageScript(): Promise<string> {
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
 
 	const target = path.join(Target, 'index.html');
 	writePage(target, page);
-	console.log(`  wrote ${target} (${group(index.packages.length)} packages, ${group(blobs.count)} names, ${group(index.stated.size)} flowR signatures, ${group(index.formals.size)} base R signatures, ${(page.length / 1024 / 1024).toFixed(1)} MB, not committed)`);
+	console.log(`  wrote ${target} (${group(index.packages.length)} packages, ${group(blobs.count)} names, ${group(index.stated.size)} flowR signatures, ${group(index.formals.size)} base R signatures, ${(page.length / 1024 / 1024).toFixed(1)} MB${committedNote(target)})`);
 
 	const descriptionTarget = path.join(Target, 'opensearch.xml');
 	fs.writeFileSync(descriptionTarget, OpenSearchDescription);

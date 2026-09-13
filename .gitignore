@@ -718,3 +718,6 @@ dist/src/data/sigdb/
 wiki/sigdb/
 # the playground bundle, built by the doc job onto gh-pages
 wiki/playground/
+# the generated landing and benchmark pages, built by the doc job onto gh-pages
+/index.html
+wiki/stats/benchmark/index.html

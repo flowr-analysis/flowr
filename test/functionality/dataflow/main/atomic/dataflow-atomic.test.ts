@@ -861,6 +861,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.argument(8, [7, 6])
 				.call(9, '(', [argumentInCall(8)], { returns: [8], reads: [NodeId.toBuiltIn('(')], cds: [{ id: 10, when: true }], environment: defaultEnv().defineVariable('y', 0, 2).defineVariable('y', 6, 8, [{ id: 10, when: true }]) })
 				.calls(9, NodeId.toBuiltIn('('))
+				.reads(9, 8)
 				.call(10, '&&', [argumentInCall(3), argumentInCall(9)], { returns: [], reads: [NodeId.toBuiltIn('&&')], environment: defaultEnv().defineVariable('y', 0, 2).defineVariable('y', 6, 8, [{ id: 10, when: true }]) })
 				.calls(10, NodeId.toBuiltIn('&&'))
 				.reads(10, 3)

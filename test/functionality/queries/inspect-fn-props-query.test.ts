@@ -49,8 +49,8 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testRoles('through return', 'f <- function(x) return(x)', { x: ArgProp.Forced | ArgProp.Alias });
 	testRoles('through invisible', 'f <- function(x) invisible(x)', { x: ArgProp.Forced | ArgProp.Alias });
 	testRoles('through a local', 'f <- function(x) { y <- x; y }', { x: ArgProp.Forced | ArgProp.Alias });
-	testRoles('a branch is not always the result', 'f <- function(x, flag) if(flag) x else NULL', { flag: ArgProp.Forced });
-	testRoles('nor is a conditional return', 'f <- function(x, flag) { if(flag) return(x); NULL }', { flag: ArgProp.Forced });
+	testRoles('a branch is not always the result', 'f <- function(x, flag) if(flag) x else NULL', { flag: ArgProp.Forced | ArgProp.Atomic });
+	testRoles('nor is a conditional return', 'f <- function(x, flag) { if(flag) return(x); NULL }', { flag: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('a formal only read is not returned', 'f <- function(x) nchar(x)', { x: ArgProp.Forced | ArgProp.Shape });
 	testRoles('a formal that is called', 'f <- function(xs, FUN) lapply(xs, FUN)', { xs: ArgProp.Forced | ArgProp.Value, FUN: ArgProp.Forced | ArgProp.Callee });
 	testRoles('through do.call', 'f <- function(FUN, args) do.call(FUN, args)', { FUN: ArgProp.Forced | ArgProp.Callee | ArgProp.Injectable, args: ArgProp.Forced | ArgProp.Value });
@@ -72,8 +72,8 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	/* counterexamples: what the walk has to get right beyond the straightforward cases */
 	testRoles('a formal overwritten before the end is not the result', 'f <- function(x) { x <- 1; x }', { x: ArgProp.Lazy });
 	testRoles('nor is one overwritten on the way', 'f <- function(x) { y <- x; y <- 2; y }', { x: ArgProp.Forced });
-	testRoles('branches agreeing on the formal make it the result', 'f <- function(x, c) if(c) x else x', { x: ArgProp.Alias, c: ArgProp.Forced });
-	testRoles('branches disagreeing do not', 'f <- function(x, y, c) if(c) x else y', { c: ArgProp.Forced });
+	testRoles('branches agreeing on the formal make it the result', 'f <- function(x, c) if(c) x else x', { x: ArgProp.Alias, c: ArgProp.Forced | ArgProp.Atomic });
+	testRoles('branches disagreeing do not', 'f <- function(x, y, c) if(c) x else y', { c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('a constant condition is no condition', 'f <- function(x) if(TRUE) x', { x: ArgProp.Forced | ArgProp.Alias });
 	testRoles('a quoted formal is read as written, not evaluated', 'f <- function(x) quote(x)', { x: ArgProp.Nse | ArgProp.Lazy });
 	testRoles('so is a substituted one', 'f <- function(x) substitute(x)', { x: ArgProp.Nse | ArgProp.Lazy });

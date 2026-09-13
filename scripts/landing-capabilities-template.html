@@ -32,6 +32,10 @@ a.capref { color: inherit; border-bottom: 1px dotted color-mix(in srgb, var(--ac
 a.capref::before { content: "#"; margin-right: .08em; color: var(--accent); opacity: .55; font-size: .9em; }
 a.capref:hover { color: var(--accent); border-bottom-style: solid; text-decoration: none; }
 a.capref:hover::before { opacity: 1; }
+:not(pre) > code a:is(.tk-link, .capref) { color: inherit; border-bottom: 1px dotted color-mix(in srgb, var(--accent) 55%, transparent); }
+:not(pre) > code a:is(.tk-link, .capref):hover { color: var(--accent); border-bottom-style: solid; }
+:not(pre) > code a.tk-link > span { color: inherit; }
+code a.capref::before { content: none; }
 /* external links get a trailing arrow icon */
 .desc a[href^="http"]::after, .example a[href^="http"]::after, .sum a[href^="http"]::after, li.cap p a[href^="http"]::after {
 	content: ""; display: inline-block; width: .62em; height: .62em; margin-left: .2em; opacity: .6;
@@ -194,8 +198,8 @@ figure.diagram svg { max-width: 100%; height: auto; }
 .tk-call { color: var(--tk-call); }
 .tk-op { color: var(--muted); }
 /* keep call-token styling on signature-browser links instead of link styling */
-.example a.tk-call { color: var(--tk-call); text-decoration: none; border: 0; cursor: pointer; }
-.example a.tk-call:hover, .example a.tk-call:focus-visible { text-decoration: underline; }
+pre a.tk-link { color: inherit; text-decoration: none; border: 0; cursor: pointer; }
+pre a.tk-link:hover, pre a.tk-link:focus-visible { text-decoration: underline; }
 /* long lists start collapsed; "more" expands, filtering always shows all */
 ul.caps[data-collapsed="yes"] > li.extra { display: none; }
 main.filtering ul.caps > li.extra:not([hidden]) { display: list-item; }

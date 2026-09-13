@@ -8,7 +8,7 @@ import { EdgeType, DfEdge } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
-import { happensBefore } from '../../../../../control-flow/happens-before';
+import { happensBefore, reachableFrom, reachableTo } from '../../../../../control-flow/happens-before';
 import { Ternary } from '../../../../../util/logic';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
@@ -101,7 +101,11 @@ export const Deferred = {
 				reads.push(reader);
 			}
 		}
-		return reads.filter(r => !reads.some(other => other !== r && happensBefore(cfg, other, r) === Ternary.Always));
+		/* `Always` implies reachable, so one closure per read rules out most pairs before the exact walk */
+		return reads.filter(r => {
+			const before = reachableTo(cfg, [r]);
+			return !reads.some(other => other !== r && before.has(other) && happensBefore(cfg, other, r) === Ternary.Always);
+		});
 	},
 
 	/**
@@ -112,13 +116,17 @@ export const Deferred = {
 	publish<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, at: NodeId, cfg?: ControlFlowGraph): void {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));
+		let reachedFromAt: ReadonlySet<NodeId> | undefined;
 		for(const [node, name, writes] of within) {
 			if(!writes) {
 				continue;
 			}
 			for(const use of index.uses.get(name) ?? []) {
 				/* only a use the evaluation may reach can see what it wrote */
-				if(own.has(use) || (cfg !== undefined && happensBefore(cfg, at, use) === Ternary.Never)) {
+				if(cfg !== undefined) {
+					reachedFromAt ??= reachableFrom(cfg, [at]);
+				}
+				if(own.has(use) || (reachedFromAt !== undefined && !reachedFromAt.has(use))) {
 					continue;
 				}
 				graph.addEdge(use, node, EdgeType.Reads);
@@ -134,12 +142,15 @@ export const Deferred = {
 	link<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, forces?: ForceSites): void {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));
+		/* one walk per direction answers every candidate, so the sets are built once and only when asked for */
+		let before: ReadonlySet<NodeId> | undefined;
+		let after: ReadonlySet<NodeId> | undefined;
 		/* a binding matters only if some force can see it, and a use only if some force can reach it */
 		const seenByAForce = (definition: NodeId) => forces === undefined
-			|| forces.sites.some(site => happensBefore(forces.cfg, definition, site) !== Ternary.Never);
+			|| (before ??= reachableTo(forces.cfg, forces.sites)).has(definition);
 		/* the forcing read yields the promise's value, so only reads after it observe what the promise wrote */
 		const reachedByAForce = (use: NodeId) => forces === undefined
-			|| (!forces.sites.includes(use) && forces.sites.some(site => happensBefore(forces.cfg, site, use) !== Ternary.Never));
+			|| (!forces.sites.includes(use) && (after ??= reachableFrom(forces.cfg, forces.sites)).has(use));
 		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
 		const bindingName = forces === undefined ? undefined : removeRQuotes(NodeId.recoverName(forces.binding, idMap) ?? '');
 		for(const [node, name, writes] of within) {

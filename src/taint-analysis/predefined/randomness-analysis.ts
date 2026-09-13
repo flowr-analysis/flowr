@@ -1,7 +1,12 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
+import { AbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, PkgName } from '../../dataflow/environments/identifier';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { TaintFnCategory } from '../function-categories';
+import { taintMappingFromBuiltInIndex } from '../builtin-index-bridge';
 
 export const Random = Symbol('Random');
 export const Deterministic = Symbol('Deterministic');
@@ -13,39 +18,89 @@ export const randomnessDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Botto
 	.build();
 
 export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', randomnessDomain)
-	.from([ {
-		identifier: Identifier.make('c', 'base'),
-		taint:      Deterministic
-	},
-	{
-		identifier: [
-			Identifier.make('jitter', 'base'),
-			Identifier.make('sample', 'base'),
-			Identifier.make('sample.int', 'base'),
+	.on(TaintFnCategory.pureComputer, ([_arg], taints) => {
+		if(taints.some(t => t.value === Random)) {
+			return Random;
+		}
+		if(taints.length > 0) {
+			return AbstractDomain.joinAll(taints).value;
+		}
+		return Top;
+	})
+	.from([
+		{
+			identifier: [
+				// vector constructor functions
+				['vector', PkgName.Base],
+				['numeric', PkgName.Base],
+				['double', PkgName.Base],
+				['integer', PkgName.Base],
+				['logical', PkgName.Base],
+				['complex', PkgName.Base],
+				['raw', PkgName.Base],
+				['character', PkgName.Base],
+				['single', PkgName.Base],
 
-			// Distribution samplers and stochastic algorithms
-			Identifier.make('arima.sim', 'stats'),
-			Identifier.make('kmeans', 'stats'),
-			Identifier.make('princomp', 'stats'),
-			Identifier.make('rcauchy', 'stats'),
-			Identifier.make('rchisq', 'stats'),
-			Identifier.make('rexp', 'stats'),
-			Identifier.make('rgamma', 'stats'),
-			Identifier.make('rgeom', 'stats'),
-			Identifier.make('rlnorm', 'stats'),
-			Identifier.make('rlogis', 'stats'),
-			Identifier.make('rmultinom', 'stats'),
-			Identifier.make('rnbinom', 'stats'),
-			Identifier.make('rnorm', 'stats'),
-			Identifier.make('rpois', 'stats'),
-			Identifier.make('runif', 'stats'),
-			Identifier.make('rbeta', 'stats'),
-			Identifier.make('rf', 'stats'),
-			Identifier.make('rhyper', 'stats'),
-			Identifier.make('rweibull', 'stats'),
-			Identifier.make('rt', 'stats'),
-			Identifier.make('rwilcox', 'stats'),
-			Identifier.make('rsignrank', 'stats'),
-		],
-		taint: Random
-	}]).through([]).to([]).report('');
+				['mat.or.vec', PkgName.Base],
+
+				// type checks
+				['is.vector', PkgName.Base],
+				['is.numeric', PkgName.Base],
+				['is.double', PkgName.Base],
+				['is.integer', PkgName.Base],
+				['is.logical', PkgName.Base],
+				['is.complex', PkgName.Base],
+				['is.raw', PkgName.Base],
+				['is.character', PkgName.Base],
+				['is.single', PkgName.Base],
+				['is.matrix', PkgName.Base],
+				['is.factor', PkgName.Base],
+				['is.ordered', PkgName.Base],
+
+				// sequence functions
+				['seq', PkgName.Base],
+				['seq.Date', PkgName.Base],
+				['seq.POSIXt', PkgName.Base],
+				['sequence', PkgName.Base],
+				['seq_along', PkgName.Base],
+				['seq_len', PkgName.Base],
+			],
+			taint: Deterministic
+		},
+		{
+			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Random)]
+				.filter(i => !Identifier.matches(i, ['set.seed', PkgName.Base])),
+			taint: Random
+		}
+	])
+	.through([
+		{
+			identifier: [
+				// coercion
+				['as.vector', PkgName.Base],
+				['as.numeric', PkgName.Base],
+				['as.double', PkgName.Base],
+				['as.integer', PkgName.Base],
+				['as.logical', PkgName.Base],
+				['as.complex', PkgName.Base],
+				['as.raw', PkgName.Base],
+				['as.character', PkgName.Base],
+				['as.single', PkgName.Base],
+				['as.matrix', PkgName.Base],
+				['as.factor', PkgName.Base],
+				['as.ordered', PkgName.Base],
+
+				// repetition
+				['rep', PkgName.Base], ['rep.int', PkgName.Base], ['rep_len', PkgName.Base]
+			],
+			condition: {
+				argTaints:   [{ pos: 0, name: 'x' }],
+				conditionFn: (_args, [taint]) =>
+					taint.value
+			}
+		},
+	])
+	.to(taintMappingFromBuiltInIndex([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value,
+		(_args, taints) => taints.some(taint => taint.value === Random) ? Bottom : AbstractDomain.joinAll(taints).value))
+	.report('Non-deterministic random data is written to output (result may not be reproducible)');
+

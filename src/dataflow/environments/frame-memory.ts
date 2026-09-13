@@ -24,12 +24,12 @@ const OverlayThreshold = 64;
 /**
  * How many overlays may stack before a write copies instead. A lookup walks the stack, so this bounds what a
  * miss costs; a frame deep enough to reach it is one written to over and over, where a copy pays off.
- * Trades lookup cost against copy cost and never changes a result.
+ * Trades lookup cost against copy cost; no result depends on it.
  * @see {@link setMaxOverlayDepth} - to override it from `solver.maxOverlayDepth`
  */
 export const DefaultMaxOverlayDepth = 4;
 
-let maxOverlayDepth: number = DefaultMaxOverlayDepth;
+let maxOverlayDepth = DefaultMaxOverlayDepth;
 
 /** Overrides {@link DefaultMaxOverlayDepth} for every frame written from here on. */
 export function setMaxOverlayDepth(depth: number): void {
@@ -53,7 +53,7 @@ export class Frame implements MemoryView {
 	/** {@link overlaidEntries} once walked, dropped by every write */
 	private flat?:             Map<BrandedIdentifier, IdentifierDefinition[]>;
 	/** {@link overlaidKeys} once walked, dropped by every write */
-	private flatKeys?:         BrandedIdentifier[];
+	private flatKeys?:         Set<BrandedIdentifier>;
 
 	private constructor(bindings: Map<BrandedIdentifier, IdentifierDefinition[]>, frozen: boolean, base?: MemoryView) {
 		this.bindings = bindings;
@@ -96,14 +96,16 @@ export class Frame implements MemoryView {
 
 	public set(name: BrandedIdentifier, defs: IdentifierDefinition[]): void {
 		guard(!this.frozen, 'a frozen frame takes no writes, fork it with forWrite first');
-		this.flat = this.flatKeys = undefined;
+		this.flat = undefined;
+		this.flatKeys = undefined;
 		this.bindings.set(name, defs);
 		this.removed?.delete(name);
 	}
 
 	public delete(name: BrandedIdentifier): void {
 		guard(!this.frozen, 'a frozen frame takes no writes, fork it with forWrite first');
-		this.flat = this.flatKeys = undefined;
+		this.flat = undefined;
+		this.flatKeys = undefined;
 		this.bindings.delete(name);
 		if(this.base?.has(name)) {
 			(this.removed ??= new Set()).add(name);
@@ -137,21 +139,21 @@ export class Frame implements MemoryView {
 		return size;
 	}
 
-	/** Like {@link entries}, kept once walked: a prefix scan asks every layer for its names. */
+	/** Kept once walked, like {@link entries}; a prefix scan asks every layer for its names. */
 	public keys(): MapIterator<BrandedIdentifier> {
 		if(this.base === undefined) {
 			return this.bindings.keys();
 		} else if(this.flat !== undefined) {
 			return this.flat.keys();
 		}
-		return replay(this.flatKeys ??= [...this.overlaidKeys()]);
+		return (this.flatKeys ??= new Set(this.overlaidKeys())).keys();
 	}
 
 	public values(): MapIterator<IdentifierDefinition[]> {
 		return this.base === undefined ? this.bindings.values() : this.overlaidValues();
 	}
 
-	/** An overlay is walked far more often than written, so the flattened view is kept until a write drops it. Filled from {@link overlaidEntries}, so its contents and order are unchanged. */
+	/** An overlay is walked far more often than written, so the flattened view is kept until a write drops it; it is filled from {@link overlaidEntries}, whose contents and order it therefore has. */
 	public entries(): MapIterator<[BrandedIdentifier, IdentifierDefinition[]]> {
 		if(this.base === undefined) {
 			return this.bindings.entries();
@@ -211,11 +213,6 @@ export class Frame implements MemoryView {
 			yield defs;
 		}
 	}
-}
-
-/** A cached name list as an iterator, standing in for a walk of the overlay stack. */
-function* replay(names: readonly BrandedIdentifier[]): MapIterator<BrandedIdentifier> {
-	yield* names;
 }
 
 /** what every environment starts out on, until a write forks it one of its own */

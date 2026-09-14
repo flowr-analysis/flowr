@@ -37,7 +37,7 @@ const argumentTaintAnalysis = TaintAnalysisDefinition.create('arguments-eval', l
 					} else if(arg2) {
 						return taint2;
 					} else {
-						return taint;
+						return taint.value;
 					}
 				}
 			}

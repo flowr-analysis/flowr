@@ -2,13 +2,13 @@ import type { AbsintVisitorConfiguration } from '../abstract-interpretation/absi
 import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { TaintMapper } from './function-mapper';
-import { getMappingsForCall, resolveFnCallToTaint } from './function-mapper';
+import { resolveFnCallToTaint } from './taint-resolve';
 import type { AnyStateDomain } from '../abstract-interpretation/domains/state-domain-like';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from './builder/taint-analysis';
 import { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { TaintMapper } from './taint-mapping';
 
 /**
  * Resolves the inferred abstract taint of an argument node at the current program point, independent of any mapping
@@ -40,15 +40,15 @@ export type TaintVisitorConfiguration = AbsintVisitorConfiguration & {
  * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
  */
 export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends AbstractInterpretationVisitor<AnyStateDomain<Domain>, TaintVisitorConfiguration> {
-	private readonly domain:       Domain;
-	private readonly fnCallMapper: TaintMapper<Domain>;
+	private readonly domain:      Domain;
+	private readonly taintMapper: TaintMapper<Domain>;
 
 	private readonly projectArg = (id: NodeId): Domain | undefined => this.getAbstractValue(id);
 
 	constructor(domain: Domain, fnCallMapper: TaintMapper<Domain>, visitorConfig: TaintVisitorConfiguration, collapseOnBottom = false) {
 		super(visitorConfig, StateAbstractDomain.top(domain.top(), collapseOnBottom));
 		this.domain = domain;
-		this.fnCallMapper = fnCallMapper;
+		this.taintMapper = fnCallMapper;
 	}
 
 	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
@@ -59,7 +59,8 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 			return;
 		}
 
-		const mappings = getMappingsForCall(node, this.fnCallMapper);
+		const mappings = this.taintMapper.getMappings(node.functionName.content);
+
 		const { value, role } = resolveFnCallToTaint(node, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
 		this.currentState.set(node.info.id, value);
 

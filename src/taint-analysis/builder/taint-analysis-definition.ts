@@ -1,5 +1,3 @@
-import type { TaintMapper } from '../function-mapper';
-import { TaintRole } from '../function-mapper';
 import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 import type { TaintComponent, TaintProduct } from '../composite-taint-visitor';
@@ -9,6 +7,10 @@ import { TaintInferenceVisitor } from '../taint-visitor';
 import { guard } from '../../util/assert';
 import type { ProductReduction } from '../../abstract-interpretation/domains/partial-product-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
+import type { TaintFnCategory } from '../function-categories';
+import { resolveCategoryToTaintMappings } from '../function-categories';
+import type { TaintConditionFunction, TaintMapping } from '../taint-mapping';
+import { TaintMapper, TaintRole   } from '../taint-mapping';
 
 export type TaintAnalysisName<Definition> =
 	Definition extends RunnableTaintAnalysisDefinition<infer Name> ? Name : never;
@@ -24,7 +26,7 @@ export interface RunnableTaintAnalysisDefinition<Name extends string = string> {
 	/** The optional message reported when the analysis produces a finding. */
 	readonly msg?: string;
 	/** Creates the abstract interpretation visitor that conducts the taint analysis for the given visitor configuration. */
-	createVisitor(config: AbsintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain>;
+	createVisitor(config: AbsintVisitorConfiguration, fnCategories?: TaintFnCategory[]): AbstractInterpretationVisitor<AnyStateDomain>;
 }
 
 /** Options for composing multiple taint analyses into a {@link CompositeTaintAnalysisDefinition}. */
@@ -45,17 +47,19 @@ export interface TaintAnalysisReportStage<Name extends string = string, Domain e
 
 export interface TaintAnalysisToStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisThroughStage<Name, Domain> {
 	/** Add sink rules signaling findings by yielding Bottom. */
-	to(fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain>;
+	to(fnMapping: TaintMapping<Domain>[]): TaintAnalysisReportStage<Name, Domain>;
 }
 
 export interface TaintAnalysisThroughStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisFromStage<Name, Domain> {
 	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
-	through(fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain>;
+	through(fnMapping: TaintMapping<Domain>[]): TaintAnalysisToStage<Name, Domain>;
 }
 
 export interface TaintAnalysisFromStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
-	from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
+	from(fnMapping: TaintMapping<Domain>[]): TaintAnalysisThroughStage<Name, Domain>;
+	/** Add rules for function categories (i.e. sets of functions from {@link BuiltInIndex} fulfilling certain properties) */
+	on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): TaintAnalysisFromStage<Name, Domain>;
 }
 
 /**
@@ -66,7 +70,8 @@ export interface TaintAnalysisFromStage<Name extends string = string, Domain ext
  */
 export class TaintAnalysisDefinition<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration> implements TaintAnalysisReportStage<Name, Domain> {
 	public readonly domain: Domain;
-	public mapper:          TaintMapper<Domain> = [];
+	public mapper:          TaintMapper<Domain>;
+	public categories:      TaintFnCategory[] = [];
 	public name:            Name;
 	public config:          Config | undefined;
 
@@ -80,6 +85,7 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 		this.name = name;
 		this.domain = domain;
 		this.config = config;
+		this.mapper = new TaintMapper();
 	}
 
 	/**
@@ -90,18 +96,24 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 		return new TaintAnalysisDefinition(name, domain, config);
 	}
 
-	public from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain> {
-		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Source })));
+	public on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>) {
+		guard(handler || category.handler, 'No handler set for given function category');
+		this.categories.push({ ...category, handler: handler ?? category.handler });
 		return this;
 	}
 
-	public through(fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain> {
-		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Transformer })));
+	public from(fnMapping: TaintMapping<Domain>[]): TaintAnalysisThroughStage<Name, Domain> {
+		this.mapper.pushMapping(fnMapping.map(m => ({ ...m, role: TaintRole.Source })));
 		return this;
 	}
 
-	public to(fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain> {
-		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Sink })));
+	public through(fnMapping: TaintMapping<Domain>[]): TaintAnalysisToStage<Name, Domain> {
+		this.mapper.pushMapping(fnMapping.map(m => ({ ...m, role: TaintRole.Transformer })));
+		return this;
+	}
+
+	public to(fnMapping: TaintMapping<Domain>[]): TaintAnalysisReportStage<Name, Domain> {
+		this.mapper.pushMapping(fnMapping.map(m => ({ ...m, role: TaintRole.Sink })));
 		return this;
 	}
 
@@ -110,8 +122,18 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 		return this;
 	}
 
-	public createVisitor(config: TaintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> {
-		return new TaintInferenceVisitor(this.domain, this.mapper, { ...this.config, ...config });
+	public createVisitor(config: TaintVisitorConfiguration, fnCategories: TaintFnCategory[] = []): AbstractInterpretationVisitor<AnyStateDomain> {
+		const completeMapper = this.mapper.clone();
+
+		// Add mappings from function categories.
+		// Categories added to the individual analysis take precedence over passed categories.
+		const finalFnCategories = [ ...this.categories, ...fnCategories];
+		for(const category of finalFnCategories ) {
+			const resolved = resolveCategoryToTaintMappings<Domain>(category);
+			completeMapper.pushMappingIfNotExists(resolved);
+		}
+
+		return new TaintInferenceVisitor(this.domain, completeMapper, { ...this.config, ...config });
 	}
 
 	/**
@@ -158,7 +180,7 @@ export class CompositeTaintAnalysisDefinition<Name extends string> implements Ru
 		return this;
 	}
 
-	public createVisitor(config: AbsintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> {
+	public createVisitor(config: AbsintVisitorConfiguration, _fnCategories?: TaintFnCategory[]): AbstractInterpretationVisitor<AnyStateDomain> {
 		const components: TaintComponent[] = this.definitions.map(def => ({
 			name:   def.name,
 			domain: def.domain,

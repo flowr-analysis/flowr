@@ -3,7 +3,7 @@ import { assert, describe, test } from 'vitest';
 import { run } from '../utility/utility';
 import { allPredefinedTaintAnalysisNames } from '../../../src/taint-analysis/predefined/predefined';
 import type { LoggedFnCallInfo } from '../../../src/taint-analysis/eval/instrumentation';
-import { TaintRole } from '../../../src/taint-analysis/function-mapper';
+import { TaintRole } from '../../../src/taint-analysis/taint-mapping';
 
 type ParsedTrace = Record<string, Record<string, LoggedFnCallInfo>>;
 type ParsedCallInfo = LoggedFnCallInfo['unmappedCalls'][number];
@@ -107,7 +107,7 @@ describe('taint-analysis evaluation', () => {
 				'28': 'File Input',
 				'32': 'File Input',
 			},
-			msg:      'User input potentially flowing to output',
+			msg:      'Untrusted input may reach a security-sensitive sink (possible code or command injection)',
 			findings: [
 				{ nodeId: 19, loc: [4, 6, 4, 47, filePath] },
 				{ nodeId: 10, loc: [4, 1, 4, 1, filePath] },

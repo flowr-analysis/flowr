@@ -1,17 +1,11 @@
 import type { ArgProps, CallProps } from '../dataflow/environments/built-in-props';
 import { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
-import { BuiltInIndex } from '../dataflow/environments/query-fn-props';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import { isNotUndefined } from '../util/assert';
-import type {
-	TaintConditionFunction,
-	TaintMapping,
-	TaintParameterLocation
-} from './taint-mapping';
+import type { TaintConditionFunction, TaintMapping } from './taint-mapping';
 import { TaintRole } from './taint-mapping';
-import type { Identifier } from '../dataflow/environments/identifier';
 import { Top } from '../abstract-interpretation/domains/lattice';
+import { taintMappingFromBuiltInIndex } from './builtin-index-bridge';
 
 export type TaintArgSelector = {
 	/** Argument properties of the function category */
@@ -74,52 +68,17 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 };
 
 /**
- * Get the whole set of taint mappings for a given {@link TaintFnCategory}.
+ * Get the set of taint mappings for a given {@link TaintFnCategory}.
  */
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory): TaintMapping<Domain>[] {
-	const idx = BuiltInIndex.default();
-	const mappings: (TaintMapping<Domain> | undefined)[] = idx.withAll(category.callProps).map(i => {
-		const relevantArgs = getRelevantArg(i, category.args);
-		return relevantArgs ?
-			{
-				role:       category.role,
-				identifier: i,
-				condition:  {
-					argTaints:   relevantArgs,
-					conditionFn: category.handler
-				}
-			} : undefined;
-	});
-	return mappings.filter(isNotUndefined);
-}
+	const mappings = taintMappingFromBuiltInIndex(category.callProps, category.args.argProps, category.handler)
+		.map(m => {
+			return { role: category.role, ...m };
+		});
 
-function getRelevantArg(ident: Identifier, argCategory: TaintArgSelector): TaintParameterLocation[] | undefined {
-	const sig = BuiltInIndex.default().get(ident)?.sig;
-	if(!sig) {
-		return undefined;
+	if(category.args.argSelection === 'ExactlyOne') {
+		return mappings.filter(m => m.condition.argTaints?.length === 1);
 	}
 
-	const args = sig.map((arg, pos) => {
-		return { pos, arg };
-	});
-
-	const relevantArgs = args
-		.filter(({ arg: [_name, props] }) => (props & argCategory.argProps) !== 0);
-
-	if(relevantArgs.length === 0) {
-		return undefined;
-	}
-
-	if(argCategory.argSelection === 'ExactlyOne') {
-		if(relevantArgs.length !== 1) {
-			return undefined;
-		}
-
-		const relevantArg = relevantArgs[0];
-		return [{ pos: relevantArg.pos, name: relevantArg.arg[0] }];
-	}
-
-	return relevantArgs.map((arg) => {
-		return { pos: arg.pos, name: arg.arg[0] };
-	});
+	return mappings;
 }

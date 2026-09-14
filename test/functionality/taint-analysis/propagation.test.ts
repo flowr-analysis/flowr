@@ -5,8 +5,8 @@ import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain'
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
 import type { TaintAnalysisExpectation } from './helper';
 import { testTaintAnalysis } from './helper';
-import type { LoopKind } from './loop-helper';
-import { loopKinds, testLoopFixpoint, wrapLoop } from './loop-helper';
+import type { LoopKind, LoopVariant } from './loop-helper';
+import { loopVariants, testLoopFixpoint } from './loop-helper';
 import { decorateLabelContext, label } from '../_helper/label';
 
 const TaintA = Symbol('TaintA');
@@ -217,37 +217,32 @@ describe('Taint Propagation', () => {
 			testLoopFixpoint(merges, 'joining incomparable taints across a branch reaches Top', 'x <- taintA()\nz <- taintB()', 'if (branch) { x <- z }', Top, thresholds);
 		});
 
-		function widenScenario(name: string, analysis: TaintAnalysisDefinition, pre: string, body: (kind: LoopKind) => string, expected: symbol | Record<LoopKind, symbol>): void {
-			for(const kind of loopKinds) {
-				const code = `${pre}${body(kind)}\nsink(x)\nout <- x`;
+		/* every scenario runs through both bounded and unbounded loop headers; the outcome is fixed by the
+		 * loop kind, so a per-kind expectation applies to the for-loop's bounded and unbounded forms alike */
+		function widenScenario(name: string, analysis: TaintAnalysisDefinition, pre: string, body: (variant: LoopVariant) => string, expected: symbol | Record<LoopKind, symbol>): void {
+			for(const variant of loopVariants()) {
+				const code = `${pre}${body(variant)}\nsink(x)\nout <- x`;
 				const criterion = `${code.split('\n').length}@out`;
-				const want = typeof expected === 'symbol' ? expected : expected[kind];
+				const want = typeof expected === 'symbol' ? expected : expected[variant.kind];
 				for(const threshold of thresholds) {
-					testPropagate(`${name} [${kind}] (threshold=${threshold})`, code, { [criterion]: want }, analysis, threshold);
+					testPropagate(`${name} [${variant.label}] (threshold=${threshold})`, code, { [criterion]: want }, analysis, threshold);
 				}
 			}
 		}
 
 		describe('Oscillating loops', () => {
 			widenScenario('a shaker stepping up then down', climbToTop,
-				'x <- bot()\n', kind => wrapLoop(kind, 'x <- oneCloserToTop(x)\nx <- oneCloserToBot(x)'),
+				'x <- bot()\n', variant => variant.wrap('x <- oneCloserToTop(x)\nx <- oneCloserToBot(x)'),
 				{ for: Bottom, while: Bottom, repeat: Top });
 			widenScenario('a multi-shaker whose inner loop saturates before the down-step', climbToTop,
-				'x <- bot()\n', kind => wrapLoop(kind, `${wrapLoop(kind, 'x <- oneCloserToTop(x)', 'inner')}\nx <- oneCloserToBot(x)`),
+				'x <- bot()\n', variant => variant.wrap(`${variant.wrap('x <- oneCloserToTop(x)', 'inner')}\nx <- oneCloserToBot(x)`),
 				{ for: High, while: High, repeat: Top });
 		});
 
 		describe('Loops with break and next', () => {
-			function exitWalkerBody(kind: LoopKind): string {
-				const body = 'if (b1) break\nx <- oneCloserToTop(x)\nif (b2) next\nx <- oneCloserToBot(x)';
-				switch(kind) {
-					case 'for':    return `for (i in 1:5) {\n${body}\n}`;
-					case 'while':  return `while (cond) {\n${body}\n}`;
-					case 'repeat': return `repeat {\n${body}\n}`;
-				}
-			}
+			const exitBody = 'if (b1) break\nx <- oneCloserToTop(x)\nif (b2) next\nx <- oneCloserToBot(x)';
 			widenScenario('a walker with early break and skip still reaches Top', climbToTop,
-				'x <- bot()\n', exitWalkerBody, Top);
+				'x <- bot()\n', variant => variant.wrap(exitBody), Top);
 		});
 	});
 });

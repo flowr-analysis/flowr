@@ -10,18 +10,21 @@ import type { AllPredefinedTaintAnalysisNames } from '../../../taint-analysis/pr
  */
 export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: readonly TaintQuery[]): Promise<TaintQueryResult<AllPredefinedTaintAnalysisNames>> {
 	const flattened = queries.flatMap(q => q.defs);
-
-	if(flattened.length == 0) {
-		log.warn('Missing taint query definition');
-	}
-
 	const start = Date.now();
 
-	const analysis = analyzer.taint<AllPredefinedTaintAnalysisNames>();
-
-	for(const def of flattened) {
-		analysis.addPredefined(def);
+	if(flattened.length === 0) {
+		log.warn('Missing taint query definition');
+		return {
+			results: new Map(),
+			'.meta': {
+				timing: Date.now() - start
+			},
+		};
 	}
+
+	const analysis = analyzer
+		.taint<AllPredefinedTaintAnalysisNames>()
+		.addPredefined(...flattened);
 
 	return {
 		results: await analysis.run(),

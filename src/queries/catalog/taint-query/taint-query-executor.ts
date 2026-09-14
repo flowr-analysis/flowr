@@ -22,14 +22,9 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 		};
 	}
 
-	const [firstDef, ...restDefs] = flattened;
 	const analysis = analyzer
 		.taint<AllPredefinedTaintAnalysisNames>()
-		.addPredefined(firstDef);
-
-	for(const def of restDefs) {
-		analysis.addPredefined(def);
-	}
+		.addPredefined(...flattened);
 
 	return {
 		results: await analysis.run(),

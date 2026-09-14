@@ -39,22 +39,22 @@ export interface ComposeOptions {
 }
 
 export interface TaintAnalysisReportStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisToStage<Name, Domain> {
-	/** Sets the message reported when the analysis produces a finding. */
+	/** Set the message reported when the analysis produces a finding. */
 	report(msg: string): TaintAnalysisDefinition<Name, Domain>;
 }
 
 export interface TaintAnalysisToStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisThroughStage<Name, Domain> {
-	/** Adds sink rules signaling findings by yielding Bottom. */
+	/** Add sink rules signaling findings by yielding Bottom. */
 	to(fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain>;
 }
 
 export interface TaintAnalysisThroughStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisFromStage<Name, Domain> {
-	/** Adds propagator or sanitizer rules that determine the resulting taint of matching calls. */
+	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
 	through(fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain>;
 }
 
 export interface TaintAnalysisFromStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
-	/** Adds propagator or sanitizer rules that determine the resulting taint of matching calls. */
+	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
 	from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
 }
 

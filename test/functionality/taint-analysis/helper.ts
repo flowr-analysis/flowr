@@ -66,13 +66,9 @@ export async function testTaintAnalyses(code: string, analyses: Set<[string, Tai
 	const analyzer = await builder.build();
 
 	analyzer.addRequest(code.trim());
-	const [[, firstDef], ...restEntries] = analyses;
-	const analysis = analyzer.taint<string[]>().add(firstDef);
-
-	for(const [_name, def, _expectation] of restEntries) {
-		analysis.add(def);
-	}
-
+	const defs = analyses.keys()
+		.map(([_name, def, _expectation]) => def);
+	const analysis = analyzer.taint().add(...defs);
 	const results = await analysis.run();
 
 	assert.equal(results.size, analyses.size);

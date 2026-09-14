@@ -85,18 +85,18 @@ export interface TaintAnalysisBuilder<Defs extends readonly string[]> {
 	/**
 	 * Add a predefined taint analysis by name.
 	 */
-	addPredefined<Name extends AnyPredefinedTaintAnalysisName>(name: Name): RunnableTaintAnalysis<readonly [...Defs, Name]>;
+	addPredefined<Name extends AnyPredefinedTaintAnalysisName>(...names: Name[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
 
 	/**
 	 * Add a custom taint analysis definition.
 	 */
-	add<Name extends string>(def: TaintAnalysisDefinition<Name>): RunnableTaintAnalysis<readonly [...Defs, Name]>;
+	add<Name extends string>(...defs: TaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
 
 	/**
 	 * Add a composite taint analysis that combines multiple taint analyses into a product of their lattice values.
 	 * @see {@link TaintAnalysisDefinition.compose} to create a composite taint analysis definition.
 	 */
-	addComposite<Name extends string>(def: CompositeTaintAnalysisDefinition<Name>): RunnableTaintAnalysis<readonly [...Defs, Name]>;
+	addComposite<Name extends string>(...defs: CompositeTaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
 }
 
 export interface RunnableTaintAnalysis<Defs extends readonly string[]> extends TaintAnalysisBuilder<Defs> {
@@ -131,37 +131,38 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 		return this;
 	}
 
-	public addPredefined<Name extends AnyPredefinedTaintAnalysisName>(name: Name): RunnableTaintAnalysis<readonly [...Defs, Name]> {
-		this.defs.push(predefinedTaintAnalyses[name]);
+	public addPredefined<Name extends AnyPredefinedTaintAnalysisName>(...names: Name[]): RunnableTaintAnalysis<readonly [...Defs, Name]> {
+		for(const name of names) {
+			this.defs.push(predefinedTaintAnalyses[name]);
+		}
 		return this as unknown as RunnableTaintAnalysis<readonly [...Defs, Name]>;
 	}
 
-	public add<Name extends string>(def: TaintAnalysisDefinition<Name>): RunnableTaintAnalysis<readonly [...Defs, Name]> {
-		this.defs.push(def);
+	public add<Name extends string>(...defs: TaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]> {
+		this.defs.push(...defs);
 		return this as unknown as RunnableTaintAnalysis<readonly [...Defs, Name]>;
 	}
 
-	public addComposite<Name extends string>(def: CompositeTaintAnalysisDefinition<Name>): RunnableTaintAnalysis<readonly [...Defs, Name]> {
-		this.defs.push(def);
+	public addComposite<Name extends string>(...defs: CompositeTaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]> {
+		this.defs.push(...defs);
 		return this as unknown as RunnableTaintAnalysis<readonly [...Defs, Name]>;
 	}
 
 	/**
 	 * Run one or multiple taint analyses.
 	 */
-	public async run(analyzer?: ReadonlyFlowrAnalysisProvider): Promise<Map<Defs[number], TaintInferenceResult>> {
-		const priorityAnalyzer = analyzer ?? this.analyzer;
-		guard(isNotUndefined(priorityAnalyzer), 'No analyzer has been set');
+	public async run(analyzer: ReadonlyFlowrAnalysisProvider | undefined = this.analyzer): Promise<Map<Defs[number], TaintInferenceResult>> {
+		guard(isNotUndefined(analyzer), 'No analyzer has been set');
 
 		const results: Map<Defs[number], TaintInferenceResult> = new Map();
-		const dfg = (await priorityAnalyzer.dataflow()).graph;
-		const ctx = priorityAnalyzer.inspectContext();
+		const dfg = (await analyzer.dataflow()).graph;
+		const ctx = analyzer.inspectContext();
 		for(const def of this.defs) {
 			const baseConfig: TaintVisitorConfiguration = {
-				controlFlow:   await priorityAnalyzer.controlflow(),
+				controlFlow:   await analyzer.controlflow(),
 				ctx:           ctx,
 				dfg:           dfg,
-				normalizedAst: await priorityAnalyzer.normalize(),
+				normalizedAst: await analyzer.normalize(),
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
 			};
 

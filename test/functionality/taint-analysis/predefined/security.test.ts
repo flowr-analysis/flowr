@@ -74,6 +74,13 @@ describe('Security Taint Analysis', () => {
 		testSecurity('make.names neutralizes user input before it reaches do.call (no finding)', 'u <- readline()\ncmd <- make.names(u)\nx <- do.call(cmd, list())', { '3@x': Top });
 	});
 
+	describe('Pass-through transformers', () => {
+		testSecurity('which passes through user input', 'x <- which(readline())', { '1@x': UserInput });
+		testSecurity('rep passes through user input', 'x <- rep(readline(), 2)', { '1@x': UserInput });
+		testSecurity('user input passed through rep reaches system (finding)', 'u <- readline()\nr <- rep(u, 2)\nx <- system(r)', { '3@x': Bottom });
+		testSecurity('user input passed through which reaches system (finding)', 'u <- readline()\nw <- which(u)\nx <- system(w)', { '3@x': Bottom });
+	});
+
 	describe('Sink-Source Conflict', () => {
 		testSecurity('sink taint wins when the sink condition matches a tainted argument', 'n <- url("http://example.com")\nx <- serialize(n)', { '2@x': Bottom });
 		testSecurity('source taint wins when the sink argument is untracked', 'x <- download.file("data.csv", "out.csv")', { '1@x': NetworkInput });

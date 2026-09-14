@@ -33,7 +33,7 @@ export type TaintFnCategory = {
 	handler:   TaintConditionFunction<AnyAbstractDomain>
 };
 
-export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCategory> = {
+export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape', TaintFnCategory> = {
 	/** Pure functions which return a single one of their arguments unchanged */
 	pureAlias: {
 		role:      TaintRole.Transformer,
@@ -51,6 +51,18 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 		callProps: CallProp.Pure,
 		args:      {
 			argProps:     ArgProp.Value,
+			argSelection: 'AtLeastOne',
+		},
+		/** Least-upper bound of incoming taints */
+		handler: ([_arg], taints) =>
+			taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top
+	},
+	/** Pure functions which calculate their result based on the shape of input data */
+	pureShape: {
+		role:      TaintRole.Transformer,
+		callProps: CallProp.Pure,
+		args:      {
+			argProps:     ArgProp.Shape,
 			argSelection: 'AtLeastOne',
 		},
 		/** Least-upper bound of incoming taints */

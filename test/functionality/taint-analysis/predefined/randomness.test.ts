@@ -60,13 +60,15 @@ describe('Taint Analysis Randomness', () => {
 		testRandomness('sum over literals is Top', 'x <- sum(c(1, 2, 3))', { '1@x': Top });
 	});
 
-	describe('Transformers (coercion & repetition pass through the taint of x)', () => {
+	describe('Transformers', () => {
 		testRandomness('as.numeric passes through Random', 'x <- as.numeric(runif(5))', { '1@x': Random });
 		testRandomness('as.character passes through Random', 'x <- as.character(runif(5))', { '1@x': Random });
-		testRandomness('as.numeric passes through Deterministic (unlike a pure computer, which would widen to Top)', 'x <- as.numeric(seq_len(5))', { '1@x': Deterministic });
+		testRandomness('as.numeric passes through Deterministic', 'x <- as.numeric(seq_len(5))', { '1@x': Deterministic });
 		testRandomness('as.integer passes through Deterministic', 'x <- as.integer(numeric(5))', { '1@x': Deterministic });
 		testRandomness('rep passes through Random', 'x <- rep(runif(5), 2)', { '1@x': Random });
 		testRandomness('rep.int passes through Random', 'x <- rep.int(rnorm(3), 2)', { '1@x': Random });
+		testRandomness('which passes through Random', 'x <- which(runif(5))', { '1@x': Random });
+		testRandomness('which passes through Deterministic', 'x <- which(numeric(5))', { '1@x': Deterministic });
 	});
 
 	describe('Untracked operations', () => {
@@ -100,6 +102,21 @@ describe('Taint Analysis Randomness', () => {
 
 		testRandomness('Deterministic data written via write.csv is not flagged', 'x <- write.csv(numeric(5), "out.csv")', { '1@x': Deterministic });
 		testRandomness('a random connection description is not a data-flow finding (resource-path argument is not a data sink)', 'x <- file(runif(1))', { '1@x': Top });
+	});
+
+	describe('Statistical & plotting sinks', () => {
+		testRandomness('random data passed to summary is flagged', 'x <- summary(runif(5))', { '1@x': Bottom });
+		testRandomness('random data reaching summary through a variable is flagged', `
+				d <- runif(5)
+				x <- summary(d)`, { '2@x': Bottom });
+		testRandomness('Deterministic data passed to summary is not flagged', 'x <- summary(numeric(5))', { '1@x': Deterministic });
+
+		testRandomness('random data in an lm formula argument is flagged', 'x <- lm(runif(5))', { '1@x': Bottom });
+		testRandomness('random data in an lm data argument is flagged', 'x <- lm(model, runif(5))', { '1@x': Bottom });
+
+		testRandomness('random data passed to ggplot is flagged', 'x <- ggplot(runif(5))', { '1@x': Bottom });
+		testRandomness('namespaced ggplot2::ggplot of random data is flagged', 'x <- ggplot2::ggplot(runif(5))', { '1@x': Bottom });
+		testRandomness('Deterministic data passed to ggplot is not flagged', 'x <- ggplot(numeric(5))', { '1@x': Deterministic });
 	});
 
 	describe('Loops preserve the taint (no unexpected widening)', () => {

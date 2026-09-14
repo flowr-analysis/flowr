@@ -73,6 +73,7 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 		},
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Random)]
+				// Exclude set.seed as it does not return a Random value
 				.filter(i => !Identifier.matches(i, ['set.seed', PkgName.Base])),
 			taint: Random
 		}

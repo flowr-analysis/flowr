@@ -25,12 +25,18 @@ export type CompositeTaintExpectation = Record<SlicingCriterion, Record<string, 
  * @param code - The code to analyse
  * @param analysis - Taint analysis definition (single or composite)
  * @param expectation - Expected taints
+ * @param wideningThreshold - Optional override for the number of loop-head visits after which widening is forced
  */
-export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDefinition | CompositeTaintAnalysisDefinition<string>, expectation: TaintAnalysisExpectation) {
+export async function testTaintAnalysis(
+	code: string,
+	analysis: TaintAnalysisDefinition | CompositeTaintAnalysisDefinition<string>,
+	expectation: TaintAnalysisExpectation,
+	wideningThreshold?: number
+) {
 	if(analysis instanceof CompositeTaintAnalysisDefinition) {
 		throw new TypeError('testTaintAnalysis does not support composite analyses. Use testCompositeTaintAnalysis instead.');
 	}
-	await testTaintAnalyses(code, new Set([[analysis.name, analysis, expectation]]));
+	await testTaintAnalyses(code, new Set([[analysis.name, analysis, expectation]]), wideningThreshold);
 }
 
 /**
@@ -47,11 +53,17 @@ export async function testPredefinedTaintAnalysis(code: string, name: AnyPredefi
  * Helper function for conducting a multiple taint analyses and asserting the expected taints per analysis.
  * @param code - The code to analyse
  * @param analyses - Map of analyses and their corresponding expectations
+ * @param wideningThreshold - Optional override for the number of loop-head visits after which widening is forced
  */
-export async function testTaintAnalyses(code: string, analyses: Set<[string, TaintAnalysisDefinition, TaintAnalysisExpectation]>) {
-	const analyzer = await new FlowrAnalyzerBuilder()
-		.setEngine('tree-sitter')
-		.build();
+export async function testTaintAnalyses(code: string, analyses: Set<[string, TaintAnalysisDefinition, TaintAnalysisExpectation]>, wideningThreshold?: number) {
+	const builder = new FlowrAnalyzerBuilder()
+		.setEngine('tree-sitter');
+
+	if(wideningThreshold !== undefined) {
+		builder.configure('abstractInterpretation.wideningThreshold', wideningThreshold);
+	}
+
+	const analyzer = await builder.build();
 
 	analyzer.addRequest(code.trim());
 	const analysis = analyzer.taint<string[]>();

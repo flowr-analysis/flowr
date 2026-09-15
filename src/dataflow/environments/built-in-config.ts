@@ -72,6 +72,9 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
 	return builtIns;
 }
 
+/** {@link DefaultBuiltinConfig} registered once; safe to share, as the environment adopts its maps copy-on-write. */
+let sharedDefaults: BuiltIns | undefined;
+
 /** The registered built-ins together with the definition list they were registered from. */
 export interface ConfiguredBuiltIns {
 	readonly builtIns:    BuiltIns;
@@ -84,16 +87,15 @@ export interface ConfiguredBuiltIns {
  * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
  */
 export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessorMapper)[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): ConfiguredBuiltIns {
-	let builtIns = new BuiltIns();
-
-	if(loadDefaults) {
-		builtIns = getDefaultBuiltInDefinitions();
+	if(loadDefaults && definitions.length === 0) {
+		return { builtIns: sharedDefaults ??= getDefaultBuiltInDefinitions(), definitions: DefaultBuiltinConfig };
 	}
+
+	const builtIns = loadDefaults ? getDefaultBuiltInDefinitions() : new BuiltIns();
 
 	for(const definition of definitions) {
 		builtIns.registerBuiltInDefinition(definition);
 	}
 
-	return { builtIns, definitions: !loadDefaults ? definitions
-		: definitions.length === 0 ? DefaultBuiltinConfig : [...DefaultBuiltinConfig, ...definitions] };
+	return { builtIns, definitions: !loadDefaults ? definitions : [...DefaultBuiltinConfig, ...definitions] };
 }

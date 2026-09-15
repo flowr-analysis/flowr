@@ -165,7 +165,11 @@
         "npm run lint",
         "npm run test:full"
       ],
-      "after:bump": ["npm run build:dev", "npm run sigdb:sync", "npx ts-node --transpile-only scripts/gen-capabilities.ts"],
+      "after:bump": [
+        "npm run build:dev",
+        "npm run sigdb:sync",
+        "npx ts-node --transpile-only scripts/gen-capabilities.ts"
+      ],
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     },
@@ -195,18 +199,18 @@
     "@commitlint/config-angular": "^20.5.0",
     "@eagleoutice/eslint-config-flowr": "^2.1.7",
     "@j-ulrich/release-it-regex-bumper": "^5.6.0",
+    "@jupyterlab/nbformat": "^4.5.4",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
     "@types/commonmark": "^0.27.10",
-    "@types/dagre": "^0.7.53",
-    "@types/n-readlines": "^1.0.6",
+    "@types/js-yaml": "^4.0.9",
     "@types/n3": "^1.26.0",
     "@types/object-hash": "^3.0.6",
     "@types/seedrandom": "^3.0.8",
     "@types/semver": "^7.7.0",
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.11",
     "codemirror": "^6.0.2",
     "esbuild": "^0.28.1",
     "eslint": "^10.8.0",
@@ -218,18 +222,17 @@
     "typedoc-plugin-missing-exports": "^4.1.2",
     "typedoc-umlclass": "^0.10.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@davisvaughan/tree-sitter-r": "^1.2.0",
-    "@jupyterlab/nbformat": "^4.5.4",
     "bzip2": "^0.1.1",
     "command-line-args": "^6.0.1",
     "command-line-usage": "^7.0.3",
     "commonmark": "^0.31.2",
-    "gray-matter": "^4.0.3",
     "ignore": "^5.3.2",
     "joi": "^18.0.1",
+    "js-yaml": "^4.3.2",
     "lz-string": "^1.5.0",
     "n-readlines": "^3.4.1",
     "object-hash": "^3.0.0",
@@ -250,8 +253,8 @@
     "unrs-resolver@1.12.2": true
   },
   "optionalDependencies": {
+    "@dagrejs/dagre": "^3.1.1",
     "clipboardy": "^4.0.0",
-    "dagre": "^0.8.5",
     "n3": "^1.26.0",
     "rotating-file-stream": "^3.2.8"
   }

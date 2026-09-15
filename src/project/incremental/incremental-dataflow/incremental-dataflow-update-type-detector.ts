@@ -18,9 +18,13 @@ export enum IncrementalUpdateType {
 	Nothing      = 'Nothing'
 }
 
+/**
+ * What {@link determineUpdateTypes} classified, plus whether {@link tryIncrementalUpdate} actually applied a patch for it.
+ */
 export interface IncrementalUpdateResult {
 	types:     IncrementalUpdateType[];
 	filePath?: string;
+	applied?:  boolean;
 }
 
 const alwaysIgnoredKeys = new Set(['id', 'parent', 'tsId']);
@@ -43,149 +47,149 @@ export function hashAst(ast: unknown, filterLocation = false, filterComments = f
 	})).digest();
 }
 
-/**
- *
- */
-export class IncrementalDataflowUpdateTypeDetector {
-	private readonly oldNormalizedAst: NormalizedAst | undefined;
-	private readonly oldAst:           RProject<ParentInformation> | undefined;
-	private readonly newAst:           RProject<ParentInformation>;
-	private readonly ctx:              FlowrAnalyzerContext;
+function changedFiles(oldAst: RProject<ParentInformation>, ctx: FlowrAnalyzerContext, ignoreIndexes: number[] = []): string[] | undefined {
+	return oldAst.files
+		.filter((file, i) => {
+			if(ignoreIndexes.includes(i)) {
+				return false;
+			}
+			if(file.filePath === undefined) {
+				return true;
+			}
+			try {
+				return ctx.inc.getLastKnownMtime(file.filePath) !== fs.statSync(file.filePath).mtimeMs;
+			} catch{
+				return true;
+			}
+		})
+		.map(file => file.filePath ?? '');
+}
 
-	public constructor(oldAst: NormalizedAst | undefined, newAst: NormalizedAst, ctx: FlowrAnalyzerContext) {
-		this.oldNormalizedAst = oldAst;
-		this.oldAst = oldAst ? oldAst.ast : undefined;
-		this.newAst = newAst.ast;
-		this.ctx = ctx;
+function isAddedAtEnd(shorter: RExpressionList<ParentInformation>, longer: RExpressionList<ParentInformation>): boolean {
+	if(longer.children.length <= shorter.children.length) {
+		return false;
+	}
+	return shorter.children.every((child, i) => sameHash(child, longer.children[i]));
+}
+
+function sameHash(old: unknown, new_: unknown, ignoreLocations: boolean = true, ignoreComments: boolean = true): boolean {
+	// currently used for comparing two asts or nodes. probably very costly
+	return hashAst(old, ignoreLocations, ignoreComments) === hashAst(new_, ignoreLocations, ignoreComments);
+}
+
+function commentsChanged(old: unknown, new_: unknown): boolean {
+	return hashAst(old, true, false) !== hashAst(new_, true, false);
+}
+
+function locationsChanged(old: unknown, new_: unknown): boolean {
+	return hashAst(old, false, true) !== hashAst(new_, false, true);
+}
+
+function classifyUnchangedFileSet(oldAst: RProject<ParentInformation>, newAst: RProject<ParentInformation>, ctx: FlowrAnalyzerContext): IncrementalUpdateResult {
+	const changed = changedFiles(oldAst, ctx);
+	if(changed === undefined || changed.length > 1) {
+		return { types: [IncrementalUpdateType.Full] };
+	}
+	if(changed.length === 0) {
+		return { types: [IncrementalUpdateType.Nothing] };
 	}
 
-	determineUpdateTypes(): IncrementalUpdateResult {
+	const oldAstFiles = oldAst.files;
+	const newAstFiles = newAst.files;
+	const changedIndex = oldAstFiles.findIndex(file => file.filePath === changed[0]);
+	if(changedIndex === -1 || newAstFiles[changedIndex]?.filePath !== changed[0]) {
+		return { types: [IncrementalUpdateType.Full] };
+	}
+
+	const oldAstRoot = oldAstFiles[changedIndex].root;
+	const newAstRoot = newAstFiles[changedIndex].root;
+	const filePath = newAstFiles[changedIndex].filePath;
+
+	if(sameHash(oldAstRoot, newAstRoot)) {
 		const result: IncrementalUpdateType[] = [];
-
-		if(this.oldNormalizedAst === undefined || this.oldAst === undefined) {
-			return { types: [IncrementalUpdateType.Full] };
+		if(commentsChanged(oldAstRoot, newAstRoot)) {
+			result.push(IncrementalUpdateType.Comment);
 		}
+		if(locationsChanged(oldAstRoot, newAstRoot)) {
+			result.push(IncrementalUpdateType.Location);
+		}
+		return { types: result.length > 0 ? result : [IncrementalUpdateType.Nothing] };
+	}
 
-		const oldAstFiles = this.oldAst.files;
-		const newAstFiles = this.newAst.files;
+	if(isAddedAtEnd(oldAstRoot, newAstRoot)) {
+		return { types: [IncrementalUpdateType.AddedAtEnd], filePath };
+	} else if(isAddedAtEnd(newAstRoot, oldAstRoot)) {
+		return { types: [IncrementalUpdateType.RemovedAtEnd], filePath };
+	}
+	return { types: [IncrementalUpdateType.Full] };
+}
 
-		const oldPaths = new Set(oldAstFiles.map(file => file.filePath));
-		const newPaths = new Set(newAstFiles.map(file => file.filePath));
-		const added = setMinus(newPaths, oldPaths);
-		const removed = setMinus(oldPaths, newPaths);
+function classifyFileAppended(oldAst: RProject<ParentInformation>, newAst: RProject<ParentInformation>, ctx: FlowrAnalyzerContext, addedPath: string | undefined): IncrementalUpdateResult {
+	const oldAstFiles = oldAst.files;
+	const newAstFiles = newAst.files;
+	const addedIndex = newAstFiles.findIndex(file => file.filePath === addedPath);
+	if(addedIndex !== (newAst.files.length - 1)) {
+		return { types: [IncrementalUpdateType.Full] };
+	}
 
-		if(added.size === 0 && removed.size === 0) {
-			const changed = this.changedFiles();
-			if(changed === undefined || changed.length > 1) {
-				return { types: [IncrementalUpdateType.Full] };
-			}
-			if(changed.length === 0) {
-				return { types: [IncrementalUpdateType.Nothing] };
-			}
-
-			const changedIndex = oldAstFiles.findIndex(file => file.filePath === changed[0]);
-			if(changedIndex === -1 || newAstFiles[changedIndex]?.filePath !== changed[0]) {
-				return { types: [IncrementalUpdateType.Full] };
-			}
-
-			const oldAstRoot = oldAstFiles[changedIndex].root;
-			const newAstRoot = newAstFiles[changedIndex].root;
-			const filePath = newAstFiles[changedIndex].filePath;
-
-			if(this.sameHash(oldAstRoot, newAstRoot)) {
-				if(this.commentsChanged(oldAstRoot, newAstRoot)) {
-					result.push(IncrementalUpdateType.Comment);
-				}
-				if(this.locationsChanged(oldAstRoot, newAstRoot)) {
-					result.push(IncrementalUpdateType.Location);
-				}
-				return { types: result.length > 0 ? result : [IncrementalUpdateType.Nothing] };
-			}
-
-			if(this.isAddedAtEnd(oldAstRoot, newAstRoot)) {
-				return { types: [IncrementalUpdateType.AddedAtEnd], filePath };
-			} else if(this.isAddedAtEnd(newAstRoot, oldAstRoot)) {
-				return { types: [IncrementalUpdateType.RemovedAtEnd], filePath };
-			}
-			return { types: [IncrementalUpdateType.Full] };
-		} else if(added.size === 1 && removed.size === 0) {
-			const addedIndex = newAstFiles.findIndex(file => file.filePath === added.values().next().value);
-			if(addedIndex !== (this.newAst.files.length - 1)) {
-				return { types: [IncrementalUpdateType.Full] };
-			}
-
-			const changed = this.changedFiles();
-			if(changed === undefined || changed.length > 1) {
-				return { types: [IncrementalUpdateType.Full] };
-			}
-			if(changed.length === 1) {
-				const oldIdx = oldAstFiles.findIndex(file => file.filePath === changed[0]);
-				const newIdx = newAstFiles.findIndex(file => file.filePath === changed[0]);
-				if(oldIdx === -1 || newIdx === -1 || !this.isAddedAtEnd(oldAstFiles[oldIdx].root, newAstFiles[newIdx].root)) {
-					return { types: [IncrementalUpdateType.Full] };
-				}
-			}
-			return { types: [IncrementalUpdateType.NewFileAtEnd], filePath: newAstFiles[addedIndex].filePath };
-		} else if(removed.size === 1 && added.size === 0){
-			const removedIndex = oldAstFiles.findIndex(file => file.filePath === removed.values().next().value);
-			if(removedIndex !== (this.oldAst.files.length - 1)) {
-				return { types: [IncrementalUpdateType.Full] };
-			}
-
-			const changed = this.changedFiles([removedIndex]);
-			if(changed === undefined || changed.length > 1) {
-				return { types: [IncrementalUpdateType.Full] };
-			}
-			if(changed.length === 1) {
-				const oldIdx = oldAstFiles.findIndex(file => file.filePath === changed[0]);
-				const newIdx = newAstFiles.findIndex(file => file.filePath === changed[0]);
-				if(oldIdx === -1 || newIdx === -1 || !this.isAddedAtEnd(newAstFiles[newIdx].root, oldAstFiles[oldIdx].root)) {
-					return { types: [IncrementalUpdateType.Full] };
-				}
-			}
-			return { types: [IncrementalUpdateType.RemovedFileAtEnd], filePath: oldAstFiles[removedIndex].filePath };
-		} else {
+	const changed = changedFiles(oldAst, ctx);
+	if(changed === undefined || changed.length > 1) {
+		return { types: [IncrementalUpdateType.Full] };
+	}
+	if(changed.length === 1) {
+		const oldIdx = oldAstFiles.findIndex(file => file.filePath === changed[0]);
+		const newIdx = newAstFiles.findIndex(file => file.filePath === changed[0]);
+		if(oldIdx === -1 || newIdx === -1 || !isAddedAtEnd(oldAstFiles[oldIdx].root, newAstFiles[newIdx].root)) {
 			return { types: [IncrementalUpdateType.Full] };
 		}
 	}
+	return { types: [IncrementalUpdateType.NewFileAtEnd], filePath: newAstFiles[addedIndex].filePath };
+}
 
-	changedFiles(ignoreIndexes: number[] = []): string[] | undefined {
-		if(this.oldAst === undefined) {
-			return undefined;
+function classifyFileRemoved(oldAst: RProject<ParentInformation>, newAst: RProject<ParentInformation>, ctx: FlowrAnalyzerContext, removedPath: string | undefined): IncrementalUpdateResult {
+	const oldAstFiles = oldAst.files;
+	const newAstFiles = newAst.files;
+	const removedIndex = oldAstFiles.findIndex(file => file.filePath === removedPath);
+	if(removedIndex !== (oldAst.files.length - 1)) {
+		return { types: [IncrementalUpdateType.Full] };
+	}
+
+	const changed = changedFiles(oldAst, ctx, [removedIndex]);
+	if(changed === undefined || changed.length > 1) {
+		return { types: [IncrementalUpdateType.Full] };
+	}
+	if(changed.length === 1) {
+		const oldIdx = oldAstFiles.findIndex(file => file.filePath === changed[0]);
+		const newIdx = newAstFiles.findIndex(file => file.filePath === changed[0]);
+		if(oldIdx === -1 || newIdx === -1 || !isAddedAtEnd(newAstFiles[newIdx].root, oldAstFiles[oldIdx].root)) {
+			return { types: [IncrementalUpdateType.Full] };
 		}
-
-		return this.oldAst.files
-			.filter((_file, i) => !ignoreIndexes.includes(i))
-			.filter(file => {
-				if(file.filePath === undefined) {
-					return true;
-				}
-				try {
-					return this.ctx.inc.getLastKnownMtime(file.filePath) !== fs.statSync(file.filePath).mtimeMs;
-				} catch{
-					return true;
-				}
-			})
-			.map(file => file.filePath ?? '');
 	}
+	return { types: [IncrementalUpdateType.RemovedFileAtEnd], filePath: oldAstFiles[removedIndex].filePath };
+}
 
-	isAddedAtEnd(shorter: RExpressionList<ParentInformation>, longer: RExpressionList<ParentInformation>): boolean {
-		if(longer.children.length <= shorter.children.length) {
-			return false;
-		}
-		return shorter.children.every((child, i) => this.sameHash(child, longer.children[i]));
+/**
+ * Determines the {@link IncrementalUpdateType} from the old ast to the new ast.
+ */
+export function determineUpdateTypes(oldNormalizedAst: NormalizedAst | undefined, newNormalizedAst: NormalizedAst, ctx: FlowrAnalyzerContext): IncrementalUpdateResult {
+	if(oldNormalizedAst === undefined) {
+		return { types: [IncrementalUpdateType.Full] };
 	}
+	const oldAst = oldNormalizedAst.ast;
+	const newAst = newNormalizedAst.ast;
 
-	sameHash(old: unknown, new_: unknown, ignoreLocations: boolean = true, ignoreComments: boolean = true){
-		// currently used for comparing two asts or nodes. probably very costly
-		return hashAst(old, ignoreLocations, ignoreComments) === hashAst(new_, ignoreLocations, ignoreComments);
-	}
+	const oldPaths = new Set(oldAst.files.map(file => file.filePath));
+	const newPaths = new Set(newAst.files.map(file => file.filePath));
+	const added = setMinus(newPaths, oldPaths);
+	const removed = setMinus(oldPaths, newPaths);
 
-	commentsChanged(old: unknown, new_: unknown): boolean {
-		return hashAst(old, true, false) !== hashAst(new_, true, false);
-	}
-
-	locationsChanged(old: unknown, new_: unknown): boolean {
-		return hashAst(old, false, true) !== hashAst(new_, false, true);
+	if(added.size === 0 && removed.size === 0) {
+		return classifyUnchangedFileSet(oldAst, newAst, ctx);
+	} else if(added.size === 1 && removed.size === 0) {
+		return classifyFileAppended(oldAst, newAst, ctx, added.values().next().value);
+	} else if(removed.size === 1 && added.size === 0) {
+		return classifyFileRemoved(oldAst, newAst, ctx, removed.values().next().value);
+	} else {
+		return { types: [IncrementalUpdateType.Full] };
 	}
 }

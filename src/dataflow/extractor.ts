@@ -10,6 +10,7 @@ import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RProjectFile } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import { attachProject } from './internal/process/functions/call/built-in/built-in-library';
@@ -37,8 +38,8 @@ import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
 import { Dataflow } from './graph/df-helper';
 import { uniqueArray } from '../util/collections/arrays';
-import { hashAst, IncrementalDataflowUpdateTypeDetector } from '../project/incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
-import { IncrementalDataflowOrchestrator, type DataflowProcessorInformationBase } from '../project/incremental/incremental-dataflow/incremental-dataflow-orchestrator';
+import { hashAst, determineUpdateTypes } from '../project/incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
+import { tryIncrementalUpdate, type DataflowProcessorInformationBase } from '../project/incremental/incremental-dataflow/incremental-dataflow-orchestrator';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -128,68 +129,57 @@ function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContex
 
 }
 
-/**
- * This is the main function to produce the dataflow graph from a given request and normalized AST.
- * Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis
- * (e.g., in the event of a `source` call).
- * For the actual, canonical fold entry point, see {@link processDataflowFor}.
- */
-export function produceDataFlowGraph<OtherInfo>(
-	parser:      Parser<KnownParserType>,
+function tryIncrementalDataflow<OtherInfo>(
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
-	ctx:         FlowrAnalyzerContext
+	ctx:         FlowrAnalyzerContext,
+	dfDataBase:  DataflowProcessorInformationBase<OtherInfo & ParentInformation>
+): DataflowInformation | undefined {
+	const oldAst = ctx.inc.getOldNormalizedAst();
+	if(oldAst === undefined) {
+		return undefined;
+	}
+	const updateResult = determineUpdateTypes(oldAst, completeAst, ctx);
+	const df = tryIncrementalUpdate(oldAst, completeAst, ctx, dfDataBase as unknown as DataflowProcessorInformationBase<ParentInformation>, updateResult);
+	ctx.inc.storeAppliedIncrementalUpdate({ ...updateResult, applied: df !== undefined });
+	dataflowLogger.info(`[Incremental DFG]: Patched dataflow graph incrementally (${updateResult.types.toString()}) for '${updateResult.filePath ?? 'the whole project'}'.`);
+	return df;
+}
+
+function runFullDataflow<OtherInfo>(
+	files:      readonly RProjectFile<OtherInfo & ParentInformation>[],
+	ctx:        FlowrAnalyzerContext,
+	dfDataBase: DataflowProcessorInformationBase<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	const env = ctx.env.makeCleanEnv();
+	env.current.n = ctx.meta.getNamespace();
+	const environment = attachProject(env, ctx);
 
-	// we freeze the files here to avoid endless modifications during processing
-	const files = completeAst.ast.files.slice();
-
-	const incContext = ctx.inc;
-
-	const dfDataBase: DataflowProcessorInformationBase<OtherInfo & ParentInformation> = {
-		parser,
-		completeAst,
-		processors: ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
-		ctx
+	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
+		...dfDataBase,
+		environment,
+		cds:            undefined,
+		referenceChain: [files[0].filePath]
 	};
 
-	let df: DataflowInformation | undefined;
-	let hash: string | undefined = undefined;
-	if(incContext.handleShouldReparseDataflow(ctx)){
-		hash = hashAst(completeAst.ast);
-		const oldAst = ctx.inc.getOldNormalizedAst();
-		if(oldAst !== undefined){
-			const updateResult = new IncrementalDataflowUpdateTypeDetector(oldAst, completeAst, ctx).determineUpdateTypes();
-			df = new IncrementalDataflowOrchestrator(oldAst, completeAst, ctx, dfDataBase as unknown as DataflowProcessorInformationBase<ParentInformation>).tryIncrementalUpdate(updateResult);
-			dataflowLogger.info(`[Incremental DFG]: Patched dataflow graph incrementally (${updateResult.types.toString()}) for '${updateResult.filePath ?? 'the whole project'}'.`);
+	let df: DataflowInformation;
+	try {
+		df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+	} catch(e) {
+		if(e instanceof RangeError) {
+			throw new Error(`Dataflow analysis exceeded the call stack for '${files[0].filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
 		}
+		throw e;
 	}
 
-	if(!df) {
-		const env = ctx.env.makeCleanEnv();
-		env.current.n = ctx.meta.getNamespace();
-		const environment = attachProject(env, ctx);
-
-		const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
-			...dfDataBase,
-			environment,
-			cds:            undefined,
-			referenceChain: [files[0].filePath]
-		};
-		try {
-			df = processDataflowFor<OtherInfo>(files[0].root, dfData);
-		} catch(e) {
-			if(e instanceof RangeError) {
-				throw new Error(`Dataflow analysis exceeded the call stack for '${files[0].filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
-			}
-			throw e;
-		}
-
-		for(let i = 1; i < files.length; i++) {
-			/* source requests register automatically */
-			df = standaloneSourceFile(i, files[i], dfData, df);
-		}
+	for(let i = 1; i < files.length; i++) {
+		/* source requests register automatically */
+		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
 
+	return df;
+}
+
+function finalizeDataflow<OtherInfo>(df: DataflowInformation, completeAst: NormalizedAst<OtherInfo & ParentInformation>, ctx: FlowrAnalyzerContext): void {
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
@@ -213,16 +203,55 @@ export function produceDataFlowGraph<OtherInfo>(
 	Quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
 	resolveLinkToSideEffects(df.graph, ctx);
+}
+
+function persistDataflowGraph<OtherInfo>(df: DataflowInformation, hash: string, rootFile: RProjectFile<OtherInfo & ParentInformation>, ctx: FlowrAnalyzerContext): void {
+	const nodeId = rootFile.root.info.id;
+	const builtInEnv = ctx.env.builtInEnvironment as IEnvironment;
+	const emptyBuiltInEnv = ctx.env.emptyBuiltInEnvironment as IEnvironment;
+
+	ctx.inc.storePersistedDataflowGraph(nodeId, hash, {
+		graph:             df.graph.persist(builtInEnv, emptyBuiltInEnv),
+		environment:       DataflowGraph.persistEnvironment(df.environment, builtInEnv, emptyBuiltInEnv),
+		entryPoint:        df.entryPoint,
+		cfgEntry:          df.cfgEntry,
+		exitPoints:        df.exitPoints,
+		in:                df.in,
+		out:               df.out,
+		unknownReferences: df.unknownReferences,
+		hooks:             df.hooks
+	});
+}
+
+/**
+ * This is the main function to produce the dataflow graph from a given request and normalized AST.
+ * Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis
+ * (e.g., in the event of a `source` call).
+ * For the actual, canonical fold entry point, see {@link processDataflowFor}.
+ */
+export function produceDataFlowGraph<OtherInfo>(
+	parser:      Parser<KnownParserType>,
+	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
+	ctx:         FlowrAnalyzerContext
+): DataflowInformation {
+
+	// we freeze the files here to avoid endless modifications during processing
+	const files = completeAst.ast.files.slice();
+
+	const dfDataBase: DataflowProcessorInformationBase<OtherInfo & ParentInformation> = {
+		parser,
+		completeAst,
+		processors: ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
+		ctx
+	};
+
+	const hash = ctx.inc.handleShouldReparseDataflow(ctx) ? hashAst(completeAst.ast) : undefined;
+	const df = (hash === undefined ? undefined : tryIncrementalDataflow(completeAst, ctx, dfDataBase)) ?? runFullDataflow(files, ctx, dfDataBase);
+
+	finalizeDataflow(df, completeAst, ctx);
 
 	if(hash !== undefined) {
-		const nodeId = files[0].root.info.id;
-		const builtInEnv = ctx.env.builtInEnvironment as IEnvironment;
-		const emptyBuiltInEnv = ctx.env.emptyBuiltInEnvironment as IEnvironment;
-
-		incContext.storePersistedDataflowGraph(nodeId, hash, {
-			graph:       df.graph.persist(builtInEnv, emptyBuiltInEnv),
-			environment: DataflowGraph.persistEnvironment(df.environment, builtInEnv, emptyBuiltInEnv)
-		});
+		persistDataflowGraph(df, hash, files[0], ctx);
 	}
 
 	return df;

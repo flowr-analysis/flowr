@@ -8,11 +8,22 @@ import type { ParseStepOutput } from '../../r-bridge/parser';
 import fs from 'fs';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { IncrementalUpdateResult } from '../incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
+import type { ExitPoint } from '../../dataflow/info';
+import type { IdentifierReference } from '../../dataflow/environments/identifier';
+import type { HookInformation } from '../../dataflow/hooks';
 
 
 interface PersistedDataflowGraphEntry {
-	readonly graph:       Buffer;
-	readonly environment: Buffer;
+	readonly graph:             Buffer;
+	readonly environment:       Buffer;
+	readonly entryPoint:        NodeId;
+	readonly cfgEntry?:         NodeId;
+	readonly exitPoints:        readonly ExitPoint[];
+	readonly in:                readonly IdentifierReference[];
+	readonly out:               readonly IdentifierReference[];
+	readonly unknownReferences: readonly IdentifierReference[];
+	readonly hooks:             readonly HookInformation[];
 }
 
 export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
@@ -25,6 +36,7 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	getOldContentOf(filePath: FilePath): string | undefined;
 	getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined;
 	getOldNormalizedAst(): NormalizedAst | undefined;
+	getLastAppliedIncrementalUpdate(): IncrementalUpdateResult | undefined;
 }
 
 /**
@@ -44,15 +56,16 @@ type ShouldReparseTest = (filePath: FilePath, ctx: FlowrAnalyzerContext) => bool
 export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-incremental-analysis-context';
 
-	private readonly context:           FlowrAnalyzerContext;
+	private readonly context:             FlowrAnalyzerContext;
 	/**
 	 * The files that have been changed since the last analysis mapping to their old content.
 	 */
-	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
-	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
-	private oldNormalizedAst:           NormalizedAst | undefined = undefined;
-	private persistedDataflowGraphs:    Map<string, PersistedDataflowGraphEntry> = new Map();
-	private readonly lastKnownMtime:    Map<FilePath, number> = new Map();
+	private changedFilesWithOldContent:   Map<FilePath, string | undefined> = new Map();
+	private oldParseResults:              Map<FilePath, Parser.Tree> = new Map();
+	private oldNormalizedAst:             NormalizedAst | undefined = undefined;
+	private persistedDataflowGraphs:      Map<string, PersistedDataflowGraphEntry> = new Map();
+	private readonly lastKnownMtime:      Map<FilePath, number> = new Map();
+	private lastAppliedIncrementalUpdate: IncrementalUpdateResult | undefined = undefined;
 
 
 	constructor(context: FlowrAnalyzerContext) {
@@ -64,6 +77,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 		this.oldParseResults = new Map();
 		this.oldNormalizedAst = undefined;
 		this.persistedDataflowGraphs = new Map();
+		this.lastAppliedIncrementalUpdate = undefined;
 	}
 
 	handleFileInvalidate(filePath: FilePath, oldContent: string | undefined): void {
@@ -179,11 +193,19 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	}
 
 	public storeOldNormalizedAst(ast: NormalizedAst): void {
-		this.oldNormalizedAst = ast;
+		this.oldNormalizedAst = { ...ast, ast: { ...ast.ast, files: ast.ast.files.slice() } };
 	}
 
 	public getOldNormalizedAst(): NormalizedAst | undefined {
 		return this.oldNormalizedAst;
+	}
+
+	public storeAppliedIncrementalUpdate(update: IncrementalUpdateResult): void {
+		this.lastAppliedIncrementalUpdate = update;
+	}
+
+	public getLastAppliedIncrementalUpdate(): IncrementalUpdateResult | undefined {
+		return this.lastAppliedIncrementalUpdate;
 	}
 
 	public deleteOldContentOf(filePath: FilePath): void {

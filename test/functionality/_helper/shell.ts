@@ -6,7 +6,8 @@ import { decorateLabelContext, dropTestLabel, modifyLabelName, type TestLabel, t
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever';
+import type { RParseRequests } from '../../../src/r-bridge/retriever';
+import { fileProtocol } from '../../../src/r-bridge/retriever';
 import {
 	type AstIdMap,
 	deterministicCountingIdGenerator,
@@ -32,7 +33,7 @@ import {
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
-import { afterAll, assert, beforeAll, describe, test } from 'vitest';
+import { afterAll, assert, beforeAll, describe, it, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
@@ -57,6 +58,15 @@ import {
 	FunctionDefinitionVertex
 } from '../../../src/dataflow/graph/vertex';
 import type { Environment, IEnvironment } from '../../../src/dataflow/environments/environment';
+import type { IncrementalMutationType } from '../util/incremental/dataflow-graph/incremental-mutations';
+import { resolveMutation } from '../util/incremental/dataflow-graph/incremental-mutations';
+import { resolveOracle } from '../util/incremental/dataflow-graph/incremental-oracles';
+import { IncrementalUpdateType } from '../../../src/project/incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -393,6 +403,7 @@ function assertPersistedDataflowGraphMatches(
 		function stripEnv(env: Environment | undefined): void {
 			for(let e = env; e !== undefined; e = e.parent) {
 				delete (e as unknown as { sharedMemory?: true }).sharedMemory;
+				delete (e as unknown as { sharedParent?: true }).sharedParent;
 				delete (e as unknown as { cache?: unknown }).cache;
 
 				if(e.builtInEnv) {
@@ -431,6 +442,104 @@ function assertPersistedDataflowGraphMatches(
 	stripFields(df.graph);
 
 	assert.deepStrictEqual(revived, df.graph, 'persisted/revived dataflow graph differs from the freshly computed one');
+}
+
+export interface IncrementalDataflowTestOptions {
+	readonly allowedMutations: IncrementalMutationType[];
+	readonly oracle?:          string;
+	/**
+	 * `true`: the detector must trigger exactly `expectedType`.
+	 * `false`: the detector may trigger `expectedType` or fall back to `Full`.
+	 */
+	readonly strict?:          boolean;
+}
+
+/**
+ *
+ */
+export function assertIncrementalDataflowGraphMatches(files: Record<string, string>, options: IncrementalDataflowTestOptions): void {
+	const oracle = resolveOracle(options.oracle ?? ':dataflow');
+	const lineMap: Record<string, string[]> = Object.fromEntries(Object.entries(files).map(([name, content]) => [name, content.split('\n')]));
+	const rootName = Object.keys(files)[0];
+
+	if(options.allowedMutations.length === 0) {
+		it.skip('no mutations configured yet', () => {});
+		return;
+	}
+
+	for(const mutationType of options.allowedMutations) {
+		const mutation = resolveMutation(mutationType);
+		const mutated = mutation.apply(lineMap);
+		const expectedUpdateType = mutation.expectedType;
+
+		if(mutated === undefined) {
+			it.skip(`${mutationType} (not applicable to this setup)`, () => {});
+			continue;
+		}
+		const { oldFiles, newFiles } = mutated;
+
+		it(mutationType, async() => {
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-incremental-mutation-'));
+			try {
+				const analyzerIncremental = await new FlowrAnalyzerBuilder()
+					.setParser(new TreeSitterExecutor())
+					.amendConfig(c => {
+						c.incremental.dataflow.activated = true;
+					})
+					.build();
+
+				const analyzerNoIncremental = await new FlowrAnalyzerBuilder()
+					.setParser(new TreeSitterExecutor())
+					.amendConfig(c => {
+						c.incremental.dataflow.activated = false;
+					})
+					.build();
+
+				for(const [name, content] of Object.entries(oldFiles)) {
+					fs.writeFileSync(path.join(dir, name), content.join('\n'));
+				}
+				const request = `${fileProtocol}${path.join(dir, rootName)}`;
+				analyzerIncremental.addRequest(request);
+				analyzerNoIncremental.addRequest(request);
+
+				await oracle.run(analyzerIncremental);
+
+				const touched = new Set<string>();
+				for(const [name, content] of Object.entries(newFiles)) {
+					fs.writeFileSync(path.join(dir, name), content.join('\n'));
+					touched.add(name);
+				}
+				for(const name of Object.keys(oldFiles)) {
+					if(!(name in newFiles)) {
+						fs.rmSync(path.join(dir, name), { force: true });
+						touched.add(name);
+					}
+				}
+				for(const name of touched) {
+					analyzerIncremental.context().files.getFileByPath(path.join(dir, name))?.invalidate();
+				}
+
+				const incremental = await oracle.run(analyzerIncremental);
+
+				const appliedUpdate = analyzerIncremental.context().inc.getLastAppliedIncrementalUpdate();
+				const hitExpectedType = appliedUpdate?.types.includes(expectedUpdateType) ?? false;
+				const safeFallback = options.strict === false && appliedUpdate !== undefined && !appliedUpdate.applied;
+
+				assert(
+					hitExpectedType || safeFallback,
+					`mutation "${mutationType}" should trigger ${expectedUpdateType}${options.strict === false ? ' or safely fall back to a full recompute' : ''}, got ${appliedUpdate ? `[${appliedUpdate.types.join(', ')}] (${appliedUpdate.applied ? 'applied' : 'not applied'})` : 'no incremental attempt'}`
+				);
+				if(options.strict !== false && hitExpectedType && expectedUpdateType !== IncrementalUpdateType.Full) {
+					assert(appliedUpdate?.applied, `mutation "${mutationType}" triggered ${expectedUpdateType} but the orchestrator fell back to a full recompute instead of patching it`);
+				}
+
+				const full = await oracle.run(analyzerNoIncremental);
+				oracle.assertMatches(incremental, full);
+			} finally {
+				fs.rmSync(dir, { recursive: true, force: true });
+			}
+		});
+	}
 }
 
 /**

@@ -24,7 +24,7 @@ import {
 } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
-import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
+import type { LinkTo, LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
 import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVertex } from './vertex';
@@ -271,6 +271,31 @@ export const UnknownSideEffect = {
 		return typeof effect === 'object' ? effect : { id: effect, linkTo: undefined };
 	}
 } as const;
+
+interface CachedLinkClosures {
+	readonly ignoreIf:  LinkTo<RegExp>['ignoreIf'];
+	readonly cascadeIf: LinkToLastCall<RegExp>['cascadeIf'];
+}
+
+const linkedClosureCache = new Map<string, CachedLinkClosures>();
+
+function linkToClosureKey(linkTo: Pick<LinkTo<RegExp>, 'type' | 'callName'>): string {
+	return `${linkTo.type}//${linkTo.callName.source}//${linkTo.callName.flags}`;
+}
+
+function cascadeIfOf(linkTo: LinkTo<RegExp>): LinkToLastCall<RegExp>['cascadeIf'] | undefined {
+	return linkTo.type === 'link-to-last-call' ? linkTo.cascadeIf : undefined;
+}
+
+interface PersistedLinkedUnknownSideEffect {
+	readonly id:     NodeId;
+	readonly linkTo: Omit<LinkTo<RegExp>, 'ignoreIf' | 'cascadeIf'> & {
+		readonly hasIgnoreIf:  boolean;
+		readonly hasCascadeIf: boolean;
+	};
+}
+
+type PersistedUnknownSideEffect = NodeId | PersistedLinkedUnknownSideEffect;
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
@@ -566,6 +591,52 @@ export class DataflowGraph<
 		return this;
 	}
 
+	public removeVertices(ids: Iterable<NodeId>): this {
+		const toRemove = new Set(Array.from(ids, NodeId.normalize));
+		if(toRemove.size === 0) {
+			return this;
+		}
+		this.dropQualifications();
+
+		for(const id of toRemove) {
+			const vertex = this.vertexInformation.get(id);
+			if(vertex === undefined) {
+				continue;
+			}
+
+			const typeIds = this.types.get(vertex.tag);
+			if(typeIds) {
+				for(let idx = typeIds.lastIndexOf(id); idx >= 0; idx = typeIds.lastIndexOf(id)) {
+					typeIds.splice(idx, 1);
+				}
+			}
+			this.vertexInformation.delete(id);
+			this.rootVertices.delete(id);
+			this.edgeInformation.delete(id);
+
+			// delete incoming edges to deleted nodes
+			for(const source of this.ingoingEdges(id)?.keys() ?? []) {
+				if(toRemove.has(source)) {
+					continue;
+				}
+				const targets = this.edgeInformation.get(source);
+				targets?.delete(id);
+				if(targets?.size === 0) {
+					this.edgeInformation.delete(source);
+				}
+			}
+		}
+
+		for(const effect of this._unknownSideEffects) {
+			if(toRemove.has(UnknownSideEffect.id(effect))) {
+				this._unknownSideEffects.delete(effect);
+			}
+		}
+
+		this.incomingIndex = undefined;
+		return this;
+	}
+
 	/**
 	 * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
 	 * @param vertex - The vertex to add
@@ -785,10 +856,12 @@ export class DataflowGraph<
 	/** Marks the given node as having unknown side effects */
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
-			this._unknownSideEffects.add({
-				id:     NodeId.normalize(id),
-				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
-			});
+			const linkTo = typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>;
+			const cascadeIf = cascadeIfOf(linkTo);
+			if(linkTo.ignoreIf !== undefined || cascadeIf !== undefined) {
+				linkedClosureCache.set(linkToClosureKey(linkTo), { ignoreIf: linkTo.ignoreIf, cascadeIf });
+			}
+			this._unknownSideEffects.add({ id: NodeId.normalize(id), linkTo });
 			return this;
 		}
 		this._unknownSideEffects.add(NodeId.normalize(id));
@@ -842,7 +915,20 @@ export class DataflowGraph<
 			}
 			return [id, v];
 		});
-		return { ...json, vertexInformation, types: [...this.types], _idMap: this._idMap };
+		const _unknownSideEffects: PersistedUnknownSideEffect[] = json._unknownSideEffects.map(effect => {
+			if(!UnknownSideEffect.isLinked(effect)) {
+				return effect;
+			}
+			const cascadeIf = cascadeIfOf(effect.linkTo);
+			const rest = { ...effect.linkTo } as Record<string, unknown>;
+			delete rest.ignoreIf;
+			delete rest.cascadeIf;
+			return {
+				id:     effect.id,
+				linkTo: { ...rest, hasIgnoreIf: effect.linkTo.ignoreIf !== undefined, hasCascadeIf: cascadeIf !== undefined } as PersistedLinkedUnknownSideEffect['linkTo']
+			};
+		});
+		return { ...json, vertexInformation, _unknownSideEffects, types: [...this.types], _idMap: this._idMap };
 	}
 
 	public static fromPersisted(data: Buffer, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): DataflowGraph {
@@ -883,8 +969,23 @@ export class DataflowGraph<
 
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
 
-		for(const unknown of data._unknownSideEffects) {
-			graph._unknownSideEffects.add(unknown);
+		for(const effect of data._unknownSideEffects) {
+			if(typeof effect !== 'object') {
+				graph._unknownSideEffects.add(effect);
+				continue;
+			}
+			const { hasIgnoreIf, hasCascadeIf, ...linkTo } = effect.linkTo;
+			const key = linkToClosureKey(linkTo);
+			const known = linkedClosureCache.get(key);
+			guard(known !== undefined || (!hasIgnoreIf && !hasCascadeIf), () => `cannot revive linked side effect ${key} -- no closure cached for this pattern yet`);
+			const reconstructed: Record<string, unknown> = { ...linkTo };
+			if(hasIgnoreIf) {
+				reconstructed.ignoreIf = known?.ignoreIf;
+			}
+			if(hasCascadeIf) {
+				reconstructed.cascadeIf = known?.cascadeIf;
+			}
+			graph._unknownSideEffects.add({ id: effect.id, linkTo: reconstructed as unknown as LinkTo<RegExp> });
 		}
 
 		for(const [tag, ids] of data.types) {
@@ -899,9 +1000,10 @@ const packr = new Packr({
 	structuredClone: true,
 });
 
-interface IPersistedDataflowGraph extends DataflowGraphJson {
-	readonly types: [DataflowGraphVertexInfo['tag'], NodeId[]][];
-	_idMap:         AstIdMap | undefined;
+interface IPersistedDataflowGraph extends Omit<DataflowGraphJson, '_unknownSideEffects'> {
+	readonly types:               [DataflowGraphVertexInfo['tag'], NodeId[]][];
+	_idMap:                       AstIdMap | undefined;
+	readonly _unknownSideEffects: PersistedUnknownSideEffect[];
 }
 
 interface IPersistedEnvironmentJson extends IEnvironmentJson {

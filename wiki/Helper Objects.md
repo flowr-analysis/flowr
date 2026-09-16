@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-09-15, 21:18:21 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page lists every important helper object of flowR.
 
@@ -85,7 +85,7 @@ This page lists every important helper object of flowR.
 | helper | what it is |
 | :-- | :-- |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L16"><code><span title="Access to the DESCRIPTION file of the analyzed project.">DescriptionFile</span></code></a> | Access to the `DESCRIPTION` file of the analyzed project. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L541"><code><span title="flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included).">FlowrConfig</span></code></a> | flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included). |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L542"><code><span title="flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included).">FlowrConfig</span></code></a> | flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included). |
 
 <h2 id="Output">Output</h2>
 

@@ -634,7 +634,7 @@ export const WrittenBuiltinDefinitions = [
 		type:  'function',
 		names: [
 			...Identifier.fromAll(PkgName.Base, [
-				'rep', 'rep.int', 'seq', 'seq.int', 'append', 'complex',
+				'rep', 'rep.int', 'seq.int', 'append', 'complex',
 				'matrix', 'array', 'table', 'prop.table', 'colSums', 'rowSums', 'colMeans', 'rowMeans',
 				'solve', 'det', 'eigen', 'aperm',
 				/* string */
@@ -654,6 +654,8 @@ export const WrittenBuiltinDefinitions = [
 
 	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['which', 'which.max', 'which.min', 'seq_len', 'seq_along']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Narrows] }, assumePrimitive: true },
+	/* `seq` dispatches, so `...` really is all it declares; the named formals belong to `seq.default`/`seq.int` */
+	{ type: 'function', names: [Identifier.from(['seq', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
 
 	/* they open a device that writes the plot to the file they are given, under the name each of them uses */
 	{ type: 'function', names: [...Identifier.fromAll(PkgName.GrDevices, ['png', 'jpeg', 'bmp', 'tiff', 'svg', 'cairo_pdf']), Identifier.from(['raster_pdf', PkgName.RasterPdf]), ...Identifier.fromAll(PkgName.Ragg, ['agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp'])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Invisible, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['filename', ArgProp.Forced | ArgProp.Resource], ['width', ArgProp.Forced | ArgProp.Value], ['height', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },

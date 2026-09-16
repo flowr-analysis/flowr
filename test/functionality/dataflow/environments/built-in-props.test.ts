@@ -134,7 +134,9 @@ describe('Built-in properties', () => {
 			for(const name of ['jitter', 'vector', 'single', 'mat.or.vec', 'rep_len',
 				'is.double', 'is.integer', 'is.complex', 'is.raw', 'is.single', 'is.ordered',
 				'as.vector', 'as.single', 'as.ordered']) {
-				assert.strictEqual(Identifier.getNamespace(index.get(name)?.name ?? ''), PkgName.Base, `${name} answers as base::${name}`);
+				const entry = index.get(name);
+				assert.isDefined(entry, `${name} is in the index`);
+				assert.strictEqual(Identifier.getNamespace(entry.name), PkgName.Base, `${name} answers as base::${name}`);
 			}
 		});
 	});

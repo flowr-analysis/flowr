@@ -310,9 +310,11 @@ a()()`, emptyGraph()
 				.reads('10', '9')
 				.call('6', 'length', [argumentInCall('4')], { returns: [], reads: ['4', NodeId.toBuiltIn('length')], onlyBuiltIn: true })
 				.calls('6', NodeId.toBuiltIn('length'))
+				/* `seq` states a signature, so like every other built-in that does, the call reads the argument's
+				 * value (`9`) as well as the argument itself (`10`) */
 				.call('11', 'seq', [argumentInCall('1'), argumentInCall('6'), argumentInCall('10', { name: 'by' })], {
 					returns:     [],
-					reads:       ['1', '6', '10', NodeId.toBuiltIn('seq')],
+					reads:       ['1', '6', '9', '10', NodeId.toBuiltIn('seq')],
 					onlyBuiltIn: true
 				})
 				.calls('11', NodeId.toBuiltIn('seq'))

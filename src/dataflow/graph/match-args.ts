@@ -236,7 +236,8 @@ function argumentsOf<Info extends ParentInformation>(call: RFunctionCall<Info>, 
 	if(!DfgVertex.isFunctionCall(vertex) || vertex.args.length !== call.arguments.length + 1) {
 		return call.arguments;
 	}
-	const piped = graph.idMap?.get(FunctionArgument.getId(vertex.args[0]) as NodeId);
+	const pipedId = FunctionArgument.getId(vertex.args[0]);
+	const piped = pipedId === undefined ? undefined : graph.idMap?.get(pipedId);
 	if(piped === undefined) {
 		return call.arguments;
 	}

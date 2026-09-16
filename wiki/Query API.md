@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-15, 21:18:21 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -595,6 +595,7 @@ read#95;csv`"]
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
     %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
+    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
     %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
     %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
     %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
@@ -720,7 +721,6 @@ read#95;csv`"]
     %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
     %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
     %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
     %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
     %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
@@ -781,6 +781,7 @@ print`"]
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
     %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
+    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
     %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
     %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
     %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
@@ -906,7 +907,6 @@ print`"]
     %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
     %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
     %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
     %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
     %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
@@ -925,6 +925,7 @@ print`"]
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
     %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
+    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
     %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
     %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
     %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
@@ -1050,7 +1051,6 @@ print`"]
     %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
     %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
     %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
     %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
     %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
@@ -1076,6 +1076,7 @@ print`"]
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
     %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
+    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
     %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
     %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
     %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
@@ -1201,7 +1202,6 @@ print`"]
     %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
     %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
     %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
     %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
     %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
@@ -1379,7 +1379,7 @@ points`"]
     50 -->|"reads, arg"| 38
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
-    52 -->|"reads"| 11
+    52 -->|"reads"| 7
     52 -.->|"reads, calls"| built-in:___
     linkStyle 74 stroke:gray;
     52 -.->|"flow"| 54
@@ -1503,7 +1503,7 @@ Just as an example, the following [Call-Context Query](https://github.com/flowr-
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
 

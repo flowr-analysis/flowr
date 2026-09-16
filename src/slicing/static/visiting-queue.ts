@@ -7,9 +7,6 @@ import type { ReadOnlyFlowrAnalyzerGasContext } from '../../project/context/flow
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../gas';
 import { slicerLogger } from './static-slicer';
 
-/** How many nodes the traversal visits between two {@link GasFeatureKey.Slicer|gas} checks. */
-const GasCheckEvery = 512;
-
 const enum SeenAs {
 	Normal     = 1,
 	SideEffect = 2
@@ -31,6 +28,8 @@ export class VisitingQueue {
 	private readonly isGraphVertex?: (id: NodeId) => boolean;
 	private readonly gas?:           ReadOnlyFlowrAnalyzerGasContext;
 	private stoppedEarly            = false;
+	/** how many nodes pass between two gas checks, see {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} */
+	private readonly gasCheckEvery:  number;
 	private untilGasCheck           = 0;
 	/** entries dequeued, see {@link SliceProgress} */
 	private visited                 = 0;
@@ -40,6 +39,7 @@ export class VisitingQueue {
 		this.cache     = cache;
 		this.isGraphVertex = isGraphVertex;
 		this.gas = gas;
+		this.gasCheckEvery = gas?.checkEvery() ?? 0;
 	}
 
 	/**
@@ -100,13 +100,13 @@ export class VisitingQueue {
 
 	/**
 	 * The traversal is synchronous, so a caller can only bound it from within. Gas is polled every
-	 * {@link GasCheckEvery} nodes, which keeps even an enabled check off the per-node path.
+	 * {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} nodes, keeping even an enabled check off the per-node path.
 	 */
 	private outOfGas(): boolean {
 		if(this.gas === undefined || this.untilGasCheck-- > 0) {
 			return this.stoppedEarly;
 		}
-		this.untilGasCheck = GasCheckEvery - 1;
+		this.untilGasCheck = this.gasCheckEvery - 1;
 		if(!this.stoppedEarly && this.gas.checkGas(GasFeatureKey.Slicer) >= GasLevel.Critical) {
 			this.stoppedEarly = true;
 			slicerLogger.warn(`slicing ran out of gas, the slice is incomplete (${GasWikiRef})`);
@@ -119,10 +119,11 @@ export class VisitingQueue {
 	}
 
 	public memoizeCallTargets(id: NodeId, targets: () => Set<DataflowGraphVertexInfo>): Set<DataflowGraphVertexInfo> {
-		if(!this.cachedCallTargets.has(id)) {
-			this.cachedCallTargets.set(id, targets());
+		let known = this.cachedCallTargets.get(id);
+		if(known === undefined) {
+			this.cachedCallTargets.set(id, known = targets());
 		}
-		return this.cachedCallTargets.get(id) as Set<DataflowGraphVertexInfo>;
+		return known;
 	}
 
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {

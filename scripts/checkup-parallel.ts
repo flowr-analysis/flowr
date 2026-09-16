@@ -51,8 +51,8 @@ if(picked.length > 0) {
 } else if(noDocker) {
 	jobs = allJobs.filter(j => j.id !== 'docker');
 }
-for(let i = 0; i < jobs.length; i++) {
-	for(const need of jobs[i].needs ?? []) {
+for(const element of jobs) {
+	for(const need of element.needs ?? []) {
 		const dependency = allJobs.find(j => j.id === need);
 		if(dependency !== undefined && !jobs.includes(dependency)) {
 			jobs = [...jobs, dependency];

@@ -7,7 +7,7 @@ import { Identifier, PkgName } from './identifier';
  */
 export const DataMaskingFunctions: readonly (readonly [string, PkgName])[] = [
 	['subset', PkgName.Base],                    ['transform', PkgName.Base],
-	['filter', PkgName.Dplyr],                   ['filter_out', PkgName.Janitor],
+	['filter', PkgName.Dplyr],                   ['filter_out', PkgName.Dplyr],
 	['mutate', PkgName.Dplyr],                   ['transmute', PkgName.Dplyr],
 	['summarise', PkgName.Dplyr],                ['summarize', PkgName.Dplyr],
 	['arrange', PkgName.Dplyr],                  ['group_by', PkgName.Dplyr],

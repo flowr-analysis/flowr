@@ -29,7 +29,7 @@ async function openDefault(): Promise<PackageSignatureSource | undefined> {
 }
 
 /** bump when the emitted store *format* changes, so a regeneration is forced even if the bundle is unchanged */
-const formatVersion = 7;
+const formatVersion = 8;
 
 /** a cheap identity of the bundle (read from the manifest/header, no shard decompression) to detect changes */
 function bundleFingerprint(db: PackageSignatureSource): string {
@@ -74,6 +74,15 @@ async function main(): Promise<void> {
 	}
 	// the packages that are part of the newest R release (precomputed so the common case needs no filtering)
 	const current = Object.keys(packages).filter(pkg => packages[pkg][1] === newest).sort();
+	/*
+	 * The order a shared export is claimed in: R's search path, on which `base` sits behind every attached
+	 * package and so loses a shared name to it (`data` and `methods` belong to utils). The packages no release
+	 * attaches come last, as an unqualified call never reaches them at all.
+	 */
+	const claimOrder = [
+		...AttachedBasePackages.filter(pkg => pkg !== 'base' && current.includes(pkg)),
+		...current.filter(pkg => pkg === 'base' || !AttachedBasePackages.includes(pkg))
+	];
 	// the exports of each current base package (each export listed under its first owner, so no name repeats),
 	// used to answer base-R qualification (`sd` -> `stats`); grouped by package so a package name is written once
 	const claimed = new Set<string>();
@@ -81,7 +90,7 @@ async function main(): Promise<void> {
 	// the exports that dispatch, so a built-in hiding one can still be labeled as the generic it shadows
 	const generics = new Set<string>();
 	let exportCount = 0;
-	for(const pkg of current) {   // `current` is sorted, so `base` claims shared names first (first-owner-wins)
+	for(const pkg of claimOrder) {
 		const names: string[] = [];
 		for(const name of db.lookup(pkg)?.exported ?? []) {
 			if(!claimed.has(name)) {

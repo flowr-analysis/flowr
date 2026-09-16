@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-09-15, 21:18:21 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_of_the_Analyzer)  
@@ -124,7 +124,7 @@ With the builder you can either provide a complete configuration or amend the de
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L101"><code><span title="Set a specific value in the configuration used by the resulting analyzer. Besides the configuration's own paths this takes an EngineConfigPath , so an engine option that lives in an array entry is reachable the same way as everything else:">FlowrAnalyzerBuilder::<b>configure</b></span></code></a> to set the value of a specific key in the config
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L67"><code><span title="Apply an amendment to the configuration the builder currently holds. This is mostly intended for more complex logic to transform the config. Please consider using FlowrAnalyzerBuilder.configure to set/amend individual values Per default, the value returned by FlowrConfig.default is used.">FlowrAnalyzerBuilder::<b>amendConfig</b></span></code></a> to amend the default configuration
 
-By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L547"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
+By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L548"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
 
 > [!NOTE]
 > During the analysis with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can also access the configuration with
@@ -169,7 +169,7 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., `['file:rmd', [/.*.rmd/i]]` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin.ts#L9"><code><span title="The plugin provides support for R Markdown (.rmd) files">FlowrAnalyzerRmdFilePlugin</span></code></a>).\
    This will also use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L175"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> function under the hood to create the plugin instance.
 
-Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L396"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L397"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L164"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a> method.
 
 > [!NOTE]
@@ -673,22 +673,22 @@ and the project namespace via
 
 <h3 id="Gas_Context">Gas Context</h3>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L126"><code><span title="Checks heap and elapsed-time pressure for named analysis features. See ReadOnlyFlowrAnalyzerGasContext .">FlowrAnalyzerGasContext</span></code></a> (reachable as `ctx.gas`) acts as the resource guard of an analysis:
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L131"><code><span title="Checks heap and elapsed-time pressure for named analysis features. See ReadOnlyFlowrAnalyzerGasContext .">FlowrAnalyzerGasContext</span></code></a> (reachable as `ctx.gas`) acts as the resource guard of an analysis:
 
- * [FlowrAnalyzerGasContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L126)   
+ * [FlowrAnalyzerGasContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L131)   
    Checks heap and elapsed-time pressure for named analysis features. See
    <code>ReadOnlyFlowrAnalyzerGasContext</code>
    .
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L126">src/project/context/flowr-analyzer-gas-context.ts#L126</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L131">src/project/context/flowr-analyzer-gas-context.ts#L131</a>)</i>
    
     <details><summary>View more (WriteableFlowrAnalyzerGasContext, InvalidationEventReceiver)</summary>
 
-   * **[WriteableFlowrAnalyzerGasContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L118)**   
+   * **[WriteableFlowrAnalyzerGasContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L123)**   
      The gas context as the owner of the analyzer sees it, reachable via `analyzer.context().gas`.
      Adds the operations that restart a contingent to
      <code>ReadOnlyFlowrAnalyzerGasContext</code>
      .
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L118">src/project/context/flowr-analyzer-gas-context.ts#L118</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L123">src/project/context/flowr-analyzer-gas-context.ts#L123</a>)</i>
      
       <details><summary>View more (ReadOnlyFlowrAnalyzerGasContext)</summary>
 
@@ -704,7 +704,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
     </details>
 
 Expensive analysis sites ask for the current resource pressure with
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L276"><code>FlowrAnalyzerGasContext::<i>checkGas</i></code></a>, passing the name of the feature they are about to run
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L282"><code>FlowrAnalyzerGasContext::<i>checkGas</i></code></a>, passing the name of the feature they are about to run
 (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/gas.ts#L20"><code><span title="Known feature keys accepted by ReadOnlyFlowrAnalyzerGasContext.checkGas , each a sensitivity factor in FlowrGasConfig.features .">GasFeatureKey</span></code></a>), and may then degrade or skip their work.
 The level combines the current heap usage and the time elapsed within the contingent of the current operation,
 each scaled by the per-feature factor from `config.gas.features` and compared against the thresholds
@@ -713,14 +713,14 @@ Registered <a href="https://github.com/flowr-analysis/flowr/tree/main/src/projec
 
 Every operation gets a contingent of its own, and anything beginning a new analysis (an added file, a cache
 invalidation, a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L347"><code><span title="Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.">FlowrAnalyzerContext::<b>reset</b></span></code></a>) restarts it. To restart it between your own
-phases, call <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L151"><code><span title="Restart the contingent, so what follows is measured from now. Supported API: call it between phases that should each get the full allowance (analyzer.context().gas.reset()).  flowR calls it itself whenever a new analysis begins, so a caller only has to split its *own* phases. Operations in flight keep their contingent, as restarting a running traversal's clock would defeat the guard bounding it.">FlowrAnalyzerGasContext::<i>reset</i></span></code></a> on the
+phases, call <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L156"><code><span title="Restart the contingent, so what follows is measured from now. Supported API: call it between phases that should each get the full allowance (analyzer.context().gas.reset()).  flowR calls it itself whenever a new analysis begins, so a caller only has to split its *own* phases. Operations in flight keep their contingent, as restarting a running traversal's clock would defeat the guard bounding it.">FlowrAnalyzerGasContext::<i>reset</i></span></code></a> on the
 writeable context (`analyzer.context().gas.reset()`). To bound a single call, pass `gas` overrides to it
 (`analyzer.query([...], { gas: { slicer: { critical: 30_000 } } })`) or derive a bounded view with
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L189"><code>FlowrAnalyzerGasContext::<i>scope</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L194"><code>FlowrAnalyzerGasContext::<i>scope</i></code></a>.
 
 > [!NOTE]
 > Gas is disabled for every feature by default, and with no gas plugins registered
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L276"><code>FlowrAnalyzerGasContext::<i>checkGas</i></code></a> returns `GasLevel.Normal` without measuring anything.
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L282"><code>FlowrAnalyzerGasContext::<i>checkGas</i></code></a> returns `GasLevel.Normal` without measuring anything.
 > See the [gas section of the Core wiki page](https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard) for the levels, the configuration, and how to write a gas plugin.
 
 <h3 id="Incremental_Analysis_Context">Incremental Analysis Context</h3>

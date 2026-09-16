@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-09-15, 21:18:21 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -1214,7 +1214,7 @@ By treating them like R, as function calls, we get support for these overwrites 
 
 But where are all the interesting things handled then? 
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr).
-FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1382"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
+FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1388"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
 by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L333"><code>BuiltInProcessorMapper</code></a> functions.
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L52"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L38"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
@@ -1269,18 +1269,18 @@ function calls over to the function calling it).
 
 | Call property | Built-ins | Meaning |
 | :-- | --: | :-- |
-| `Pure` | 374 | computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes ImpureProps) |
+| `Pure` | 387 | computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes ImpureProps) |
 | `MayPure` | 92 | pure on its own, but it runs code it is handed, so whatever that code does happens too. The parameter it runs is marked ArgProp.Callee or ArgProp.Nse, as with `lapply(x, f)`. |
 | `Throws`<sup>db</sup> | 10 | may signal an error, like `stop()` (see SigDbInferable) |
-| `Invisible` | 112 | returns invisibly, so the result is not auto-printed |
-| `Generic`<sup>db</sup> | 120 | dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand |
+| `Invisible` | 111 | returns invisibly, so the result is not auto-printed |
+| `Generic`<sup>db</sup> | 121 | dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand |
 | `Scope` | 62 | binds, rebinds, or removes names outside of its own frame, like `assign` or `library` |
 | `Ambient` | 16 | depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) |
 | `Configures` | 16 | sets ambient state later calls read back: the working directory, environment variables, options, the locale, the RNG seed. The counterpart of CallProp.Ambient; a call doing both states both. |
-| `Ffi` | 9 | calls native code through the foreign function interface, like `.Call` |
-| `Lang` | 83 | produces a language object, like `quote` or `deparse` |
-| `Concurrent`<sup>db</sup> | 43 | runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only reproducibility and where an error surfaces. |
-| `Primitive` | 315 | the R language itself provides it: a `.Primitive` or `.Internal` of a base package, `if` and `for` and the operators included. Set from RBasePrimitives, which is read out of a real R, so it states what that R has rather than what a definition assumes. No package's sources contain these, which is why a signature database has no entry for them and flowR is the only thing that can answer. |
+| `Ffi` | 7 | calls native code through the foreign function interface, like `.Call` |
+| `Lang` | 82 | produces a language object, like `quote` or `deparse` |
+| `Concurrent`<sup>db</sup> | 41 | runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only reproducibility and where an error surfaces. |
+| `Primitive` | 323 | the R language itself provides it: a `.Primitive` or `.Internal` of a base package, `if` and `for` and the operators included. Set from RBasePrimitives, which is read out of a real R, so it states what that R has rather than what a definition assumes. No package's sources contain these, which is why a signature database has no entry for them and flowR is the only thing that can answer. |
 
 </details>
 
@@ -1289,9 +1289,9 @@ function calls over to the function calling it).
 | Semantic property | Built-ins | Meaning |
 | :-- | --: | :-- |
 | `Random` | 28 | draws from the random number generator, or sets its state (stated instead of `NonDet`) |
-| `File` | 287 | touches the file system |
-| `TempFile` | 9 | produces a temporary path; on its own this touches no file system, so a call that also does states `File` too |
-| `Network` | 85 | always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like `read.csv` of a URL, are left to the `network-functions` rule, which decides that per call site. |
+| `File` | 288 | touches the file system |
+| `TempFile` | 8 | produces a temporary path; on its own this touches no file system, so a call that also does states `File` too |
+| `Network` | 86 | always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like `read.csv` of a URL, are left to the `network-functions` rule, which decides that per call site. |
 | `Process` | 13 | runs a system command |
 | `User` | 44 | asks the user, like `readline` or a file chooser |
 | `CommandLine` | 1 | hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do |
@@ -1301,9 +1301,9 @@ function calls over to the function calling it).
 | `Opens` | 18 | hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` |
 | `Closes` | 7 | ends what an opener started: a graphics device, a connection, a sink. Narrower than SemanticCallTag.Graphics. |
 | `Reads` | 183 | reads the resource its `Resource` arguments name |
-| `Writes` | 154 | writes the resource its `Resource` arguments name |
-| `Prints` | 11 | may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active |
-| `Narrows` | 36 | the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the argument marked ArgProp.Bounds. So nothing an argument carries reaches the result, which is what lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`. |
+| `Writes` | 155 | writes the resource its `Resource` arguments name |
+| `Prints` | 10 | may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active |
+| `Narrows` | 42 | the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the argument marked ArgProp.Bounds. So nothing an argument carries reaches the result, which is what lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`. |
 | `Statistics` | 66 | performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) |
 | `Deprecated` | 126 | marked for removal, with a better alternative available, like `dplyr::funs` |
 | `Eval` | 13 | dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` |
@@ -1331,16 +1331,16 @@ parameter in that role.
 
 | Argument role | Built-ins | Meaning |
 | :-- | --: | :-- |
-| `Forced` | 1225 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
+| `Forced` | 1237 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
 | `NoDefault` | 63 | declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it |
-| `Alias` | 38 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge |
-| `Value` | 592 | the result is computed from the argument's value, like `x` in `sum(x)` |
-| `Shape` | 24 | only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` |
-| `Flag` | 63 | selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` |
-| `Resource` | 307 | names the resource the call reads or writes, like `file` in `write.csv(x, file)` |
+| `Alias` | 36 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge |
+| `Value` | 598 | the result is computed from the argument's value, like `x` in `sum(x)` |
+| `Shape` | 30 | only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` |
+| `Flag` | 65 | selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` |
+| `Resource` | 308 | names the resource the call reads or writes, like `file` in `write.csv(x, file)` |
 | `Written` | 15 | what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` |
 | `Nse` | 20 | quoted or evaluated in another frame, like `expr` in `quote(expr)` |
-| `Callee` | 51 | called as a function, like `FUN` in `lapply(x, FUN)` |
+| `Callee` | 49 | called as a function, like `FUN` in `lapply(x, FUN)` |
 | `Presence` | 2 | only whether it was supplied matters, as with `missing()` |
 | `Bounds` | 1 | the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding argument of a SemanticCallTag.Narrows call; without one such a call yields a value of its own making. |
 | `Atomic` | 22 | only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an argument therefore names a variable even when a function of that name is in scope. |
@@ -1488,7 +1488,7 @@ Slice for the example file for the variable "prod" in line 12.
 During a large analysis, flowR may run into memory or time pressure.
 The _gas_ system provides per-feature resource guards that check the current heap usage and elapsed analysis time.
 
-Any analysis site queries the level with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L276"><code>FlowrAnalyzerGasContext::<b>checkGas</b></code></a>, where `key` is a feature name.
+Any analysis site queries the level with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L282"><code>FlowrAnalyzerGasContext::<b>checkGas</b></code></a>, where `key` is a feature name.
 The call is a no-op when gas is disabled for that key and no gas plugins are registered.
 Heap statistics come from the `v8` module (Node.js, Electron, VS Code) or Chromium's `performance.memory` in browsers. If neither is available, gas skips the memory check and only the elapsed-time thresholds apply. Programmatic configs can supply a custom source via the `heapProvider` of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/gas.ts#L110"><code><span title="Gas configuration embedded in FlowrConfig.gas . Each entry in features is a sensitivity factor for a named feature (see GasFeatureKey ): 0/absent disables it at zero overhead, 1 is normal sensitivity, N divides each threshold by N.">FlowrGasConfig</span></code></a> (`config.gas.heapProvider`), and gas plugins can override levels entirely.
 
@@ -1561,7 +1561,7 @@ a project and then asking for twenty slices gives twenty-one contingents, not on
 Anything beginning a new analysis restarts it too: an added file, a cache invalidation, a re-parse, or an
 explicit <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L245"><code>FlowrAnalyzer::<b>reset</b></code></a>. Operations in flight keep theirs, as restarting a running
 traversal's clock would defeat the guard bounding it. To split your *own* phases, call
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L151"><code><span title="Restart the contingent, so what follows is measured from now. Supported API: call it between phases that should each get the full allowance (analyzer.context().gas.reset()).  flowR calls it itself whenever a new analysis begins, so a caller only has to split its *own* phases. Operations in flight keep their contingent, as restarting a running traversal's clock would defeat the guard bounding it.">FlowrAnalyzerGasContext::<i>reset</i></span></code></a> on the writeable
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L156"><code><span title="Restart the contingent, so what follows is measured from now. Supported API: call it between phases that should each get the full allowance (analyzer.context().gas.reset()).  flowR calls it itself whenever a new analysis begins, so a caller only has to split its *own* phases. Operations in flight keep their contingent, as restarting a running traversal's clock would defeat the guard bounding it.">FlowrAnalyzerGasContext::<i>reset</i></span></code></a> on the writeable
 context (`analyzer.context().gas.reset()`) - supported API, not an internal hook.
 
 ### Bounding a Single Call
@@ -1578,7 +1578,7 @@ Bare `problematic`/`critical` numbers are elapsed milliseconds; use `timeMs`/`me
 `factor` for the sensitivity. Naming a feature enables gas for it even when `config.gas.features` disables
 it (pass `factor: 0` to keep it off). <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L343"><code>FlowrAnalyzer::<b>runFull</b></code></a> and
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L370"><code>FlowrAnalyzer::<b>runSearch</b></code></a> take the same, and read-only holders of a context can derive a
-bounded view with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L189"><code>FlowrAnalyzerGasContext::<i>scope</i></code></a>.
+bounded view with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L194"><code>FlowrAnalyzerGasContext::<i>scope</i></code></a>.
 
 ### When the Slicer Runs Out
 

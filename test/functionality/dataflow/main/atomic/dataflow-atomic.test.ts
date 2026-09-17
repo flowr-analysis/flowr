@@ -430,6 +430,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('Use Assignment on Target Side', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'a[x] <- x <- 3', emptyGraph()
 					.use(1, 'x')
+					.reads(1, 4)
 					.call(6, '<-', [argumentInCall(4), argumentInCall(5)], { returns: [4], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
 					.calls(6, NodeId.toBuiltIn('<-'))
 					.argument(6, [5, 4])
@@ -446,6 +447,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('Use Assignment on Target Side (inv)', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['->'].capabilities, 'return-value-of-assignments']),
 				shell, '3 -> x -> a[x]', emptyGraph()
 					.use(4, 'x')
+					.reads(4, 1)
 					.call(2, '->', [argumentInCall(0), argumentInCall(1)], { returns: [1], reads: [NodeId.toBuiltIn('->'), 0], onlyBuiltIn: true })
 					.calls(2, NodeId.toBuiltIn('->'))
 					.argument(2, [0, 1])
@@ -458,6 +460,33 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(1, 'x', { definedBy: [0, 2] })
 					.defineVariable(3, 'a', { definedBy: [2, 6] })
 					.reads(3, 6)
+			);
+			/* R evaluates the value, then the indices, and rebinds the target last */
+			const replacementOrder = ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'function-calls'] as const;
+			assertDataflow(label('Assignment in the index outlives the replacement', [...replacementOrder]),
+				shell, 'x <- c(1, 2)\nx[y <- 2] <- 5\nprint(y)', emptyGraph()
+					.defineVariable('2@y', 'y')
+					.use('3@y', 'y')
+					.reads('3@y', '2@y'),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+			);
+			assertDataflow(label('Assignment in the index wins over the value', [...replacementOrder]),
+				shell, 'x <- c(1, 2)\nx[y <- 1] <- (y <- 2)\nprint(y)', emptyGraph()
+					.use('3@y', 'y')
+					.reads('3@y', '2:3'),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['3@y', '2:15']] }
+			);
+			assertDataflow(label('Index reads what the value defines', [...replacementOrder]),
+				shell, 'y <- 5\nx <- c(1, 2)\nx[y] <- (y <- 1)', emptyGraph()
+					.use('3:3', 'y')
+					.reads('3:3', '3:10'),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['3:3', '1@y']] }
+			);
+			assertDataflow(label('Index reads the target before it is rebound', [...replacementOrder]),
+				shell, 'x <- c(1, 2)\nx[length(x)] <- 9', emptyGraph()
+					.use('2:10', 'x')
+					.reads('2:10', '1@x'),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['2:10', '2@x']] }
 			);
 		});
 		describe('Double Assignments', () => {

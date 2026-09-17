@@ -46,8 +46,7 @@ import type { ArgProps, BuiltInFnInfo } from './environments/built-in-props';
 import type { BuiltInIndex } from './environments/query-fn-props';
 import { callFnProps } from './environments/query-fn-props';
 import { Resolve } from './environments/resolve-helper';
-import { happensBefore } from '../control-flow/happens-before';
-import { Ternary } from '../util/logic';
+import { reachableTo } from '../control-flow/happens-before';
 import { guardNesting } from '../util/assert';
 
 /**
@@ -240,12 +239,13 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 	const pathOf = memoize((id: NodeId) => Resolve.toSingleString(id, where));
 	let cfg: ControlFlowGraph | undefined;
 	for(const reader of readers) {
+		let before: ReadonlySet<NodeId> | undefined;
 		for(const writer of writers) {
 			if(reader.id === writer.id || !sameResource(reader.resource, writer.resource, reachedBy, pathOf)) {
 				continue;
 			}
-			cfg ??= new ControlFlowGraph(graph);
-			if(happensBefore(cfg, writer.id, reader.id) !== Ternary.Never) {
+			before ??= reachableTo(cfg ??= new ControlFlowGraph(graph), [reader.id]);
+			if(before.has(writer.id)) {
 				graph.addEdge(reader.id, writer.id, EdgeType.Reads);
 			}
 		}

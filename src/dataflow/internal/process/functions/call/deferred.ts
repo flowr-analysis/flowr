@@ -8,7 +8,7 @@ import { EdgeType, DfEdge } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
-import { happensBefore, reachableFrom, reachableTo } from '../../../../../control-flow/happens-before';
+import { happensBefore, reachableFrom, reachableTo, someReachableTo } from '../../../../../control-flow/happens-before';
 import { Ternary } from '../../../../../util/logic';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
@@ -101,11 +101,12 @@ export const Deferred = {
 				reads.push(reader);
 			}
 		}
-		/* `Always` implies reachable, so one closure per read rules out most pairs before the exact walk */
-		return reads.filter(r => {
-			const before = reachableTo(cfg, [r]);
-			return !reads.some(other => other !== r && before.has(other) && happensBefore(cfg, other, r) === Ternary.Always);
-		});
+		if(reads.length < 2) {
+			return reads;
+		}
+		/* `Always` implies reachable, so only the reads met walking back need the exact check */
+		const readSet = new Set(reads);
+		return reads.filter(r => !someReachableTo(cfg, r, previous => readSet.has(previous) && happensBefore(cfg, previous, r) === Ternary.Always));
 	},
 
 	/**

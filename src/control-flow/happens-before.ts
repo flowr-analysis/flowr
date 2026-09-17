@@ -52,3 +52,21 @@ export function reachableFrom(cfg: ControlFlowGraph, from: Iterable<NodeId>): Re
 export function reachableTo(cfg: ControlFlowGraph, to: Iterable<NodeId>): ReadonlySet<NodeId> {
 	return closure(to, id => cfg.predecessors(id));
 }
+
+/** Whether a node that may be evaluated before `to` satisfies `test`, stopping at the first that does; `to` itself is not tested. */
+export function someReachableTo(cfg: ControlFlowGraph, to: NodeId, test: (id: NodeId) => boolean): boolean {
+	const seen = new Set<NodeId>([to]);
+	const stack = [to];
+	while(stack.length > 0) {
+		for(const previous of cfg.predecessors(stack.pop() as NodeId)) {
+			if(seen.has(previous)) {
+				continue;
+			} else if(test(previous)) {
+				return true;
+			}
+			seen.add(previous);
+			stack.push(previous);
+		}
+	}
+	return false;
+}

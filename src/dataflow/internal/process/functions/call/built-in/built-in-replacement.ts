@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { patchFunctionCall, processAllArguments } from '../common';
+import { patchFunctionCall, processAllArguments, type ProcessAllArgumentResult } from '../common';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -15,6 +15,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import type { AssignmentConfiguration } from './built-in-assignment';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
@@ -38,7 +39,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId }
+	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId, beforeDefine?: AssignmentConfiguration['beforeDefine'] }
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${Identifier.getName(name.content)} has less than 2 arguments, skipping`);
@@ -64,6 +65,21 @@ export function processReplacementFunction<OtherInfo>(
 		} satisfies RSymbol<ParentInformation>, data.completeAst.idMap);
 	}
 
+	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
+	/* R evaluates the value, then the indices, and rebinds the target last */
+	let indices: ProcessAllArgumentResult | undefined;
+	const processIndices: AssignmentConfiguration['beforeDefine'] = ({ environment, graph }) => {
+		const indexData = { ...data, environment };
+		indices = processAllArguments({
+			functionName:   DataflowInformation.initialize(rootId, indexData),
+			args:           convertedArgs,
+			data:           indexData,
+			functionRootId: rootId,
+			finalGraph:     graph,
+		});
+		return config.beforeDefine?.({ environment: indices.finalEnv, graph }) ?? indices.finalEnv;
+	};
+
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
 	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
 		name,
@@ -74,7 +90,8 @@ export function processReplacementFunction<OtherInfo>(
 			superAssignment:  config.assignmentOperator === '<<-',
 			makeMaybe:        config.makeMaybe,
 			canBeReplacement: true,
-			replacement:      true
+			replacement:      true,
+			beforeDefine:     processIndices
 		}
 	);
 
@@ -87,10 +104,8 @@ export function processReplacementFunction<OtherInfo>(
 		(targetVert as { par: boolean }).par = true;
 	}
 
-	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
-
-	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
-	const { callArgs, processedArguments: indexArguments } = processAllArguments({
+	/* an assignment that never defines a symbol target does not reach the hook, so the indices are processed here */
+	const { callArgs, processedArguments: indexArguments } = indices ?? processAllArguments({
 		functionName:   DataflowInformation.initialize(rootId, data),
 		args:           convertedArgs,
 		data,

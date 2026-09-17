@@ -1,7 +1,7 @@
-import { assertDataflow, assumeLoadedPackages, withShell, withTreeSitter } from '../../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, skipTestBecauseConfigNotMet, withShell, withTreeSitter } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
-import { decorateLabelContext, label } from '../../../_helper/label';
-import { afterAll, describe, expect, test } from 'vitest';
+import { decorateLabelContext, dropTestLabel, label } from '../../../_helper/label';
+import { afterAll, describe, test } from 'vitest';
 import { RPipe } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
@@ -99,7 +99,7 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});
-	test(decorateLabelContext(label('Pipe-bind has no tree-sitter grammar production', ['pipe-bind']), ['dataflow']), async() => {
+	test(decorateLabelContext(label('Pipe-bind has no tree-sitter grammar production', ['pipe-bind']), ['dataflow']), async({ expect }) => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({ getId: deterministicCountingIdGenerator(0) })
 			.setParser(ts)
@@ -110,7 +110,12 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 }));
 
 describe('Function Call Pipe-Bind (disabled by default)', withShell(shell => {
-	test(decorateLabelContext(label('Pipe-bind is disabled unless engine.r-shell.pipeBind is enabled', ['pipe-bind']), ['dataflow']), async() => {
+	const pipeBindDisabled = label('Pipe-bind is disabled unless engine.r-shell.pipeBind is enabled', ['pipe-bind']);
+	const skip = skipTestBecauseConfigNotMet({ minRVersion: RPipe.hasPipeBindFromRVersion().toString() });
+	if(skip) {
+		dropTestLabel(pipeBindDisabled);
+	}
+	test.skipIf(skip)(decorateLabelContext(pipeBindDisabled, ['dataflow']), async({ expect }) => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({ getId: deterministicCountingIdGenerator(0) })
 			.setParser(shell)

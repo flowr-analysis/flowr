@@ -1,5 +1,6 @@
 import { assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
@@ -125,7 +126,8 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			shell,
 			`${envWithX1}\n${pipedLs}\nprint(r)`,
 			['4@r'],
-			`${envWithX1}\n${pipedLs}\nr`
+			`${envWithX1}\n${pipedLs}\nr`,
+			{ minRVersion: MIN_VERSION_PIPE }
 		);
 
 		const lsAfterNamed = 'r <- length(ls(all.names = TRUE, e))';
@@ -163,7 +165,8 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			shell,
 			`${newEnv}\n${pipedList2env}\n${getR}\nprint(r)`,
 			['4@r'],
-			`${newEnv}\n${pipedList2env}\n${getR}\nr`
+			`${newEnv}\n${pipedList2env}\n${getR}\nr`,
+			{ minRVersion: MIN_VERSION_PIPE }
 		);
 	});
 

@@ -18,6 +18,7 @@ export interface FlowrCapability {
 	/** A list of features that are required for the capability, extend at need. */
 	readonly needs?:        RequiredFeature[]
 	readonly description?:  string
+	readonly code?:         readonly string[]
 	/* examples may be generated on demand */
 	readonly example?:      string | ((parser: KnownParser) => Promise<string>),
 	/** A list of URLs that provide additional information about the capability */

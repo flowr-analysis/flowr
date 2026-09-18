@@ -104,6 +104,11 @@ export interface ReadOnlyFlowrAnalyzerGasContext {
 	 */
 	budget(key: string): DataflowBudgetTracker | undefined;
 	/**
+	 * How many counted steps one accounting covers, from `gas.countedCheckEvery`. A bound may be overshot by up
+	 * to this many steps, which is what keeps an armed check off the per-step path.
+	 */
+	checkEvery(): number;
+	/**
 	 * A view with a fresh contingent, measured from this call, for one operation to run against.
 	 * The enclosing bounds still apply, `overrides` winning over them. Derives a new object rather than
 	 * mutating this one, so it is safe for nested and concurrent work.
@@ -197,10 +202,11 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 
 	private viewOf(scope: GasScope): ReadOnlyFlowrAnalyzerGasContext {
 		return {
-			name:     `${this.name}:scope`,
-			checkGas: key => this.levelFor(key, scope),
-			budget:   key => this.budgetFor(key, scope),
-			scope:    o => this.viewOf(this.derive(o, scope))
+			name:       `${this.name}:scope`,
+			checkGas:   key => this.levelFor(key, scope),
+			budget:     key => this.budgetFor(key, scope),
+			checkEvery: () => this.checkEvery(),
+			scope:      o => this.viewOf(this.derive(o, scope))
 		};
 	}
 
@@ -281,6 +287,11 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		return this.budgetFor(key, this.activeScope());
 	}
 
+	/** @see {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} */
+	public checkEvery(): number {
+		return this.config?.countedCheckEvery ?? DefaultCountedCheckEvery;
+	}
+
 	/** The bounds `key` is armed with, pre-divided by its factor so the tracker only ever compares, never multiplies. */
 	private budgetFor(key: string, scope: GasScope): DataflowBudgetTracker | undefined {
 		const factor = this.factorFor(scope, key);
@@ -293,7 +304,7 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		};
 		const budget: DataflowBudget = { steps: cap('steps'), vertices: cap('vertices'), timeMs: cap('timeMs') };
 		return isBoundedBudget(budget)
-			? new DataflowBudgetTracker(budget, scope.startTime, this.config?.countedCheckEvery ?? DefaultCountedCheckEvery)
+			? new DataflowBudgetTracker(budget, scope.startTime, this.checkEvery())
 			: undefined;
 	}
 

@@ -86,6 +86,8 @@ export interface AssignmentConfiguration {
 	readonly sig?:                 FnSig
 	/** does the call run what it binds, as `makeActiveBinding` runs its function on every read of the name? */
 	readonly callsSource?:         boolean
+	/** runs once the value is processed, before the target is defined; the target is defined in the environment it returns */
+	readonly beforeDefine?:        (information: { readonly environment: REnvironmentInformation, readonly graph: DataflowGraph }) => REnvironmentInformation
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
@@ -126,7 +128,8 @@ function tryReplacement<OtherInfo>(
 	functionName: RSymbol<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	superAssignment: boolean,
-	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
+	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
+	beforeDefine?: AssignmentConfiguration['beforeDefine']
 ): DataflowInformation {
 	const resolved = Resolve.byNameAndType(functionName.content, data.environment, ReferenceType.Function) ?? [];
 	const builtIn = resolved.length === 1 && resolved[0].type === ReferenceType.BuiltInFunction ? resolved[0] : undefined;
@@ -148,12 +151,14 @@ function tryReplacement<OtherInfo>(
 		data,
 		builtIn ? {
 			...builtIn.config,
-			assignRootId: rootId
+			assignRootId: rootId,
+			beforeDefine
 		} : {
 			readIndices:        true,
 			makeMaybe:          true,
 			assignmentOperator: superAssignment ? '<<-' : '<-',
-			assignRootId:       rootId
+			assignRootId:       rootId,
+			beforeDefine
 		}
 	);
 
@@ -354,7 +359,7 @@ function processAssignmentTarget<OtherInfo>(
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
-		return tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [...target.arguments, source]);
+		return tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [...target.arguments, source], config.beforeDefine);
 	} else if(config.canBeReplacement && type === RType.Access) {
 		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
@@ -362,7 +367,7 @@ function processAssignmentTarget<OtherInfo>(
 		if(envRouted !== undefined) {
 			return envRouted;
 		}
-		const replaced = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+		const replaced = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.beforeDefine);
 		if(yieldsEnvironment(target.accessed, replaced.graph, data)) {
 			handleUnknownSideEffect(replaced.graph, replaced.environment, rootId);
 		}
@@ -543,7 +548,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	}
 	const fieldName = (RString.is(fieldNode) ? fieldNode.content.str : fieldNode.lexeme) as Identifier;
 
-	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.beforeDefine);
 
 	const isFunction = holdsFunction(source, data.environment);
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
@@ -756,6 +761,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	readTargets.push(...readFromSourceWritten);
 
 	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
+	if(config.beforeDefine) {
+		information.environment = config.beforeDefine(information);
+	}
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {

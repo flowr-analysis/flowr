@@ -2,6 +2,7 @@ import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 
 assumeLoadedPackages('data.table');
@@ -288,7 +289,7 @@ product`
 		assertSliced(label('piped rm', ['functions-with-global-side-effects', 'pipe-and-pipe-bind']),
 			shell, 'x <- 1\nx <- 2\nx |> rm()\nr <- exists("x")\nprint(r)', ['5@print'],
 			'r <- exists("x")\nprint(r)',
-			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE' }
+			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE', minRVersion: MIN_VERSION_PIPE }
 		);
 	});
 }));

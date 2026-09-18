@@ -2,7 +2,7 @@ import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { describe } from 'vitest';
 
@@ -266,7 +266,8 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 			assertSliced(label('exists with the name in a variable', ['name-normal', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created', 'name-created-resolved']),
 				shell, 'x <- 1\nnm <- "x"\nr <- exists(nm)\nprint(r)', ['4@r'], 'x <- 1\nnm <- "x"\nr <- exists(nm)\nr');
 			assertSliced(label('get with a piped, computed name resolves the same as the nested form', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created-resolved', 'pipe-and-pipe-bind']),
-				shell, 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nprint(r)', ['4@r'], 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nr');
+				shell, 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nprint(r)', ['4@r'], 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nr',
+				{ minRVersion: MIN_VERSION_PIPE });
 			assertSliced(label('get with an unresolvable name drops the definition it reads', ['name-created']),
 				shell, 'x <- 1\nnm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nprint(get(nm))', ['3@get'], 'nm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nget(nm)');
 		});

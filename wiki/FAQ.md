@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
@@ -20,7 +20,7 @@ Answers regularly end up on this page, so asking helps everyone who wonders the 
 
 <details><summary>How do I run <b>all checks</b> before pushing?</summary>
 
-Run `npm run checkup`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run `npm run checkup`: it runs the linter, the functionality, system, and mutation tests, the wiki and landing page generation, and the docker image build + smoke test concurrently (the landing pages wait for the functionality and mutation test results), then prints one pass/fail summary.
 Run a subset with the job ids (e.g. `npm run checkup -- lint tests`) or skip the container build with `npm run checkup -- --no-docker`.
 
 </details>

@@ -7,6 +7,7 @@ import { type AutocompletablePaths,
 	getOnPath,
 	setOnPath
 } from './util/objects';
+import { DefaultMaxOverlayDepth } from './dataflow/environments/frame-memory';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -220,6 +221,8 @@ export interface FlowrConfig {
 			readonly linkedVersionGroups?: string[][]
 		}
 		readonly transitiveSideEffectRounds?: number
+		/** How many binding overlays may stack on one environment frame before a write flattens them (default {@link DefaultMaxOverlayDepth}); trades lookup cost against copy cost and never changes a result. */
+		readonly maxOverlayDepth?:            number
 		/**
 		 * Packages to treat as attached without a `library()` call, on top of the base packages R attaches on
 		 * startup (see {@link AttachedBasePackages}, which a bare name resolves against without this option).
@@ -286,10 +289,11 @@ export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {
 }
 
 /**
- * Default of `gas.countedCheckEvery`: how many calls one accounting of an armed dataflow budget covers.
- * A budget only has to catch work that has run away, so the sampling is deliberately coarse.
+ * Default of `gas.countedCheckEvery`: how many calls one accounting of an armed check covers, both for a
+ * dataflow budget and for the slicer's traversal. Such a check only has to catch work that has run away, so
+ * the sampling is deliberately coarse.
  */
-export const DefaultCountedCheckEvery = 64;
+export const DefaultCountedCheckEvery = 128;
 
 /** Default of `solver.transitiveSideEffectRounds`: round cap for the transitive side-effect fixpoint in {@link produceDataFlowGraph}, which stops on its own once a round adds nothing. */
 export const DefaultTransitiveSideEffectRounds = 32;
@@ -602,6 +606,7 @@ export const FlowrConfig = {
 					assumeFilesExist:      false
 				},
 				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
+				maxOverlayDepth:            DefaultMaxOverlayDepth,
 				instrument:                 {
 					dataflowExtractors: undefined
 				},
@@ -753,6 +758,7 @@ export const FlowrConfig = {
 			}).description('Policies for reasoning about dependency versions.'),
 			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code. The base packages R attaches on startup already resolve without it.'),
 			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
+			maxOverlayDepth:            Joi.number().min(0).optional().description(`How many binding overlays may stack on one environment frame before a write flattens them (default ${DefaultMaxOverlayDepth}); a pure performance knob, trading lookup cost against copy cost without changing any result.`),
 			instrument:                 Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
@@ -827,7 +833,7 @@ export const FlowrConfig = {
 				})).optional().description('Created-dataflow-vertex thresholds, counted like `steps`.')
 			}).optional().description('Thresholds for all gas checks (scaled by per-feature factor), boundable per feature.'),
 			features:          Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`, `dataflow`.'),
-			countedCheckEvery: Joi.number().min(1).optional().description(`How many counted steps pass between two clock reads while an armed budget also carries a timeMs bound (default ${DefaultCountedCheckEvery}); trades overshoot against the cost of reading the clock.`),
+			countedCheckEvery: Joi.number().min(1).optional().description(`How many counted steps pass between two accountings of an armed check, be it a dataflow budget or the slicer's traversal (default ${DefaultCountedCheckEvery}); trades overshoot against the cost of the check.`),
 			heapProvider:      Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
 		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),

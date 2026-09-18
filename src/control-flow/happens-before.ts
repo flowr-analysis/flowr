@@ -28,3 +28,45 @@ export function happensBefore(cfg: ControlFlowGraph, a: NodeId, b: NodeId): Tern
 	}
 	return Ternary.Never;
 }
+
+function closure(seeds: Iterable<NodeId>, step: (id: NodeId) => Iterable<NodeId>): ReadonlySet<NodeId> {
+	const seen = new Set<NodeId>(seeds);
+	const stack = [...seen];
+	while(stack.length > 0) {
+		for(const next of step(stack.pop() as NodeId)) {
+			if(!seen.has(next)) {
+				seen.add(next);
+				stack.push(next);
+			}
+		}
+	}
+	return seen;
+}
+
+/** Every node reachable from one of `from`, the seeds included: `happensBefore(cfg, from_i, to)` is not {@link Ternary#Never} for some seed exactly when `to` is in here. */
+export function reachableFrom(cfg: ControlFlowGraph, from: Iterable<NodeId>): ReadonlySet<NodeId> {
+	return closure(from, id => cfg.successors(id));
+}
+
+/** @see {@link reachableFrom} - the other direction */
+export function reachableTo(cfg: ControlFlowGraph, to: Iterable<NodeId>): ReadonlySet<NodeId> {
+	return closure(to, id => cfg.predecessors(id));
+}
+
+/** Whether a node that may be evaluated before `to` satisfies `test`, stopping at the first that does; `to` itself is not tested. */
+export function someReachableTo(cfg: ControlFlowGraph, to: NodeId, test: (id: NodeId) => boolean): boolean {
+	const seen = new Set<NodeId>([to]);
+	const stack = [to];
+	while(stack.length > 0) {
+		for(const previous of cfg.predecessors(stack.pop() as NodeId)) {
+			if(seen.has(previous)) {
+				continue;
+			} else if(test(previous)) {
+				return true;
+			}
+			seen.add(previous);
+			stack.push(previous);
+		}
+	}
+	return false;
+}

@@ -129,15 +129,13 @@ export function processAllArguments<OtherInfo>(
 	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
-	// arg env contains the environments with other args defined
-	let argEnv = functionName.environment;
 	const callArgs: FunctionArgument[] = [];
 	const processedArguments: (DataflowInformation | undefined)[] = [];
 	const remainingReadInArgs = [];
 	let i = -1;
 	for(const arg of args) {
 		i++;
-		data = { ...data, environment: argEnv };
+		data = { ...data, environment: finalEnv };
 		data = patchData?.(data, i) ?? data;
 		if(RArgument.isEmpty(arg)) {
 			callArgs.push(EmptyArgument);
@@ -198,8 +196,6 @@ export function processAllArguments<OtherInfo>(
 				}
 			}
 		}
-		argEnv = overwriteEnvironment(argEnv, processed.environment);
-
 		if(!RArgument.is(arg) || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {

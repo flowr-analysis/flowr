@@ -18,7 +18,7 @@ export interface SoftwareHasLicenseConfig extends MergeableRecord {
 export type SoftwareHasLicenseMetadata = MergeableRecord;
 
 export const SOFTWARE_HAS_LICENSE = {
-	createSearch:        () => Q.fromQuery({ type: 'dependencies', enabledCategories: [] }),
+	createSearch:        () => Q.none(),
 	processSearchResult: (_elements, config, data) => {
 		const ctx = data.inspectContext();
 		const licenseFiles = ctx.files.getFilesByRole(FileRole.License);

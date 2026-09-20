@@ -71,6 +71,12 @@ export const FlowrSearchGenerator = {
 	 */
 	all: all,
 	/**
+	 * Initializes a no-op search query that contains no elements.
+	 */
+	none(): FlowrSearchBuilder<'none'> {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'none', args: undefined });
+	},
+	/**
 	 * Returns all elements that match the given {@link FlowrSearchGetFilter|filters}.
 	 * You may pass a negative line number to count from the back.
 	 * Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for "production".

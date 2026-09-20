@@ -1,14 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-17, 20:16:52 UTC (v2.15.9), do not edit directly._
 <h2 id="absolute-file-paths">Absolute Paths&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
-
 
 This rule is a `best-effort` rule.
  
 Checks whether file paths are absolute.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/absolute-path.ts#L130">src/linter/rules/absolute-path.ts</a>._
-
 
 ### Configuration
 
@@ -32,26 +30,16 @@ script when there is no root), `@script`, `@home`, or a literal directory.
 
 ### Examples
 
-
 ```r
 
 read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "absolute-file-paths",     "config": {} } ] } ]
 ```
-
-
-
-
-
 
 _Results (prettified and summarized):_
 
@@ -59,68 +47,34 @@ Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `C:/Users/me/Documents/My R Scripts/Reproducible.csv` at 2.1-63\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0\
-_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
 
 ```json
 {
   "linter": {
     "results": {
       "absolute-file-paths": {
-        "results": [
-          {
-            "certainty": "certain",
-            "filePath": "C:/Users/me/Documents/My R Scripts/Reproducible.csv",
-            "loc": [
-              2,
-              1,
-              2,
-              63
-            ]
-          }
-        ],
-        ".meta": {
-          "totalConsidered": 1,
-          "totalUnknown": 0,
-          "searchTimeMs": 1,
-          "processTimeMs": 0
-        }
+        "results": [{"certainty":"certain","filePath":"C:/Users/me/Documents/My R Scripts/Reproducible.csv","loc":[2,1,2,63]}],
+        ".meta": {"totalConsidered":1,"totalUnknown":0}
       }
     },
-    ".meta": {
-      "timing": 1
-    }
+    ".meta": {}
   },
-  ".meta": {
-    "timing": 1
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-absolute-path.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts)
-
 
 <h4 id="Test_Case:_is_relative_to_home">Test Case: is relative to home</h4>
 
@@ -132,35 +86,16 @@ Given the following input:
 "/home/me/foo.bar"
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{
-	useAsFilePath: '/home/me',
-	useAsWd:       '@script',
-	include:       {
-		allStrings: true
-	}
-}
+{useAsFilePath: '/home/me', useAsWd: '@script', include: {allStrings: true}}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-			certainty: LintingResultCertainty.Uncertain,
-filePath:  '/home/me/foo.bar',
-loc:       [1, 1, 1, 18, '/home/me'],
-quickFix:  [{
-	type:          'replace',
-	'description': 'Replace with a relative path to `/home/me/foo.bar`',
-	loc:           [1, 1, 1, 18, '/home/me'],
-	replacement:   `".${path.sep}foo.bar"`
-}]
-```
+* uncertain: filePath = `'/home/me/foo.bar'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L49) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L48) for the test-case implementation.
 		
 <h4 id="Test_Case:_is_relative_to_home">Test Case: is relative to home</h4>
 
@@ -172,35 +107,16 @@ Given the following input:
 read.csv("/home/me/foo.bar")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{
-	useAsFilePath: '/home/me',
-	useAsWd:       '@script',
-	include:       {
-		allStrings: true
-	}
-}
+{useAsFilePath: '/home/me', useAsWd: '@script', include: {allStrings: true}}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-			certainty: LintingResultCertainty.Uncertain,
-filePath:  '/home/me/foo.bar',
-loc:       [1, 10, 1, 27, '/home/me'],
-quickFix:  [{
-	type:          'replace',
-	'description': 'Replace with a relative path to `/home/me/foo.bar`',
-	loc:           [1, 10, 1, 27, '/home/me'],
-	replacement:   `".${path.sep}foo.bar"`
-}]
-```
+* uncertain: filePath = `'/home/me/foo.bar'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L67) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L66) for the test-case implementation.
 		
 <h4 id="Test_Case:_none">Test Case: none</h4>
 
@@ -212,16 +128,11 @@ Given the following input:
 cat("hello")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L86) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L85) for the test-case implementation.
 		
 <h4 id="Test_Case:_none_with_all_strings">Test Case: none with all strings</h4>
 
@@ -233,25 +144,16 @@ Given the following input:
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{
-	include: {
-		allStrings: true
-	}
-}
+{include: {allStrings: true}}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L88) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L87) for the test-case implementation.
 		
 <h4 id="Test_Case:_too_short">Test Case: too short</h4>
 
@@ -263,25 +165,16 @@ Given the following input:
 "/x"
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{
-	include: {
-		allStrings: true
-	}
-}
+{include: {allStrings: true}}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L97) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L96) for the test-case implementation.
 		
 <h4 id="Test_Case:_change_fsep">Test Case: change fsep</h4>
 
@@ -293,19 +186,13 @@ Given the following input:
 file.path("a", "b", fsep="\\\\")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L201) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L200) for the test-case implementation.
 		
 <h4 id="Test_Case:_skrewed_fsep">Test Case: skrewed fsep</h4>
-
 
 Given the following input:
 
@@ -313,19 +200,13 @@ Given the following input:
 file.path("a", "b", fsep="")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L202) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L201) for the test-case implementation.
 		
 <h4 id="Test_Case:_skrewed_fsep">Test Case: skrewed fsep</h4>
-
 
 Given the following input:
 
@@ -333,19 +214,13 @@ Given the following input:
 file.path("a", "b", fsep=u)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L210) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L209) for the test-case implementation.
 		
 <h4 id="Test_Case:_change_fsep">Test Case: change fsep</h4>
-
 
 Given the following input:
 
@@ -353,18 +228,11 @@ Given the following input:
 file.path("C:", "b", fsep="\\\\")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-							certainty: LintingResultCertainty.Uncertain,
-filePath:  'C:\\b',
-loc:       [1, 1, 1, 31]
-```
+* uncertain at 1.1-1.31: filePath = `'C:\\b'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L224) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L223) for the test-case implementation.
 		
 <h4 id="Test_Case:_skrewed_fsep">Test Case: skrewed fsep</h4>
 
@@ -376,15 +244,8 @@ Given the following input:
 file.path("C", "b", fsep=":/")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-							certainty: LintingResultCertainty.Uncertain,
-filePath:  'C:/b',
-loc:       [1, 1, 1, 30]
-```
+* uncertain at 1.1-1.30: filePath = `'C:/b'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L232) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L231) for the test-case implementation.

@@ -190,6 +190,9 @@ flowR groups its functions in helper objects (`DfEdge`, `Resolve`, `NodeId`, and
 entry point per topic, and the linter keeps the code on those entry points. When you add a function that only exists to
 be wired into such an object, document its replacement with `@useInstead`, and when a rule is wrong for a hot path or a
 special case, silence it with `@lintIgnore <ids>` and say why, rather than working around it.
+A helper object states where it belongs with `@helper <category> <what it is>` in its doc comment; the
+[Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) wiki page is generated from these tags
+and refuses to build for a helper without one.
 
 For more information on the linter, how to call it (and automatically deal with some of the issues raised),
 including the two flowR-specific rules and the list of replacement patterns,

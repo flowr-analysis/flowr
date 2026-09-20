@@ -5,8 +5,9 @@ import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-buil
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
 import { type CfgInformationArguments, Enrichment } from '../../../src/search/search-executor/search-enrichers';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
-import { ReadFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { computeReadFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { computeWriteFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { DefaultBuiltinConfig } from '../../../src/dataflow/environments/default-builtin-config';
 import { functionFinderUtil } from '../../../src/linter/rules/function-finder-util';
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 
@@ -109,7 +110,7 @@ cat("Product:", product, "\n")
 
 write.table(data.frame(), file="table.txt")
 `.repeat(1000);
-			const functions = ReadFunctions.concat(WriteFunctions).map(f => f.name);
+			const functions = computeReadFunctions(DefaultBuiltinConfig).concat(computeWriteFunctions(DefaultBuiltinConfig)).map(f => f.name);
 			benchmarkSearch('large function finder', parser, code, functionFinderUtil.createSearch(functions));
 		});
 	});

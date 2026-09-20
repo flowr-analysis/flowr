@@ -8,7 +8,7 @@ import {
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -196,6 +196,7 @@ a(i)`, emptyGraph()
 			.calls('9', NodeId.toBuiltIn('{'))
 			.call('11', '(', [argumentInCall('10')], { returns: ['10'], reads: [NodeId.toBuiltIn('(')] })
 			.calls('11', NodeId.toBuiltIn('('))
+			.reads('11', '8')
 			.call('14', `${UnnamedFunctionCallPrefix}14`, [argumentInCall('12')], { returns: ['8'], reads: ['11'] })
 			.calls('14', ['10'])
 			.defineVariable('2', 'x', { definedBy: [] }, false)
@@ -309,9 +310,11 @@ a()()`, emptyGraph()
 				.reads('10', '9')
 				.call('6', 'length', [argumentInCall('4')], { returns: [], reads: ['4', NodeId.toBuiltIn('length')], onlyBuiltIn: true })
 				.calls('6', NodeId.toBuiltIn('length'))
+				/* `seq` states a signature, so like every other built-in that does, the call reads the argument's
+				 * value (`9`) as well as the argument itself (`10`) */
 				.call('11', 'seq', [argumentInCall('1'), argumentInCall('6'), argumentInCall('10', { name: 'by' })], {
 					returns:     [],
-					reads:       ['1', '6', '10', NodeId.toBuiltIn('seq')],
+					reads:       ['1', '6', '9', '10', NodeId.toBuiltIn('seq')],
 					onlyBuiltIn: true
 				})
 				.calls('11', NodeId.toBuiltIn('seq'))
@@ -439,7 +442,7 @@ a(,3)`, emptyGraph()
 		);
 	});
 	describe('*apply', () => {
-		const caps: SupportedFlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities];
+		const caps: FlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities];
 		describe('no additional arguments', () => {
 			for(const applyFn of ['sapply', 'vapply', 'lapply']) {
 				assertDataflow(label(applyFn + ' without arguments', caps), ts, `g <- function(x) { x * 2 }

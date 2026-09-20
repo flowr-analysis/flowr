@@ -29,7 +29,7 @@ export class RShellExecutor implements SyncParser<string> {
 
 	public constructor(options?: Partial<RShellExecutionOptions>) {
 		this.options = deepMergeObject(getDefaultRShellOptions(), options);
-		this.prerequisites = [initCommand(this.options.eol)];
+		this.prerequisites = [initCommand(this.options.eol, this.options.pipeBind)];
 	}
 
 	/**

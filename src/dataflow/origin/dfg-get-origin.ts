@@ -138,6 +138,14 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 			});
 		}
 	}
+	const onlyNamesItself = origins.length > 0 && origins.every(o => o.type === OriginType.BuiltInFunctionOrigin && o.id === use.id);
+	if(origins.length > 0 && !onlyNamesItself) {
+		return origins;
+	}
+	const vtx = dfg.getVertex(use.id);
+	if(DfgVertex.isUse(vtx) && vtx.constantFallback) {
+		return [{ type: OriginType.ConstantOrigin, id: use.id }];
+	}
 	return origins.length > 0 ? origins : undefined;
 }
 

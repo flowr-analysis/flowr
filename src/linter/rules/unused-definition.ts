@@ -1,4 +1,4 @@
-import { type LintingResult, type LintingRule, type LintQuickFixRemove, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -8,7 +8,7 @@ import { isNotUndefined } from '../../util/assert';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { AstIdMap, NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -18,7 +18,9 @@ import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
-import { BuiltInIndex, callFnProps } from '../../dataflow/environments/query-fn-props';
+import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { callFnProps } from '../../dataflow/environments/query-fn-props';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { CallProp, ImpureProps } from '../../dataflow/environments/built-in-props';
 import { RGroupGenerics, s3GroupGenericMembers } from '../../dataflow/environments/group-generics';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -26,6 +28,7 @@ import type { DataflowInformation } from '../../dataflow/info';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -55,17 +58,15 @@ const OtherKnownS3Generics: ReadonlySet<string> = new Set([
 	'model.matrix', 'terms', 'weights', 'merge', 'split', 'window'
 ]);
 
-let knownS3Generics: ReadonlySet<string> | undefined;
-
 /**
- * Whether a definition named `name.class` may be an S3 method: `name` is a built-in flowR labels
- * {@link CallProp.Generic} or one of {@link OtherKnownS3Generics}. Such a method is dispatched indirectly
- * (`print(x)` on an object of that class), so it is used without a textual call.
+ * The generics a definition named `name.class` may be an S3 method for: the built-ins flowR labels
+ * {@link CallProp.Generic} plus {@link OtherKnownS3Generics}. Such a method is dispatched indirectly
+ * (`print(x)` on an object of that class), so it is used without a textual call. Kept per configuration,
+ * as a process-wide memo would let the first analyzer's built-ins answer for every later one.
  */
-function isKnownS3Generic(name: string): boolean {
-	knownS3Generics ??= new Set([...OtherKnownS3Generics, ...Object.keys(RGroupGenerics),
-		...BuiltInIndex.default().with(CallProp.Generic).map(g => Identifier.getName(g))]);
-	return knownS3Generics.has(name);
+function knownS3Generics(index: BuiltInIndex): ReadonlySet<string> {
+	return new Set([...OtherKnownS3Generics, ...Object.keys(RGroupGenerics),
+		...index.with(CallProp.Generic).map(g => Identifier.getName(g))]);
 }
 
 /** Whether `generic`, or any member of it when it is a group generic (`Ops.cls` dispatches on `+`), is called. */
@@ -155,7 +156,7 @@ function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
  * an S3 method for a dispatched generic, or - when {@link UnusedDefinitionConfig#excludeExportedDefinitions} is set -
  * a package export.
  */
-function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<string>): boolean {
+function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<string>, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	if(lexeme === undefined) {
 		return false;
 	}
@@ -173,7 +174,7 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 	// every dot may be the one splitting method from class, as the generic may carry dots itself (`as.character.foo`)
 	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
 		const generic = name.slice(0, dot);
-		if(isKnownS3Generic(generic) || pkg.s3Generics.has(generic) || isDispatched(generic, called)) {
+		if(ctx.env.deriveFromIndex(knownS3Generics).has(generic) || pkg.s3Generics.has(generic) || isDispatched(generic, called)) {
 			return true;
 		}
 	}
@@ -206,7 +207,8 @@ function hasContractedSignature(
 	ast: NormalizedAst,
 	config: UnusedDefinitionConfig,
 	pkg: PackageInfo,
-	called: ReadonlySet<string>
+	called: ReadonlySet<string>,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): boolean {
 	let inParameter = false;
 	for(let up = node.info.parent; up !== undefined;) {
@@ -220,7 +222,7 @@ function hasContractedSignature(
 			const bound = parent.info.parent !== undefined ? ast.idMap.get(parent.info.parent) : undefined;
 			const name = RBinaryOp.is(bound) ? bound.lhs.lexeme
 				: RFunctionCall.is(bound) && bound.arguments[0] !== EmptyArgument ? bound.arguments[0]?.lexeme : undefined;
-			return inParameter && name !== undefined && isConsideredUsed(name, config, pkg, called);
+			return inParameter && name !== undefined && isConsideredUsed(name, config, pkg, called, ctx);
 		}
 		up = parent.info.parent;
 	}
@@ -242,7 +244,33 @@ function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' |
 	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), worthKeeping);
 }
 
-function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFixRemove[] | undefined {
+function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): { statement: RNode<ParentInformation>, value: RNode<ParentInformation> } | undefined {
+	const parent = RNode.directParent(node, ast.idMap);
+	if(!RBinaryOp.is(parent)) {
+		return undefined;
+	}
+	if(parent.lhs.info.id === node.info.id) {
+		return { statement: parent, value: parent.rhs };
+	}
+	if(parent.rhs.info.id === node.info.id) {
+		return { statement: parent, value: parent.lhs };
+	}
+	return undefined;
+}
+
+function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAst): boolean {
+	if(node.info.role !== RoleInParent.ExpressionListChild) {
+		return false;
+	}
+	const parent = RNode.directParent(node, ast.idMap);
+	if(!RExpressionList.is(parent)) {
+		return false;
+	}
+	const opening = RExpressionList.groupStart(parent);
+	return opening === undefined || opening.lexeme === '{';
+}
+
+function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
 	const dfg = df.graph;
 	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
 	// otherwise we can automatically remove the full definition!
@@ -254,6 +282,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, variable.info.parent))
+		|| definedBys.some(e => Array.from(dfg.edgesTo(e)).some(([, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets)))
 		|| definedBys.flatMap(e => Array.from(dfg.edgesFrom(e)))
 			.some(([target, e]) => {
 				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
@@ -263,11 +292,14 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 		return undefined; // we can not remove this definition, it has important arguments
 	}
 
+	const assignment = getAssignmentPeer(variable, ast);
+
 	const totalRangeToRemove = SourceLocation.merge(
 		[...definedBys.map(d => {
 			const vertex = ast.idMap.get(d);
 			return vertex ? SourceLocation.fromNode(vertex) : undefined;
 		}),
+		assignment ? SourceLocation.fromNode(assignment.value) : undefined,
 		variable.info.fullRange ?? variable.location]
 	);
 
@@ -275,10 +307,22 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
+
+	const description = `Remove unused definition of \`${variable.lexeme}\``;
+
+	if(isStandaloneStatement(assignment?.statement ?? variable, ast)) {
+		return [{ type: 'remove', loc: totalRangeToRemove, description }];
+	}
+
+	const replacement = assignment !== undefined ? assignment.value.info.fullLexeme ?? assignment.value.lexeme : undefined;
+	if(replacement === undefined) {
+		return undefined;
+	}
 	return [{
-		type:        'remove',
-		loc:         totalRangeToRemove,
-		description: `Remove unused definition of \`${variable.lexeme}\``
+		type: 'replace',
+		loc:  totalRangeToRemove,
+		replacement,
+		description
 	}];
 }
 
@@ -356,13 +400,13 @@ export const UNUSED_DEFINITION = {
 					return undefined;
 				}
 
-				if(isConsideredUsed(element.node.lexeme, config, packageInfo, calledNames)) {
+				if(isConsideredUsed(element.node.lexeme, config, packageInfo, calledNames, data.inspectContext())) {
 					return undefined;
 				}
 
 				/* what calls a hook or dispatches to a method decides its parameters, so they are no more the
 				   author's to drop than the name is: `print.foo` keeps the `x` the generic hands it */
-				if(hasContractedSignature(element.node, normalize, config, packageInfo, calledNames)) {
+				if(hasContractedSignature(element.node, normalize, config, packageInfo, calledNames, data.inspectContext())) {
 					return undefined;
 				}
 
@@ -398,9 +442,9 @@ export const UNUSED_DEFINITION = {
 		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// our limited analysis causes unused definitions involving complex reflection etc. not to be included in our result, but unused definitions are correctly validated
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
+		defaultConfig: () => ({
 			includeFunctionDefinitions: true,
 			excludeExportedDefinitions: true
-		}
+		})
 	}
 } as const satisfies LintingRule<UnusedDefinitionResult, UnusedDefinitionMetadata, UnusedDefinitionConfig>;

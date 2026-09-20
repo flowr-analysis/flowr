@@ -8,6 +8,7 @@ export enum Ternary {
 /**
  * Always, never, or maybe, which is what a static answer about a running program usually is.
  * Its operators keep `maybe` infectious, so a conclusion never claims more than what is known.
+ * @helper values
  */
 export const TernaryLogic = {
 	name: 'TernaryLogic',

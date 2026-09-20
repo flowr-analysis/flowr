@@ -128,3 +128,19 @@ export function guard(assertion: unknown | undefined, message: GuardMessage = 'A
 		throw new GuardError(typeof message === 'string' ? message : message());
 	}
 }
+
+/**
+ * Runs `step` over `file`, turning the stack overflow deeply nested code causes into a message saying so.
+ * R's own parser accepts nesting deeper than a JavaScript stack takes, so every recursive walk over an AST --
+ * normalizing it, decorating it, extracting its dataflow -- can hit this and has to say the same thing.
+ */
+export function guardNesting<T>(what: string, file: string | undefined, step: () => T): T {
+	try {
+		return step();
+	} catch(e) {
+		if(e instanceof RangeError) {
+			throw new Error(`${what} exceeded the call stack for '${file ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
+		}
+		throw e;
+	}
+}

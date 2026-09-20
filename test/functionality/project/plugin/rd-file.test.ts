@@ -1,4 +1,5 @@
 import { assert, test } from 'vitest';
+import { decorateLabelContext, label, type TestLabel } from '../../_helper/label';
 import { FlowrAnalyzerDataListFilePlugin, FlowrAnalyzerRdFilePlugin, FlowrAnalyzerRdMacroFilePlugin, FlowrAnalyzerRdMetaFilePlugin, FlowrAnalyzerRdTopicIndexFilePlugin } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-rd-file-plugin';
 import { expandRdMacros, parseAnIndex, parseDataList, parseRdMacros, parseRdPage, parseRdTopicIndex, type RdPage, RdIndex, RdMatch } from '../../../../src/project/plugins/file-plugins/files/flowr-rd-file';
 import { testTopicOf } from './plugin-test-helper';
@@ -25,8 +26,8 @@ print(x, ...)
 `;
 
 /** The fields `parseRdPage(rd, fallback)` reports, checked against `expected`. */
-function testPage(name: string, rd: string, expected: Partial<Pick<RdPage, 'name' | 'docType' | 'title' | 'keywords' | 'aliases' | 'usage'>> & { arguments?: readonly (readonly [string, string])[] }, fallback = 'fallback') {
-	test(name, () => {
+function testPage(name: string | TestLabel, rd: string, expected: Partial<Pick<RdPage, 'name' | 'docType' | 'title' | 'keywords' | 'aliases' | 'usage'>> & { arguments?: readonly (readonly [string, string])[] }, fallback = 'fallback') {
+	test(decorateLabelContext(name, ['other']), () => {
 		const page = parseRdPage(rd, fallback);
 		for(const key of ['name', 'docType', 'title', 'keywords', 'aliases', 'usage'] as const) {
 			if(expected[key] !== undefined) {
@@ -43,8 +44,8 @@ function testPage(name: string, rd: string, expected: Partial<Pick<RdPage, 'name
 function testApplies(name: string, plugin: { applies(path: string): boolean }, path: string, expected: boolean) {
 	test(name, () => assert.strictEqual(plugin.applies(path), expected));
 }
-testPage('name, docType, title, keywords, aliases, usage and arguments', PrintPage, { name: 'print', docType: 'methods', title: 'Print Values', keywords: ['print', 'internal'], aliases: ['print', 'print.default', 'print,myclass-method', 'dim<-'], usage: ['print(x, ...)', 'print.default(x, digits = NULL, ...)'], arguments: [['x', 'the object and the digits to use'], ['digits', 'the object and the digits to use'], ['...', 'further arguments']] });
-testPage('a page without a \\name{} falls back to the file name', '\\alias{foo}', { name: 'fallback' });
+testPage(label('name, docType, title, keywords, aliases, usage and arguments', ['project-rd']), PrintPage, { name: 'print', docType: 'methods', title: 'Print Values', keywords: ['print', 'internal'], aliases: ['print', 'print.default', 'print,myclass-method', 'dim<-'], usage: ['print(x, ...)', 'print.default(x, digits = NULL, ...)'], arguments: [['x', 'the object and the digits to use'], ['digits', 'the object and the digits to use'], ['...', 'further arguments']] });
+testPage(label('a page without a \\name{} falls back to the file name', ['project-rd']), '\\alias{foo}', { name: 'fallback' });
 const PrintIndex = new RdIndex().add(parseRdPage(PrintPage)).add(parseRdPage('\\name{sum}\\alias{sum}'));
 testTopicOf('the page itself answers to its own name', PrintIndex, 'print', { topic: 'print', via: RdMatch.Page });
 testTopicOf('an alias answers to the page it belongs to', PrintIndex, 'print.default', { topic: 'print', via: RdMatch.Alias });

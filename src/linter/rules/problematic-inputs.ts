@@ -10,13 +10,15 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
+import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
-const defaultConsider: readonly ConsiderSpec[] = [
-	{ pattern: '^eval$', allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true },
-	...BuiltInIndex.default().with(SemanticCallTag.Process).map(n => ({ pattern: `^${Identifier.getName(n)}$` }))
-];
+function defaultConsider(index: BuiltInIndex): readonly ConsiderSpec[] {
+	return [
+		{ pattern: '^eval$', allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true },
+		...index.with(SemanticCallTag.Process).map(n => ({ pattern: `^${Identifier.getName(n)}$` }))
+	];
+}
 
 const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
 	{ pattern: /^pdf$/,        argIdx: 0, argName: 'file' },
@@ -40,8 +42,7 @@ export interface ConsiderSpec {
 }
 
 function normalizePatternList(cfg: string | string[] | ConsiderSpec | ConsiderSpec[] | undefined): { pattern: RegExp, allowedInputTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp, resolveSourceArgs?: boolean }[] {
-	const raw = (cfg === undefined ? defaultConsider : Array.isArray(cfg) ? (cfg.length === 0 ? defaultConsider : cfg) : [cfg])
-		.map(s => typeof s === 'string' ? { pattern: s } : s);
+	const raw = (Array.isArray(cfg) ? cfg : cfg !== undefined ? [cfg] : []).map(s => typeof s === 'string' ? { pattern: s } : s);
 	return raw.map(s => ({
 		pattern:           typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
 		allowedInputTypes: s.allowedInputTypes ?? [],
@@ -101,7 +102,7 @@ function getPipeCommandValue(sources: InputSources, allowedValues?: RegExp, disa
 		if(typeof s.value !== 'string' || !s.value.startsWith('|')) {
 			continue;
 		}
-		if(allowedValues !== undefined && allowedValues.test(s.value)){
+		if(allowedValues !== undefined && allowedValues.test(s.value)) {
 			continue;
 		}
 		if(disallowedValues !== undefined && !disallowedValues.test(s.value)) {
@@ -152,10 +153,10 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 }
 
 export const PROBLEMATIC_INPUTS = {
-	createSearch: config => {
+	createSearch: (config) => {
 		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
 		return Q.fromQuery([
-			...normalizePatternList(config?.consider).map((s, i) => toQ(s.pattern, `fn-${i}`)),
+			...normalizePatternList(config.consider).map((s, i) => toQ(s.pattern, `fn-${i}`)),
 			...normalizePipeSpecs(config?.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
 		]);
 	},
@@ -163,7 +164,7 @@ export const PROBLEMATIC_INPUTS = {
 		const df = await data.dataflow();
 		const results: ProblematicInputsResult[] = [];
 		const seen          = new Set<NodeId>();
-		const considerPats  = normalizePatternList(config?.consider);
+		const considerPats  = normalizePatternList(config.consider);
 		const pipePats      = normalizePipeSpecs(config?.pipeCommandFunctions);
 
 		for(const element of elements.getElements()) {
@@ -193,12 +194,11 @@ export const PROBLEMATIC_INPUTS = {
 						results.push(r);
 					}
 				}
-			} else if(consider !== undefined){
+			} else if(consider !== undefined) {
 				const criterion = SlicingCriterion.fromId(nid);
 				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 				const sources   = all['input-sources']?.results?.[criterion] ?? [];
 				const evalValues: string[] = [];
-				// TODO i'm not sure if this is right and it seems kind of messy :( i want the values from the eval calls
 				if(consider.resolveSourceArgs) {
 					for(const source of sources) {
 						if(source.value === undefined) {
@@ -239,9 +239,9 @@ export const PROBLEMATIC_INPUTS = {
 		description:   'Detects uses of dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
-			consider:             defaultConsider,
+		defaultConfig: ctx => ({
+			consider:             ctx.env.deriveFromIndex(defaultConsider),
 			pipeCommandFunctions: defaultPipeCommandFunctions
-		}
+		})
 	}
 } as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

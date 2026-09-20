@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-29, 17:39:04 UTC (v2.15.8), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Input Sources Query">Input Sources Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Classify the input sources of function calls\
 _This query is requested with the type `input-sources`._\
 Run in the REPL: `:query @input-sources (<criterion>) <code | file://path>`
-
 
 Given a [slicing criterion](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) to
 something like a function call, flowR classifies the types of all input sources (e.g., arguments).
@@ -20,9 +19,6 @@ f <- function(x) {
 
 If you are interested in the input-sources of the `print` call, you can use:
 
-
-
-
 ```json
 [
   {
@@ -32,63 +28,26 @@ If you are interested in the input-sources of the `print` call, you can use:
 ]
 ```
 
-
 (This can be shortened to `@input-sources (3@print) "f <- function(x) {\n	x <- x * 2\n	print(x)\n}"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (3 ms)\
+Query: **input-sources** (30 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 3@print\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 3.15 (id: 11), type: ["param","const","dconst"], trace: alias\
-_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "input-sources": {
-    ".meta": {
-      "timing": 3
-    },
-    "results": {
-      "3@print": [
-        {
-          "id": 11,
-          "types": [
-            "param",
-            "const",
-            "dconst"
-          ],
-          "trace": "alias"
-        }
-      ]
-    }
-  },
-  ".meta": {
-    "timing": 3
-  }
-}
+{"input-sources":{".meta":{},"results":{"3@print":[{"id":11,"types":["param","const","dconst"],"trace":"alias"}]}},".meta":{}}
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 Some objects are handed to the code by a framework rather than defined in it, like the `input` of a shiny
 server function. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L865"><code><span title="Objects provided by a framework rather than by the code itself, like shiny's input.">InputClassifierConfig::<b>linkedObjects</b></span></code></a> configuration lists them, so that reads
@@ -100,10 +59,6 @@ server <- function(input, output, session) {
 }
 ```
 
-
-
-
-
 ```json
 [
   {
@@ -113,64 +68,26 @@ server <- function(input, output, session) {
 ]
 ```
 
-
 (This can be shortened to `@input-sources (2@system) "server <- function(input, output, session) {\n	system(paste("convert", input$file))\n}"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (3 ms)\
+Query: **input-sources** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 2@system\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 2.16-43 (id: 18), type: ["const","param","unknown","dconst"], trace: known\
-_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "input-sources": {
-    ".meta": {
-      "timing": 3
-    },
-    "results": {
-      "2@system": [
-        {
-          "id": 18,
-          "types": [
-            "const",
-            "param",
-            "unknown",
-            "dconst"
-          ],
-          "trace": "known"
-        }
-      ]
-    }
-  },
-  ".meta": {
-    "timing": 3
-  }
-}
+{"input-sources":{".meta":{},"results":{"2@system":[{"id":18,"types":["const","param","unknown","dconst"],"trace":"known"}]}},".meta":{}}
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 Every <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L711"><code><span title="An object that a framework hands to its users without any visible definition, like the input of a shiny server function. Reads of such an object (and of its fields) are classified as its given type, so traces link up to the framework instead of stopping at an opaque parameter.">LinkedInputObject</span></code></a> names the object, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/input-types.ts#L26"><code><span title="Lattice flattening until we have a taint engine :) Please note that the classifier considers this basis with a set-lift, joining differing lattice elements.     [ Unknown ]  |  [Param] [File] [Net] [User], ...  | | | |  | [TempFile] | |  +---------+------+------+- ...  |  [ DerivedConstant ]  |  [ Constant ]  ">InputType</span></code></a> to use for it, and optionally
 the parameters the binding function has to declare as well (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L720"><code><span title="If given, the object only counts as linked if the function binding it declares all of these parameters as well (e.g., shiny's function(input, output, session)). Without this, every input would be treated as the framework's.">LinkedInputObject::<b>withParams</b></span></code></a>) - shiny's
@@ -186,7 +103,6 @@ You do not have to pass any of this per query: the <a href="https://github.com/f
 knows, so your framework joins shiny instead of replacing it (and `specializeConfig` can scope it to one
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/project-kind.ts#L10"><code><span title="The kind of project that flowR is analyzing, see FlowrAnalyzerFilesContext#projectKind .">ProjectKind</span></code></a>). Functions may be written as plain `fn` or namespaced `pkg::fn` strings; a bare call
 only counts as the namespaced one while that package is attached, exactly as R would resolve it.
-
 
 ```json
 {
@@ -221,8 +137,6 @@ only counts as the namespaced one while that package is attached, exactly as R w
   }
 }
 ```
-
-
 
 <details>
 

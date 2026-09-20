@@ -6,7 +6,7 @@ import { pushLocalEnvironment } from '../../../../../src/dataflow/environments/s
 import { defaultEnv } from '../../../_helper/dataflow/environment-builder';
 
 describe('S3 Function Calls', withTreeSitter(ts => {
-	assertDataflow(label('Simple S3 dispatch', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('Simple S3 dispatch', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
 		`
 f.default <- function(x) {
     length(x)
@@ -27,7 +27,7 @@ f <- function(x) {
 			}, { mode: ['s3'] }),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
-	assertDataflow(label('Simple S3 dispatch with NextMethod', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('Simple S3 dispatch with NextMethod', ['function-calls', 'oop-s3', 'oop-s3-dispatch', 'oop-s3-inheritance']), ts,
 		`
 f.default <- function(x) {
     length(x)
@@ -44,7 +44,7 @@ f <- function(x) {
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	/* the class has to be known before a method can be picked, so the object is read whatever the method does */
-	assertDataflow(label('S3 dispatch reads the object it dispatches on', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('S3 dispatch reads the object it dispatches on', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
 		`
 f.default <- function(x) {
     1
@@ -58,7 +58,7 @@ f <- function(x) {
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	/* the first formal stays a plain argument here, as `y` is the one the dispatch has to look at */
-	assertDataflow(label('A named object moves the read off the first formal', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('A named object moves the read off the first formal', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
 		`
 f.default <- function(x, y) {
     1
@@ -71,7 +71,7 @@ f <- function(x, y) {
 			.reads('6@y', '5@y'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
-	assertDataflow(label('Two-Targets S3 dispatch', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('Two-Targets S3 dispatch', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
 		`
 f.default <- function(x) {
     length(x)
@@ -88,7 +88,7 @@ f <- function(x) {
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	/* a base generic dispatches too, even though its body is nowhere to be seen */
-	assertDataflow(label('Dispatch through a base generic', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('Dispatch through a base generic', ['function-calls', 'oop-s3', 'oop-s3-construction', 'oop-s3-dispatch']), ts,
 		`
 length.zz <- function(x) {
     99
@@ -101,7 +101,7 @@ v <- length(o)
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	/* only the methods of the generic that is called: `foo.bar` is none of `length` */
-	assertDataflow(label('A base generic picks up no unrelated method', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('A base generic picks up no unrelated method', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
 		`
 foo.bar <- function(x) {
     99
@@ -111,7 +111,7 @@ v <- length(o)
 `, emptyGraph(),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['6@length', '2@function'], ['6@length', '2@foo.bar']] }
 	);
-	assertDataflow(label('Respect Later-Defs', ['function-calls', 'oop-s3']), ts,
+	assertDataflow(label('Respect Later-Defs', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
 		`
 f.default <- function(x) {
     length(x)

@@ -24,8 +24,16 @@ const OverlayThreshold = 64;
 /**
  * How many overlays may stack before a write copies instead. A lookup walks the stack, so this bounds what a
  * miss costs; a frame deep enough to reach it is one written to over and over, where a copy pays off.
+ * @see {@link setMaxOverlayDepth} - to override it from `solver.maxOverlayDepth`
  */
-const MaxOverlayDepth = 4;
+export const DefaultMaxOverlayDepth = 4;
+
+let maxOverlayDepth = DefaultMaxOverlayDepth;
+
+/** Overrides {@link DefaultMaxOverlayDepth} for every frame written from here on. */
+export function setMaxOverlayDepth(depth: number): void {
+	maxOverlayDepth = Math.max(0, Math.trunc(depth));
+}
 
 /**
  * One frame's bindings. {@link Frame.of|Taken from a map} it is frozen, since the map is somebody else's.
@@ -41,6 +49,10 @@ export class Frame implements MemoryView {
 	private readonly base?:    MemoryView;
 	/** the names of `base` this frame has dropped, absent when nothing was dropped */
 	private removed?:          Set<BrandedIdentifier>;
+	/** {@link overlaidEntries} once walked, dropped by every write */
+	private flat?:             Map<BrandedIdentifier, IdentifierDefinition[]>;
+	/** {@link overlaidKeys} once walked, dropped by every write */
+	private flatKeys?:         Set<BrandedIdentifier>;
 
 	private constructor(bindings: Map<BrandedIdentifier, IdentifierDefinition[]>, frozen: boolean, base?: MemoryView) {
 		this.bindings = bindings;
@@ -61,10 +73,10 @@ export class Frame implements MemoryView {
 	/**
 	 * A frame the caller may write to, holding what this one holds. A small frame is copied outright; a big one
 	 * becomes the base of an overlay, see {@link OverlayThreshold}. An overlay is big by construction, so it
-	 * overlays again until the stack reaches {@link MaxOverlayDepth}, where a copy flattens it.
+	 * overlays again until the stack reaches {@link DefaultMaxOverlayDepth}, where a copy flattens it.
 	 */
 	public forWrite(): Frame {
-		if(this.stacked() >= MaxOverlayDepth) {
+		if(this.stacked() >= maxOverlayDepth) {
 			return new Frame(new Map(this), false);
 		} else if(this.base !== undefined || this.bindings.size > OverlayThreshold) {
 			return new Frame(new Map(), false, this);
@@ -83,12 +95,16 @@ export class Frame implements MemoryView {
 
 	public set(name: BrandedIdentifier, defs: IdentifierDefinition[]): void {
 		guard(!this.frozen, 'a frozen frame takes no writes, fork it with forWrite first');
+		this.flat = undefined;
+		this.flatKeys = undefined;
 		this.bindings.set(name, defs);
 		this.removed?.delete(name);
 	}
 
 	public delete(name: BrandedIdentifier): void {
 		guard(!this.frozen, 'a frozen frame takes no writes, fork it with forWrite first');
+		this.flat = undefined;
+		this.flatKeys = undefined;
 		this.bindings.delete(name);
 		if(this.base?.has(name)) {
 			(this.removed ??= new Set()).add(name);
@@ -122,16 +138,26 @@ export class Frame implements MemoryView {
 		return size;
 	}
 
+	/** Kept once walked, like {@link entries}; a prefix scan asks every layer for its names. */
 	public keys(): MapIterator<BrandedIdentifier> {
-		return this.base === undefined ? this.bindings.keys() : this.overlaidKeys();
+		if(this.base === undefined) {
+			return this.bindings.keys();
+		} else if(this.flat !== undefined) {
+			return this.flat.keys();
+		}
+		return (this.flatKeys ??= new Set(this.overlaidKeys())).keys();
 	}
 
 	public values(): MapIterator<IdentifierDefinition[]> {
 		return this.base === undefined ? this.bindings.values() : this.overlaidValues();
 	}
 
+	/** An overlay is walked far more often than written, so the flattened view is kept until a write drops it; it is filled from {@link overlaidEntries}, whose contents and order it therefore has. */
 	public entries(): MapIterator<[BrandedIdentifier, IdentifierDefinition[]]> {
-		return this.base === undefined ? this.bindings.entries() : this.overlaidEntries();
+		if(this.base === undefined) {
+			return this.bindings.entries();
+		}
+		return (this.flat ??= new Map(this.overlaidEntries())).entries();
 	}
 
 	public [Symbol.iterator](): MapIterator<[BrandedIdentifier, IdentifierDefinition[]]> {
@@ -143,7 +169,7 @@ export class Frame implements MemoryView {
 			this.bindings.forEach(fn as never, thisArg);
 			return;
 		}
-		for(const [name, defs] of this.overlaidEntries()) {
+		for(const [name, defs] of this.entries()) {
 			fn.call(thisArg, defs, name, this);
 		}
 	}
@@ -166,14 +192,23 @@ export class Frame implements MemoryView {
 		}
 	}
 
+	/** {@link overlaidEntries} for the names alone, which a lazily bound base answers without binding anything. */
 	private *overlaidKeys(): MapIterator<BrandedIdentifier> {
-		for(const [name] of this.overlaidEntries()) {
-			yield name;
+		const base = this.base as MemoryView;
+		for(const name of base.keys()) {
+			if(!this.removed?.has(name)) {
+				yield name;
+			}
+		}
+		for(const name of this.bindings.keys()) {
+			if(!base.has(name) || this.removed?.has(name)) {
+				yield name;
+			}
 		}
 	}
 
 	private *overlaidValues(): MapIterator<IdentifierDefinition[]> {
-		for(const [, defs] of this.overlaidEntries()) {
+		for(const [, defs] of this.entries()) {
 			yield defs;
 		}
 	}

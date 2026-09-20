@@ -190,8 +190,9 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 		for(const callee of calledNames(node, vertex, state)) {
 			add(callee, ArgProp.Callee);
 		}
+		const notStated = happensInEveryBranch(vertex.cds) ? NotStatedByACall : NotStatedByACall | ArgProp.Forced;
 		for(const [props, argument] of argumentProps(vertex, state)) {
-			const stated = props & ~NotStatedByACall;
+			const stated = props & ~notStated;
 			if(stated !== 0) {
 				add(argument, stated);
 			}

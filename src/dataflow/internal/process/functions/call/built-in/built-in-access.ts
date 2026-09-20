@@ -17,9 +17,10 @@ import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/re
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
-import { resolveNodeToStackEnv, stackEnvInheritsFields } from './built-in-stack-env';
+import { resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
+import { accessedFieldName, linkFieldReads } from '../../../../linker';
+import { StackEnvKind } from '../../../../../environments/default-builtin-config';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 interface TableAssignmentProcessorMarker {
@@ -94,16 +95,13 @@ export function processAccess<OtherInfo>(
 		const envState = stackEnvState
 			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
 		if(envState) {
-			const fieldNode = unpackArg(args[1]);
-			const fieldName = RString.is(fieldNode) ? fieldNode.content.str : (config.treatIndicesAsString ? fieldNode?.lexeme : undefined);
+			const fieldName = accessedFieldName(unpackArg(args[1]), config.treatIndicesAsString);
 			const fieldDefs = fieldName
 				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
 				: undefined;
-			for(const fd of fieldDefs ?? []) {
-				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
-				if(stackEnvState === undefined && fd.type === ReferenceType.Function) {
-					info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Returns);
-				}
+			linkFieldReads(info.graph, name.info.id, fieldDefs, stackEnvState === undefined);
+			if(fieldName !== undefined && !fieldDefs?.length && stackEnvKindOf(head.value, data) === StackEnvKind.CallerFrame) {
+				info.in = [...info.in, { name: fieldName, nodeId: name.info.id, type: ReferenceType.Variable, cds: data.cds }];
 			}
 		}
 	}

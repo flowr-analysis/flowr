@@ -12,8 +12,9 @@ import { defaultSigDbPaths } from '../src/project/sigdb/manifest';
 /* the plain function lists rather than the query module, which would pull in half the analyzer */
 import { LibraryFunctions } from '../src/queries/catalog/dependencies-query/function-info/library-functions';
 import { SourceFunctions } from '../src/queries/catalog/dependencies-query/function-info/source-functions';
-import { ReadFunctions } from '../src/queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { computeReadFunctions } from '../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { computeWriteFunctions } from '../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { BuiltInIndex } from '../src/dataflow/environments/query-fn-props';
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
 import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
@@ -264,11 +265,11 @@ function builtInKinds(): Map<string, string[]> {
 	const categories: Record<string, readonly { name: string }[]> = {
 		library:    LibraryFunctions,
 		source:     SourceFunctions,
-		read:       ReadFunctions,
-		write:      WriteFunctions,
+		read:       computeReadFunctions(DefaultBuiltinConfig),
+		write:      computeWriteFunctions(DefaultBuiltinConfig),
 		visualize:  VisualizeFunctions,
 		test:       TestFunctions,
-		statistics: statisticsFunctions()
+		statistics: statisticsFunctions(BuiltInIndex.default())
 	};
 	const kinds = new Map<string, string[]>();
 	/* flowR's own built-in definitions: `:`, `<-`, `TRUE` and the rest of what it understands without
@@ -343,11 +344,9 @@ export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<st
 			const list = owners.get(name) ?? [];
 			owners.set(name, list);
 			/* `12` is package twelve; `12:tn:3:topic:4:88` adds its flags, its parameter count, the help
-			   topic when that differs from the name, and which of the package's files holds it at which
-			   line, both in base 36. Trailing parts are left off when there is nothing to say. */
-			/* a topic can hold a comma or a colon (`[,hyperSpec-method`), which are exactly the separators
-			   this list uses, so it travels encoded */
-			/* the file and the line are read back as numbers either way, so they travel in the shortest base */
+			   topic (encoded, as it may hold the separators itself) when that differs from the name, and
+			   which of the package's files holds it at which line, both in base 36. Trailing parts are
+			   left off when there is nothing to say. */
 			const parts = [String(index), entry.flags, entry.params > 0 ? String(entry.params) : '',
 				entry.topic ? encodeURIComponent(entry.topic) : '',
 				entry.file !== undefined ? entry.file.toString(36) : '',

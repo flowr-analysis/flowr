@@ -10,7 +10,7 @@ import { DfgVertex } from '../../dataflow/graph/vertex';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
@@ -105,6 +105,11 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 		const vertex = graph.getVertex(id);
 		if(DfgVertex.isFunctionCall(vertex) && isUnbound(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
+		} else if(DfgVertex.isUse(vertex) && isUnbound(graph, id)) {
+			const name = NodeId.recoverName(id, graph.idMap);
+			if(name !== undefined) {
+				unbound.add(Identifier.getName(name));
+			}
 		}
 	}
 	for(const { name, callable } of attachments) {
@@ -141,6 +146,9 @@ export const UNUSED_IMPORT = {
 		// one call may name more than one package, so the query can report it several times under the same id
 		const attachedBy = new Map<NodeId, DependencyInfo[]>();
 		for(const info of elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library) {
+			if(info.nodeId === undefined) {
+				continue;
+			}
 			const known = attachedBy.get(info.nodeId);
 			if(known === undefined) {
 				attachedBy.set(info.nodeId, [info]);
@@ -218,8 +226,8 @@ export const UNUSED_IMPORT = {
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Highlights packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.',
-		defaultConfig: {
+		defaultConfig: () => ({
 			whitelist: []
-		}
+		})
 	}
 } as const satisfies LintingRule<UnusedImportResult, UnusedImportMetadata, UnusedImportConfig>;

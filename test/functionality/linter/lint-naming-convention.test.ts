@@ -131,6 +131,15 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
+		/** A rename onto a name the program binds already would change what that name refers to, so no fix is offered */
+		assertLinter('no fix onto a taken name', parser, 'testVar <- 5\nTestVar <- 6', 'naming-convention', [{
+			name:           'testVar',
+			detectedCasing: CasingConvention.CamelCase,
+			quickFix:       undefined,
+			loc:            [1, 1, 1, 7],
+			certainty:      LintingResultCertainty.Certain,
+		}], undefined, { caseing: CasingConvention.PascalCase });
+
 		/** The casing of the definition is checked, and quick fixes for all usages (and the definition) are provided */
 		assertLinter('only detect definition', parser, 'testVar <- 5\nprint(testVar)\n', 'naming-convention', [{
 			name:           'testVar',
@@ -171,7 +180,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,
-			quickFix:       [{ type: 'replace', replacement: 'testVar', loc: [3, 1, 3, 8], description: 'Rename to match naming convention camelCase' } as const],
+			quickFix:       undefined,
 			loc:            [3, 1, 3, 8],
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: 'auto' });

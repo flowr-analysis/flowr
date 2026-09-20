@@ -1,6 +1,6 @@
 import { assertReconstructed, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe } from 'vitest';
@@ -12,7 +12,7 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 			[0, 'x <- 5; y <- 9', ['name-normal', 'numbers', 'semicolons', ...OperatorDatabase['<-'].capabilities]],
 			[2, '{ x <- 5 }', ['grouping', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
 			[2, '{ x <- 5; y <- 9 }', ['grouping', 'name-normal', 'numbers', 'semicolons', ...OperatorDatabase['<-'].capabilities]],
-		] as [number, string, SupportedFlowrCapabilityId[]][]) {
+		] as [number, string, FlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, 'x');
 		}
 	});
@@ -22,7 +22,7 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 			['y <- x <- 42', 1, 'x', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence']],
 			['y <- x <- 42', 0, 'y', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence']],
 			['for (i in 1:20) { x <- 5 }', 6, 'x', ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]]
-		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
+		] as [string, number, string, FlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected);
 		}
 	});
@@ -32,14 +32,14 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 			/* we are interested in 'a' not in the result of the access*/
 			['a[3]', 0, 'a', ['single-bracket-access', 'numbers', 'name-normal']],
 			['a[x]', 1, 'x', ['single-bracket-access', 'name-normal']]
-		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
+		] as [string, number, string, FlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected);
 		}
 	});
 
 	describe('Loops', () => {
 		describe('repeat', () => {
-			const pool: [string, NodeId | NodeId[], string, SupportedFlowrCapabilityId[]][] = [
+			const pool: [string, NodeId | NodeId[], string, FlowrCapabilityId[]][] = [
 				['repeat { x }', 2, 'x', ['repeat-loop', 'name-normal']],
 				['repeat { x <- 5; y <- 9 }', 2, 'x', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'numbers']],
 				['repeat { x <- 5; y <- 9 }', [2, 4, 6], 'x <- 5\n9', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'numbers']]
@@ -50,8 +50,8 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 		});
 
 		describe('while', () => {
-			const fiveNineCaps: SupportedFlowrCapabilityId[] = ['while-loop', 'logical', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons'];
-			const pool: [string, NodeId | NodeId[], string, SupportedFlowrCapabilityId[]][] = [
+			const fiveNineCaps: FlowrCapabilityId[] = ['while-loop', 'logical', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons'];
+			const pool: [string, NodeId | NodeId[], string, FlowrCapabilityId[]][] = [
 				['while(TRUE) { x }', 3, 'x', ['while-loop', 'logical', 'name-normal']],
 				['while(TRUE) { x <- 5 }', 3, 'x', ['while-loop', 'logical', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
 				['while(TRUE) { x <- 5; y <- 9 }', 3, 'x', fiveNineCaps],
@@ -75,7 +75,7 @@ describe('Simple', { concurrent: false }, withShell(shell => {
         12 -> x
       }
     `;
-			const caps: SupportedFlowrCapabilityId[] = ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['->'].capabilities, 'newlines'];
+			const caps: FlowrCapabilityId[] = ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['->'].capabilities, 'newlines'];
 			const pool: [string, NodeId | NodeId[], string][] = [
 				[largeFor, 0, 'for(i in 1:20) {}'],
 				[largeFor, 6, 'y'],
@@ -100,7 +100,7 @@ a <- foo({
     c <- 3
     })`, 0, 'a');
 
-		const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator'];
+		const caps: FlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator'];
 		assertReconstructed(label('Reconstruct access in pipe (variable)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, 2, 'x');

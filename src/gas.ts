@@ -113,8 +113,9 @@ export interface FlowrGasConfig extends MergeableRecord {
 	/** Per-feature sensitivity factors. Missing or `0` disables checking with zero overhead. */
 	readonly features:           Record<string, number | undefined>;
 	/**
-	 * How many calls one accounting of an armed budget covers (default `DefaultCountedCheckEvery`). Trades how far
-	 * a run may overshoot a bound against what the guard costs per node: `1` counts exactly, larger counts coarsely.
+	 * How many calls one accounting of an armed check covers (default `DefaultCountedCheckEvery`), for a
+	 * {@link DataflowBudgetTracker} as much as for the slicer's traversal. Trades how far a run may overshoot a
+	 * bound against what the guard costs per node: `1` counts exactly, larger counts coarsely.
 	 */
 	readonly countedCheckEvery?: number;
 	/** Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection. Return undefined to skip the memory check. */

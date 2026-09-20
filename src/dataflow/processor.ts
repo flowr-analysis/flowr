@@ -11,6 +11,7 @@ import type {
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -60,6 +61,12 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * processing (and recursing into) that node again. This allows to separate arg wrappers from their content!
 	 */
 	readonly precomputedValue?:    { readonly nodeId: NodeId, readonly info: DataflowInformation }
+	/**
+	 * The piped value for a placeholder-less pipe rhs, scoped by the rhs `rootId`.
+	 * {@link processNamedCall} splices it into that call's arguments, so every processor sees it as a normal
+	 * positional argument; the pipe processed it already, so {@link processAllArguments} skips it.
+	 */
+	readonly pipedArgument?:       { readonly rootId: NodeId, readonly argument: RArgument<OtherInfo & ParentInformation> }
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;

@@ -1,14 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[src/documentation/wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="software-has-tests">Software Has Tests&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
-
 
 This rule is a `best-effort` rule.
  
 Checks whether the software project has tests (test files in a test directory or test function calls in R code).\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/software-has-tests.ts#L23">src/linter/rules/software-has-tests.ts</a>._
-
 
 ### Configuration
 
@@ -20,97 +18,49 @@ Additional test function patterns beyond the defaults
 
 ### Examples
 
-
 ```r
 cat("hello")
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "software-has-tests",     "config": {} } ] } ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Software Has Tests** (software-has-tests):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No tests found in the project\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 1, processTimeMs: 0\
-_All queries together required ≈2 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
 
 ```json
 {
   "linter": {
     "results": {
-      "software-has-tests": {
-        "results": [
-          {
-            "certainty": "certain",
-            "loc": [
-              -1,
-              -1,
-              -1,
-              -1
-            ],
-            "message": "No tests found in the project"
-          }
-        ],
-        ".meta": {
-          "testFilesFound": 0,
-          "testCallsFound": 0,
-          "searchTimeMs": 1,
-          "processTimeMs": 0
-        }
-      }
+      "software-has-tests": {"results":[{"certainty":"certain","loc":[-1,-1,-1,-1],"message":"No tests found in the project"}],".meta":{"testFilesFound":0,"testCallsFound":0}}
     },
-    ".meta": {
-      "timing": 2
-    }
+    ".meta": {}
   },
-  ".meta": {
-    "timing": 2
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-software-has-tests.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts)
 
-
 <h4 id="Test_Case:_no_tests_at_all">Test Case: no tests at all</h4>
-
 
 Given the following input:
 
@@ -118,19 +68,13 @@ Given the following input:
 cat("hello")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No tests found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No tests found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L9) for the test-case implementation.
 		
 <h4 id="Test_Case:_test_that_call_detected">Test Case: test_that call detected</h4>
-
 
 Given the following input:
 
@@ -138,19 +82,13 @@ Given the following input:
 test_that("basic", { expect_true(TRUE) })
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L15) for the test-case implementation.
 		
 <h4 id="Test_Case:_standalone_expect_true_not_detected">Test Case: standalone expect_true not detected</h4>
-
 
 Given the following input:
 
@@ -158,94 +96,70 @@ Given the following input:
 expect_true(1 == 1)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No tests found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No tests found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L21) for the test-case implementation.
 		
 <h4 id="Test_Case:_test_file_in_tests_directory">Test Case: test file in tests directory</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/tests/test_main.R', '')] }
+{addFiles: [new FlowrInlineTextFile('/project/tests/test_main.R', '')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L27) for the test-case implementation.
 		
 <h4 id="Test_Case:_test_file_in_test_directory__singular_">Test Case: test file in test directory (singular)</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/test/helper.R', '')] }
+{addFiles: [new FlowrInlineTextFile('/project/test/helper.R', '')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L34) for the test-case implementation.
 		
 <h4 id="Test_Case:_unrelated_file_not_counted">Test Case: unrelated file not counted</h4>
 
-
 Given the following input:
 
 ```r
 cat("hello")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: [new FlowrInlineTextFile('/project/R/main.R', '')] }
+{addFiles: [new FlowrInlineTextFile('/project/R/main.R', '')]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No tests found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No tests found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L41) for the test-case implementation.
 		
 <h4 id="Test_Case:_standalone_expect_equal_not_detected">Test Case: standalone expect_equal not detected</h4>
-
 
 Given the following input:
 
@@ -253,19 +167,13 @@ Given the following input:
 expect_equal(1 + 1, 2)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No tests found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No tests found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L48) for the test-case implementation.
 		
 <h4 id="Test_Case:_tinytest_runner_run_test_dir">Test Case: tinytest runner run_test_dir</h4>
-
 
 Given the following input:
 
@@ -273,19 +181,13 @@ Given the following input:
 run_test_dir("inst/tinytest")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L54) for the test-case implementation.
 		
 <h4 id="Test_Case:_standalone_checkEquals_not_detected">Test Case: standalone checkEquals not detected</h4>
-
 
 Given the following input:
 
@@ -293,13 +195,8 @@ Given the following input:
 checkEquals(1 + 1, 2)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, message: 'No tests found in the project', loc: [-1, -1, -1, -1] }]
-```
-
+* certain: message = `'No tests found in the project'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L60) for the test-case implementation.

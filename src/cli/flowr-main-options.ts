@@ -103,6 +103,12 @@ export const flowrMainOptionDefinitions = [
 		multiple:    false
 	},
 	{
+		name:        'engine.r-shell.pipe-bind',
+		type:        Boolean,
+		description: 'Enable R\'s experimental pipe-bind operator "=>" by setting _R_USE_PIPEBIND_ for the R session.',
+		multiple:    false
+	},
+	{
 		name:        'engine.tree-sitter.disabled',
 		type:        Boolean,
 		description: 'Disable the tree-sitter engine'

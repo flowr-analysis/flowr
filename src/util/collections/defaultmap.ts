@@ -65,3 +65,17 @@ export class DefaultMap<K, V = K> {
 		return this.internal.size;
 	}
 }
+
+/**
+ * `fn`, answered once per key and remembered from then on -- an answer of `undefined` included, which is
+ * what separates this from a {@link DefaultMap} generator.
+ */
+export function memoize<K, V>(fn: (key: K) => V): (key: K) => V {
+	const known = new Map<K, V>();
+	return key => {
+		if(!known.has(key)) {
+			known.set(key, fn(key));
+		}
+		return known.get(key) as V;
+	};
+}

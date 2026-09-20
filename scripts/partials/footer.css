@@ -1,0 +1,17 @@
+/* shared column footer; each template sets its own `footer` margin/width */
+footer { border-top: 1px solid var(--border); padding-top: 1.5rem; }
+footer .ends { display: grid; gap: 1.2rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 52rem) { footer .ends { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+footer .ends > div { display: flex; flex-direction: column; gap: .3rem; }
+footer b { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+footer a { color: var(--fg); text-decoration: none; font-size: .9rem; }
+footer a:hover { color: var(--accent); text-decoration: underline; }
+/* only the benchmark page fills this row, with its live status hooks */
+footer .notes {
+	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+	margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border); font-size: .85rem; color: var(--muted);
+}
+footer .notes a { color: var(--fg); }
+footer .notes a:hover { color: var(--accent); }
+footer .notes button { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .7rem; border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); }
+footer .notes button:hover { border-color: var(--accent); color: var(--accent); }

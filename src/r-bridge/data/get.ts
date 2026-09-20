@@ -4,11 +4,10 @@ import { flowrCapabilities } from './data';
 
 type CapabilityIdFilter<T extends FlowrCapability, Filter> = T extends Filter ? T['id'] : never;
 
-/** Recursively extract all valid identifiers (which have the given support predicate) */
 type ExtractAllIds<T extends FlowrCapability, Filter = FlowrCapability> =
 	T extends { readonly capabilities: infer U }
 		? U extends readonly FlowrCapability[]
-			? (CapabilityIdFilter<T, Filter> | ExtractAllIds<U[number]>)
+			? (T['id'] | ExtractAllIds<U[number], Filter>)
 			: CapabilityIdFilter<T, Filter>
 		: CapabilityIdFilter<T, Filter>;
 

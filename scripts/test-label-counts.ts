@@ -1,13 +1,10 @@
 /**
- * Adds the test counters to benchmark graph outputs.
+ * Merges test-suite-produced counters into benchmark graph outputs (the suite runs as a separate job).
+ * A label may repeat across tests, so tests are counted by id, not by label occurrence.
+ * --results/--mutation-results add total test counts from a vitest report; --mutations adds the
+ * counterexample suite's own coverage (mutants, passes) from its details file.
  *
- * The test labels are written by the test suite (`coverage/flowr-test-details.json`), which runs in a job of
- * its own, so the numbers are merged into the graph outputs instead of being produced by the benchmark.
- * A label may carry several capabilities and appear more than once, hence every test is counted by its id.
- * With `--results <file>` the report of the run (`coverage/flowr-test-results.json`) also contributes the
- * total number of tests, which the labels alone cannot know.
- *
- * Run it with `npx ts-node --transpile-only scripts/test-label-counts.ts [--results <file>] <details.json> <graph.json...>`.
+ * Usage: test-label-counts.ts [--results f] [--mutations f] [--mutation-results f] details.json graph.json...
  */
 import fs from 'fs';
 
@@ -17,34 +14,75 @@ interface SerializedTestLabel {
 }
 
 interface GraphEntry {
-	name:  string;
-	unit:  string;
-	value: number;
+	name:   string;
+	unit:   string;
+	value:  number;
+	extra?: string;
+}
+
+/** the counterexample suite's own coverage of metamorphic mutations */
+interface MutationDetails {
+	readonly passes?:          number;
+	readonly counterexamples?: number;
+	readonly mutants?:         number;
 }
 
 const argv = process.argv.slice(2);
-const resultsAt = argv.indexOf('--results');
-const resultsPath = resultsAt >= 0 ? argv[resultsAt + 1] : undefined;
-const [detailsPath, ...graphPaths] = resultsAt >= 0 ? argv.filter((_, i) => i !== resultsAt && i !== resultsAt + 1) : argv;
+/** the value of a named option, `undefined` if it was not given */
+function option(name: string): string | undefined {
+	const at = argv.indexOf(name);
+	return at >= 0 ? argv[at + 1] : undefined;
+}
+const resultsPath = option('--results');
+const mutationsPath = option('--mutations');
+const mutationResultsPath = option('--mutation-results');
+/* whatever is neither an option nor the value of one */
+const [detailsPath, ...graphPaths] = argv.filter((a, i) => !a.startsWith('--') && !argv[i - 1]?.startsWith('--'));
 
 if(!detailsPath || graphPaths.length === 0) {
-	console.error('usage: test-label-counts.ts [--results <file>] <details.json> <graph.json...>');
+	console.error('usage: test-label-counts.ts [--results <file>] [--mutations <file>] [--mutation-results <file>] <details.json> <graph.json...>');
 	process.exit(2);
 }
 
-/** the number of tests the run collected, which the labels cannot know as only some tests carry one */
-function totalEntry(path: string | undefined): GraphEntry | undefined {
+/** the number of tests a vitest json report collected, read from its `numTotalTests` */
+function numTotalTestsEntry(name: string, path: string | undefined): GraphEntry | undefined {
 	if(path === undefined || !fs.existsSync(path)) {
 		return undefined;
 	}
 	try {
 		const report = JSON.parse(fs.readFileSync(path, 'utf-8')) as { numTotalTests?: number };
 		return typeof report.numTotalTests === 'number' && report.numTotalTests > 0
-			? { name: 'tests overall', unit: '#', value: report.numTotalTests } : undefined;
+			? { name, unit: '#', value: report.numTotalTests } : undefined;
 	} catch(e) {
 		console.log(`  could not read ${path}: ${(e as Error).message}`);
 		return undefined;
 	}
+}
+
+/**
+ * mutants can be fewer than passes * counterexamples (a pass may not fit a program).
+ * only fields the page actually shows are emitted; the rest stays in the suite's own file.
+ */
+function mutationEntries(path: string | undefined, resultsPath: string | undefined): GraphEntry[] {
+	const testsEntry = numTotalTestsEntry('mutation tests', resultsPath);
+	if(path === undefined || !fs.existsSync(path)) {
+		return testsEntry ? [testsEntry] : [];
+	}
+	let facts: MutationDetails;
+	try {
+		facts = JSON.parse(fs.readFileSync(path, 'utf-8')) as MutationDetails;
+	} catch(e) {
+		console.log(`  could not read ${path}: ${(e as Error).message}`);
+		return testsEntry ? [testsEntry] : [];
+	}
+	const possible = typeof facts.passes === 'number' && typeof facts.counterexamples === 'number'
+		? facts.passes * facts.counterexamples : undefined;
+	const entries = ([
+		['mutation mutants', facts.mutants, possible === undefined ? undefined : `out of ${possible} possible`],
+		['mutation passes', facts.passes, undefined]
+	] as const).flatMap(([name, value, extra]) =>
+		typeof value === 'number' && value >= 0 ? [{ name, unit: '#', value, ...(extra ? { extra } : {}) }] : []);
+	return testsEntry ? [...entries, testsEntry] : entries;
 }
 
 function countEntries(path: string): GraphEntry[] {
@@ -70,15 +108,20 @@ function countEntries(path: string): GraphEntry[] {
 	return data;
 }
 
+const total = numTotalTestsEntry('tests overall', resultsPath);
+const mutations = mutationEntries(mutationsPath, mutationResultsPath);
 if(!fs.existsSync(detailsPath)) {
-	console.log(`${detailsPath} does not exist, leaving the graph outputs alone`);
+	console.log(`${detailsPath} does not exist, counting no labels`);
+}
+const entries = [...(total ? [total] : []), ...(fs.existsSync(detailsPath) ? countEntries(detailsPath) : []), ...mutations];
+if(entries.length === 0) {
+	console.log('nothing was counted, leaving the graph outputs alone');
 	process.exit(0);
 }
-
-const total = totalEntry(resultsPath);
-const entries = [...(total ? [total] : []), ...countEntries(detailsPath)];
 console.log(`counted ${total ? total.value + ' tests, ' : ''}${entries.find(e => e.name === 'tests')?.value ?? 0}`
-	+ ` of them labeled, in ${entries.filter(e => e.name.startsWith('tests (')).length} contexts`);
+	+ ` of them labeled, in ${entries.filter(e => e.name.startsWith('tests (')).length} contexts`
+	+ `, and ${mutations.find(e => e.name === 'mutation mutants')?.value ?? 0} mutants`
+	+ ` of ${mutations.find(e => e.name === 'mutation passes')?.value ?? 0} passes`);
 
 for(const path of graphPaths) {
 	if(!fs.existsSync(path)) {

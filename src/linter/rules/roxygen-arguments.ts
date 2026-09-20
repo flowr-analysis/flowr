@@ -73,8 +73,9 @@ export const ROXYGEN_ARGS = {
 						//get parameter names
 						const params = roxygen.tags[KnownRoxygenTags.Param] ?? [];
 						const functionParamNames = getParameters(element.node).map(p => p.name.content.toString());
-						const inheritedParams = params.filter(tag => tag.inherited).map(tag => tag.value.name);
-						const roxygenParamNames = params.map(tag => tag.value.name);
+						const documented = (tag: { value: { name: string } }) => tag.value.name.split(',').map(n => n.trim()).filter(n => n.length > 0);
+						const inheritedParams = params.filter(tag => tag.inherited).flatMap(documented);
+						const roxygenParamNames = params.flatMap(documented);
 						const result = calculateArgumentDiff(inheritedParams ?? [], functionParamNames, roxygenParamNames);
 						if(result === false) {
 							return false;
@@ -103,7 +104,7 @@ export const ROXYGEN_ARGS = {
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Documentation, LintingRuleTag.Style],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Checks whether a function has undocumented or overdocumented parameters',
-		defaultConfig: {}
+		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<RoxygenArgsResult, RoxygenArgsMetadata, RoxygenArgsConfig>;
 

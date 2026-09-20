@@ -7,13 +7,15 @@ import type { ReadOnlyFlowrAnalyzerGasContext } from '../../project/context/flow
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../gas';
 import { slicerLogger } from './static-slicer';
 
-/** How many nodes the traversal visits between two {@link GasFeatureKey.Slicer|gas} checks. */
-const GasCheckEvery = 512;
+const enum SeenAs {
+	Normal     = 1,
+	SideEffect = 2
+}
 
 export class VisitingQueue {
 	private readonly threshold:      number;
 	private timesHitThreshold:       number                   = 0;
-	private readonly seen:           Map<Fingerprint, NodeId> = new Map();
+	private readonly seen:           Map<NodeId, Map<Fingerprint, number>> = new Map();
 	private readonly seenByCache:    Set<NodeId>              = new Set();
 	private readonly idThreshold:    Map<NodeId, number>      = new Map();
 	private readonly queue:          NodeToSlice[] = [];
@@ -26,6 +28,8 @@ export class VisitingQueue {
 	private readonly isGraphVertex?: (id: NodeId) => boolean;
 	private readonly gas?:           ReadOnlyFlowrAnalyzerGasContext;
 	private stoppedEarly            = false;
+	/** how many nodes pass between two gas checks, see {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} */
+	private readonly gasCheckEvery:  number;
 	private untilGasCheck           = 0;
 	/** entries dequeued, see {@link SliceProgress} */
 	private visited                 = 0;
@@ -35,6 +39,7 @@ export class VisitingQueue {
 		this.cache     = cache;
 		this.isGraphVertex = isGraphVertex;
 		this.gas = gas;
+		this.gasCheckEvery = gas?.checkEvery() ?? 0;
 	}
 
 	/**
@@ -58,20 +63,29 @@ export class VisitingQueue {
 		}
 
 		/* we do not include the in call part in the fingerprint as it is 'deterministic' from the source position */
-		const print = fingerprint(target, envFingerprint, onlyForSideEffects);
+		const seenAs = onlyForSideEffects ? SeenAs.SideEffect : SeenAs.Normal;
+		let seenIn = this.seen.get(target);
+		if(seenIn === undefined) {
+			seenIn = new Map();
+			this.seen.set(target, seenIn);
+		}
+		const seenBefore = seenIn.get(envFingerprint) ?? 0;
+		if((seenBefore & seenAs) !== 0) {
+			return;
+		}
+		seenIn.set(envFingerprint, seenBefore | seenAs);
 
-		if(!this.seen.has(print)) {
-			const cached = this.cache?.get(print);
+		if(this.cache !== undefined) {
+			const cached = this.cache.get(fingerprint(target, envFingerprint, onlyForSideEffects));
 			if(cached) {
 				this.seenByCache.add(target);
 				for(const id of cached) {
 					this.queue.push({ id, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 				}
 			}
-			this.idThreshold.set(target, idCounter + 1);
-			this.seen.set(print, target);
-			this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 		}
+		this.idThreshold.set(target, idCounter + 1);
+		this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 	}
 
 	public next(): NodeToSlice {
@@ -86,13 +100,13 @@ export class VisitingQueue {
 
 	/**
 	 * The traversal is synchronous, so a caller can only bound it from within. Gas is polled every
-	 * {@link GasCheckEvery} nodes, which keeps even an enabled check off the per-node path.
+	 * {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} nodes, keeping even an enabled check off the per-node path.
 	 */
 	private outOfGas(): boolean {
 		if(this.gas === undefined || this.untilGasCheck-- > 0) {
 			return this.stoppedEarly;
 		}
-		this.untilGasCheck = GasCheckEvery - 1;
+		this.untilGasCheck = this.gasCheckEvery - 1;
 		if(!this.stoppedEarly && this.gas.checkGas(GasFeatureKey.Slicer) >= GasLevel.Critical) {
 			this.stoppedEarly = true;
 			slicerLogger.warn(`slicing ran out of gas, the slice is incomplete (${GasWikiRef})`);
@@ -105,16 +119,17 @@ export class VisitingQueue {
 	}
 
 	public memoizeCallTargets(id: NodeId, targets: () => Set<DataflowGraphVertexInfo>): Set<DataflowGraphVertexInfo> {
-		if(!this.cachedCallTargets.has(id)) {
-			this.cachedCallTargets.set(id, targets());
+		let known = this.cachedCallTargets.get(id);
+		if(known === undefined) {
+			this.cachedCallTargets.set(id, known = targets());
 		}
-		return this.cachedCallTargets.get(id) as Set<DataflowGraphVertexInfo>;
+		return known;
 	}
 
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set([...this.seen.values(), ...this.seenByCache]),
+			result:            new Set([...this.seen.keys(), ...this.seenByCache]),
 			...(this.stoppedEarly ? { stoppedEarly: true, progress: { visited: this.visited, frontier: this.queue.length } } : {})
 		};
 	}

@@ -259,11 +259,6 @@ export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, arg
 	});
 }
 
-/** @deprecated use {@link classDeclarationOfImpl} instead */
-export function classDeclarationOf<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
-	return classDeclarationOfImpl(config, args);
-}
-
 /** One class the analysis saw declared, with the call that declared it. */
 export interface DeclaredClass extends ClassDeclaration {
 	/** the id of the declaring call */

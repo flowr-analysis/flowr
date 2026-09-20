@@ -1,12 +1,14 @@
 import { assertQuery } from '../../_helper/query';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { label } from '../../_helper/label';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
-	DefaultDependencyCategories,
+	defaultDependencyCategories,
 	type DependencyInfo,
+	Attached,
 	Constant,
 	Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
@@ -23,12 +25,16 @@ import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/defa
 import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
 import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
-import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { readFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { writeFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
 import { RFunctionCall } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', 'plotly', 'remotes', 'rlang', 'tinyplot');
+
+const defaultCtx = new FlowrAnalyzerContext(FlowrConfig.default());
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], statistics: [] };
 
@@ -42,7 +48,7 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 			continue;
 		}
 		out[key] = value.map(({ nodeId, linkedIds, argumentId, parts, ...rest }) => ({
-			nodeId:     decode(nodeId),
+			nodeId:     nodeId === undefined ? undefined : decode(nodeId),
 			linkedIds:  linkedIds?.map(decode),
 			argumentId: argumentId === undefined ? undefined : decode(argumentId),
 			parts:      parts?.map(decode),
@@ -58,9 +64,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		name: string,
 		code: string,
 		expected: Partial<DependenciesQueryResult>,
-		query: Partial<DependenciesQuery> = {}
+		query: Partial<DependenciesQuery> = {},
+		caps: readonly FlowrCapabilityId[] = []
 	): void {
-		assertQuery(label(name), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
+		assertQuery(label(name, caps), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
 			dependencies: {
 				...emptyDependencies,
 				...decodeIds(expected, normalize.idMap)
@@ -97,6 +104,22 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('Simple', () => {
 		/* `x + 1` at the top level is echoed, so it is an output even though nothing else happens */
 		testQuery('No dependencies', 'x + 1', { write: [{ nodeId: 2, functionName: '+', value: 'stdout', implicit: true }] });
+	});
+
+	describe('Through the dataflow', () => {
+		testQuery('a handle reads what it was opened on', 'con <- file("a.txt", "r")\nl <- readLines(con)', {
+			read: [{ nodeId: '1@file', functionName: 'file', value: 'a.txt' }, { nodeId: '2@readLines', functionName: 'readLines', value: 'a.txt' }]
+		});
+		testQuery('a handle writes what it was opened on', 'con <- file("o.txt", "w")\nwriteLines("a", con)', {
+			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
+		});
+		testQuery('a default parameter names the file', 'ld <- function(p = "def.csv") read.csv(p)\nld()', {
+			read:  [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'def.csv' }],
+			write: [{ nodeId: '2@ld', functionName: 'ld', value: 'stdout', implicit: true }]
+		});
+		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
+			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv' }]
+		});
 	});
 
 	describe('Libraries', () => {
@@ -166,7 +189,18 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			library: [
 				{ nodeId: '1@x', functionName: '::', value: 'foo' },
 				{ nodeId: '2@y', functionName: ':::', value: 'bar' }
-			] });
+			] }, {}, ['accessing-exported-names', 'accessing-internal-names']);
+
+		testQuery('an exported name accessed with ::: resolves the same, unflagged', 'stats:::median(1:3)', {
+			write:   [{ nodeId: 5, functionName: Identifier.make('median' as never, 'stats' as never, true), value: 'stdout', implicit: true }],
+			library: [{ nodeId: '1@median', functionName: ':::', value: 'stats' }]
+		}, {}, ['namespace-exports']);
+
+		testQuery('a foreign call is recognized as one', '.Call("my_c_fn", 1)\n.Fortran("my_f_sub", x = 1)', {
+			write: [
+				{ nodeId: '1@.Call', functionName: '.Call', value: 'stdout', implicit: true },
+				{ nodeId: '2@.Fortran', functionName: '.Fortran', value: 'stdout', implicit: true }
+			] }, {}, ['foreign-function-interface']);
 
 		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { write:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '1@library', functionName: 'library', value: '"a"' },
@@ -605,8 +639,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", {
 			read:  [],
 			write: [
-				{ value: 'stdout', functionName: 'print', nodeId: '1@print' },
-				{ value: 'stdout', implicit: true, functionName: 'read.csv', nodeId: '1@[2]read.csv' }
+				{ value: 'stdout', functionName: 'print', nodeId: '1@print' }
 			]
 		});
 	});
@@ -738,10 +771,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			const stated = BuiltInIndex.default().with(SemanticCallTag.Statistics);
 			assert.isNotEmpty(stated);
 			assert.deepStrictEqual(
-				DefaultDependencyCategories.statistics.functions.map(f => `${f.package as string}::${f.name}`).sort(),
+				defaultDependencyCategories(defaultCtx).statistics.functions.map(f => `${f.package as string}::${f.name}`).sort(),
 				stated.map(Identifier.toString).sort()
 			);
-			for(const f of DefaultDependencyCategories.statistics.functions) {
+			for(const f of defaultDependencyCategories(defaultCtx).statistics.functions) {
 				assert.isDefined(f.package, `${f.name} has no package`);
 			}
 		});
@@ -898,7 +931,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 		}
-		test.each([['read', ReadFunctions], ['write', WriteFunctions], ['other paths', OtherPathFunctions]] as const)(
+		test.each([['read', readFunctions(defaultCtx)], ['write', writeFunctions(defaultCtx)], ['other paths', OtherPathFunctions]] as const)(
 			'%s', (_name, list) => {
 				for(const f of list) {
 					const declared = resources.get(f.package === undefined ? f.name : Identifier.toString(Identifier.make(f.name, f.package)));
@@ -914,10 +947,34 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			});
 	});
-	/**
-	 * The signature database knows what a package exports, so it settles whether an entry names the right one.
-	 * A wrong package is invisible in a bare snippet and only drops the call once the owning library is loaded.
-	 */
+	describe('Assumed base packages', () => {
+		testQuery('off by default', 'x <- median(1:10)', {});
+
+		testQuery('reports an assumed base package used without library()', 'x <- median(1:10)', {
+			library: [
+				{ nodeId: undefined, functionName: Attached, value: 'base', implicit: true, alwaysAttached: true, linkedIds: [4, 7] },
+				{ nodeId: undefined, functionName: Attached, value: 'stats', implicit: true, linkedIds: ['1@median'] }
+			]
+		}, { assumedPackages: true });
+
+		testQuery('does not duplicate an explicitly loaded package', 'library(stats)\nx <- median(1:10)', {
+			library: [
+				{ nodeId: '1@library', functionName: 'library', value: 'stats' },
+				{ nodeId: undefined, functionName: Attached, value: 'base', implicit: true, alwaysAttached: true, linkedIds: [3, 8, 11] }
+			]
+		}, { assumedPackages: true });
+
+		testQuery('several assumed packages come back in search-path order', 'x <- sd(1:10)\ny <- head(1:10)', {
+			library: [
+				{ nodeId: undefined, functionName: Attached, value: 'base', implicit: true, alwaysAttached: true, linkedIds: [4, 7, 12, 15] },
+				{ nodeId: undefined, functionName: Attached, value: 'stats', implicit: true, linkedIds: ['1@sd'] },
+				{ nodeId: undefined, functionName: Attached, value: 'utils', implicit: true, linkedIds: ['2@head'] }
+			]
+		}, { assumedPackages: true });
+
+		testQuery('does nothing when the library category is disabled', 'x <- median(1:10)', {}, { assumedPackages: true, enabledCategories: ['read'] });
+	});
+
 	describe('Package attribution', () => {
 		/* the database records these as an S4 generic or an S3 method, so their name is not in the export list */
 		const recordedElsewhere = new Set(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
@@ -928,7 +985,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			const sources = analyzer.inspectContext().deps.signatureSources();
 			const exportsOf = (pkg: string): string[] => sources.filter(s => s.packageNames().includes(pkg))
 				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);
-			for(const [category, { functions }] of Object.entries(DefaultDependencyCategories)) {
+			for(const [category, { functions }] of Object.entries(defaultDependencyCategories(defaultCtx))) {
 				for(const f of functions) {
 					const known = f.package === undefined ? [] : exportsOf(f.package);
 					if(known.length === 0 || recordedElsewhere.has(f.name)) {

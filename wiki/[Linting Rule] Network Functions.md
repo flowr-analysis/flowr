@@ -1,27 +1,24 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-25, 12:15:37 UTC (v2.14.4), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="network-functions">Network Functions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule is used to detect issues that are related to the performance of the code. For example, inefficient algorithms, unnecessary computations, or unoptimized data structures."><a href='#performance'>![performance](https://img.shields.io/badge/performance-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span>
 
-
 This rule is a `best-effort` rule.
  
 Marks network functions that execute network operations, such as downloading files or making HTTP requests.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/network-functions.ts#L90">src/linter/rules/network-functions.ts</a>._
-
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/network-functions.ts#L89">src/linter/rules/network-functions.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `network-functions` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/network-functions.ts#L23"><code><span title="The list of function names or more detailed NetworkFunction information that should be marked in the given context if their arguments match.">fns</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/network-functions.ts#L22"><code><span title="The list of function names or more detailed NetworkFunction information that should be marked in the given context if their arguments match.">fns</span></code></a>\
 The list of function names or more detailed
 <code>NetworkFunction</code>
 information that should be marked in the given context if their arguments match.
 
 ### Examples
-
 
 ```r
 
@@ -29,40 +26,26 @@ read.csv("https://example.com/data.csv")
 download.file("https://foo.bar")
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "network-functions",     "config": {} } ] } ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function `utils::read.csv` at 2.1-40\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function `utils::download.file` at 3.1-32\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalCalls: 2, totalFunctionDefinitions: 2, searchTimeMs: 1, processTimeMs: 1\
-_All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
 
 ```json
 {
@@ -70,61 +53,23 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "results": {
       "network-functions": {
         "results": [
-          {
-            "certainty": "certain",
-            "involvedId": 3,
-            "function": "utils::read.csv",
-            "loc": [
-              2,
-              1,
-              2,
-              40
-            ]
-          },
-          {
-            "certainty": "certain",
-            "involvedId": 7,
-            "function": "utils::download.file",
-            "loc": [
-              3,
-              1,
-              3,
-              32
-            ]
-          }
+          {"certainty":"certain","involvedId":3,"function":"utils::read.csv","loc":[2,1,2,40]},
+          {"certainty":"certain","involvedId":7,"function":"utils::download.file","loc":[3,1,3,32]}
         ],
-        ".meta": {
-          "totalCalls": 2,
-          "totalFunctionDefinitions": 2,
-          "searchTimeMs": 1,
-          "processTimeMs": 1
-        }
+        ".meta": {"totalCalls":2,"totalFunctionDefinitions":2}
       }
     },
-    ".meta": {
-      "timing": 2
-    }
+    ".meta": {}
   },
-  ".meta": {
-    "timing": 3
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-network-functions.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts)
-
 
 <h4 id="Test_Case:_network_function_nested">Test Case: network function nested</h4>
 
@@ -136,19 +81,13 @@ Given the following input:
 foo(url("http://example.com"))
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'base::url', loc: [1, 5, 1, 29]
-```
-
+* certain at 1.5-1.29: function = `'base::url'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L12) for the test-case implementation.
 		
 <h4 id="Test_Case:__network_funcion_with_multiple_arguments:___prefix__">Test Case: `network funcion with multiple arguments: ${prefix}`</h4>
-
 
 Given the following input:
 
@@ -156,19 +95,13 @@ Given the following input:
 `download.file("${prefix}foo.org/bar.csv", "local.csv")`
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'utils::download.file', loc: [1, 1, 1, prefix.length + 45]
-```
-
+* certain: function = `'utils::download.file'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L29) for the test-case implementation.
 		
 <h4 id="Test_Case:_library_call">Test Case: library call</h4>
-
 
 Given the following input:
 
@@ -177,24 +110,18 @@ library(httr)
 POST("http://example.com")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ sigDb: controlledSigDb('httr', ['GET', 'POST']) }
+{sigDb: controlledSigDb('httr', ['GET', 'POST'])}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'httr::POST', loc: [2, 1, 2, 26]
-```
-
+* certain at 2.1-2.26: function = `'httr::POST'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L39) for the test-case implementation.
 		
 <h4 id="Test_Case:_unloaded_library_call">Test Case: unloaded library call</h4>
-
 
 Given the following input:
 
@@ -202,19 +129,13 @@ Given the following input:
 POST("http://example.com")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, function: 'POST', loc: [1, 1, 1, 26] }]
-```
-
+* certain at 1.1-1.26: function = `'POST'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L47) for the test-case implementation.
 		
 <h4 id="Test_Case:_mismatched_library_call">Test Case: mismatched library call</h4>
-
 
 Given the following input:
 
@@ -222,19 +143,13 @@ Given the following input:
 httr2::GET("http://example.com")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L52) for the test-case implementation.
 		
 <h4 id="Test_Case:_namespace_call">Test Case: namespace call</h4>
-
 
 Given the following input:
 
@@ -243,69 +158,51 @@ library(httr)
 httr::GET("http://example.com")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ sigDb: controlledSigDb('httr', ['GET', 'POST']) }
+{sigDb: controlledSigDb('httr', ['GET', 'POST'])}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'httr::GET', loc: [2, 1, 2, 31]
-```
-
+* certain at 2.1-2.31: function = `'httr::GET'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L57) for the test-case implementation.
 		
 <h4 id="Test_Case:_do_not_trigger_without_url_prefix">Test Case: do not trigger without url prefix</h4>
 
-
 Given the following input:
 
 ```r
 read.csv("www.example.com")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L66) for the test-case implementation.
 		
 <h4 id="Test_Case:_trigger_with_custom_url_prefix">Test Case: trigger with custom url prefix</h4>
 
-
 Given the following input:
 
 ```r
 read.csv("www.example.com")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ fns: [{ name: Identifier.make('read.csv', 'utils'), onlyTriggerWithArgument: /^www\./ }] }
+{fns: [{name: Identifier.make('read.csv', 'utils'), onlyTriggerWithArgument: /^www\./}]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, function: 'utils::read.csv', loc: [1, 1, 1, 27] }]
-```
-
+* certain at 1.1-1.27: function = `'utils::read.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L71) for the test-case implementation.
 		
 <h4 id="Test_Case:_do_not_trigger_with_custom_url_prefix">Test Case: do not trigger with custom url prefix</h4>
-
 
 Given the following input:
 
@@ -313,24 +210,18 @@ Given the following input:
 read.csv("https://example.com")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ fns: [{ name: Identifier.make('read.csv', 'utils'), onlyTriggerWithArgument: /^www\./ }] }
+{fns: [{name: Identifier.make('read.csv', 'utils'), onlyTriggerWithArgument: /^www\./}]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L77) for the test-case implementation.
 		
 <h4 id="Test_Case:_do_not_trigger_with_multiple_arguments">Test Case: do not trigger with multiple arguments</h4>
-
 
 Given the following input:
 
@@ -338,19 +229,13 @@ Given the following input:
 download.file("data/local.csv", "local.csv")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L84) for the test-case implementation.
 		
 <h4 id="Test_Case:_not_in_list_test">Test Case: not in list test</h4>
-
 
 Given the following input:
 
@@ -358,19 +243,13 @@ Given the following input:
 file("data/local.csv")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L90) for the test-case implementation.
 		
 <h4 id="Test_Case:_nor_in_list_but_prefix_in_string">Test Case: nor in list but prefix in string</h4>
-
 
 Given the following input:
 
@@ -378,19 +257,13 @@ Given the following input:
 print("http://example.com")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L96) for the test-case implementation.
 		
 <h4 id="Test_Case:_do_not_trigger_on_known_source">Test Case: do not trigger on known source</h4>
-
 
 Given the following input:
 
@@ -398,19 +271,13 @@ Given the following input:
 source("tex.R")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L102) for the test-case implementation.
 		
 <h4 id="Test_Case:_trigger_on_web_source">Test Case: trigger on web source</h4>
-
 
 Given the following input:
 
@@ -418,19 +285,13 @@ Given the following input:
 source("https://foo.com")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'base::source', loc: [1, 1, 1, 25]
-```
-
+* certain at 1.1-1.25: function = `'base::source'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L108) for the test-case implementation.
 		
 <h4 id="Test_Case:_Named_argument">Test Case: Named argument</h4>
-
 
 Given the following input:
 
@@ -438,19 +299,13 @@ Given the following input:
 read.csv(file = "http://example.com/data.csv")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'utils::read.csv', loc: [1, 1, 1, 46]
-```
-
+* certain at 1.1-1.46: function = `'utils::read.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L117) for the test-case implementation.
 		
 <h4 id="Test_Case:_Positional_argument_with_custom_config">Test Case: Positional argument with custom config</h4>
-
 
 Given the following input:
 
@@ -458,24 +313,18 @@ Given the following input:
 test.me(x, "http://example.com/data.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ fns: [{ name: 'test.me', onlyTriggerWithArgument: /^(https?|ftps?):\/\//, info: { argIdx: 1 } }] }
+{fns: [{name: 'test.me', onlyTriggerWithArgument: /^(https?|ftps?):\/\//, info: {argIdx: 1}}]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'test.me', loc: [1, 1, 1, 41]
-```
-
+* certain at 1.1-1.41: function = `'test.me'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L125) for the test-case implementation.
 		
 <h4 id="Test_Case:_Named_argument_with_custom_config">Test Case: Named argument with custom config</h4>
-
 
 Given the following input:
 
@@ -483,24 +332,18 @@ Given the following input:
 test.me(foo = "http://example.com/data.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ fns: [{ name: 'test.me', onlyTriggerWithArgument: /^(https?|ftps?):\/\//, info: { argName: 'foo' } }] }
+{fns: [{name: 'test.me', onlyTriggerWithArgument: /^(https?|ftps?):\/\//, info: {argName: 'foo'}}]}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'test.me', loc: [1, 1, 1, 44]
-```
-
+* certain at 1.1-1.44: function = `'test.me'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L133) for the test-case implementation.
 		
 <h4 id="Test_Case:_Resolve_value">Test Case: Resolve value</h4>
-
 
 Given the following input:
 
@@ -508,14 +351,9 @@ Given the following input:
 url <- "http://example.com/data.csv"; read.csv(url)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, function: 'utils::read.csv', loc: [1, 39, 1, 51]
-```
-
+* certain at 1.39-1.51: function = `'utils::read.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L142) for the test-case implementation.
 		
@@ -530,24 +368,18 @@ library(httr)
 GET("http://example.com")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ sigDb: controlledSigDb('httr', ['GET', 'POST']) }
+{sigDb: controlledSigDb('httr', ['GET', 'POST'])}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, function: 'httr::GET', loc: [2, 1, 2, 25] }]
-```
-
+* certain at 2.1-2.25: function = `'httr::GET'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L152) for the test-case implementation.
 		
 <h4 id="Test_Case:_without_any_package_database">Test Case: without any package database</h4>
-
 
 Given the following input:
 
@@ -556,18 +388,70 @@ library(httr)
 GET("http://example.com")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ noSigDb: true }
+{noSigDb: true}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-[{ certainty: LintingResultCertainty.Certain, function: 'GET', loc: [2, 1, 2, 25] }]
-```
-
+* certain at 2.1-2.25: function = `'GET'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L158) for the test-case implementation.
+		
+<h4 id="Test_Case:_cat_without_file">Test Case: cat without file</h4>
+
+Given the following input:
+
+```r
+cat("hello
+")
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L167) for the test-case implementation.
+		
+<h4 id="Test_Case:_writeLines_without_con">Test Case: writeLines without con</h4>
+
+Given the following input:
+
+```r
+writeLines("x")
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L168) for the test-case implementation.
+		
+<h4 id="Test_Case:_cat_to_a_local_file">Test Case: cat to a local file</h4>
+
+Given the following input:
+
+```r
+cat("hello", file = "out.txt")
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L169) for the test-case implementation.
+		
+<h4 id="Test_Case:_cat_to_a_url">Test Case: cat to a url</h4>
+
+Given the following input:
+
+```r
+cat("hello", file = "https://example.com")
+```
+
+We expect the linter to report the following:
+
+* certain at 1.1-1.42: function = `'base::cat'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L170) for the test-case implementation.

@@ -1,0 +1,13 @@
+* { box-sizing: border-box; }
+body {
+	margin: 0; padding: 0 1rem 3rem; color: var(--fg); -webkit-text-size-adjust: 100%;
+	font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	background: radial-gradient(64rem 24rem at 50% -10rem, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%) var(--bg) no-repeat;
+}
+a {
+	color: var(--accent); text-decoration: none;
+	text-decoration-thickness: from-font; text-underline-offset: .16em;
+	transition: color .12s, border-color .12s, opacity .12s;
+}
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { a { transition: none; } }

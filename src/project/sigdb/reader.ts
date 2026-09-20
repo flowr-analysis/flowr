@@ -3,6 +3,7 @@
  * and a sharded set ({@link SigDatabaseSet}), the shared-source cache, whole-bundle reading, and the verification gate.
  */
 import fs from 'fs';
+import { compareByCodeUnit } from '../../util/text/strings';
 import path from 'path';
 import readline from 'readline';
 import { RVersion, type VersionString } from '../../util/r-version';
@@ -271,7 +272,7 @@ function packagesExportingAcross(name: string, downloads: (pkg: string) => numbe
 			found.add(pkg);
 		}
 	}
-	return [...found].sort((a, b) => downloads(b) - downloads(a) || a.localeCompare(b));
+	return [...found].sort((a, b) => downloads(b) - downloads(a) || compareByCodeUnit(a, b));
 }
 
 /** union view over multiple sources for the same package; routes queries to the appropriate source */
@@ -713,7 +714,7 @@ export class SigDatabase implements PackageSignatureSource {
 				found.push(pkg);
 			}
 		}
-		return found.sort((a, b) => this.downloads(b) - this.downloads(a) || a.localeCompare(b));
+		return found.sort((a, b) => this.downloads(b) - this.downloads(a) || compareByCodeUnit(a, b));
 	}
 
 	/**

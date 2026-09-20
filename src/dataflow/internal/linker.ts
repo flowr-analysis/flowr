@@ -1,12 +1,12 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../fn/function-semantics';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type InGraphIdentifierDefinition, Identifier, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
+import { type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
 import type { FunctionArgument, DataflowGraph } from '../graph/graph';
 import { NoEdges } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -17,6 +17,10 @@ import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionD
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
+import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { unpackArg } from './process/functions/call/argument/unpack-argument';
+import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfgVertex } from '../graph/vertex';
@@ -93,15 +97,6 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 }
 
 /**
- * {@link FunctionSemantics.call.match.toSpec|Matches} the arguments against a parameter specification, returning the
- * arguments bound to each target.
- * @useInstead {@link FunctionSemantics.call.match.toSpec}
- */
-export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
-	return FunctionSemantics.call.match.toSpec(args, params);
-}
-
-/**
  * Links the function call arguments to the target function definition and returns a map from argument ids to parameter ids.
  */
 function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): Map<NodeId, NodeId> | undefined {
@@ -118,6 +113,15 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 	return linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph);
 }
 
+const NoCalleeEnvironments: readonly REnvironmentInformation[] = [];
+
+function environmentsOfCallee(info: DataflowGraphVertexFunctionCall): readonly REnvironmentInformation[] {
+	if(info.name === undefined || info.environment === undefined) {
+		return NoCalleeEnvironments;
+	}
+	return (Resolve.byName(info.name, info.environment) ?? []).filter(hasEnvState).map(d => d.envState);
+}
+
 /**
  * Links a function call with a single target function definition.
  */
@@ -128,17 +132,39 @@ export function linkFunctionCallWithSingleTarget(
 	idMap: AstIdMap
 ): ExitPoint[] {
 	const id = info.id;
-	if(info.environment !== undefined) {
+	const environment = info.environment;
+	if(environment !== undefined) {
+		let callee: readonly REnvironmentInformation[] | undefined = undefined;
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of fnSubflow.in) {
-			const defs = ingoing.name ? Resolve.byNameAndType(ingoing.name, info.environment, ingoing.type) : undefined;
+			const name = ingoing.name;
+			if(name === undefined) {
+				continue;
+			}
+			callee ??= environmentsOfCallee(info);
+			let defs: readonly IdentifierDefinition[] | undefined = undefined;
+			for(const env of callee) {
+				defs = Resolve.byNameAndType(name, env, ingoing.type);
+				if(defs !== undefined) {
+					break;
+				}
+			}
+			defs ??= Resolve.byNameAndType(name, environment, ingoing.type);
 			if(defs === undefined) {
 				continue;
 			}
-			for(const { nodeId, type, value } of defs as InGraphIdentifierDefinition[]) {
-				if(!NodeId.isBuiltIn(nodeId)) {
+			for(const d of defs as readonly InGraphIdentifierDefinition[]) {
+				const { nodeId, type, value, definedAt, envState } = d;
+				if(!fnSubflow.graph.has(nodeId) && !NodeId.isBuiltIn(nodeId)) {
 					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
+					if(envState !== undefined) {
+						bindAccessedField(graph, ingoing.nodeId, envState, idMap);
+					}
+					if(definedAt !== undefined && definedAt !== nodeId && !NodeId.isBuiltIn(definedAt)
+						&& graph.hasVertex(definedAt) && !DfgVertex.isVariableDefinition(graph.getVertex(nodeId))) {
+						graph.addEdge(id, definedAt, EdgeType.Reads);
+					}
 					if(type === ReferenceType.Function && ingoing.type === ReferenceType.S7MethodPrefix && Array.isArray(value)) {
 						for(const v of value) {
 							graph.addEdge(id, v, EdgeType.Calls);
@@ -235,12 +261,20 @@ function linkFunctionCall(
 export function linkFunctionCalls(
 	graph: DataflowGraph,
 	idMap: AstIdMap,
-	thisGraph: DataflowGraph
+	thisGraph: DataflowGraph,
+	/** calls `graph` knows of that `thisGraph` does not, as a read that became a call */
+	alsoCalls: readonly NodeId[] = []
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] {
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] = [];
 	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
 		if(!info.onlyBuiltin) {
 			linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions);
+		}
+	}
+	for(const id of alsoCalls) {
+		const info = graph.getVertex(id);
+		if(DfgVertex.isFunctionCall(info)) {
+			linkFunctionCall(graph, id, info, idMap, graph, calledFunctionDefinitions);
 		}
 	}
 	return calledFunctionDefinitions;
@@ -271,9 +305,9 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 			functionCallDefs = Resolve.byNameAndType(info.name, known, refType)?.map(d => d.nodeId) ?? [];
 		}
 	}
-	/* a call that kept no environment still knows the user definitions it was linked to, and those are targets */
+	const followBits = info.origin.includes(BuiltInProcName.Unnamed) ? FCallLinkReadBits : EdgeType.Calls;
 	for(const [target, outgoingEdge] of outgoingEdges.entries()) {
-		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls) && (known !== undefined || !NodeId.isBuiltIn(target))) {
+		if(DfEdge.includesType(outgoingEdge, followBits) && DfEdge.doesNotIncludeType(outgoingEdge, EdgeType.Argument) && (known !== undefined || !NodeId.isBuiltIn(target))) {
 			functionCallDefs.push(target);
 		}
 	}
@@ -310,11 +344,18 @@ export function getAllLinkedFunctionDefinitions(
 		return [result, builtIns];
 	}
 
-	const potential: NodeId[] = Array.from(functionDefinitionReadIds);
+	const potential: [NodeId, boolean][] = Array.from(functionDefinitionReadIds, id => [id, false]);
 	const visited = new Set<NodeId>();
+	const expanded = new Set<NodeId>();
+	const expandedViaAccess = new Set<NodeId>();
 
 	while(potential.length !== 0) {
-		const cid = potential.pop() as NodeId;
+		const [cid, viaAccess] = potential.pop() as [NodeId, boolean];
+		const done = viaAccess ? expandedViaAccess : expanded;
+		if(done.has(cid)) {
+			continue;
+		}
+		done.add(cid);
 		visited.add(cid);
 
 		if(NodeId.isBuiltIn(cid)) {
@@ -337,7 +378,8 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par);
+		const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
+		const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess);
 		let hasReturnEdge = false;
 		let followTargets: NodeId[] | undefined;
 
@@ -345,7 +387,7 @@ export function getAllLinkedFunctionDefinitions(
 			if(DfEdge.includesType(e, EdgeType.Returns)) {
 				hasReturnEdge = true;
 				if(!visited.has(target)) {
-					potential.push(target);
+					potential.push([target, nextViaAccess]);
 				}
 			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, LinkedFnFollowBits) && !visited.has(target)) {
 				(followTargets ??= []).push(target);
@@ -354,7 +396,7 @@ export function getAllLinkedFunctionDefinitions(
 
 		if(!hasReturnEdge && followTargets) {
 			for(const target of followTargets) {
-				potential.push(target);
+				potential.push([target, nextViaAccess]);
 			}
 		}
 	}
@@ -500,7 +542,10 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 	}
 }
 
-/** The open references a function definition still carries into its closure. */
+/**
+ * The open references a function definition still carries into its closure.
+ * @helper api
+ */
 export const ClosureRefs = {
 	name: 'ClosureRefs',
 	/**
@@ -532,3 +577,41 @@ export const ClosureRefs = {
 		definition.subflow.in = remainingIn;
 	}
 } as const;
+
+/** The field an access names, if it is written out: `x$f`, `x[["f"]]`, or `x[[2]]`, which is how a list records its positional entries. */
+export function accessedFieldName(fieldNode: RNode<ParentInformation> | undefined, treatIndicesAsString: boolean | undefined): string | undefined {
+	if(RString.is(fieldNode)) {
+		return fieldNode.content.str;
+	} else if(treatIndicesAsString) {
+		return fieldNode?.lexeme;
+	}
+	return RNumber.is(fieldNode) && !fieldNode.content.complexNumber && Number.isInteger(fieldNode.content.num) && fieldNode.content.num > 0
+		? String(fieldNode.content.num) : undefined;
+}
+
+/** Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns. */
+export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean): void {
+	for(const fd of fieldDefs ?? []) {
+		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
+		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
+			graph.addEdge(accessId, fd.definedAt, EdgeType.Reads);
+		}
+		if(returnsFunctions && fd.type === ReferenceType.Function) {
+			graph.addEdge(accessId, fd.nodeId, EdgeType.Returns);
+		}
+	}
+}
+
+/**
+ * An access `x$f` written where `x` was still open reads the field of whatever `x` is bound to once that binding is
+ * known, so binding the read at `readId` to a definition holding `envState` links the access to that field.
+ */
+export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState: REnvironmentInformation, idMap: AstIdMap): void {
+	const read = idMap.get(readId);
+	const access = read === undefined ? undefined : RNode.directParent(read, idMap);
+	if(!RAccess.is(access) || access.accessed.info.id !== readId) {
+		return;
+	}
+	const fieldName = accessedFieldName(unpackArg(access.access[0]), RAccess.isNamed(access));
+	linkFieldReads(graph, access.info.id, fieldName ? envState.current.memory.get(fieldName) : undefined, true);
+}

@@ -223,6 +223,10 @@ export const NAMING_CONVENTION = {
 				id:             m.node.info.id
 			})).filter(e => isNotUndefined(e.loc));
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
+		const taken = new Set<string | undefined>();
+		for(const [id] of dataflow.graph.vertices(true)) {
+			taken.add(dataflow.graph.idMap?.get(id)?.lexeme);
+		}
 		const results = symbols
 			/* a name that already reads as the wanted convention is no violation, whatever else it could also be
 			   read as: `f` carries no separator and no capital, so it is snake_case and camelCase at once */
@@ -233,7 +237,7 @@ export const NAMING_CONVENTION = {
 				return {
 					...m,
 					involvedId: id,
-					quickFix:   fix ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
+					quickFix:   fix !== undefined && !taken.has(fix) ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
 				} as NamingConventionResult;
 			});
 		return {
@@ -256,9 +260,9 @@ export const NAMING_CONVENTION = {
 		tags:            [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		// heuristic and noisy on real package code, so only run when requested explicitly
 		activeByDefault: false,
-		defaultConfig:   {
+		defaultConfig:   () => ({
 			caseing:        'auto',
 			ignoreNonAlpha: true
-		}
+		})
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

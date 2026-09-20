@@ -1,6 +1,9 @@
 import type { ReplOutput } from './repl-main';
 
-/** Output that the user most likely wants on their clipboard as well. */
+/**
+ * Output that the user most likely wants on their clipboard as well.
+ * @helper output
+ */
 export const ReplClipboard = {
 	name: 'ReplClipboard',
 	/** Prints `text` and, if the output allows it, copies it to the clipboard and reports `note` afterwards. */

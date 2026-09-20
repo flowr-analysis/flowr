@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 11:40:13 UTC (v2.14.4), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="Inspect Argument Roles Query">Inspect Argument Roles Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine what functions and their formals do\
 _This query is requested with the type `inspect-fn-props`._\
 Run in the REPL: `:query @inspect-fn-props [(<crit>;...)] <code | file://path>`
-
 
 Per function definition this states what each formal is used for, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L9"><code><span title="What a single argument of a call is used for, as a bitmask ( ArgProp.Forced / ArgProp.NoDefault lead, being the two bits the signature database can also state).">ArgProp</span></code></a> bits, and what the
 function itself does, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L57"><code><span title="The properties of the behavior of a call, as a bitmask.">CallProp</span></code></a> bits: the very scheme flowR states its built-ins and the
@@ -14,7 +13,7 @@ R hands arguments over as promises, so whether a parameter is evaluated at all i
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L11"><code><span title="evaluated whenever the call happens, even if the result goes unused, like x in force(x)">ArgProp::<b>Forced</b></span></code></a> says every call forces it,
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L45"><code><span title="never evaluated, the definite counterpart of ArgProp.Forced : no path of the body reads it">ArgProp::<b>Lazy</b></span></code></a> that none can, and neither of the two that it depends on the
 path taken, on the caller, or on a function flowR could not resolve. A function forcing every one of its
-parameters is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L89"><code><span title="calling it forces every parameter, so nothing it is handed stays a promise (see strictnessOfFunction )">CallProp::<b>Strict</b></span></code></a> in turn. A read that only hands the parameter
+parameters is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L88"><code>CallProp::<b>Strict</b></code></a> in turn. A read that only hands the parameter
 on is decided by the function receiving it, resolved through the call graph, while a read in a nested
 definition, in a loop, or under a condition leaves it open.
 
@@ -31,71 +30,31 @@ properties named as the `ArgProp`/`CallProp` members they are.
 
 Using the example code `f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }` the following query returns what every identified function and formal does:
 
-
-
 ```json
 [ { "type": "inspect-fn-props" } ]
 ```
 
-
 (This can be shortened to `@inspect-fn-props` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (5ms)\
+Query: **inspect-fn-props** (8ms)\
 &nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
-_All queries together required ≈5 ms (1ms accuracy, total 6 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "inspect-fn-props": {
-    ".meta": {
-      "timing": 5
-    },
-    "roles": {
-      "32": {
-        "1": 5,
-        "3": 25,
-        "5": 513,
-        "7": 17408
-      }
-    },
-    "props": {
-      "32": {
-        "props": 0,
-        "tags": [
-          "prints"
-        ]
-      }
-    }
-  },
-  ".meta": {
-    "timing": 5
-  }
-}
+{"inspect-fn-props":{".meta":{},"roles":{"32":{"1":5,"3":25,"5":513,"7":17408}},"props":{"32":{"props":0,"tags":["prints"]}}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }
@@ -105,10 +64,8 @@ f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, 
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _2.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -264,23 +221,11 @@ end
     linkStyle 43 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-
-
 
 ```json
 [
@@ -293,65 +238,27 @@ This query also supports a slicing criterion based query mode that only returns 
 ]
 ```
 
-
 (This can be shortened to `@inspect-fn-props (1@function) "f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (2ms)\
+Query: **inspect-fn-props** (4ms)\
 &nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
-_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
-
-
-
 ```json
-{
-  "inspect-fn-props": {
-    ".meta": {
-      "timing": 2
-    },
-    "roles": {
-      "32": {
-        "1": 5,
-        "3": 25,
-        "5": 513,
-        "7": 17408
-      }
-    },
-    "props": {
-      "32": {
-        "props": 0,
-        "tags": [
-          "prints"
-        ]
-      }
-    }
-  },
-  ".meta": {
-    "timing": 2
-  }
-}
+{"inspect-fn-props":{".meta":{},"roles":{"32":{"1":5,"3":25,"5":513,"7":17408}},"props":{"32":{"props":0,"tags":["prints"]}}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }
@@ -361,10 +268,8 @@ f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, 
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _4.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -520,21 +425,10 @@ end
     linkStyle 43 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>

@@ -16,7 +16,7 @@ import { ClosureRefs } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
-import type { DataflowGraph } from '../../../../../graph/graph';
+import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from '../../../../../graph/graph';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
@@ -39,7 +39,8 @@ export function processTryCatch<OtherInfo>(
 		handlers: {
 			error?:   string,
 			finally?: string
-		}
+		},
+		aborts?: boolean
 	}
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
@@ -66,10 +67,14 @@ export function processTryCatch<OtherInfo>(
 	const blockArg = new Set(argMaps.get('block'));
 	const errorArg = new Set(argMaps.get('error'));
 	const finallyArg = new Set(argMaps.get('finally'));
+	const dots = new Set(argMaps.get('...'));
+	const otherHandlerArg = new Set(res.callArgs
+		.filter((a): a is NamedFunctionArgument => FunctionArgument.isNamed(a) && dots.has(a.nodeId))
+		.map(a => a.nodeId));
 	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out:
 	   `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`.
 	   A construct declaring no handler parameter at all, as `try` does, catches whatever arrives. */
-	const catchesError = config.handlers.error === undefined || namesAnErrorHandler(args);
+	const catchesError = (config.aborts ?? true) && (config.handlers.error === undefined || namesAnErrorHandler(args));
 	// only take those exit points from the block
 	// check whether blockArg has *always* happening exceptions, if so we do not constrain the error handler
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
@@ -101,7 +106,7 @@ export function processTryCatch<OtherInfo>(
 			(info.exitPoints as ExitPoint[]).push(...constrainExitPoints(errorExitPoints, blockArg));
 		}
 	}
-	for(const e of errorArg) {
+	for(const e of [...errorArg, ...otherHandlerArg]) {
 		info.graph.addEdge(rootId, e, EdgeType.Reads | EdgeType.Calls);
 		const linkTo = promoteCallToFunction(rootId, e, info, data);
 		if(linkTo) {
@@ -201,10 +206,24 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 	}
 	if(anonymous) {
 		info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
+		const syntheticCall = 'anon-' + functionId;
+		info.graph.addVertex({
+			tag:         VertexType.FunctionCall,
+			id:          syntheticCall,
+			environment: data.environment,
+			name:        functionName,
+			onlyBuiltin: false,
+			cds:         data.cds,
+			args:        [],
+			origin:      [BuiltInProcName.Function]
+		}, data.ctx.env.cleanEnv);
+		info.graph.addEdge(arg, syntheticCall, EdgeType.Calls);
+		info.graph.addEdge(syntheticCall, functionId, EdgeType.Calls | EdgeType.Reads);
+		info.graph.addEdge(call, functionId, EdgeType.Calls | EdgeType.Reads);
 
-		const dfVert = info.graph.getVertex(call);
-		if(dfVert && DfgVertex.isFunctionDefinition(dfVert)) {
-			ClosureRefs.resolveOpenIngoing(info.graph, call, dfVert, data.environment);
+		const handler = info.graph.getVertex(functionId);
+		if(DfgVertex.isFunctionDefinition(handler)) {
+			ClosureRefs.resolveOpenIngoing(info.graph, syntheticCall, handler, data.environment);
 		}
 		// we did the linking
 		return undefined;

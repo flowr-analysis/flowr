@@ -2,18 +2,20 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
-import { getAllFunctionCallTargets, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
+import { bindAccessedField, getAllFunctionCallTargets, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { resolveListToEnvState } from './built-in-list';
+import { resolveClassMethodsToEnvState } from './built-in-class-generator';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
-import { Identifier, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { hasEnvState, Identifier, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
@@ -126,7 +128,6 @@ export function processFunctionDefinition<OtherInfo>(
 			linkParameterReadToBodyWrites(subgraph, read, writesByName);
 		}
 	}
-
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, writesByName);
 
 	const readInBody = body.in.concat(body.unknownReferences);
@@ -147,6 +148,28 @@ export function processFunctionDefinition<OtherInfo>(
 	}
 
 	subgraph.mergeWith(body.graph);
+
+	for(const param of parameters) {
+		const parameter = param !== EmptyArgument && RParameter.is(param.value) ? param.value : undefined;
+		if(parameter?.defaultValue === undefined) {
+			continue;
+		}
+		const forcedAt: NodeId[] = [];
+		for(const [reader, edge] of subgraph.edgesTo(parameter.name.info.id)) {
+			if(DfEdge.includesType(edge, EdgeType.Reads)) {
+				forcedAt.push(reader);
+			}
+		}
+		RNode.visitAst<OtherInfo & ParentInformation>(parameter.defaultValue, inner => {
+			if(RSymbol.is(inner) && DfgVertex.isUse(subgraph.getVertex(inner.info.id))
+				&& linkParameterReadToBodyWrites(subgraph, { nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable }, writesByName)) {
+				for(const reader of forcedAt) {
+					subgraph.addEdge(inner.info.id, reader, EdgeType.Reads);
+				}
+			}
+			return false;
+		});
+	}
 
 	let outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment);
 
@@ -199,7 +222,7 @@ export function processFunctionDefinition<OtherInfo>(
 			return EmptyArgument;
 		}
 	}), data.completeAst.idMap);
-	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
+	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id, remainingRead);
 	const exitPoints = body.exitPoints;
 
 	const readParams: Record<NodeId, boolean> = {};
@@ -231,9 +254,21 @@ export function processFunctionDefinition<OtherInfo>(
 				break;
 			}
 			const epNode = subgraph.idMap?.get(ep.nodeId);
+			if(DfgVertex.hasOrigin(epVertex, BuiltInProcName.List) && epNode !== undefined) {
+				returnEnvState = resolveListToEnvState(epNode, { environment: outEnvironment });
+				if(returnEnvState) {
+					break;
+				}
+			}
+			if(DfgVertex.hasOrigin(epVertex, BuiltInProcName.ClassGenerator) && epNode !== undefined) {
+				returnEnvState = resolveClassMethodsToEnvState(epNode, { environment: outEnvironment });
+				if(returnEnvState) {
+					break;
+				}
+			}
 			if(RSymbol.is(epNode)) {
 				const defs = Resolve.byNameAndType(epNode.content, outEnvironment, ReferenceType.Variable);
-				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+				const def = defs?.find(hasEnvState);
 				if(def?.envState) {
 					returnEnvState = def.envState;
 					break;
@@ -346,27 +381,68 @@ function resolveIngoingRefs(
 	return remainingIn;
 }
 
-/** Update the closure links of all nested function definitions. */
+
 function updateNestedFunctionClosures(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
-	fnId: NodeId
+	fnId: NodeId,
+	openReads: IdentifierReference[]
 ) {
+	const open = new Set(openReads.map(r => r.nodeId));
+	const settled = new Set<NodeId>();
+	const superWrites = superAssignedInFrame(graph);
 	// track *all* function definitions, including those nested within, resolving their 'in' via the lowest scope (popped after this definition)
 	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		subflow.in = resolveIngoingRefs(subflow.in, outEnvironment, id, fnId, (ingoing, resolved) => {
+			const writes = (ingoing.name !== undefined ? superWrites.get(ingoing.name) : undefined) ?? [];
 			let allBuiltIn = true;
+			let allClosureWrites = true;
 			for(const ref of resolved) {
 				graph.addEdge(ingoing.nodeId, ref.nodeId, EdgeType.Reads);
 				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 					allBuiltIn = false;
 				}
+				if(!writes.includes(ref.nodeId)) {
+					allClosureWrites = false;
+				}
 			}
-			return allBuiltIn;
+			for(const write of writes) {
+				if(write !== ingoing.nodeId) {
+					graph.addEdge(ingoing.nodeId, write, EdgeType.Reads);
+				}
+			}
+			if(allBuiltIn && resolved.length > 0 && !allClosureWrites) {
+				settled.add(ingoing.nodeId);
+			}
+			return allBuiltIn || allClosureWrites;
 		});
+		for(const ref of subflow.in) {
+			if(ref.name !== undefined && !settled.has(ref.nodeId) && !open.has(ref.nodeId)) {
+				open.add(ref.nodeId);
+				openReads.push(ref);
+			}
+		}
 
 		linkSuperAssignmentsToOuterDefinitions(graph, subflow.graph, outEnvironment);
 	}
+}
+
+function superAssignedInFrame(graph: DataflowGraph): ReadonlyMap<Identifier, NodeId[]> {
+	const written = new Map<Identifier, NodeId[]>();
+	for(const [, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		for(const nodeId of subflow.graph) {
+			if(!DfgVertex.hasOrigin(graph.getVertex(nodeId), BuiltInProcName.SuperAssignment)) {
+				continue;
+			}
+			for(const [targetId, edge] of graph.edgesFrom(nodeId)) {
+				const target = graph.idMap?.get(targetId);
+				if(DfEdge.includesType(edge, EdgeType.Returns) && DfgVertex.isVariableDefinition(graph.getVertex(targetId)) && RSymbol.is(target)) {
+					written.set(target.content, [...(written.get(target.content) ?? []), targetId]);
+				}
+			}
+		}
+	}
+	return written;
 }
 
 function linkSuperAssignmentsToOuterDefinitions(
@@ -538,10 +614,13 @@ export function updateNestedFunctionCalls(
 				}
 			}
 			targetVertex.subflow.in = resolveIngoingRefs(targetVertex.subflow.in, effectiveEnvironment, id, id, (ingoing, resolved) => {
-				for(const { nodeId } of resolved) {
+				for(const { nodeId, envState } of resolved as InGraphIdentifierDefinition[]) {
 					if(!NodeId.isBuiltIn(nodeId)) {
 						graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
+						if(envState !== undefined && graph.idMap !== undefined) {
+							bindAccessedField(graph, ingoing.nodeId, envState, graph.idMap);
+						}
 					}
 				}
 				return false;
@@ -561,6 +640,27 @@ export function updateNestedFunctionCalls(
 				}
 			}
 		}
+	}
+	const called = new Set<NodeId>();
+	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+		for(const [target, edge] of graph.edgesFrom(id)) {
+			if(DfEdge.includesType(edge, EdgeType.Calls)) {
+				called.add(target);
+			}
+		}
+	}
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		if(vertex.subflow.in.length === 0 || called.has(id)) {
+			continue;
+		}
+		resolveIngoingRefs(vertex.subflow.in, outEnvironment, id, id, (ingoing, resolved) => {
+			for(const { nodeId } of resolved) {
+				if(!NodeId.isBuiltIn(nodeId)) {
+					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.Reads);
+				}
+			}
+			return true;
+		});
 	}
 }
 
@@ -594,12 +694,11 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 	return { ...data, environment: env };
 }
 
-/** Groups body writes by name, each list sorted by descending id (so the lowest id is last), for `linkParameterReadToBodyWrites`. */
 function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, IdentifierReference[]> {
 	const named = out.filter((o): o is IdentifierReference & { name: Identifier } => o.name !== undefined);
 	const byName = arraysGroupBy(named, o => o.name);
 	for(const writes of byName.values()) {
-		writes.sort((a, b) => String(b.nodeId).localeCompare(String(a.nodeId)));
+		writes.sort((a, b) => NodeId.compare(a.nodeId, b.nodeId));
 	}
 	return byName;
 }

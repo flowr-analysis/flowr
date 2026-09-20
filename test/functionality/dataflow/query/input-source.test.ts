@@ -6,25 +6,32 @@ import type {
 	InputSourcesQuery,
 	InputSourcesQueryResult
 } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
-import { DefaultInputClassifierConfig } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
+import { defaultInputClassifierConfig } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import type { BuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
 import { InputTraceType, InputType } from '../../../../src/queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 
 assumeLoadedPackages('cohortBuilder', 'shiny', 'shinyCohortBuilder');
 
 describe('The default classifier configuration follows the built-in labels', () => {
-	const builtIns = BuiltInIndex.default();
+	const defaultCtx = new FlowrAnalyzerContext(FlowrConfig.default());
+	const builtIns = defaultCtx.env.builtInIndex;
+	const defaultConfig = defaultInputClassifierConfig(defaultCtx);
 	test(label('everything flowR calls pure derives its result from its arguments', ['name-normal'], ['other']), () => {
-		const derived = new Set((DefaultInputClassifierConfig[InputTraceType.Pure] as readonly Identifier[]).map(Identifier.toString));
+		const derived = new Set((defaultConfig[InputTraceType.Pure] as readonly Identifier[]).map(Identifier.toString));
+		assert.isAbove([...builtIns.pure].length, 0, 'there have to be pure built-ins to classify');
 		for(const pure of builtIns.pure) {
 			assert.isTrue(derived.has(Identifier.toString(pure)), `${Identifier.toString(pure)} is pure but not classified as deriving from its arguments`);
 		}
 	});
 	test(label('the narrowing functions are the ones labelled `Narrows`', ['name-normal'], ['other']), () => {
-		const narrowing = DefaultInputClassifierConfig.narrowing ?? [];
+		const narrowing = defaultConfig.narrowing ?? [];
 		assert.deepStrictEqual(narrowing.map(n => Identifier.toString(n.call)).sort(),
 			builtIns.with(SemanticCallTag.Narrows).map(Identifier.toString).sort());
 		const matchArg = narrowing.find(n => Identifier.getName(n.call) === 'match.arg');
@@ -35,6 +42,33 @@ describe('The default classifier configuration follows the built-in labels', () 
 		assert.deepStrictEqual(builtIns.params(ArgProp.Bounds).map(p => Identifier.getName(p.call)), ['match.arg']);
 	});
 });
+
+describe('A configured built-in reaches the classifier', { concurrent: false }, withTreeSitter(parser => {
+	const definitions: BuiltInDefinitions = [{
+		type:            'function',
+		names:           [Identifier.from(['launchIt', 'base'])],
+		processor:       BuiltInProcName.Default,
+		config:          { tags: [SemanticCallTag.Process], sig: [['cmd', ArgProp.Forced | ArgProp.Value]] },
+		assumePrimitive: false
+	}];
+
+	test(label('a `Process` built-in only the config states is classified as a system input', ['name-normal'], ['other']), async() => {
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setParser(parser)
+			.amendConfig(c => {
+				c.semantics.environment.overwriteBuiltIns.definitions = definitions;
+			})
+			.build();
+		analyzer.addRequest("x <- launchIt('ls')\neval(x)");
+		const system = defaultInputClassifierConfig(analyzer.inspectContext())[InputType.System] as readonly Identifier[];
+		assert.include(system.map(Identifier.toString), 'base::launchIt',
+			'the configured built-in has to be part of the system inputs');
+		assert.notInclude((defaultInputClassifierConfig(new FlowrAnalyzerContext(FlowrConfig.default()))[InputType.System] as readonly Identifier[]).map(Identifier.toString), 'base::launchIt',
+			'and it must not leak into the default configuration');
+		const out = await analyzer.query([{ type: 'input-sources', criterion: '2@eval' }]);
+		assert.deepStrictEqual(out['input-sources'].results['2@eval'].flatMap(s => s.types), [InputType.System]);
+	});
+}));
 
 describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly InputSourcesQuery[], expectedOutput: InputSourcesQueryResult['results'], assumeLoaded?: readonly string[]) {

@@ -137,15 +137,18 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 }
 
 /**
- * Whether `name` is bound in the scope of `useId` or an enclosing scope (up to the top level), per
+ * Whether `name` is bound in a scope strictly enclosing the one of `useId` (up to the top level), per
  * {@link collectScopeDefinedNames}. Suppresses forward-referenced closure variables flowR did not link.
+ * The use's own scope does not count: a binding there reaches the use only if the dataflow linked it, as a
+ * read before the write in the same frame (`f <- function() { print(v); v <- 1 }`) finds nothing.
  */
 export function isDefinedInEnclosingScope(graph: DataflowGraph, defined: ScopeDefinedNames, useId: NodeId, name: string): boolean {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
 		return false;
 	}
-	if(defined.get('top')?.has(name)) {
+	const own = enclosingScope(idMap, idMap.get(useId)?.info.parent).scope;
+	if(own !== 'top' && defined.get('top')?.has(name)) {
 		return true;
 	}
 	let cur = idMap.get(useId)?.info.parent;
@@ -154,7 +157,7 @@ export function isDefinedInEnclosingScope(graph: DataflowGraph, defined: ScopeDe
 		if(node === undefined) {
 			break;
 		}
-		if(RFunctionDefinition.is(node) && defined.get(cur)?.has(name)) {
+		if(RFunctionDefinition.is(node) && cur !== own && defined.get(cur)?.has(name)) {
 			return true;
 		}
 		cur = node.info.parent;

@@ -13,7 +13,7 @@ import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/vir
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../../project/context/flowr-file';
@@ -59,7 +59,7 @@ export async function showQuery<
 	const duration = performance.now() - now;
 
 	const metaInfo = `
-The analysis required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
+The analysis${docTook(duration)} ran (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
 	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);

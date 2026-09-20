@@ -1,14 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-19, 21:38:36 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="file-path-validity">File Path Validity&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
-
 
 This rule is a `best-effort` rule.
  
 Checks whether file paths used in read and write operations are valid and point to existing files.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/file-path-validity.ts#L63">src/linter/rules/file-path-validity.ts</a>._
-
 
 ### Configuration
 
@@ -34,98 +32,51 @@ Whether unknown file paths should be included as linting results.
 
 ### Examples
 
-
 ```r
 
 my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "file-path-validity",     "config": {} } ] } ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **linter** (3 ms)\
+Query: **linter** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `C:/Users/me/Documents/My R Scripts/Reproducible.csv` at 2.12-74\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 2, processTimeMs: 1\
-_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
 
 ```json
 {
   "linter": {
     "results": {
       "file-path-validity": {
-        "results": [
-          {
-            "involvedId": 4,
-            "loc": [
-              2,
-              12,
-              2,
-              74
-            ],
-            "filePath": "C:/Users/me/Documents/My R Scripts/Reproducible.csv",
-            "certainty": "certain"
-          }
-        ],
-        ".meta": {
-          "totalReads": 1,
-          "totalUnknown": 0,
-          "totalWritesBeforeAlways": 0,
-          "totalValid": 0,
-          "searchTimeMs": 2,
-          "processTimeMs": 1
-        }
+        "results": [{"involvedId":4,"loc":[2,12,2,74],"filePath":"C:/Users/me/Documents/My R Scripts/Reproducible.csv","certainty":"certain"}],
+        ".meta": {"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}
       }
     },
-    ".meta": {
-      "timing": 3
-    }
+    ".meta": {}
   },
-  ".meta": {
-    "timing": 3
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-file-path-validity.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts)
-
 
 <h4 id="Test_Case:_none">Test Case: none</h4>
 
@@ -137,14 +88,9 @@ Given the following input:
 cat("hello")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L18) for the test-case implementation.
 		
@@ -160,19 +106,14 @@ read.csv("file.csv")
 read.csv("file-missing.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: 'file-missing.csv', loc: [3, 1, 3, 28]
-```
-
+* certain at 3.1-3.28: filePath = `'file-missing.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L20) for the test-case implementation.
 		
@@ -188,19 +129,14 @@ read.csv("FiLe.csv")
 read.csv("FiLe-missing.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: 'FiLe-missing.csv', loc: [3, 1, 3, 28]
-```
-
+* certain at 3.1-3.28: filePath = `'FiLe-missing.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L24) for the test-case implementation.
 		
@@ -216,19 +152,14 @@ read.csv("path/to/deep-file.csv")
 read.csv("path/to/deep-file-missing.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: 'path/to/deep-file-missing.csv', loc: [3, 1, 3, 41]
-```
-
+* certain at 3.1-3.41: filePath = `'path/to/deep-file-missing.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L28) for the test-case implementation.
 		
@@ -244,24 +175,18 @@ read.csv("invalid/path/to/deep-file.csv")
 read.csv("invalid/path/to/deep-file-missing.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: 'invalid/path/to/deep-file-missing.csv', loc: [3, 1, 3, 49]
-```
-
+* certain at 3.1-3.49: filePath = `'invalid/path/to/deep-file-missing.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L32) for the test-case implementation.
 		
 <h4 id="Test_Case:_setwd_relative_valid">Test Case: setwd relative valid</h4>
-
 
 Given the following input:
 
@@ -270,19 +195,14 @@ setwd("sub")
 read.csv("only-here.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: wdFiles }
+{addFiles: wdFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L37) for the test-case implementation.
 		
@@ -296,19 +216,14 @@ Given the following input:
 read.csv("only-here.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles: wdFiles }
+{addFiles: wdFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: 'only-here.csv', loc: [1, 1, 1, 25]
-```
-
+* certain at 1.1-1.25: filePath = `'only-here.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L40) for the test-case implementation.
 		
@@ -323,19 +238,14 @@ write.csv("hello", "file-missing.csv")
 read.csv("file-missing.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L44) for the test-case implementation.
 		
@@ -350,19 +260,14 @@ write.csv("hello", "FiLe-missing.csv")
 read.csv("file-missing.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L46) for the test-case implementation.
 		
@@ -377,19 +282,14 @@ if(FALSE) { write.csv("hello", "file-missing.csv") }
 read.csv("file-missing.csv")
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: 'file-missing.csv', loc: [2, 1, 2, 28]
-```
-
+* certain at 2.1-2.28: filePath = `'file-missing.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L48) for the test-case implementation.
 		
@@ -403,19 +303,14 @@ Given the following input:
 path <- "file.csv"; read.csv(path)
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ includeUnknown: true, addFiles }
+{includeUnknown: true, addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L52) for the test-case implementation.
 		
@@ -429,19 +324,14 @@ Given the following input:
 path <- "file" + runif(1) + ".csv"; read.csv(path)
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ includeUnknown: false, addFiles }
+{includeUnknown: false, addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L55) for the test-case implementation.
 		
@@ -455,24 +345,18 @@ Given the following input:
 path <- "file" + runif(1) + ".csv"; read.csv(path)
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ includeUnknown: true, addFiles }
+{includeUnknown: true, addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Uncertain, filePath: Unknown, loc: [1, 37, 1, 50]
-```
-
+* uncertain at 1.37-1.50: filePath = `Unknown`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L58) for the test-case implementation.
 		
 <h4 id="Test_Case:_url_and_missing_file">Test Case: url and missing file</h4>
-
 
 Given the following input:
 
@@ -481,19 +365,13 @@ Given the following input:
 read.csv("missing.csv")`
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: 'missing.csv', loc: [2, 1, 2, 23]
-```
-
+* certain at 2.1-2.23: filePath = `'missing.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L78) for the test-case implementation.
 		
 <h4 id="Test_Case:_url_and_existing_file">Test Case: url and existing file</h4>
-
 
 Given the following input:
 
@@ -502,24 +380,18 @@ Given the following input:
 read.csv("file.csv")`
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ addFiles }
+{addFiles}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
-
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L81) for the test-case implementation.
 		
 <h4 id="Test_Case:_file://_missing">Test Case: file:// missing</h4>
-
 
 Given the following input:
 
@@ -527,13 +399,8 @@ Given the following input:
 read.csv("file:///missing/file.csv")
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
- certainty: LintingResultCertainty.Certain, filePath: '/missing/file.csv', loc: [1, 1, 1, 36]
-```
-
+* certain at 1.1-1.36: filePath = `'/missing/file.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L86) for the test-case implementation.

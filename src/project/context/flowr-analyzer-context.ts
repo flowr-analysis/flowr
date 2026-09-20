@@ -53,6 +53,8 @@ import {
 	type ReadOnlyFlowrAnalyzerGasContext
 } from './flowr-analyzer-gas-context';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
+import { type FnInfo, fnInfo } from '../../dataflow/environments/query-fn-props';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -74,6 +76,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly config:           FlowrConfig;
 	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */
 	readonly activatedPlugins: ReadonlySet<string>;
+	/** What flowR knows about the function `name` (a bare or `pkg::` name), from its built-ins and the signature database, see {@link fnInfo}. */
+	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined;
 	/** The project kind the effective {@link config} is specialized for and the overrides it applies, or `undefined` when no specialization is in effect. */
 	configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
@@ -331,6 +335,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	 */
 	public inspect(): ReadOnlyFlowrAnalyzerContext {
 		return this;
+	}
+
+	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
+		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, version);
 	}
 
 	/**

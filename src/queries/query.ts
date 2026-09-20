@@ -100,6 +100,10 @@ import {
 	GuessDepVersionsQueryDefinition
 } from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
+import {
+	type FunctionInfoQuery,
+	FunctionInfoQueryDefinition
+} from './catalog/function-info-query/function-info-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -134,6 +138,7 @@ export type Query = CallContextQuery
 	| InputSourcesQuery
 	| DiceQuery
 	| GuessDepVersionsQuery
+	| FunctionInfoQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -209,7 +214,8 @@ export const SupportedQueries = {
 	'origin':               OriginQueryDefinition,
 	'linter':               LinterQueryDefinition,
 	'dice':                 DiceQueryDefinition,
-	'guess-dep-versions':   GuessDepVersionsQueryDefinition
+	'guess-dep-versions':   GuessDepVersionsQueryDefinition,
+	'function-info':        FunctionInfoQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
@@ -436,6 +442,7 @@ export interface FoundLint {
 /**
  * Running queries and reading what they reported, without `Object.entries` and the casts it forces. Reading
  * changes nothing: the results keep the shape they are serialized in.
+ * @helper api
  * @example
  * ```ts
  * const out = await executeQueries({ analyzer }, [{ type: 'static-slice', criteria: ['2@x'] }]);

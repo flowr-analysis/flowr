@@ -14,7 +14,7 @@
   * [Control Flow Graph (CFG)](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)
   * [Dataflow Graph (DFG)](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
   * [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) ([Search](https://flowr-analysis.github.io/flowr/wiki/sigdb/))
-  * [Supported Features/Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities)
+  * [Supported Features/Capabilities](https://flowr-analysis.github.io/flowr/wiki/capabilities/)
   * [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects)
 * [🧹 Testing & Linting](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) ([Benchmark Page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark))
 * [⁉️ FAQ](https://github.com/flowr-analysis/flowr/wiki/FAQ)

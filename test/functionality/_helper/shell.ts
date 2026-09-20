@@ -16,6 +16,7 @@ import {
 	type RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
+	createNormalizePipeline,
 	createSlicePipeline,
 	DEFAULT_NORMALIZE_PIPELINE,
 	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
@@ -155,12 +156,9 @@ function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProj
  * this is an old, and nowadays outdated method to retrieve the normalized AST for a given input
  * Please prefer using the {@link FlowrAnalyzer} for new code!
  */
-export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
+export const retrieveNormalizedAst = async(parser: KnownParser, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
 	const context = contextFromInput(input);
-	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		parser: shell,
-		context
-	}).allRemainingSteps()).normalize;
+	return (await createNormalizePipeline(parser, { context }).allRemainingSteps()).normalize;
 };
 
 export interface TestConfiguration extends MergeableRecord {
@@ -542,7 +540,7 @@ interface TestCaseParams {
 	autoSelectIf:         AutoSelectPredicate,
 	/** Disable Tree-sitter tests */
 	skipTreeSitter:       boolean,
-	/** Whether to skip AST comparison tests between the RShell and Tree-sitter (only relevant when issues are known) */
+	/** Whether to skip the shell/Tree-sitter AST comparison (only relevant when the divergence is a known issue) */
 	skipCompare:          boolean,
 	/** Which CFG properties to exclude for CFG checks */
 	cfgExcludeProperties: readonly CfgProperty[],
@@ -623,7 +621,7 @@ export function assertSliced(
 			testConfig?.skipTreeSitter,
 			false,
 			'cfg SAT properties',
-			function() {
+			() => {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
 				const cfg = extractCfg(res.dataflow);
 				const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
@@ -633,7 +631,7 @@ export function assertSliced(
 					console.error('cfg properties:', cfgToMermaidUrl(cfg, res.normalize));
 					throw e;
 				}
-			}
+			},
 		);
 
 		handleAssertOutput(name, shell, input, testConfig);

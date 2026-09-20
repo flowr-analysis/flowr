@@ -110,24 +110,39 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
 }
 
 /**
+ * Whether `arg` is the value the pipe handed to the call `functionRootId`, which {@link processNamedCall}
+ * spliced into its arguments. The pipe processes and links that value itself, so processing it here again
+ * would duplicate it.
+ */
+export function isPipedArgument<OtherInfo>(
+	arg:            unknown,
+	functionRootId: NodeId,
+	data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
+): boolean {
+	return data.pipedArgument?.rootId === functionRootId && data.pipedArgument.argument === arg;
+}
+
+/**
  * Processes all arguments for a function call, updating the given final graph and environment.
  */
 export function processAllArguments<OtherInfo>(
 	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
-	// arg env contains the environments with other args defined
-	let argEnv = functionName.environment;
 	const callArgs: FunctionArgument[] = [];
 	const processedArguments: (DataflowInformation | undefined)[] = [];
 	const remainingReadInArgs = [];
 	let i = -1;
 	for(const arg of args) {
 		i++;
-		data = { ...data, environment: argEnv };
+		data = { ...data, environment: finalEnv };
 		data = patchData?.(data, i) ?? data;
 		if(RArgument.isEmpty(arg)) {
 			callArgs.push(EmptyArgument);
+			processedArguments.push(undefined);
+			continue;
+		}
+		if(isPipedArgument(arg, functionRootId, data)) {
 			processedArguments.push(undefined);
 			continue;
 		}
@@ -181,8 +196,6 @@ export function processAllArguments<OtherInfo>(
 				}
 			}
 		}
-		argEnv = overwriteEnvironment(argEnv, processed.environment);
-
 		if(!RArgument.is(arg) || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {

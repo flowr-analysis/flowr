@@ -35,6 +35,11 @@ alerting off (see `isInfoEntry` in `src/benchmark/summarizer/second-phase/graph.
 threshold hits stay with the measurements, because a release that fails to re-parse more slices *should*
 alert. `mergeInfoSuites` in `stats.js` folds the two back into one suite before anything is drawn.
 
+Not every counter comes out of the benchmark itself. What only the test suite knows, the labeled tests and
+what the metamorphic mutations of the counterexample suite cover, is written by that suite into `coverage/`
+and merged into the info suite afterwards by `scripts/test-label-counts.ts`. The summarizer lives in `src/`
+and the numbers live in `test/`, so this is the way across instead of an import.
+
 Every plotted number is the **mean**; the median and the standard deviation ride along in `extra` and show up
 on hover. One series must never mix the two, or a release that switched statistics reads as a change that
 never happened. Each chart says which of the two it draws, because a counter such as the number of linting

@@ -46,6 +46,7 @@ export function normalizeSingleNode(data: NormalizerData, elem: NamedJsonEntry):
 		case RawRType.Next:
 			return normalizeNext(data, elem.content);
 		case RawRType.Symbol:
+		case RawRType.SymbolFunctionCall:
 		case RawRType.Slot:
 		case RawRType.NullConst: {
 			const symbol = tryNormalizeSymbol(data, getWithTokenType([elem.content]));

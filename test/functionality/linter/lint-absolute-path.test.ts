@@ -4,7 +4,6 @@ import { withTreeSitter } from '../_helper/shell';
 import { isAbsolutePath, isUrl, fileUrlToPath } from '../../../src/util/text/strings';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import path from 'path';
 import { getPlatform } from '../../../src/util/os';
 
 /** a path as R reads it back, so that a backslash in the source is one in the value and no escape */
@@ -54,7 +53,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				type:          'replace',
 				'description': 'Replace with a relative path to `/home/me/foo.bar`',
 				loc:           [1, 1, 1, 18, '/home/me'],
-				replacement:   `".${path.sep}foo.bar"`
+				replacement:   '"./foo.bar"'
 			}]
 		}], { totalConsidered: 1, totalUnknown: 0 }, {
 			useAsFilePath: '/home/me',
@@ -72,7 +71,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				type:          'replace',
 				'description': 'Replace with a relative path to `/home/me/foo.bar`',
 				loc:           [1, 10, 1, 27, '/home/me'],
-				replacement:   `".${path.sep}foo.bar"`
+				replacement:   '"./foo.bar"'
 			}]
 		}], { totalConsidered: 2, totalUnknown: 0 }, {
 			useAsFilePath: '/home/me',
@@ -216,7 +215,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						assertLinter(command, parser, command, 'absolute-file-paths', [
 							{
 								certainty: LintingResultCertainty.Uncertain,
-								filePath:  components.join(path.sep),
+								filePath:  components.join('/'),
 								loc:       [1, 1, 1, command.length]
 							}
 						], { totalConsidered: 1, totalUnknown: 0 });
@@ -249,8 +248,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				's3://my-bucket/data.csv',
 				'gs://my-bucket/data.csv'
 			];
-			/* s3:// has a digit before the colon so isAbsolutePath never matches it; exclude from ignoreUrls=false tests */
-			const urlsMatchingAbsPath = remoteUrls.filter(u => !u.startsWith('s3://'));
+			const urlsMatchingAbsPath = remoteUrls;
 
 			describe('ignoreUrls=true (default)', () => {
 				describe('path functions', () => {

@@ -421,14 +421,3 @@ export interface FunctionStrictnessesOptions {
 }
 
 
-/**
- * Determines whether the function with the given id is strict, i.e., whether calling it forces its arguments.
- * {@link Ternary#Always} says every call forces every parameter, {@link Ternary#Never} that no call forces
- * all of them, and {@link Ternary#Maybe} that it depends on the path taken, on the caller, or on a function
- * flowR could not resolve. A definition without parameters has nothing to leave unforced and is strict.
- * @deprecated use {@link strictnessOfEach} instead
- */
-export function strictnessOfFunction(id: NodeId, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): FunctionStrictness {
-	return strictnessOfEach([id], graph, { ctx })[id];
-}
-

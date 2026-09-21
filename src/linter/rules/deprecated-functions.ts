@@ -166,8 +166,12 @@ function conditionalyDeprecatedFromBuiltinConfig(definitions: BuiltInDefinitions
 	const result: DeprecatedFunctionsConfig['conditionally'] = {};
 	for(const def of definitions.filter(def => def.type === 'function')) {
 		const info = def.config?.deprInfo;
-		if(info !== undefined) {
-			def.names.forEach(n => result[Identifier.toString(n)] = info);
+		if(info === undefined) {
+			continue;
+		}
+
+		for(const name of def.names) {
+			result[Identifier.toString(name)] = info;
 		}
 	}
 	return result;

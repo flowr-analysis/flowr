@@ -1,17 +1,19 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { graphlib } from 'dagre';
+import type { EdgeLabel, GraphLabel, graphlib, NodeLabel } from '@dagrejs/dagre';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge } from '../../dataflow/graph/edge';
 
-let dagreModule: typeof import('dagre') | undefined;
+type DagreGraph = graphlib.Graph<GraphLabel, NodeLabel, EdgeLabel>;
+
+let dagreModule: typeof import('@dagrejs/dagre') | undefined;
 /* type-only import above, `dagre` is optional: the ascii layout is a side feature, so the package is resolved at call time */
-function dagre(): typeof import('dagre') {
+function dagre(): typeof import('@dagrejs/dagre') {
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, see above
-		return dagreModule ??= require('dagre') as typeof import('dagre');
+		return dagreModule ??= require('@dagrejs/dagre') as typeof import('@dagrejs/dagre');
 	} catch{
-		throw new Error('the optional dependency `dagre` is required to render a dataflow graph as ascii, install it with `npm i dagre`');
+		throw new Error('the optional dependency `@dagrejs/dagre` is required to render a dataflow graph as ascii, install it with `npm i @dagrejs/dagre`');
 	}
 }
 
@@ -84,7 +86,7 @@ class AsciiCanvas {
  */
 export function dfgToAscii(dfg: DataflowGraph): string {
 	const { graphlib: dagreGraphlib, layout } = dagre();
-	const g = new dagreGraphlib.Graph();
+	const g: DagreGraph = new dagreGraphlib.Graph<GraphLabel, NodeLabel, EdgeLabel>();
 	const verts = Array.from(dfg.vertices(true));
 	g.setGraph({
 		nodesep: 1,
@@ -116,7 +118,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 				continue;
 			}
 			longestId = Math.max(longestId, String(to).length);
-			g.setEdge(String(from), String(to), DfEdge.typesToNames(e));
+			g.setEdge(String(from), String(to), { names: DfEdge.typesToNames(e) });
 			edgesDone.add(`${from}-${to}`);
 		}
 	}
@@ -163,7 +165,7 @@ const type2Edge = {
 
 } as const satisfies Record<VertexType, string>;
 
-function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanvas): void {
+function renderVertices(dfg: DataflowGraph, g: DagreGraph, canvas: AsciiCanvas): void {
 	for(const nodeId of g.nodes()) {
 		const node = g.node(nodeId);
 		if(!node) {
@@ -171,8 +173,8 @@ function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanv
 		}
 
 		const label = node.label as string;
-		const x = Math.round(node.x);
-		const y = Math.round(node.y);
+		const x = Math.round(node.x ?? NaN);
+		const y = Math.round(node.y ?? NaN);
 
 		const tag = dfg.getVertex(NodeId.normalize(nodeId))?.tag;
 		let e = '+';
@@ -214,11 +216,11 @@ function determineCornerChar(lastDirection: 'horizontal' | 'vertical' | null, px
 	}
 }
 
-function renderEdges(g: graphlib.Graph, canvas: AsciiCanvas): void {
+function renderEdges(g: DagreGraph, canvas: AsciiCanvas): void {
 	const otherEdges = new Set<string>();
 	for(const e of g.edges()) {
 		const edge = g.edge(e);
-		let points = edge.points;
+		let points = edge.points ?? [];
 
 		// we rework edges into sequences of straight lines only, adding intermediate points as needed
 		const newPoints = [points[0]];

@@ -47,12 +47,13 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 			return undefined;
 		}
 
-		const vector = NodeValue.soleOf(vectorOfLoop.nodeId, Resolve.info(dataflow, ctx), 'vector');
-		if(vector === undefined || !isValue(vector.elements)) {
-			return undefined;
-		}
-
-		if(vector.elements.length === 1) {
+		const vector = NodeValue.soleOf(vectorOfLoop.nodeId, Resolve.info(dataflow, ctx));
+		const once = vector === undefined ? false
+			: vector.type === 'vector' ? isValue(vector.elements) && vector.elements.length === 1
+				: vector.type === 'interval' ? isValue(vector.start) && isValue(vector.end) && vector.startInclusive && vector.endInclusive
+					&& isValue(vector.start.value) && isValue(vector.end.value) && vector.start.value.num === vector.end.value.num
+					: vector.type === 'string' || vector.type === 'logical';
+		if(once) {
 			return true;
 		}
 	}

@@ -1,14 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[src/documentation/wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
 <h2 id="syntactically-valid">Syntactically Valid&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
-
 
 This rule is a `best-effort` rule.
  
 Checks whether the code is free of syntax errors, using the configured (error-tolerant) parser, and offers extensible quick-fixes to repair them.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/syntactically-valid.ts#L266">src/linter/rules/syntactically-valid.ts</a>._
-
 
 ### Configuration
 
@@ -26,25 +24,15 @@ Preferred
 
 ### Examples
 
-
 ```r
 x <- c(1, 2
 ```
 
-
 The linting query can be used to run this rule on the above example:
-
-
-
 
 ```json
 [ { "type": "linter",   "rules": [ { "name": "syntactically-valid",     "config": {} } ] } ]
 ```
-
-
-
-
-
 
 _Results (prettified and summarized):_
 
@@ -52,18 +40,13 @@ Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Syntactically Valid** (syntactically-valid):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Missing `)` at 1.12-11 (1 quick fix(es) available)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: parser: "tree-sitter", errors: 1, fixable: 1, searchTimeMs: 0, processTimeMs: 1\
-_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
 
 ```json
 {
@@ -74,64 +57,27 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           {
             "certainty": "certain",
             "kind": "missing",
-            "loc": [
-              1,
-              12,
-              1,
-              11
-            ],
+            "loc": [1,12,1,11],
             "message": "Missing `)`",
-            "quickFix": [
-              {
-                "type": "replace",
-                "loc": [
-                  1,
-                  12,
-                  1,
-                  11
-                ],
-                "description": "Insert missing `)`",
-                "replacement": ")"
-              }
-            ]
+            "quickFix": [{"type":"replace","loc":[1,12,1,11],"description":"Insert missing `)`","replacement":")"}]
           }
         ],
-        ".meta": {
-          "parser": "tree-sitter",
-          "errors": 1,
-          "fixable": 1,
-          "searchTimeMs": 0,
-          "processTimeMs": 1
-        }
+        ".meta": {"parser":"tree-sitter","errors":1,"fixable":1}
       }
     },
-    ".meta": {
-      "timing": 1
-    }
+    ".meta": {}
   },
-  ".meta": {
-    "timing": 1
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 #### Additional Examples
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-syntactically-valid.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts)
 
-
-<h4 id="Test_Case:_valid_code_has_no_syntax_errors">Test Case: valid code has no syntax errors</h4>
-
+<h4 id="Test_Case:_label__valid_code_has_no_syntax_errors_____syntax-errors______linter___">Test Case: label('valid code has no syntax errors', ['syntax-errors'], ['linter'])</h4>
 
 Given the following input:
 
@@ -140,19 +86,13 @@ x <- c(1, 2)
 print(x)
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
 * no lints
-```
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L8) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L9) for the test-case implementation.
 		
-<h4 id="Test_Case:_missing_closing_parenthesis">Test Case: missing closing parenthesis</h4>
-
+<h4 id="Test_Case:_label__missing_closing_parenthesis_____syntax-errors______linter___">Test Case: label('missing closing parenthesis', ['syntax-errors'], ['linter'])</h4>
 
 Given the following input:
 
@@ -160,23 +100,13 @@ Given the following input:
 x <- c(1, 2
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'missing',
-message:   'Missing `)`',
-loc:       [1, 12, 1, 11],
-quickFix:  [{ type: 'replace', loc: [1, 12, 1, 11], description: 'Insert missing `)`', replacement: ')' }]
-```
+* certain at 1.12-1.11: kind = `'missing'`, message = `'Missing `)`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L14) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L15) for the test-case implementation.
 		
-<h4 id="Test_Case:_unbalanced_brace">Test Case: unbalanced brace</h4>
-
+<h4 id="Test_Case:_label__unbalanced_brace_____syntax-errors______linter___">Test Case: label('unbalanced brace', ['syntax-errors'], ['linter'])</h4>
 
 Given the following input:
 
@@ -184,23 +114,13 @@ Given the following input:
 { 1
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `{ 1`',
-loc:       [1, 1, 1, 3],
-quickFix:  [{ type: 'replace', loc: [1, 4, 1, 3], description: 'Add missing closing `}`', replacement: '}' }]
-```
+* certain at 1.1-1.3: kind = `'error'`, message = `'Unexpected `{ 1`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L26) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L27) for the test-case implementation.
 		
 <h4 id="Test_Case:_dangling_assignment_operator">Test Case: dangling assignment operator</h4>
-
 
 Given the following input:
 
@@ -208,20 +128,11 @@ Given the following input:
 x <-
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'missing',
-message:   'Missing `identifier`',
-loc:       [1, 5, 1, 4],
-quickFix:  [{ type: 'remove', loc: [1, 3, 1, 4], description: 'Remove the dangling `<-`' }]
-```
+* certain at 1.5-1.4: kind = `'missing'`, message = `'Missing `identifier`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L38) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L39) for the test-case implementation.
 		
 <h4 id="Test_Case:_dangling_operator_prefers_the_add_direction_when_configured">Test Case: dangling operator prefers the add direction when configured</h4>
 
@@ -233,28 +144,18 @@ Given the following input:
 x <-
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ preferFix: 'add' }
+{preferFix: 'add'}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'missing',
-message:   'Missing `identifier`',
-loc:       [1, 5, 1, 4],
-quickFix:  [{ type: 'replace', loc: [1, 5, 1, 4], description: 'Insert placeholder `NULL`', replacement: ' NULL' }]
-```
+* certain at 1.5-1.4: kind = `'missing'`, message = `'Missing `identifier`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L51) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L52) for the test-case implementation.
 		
 <h4 id="Test_Case:_fuzzy-completes_an_unfinished_operator">Test Case: fuzzy-completes an unfinished operator</h4>
-
 
 Given the following input:
 
@@ -262,20 +163,11 @@ Given the following input:
 a %in b
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `%in b`',
-loc:       [1, 3, 1, 7],
-quickFix:  [{ type: 'replace', loc: [1, 3, 1, 5], description: 'Complete operator to `%in%`', replacement: '%in%' }]
-```
+* certain at 1.3-1.7: kind = `'error'`, message = `'Unexpected `%in b`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L64) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L65) for the test-case implementation.
 		
 <h4 id="Test_Case:_typographic_quotes">Test Case: typographic quotes</h4>
 
@@ -287,26 +179,12 @@ Given the following input:
 x <- “hi”
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `“`',
-loc:       [1, 6, 1, 6],
-quickFix:  [{ type: 'replace', loc: [1, 6, 1, 6], description: 'Replace the typographic quote with a straight one', replacement: '"' }]
-			}, {
-certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `”`',
-loc:       [1, 9, 1, 9],
-quickFix:  [{ type: 'replace', loc: [1, 9, 1, 9], description: 'Replace the typographic quote with a straight one', replacement: '"' }]
-```
+* certain at 1.6-1.6: kind = `'error'`, message = `'Unexpected `“`'`, 1 quick fix
+* certain at 1.9-1.9: kind = `'error'`, message = `'Unexpected `”`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L91) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L92) for the test-case implementation.
 		
 <h4 id="Test_Case:_comment-out_fallback_for_a_stray_token">Test Case: comment-out fallback for a stray token</h4>
 
@@ -318,20 +196,11 @@ Given the following input:
 ,
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `,`',
-loc:       [1, 1, 1, 1],
-quickFix:  [{ type: 'replace', loc: [1, 1, 1, 1], description: 'Comment out the offending code', replacement: '# ,' }]
-```
+* certain at 1.1-1.1: kind = `'error'`, message = `'Unexpected `,`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L110) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L111) for the test-case implementation.
 		
 <h4 id="Test_Case:_disabling_a_fix_drops_its_suggestion">Test Case: disabling a fix drops its suggestion</h4>
 
@@ -343,25 +212,16 @@ Given the following input:
 ,
 ```
 
-
 And using the following [configuration](#configuration): 
 ```ts
-{ disabledFixes: ['comment-out'] }
+{disabledFixes: ['comment-out']}
 ```
-
 
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `,`',
-loc:       [1, 1, 1, 1],
-quickFix:  undefined
-```
+* certain at 1.1-1.1: kind = `'error'`, message = `'Unexpected `,`'`
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L123) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L124) for the test-case implementation.
 		
 <h4 id="Test_Case:_stray_closing_parenthesis">Test Case: stray closing parenthesis</h4>
 
@@ -373,20 +233,11 @@ Given the following input:
 x <- c(1, 2))
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `)`',
-loc:       [1, 13, 1, 13],
-quickFix:  [{ type: 'remove', loc: [1, 13, 1, 13], description: 'Remove the stray `)`' }]
-```
+* certain at 1.13-1.13: kind = `'error'`, message = `'Unexpected `)`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L137) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L138) for the test-case implementation.
 		
 <h4 id="Test_Case:_copied_REPL_prompt">Test Case: copied REPL prompt</h4>
 
@@ -398,20 +249,11 @@ Given the following input:
 > x <- 1
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `>`',
-loc:       [1, 1, 1, 1],
-quickFix:  [{ type: 'remove', loc: [1, 1, 1, 1], description: 'Remove the copied `>` prompt' }]
-```
+* certain at 1.1-1.1: kind = `'error'`, message = `'Unexpected `>`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L163) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L164) for the test-case implementation.
 		
 <h4 id="Test_Case:_pasted_console_output">Test Case: pasted console output</h4>
 
@@ -423,23 +265,9 @@ Given the following input:
 [1] 1 2 3
 ```
 
-
-
 We expect the linter to report the following:
 
-```ts
-				certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `[`',
-loc:       [1, 1, 1, 1],
-quickFix:  [{ type: 'replace', loc: [1, 1, 1, 0], description: 'Comment out the pasted console output', replacement: '# ' }]
-			}, {
-certainty: LintingResultCertainty.Certain,
-kind:      'error',
-message:   'Unexpected `]`',
-loc:       [1, 3, 1, 3],
-quickFix:  [{ type: 'replace', loc: [1, 1, 1, 0], description: 'Comment out the pasted console output', replacement: '# ' }]
-```
+* certain at 1.1-1.1: kind = `'error'`, message = `'Unexpected `[`'`, 1 quick fix
+* certain at 1.3-1.3: kind = `'error'`, message = `'Unexpected `]`'`, 1 quick fix
 
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L189) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L190) for the test-case implementation.

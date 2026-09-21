@@ -40,7 +40,10 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
  */
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
-/** Helper functions to work with {@link FunctionArgument}s. {@link EmptyArgument} marks an empty argument. */
+/**
+ * Helper functions to work with {@link FunctionArgument|FunctionArguments}. {@link EmptyArgument} marks an empty argument.
+ * @helper dataflow
+ */
 export const FunctionArgument = {
 	name: 'FunctionArgument',
 	/** Whether `arg` is positional, e.g. the `2` in `foo(b=3, 2)`. */
@@ -83,7 +86,7 @@ export const FunctionArgument = {
 		}
 		return arg.valueId;
 	},
-	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link pMatch} for that). */
+	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link FunctionSemantics.call.match.toSpec} for that). */
 	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
 		return FunctionArgument.isNamed(arg) && arg.name === name;
 	}
@@ -158,6 +161,7 @@ export interface LinkedUnknownSideEffect {
  * Helpers for the {@link UnknownSideEffect} union, which is either a plain {@link NodeId} or a
  * `{ id, linkTo }` object. Use these instead of hand-rolling `typeof x === 'object' ? x.id : x`
  * checks so the object/non-object discrimination lives in one place.
+ * @helper dataflow
  */
 export const UnknownSideEffect = {
 	name: 'UnknownSideEffect',

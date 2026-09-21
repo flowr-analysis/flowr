@@ -85,7 +85,6 @@ export enum CallProp {
 	Ffi        = 1 << 10,
 	/** produces a language object, like `quote` or `deparse` */
 	Lang       = 1 << 11,
-	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfFunction}) */
 	Strict     = 1 << 12,
 	/**
 	 * runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only
@@ -493,13 +492,15 @@ export interface BuiltInFnInfo extends StatedProps {
 	readonly keepEnvironment?: boolean
 	/**
 	 * What this call lets the function around it reach about its own formals without naming one of them, e.g.
-	 * `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRoles}.
+	 * `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRolesOf}.
 	 */
 	readonly frame?:           ArgProps
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */
 export interface SigLayout {
+	/** the declared parameter names, in order */
+	readonly names: readonly string[]
 	/** the props of each declared parameter, in order */
 	readonly props: readonly ArgProps[]
 	/** the position of the `...` parameter, `-1` if there is none */
@@ -508,6 +509,7 @@ export interface SigLayout {
 	readonly any:   ArgProps
 	/** the position of the {@link ArgProp.Alias} argument, handed back as the result, `-1` if there is none */
 	readonly alias: number
+	forced?:        (readonly boolean[])[]
 }
 
 const layouts = new WeakMap<FnSig, SigLayout>();
@@ -519,10 +521,12 @@ const layouts = new WeakMap<FnSig, SigLayout>();
 function sigLayout(this: void, sig: FnSig): SigLayout {
 	let layout = layouts.get(sig);
 	if(layout === undefined) {
+		const names = sig.map(p => p[0]);
 		const props = sig.map(p => p[1]);
 		layout = {
+			names,
 			props,
-			rest:  sig.findIndex(p => p[0] === '...'),
+			rest:  names.indexOf('...'),
 			any:   props.reduce((acc, p) => acc | p, 0),
 			alias: props.findIndex(p => (p & ArgProp.Alias) !== 0)
 		};
@@ -556,7 +560,8 @@ function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly
 	if((layout.any & ArgProp.Forced) === 0) {
 		return undefined;
 	}
-	return Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
+	const cache = layout.forced ??= [];
+	return cache[count] ??= Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
 }
 
 /** The positions of the first `count` arguments that carry any of `prop`. */

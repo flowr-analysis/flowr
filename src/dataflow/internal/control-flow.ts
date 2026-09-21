@@ -18,6 +18,7 @@ function completionsOf(from: DataflowCfgInformation): readonly NodeId[] {
  *
  * The control flow is modeled in post-order: everything a construct is made of runs before the construct
  * itself, so its own vertex is where its parts join again and where it is left.
+ * @helper control-flow
  */
 export const ControlFlow = {
 	name: 'ControlFlow',

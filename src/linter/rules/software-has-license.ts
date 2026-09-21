@@ -48,8 +48,8 @@ export const SOFTWARE_HAS_LICENSE = {
 		description:   'Checks whether the software project provides a license (via a LICENSE file or the DESCRIPTION file License field).',
 		tags:          [LintingRuleTag.Documentation, LintingRuleTag.Usability],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
+		defaultConfig: () => ({
 			checkDescriptionFile: true
-		}
+		})
 	}
 } as const satisfies LintingRule<SoftwareHasLicenseResult, SoftwareHasLicenseMetadata, SoftwareHasLicenseConfig>;

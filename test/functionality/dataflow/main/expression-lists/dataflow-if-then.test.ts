@@ -368,18 +368,18 @@ a()`,  emptyGraph()
 				})
 				.defineVariable('9', '"a"', { definedBy: ['13', '15'], cds: [{ id: '17', when: true }] }),
 			{ minRVersion: MIN_VERSION_LAMBDA });
-		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created']),
+		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created-resolved']),
 			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph()
-				.use('7', '"b"')
-				.reads('7', '0')
+				.use('9-get-name', '"b"')
+				.reads('9-get-name', '0')
 				.use('13', 'a')
 				.reads('13', '4')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
 				.argument('2', ['1', '0'])
-				.argument(9, 7)
-				.returns(9, 7)
-				.call('9', 'get', [argumentInCall('7')], { returns: [], reads: [NodeId.toBuiltIn('get'), '7'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('b', '0', '2') })
+				.argument(9, '9-get-name')
+				.returns(9, '9-get-name')
+				.call('9', 'get', [argumentInCall('9-get-name')], { returns: [], reads: [NodeId.toBuiltIn('get'), '9-get-name'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('b', '0', '2') })
 				.calls('9', NodeId.toBuiltIn('get'))
 				.argument('11', '9')
 				.call('11', 'assign', [argumentInCall('4'), argumentInCall('9')], { returns: ['4'], reads: [NodeId.toBuiltIn('assign'), 9], onlyBuiltIn: true, environment: defaultEnv().defineVariable('b', '0', '2') })
@@ -394,19 +394,19 @@ a()`,  emptyGraph()
 				.defineVariable('4', '"a"', { definedBy: ['9', '11'] })
 				.markIdForUnknownSideEffects('15')
 		);
-		assertDataflow(label('get in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created']),
+		assertDataflow(label('get in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created-resolved']),
 			shell, `a <- 5
 f <- function() {
   get("a")
 }
 f()`,  emptyGraph()
-				.use('7', '"a"', undefined, false)
+				.use('9-get-name', '"a"', undefined, false)
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
 				.argument(2, [1, 0])
-				.argument(9, 7)
-				.returns(9, 7)
-				.call('9', 'get', [argumentInCall('7')], { returns: [], reads: ['7', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+				.argument(9, '9-get-name')
+				.returns(9, '9-get-name')
+				.call('9', 'get', [argumentInCall('9-get-name')], { returns: [], reads: ['9-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
 				.calls('9', NodeId.toBuiltIn('get'))
 				.argument('10', '9')
 				.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv() }, false)
@@ -417,7 +417,7 @@ f()`,  emptyGraph()
 				.call('14', 'f', [], { returns: ['9'], reads: ['3'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '12') })
 				.calls('14', '11')
 				.definesOnCall('14', '0')
-				.definedByOnCall('7', '0')
+				.definedByOnCall('9-get-name', '0')
 				.constant('1')
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
 				.defineFunction('11', ['9'], {
@@ -425,27 +425,27 @@ f()`,  emptyGraph()
 					in:                [],
 					unknownReferences: [],
 					entryPoint:        '10',
-					graph:             new Set(['7', '9', '10']),
+					graph:             new Set(['9-get-name', '9', '10']),
 					environment:       defaultEnv().pushEnv()
 				})
 				.defineVariable('3', 'f', { definedBy: ['11', '12'] })
 		);
-		assertDataflow(label('get in function argument', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return', 'name-created']),
+		assertDataflow(label('get in function argument', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return', 'name-created-resolved']),
 			shell, `a <- 5
 f <- function(a = get("a")) {
   a
 }
 f()`, emptyGraph()
-				.use('6', '"a"', undefined, false)
-				.reads('6', '4')
+				.use('8-get-name', '"a"', undefined, false)
+				.reads('8-get-name', '4')
 				.use('12', 'a', undefined, false)
 				.reads('12', '4')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
 				.argument('2', ['1', '0'])
-				.argument(8, 6)
-				.returns(8, 6)
-				.call('8', 'get', [argumentInCall('6')], { returns: [], reads: ['6', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+				.argument(8, '8-get-name')
+				.returns(8, '8-get-name')
+				.call('8', 'get', [argumentInCall('8-get-name')], { returns: [], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
 				.argument('13', '12')
 				.call('13', '{', [argumentInCall('12')], { returns: ['12'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv().defineParameter('a', '4', '9') }, false)
 				.calls('13', NodeId.toBuiltIn('{'))
@@ -456,13 +456,13 @@ f()`, emptyGraph()
 				.calls('17', '14')
 				.constant('1')
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
-				.defineVariable('4', 'a', { definedBy: ['6', '8'] }, false)
+				.defineVariable('4', 'a', { definedBy: ['8-get-name', '8'] }, false)
 				.defineFunction('14', ['12'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
 					entryPoint:        '13',
-					graph:             new Set(['4', '6', '8', '12', '13']),
+					graph:             new Set(['4', '8-get-name', '8', '12', '13']),
 					environment:       defaultEnv().pushEnv().defineParameter('a', '4', '9')
 				}, { readParams: [[4, true]] })
 				.defineVariable('3', 'f', { definedBy: ['14', '15'] }));

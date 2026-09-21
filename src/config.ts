@@ -7,6 +7,7 @@ import { type AutocompletablePaths,
 	getOnPath,
 	setOnPath
 } from './util/objects';
+import { DefaultMaxOverlayDepth } from './dataflow/environments/frame-memory';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -220,6 +221,12 @@ export interface FlowrConfig {
 			readonly linkedVersionGroups?: string[][]
 		}
 		readonly transitiveSideEffectRounds?: number
+		/** How many binding overlays may stack on one environment frame before a write flattens them (default {@link DefaultMaxOverlayDepth}); trades lookup cost against copy cost and never changes a result. */
+		readonly maxOverlayDepth?:            number
+		/**
+		 * Packages to treat as attached without a `library()` call, on top of the base packages R attaches on
+		 * startup (see {@link AttachedBasePackages}, which a bare name resolves against without this option).
+		 */
 		readonly assumeAttachedPackages?:     string[]
 		readonly instrument: {
 			/**
@@ -282,10 +289,11 @@ export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {
 }
 
 /**
- * Default of `gas.countedCheckEvery`: how many calls one accounting of an armed dataflow budget covers.
- * A budget only has to catch work that has run away, so the sampling is deliberately coarse.
+ * Default of `gas.countedCheckEvery`: how many calls one accounting of an armed check covers, both for a
+ * dataflow budget and for the slicer's traversal. Such a check only has to catch work that has run away, so
+ * the sampling is deliberately coarse.
  */
-export const DefaultCountedCheckEvery = 64;
+export const DefaultCountedCheckEvery = 128;
 
 /** Default of `solver.transitiveSideEffectRounds`: round cap for the transitive side-effect fixpoint in {@link produceDataFlowGraph}, which stops on its own once a round adds nothing. */
 export const DefaultTransitiveSideEffectRounds = 32;
@@ -330,9 +338,19 @@ export interface TreeSitterEngineConfig extends MergeableRecord {
 }
 
 export interface RShellEngineConfig extends MergeableRecord {
-	readonly type:   'r-shell'
+	readonly type:      'r-shell'
 	/** The path to the R executable to use; defaults to {@link DEFAULT_R_PATH}. */
-	readonly rPath?: string
+	readonly rPath?:    string
+	/**
+	 * Whether to enable R's experimental pipe-bind operator `=>` (`x |> name => body`) by setting
+	 * `_R_USE_PIPEBIND_` for the R session. R itself keeps this off by default, as the operator is
+	 * experimental and has never shipped in a release version of R; off by default here as well.
+	 * @example
+	 * ```ts
+	 * new FlowrAnalyzerBuilder().setEngine('r-shell').configure('engine.r-shell.pipeBind', true)
+	 * ```
+	 */
+	readonly pipeBind?: boolean
 }
 
 export type EngineConfig = TreeSitterEngineConfig | RShellEngineConfig;
@@ -519,6 +537,7 @@ function expandPath(path: string, within: unknown): string | undefined {
 /**
  * flowR's configuration: its default, reading one from disk, and getting or setting a single value at a
  * dotted path (an {@link EngineConfigPath} included).
+ * @helper project
  */
 export const FlowrConfig = {
 	name: 'FlowrConfig',
@@ -587,6 +606,7 @@ export const FlowrConfig = {
 					assumeFilesExist:      false
 				},
 				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
+				maxOverlayDepth:            DefaultMaxOverlayDepth,
 				instrument:                 {
 					dataflowExtractors: undefined
 				},
@@ -697,8 +717,9 @@ export const FlowrConfig = {
 				lax:                Joi.boolean().optional().description('Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.')
 			}).description('The configuration for the tree sitter engine.'),
 			Joi.object({
-				type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
-				rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
+				type:     Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
+				rPath:    Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.'),
+				pipeBind: Joi.boolean().optional().description('Whether to enable R\'s experimental pipe-bind operator "=>" by setting _R_USE_PIPEBIND_ for the R session (default false); R itself keeps this off by default, as it is experimental and has never shipped in a release version of R.')
 			}).description('The configuration for the R shell engine.')
 		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
 		defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
@@ -735,8 +756,9 @@ export const FlowrConfig = {
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
 			}).description('Policies for reasoning about dependency versions.'),
-			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code.'),
+			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code. The base packages R attaches on startup already resolve without it.'),
 			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
+			maxOverlayDepth:            Joi.number().min(0).optional().description(`How many binding overlays may stack on one environment frame before a write flattens them (default ${DefaultMaxOverlayDepth}); a pure performance knob, trading lookup cost against copy cost without changing any result.`),
 			instrument:                 Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
@@ -811,7 +833,7 @@ export const FlowrConfig = {
 				})).optional().description('Created-dataflow-vertex thresholds, counted like `steps`.')
 			}).optional().description('Thresholds for all gas checks (scaled by per-feature factor), boundable per feature.'),
 			features:          Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`, `dataflow`.'),
-			countedCheckEvery: Joi.number().min(1).optional().description(`How many counted steps pass between two clock reads while an armed budget also carries a timeMs bound (default ${DefaultCountedCheckEvery}); trades overshoot against the cost of reading the clock.`),
+			countedCheckEvery: Joi.number().min(1).optional().description(`How many counted steps pass between two accountings of an armed check, be it a dataflow budget or the slicer's traversal (default ${DefaultCountedCheckEvery}); trades overshoot against the cost of the check.`),
 			heapProvider:      Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
 		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),

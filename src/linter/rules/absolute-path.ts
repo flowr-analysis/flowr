@@ -1,4 +1,5 @@
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
+import { RPath } from '../../util/files';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -6,8 +7,8 @@ import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isAbsolutePath, isUrl, fileUrlToPath } from '../../util/text/strings';
 import { isNotUndefined, isUndefined } from '../../util/assert';
-import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
+import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import { writeFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
@@ -16,7 +17,6 @@ import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
-import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { Identifier } from '../../dataflow/environments/identifier';
@@ -81,7 +81,7 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 		type:        'replace',
 		loc,
 		description: `Replace with a relative path to \`${filePath}\``,
-		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
+		replacement: `${str.content.quotes}${RPath.relative(wd, filePath)}${str.content.quotes}`
 	}];
 }
 
@@ -94,7 +94,7 @@ const PathFunctions: ReadonlyMap<Identifier, PathFunction> = new Map([
 			df, vtx, undefined, 'fsep', true, ctx
 		);
 		// in the future we can access `.Platform$file.sep` here
-		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? [path.sep];
+		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? ['/'];
 		if(sepValues.some(s => s === Unknown || isUndefined(s))) {
 			// if we have no fsep, we cannot construct a path
 			return undefined;
@@ -129,7 +129,7 @@ function resolvePathForAbsoluteCheck(value: string, ignoreUrls: boolean): string
 
 export const ABSOLUTE_PATH = {
 	/* this can be done better once we have types */
-	createSearch: (config) => {
+	createSearch: (config, data) => {
 		let q;
 		if(config.include.allStrings) {
 			q = Q.all().filter(RType.String);
@@ -138,7 +138,7 @@ export const ABSOLUTE_PATH = {
 				type:                   'dependencies',
 				// we use the dependencies query to give us all functions that take a file path as input
 				ignoreDefaultFunctions: true,
-				readFunctions:          ReadFunctions.concat(WriteFunctions, SourceFunctions, OtherPathFunctions, config.additionalPathFunctions),
+				readFunctions:          readFunctions(data.inspectContext()).concat(writeFunctions(data.inspectContext()), SourceFunctions, OtherPathFunctions, config.additionalPathFunctions),
 			});
 		}
 		if(config.include.constructed) {
@@ -177,7 +177,7 @@ export const ABSOLUTE_PATH = {
 				} else if(enrichmentContent(element, Enrichment.QueryData)) {
 					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
 					const mappedStrings = result.read.flatMap(r => {
-						if(r.value === undefined || r.value === Unknown) {
+						if(r.value === undefined || r.value === Unknown || r.nodeId === undefined) {
 							return [];
 						}
 						const resolved = resolvePathForAbsoluteCheck(r.value, config.ignoreUrls);
@@ -234,7 +234,7 @@ export const ABSOLUTE_PATH = {
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// checks all found paths for whether they're absolute to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
+		defaultConfig: () => ({
 			include: {
 				constructed: true,
 				allStrings:  false
@@ -243,6 +243,6 @@ export const ABSOLUTE_PATH = {
 			absolutePathRegex:       undefined,
 			useAsWd:                 '@project',
 			ignoreUrls:              true
-		}
+		})
 	}
 } as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig>;

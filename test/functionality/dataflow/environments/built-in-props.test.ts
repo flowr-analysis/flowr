@@ -129,6 +129,16 @@ describe('Built-in properties', () => {
 			assert.deepStrictEqual(dbGetQuery?.sig, [['conn', ArgProp.Forced | ArgProp.Handle],
 				['statement', ArgProp.Forced | ArgProp.Value | ArgProp.Injectable], ['...', ArgProp.Value]]);
 		});
+		test(label('the base-R type predicates, coercions and vector constructors are in the index, owned by `base`', ['name-normal'], ['other']), () => {
+			const index = BuiltInIndex.default();
+			for(const name of ['jitter', 'vector', 'single', 'mat.or.vec', 'rep_len',
+				'is.double', 'is.integer', 'is.complex', 'is.raw', 'is.single', 'is.ordered',
+				'as.vector', 'as.single', 'as.ordered']) {
+				const entry = index.get(name);
+				assert.isDefined(entry, `${name} is in the index`);
+				assert.strictEqual(Identifier.getNamespace(entry.name), PkgName.Base, `${name} answers as base::${name}`);
+			}
+		});
 	});
 
 	describe('Asking for one function', () => {
@@ -315,7 +325,8 @@ describe('Functions several packages export', () => {
 
 	/** a name, the package owning it, and the packages re-exporting that very function */
 	const ReExported: readonly (readonly [string, string, readonly string[]])[] = [
-		['%>%', 'magrittr', ['dplyr', 'purrr', 'stringr', 'tibble', 'tidyr', 'readr', 'testthat', 'magick', 'promises']],
+		/* readr imports the pipe but re-exports none */
+		['%>%', 'magrittr', ['dplyr', 'purrr', 'stringr', 'tibble', 'tidyr', 'testthat', 'magick', 'promises']],
 		['quo', 'rlang', ['dplyr', 'ggplot2']],
 		['enquo', 'rlang', ['dplyr', 'ggplot2']],
 		['sym', 'rlang', ['dplyr', 'ggplot2']],

@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.15.8",
+  "version": "2.15.9",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "engines": {
     "node": ">=22"
@@ -18,24 +18,24 @@
   "scripts": {
     "setup:dev": "npm ci && ts-node --transpile-only scripts/setup-dev.ts",
     "flowr": "npm run main --",
-    "flowr:dev": "npm run sync:sigdb && npm run gen:base-packages && npm run main-dev --",
+    "flowr:dev": "npm run sigdb:sync && npm run gen:base-packages && npm run main-dev --",
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
     "main-dev": "node -r ts-node/register --watch src/cli/flowr.ts",
     "slicer": "ts-node src/cli/slicer-app.ts",
     "benchmark": "npm run build:dev && node dist/src/cli/benchmark-app.js",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
-    "prepare": "npm run build:dev",
+    "prepare": "node scripts/prepare.js",
     "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
     "build:dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
     "build:copy-data": "ts-node --transpile-only scripts/sigdb-copy.ts",
     "build:copy-wasm": "ts-node --transpile-only scripts/copy-wasm.ts",
     "gen:base-packages": "ts-node --transpile-only scripts/gen-base-packages.ts",
-    "gen:landing": "ts-node --transpile-only scripts/gen-landing.ts && ts-node --transpile-only scripts/gen-benchmark-index.ts && ts-node --transpile-only scripts/gen-sigdb-index.ts && ts-node --transpile-only scripts/gen-playground.ts",
-    "gen:sigdb-remote": "ts-node --transpile-only scripts/sigdb-remote.ts",
-    "sync:sigdb": "ts-node --transpile-only scripts/sigdb-sync.ts",
-    "publish:sigdb": "ts-node scripts/publish-sigdb.ts",
+    "gen:landing": "ts-node --transpile-only scripts/gen-landing.ts && ts-node --transpile-only scripts/gen-benchmark-index.ts && ts-node --transpile-only scripts/gen-capabilities.ts && ts-node --transpile-only scripts/gen-sigdb-index.ts && ts-node --transpile-only scripts/gen-playground.ts",
+    "sigdb:remote": "ts-node --transpile-only scripts/sigdb-remote.ts",
+    "sigdb:sync": "ts-node --transpile-only scripts/sigdb-sync.ts",
+    "sigdb:publish": "ts-node scripts/publish-sigdb.ts",
     "wiki": "ts-node src/cli/wiki.ts",
     "wiki:watch": "node -r ts-node/register --watch src/cli/wiki.ts --keep-alive",
     "doc": "node --max-old-space-size=8192 node_modules/typedoc/dist/cli.js",
@@ -46,11 +46,12 @@
     "check:generic-labels": "ts-node --transpile-only scripts/check-generic-labels.ts",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
     "checkup": "ts-node scripts/checkup-parallel.ts",
-    "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
+    "test": "vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
     "test:full": "npm run test:coverage -- --no-watch --reporter=default --reporter=json --outputFile.json=coverage/flowr-test-results.json -- --make-summary --test-installation",
     "test:coverage": "npm run test -- --coverage",
-    "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
+    "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
+    "test:mutations": "vitest --config test/mutations/vitest.config.mts",
     "test:bench": "vitest bench --config test/vitest.config.mts",
     "test:performance": "func() { cd test/performance/ && bash run-all-suites.sh \"$@\"; }; func",
     "test:docker": "func() { b() { docker build ${1:+--network=$1} -t flowr-docker-test -f \"$2\" .; }; r() { docker run --rm ${1:+--network=$1} flowr-docker-test --version; }; for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; b '' \"$df\" || { echo '(retrying with --network=host: bridge networking unavailable)'; b host \"$df\"; } || return 1; echo \"=== smoke-testing $df ===\"; r '' || r host || return 1; done; }; func",
@@ -164,7 +165,11 @@
         "npm run lint",
         "npm run test:full"
       ],
-      "after:bump": "npm run build:dev",
+      "after:bump": [
+        "npm run build:dev",
+        "npm run sigdb:sync",
+        "npx ts-node --transpile-only scripts/gen-capabilities.ts"
+      ],
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     },
@@ -185,28 +190,31 @@
       }
     }
   },
+  "overrides": {
+    "lodash.isequal": "npm:fast-deep-equal@^3.1.3"
+  },
   "devDependencies": {
     "@codemirror/legacy-modes": "^6.5.3",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
     "@eagleoutice/eslint-config-flowr": "^2.1.7",
     "@j-ulrich/release-it-regex-bumper": "^5.6.0",
+    "@jupyterlab/nbformat": "^4.5.4",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
     "@types/commonmark": "^0.27.10",
-    "@types/dagre": "^0.7.53",
-    "@types/n-readlines": "^1.0.6",
+    "@types/js-yaml": "^4.0.9",
     "@types/n3": "^1.26.0",
     "@types/object-hash": "^3.0.6",
     "@types/seedrandom": "^3.0.8",
     "@types/semver": "^7.7.0",
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.11",
     "codemirror": "^6.0.2",
     "esbuild": "^0.28.1",
     "eslint": "^10.8.0",
-    "license-checker-rseidelsohn": "^4.4.2",
+    "license-checker-rseidelsohn": "^5.0.1",
     "release-it": "^21.0.2",
     "seedrandom": "^3.0.5",
     "ts-node": "^10.9.2",
@@ -214,18 +222,17 @@
     "typedoc-plugin-missing-exports": "^4.1.2",
     "typedoc-umlclass": "^0.10.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@davisvaughan/tree-sitter-r": "^1.2.0",
-    "@jupyterlab/nbformat": "^4.5.4",
     "bzip2": "^0.1.1",
     "command-line-args": "^6.0.1",
     "command-line-usage": "^7.0.3",
     "commonmark": "^0.31.2",
-    "gray-matter": "^4.0.3",
     "ignore": "^5.3.2",
     "joi": "^18.0.1",
+    "js-yaml": "^4.3.2",
     "lz-string": "^1.5.0",
     "n-readlines": "^3.4.1",
     "object-hash": "^3.0.0",
@@ -246,8 +253,8 @@
     "unrs-resolver@1.12.2": true
   },
   "optionalDependencies": {
+    "@dagrejs/dagre": "^3.1.1",
     "clipboardy": "^4.0.0",
-    "dagre": "^0.8.5",
     "n3": "^1.26.0",
     "rotating-file-stream": "^3.2.8"
   }

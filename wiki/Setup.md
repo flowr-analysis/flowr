@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's setup instructions">Generated</span> from '[wiki-setup.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-setup.ts "src/documentation/wiki-setup.ts")' on 2026-08-27, 11:07:27 UTC (v2.15.5, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's setup instructions">Generated</span> from '[wiki-setup.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-setup.ts "src/documentation/wiki-setup.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 There are several ways to use _flowR_.
 Want to try it without installing anything? Run code straight away in the [Playground](https://flowr-analysis.github.io/flowr/wiki/playground/), or search what _flowR_ knows about R packages in the [Signature Database](https://flowr-analysis.github.io/flowr/wiki/sigdb/).
@@ -10,7 +10,6 @@ or use its [Visual Studio Code extension](https://marketplace.visualstudio.com/i
 - [🐳️ Using the Docker Image](#-using-the-docker-image)
 - [⚒️ Building From Scratch](#-building-from-scratch)
 - [📜 Developing for _flowR_](#-developing-for-flowr)
-
 
 If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a
 look at the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md).

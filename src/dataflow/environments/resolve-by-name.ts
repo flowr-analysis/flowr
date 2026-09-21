@@ -116,10 +116,13 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		if(target === ReferenceType.S3MethodPrefix || target === ReferenceType.S7MethodPrefix) {
 			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
 			const prefix = name + (target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator);
-			definition = current.memory.entries()
-				.filter(([defName]) => defName.startsWith(prefix))
-				.flatMap(([, defs]) => defs)
-				.toArray();
+			const hits: IdentifierDefinition[] = [];
+			for(const defName of current.memory.keys()) {
+				if(defName.startsWith(prefix)) {
+					hits.push(...current.memory.get(defName) ?? []);
+				}
+			}
+			definition = hits;
 		} else {
 			definition = current.lookup(name);
 			if(internal === false) {

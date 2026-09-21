@@ -17,7 +17,7 @@ import { isValue } from '../../../../../eval/values/r-value';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { define } from '../../../../../environments/define';
 import type { EnvirResolution } from './built-in-envir-utils';
-import { resolveArgToEnvir } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -172,7 +172,7 @@ function collectRmTargets<OtherInfo>(
 }
 
 /** Builds the {@link KillReference|kills} produced by an `rm` call from its resolved {@link RmTargets}. */
-function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDependency[] | undefined): KillReference[] {
+function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDependency[] | undefined, killedBy: NodeId): KillReference[] {
 	const kills: KillReference[] = [];
 	if(targets.all) {
 		kills.push({ kind: 'all', cds });
@@ -181,14 +181,14 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDepend
 		kills.push({ kind: 'unknown', cds });
 	}
 	for(const { name, nodeId } of targets.names) {
-		kills.push({ kind: 'named', reference: { nodeId, name, cds, type: ReferenceType.Variable } });
+		kills.push({ kind: 'named', reference: { nodeId, name, cds, type: ReferenceType.Variable }, killedBy });
 	}
 	return kills;
 }
 
 /** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
 function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: ControlDependency[] | undefined): DataflowInformation {
-	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds));
+	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId));
 	const environment = define({ ...envir.envDef, definedAt: rootId, envState: newEnvState }, false, res.environment);
 	return { ...res, environment };
 }
@@ -242,7 +242,7 @@ export function processRm<OtherInfo>(
 	if(targets.frame !== undefined) {
 		// `rm(x, envir=e)` removes from a tracked custom environment instead of the lexical scope
 		if(targets.frame.formal === 'envir' && data.ctx.config.solver.trackEnvironments) {
-			const envir = resolveArgToEnvir(targets.frame.arg, data);
+			const envir = envirOf(resolveArgToEnvirOrAmbiguous(targets.frame.arg, data));
 			if(envir) {
 				return removeFromCustomEnv(res, envir, targets, rootId, data.cds);
 			}
@@ -252,6 +252,6 @@ export function processRm<OtherInfo>(
 	}
 
 	// apply to our own environment so threading reflects it, and emit the kills so a merging parent can re-apply
-	const kills = buildKills(targets, data.cds);
+	const kills = buildKills(targets, data.cds, rootId);
 	return kills.length > 0 ? { ...res, environment: applyKills(res.environment, kills), kill: kills } : res;
 }

@@ -1,7 +1,7 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { EdgeTypeBits } from '../../dataflow/graph/edge';
@@ -95,6 +95,16 @@ function enclosingStatement(idMap: AstIdMap, id: NodeId): RNode<ParentInformatio
 	return undefined;
 }
 
+function liftedOutOfLoops(idMap: AstIdMap, id: NodeId, definition: NodeId): NodeId {
+	let lifted = id;
+	for(let node = idMap.get(id); node !== undefined; node = RNode.directParent(node, idMap)) {
+		if(RLoopConstructs.is(node) && RNode.findEnclosing(definition, idMap, n => n.info.id === node.info.id) === undefined) {
+			lifted = node.info.id;
+		}
+	}
+	return lifted;
+}
+
 /** A fix closing the connection after the last statement using it, if it is bound to a name to close. */
 function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefined {
 	const idMap = graph.idMap;
@@ -106,7 +116,7 @@ function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefine
 	const reads = (graph.edgesTo(definition)).entries()
 		.filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Reads)).map(([source]) => source);
 	const statements = [definition, ...reads]
-		.map(id => SourceLocation.fromNode(enclosingStatement(idMap, id)))
+		.map(id => SourceLocation.fromNode(enclosingStatement(idMap, liftedOutOfLoops(idMap, id, definition))))
 		.filter(isNotUndefined);
 	const last = statements.reduce<SourceLocation | undefined>(
 		(a, b) => a === undefined || SourceRange.compare(a, b) < 0 ? b : a, undefined);
@@ -224,9 +234,9 @@ export const UNCLOSED_CONNECTION = {
 		/* a connection handed to code flowR cannot resolve, as in `lapply(cons, close)`, is reported although it is closed */
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Flags connections that are opened but not closed on every path opening them.',
-		defaultConfig: {
+		defaultConfig: () => ({
 			openFns:  [],
 			closeFns: []
-		}
+		})
 	}
 } as const satisfies LintingRule<UnclosedConnectionResult, UnclosedConnectionMetadata, UnclosedConnectionConfig>;

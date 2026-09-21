@@ -7,11 +7,11 @@ import { contextFromInput } from '../../../../src/project/context/flowr-analyzer
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 
 describe('access on stack environments', withTreeSitter(ts => {
 	/** Asserts that the access at `at` reads exactly the variable definitions given by `expected`. */
-	function assertReads(name: string, ids: readonly SupportedFlowrCapabilityId[], code: string, at: SlicingCriterion, expected: readonly SlicingCriterion[]): void {
+	function assertReads(name: string, ids: readonly FlowrCapabilityId[], code: string, at: SlicingCriterion, expected: readonly SlicingCriterion[]): void {
 		test(label(name, ids, ['dataflow']), async() => {
 			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
 			const { idMap } = analysis.normalize;

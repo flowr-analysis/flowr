@@ -1,5 +1,4 @@
-_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-08-29, 17:39:06 UTC (v2.15.8, R v4.6.1), please do not edit directly._
-
+_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
 
 This page describes the abstract interpretation framework of _flowR_.
 Abstract interpretation abstracts the concrete semantics of a program to automatically infer properties about the behavior of a program.
@@ -30,14 +29,12 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-inte
 
 _flowR_ already provides different abstract domains for abstract interpretation in [src/abstract-interpretation/domains](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains). Many of the abstract domains are generic and can be used for differend kinds of analyses. The existing abstract domains are presented in the following. Some of the listed abstract domains can be expanded to show the inherited abstract domains.
 
-
    * [BoundedSetDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/bounded-set-domain.ts#L25)   
      The bounded set abstract domain as sets of possible values bounded by a `limit` indicating the maximum number of inferred values.
      The Bottom element is defined as the empty set and the Top element is defined as
      <code>Top</code>
      symbol.
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/bounded-set-domain.ts#L25">src/abstract-interpretation/domains/bounded-set-domain.ts#L25</a></summary>
-     
      
      ```ts
      /**
@@ -147,7 +144,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      }
      ```
      
-     
      </details>
      
    * [IntervalDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/interval-domain.ts#L26)   
@@ -156,7 +152,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      <code>Bottom</code>
      symbol and the Top element is defined as the interval [-∞, +∞].
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/interval-domain.ts#L26">src/abstract-interpretation/domains/interval-domain.ts#L26</a></summary>
-     
      
      ```ts
      /**
@@ -403,7 +398,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      }
      ```
      
-     
      </details>
      
       <details><summary>View more (PosIntervalDomain)</summary>
@@ -414,7 +408,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        <code>Bottom</code>
        symbol and the Top element is defined as the interval [0, +∞].
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L21">src/abstract-interpretation/domains/positive-interval-domain.ts#L21</a></summary>
-       
        
        ```ts
        /**
@@ -463,17 +456,14 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        }
        ```
        
-       
        </details>
        
-
       </details>
    * [PartialProductDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L24)   
      A partial product abstract domain as named Cartesian product of (optional) sub abstract domains.
      The sub abstract domains are represented by a (partial) record mapping property names to abstract domains.
      The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L24">src/abstract-interpretation/domains/partial-product-domain.ts#L24</a></summary>
-     
      
      ```ts
      /**
@@ -617,7 +607,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      }
      ```
      
-     
      </details>
      
       <details><summary>View more (MultiValueDomain, ProductDomain)</summary>
@@ -626,7 +615,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        A multi-value abstract domain as a (partial) product domain that combines multiple abstract domains.
        The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L72">src/abstract-interpretation/domains/multi-value-state-domain.ts#L72</a></summary>
-       
        
        ```ts
        /**
@@ -652,7 +640,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        }
        ```
        
-       
        </details>
        
      * [ProductDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/product-domain.ts#L10)   
@@ -660,7 +647,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        The sub abstract domains are represented by a record mapping property names to abstract domains.
        The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/product-domain.ts#L10">src/abstract-interpretation/domains/product-domain.ts#L10</a></summary>
-       
        
        ```ts
        /**
@@ -695,7 +681,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        }
        ```
        
-       
        </details>
        
         <details><summary>View more (DataFrameDomain)</summary>
@@ -703,7 +688,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        * [DataFrameDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame/dataframe-domain.ts#L15)   
          The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
          <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame/dataframe-domain.ts#L15">src/abstract-interpretation/data-frame/dataframe-domain.ts#L15</a></summary>
-         
          
          ```ts
          /**
@@ -784,10 +768,8 @@ _flowR_ already provides different abstract domains for abstract interpretation 
          }
          ```
          
-         
          </details>
          
-
         </details>
 
       </details>
@@ -800,7 +782,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      <code>Top</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/set-range-domain.ts#L39">src/abstract-interpretation/domains/set-range-domain.ts#L39</a></summary>
-     
      
      ```ts
      /**
@@ -1172,7 +1153,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      }
      ```
      
-     
      </details>
      
    * [SetUpperBoundDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/set-upper-bound-domain.ts#L23)   
@@ -1183,7 +1163,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      <code>Top</code>
      symbol.
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/set-upper-bound-domain.ts#L23">src/abstract-interpretation/domains/set-upper-bound-domain.ts#L23</a></summary>
-     
      
      ```ts
      /**
@@ -1361,7 +1340,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      }
      ```
      
-     
      </details>
      
    * [SingletonDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/singleton-domain.ts#L21)   
@@ -1372,7 +1350,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      <code>Top</code>
      symbol.
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/singleton-domain.ts#L21">src/abstract-interpretation/domains/singleton-domain.ts#L21</a></summary>
-     
      
      ```ts
      /**
@@ -1478,7 +1455,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      }
      ```
      
-     
      </details>
      
    * [StateAbstractDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21)   
@@ -1487,7 +1463,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      <code>Bottom</code>
      symbol and the Top element as empty mapping.
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21">src/abstract-interpretation/domains/state-abstract-domain.ts#L21</a></summary>
-     
      
      ```ts
      /**
@@ -1646,7 +1621,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      }
      ```
      
-     
      </details>
      
       <details><summary>View more (MultiValueStateDomain)</summary>
@@ -1654,7 +1628,6 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      * [MultiValueStateDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L11)   
        A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.
        <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L11">src/abstract-interpretation/domains/multi-value-state-domain.ts#L11</a></summary>
-       
        
        ```ts
        /**
@@ -1718,12 +1691,9 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        }
        ```
        
-       
        </details>
        
-
       </details>
-
 
 <details><summary>Class Diagram</summary>
 
@@ -1820,7 +1790,6 @@ MultiValueStateDomain --|> StateAbstractDomain
 
 Multiple abstract domains can be combined using a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L72"><code><span title="A multi-value abstract domain as a (partial) product domain that combines multiple abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.">MultiValueDomain</span></code></a> (for example, to use an interval domain for numbers and bounded set domain for strings at the same time). A multi-value state domain (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/multi-value-state-domain.ts#L11"><code><span title="A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.">MultiValueStateDomain</span></code></a>) as state domain of a multi-value domain can be used to track the state of multiple value domains in a program. Additionally, is enables to define reductions on the multi-value domain to refine the inferred value for a value domain based on the other value domains in the multi-value domain. For example, the following example shows how a multi-value state domain can be defined to track numbers and strings at the same time with a simple reduction that sets both domains to bottom if one domain is bottom.
 
-
 ```ts
 const domain = {
     number: new IntervalDomain(IntervalTop),
@@ -1836,7 +1805,6 @@ const state = new MultiValueStateDomain(new Map(), domain, [reduction]);
 state.setValue(0, 'number', new IntervalDomain([42, 42]));
 state.setValue(1, 'string', new BoundedSetDomain(new Set(['Hello world!'])));
 ```
-
 
 <h2 id="abstract-interpretation">Abstract Interpretation</h2>
 
@@ -1872,13 +1840,10 @@ After the abstract interpreter is started with <a href="https://github.com/flowr
 
 For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can define the following analysis using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/interval-domain.ts#L26"><code><span title="The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values. The Bottom element is defined as Bottom symbol and the Top element is defined as the interval [-∞, +∞].">IntervalDomain</span></code></a>:
 
-
 ```ts
 /** The abstract domains of the interval analysis, i.e. a single interval domain named `interval` */
 export type IntervalDomains = { interval: IntervalDomain };
 ```
-
-
 
 ```ts
 IntervalSemantics = new ValueSemantics<StateDomain<IntervalDomain>>({
@@ -1894,16 +1859,12 @@ IntervalSemantics = new ValueSemantics<StateDomain<IntervalDomain>>({
 })
 ```
 
-
-
 ```ts
 IntervalAnalysis: AbsintAnalysis<IntervalDomains> = {
 	domains:   { interval: IntervalDomain.top() },
 	semantics: { interval: IntervalSemantics }
 }
 ```
-
-
 
 ```ts
 /** Creates the abstract semantics of a binary numeric operation, such as `+` or `-` */
@@ -1925,7 +1886,6 @@ function applyBinaryOp(
 }
 ```
 
-
 The semantics of the analysis first define the semantics of numeric constants, for which the resulting interval consists just of the value of the constant. We update the abstract state by setting the abstract value of the currently visited constant vertex to this new interval.
 
 In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we define the semantics of the functions `base::+` and `base::-` to apply the abstract semantics of additions and subtractions with respect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have not inferred a value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we again update the abstract state by setting the abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
@@ -1933,7 +1893,6 @@ In this simple example, we only want to support the addition and subtraction of 
 The data frame shape inference in [src/abstract-interpretation/data-frame](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame) provides a more comprehensive example of such an abstract interpretation analysis.
 
 If we now want to run the interval inference, we can write the following code:
-
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder()
@@ -1957,11 +1916,9 @@ inference.start();
 const result = inference.getEndState('interval');
 ```
 
-
 We first need a [flowR analyzer](https://github.com/flowr-analysis/flowr/wiki/Analyzer) (in this case, using the [tree-sitter engine](https://github.com/flowr-analysis/flowr/wiki/Engines)). In this example, we want to analyze a small example code that assigns `42` to the variable `x`, randomly assigns `6` or `12` to the variable `y`, and assignes the sum of `x` and `y` to the variable `z`. For the abstract interpreter, we need to retrieve the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph), and context of the flowR anaylzer. For performance reasons, we request the control flow graph without simplification passes; it is a view on the dataflow graph and is only projected once something walks it. We then create a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L107"><code><span title="An abstract interpreter that visits the control flow graph to perform abstract interpretation using fixpoint iteration. The visitor infers the abstract values of multiple abstract domains in a single traversal. The abstract state maps each AST node to the abstract values of all domains of the AbsintAnalysis , and whenever a node is visited, the AbstractSemantics of every domain of the analysis are...">AbstractInterpreter</span></code></a> using the control flow graph, dataflow graph, normalized AST, and analyzer context together with our interval analysis, and start the abstract interpreter using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L375"><code>start</code></a>. After the abstract interpreter is finished, we retrieve the inferred abstract state at the end of the program using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L345"><code><span title="Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph). This requires that the abstract interpretation visitor has been completed, or at least started.">getEndState</span></code></a>.
 
 If we now print the inferred abstract state at the end of the program, we get the following output:
-
 
 ```ts
 1@42 -> [42, 42]
@@ -1981,7 +1938,7 @@ The AST nodes are represented as slicing criteria for better readability in the 
 
 <h2 id="testing">Testing</h2>
 
-_flowR_ provides a generic testing framework for abstract interpretation in [test/functionality/abstract-interpretation/inference.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts). The framework supports two kinds of tests for testing inferred abstract domain values at given source code locations (as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/criterion/parse.ts#L117"><code><span title="several SlicingCriterion s, all of which are sliced for at once">SlicingCriteria</span></code></a>):
+_flowR_ provides a generic testing framework for abstract interpretation in [test/functionality/abstract-interpretation/inference.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts). The framework supports two kinds of tests for testing inferred abstract domain values at given source code locations (as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/criterion/parse.ts#L132"><code><span title="several SlicingCriterion s, all of which are sliced for at once">SlicingCriteria</span></code></a>):
 
  1. **Assertion tests** — compare the inferred values against manually specified expected values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L197"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a>).
  2. **Validation tests** — run the code to output the actual value at each location and compare the inferred values against the actual values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L227"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a>).
@@ -2006,7 +1963,6 @@ When comparing inferred values with expected values, the framework supports two 
  * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L28"><code>DomainMatchingType::<b>Overapproximation</b></code></a> — the inferred value must be an over-approximation of the actual value via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L47"><code>AbstractDomain::<b>leq</b></code></a> (default for validation tests)
 
 For example, to use the test framework for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L38"><code><span title="The interval analysis inferring the possible numeric values of the expressions of a program">IntervalAnalysis</span></code></a> defined above, we first define how to print the properties of an actual numeric scalar value in R using `createOutputCode` and how to parse it into an abstract domain value using `parseOutput`. Then, we can use <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the analysis and the name of its abstract domain, and our `createOutputCode` and `parseOutput` function:
-
 
 ```ts
 function createOutputCode(marker: string, symbol: string): string {
@@ -2049,7 +2005,6 @@ z <- x + y
 	);
 }));
 ```
-
 
 The assertion test verifies that the inferred intervals match the specified expected values exactly (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L27"><code>DomainMatchingType::<b>Equal</b></code></a>). The validation test instruments the code by inserting print statements after each tested location, executes the instrumented code with the R shell, and checks that each inferred interval at these locations is an over-approximation of the actual runtime value (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L28"><code>DomainMatchingType::<b>Overapproximation</b></code></a>). For example, the inferred interval `[6, 12]` for `y` is a sound over-approximation of the actual value `6` or `12`, depending on the random branch taken at runtime.
 

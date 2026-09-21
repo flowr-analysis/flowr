@@ -1,17 +1,18 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
+import { label } from '../_helper/label';
 import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('syntactically-valid', () => {
-		assertLinter('valid code has no syntax errors', parser, 'x <- c(1, 2)\nprint(x)',
+		assertLinter(label('valid code has no syntax errors', ['syntax-errors'], ['linter']), parser, 'x <- c(1, 2)\nprint(x)',
 			'syntactically-valid',
 			[],
 			{ parser: 'tree-sitter', errors: 0, fixable: 0 }
 		);
 
-		assertLinter('missing closing parenthesis', parser, 'x <- c(1, 2',
+		assertLinter(label('missing closing parenthesis', ['syntax-errors'], ['linter']), parser, 'x <- c(1, 2',
 			'syntactically-valid',
 			[{
 				certainty: LintingResultCertainty.Certain,
@@ -23,7 +24,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
 		);
 
-		assertLinter('unbalanced brace', parser, '{ 1',
+		assertLinter(label('unbalanced brace', ['syntax-errors'], ['linter']), parser, '{ 1',
 			'syntactically-valid',
 			[{
 				certainty: LintingResultCertainty.Certain,

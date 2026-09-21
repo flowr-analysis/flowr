@@ -21,6 +21,7 @@ import { attachClassDeclaration } from './built-in-s-seven-new-generic';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
+const FieldListArguments = ['fields', 'private'];
 
 /** Processes an `R6Class`/`setRefClass` generator call, tagging it so the assignment layer can record its method list. */
 export function processClassGenerator<OtherInfo>(
@@ -43,8 +44,15 @@ export function resolveClassMethodsToEnvState<OtherInfo>(
 	if(!RFunctionCall.isNamed(source)) {
 		return undefined;
 	}
-	const methodList = source.arguments.find(arg => arg !== EmptyArgument && arg.name !== undefined && MethodListArguments.includes(arg.name.content));
-	return methodList && methodList !== EmptyArgument && methodList.value !== undefined ? resolveListToEnvState(methodList.value, data) : undefined;
+	let envState: REnvironmentInformation | undefined;
+	for(const [names, values] of [[MethodListArguments, false], [FieldListArguments, true]] as const) {
+		const list = source.arguments.find(arg => arg !== EmptyArgument && arg.name !== undefined && names.includes(arg.name.content));
+		const resolved = list && list !== EmptyArgument && list.value !== undefined
+			? resolveListToEnvState(list.value, envState ? { environment: envState } : data, values)
+			: undefined;
+		envState = resolved ?? envState;
+	}
+	return envState;
 }
 
 const ConstructorField = 'new';

@@ -4,6 +4,7 @@
  * out of `../sigdb` as pure format + filesystem discovery, with no dependency on the reader/writer classes.
  */
 import fs from 'fs';
+import { compareByCodeUnit } from '../../util/text/strings';
 import path from 'path';
 import { SigDbExt, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier } from './schema';
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
@@ -281,7 +282,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 		return scope === -1 ? SigDbScopeOrder.length : scope;   // custom bundles sort after the known scopes
 	};
 	const orderedManifests = [...manifests.entries()]
-		.sort((a, b) => scopeRank(a[0]) - scopeRank(b[0]) || a[0].localeCompare(b[0])).map(([, p]) => p);
+		.sort((a, b) => scopeRank(a[0]) - scopeRank(b[0]) || compareByCodeUnit(a[0], b[0])).map(([, p]) => p);
 	const bundles = standalones.entries().filter(([name]) => !isShard(name)).map(([, p]) => p);
 	const paths = [...orderedManifests, ...bundles];
 	defaultSigDbPathsMemo.set(memoKey, { paths, watched });

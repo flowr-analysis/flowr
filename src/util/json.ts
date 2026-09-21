@@ -5,7 +5,6 @@ import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../dataflow
 
 /**
  * This is flowR's custom JSON replacer, used to stringify flowR-internal structures.
- * @see {@link jsonBigIntRetriever}
  * @see {@link superBigJsonStringify}
  */
 export function jsonReplacer(key: unknown, value: unknown): unknown {
@@ -19,20 +18,6 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 		return value;
 	}
 }
-
-/**
- * This is flowR's custom JSON retriever, used to parse flowR-internal structures.
- * @see {@link jsonReplacer}
- * @see {@link superBigJsonStringify}
- */
-export function jsonBigIntRetriever(key: string, value: unknown): unknown {
-	if(typeof value === 'string' && value.endsWith('n')) {
-		return BigInt(value.slice(0, -1));
-	} else {
-		return value;
-	}
-}
-
 
 /**
  * Stringifies potentially very large objects to JSON, sending chunks to the provided send function.

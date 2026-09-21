@@ -39,8 +39,8 @@ const local = {
 };
 
 export default [...flowr, {
-	/* what the browser build puts in place of node's built-ins is plain JS, outside the TypeScript project */
-	ignores: ['scripts/playground/empty.js', 'scripts/playground/path-shim.js']
+	/* the browser build's stand-ins for node's built-ins and the install guard are plain JS, outside the TypeScript project */
+	ignores: ['scripts/playground/empty.js', 'scripts/playground/path-shim.js', 'scripts/prepare.js']
 }, {
 	plugins: { local },
 	rules:   { 'local/no-orphaned-doc-comment': 'error' },

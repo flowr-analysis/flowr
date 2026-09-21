@@ -2,8 +2,8 @@ import type { FunctionInfo } from './function-info';
 import { FunctionSemantics } from '../../../../dataflow/fn/function-semantics';
 import type { BuiltInFnInfo, PropSelector } from '../../../../dataflow/environments/built-in-props';
 import { ArgProp } from '../../../../dataflow/environments/built-in-props';
-import { DefaultBuiltinConfig } from '../../../../dataflow/environments/default-builtin-config';
 import { builtInNames } from '../../../../dataflow/environments/query-fn-props';
+import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
 import { Identifier } from '../../../../dataflow/environments/identifier';
 
 /** what an entry links to, like `sink` for `cat`: the link reports it already, so it is not an entry of its own */
@@ -22,17 +22,17 @@ function writtenAs(f: FunctionInfo): string {
 
 /**
  * The built-ins that carry all of `props` and name the resource they act on, as entries of a dependency
- * category. This is what the {@link DefaultBuiltinConfig} already states, so only the functions it does not
+ * category. This is what the built-in configuration already states, so only the functions it does not
  * know (most package functions) and the ones needing more than a resource argument (`ignoreIf`, `linkTo`,
  * a default, ...) have to be written down in the category itself. Names in `except` stay with whoever
  * wrote them down.
  */
-export function functionInfosFromProps(props: PropSelector, except: readonly FunctionInfo[]): FunctionInfo[] {
+export function functionInfosFromProps(props: PropSelector, except: readonly FunctionInfo[], definitions: BuiltInDefinitions): FunctionInfo[] {
 	const taken = new Set(except.map(writtenAs));
 	/* a bare name speaks for every package: an entry written down without one, and whatever a link points at */
 	const takenEverywhere = new Set(except.flatMap(f => [...f.package === undefined ? [f.name] : [], ...linkTargets(f)]));
 	const found: FunctionInfo[] = [];
-	for(const d of DefaultBuiltinConfig) {
+	for(const d of definitions) {
 		const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
 		if(info?.sig === undefined || !FunctionSemantics.call.props.hasAny(info) || !FunctionSemantics.call.props.hasAll(info, props)) {
 			continue;

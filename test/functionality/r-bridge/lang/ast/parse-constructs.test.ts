@@ -2,7 +2,7 @@ import { assertAst, withShell } from '../../../_helper/shell';
 import { exprList, numVal } from '../../../_helper/ast-builder';
 import { SourceRange } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -17,7 +17,7 @@ interface IfThenSpacing {
 	locationNum:  ReturnType<typeof SourceRange.from>
 	end:          ReturnType<typeof SourceRange.from>
 	/* yes, we could give them just once, but if we ever want to modify the list this is more flexible */
-	capabilities: SupportedFlowrCapabilityId[]
+	capabilities: FlowrCapabilityId[]
 }
 
 const IfThenSpacingVariants: IfThenSpacing[] = [
@@ -146,7 +146,7 @@ interface ElseSpacing {
 	locationElse: ReturnType<typeof SourceRange.from>
 	otherwise:    (offset: SourceRange) => RNode,
 	num:          number,
-	capabilities: SupportedFlowrCapabilityId[]
+	capabilities: FlowrCapabilityId[]
 }
 
 // suffix of if-then counterparts

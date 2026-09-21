@@ -1,4 +1,5 @@
 import type { PackageSignatureSource } from './reader';
+import { compareByCodeUnit } from '../../util/text/strings';
 import type { VersionRelease } from './sigdb-version';
 import type { LibraryExports } from './schema';
 import type { ResolvedDependency } from './decode';
@@ -80,7 +81,7 @@ export class MemorySignatureSource implements PackageSignatureSource {
 	public packagesExporting(name: string): readonly string[] {
 		return [...this.packages]
 			.filter(([, p]) => p.exported.includes(name))
-			.sort(([an, a], [bn, b]) => (b.downloads ?? 0) - (a.downloads ?? 0) || an.localeCompare(bn))
+			.sort(([an, a], [bn, b]) => (b.downloads ?? 0) - (a.downloads ?? 0) || compareByCodeUnit(an, bn))
 			.map(([pkg]) => pkg);
 	}
 

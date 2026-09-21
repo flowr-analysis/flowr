@@ -10,20 +10,23 @@ import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-param
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowGraph, FunctionArgument } from './graph';
+import { DfgVertex } from './vertex';
 import { EdgeType } from './edge';
 import { dataflowLogger } from '../logger';
 import { DotsParameterName, matchArgumentsToParameters } from '../../util/arg-matching';
+import { AttachedBasePackageSet } from '../../util/r-base-packages';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { SourceRange } from '../../util/range';
 import type { SigParameter } from '../../project/sigdb/decode';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { signatureDbOf, type SignatureDb } from '../../project/sigdb/signature-db';
 import { OriginType } from '../origin/dfg-get-origin';
 import { Dataflow } from './df-helper';
-import { Identifier } from '../environments/identifier';
+import { Identifier, PkgName } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
-import type { ArgProps } from '../environments/built-in-props';
-import { FnSig } from '../environments/built-in-props';
+import type { ArgProps, FnSig  } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { BuiltInLookup } from '../fn/frame-reflection';
 
@@ -131,16 +134,16 @@ export const MatchArgs = {
 	 *
 	 * `graph` is what says which definition a name reaches here, because scoping, shadowing and control flow
 	 * decide that and a name alone cannot. It therefore needs a finished graph rather than one under
-	 * construction. Cost is one {@link Dataflow.origin} lookup plus, for a package call, decoding that one
-	 * function.
+	 * construction, and it is what says which arguments the call has (see {@link argumentsOf}). Cost is one
+	 * {@link Dataflow.origin} lookup plus, for a package call, decoding that one function.
 	 * @param call  - The call whose arguments are to be bound.
 	 * @param graph - The finished graph the call was analyzed into.
 	 * @param ctx   - The analyzer context the database and the assumed versions come from.
 	 * @returns     Per formal name the argument bound to it, `undefined` if the formals could not be found.
 	 */
-	toDefinition<Info>(this: void, call: RFunctionCall<Info & ParentInformation>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<string, RArgument<Info & ParentInformation>> | undefined {
+	toDefinition<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<string, RArgument<Info>> | undefined {
 		const names = formalsOf(call, graph, ctx);
-		return names === undefined ? undefined : MatchArgs.toNames(call.arguments, names);
+		return names === undefined ? undefined : MatchArgs.toNames(argumentsOf(call, graph), names);
 	},
 	/** The formal names a call binds against, whichever of flowR's sources knows them; see {@link formalsOf}. */
 	formalsOf,
@@ -152,11 +155,9 @@ export const MatchArgs = {
 	 * @returns         The value ids of the matching arguments.
 	 */
 	findWithProps(this: void, args: readonly FunctionArgument[], signature: FnSig, props: ArgProps): NodeId[] {
-		const layout = FnSig.layout(signature);
 		const bound = matchArgumentsToParameters(args.map(FunctionArgument.getName), signature.map(([param]) => param));
-
 		return args
-			.filter((_, index) => bound[index] !== undefined && (FnSig.propAt(layout, bound[index]) & props) !== 0)
+			.filter((_, index) => bound[index] !== undefined && (signature[bound[index]][1] & props) !== 0)
 			.map(FunctionArgument.getReference).filter(isNotUndefined);
 	}
 } as const;
@@ -178,7 +179,7 @@ export const MatchArgs = {
  * @param graph - The finished graph the call was analyzed into.
  * @param ctx   - The analyzer context the database, the assumed versions and the built-ins come from.
  */
-function formalsOf<Info>(this: void, call: RFunctionCall<Info & ParentInformation>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] | undefined {
+function formalsOf<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] | undefined {
 	const origins = Dataflow.origin(graph, call.info.id);
 	if(origins === undefined) {
 		return undefined;
@@ -193,21 +194,59 @@ function formalsOf<Info>(this: void, call: RFunctionCall<Info & ParentInformatio
 	}
 	let db: SignatureDb | undefined;
 	let stated: BuiltInLookup | undefined;
-	for(const origin of origins) {
-		if(origin.type !== OriginType.BuiltInFunctionOrigin) {
-			continue;
-		}
-		const name = Identifier.toQualified([origin], origin.fn.name) ?? origin.fn.name;
-		db ??= signatureDbOf(ctx.deps);
-		const found = db.parametersOf(name);
-		if(found !== undefined && found.length > 0) {
-			return found;
-		}
-		stated ??= builtInLookup(ctx);
-		const declared = stated(name)?.sig;
-		if(declared !== undefined && declared.length > 0) {
-			return declared.map(([param]) => param);
+	for(const position of SearchPath) {
+		for(const origin of origins) {
+			if(origin.type !== OriginType.BuiltInFunctionOrigin) {
+				continue;
+			}
+			const name = Identifier.toQualified([origin], origin.fn.name) ?? origin.fn.name;
+			if(searchPathPosition(name) !== position) {
+				continue;
+			}
+			db ??= signatureDbOf(ctx.deps);
+			const found = db.parametersOf(name);
+			if(found !== undefined && found.length > 0) {
+				return found;
+			}
+			stated ??= builtInLookup(ctx);
+			const declared = stated(name)?.sig;
+			if(declared !== undefined && declared.length > 0) {
+				return declared.map(([param]) => param);
+			}
 		}
 	}
 	return undefined;
+}
+
+/** R's default search path, front to back: whatever the code attaches masks the base packages, `base` last. */
+const SearchPath = ['attached-package', 'base-package', 'base', 'unqualified'] as const;
+
+/** Where `name` sits on the {@link SearchPath}. */
+function searchPathPosition(name: Identifier): typeof SearchPath[number] {
+	const namespace = Identifier.getNamespace(name);
+	if(namespace === undefined) {
+		return 'unqualified';
+	}
+	return namespace === PkgName.Base ? 'base' : AttachedBasePackageSet.has(namespace) ? 'base-package' : 'attached-package';
+}
+
+/** The arguments the call binds, taken from the graph so that `x |> f(y)` binds `f(x, y)`. */
+function argumentsOf<Info extends ParentInformation>(call: RFunctionCall<Info>, graph: DataflowGraph): readonly PotentiallyEmptyRArgument<Info>[] {
+	const vertex = graph.getVertex(call.info.id);
+	if(!DfgVertex.isFunctionCall(vertex) || vertex.args.length !== call.arguments.length + 1) {
+		return call.arguments;
+	}
+	const pipedId = FunctionArgument.getId(vertex.args[0]);
+	const piped = pipedId === undefined ? undefined : graph.idMap?.get(pipedId);
+	if(piped === undefined) {
+		return call.arguments;
+	}
+	return [{
+		type:     RType.Argument,
+		lexeme:   piped.lexeme ?? '',
+		location: piped.location ?? SourceRange.invalid(),
+		info:     { ...piped.info, id: `${piped.info.id}-arg` },
+		name:     undefined,
+		value:    piped
+	} as RArgument<Info>, ...call.arguments];
 }

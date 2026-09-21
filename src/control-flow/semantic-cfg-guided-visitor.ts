@@ -297,6 +297,8 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.StackEnv:
 			case BuiltInProcName.With:
 			case BuiltInProcName.Attach:
+			case BuiltInProcName.EnvContents:
+			case BuiltInProcName.ListToEnv:
 			case BuiltInProcName.Default:
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:

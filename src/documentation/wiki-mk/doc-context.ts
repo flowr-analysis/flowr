@@ -82,6 +82,7 @@ export const ConstantWikiLinkInfo = {
 	'flowr:rstudio-addin': { url: FlowrRStudioAddin, name: 'flowR RStudio Addin' },
 	'flowr:radapter':      { url: FlowrRAdapter, name: 'flowR R Adapter' },
 	'flowr:benchmarks':    { url: `${FlowrSiteBaseRef}/wiki/stats/benchmark`, name: 'flowR benchmark page' },
+	'flowr:capabilities':  { url: `${FlowrSiteBaseRef}/wiki/capabilities/`, name: 'flowR capabilities page' },
 	'flowr:docs':          { url: `${FlowrSiteBaseRef}/doc/`, name: 'flowR code docs' },
 	'flowr:zenodo':        { url: 'https://zenodo.org/doi/10.5281/zenodo.13319290', name: 'flowR on Zenodo' },
 } as const;

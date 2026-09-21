@@ -83,10 +83,11 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvi
  */
 export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	callArguments: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	const args = data.pipedArgument?.rootId === rootId ? [data.pipedArgument.argument, ...callArguments] : callArguments;
 	const resolved = Resolve.byNameAndType(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 

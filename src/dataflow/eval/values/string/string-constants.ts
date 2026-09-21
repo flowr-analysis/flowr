@@ -1,8 +1,8 @@
 import type { RStringValue } from '../../../../r-bridge/lang-4.x/convert-values';
 import { bottomTopGuard } from '../general';
-import { type Lift, type Value, type ValueString, Bottom, isValue, Top } from '../r-value';
+import { type Value, type ValueString, isValue } from '../r-value';
 
-/** lift a raw string or R string value into a ValueString; see {@link liftString} for lifting a Lift<RStringValue> */
+/** lift a raw string or R string value into a ValueString */
 export function stringFrom(str: RStringValue | string): ValueString {
 	return { type: 'string', value: typeof str === 'string' ? { quotes: '"', str } : str };
 }
@@ -59,11 +59,6 @@ function stringFromLiteral(this: void, value: RStringValue): ValueString | undef
 	return str === undefined ? undefined : stringFrom({ ...value, str });
 }
 
-/** lift a Lift<RStringValue> into a ValueString; see {@link stringFrom} for lifting a raw string or R string value */
-export function liftString(str: Lift<RStringValue>): ValueString {
-	return { type: 'string', value: str };
-}
-
 /** collect strings from an array of ValueString, with quotes if `withQuotes`; undefined if any value is not a string, or is Bottom/Top */
 export function collectStrings(a: Value[], withQuotes: boolean = false): string[] | undefined {
 	if(bottomTopGuard(a)) {
@@ -85,8 +80,3 @@ export function collectStrings(a: Value[], withQuotes: boolean = false): string[
 
 	return values;
 }
-
-/** utility functions for the strings a program writes down, as opposed to the ones it computes */
-export const ValueEmptyString = stringFrom('');
-export const ValueStringTop = liftString(Top);
-export const ValueStringBot = liftString(Bottom);

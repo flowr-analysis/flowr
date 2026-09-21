@@ -57,8 +57,8 @@ export const USELESS_LOOP = {
 		description:   'Detect loops which only iterate once',
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability],
-		defaultConfig: {
+		defaultConfig: () => ({
 			loopyFunctions: loopyFunctions
-		}
+		})
 	}
 } as const satisfies LintingRule<UselessLoopResult, UselessLoopMetadata, UselessLoopConfig>;

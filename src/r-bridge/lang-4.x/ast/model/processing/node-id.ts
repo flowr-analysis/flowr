@@ -5,6 +5,7 @@ import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
+import { compareByCodeUnit } from '../../../../../util/text/strings';
 
 /**
  * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
@@ -27,9 +28,19 @@ function startsNumeric(id: string): boolean {
 /**
  * What a {@link NodeId} is: the identity of a node within one analysis, plus the built-in and `pkg::fn`
  * names encoded as one, and the ways to read a name back out of it.
+ * @helper location
  */
 export const NodeId = {
 	name: 'NodeId',
+	/**
+	 * Orders two ids: numerically where both are numbers, and by code unit otherwise. Never `localeCompare`,
+	 * whose order depends on the machine's locale and ICU build, so a result decided by it would differ
+	 * between two users analyzing the same code.
+	 */
+	compare(this: void, a: NodeId, b: NodeId): number {
+		const [x, y] = [NodeId.normalize(a), NodeId.normalize(b)];
+		return typeof x === 'number' && typeof y === 'number' ? x - y : compareByCodeUnit(String(x), String(y));
+	},
 	/**
 	 * Normalizes a node id by converting numeric strings to numbers.
 	 * This allows us to use numeric ids without storing them as strings, while still allowing custom string ids if needed.

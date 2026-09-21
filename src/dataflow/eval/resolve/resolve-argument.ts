@@ -4,6 +4,12 @@ import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../../util/assert';
+import { DfgVertex } from '../../graph/vertex';
+import { EdgeType } from '../../graph/edge';
+import { Dataflow } from '../../graph/df-helper';
+import { callFnProps } from '../../environments/query-fn-props';
+import { ArgProp, SemanticCallTag } from '../../environments/built-in-props';
+import { FunctionSemantics } from '../../fn/function-semantics';
 import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -52,7 +58,7 @@ export function getArgumentStringValue(
 			}
 			if(valueNode) {
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? [Unknown];
+				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
 				map.set(ref, new Set(values));
 			}
 		}
@@ -69,9 +75,23 @@ export function getArgumentStringValue(
 		}
 
 		if(valueNode) {
-			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? [Unknown];
+			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
 			return new Map([[arg, new Set(values)]]);
 		}
+	}
+	return undefined;
+}
+
+function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph, argument: NodeId, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+	for(const id of Dataflow.provenance(argument, graph, undefined, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall)) {
+		const vertex = graph.getVertex(id);
+		const info = DfgVertex.isFunctionCall(vertex) ? callFnProps(id, { graph, environment: ctx.env.cleanEnv() }) : undefined;
+		const resource = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
+		if(vertex === undefined || resource < 0 || !FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Opens])) {
+			continue;
+		}
+		const values = getArgumentStringValue(variableResolve, graph, vertex as DataflowGraphVertexFunctionCall, resource, info?.sig?.[resource][0], true, ctx);
+		return values === undefined ? undefined : [...values.values()].flatMap(v => [...v]).filter(isNotUndefined);
 	}
 	return undefined;
 }

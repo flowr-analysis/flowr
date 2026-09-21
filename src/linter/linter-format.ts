@@ -11,15 +11,17 @@ import { SourceLocation } from '../util/range';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable, isNotUndefined } from '../util/assert';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
 	readonly name:             string;
 	/**
-	 * The default config for this linting rule.
+	 * The default config for this linting rule, derived from the analyzer's context so that a rule reading
+	 * flowR's built-ins answers for the ones the {@link FlowrConfig} actually registered.
 	 * This config is combined with the user config when executing the rule.
 	 */
-	readonly defaultConfig:    NoInfer<DeepReadonly<Config>>;
+	readonly defaultConfig:    (ctx: ReadOnlyFlowrAnalyzerContext) => NoInfer<DeepReadonly<Config>>;
 	/**
 	 * A short list of tags that describe and categorize the linting rule.
 	 */
@@ -49,9 +51,11 @@ export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord = never, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	/**
 	 * Creates a flowR search that will then be executed and whose results will be passed to {@link processSearchResult}.
+	 * The analyzer the rule runs on is handed in as well, so a search built from flowR's built-ins can read the ones
+	 * its {@link FlowrConfig} registered rather than the defaults.
 	 * In the future, additional optimizations and transformations may be applied to the search between this function and {@link processSearchResult}.
 	 */
-	readonly createSearch:        (config: Config) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
+	readonly createSearch:        (config: Config, data: ReadonlyFlowrAnalysisProvider) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
 	/**
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
@@ -99,6 +103,7 @@ export type LintQuickFix = LintQuickFixReplacement | LintQuickFixRemove;
 
 /**
  * Helper for working with {@link LintQuickFix|quick fixes}.
+ * @helper api
  */
 export const LintQuickFix = {
 	name: 'LintQuickFix',
@@ -175,6 +180,7 @@ export type LintingResults<Name extends LintingRuleNames> = LintingResultsSucces
 
 /**
  * Helper functions for working with {@link LintingResults}.
+ * @helper api
  */
 export const LintingResults = {
 	name: 'LintingResults',

@@ -1,4 +1,5 @@
 import { afterAll, assert, beforeAll, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -114,46 +115,46 @@ function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 }
 
 describe('Lockfile versions', () => {
-	test('rv.lock pins every package, including builtin ones', () => {
+	test(label('rv.lock pins every package, including builtin ones', ['version-manager-rv'], ['other']), () => {
 		const ctx = ctxWith('rv.lock', rvLock);
 		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
 		// `7.3-65` is an R version, where `-` separates a component just like `.` does
 		assert.sameDeepMembers(got, [['R6', '2.6.1'], ['MASS', '7.3.65'], ['ggplot2', '3.5.1']]);
 	});
 
-	test('rv.lock contributes its r_version', () => {
+	test(label('rv.lock contributes its r_version', ['version-manager-rv'], ['other']), () => {
 		assert.strictEqual(ctxWith('rv.lock', rvLock).meta.getRVersion(), '4.5');
 	});
 
-	test('uvr.lock pins every package, including the dev ones', () => {
+	test(label('uvr.lock pins every package, including the dev ones', ['version-manager-uvr'], ['other']), () => {
 		const ctx = ctxWith('uvr.lock', uvrLock);
 		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['ggplot2', '3.4.4'], ['dplyr', '1.1.4'], ['testthat', '3.2.1']]);
 	});
 
-	test('uvr.lock contributes the version of its [r] table', () => {
+	test(label('uvr.lock contributes the version of its [r] table', ['version-manager-uvr'], ['other']), () => {
 		assert.strictEqual(ctxWith('uvr.lock', uvrLock).meta.getRVersion(), '4.3.2');
 	});
 
-	test('a lockfile is read whatever its name is capitalized like', () => {
+	test(label('a lockfile is read whatever its name is capitalized like', ['version-manager-renv'], ['other']), () => {
 		// the file plugin assigns the role case-insensitively, so the readers must match it the same way
 		assert.isNotEmpty(ctxWith('UVR.lock', uvrLock).deps.getDependencies());
 		assert.isNotEmpty(ctxWith('Renv.lock', renvLock).deps.getDependencies());
 	});
 
-	test('renv.lock pins every package', () => {
+	test(label('renv.lock pins every package', ['version-manager-renv'], ['other']), () => {
 		const ctx = ctxWith('renv.lock', renvLock);
 		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['R6', '2.5.1'], ['cli', '3.6.4']]);
 	});
 
-	test('packrat.lock pins every package', () => {
+	test(label('packrat.lock pins every package', ['version-manager-packrat'], ['other']), () => {
 		const ctx = ctxWith('packrat.lock', packratLock);
 		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['R6', '2.1.2'], ['ggplot2', '2.1.0']]);
 	});
 
-	test('packrat.lock contributes its RVersion', () => {
+	test(label('packrat.lock contributes its RVersion', ['version-manager-packrat'], ['other']), () => {
 		assert.strictEqual(ctxWith('packrat.lock', packratLock).meta.getRVersion(), '3.2.3');
 	});
 
@@ -176,7 +177,7 @@ describe('uvr within a discovered project', () => {
 	});
 	afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
-	test('the manifest and the lockfile are read, the project library is not', async() => {
+	test(label('the manifest and the lockfile are read, the project library is not', ['version-manager-uvr', 'project-library'], ['other']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
 		analyzer.addRequest({ request: 'project', content: root });
 		const ctx = analyzer.inspectContext();
@@ -203,7 +204,7 @@ describe('packrat within a discovered project', () => {
 	});
 	afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
-	test('the lockfile is discovered and read, the installed library is not', async() => {
+	test(label('the lockfile is discovered and read, the installed library is not', ['version-manager-packrat', 'project-library'], ['other']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
 		analyzer.addRequest({ request: 'project', content: root });
 		const ctx = analyzer.inspectContext();

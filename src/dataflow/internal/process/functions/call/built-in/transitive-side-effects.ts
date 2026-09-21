@@ -275,7 +275,7 @@ function escapedDefinitionMap(graph: DataflowGraph): Map<NodeId, InGraphIdentifi
  * `f <- function() x <<- 1; g <- function() f(); g(); print(x)` makes `x` resolvable.
  * @returns the enriched environment and whether it grew (so the extractor can re-resolve open reads and re-run).
  */
-function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment: REnvironmentInformation): { environment: REnvironmentInformation, grew: boolean, names: Set<string> } {
+function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, defined: Set<string>): { environment: REnvironmentInformation, grew: boolean, names: Set<string> } {
 	const summary = computeCallGraphSummaries(graph, escapedDefinitions());
 	const defs = escapedDefinitionMap(graph);
 	const names = new Set<string>();
@@ -291,6 +291,14 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 					continue;
 				}
 				names.add(def.name);
+				/* a name may hold several definitions while a lookup answers with one, so asking the environment
+				 * would call every shadowed one missing and define it again on every round; what this fixpoint
+				 * has already folded in is what says whether there is anything left to add */
+				const key = `${def.name}\u0000${String(nodeId)}`;
+				if(defined.has(key)) {
+					continue;
+				}
+				defined.add(key);
 				if(Resolve.byNameAndType(def.name, environment, def.type)?.some(d => d.nodeId === nodeId)) {
 					continue;
 				}
@@ -321,9 +329,9 @@ export function reResolveOpenReferences(this: void, graph: DataflowGraph, enviro
  * @returns  the enriched top-level environment and whether it grew (so the extractor can re-link and re-run to a fixpoint).
  * @useInstead {@link Dataflow.sideEffects.propagateTransitive}
  */
-export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {
+export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, defined: Set<string> = new Set()): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {
 	propagateTransitiveDefinitions(graph, environment, ctx);
 	const packages = propagateTransitivePackages(graph, environment, ctx);
-	const escaped = propagateTransitiveEscapedDefinitions(graph, packages.environment);
+	const escaped = propagateTransitiveEscapedDefinitions(graph, packages.environment, defined);
 	return { environment: escaped.environment, grew: packages.grew || escaped.grew, escapedNames: escaped.names };
 }

@@ -2,7 +2,7 @@ import { extractCfg } from '../../control-flow/control-flow-graph';
 import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { KnownParser } from '../../r-bridge/parser';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { GeneralDocContext } from '../wiki-mk/doc-context';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -59,7 +59,7 @@ export async function printCfgCode(parser: KnownParser, code: string, { showCode
 	const res = await getCfg(parser, code, simplifications);
 	const duration = performance.now() - now;
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including the dataflow analysis, normalization, and parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.
+	const metaInfo = `The analysis${docTook(duration)} ran (including the dataflow analysis, normalization, and parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.
 We used the following simplification${(simplifications?.length ?? 0) + DefaultCfgSimplificationOrder.length !== 1 ? 's' : ''}: ${[...DefaultCfgSimplificationOrder, ...simplifications].map(s => '`' + s + '`').join(', ')} ${simplify ? ' and render a simplified/compacted version' : ''}.
 	`;
 

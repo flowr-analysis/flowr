@@ -18,12 +18,15 @@ export interface FlowrCapability {
 	/** A list of features that are required for the capability, extend at need. */
 	readonly needs?:        RequiredFeature[]
 	readonly description?:  string
+	readonly code?:         readonly string[]
 	/* examples may be generated on demand */
 	readonly example?:      string | ((parser: KnownParser) => Promise<string>),
 	/** A list of URLs that provide additional information about the capability */
 	readonly url?:          { name: string, href: string }[]
 	/** The level of support for the capability, undefined if it is a meta-capability that does not need such an attribute */
 	readonly supported?:    'not' | 'partially' | 'fully'
+	/** Minimum R version the capability requires, if any */
+	readonly minRVersion?:  string
 	readonly capabilities?: readonly FlowrCapability[]
 }
 

@@ -13,7 +13,7 @@ import { linkS4Declaration, linkS4Uses, type S4UseConfig } from './built-in-s-fo
 
 /** Configuration of {@link processClassRelation}. */
 export interface ClassRelationConfiguration extends S4UseConfig {
-	/** what the call states about the classes it relates, see {@link classDeclarationOf} */
+	/** what the call states about the classes it relates, see {@link classDeclarationOfImpl} */
 	readonly classDecl?:      ClassDeclarationConfig;
 	/** when set, the call also binds a name, and is processed as that assignment first (`setValidity`) */
 	readonly assignment?:     AssignmentConfiguration;

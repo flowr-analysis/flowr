@@ -1,6 +1,7 @@
 import ts, { SyntaxKind, type NamedDeclaration, type SourceFile, type TypeChecker } from 'typescript';
 import { guard } from '../../util/assert';
-import { RemoteFlowrFilePathBaseRef, toPosixPath } from './doc-files';
+import { RemoteFlowrFilePathBaseRef } from './doc-files';
+import { RPath } from '../../util/files';
 import fs from 'fs';
 import path from 'path';
 import { codeBlock } from './doc-code';
@@ -62,7 +63,7 @@ const options: ts.CompilerOptions = {
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
 		// keeps wiki/doc links consistent across OSes (Windows uses backslashes)
-		const normalizedFileNames = fileNames.map(toPosixPath);
+		const normalizedFileNames = fileNames.map(RPath.of);
 		const program = ts.createProgram(normalizedFileNames, options);
 		return { program, files: normalizedFileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
@@ -644,7 +645,7 @@ export function printCodeOfElement(info: FnElementInfo, name: string): string {
  * This is great to show examples that are directly taken from the source code.
  */
 export function printCodeOfFile(info: FnElementInfo, relativePath: string): string {
-	const fullPath = toPosixPath(path.resolve(__dirname, `../../../${relativePath}`));
+	const fullPath = RPath.of(path.resolve(__dirname, `../../../${relativePath}`));
 	const code = info.program.getSourceFile(fullPath)?.getFullText().trim();
 	if(!code) {
 		console.error(`Could not find source file ${relativePath}!`);

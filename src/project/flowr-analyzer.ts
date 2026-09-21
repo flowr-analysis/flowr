@@ -24,8 +24,7 @@ import type { CallGraph } from '../dataflow/graph/call-graph';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
 import type { FnInfo } from '../dataflow/environments/query-fn-props';
-import { fnInfo } from '../dataflow/environments/query-fn-props';
-import { Identifier } from '../dataflow/environments/identifier';
+import type { Identifier } from '../dataflow/environments/identifier';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -240,7 +239,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
-		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this.ctx.inspect(), version);
+		return this.ctx.functionInfo(name, version);
 	}
 
 	public reset() {

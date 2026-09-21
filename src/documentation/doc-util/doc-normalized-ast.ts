@@ -4,7 +4,7 @@ import type {
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { GeneralDocContext } from '../wiki-mk/doc-context';
@@ -40,7 +40,7 @@ export async function printNormalizedAstForCode(parser: KnownParser, code: strin
 	}).allRemainingSteps();
 	const duration = performance.now() - now;
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.`;
+	const metaInfo = `The analysis${docTook(duration)} ran (including parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.`;
 
 	return '\n\n' +  printNormalizedAst(result.normalize.ast, prefix) + (showCode ? `
 <details>

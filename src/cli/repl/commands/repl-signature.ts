@@ -3,6 +3,7 @@ import { bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { executeQueries } from '../../../queries/query';
 import { SignatureQueryDefinition } from '../../../queries/catalog/signature-query/signature-query-format';
+import { FunctionInfoQueryDefinition } from '../../../queries/catalog/function-info-query/function-info-query-format';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { downloadFullSigDb } from '../../../project/sigdb/sigdb-download';
 import { persistSigDbPathToGlobalConfig } from '../../../config';
@@ -26,6 +27,8 @@ function printHelp(output: ReplOutput): void {
 	output.stdout('');
 	output.stdout(`  ${bold(':signature query', f)} ${italic('[<package>[@<version>][::<function>] [<function>]] [--param <name>] [--required <n>]', f)}`);
 	output.stdout(`      ${italic('inspect the database -- identical to :query @signature; with no package it summarizes the loaded databases and per-shard load state (run :signature query help for the full syntax)', f)}`);
+	output.stdout(`  ${bold(':signature info', f)} ${italic('<name> [<package>...]', f)}`);
+	output.stdout(`      ${italic('where a function comes from -- identical to :query @function-info; which packages export <name>, their signature, and whether flowR itself has a built-in definition for it', f)}`);
 	output.stdout(`  ${bold(':signature add', f)} ${italic('<path-to-.sigs.ndjson|.br|.manifest.json>', f)}`);
 	output.stdout(`      ${italic('mount an additional signature database/source (dictionaries + shards); takes precedence over the bundle', f)}`);
 	output.stdout(`  ${bold(':signature download', f)} ${italic('[<version>]', f)}`);
@@ -45,6 +48,19 @@ async function runQuery(output: ReplOutput, analyzer: ReplAnalyzer, args: readon
 	const start = Date.now();
 	const results = await executeQueries({ analyzer }, queries);
 	output.stdout(await asciiSummaryOfQueryResult(output.formatter, Date.now() - start, results, analyzer, queries));
+}
+
+async function runInfo(output: ReplOutput, analyzer: ReplAnalyzer, args: readonly string[]): Promise<void> {
+	const f = output.formatter;
+	const parsed = FunctionInfoQueryDefinition.fromLine(output, args, analyzer.flowrConfig).query;
+	const queries = parsed ? (Array.isArray(parsed) ? parsed : [parsed]) : [];
+	if(queries.length === 0) {
+		output.stderr(`Usage: ${italic(':signature info <name> [<package>...]', f)}`);
+		return;
+	}
+	const start = Date.now();
+	const results = await executeQueries({ analyzer }, queries);
+	output.stdout(await asciiSummaryOfQueryResult(f, Date.now() - start, results, analyzer, queries));
 }
 
 /** `:signature add <path>` -- mount an additional signature database/source (takes precedence over the bundle) */
@@ -93,6 +109,7 @@ type SignatureSubHandler = (output: ReplOutput, analyzer: ReplAnalyzer, rest: re
 /** every `:signature` subcommand keyed by name -- the single source driving both dispatch and completion */
 const signatureSubcommands = {
 	query:    runQuery,
+	info:     runInfo,
 	add:      runAdd,
 	download: runDownload,
 	help:     output => printHelp(output),
@@ -118,7 +135,7 @@ export function replSignatureCompleter(splitLine: readonly string[], startingNew
 }
 
 export const signatureCommand: ReplCodeCommand = {
-	description:   'Inspect and extend the signature database: `query` (identical to :query @signature), `add <path>` to mount another database/source, `download` to fetch the full-history database.',
+	description:   'Inspect and extend the signature database: `query` (identical to :query @signature), `info <name>` for where a function comes from (identical to :query @function-info), `add <path>` to mount another database/source, `download` to fetch the full-history database.',
 	isCodeCommand: true,
 	usageExample:  ':signature <query|add|download> ...',
 	aliases:       ['sig'],

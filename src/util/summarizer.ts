@@ -1,11 +1,6 @@
 import type { MergeableRecord } from './objects';
 import { arraySum } from './collections/arrays';
 
-export const enum SummarizerType {
-	Benchmark  = 'benchmark',
-	Statistics = 'statistics',
-}
-
 export interface CommonSummarizerConfiguration extends MergeableRecord {
 	logger: (message: string) => void
 }
@@ -33,10 +28,9 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 
 	/**
 	 * First phase of the summary, can be used to extract all data of interest from the individual
-	 * benchmark or statistic results. This can write temporary files based on the configuration.
-	 * @param useTypeClassification - Whether to split the analysis based on the detected type (e.g. 'test', 'example', ...)
+	 * benchmark results. This can write temporary files based on the configuration.
 	 */
-	public abstract preparationPhase(useTypeClassification: boolean): Promise<void>;
+	public abstract preparationPhase(): Promise<void>;
 
 	/**
 	 * Second phase of the summary, can be used to combine the data from the first phase

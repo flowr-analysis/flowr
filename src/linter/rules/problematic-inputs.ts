@@ -11,13 +11,12 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
+import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
-const defaultConsider: readonly string[] = [
-	'^eval$',
-	...BuiltInIndex.default().with(SemanticCallTag.Process).map(n => `^${Identifier.quote(Identifier.getName(n))}$`)
-];
+function defaultConsider(index: BuiltInIndex): readonly string[] {
+	return ['^eval$', ...index.with(SemanticCallTag.Process).map(n => `^${Identifier.quote(Identifier.getName(n))}$`)];
+}
 
 export interface PipeCommandFunctionSpec {
 	pattern: string
@@ -30,15 +29,8 @@ const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
 	{ pattern: '^postscript$', argIdx: 0, argName: 'file' }
 ];
 
-function normalizePatternList(cfg: string | readonly string[] | undefined, defaults: readonly string[]): RegExp[] {
-	if(cfg === undefined) {
-		return Array.from(defaults, s => new RegExp(s));
-	}
-	if(isArray<string>(cfg)) {
-		const arr = cfg.length === 0 ? defaults : cfg;
-		return Array.from(new Set(arr), s => new RegExp(s));
-	}
-	return [new RegExp(cfg)];
+function normalizePatternList(cfg: string | readonly string[] = []): RegExp[] {
+	return isArray<string>(cfg) ? Array.from(new Set(cfg), s => new RegExp(s)) : [new RegExp(cfg)];
 }
 
 function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | readonly PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string }> {
@@ -119,10 +111,10 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 }
 
 export const PROBLEMATIC_INPUTS = {
-	createSearch: config => {
+	createSearch: (config) => {
 		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
 		return Q.fromQuery([
-			...normalizePatternList(config?.consider, defaultConsider).map((n, i) => toQ(n, `fn-${i}`)),
+			...normalizePatternList(config.consider).map((n, i) => toQ(n, `fn-${i}`)),
 			...normalizePipeSpecs(config?.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
 		]);
 	},
@@ -131,7 +123,7 @@ export const PROBLEMATIC_INPUTS = {
 		const results: ProblematicInputsResult[] = [];
 		const seen          = new Set<NodeId>();
 		const defaultAccept = [InputType.Constant, InputType.DerivedConstant];
-		const considerPats  = normalizePatternList(config?.consider, defaultConsider);
+		const considerPats  = normalizePatternList(config.consider);
 		const pipePats      = normalizePipeSpecs(config?.pipeCommandFunctions);
 
 		for(const element of elements.getElements()) {
@@ -195,9 +187,9 @@ export const PROBLEMATIC_INPUTS = {
 		description:   'Detects uses of dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
-			consider:             defaultConsider,
+		defaultConfig: ctx => ({
+			consider:             ctx.env.deriveFromIndex(defaultConsider),
 			pipeCommandFunctions: defaultPipeCommandFunctions
-		}
+		})
 	}
 } as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

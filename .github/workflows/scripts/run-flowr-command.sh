@@ -159,6 +159,7 @@ if [ "$ACTION" == "doc" ]; then
    git add -f ".nojekyll" "$DOC_OUT/"
    if [ -d "wiki/stats/" ]; then git add -f "wiki/stats/"; fi
    git add -f "index.html"
+   if [ -d "wiki/capabilities/" ]; then git add -f "wiki/capabilities/"; fi
    if [ -d "wiki/sigdb/" ]; then git add -f "wiki/sigdb/"; fi
    if [ -d "wiki/playground/" ]; then git add -f "wiki/playground/"; fi
    git commit -m "Update documentation"
@@ -167,7 +168,7 @@ if [ "$ACTION" == "doc" ]; then
    git checkout --orphan gh-pages-orphan-tmp
    git rm -r --cached . --quiet
    git add -f ".nojekyll" "$DOC_OUT/" "index.html"
-   for extra in "wiki/img" "wiki/stats" "wiki/sigdb" "wiki/playground"; do
+   for extra in "wiki/img" "wiki/stats" "wiki/capabilities" "wiki/sigdb" "wiki/playground"; do
      if [ -d "$extra" ]; then git add -f "$extra"; fi
    done
    git commit -m "Current documentation stage"

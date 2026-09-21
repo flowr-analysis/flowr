@@ -64,7 +64,7 @@ describe('Constant Parsing', { concurrent: false }, withShell(shell => {
 		describe('numbers', () => {
 			for(const number of RNumberPool) {
 				const range = SourceRange.from(1, 1, 1, number.str.length);
-				assertAst(label(number.str, ['numbers']),
+				assertAst(label(number.str, ['numbers', ...(number.val.complexNumber ? ['numbers-complex' as const] : [])]),
 					shell, number.str, exprList({
 						type:     RType.Number,
 						location: range,

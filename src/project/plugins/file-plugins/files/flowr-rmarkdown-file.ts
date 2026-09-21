@@ -2,8 +2,7 @@ import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
 import { type Node, Parser } from 'commonmark';
-import type { GrayMatterFile } from 'gray-matter';
-import matter from 'gray-matter';
+import { load as loadYaml } from 'js-yaml';
 import { log } from '../../../../util/log';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
 import { findSource } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
@@ -180,6 +179,34 @@ export function globalChunkOptions(frontmatter: object): CodeBlockOptions {
 	return options;
 }
 
+const FrontmatterDelimiter = '---';
+/** yaml comments do not make a block non-empty, so they are dropped before the emptiness check */
+const YamlCommentLine = /^\s*#[^\n]+/gm;
+
+/**
+ * Reads the yaml frontmatter `raw` opens with, `undefined` if it has none.
+ * Only yaml is accepted: a fence naming another language (`---js`) must not reach an evaluating parser.
+ */
+function parseFrontmatter(raw: string): unknown {
+	const content = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+	if(!content.startsWith(FrontmatterDelimiter) || content.charAt(FrontmatterDelimiter.length) === FrontmatterDelimiter.slice(-1)) {
+		return undefined;
+	}
+	const afterOpen = content.slice(FrontmatterDelimiter.length);
+	const firstBreak = afterOpen.search(/\r?\n/);
+	if(firstBreak === -1) {
+		return undefined;
+	}
+	const language = afterOpen.slice(0, firstBreak).trim().toLowerCase();
+	if(language !== '' && language !== 'yaml' && language !== 'yml') {
+		return undefined;
+	}
+	const body = afterOpen.slice(firstBreak);
+	const closeIndex = body.indexOf(`\n${FrontmatterDelimiter}`);
+	const block = closeIndex === -1 ? body : body.slice(0, closeIndex);
+	return block.replace(YamlCommentLine, '').trim() === '' ? {} : loadYaml(block);
+}
+
 /**
  * Parse the contents of a RMarkdown file into complete code and blocks
  * @param raw - the raw file content
@@ -191,9 +218,9 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 	const ast = parser.parse(raw);
 
 	// Parse Frontmatter
-	let frontmatter: GrayMatterFile<string> | undefined;
+	let frontmatter: unknown;
 	try {
-		frontmatter = matter(raw);
+		frontmatter = parseFrontmatter(raw);
 	} catch(e) {
 		log.warn(`Failed to parse frontmatter of Rmd file, ignoring it. Error was: ${JSON.stringify(e)}`);
 		frontmatter = undefined;
@@ -229,7 +256,7 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 
 	return {
 		blocks:  blocks,
-		options: frontmatter?.data ?? {}
+		options: typeof frontmatter === 'object' && frontmatter !== null ? frontmatter : {}
 	};
 }
 
@@ -339,7 +366,7 @@ function parseCellOptions(lines: readonly string[]): CodeBlockOptions {
 	}
 
 	try {
-		const parsed: unknown = matter(`---\n${lines.join('\n')}\n---\n`).data;
+		const parsed: unknown = parseFrontmatter(`---\n${lines.join('\n')}\n---\n`);
 		// a bare scalar is knitr's `key=value` syntax, not yaml
 		if(typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) && Object.keys(parsed).length > 0) {
 			const options: CodeBlockOptions = new Map();

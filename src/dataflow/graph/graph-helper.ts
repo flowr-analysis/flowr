@@ -9,15 +9,30 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
-import { DfEdge } from './edge';
+import { DfEdge, EdgeType } from './edge';
 import { DefaultMap } from '../../util/collections/defaultmap';
+import type { DataflowGraphVertexFunctionDefinition } from './vertex';
+import { DfgVertex } from './vertex';
+
+/** what {@link GraphHelper.reachable} follows and where it stops */
+export interface ReachOptions {
+	/** the edge types to follow, every edge when left out */
+	readonly follow?:   number;
+	/** the only ids the walk may enter, e.g. the ids of one function definition */
+	readonly consider?: ReadonlySet<NodeId>;
+	/** whether the control dependencies of a vertex count as edges of their own */
+	readonly cds?:      boolean;
+	/** an endpoint: it is part of the result, what it leads to is not */
+	readonly stopAt?:   (id: NodeId) => boolean;
+}
 
 /**
  * The underlying functions which work for any graph* like view.
  * Use {@link Dataflow} for the dataflow graph and {@link CallGraph} for the call graph, both spread this object in.
  * @useInstead {@link Dataflow}
+ * @helper dataflow
  */
 export const GraphHelper = {
 	name:      'GraphHelper',
@@ -95,7 +110,8 @@ export const GraphHelper = {
 		for(const [id, vertex] of graph.vertices(true)) {
 			resultGraph.addVertex({
 				...vertex,
-				id: resolve(id)
+				id: resolve(id),
+				...(vertex.link ? { link: { ...vertex.link, origin: vertex.link.origin.map(resolve) } } : {})
 			}, ctx.env.makeCleanEnv(), roots.has(id));
 		}
 		/* recreate edges */
@@ -117,6 +133,48 @@ export const GraphHelper = {
 		}
 
 		return resultGraph as G;
+	},
+	parametersOf(this: void, definition: DataflowGraphVertexFunctionDefinition): NodeId[] {
+		return Object.keys(definition.params ?? {}).map(NodeId.normalize);
+	},
+	*calleesOf(this: void, graph: DataflowGraph, id: NodeId): Generator<DataflowGraphVertexFunctionDefinition> {
+		for(const [target, edge] of graph.edgesFrom(id)) {
+			const callee = DfEdge.includesType(edge, EdgeType.Calls) ? graph.getVertex(target) : undefined;
+			if(DfgVertex.isFunctionDefinition(callee)) {
+				yield callee;
+			}
+		}
+	},
+	*argumentsBoundTo(this: void, graph: DataflowGraph, parameter: NodeId): Generator<NodeId> {
+		for(const [argument, edge] of graph.edgesFrom(parameter)) {
+			if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall)) {
+				yield argument;
+			}
+		}
+	},
+	reachable<G extends DataflowGraph>(this: void, graph: G, seed: NodeId | Iterable<NodeId>, { follow, consider, cds, stopAt }: ReachOptions = {}): Set<NodeId> {
+		const pending: NodeId[] = typeof seed === 'object' ? [...seed] : [seed];
+		const visited = new Set<NodeId>();
+		while(pending.length > 0) {
+			const current = pending.pop() as NodeId;
+			if(visited.has(current) || (consider !== undefined && !consider.has(current))) {
+				continue;
+			}
+			visited.add(current);
+			const vertex = graph.get(current);
+			if(vertex === undefined || stopAt?.(current)) {
+				continue;
+			}
+			for(const [to, types] of vertex[1]) {
+				if(follow === undefined || DfEdge.includesType(types, follow)) {
+					pending.push(to);
+				}
+			}
+			for(const cd of cds ? vertex[0].cds ?? [] : []) {
+				pending.push(cd.id);
+			}
+		}
+		return visited;
 	},
 	/**
 	 * Determines whether there is a path from `from` to `to` in the given graph (via any edge type, only respecting direction)

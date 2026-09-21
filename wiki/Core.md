@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-09-16, 21:05:15 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-09-21, 16:17:54 UTC (v2.15.9, R v4.5.0), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -17,7 +17,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-> flowR repl v2.15.8, R v4.6.1 (r-shell engine)
+> flowR repl v2.15.9, R v4.5.0 (r-shell engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -258,7 +258,7 @@ To explore these steps, let's use the REPL with the (very simple and contrived) 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.8, R v4.6.1 (r-shell engine)
+flowR repl v2.15.9, R v4.5.0 (r-shell engine)
 R> :parse "x <- 1; print(x)"
 ```
 
@@ -409,7 +409,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr --default-engine tree-sitter # or npm run flowr -- --default-engine tree-sitter
-> flowR repl v2.15.8, R grammar v14 (tree-sitter engine)
+> flowR repl v2.15.9, R grammar v14 (tree-sitter engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -1214,7 +1214,7 @@ By treating them like R, as function calls, we get support for these overwrites 
 
 But where are all the interesting things handled then? 
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr).
-FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1388"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
+FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1396"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
 by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L333"><code>BuiltInProcessorMapper</code></a> functions.
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L52"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L38"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
@@ -1465,7 +1465,7 @@ You can explore the slicing using the REPL with the <span title="Description (Re
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.8, R grammar v14 (tree-sitter engine)
+flowR repl v2.15.9, R grammar v14 (tree-sitter engine)
 R> :query @static-slice (12@product) file://test/testfiles/example.R
 ```
 

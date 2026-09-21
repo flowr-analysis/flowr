@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-21, 16:17:54 UTC (v2.15.9), do not edit directly._
 <h2 id="deprecated-functions">Deprecated Functions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This signals the use of deprecated functions or features."><a href='#deprecated'>![deprecated](https://img.shields.io/badge/deprecated-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
@@ -6,16 +6,16 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L229">src/linter/rules/deprecated-functions.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L180">src/linter/rules/deprecated-functions.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `deprecated-functions` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L116"><code><span title="Functions to always mark as deprecated">always</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L69"><code><span title="Functions to always mark as deprecated">always</span></code></a>\
 Functions to always mark as deprecated
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L122"><code><span title="Functions to mark as deprecated for specific argument, argument value or version. Keyed like DeprecatedFunctionsConfig.always : pkg::fn names the package the versions are checked against and matches only that one, a bare name matches any package.">conditionally</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L75"><code><span title="Functions to mark as deprecated for specific argument, argument value or version. Keyed like DeprecatedFunctionsConfig.always : pkg::fn names the package the versions are checked against and matches only that one, a bare name matches any package.">conditionally</span></code></a>\
 Functions to mark as deprecated for specific argument, argument value or version. Keyed like
 <code>DeprecatedFunctionsConfig.always</code>
 : `pkg::fn` names the package the versions are checked against and
@@ -38,7 +38,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (19 ms)\
+Query: **linter** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ function `dplyr::all_equal` at 4.1-31\
@@ -324,7 +324,7 @@ testFn(badArg=5)
 
 And using the following [configuration](#configuration): 
 ```ts
-{always: [], conditionally: {'testPkg::testFn': {whenArgs: [{argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0')}]}}}
+{always: [], conditionally: {'testPkg::testFn': {whenArgs: [{argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=1.0.0'}]}}}
 ```
 
 We expect the linter to report the following:
@@ -344,7 +344,7 @@ testFn(badArg=5)
 
 And using the following [configuration](#configuration): 
 ```ts
-{always: [], conditionally: {'testPkg::testFn': {whenArgs: [{argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0')}]}}, sigDb: db}
+{always: [], conditionally: {'testPkg::testFn': {whenArgs: [{argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=1.0.0'}]}}, sigDb: db}
 ```
 
 We expect the linter to report the following:
@@ -364,7 +364,7 @@ testFn(badArg=5)
 
 And using the following [configuration](#configuration): 
 ```ts
-{always: [], conditionally: {'testPkg::testFn': {whenArgs: [{argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=3.0.0')}]}}, sigDb: db}
+{always: [], conditionally: {'testPkg::testFn': {whenArgs: [{argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: '>=3.0.0'}]}}, sigDb: db}
 ```
 
 We expect the linter to report the following:
@@ -384,7 +384,7 @@ testFn()
 
 And using the following [configuration](#configuration): 
 ```ts
-{always: [], conditionally: {'testPkg::testFn': {sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct}}}
+{always: [], conditionally: {'testPkg::testFn': {sinceVersion: '>=1.0.0', state: DeprecationState.Defunct}}}
 ```
 
 We expect the linter to report the following:
@@ -404,7 +404,7 @@ testFn()
 
 And using the following [configuration](#configuration): 
 ```ts
-{always: [], conditionally: {'testPkg::testFn': {sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct}}, sigDb: db}
+{always: [], conditionally: {'testPkg::testFn': {sinceVersion: '>=1.0.0', state: DeprecationState.Defunct}}, sigDb: db}
 ```
 
 We expect the linter to report the following:
@@ -424,7 +424,7 @@ testFn()
 
 And using the following [configuration](#configuration): 
 ```ts
-{always: [], conditionally: {'testPkg::testFn': {sinceVersion: RRange.parse('>= 3.0.0'), state: DeprecationState.Defunct}}, sigDb: db}
+{always: [], conditionally: {'testPkg::testFn': {sinceVersion: '>= 3.0.0', state: DeprecationState.Defunct}}, sigDb: db}
 ```
 
 We expect the linter to report the following:

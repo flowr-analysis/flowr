@@ -32,6 +32,9 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           cache: npm
 
+      - name: "🔍 Typecheck"
+        run: bash .github/workflows/scripts/run-flowr-command.sh typecheck
+
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
 

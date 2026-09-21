@@ -277,11 +277,20 @@ export interface FlowrConfig {
 	readonly gas: FlowrGasConfig;
 }
 
+type PlainFlowrConfigPaths = AutocompletablePaths<Omit<FlowrConfig, 'specializeConfig'>>;
+
 /**
  * Every path into the configuration, which is what {@link FlowrConfig.setInConfig} and
  * {@link FlowrAnalyzerBuilder#configure|configure()} take and what an editor completes.
+ *
+ * {@link FlowrConfig.specializeConfig} is spelled out one overwrite deep, not walked: it holds a partial
+ * configuration per {@link ProjectKind}, so walking it re-enters the whole configuration once per kind.
  */
-export type ValidFlowrConfigPaths = AutocompletablePaths<FlowrConfig>;
+export type ValidFlowrConfigPaths =
+	| PlainFlowrConfigPaths
+	| 'specializeConfig'
+	| `specializeConfig.${ProjectKind}`
+	| `specializeConfig.${ProjectKind}.${PlainFlowrConfigPaths | 'inherit'}`;
 
 /** Whether library exports should be resolved from a signature database (`solver.sigdb.enabled`). */
 export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {

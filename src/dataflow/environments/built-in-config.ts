@@ -37,7 +37,7 @@ type ConfigOfProcessor<P extends keyof typeof BuiltInProcessorMapper> = ConfigOf
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper> extends BaseBuiltInDefinition {
 	readonly type:         'function';
 	readonly processor:    BuiltInProcessor;
-	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean } & { deprInfo?: DeprecatedFunctionInformation };
+	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean, deprInfo?: DeprecatedFunctionInformation };
 	/** the value solver to use when folding a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
 	readonly evalHandler?: BuiltInEvalName
 }

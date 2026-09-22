@@ -102,4 +102,6 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 		{ identifier: 'sd', condition: constantAggregate(UnitVariance, ZScore) },
 		{ identifier: 'var', condition: constantAggregate(UnitVariance, ZScore) },
 		{ identifier: ['min', 'max', 'range'], condition: constantAggregate(MinMax) }
-	).report('Aggregation of scaled data yields a known constant');
+	).report((f) => {
+		return f.functionName ? `${f.functionName} calculated on normalized data [${f.locString}]` : `Known summary statistic calculated on normalized data [${f.locString}]`;
+	});

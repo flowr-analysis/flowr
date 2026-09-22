@@ -9,6 +9,7 @@ import { TaintInferenceVisitor } from '../taint-visitor';
 import { guard } from '../../util/assert';
 import type { ProductReduction } from '../../abstract-interpretation/domains/partial-product-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
+import type { ReportTemplate } from './report-template';
 
 export type TaintAnalysisName<Definition> =
 	Definition extends RunnableTaintAnalysisDefinition<infer Name> ? Name : never;
@@ -22,7 +23,7 @@ export interface RunnableTaintAnalysisDefinition<Name extends string = string> {
 	/** The unique name of the taint analysis. */
 	readonly name: Name;
 	/** The optional message reported when the analysis produces a finding. */
-	readonly msg?: string;
+	readonly msg?: ReportTemplate;
 	/** Creates the abstract interpretation visitor that conducts the taint analysis for the given visitor configuration. */
 	createVisitor(config: AbsintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain>;
 }
@@ -35,12 +36,12 @@ export interface ComposeOptions {
 	 */
 	reductions?: readonly ProductReduction<TaintProduct>[];
 	/** The optional message reported when the composite analysis produces a finding. */
-	report?:     string;
+	report?:     ReportTemplate;
 }
 
 export interface TaintAnalysisReportStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisToStage<Name, Domain> {
 	/** Set the message reported when the analysis produces a finding. */
-	report(msg: string): TaintAnalysisDefinition<Name, Domain>;
+	report(msg: ReportTemplate): TaintAnalysisDefinition<Name, Domain>;
 }
 
 export interface TaintAnalysisToStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisThroughStage<Name, Domain> {
@@ -72,9 +73,9 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 	public name:            Name;
 	public config:          Config | undefined;
 
-	private _msg: string | undefined;
+	private _msg: ReportTemplate | undefined;
 
-	get msg(): string | undefined {
+	get msg(): ReportTemplate | undefined {
 		return this._msg;
 	}
 
@@ -107,7 +108,7 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 		return this;
 	}
 
-	public report(msg: string): TaintAnalysisDefinition<Name, Domain> {
+	public report(msg: ReportTemplate): this {
 		this._msg = msg;
 		return this;
 	}
@@ -146,7 +147,7 @@ export class CompositeTaintAnalysisDefinition<Name extends string> implements Ru
 	public readonly definitions: readonly TaintAnalysisDefinition[];
 	public readonly reductions:  readonly ProductReduction<TaintProduct>[];
 
-	public msg: string | undefined;
+	public msg: ReportTemplate | undefined;
 
 	constructor(name: Name, definitions: readonly TaintAnalysisDefinition[], options?: ComposeOptions) {
 		guard(definitions.length >= 2, 'A composite taint analysis must combine at least two taint analysis definitions');
@@ -159,7 +160,7 @@ export class CompositeTaintAnalysisDefinition<Name extends string> implements Ru
 		this.msg = options?.report;
 	}
 
-	public report(msg: string): this {
+	public report(msg: ReportTemplate): this {
 		this.msg = msg;
 		return this;
 	}

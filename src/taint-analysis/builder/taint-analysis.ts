@@ -11,7 +11,6 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { TaintRole } from '../function-mapper';
 import type { ArgTaintProjector, TaintVisitorConfiguration, TaintVisitorHook } from '../taint-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
@@ -19,6 +18,8 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SourceLocation } from '../../util/range';
 import { guard, isNotUndefined } from '../../util/assert';
+import { buildFindingContext, renderReport } from './report-template';
+import type { TaintRole } from '../function-mapper';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -57,6 +58,8 @@ export interface TaintFinding {
 	nodeId: NodeId
 	/** The source location of the AST node, if it could be resolved */
 	loc?:   SourceLocation
+	/** The rendered report message for this finding, set only when the analysis uses a per-finding {@link ReportTemplate} */
+	msg?:   string
 }
 
 /**
@@ -170,12 +173,18 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 			visitor.start();
 
 			const endState = visitor.getEndState();
-			const msg = def.msg;
-			const findings: TaintFinding[] = msg === undefined ? [] : endState.getBottomNodes().map(nodeId => ({
-				nodeId,
-				loc: SourceLocation.fromNode(baseConfig.normalizedAst.idMap.get(nodeId))
-			}));
+			const report = def.msg;
+			const idMap = baseConfig.normalizedAst.idMap;
+			const findings: TaintFinding[] = report === undefined ? [] : endState.getBottomNodes().map(nodeId => {
+				const node = idMap.get(nodeId);
+				const loc = SourceLocation.fromNode(node);
+				return typeof report === 'function'
+					? { nodeId, loc, msg: renderReport(report, buildFindingContext(def.name, nodeId, node, loc)) }
+					: { nodeId, loc };
+			});
 
+			// If the report message is a constant string, save it only once
+			const msg = typeof report === 'string' ? report : undefined;
 			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, msg, findings });
 		}
 		return results;

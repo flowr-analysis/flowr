@@ -14,7 +14,6 @@ import { printAsMs } from '../../../util/text/time';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
-import { SourceLocation } from '../../../util/range';
 
 
 
@@ -105,8 +104,11 @@ export const TaintQueryDefinition = {
 			const lift = result.domains.value;
 
 			if(result.findings.length > 0) {
-				resultStrings.push(`      ╰ ${result.msg}:`);
-				resultStrings.push(...result.findings.map(finding => `          ╰ at ${SourceLocation.format(finding.loc)}`));
+				if(result.msg !== undefined) {
+					resultStrings.push(`      ╰ ${result.msg}:`);
+				}
+				resultStrings.push(...result.findings.map(finding =>
+					`          ╰ ${finding.msg !== undefined ? `${finding.msg} ` : ''}`));
 			}
 
 			if(lift === Bottom) {

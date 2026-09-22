@@ -121,4 +121,7 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 				conditionFn: (_args, [taint]) => (taint === UserInput || taint === NetworkInput || taint === FileInput) ? Bottom : undefined
 			}
 		}
-	).report('User input potentially flowing to output');
+	).report((f) => {
+		return f.functionName ? `Untrusted input reached security-sensitive sink function '${f.functionName}' [${f.locString}]`
+			: `Untrusted input reached a security-sensitive sink (possible code or command injection) [${f.locString}]`;
+	});

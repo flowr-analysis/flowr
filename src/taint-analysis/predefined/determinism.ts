@@ -1,6 +1,7 @@
 import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { securityAnalysis } from './security-analysis';
 import { randomnessAnalysis } from './randomness-analysis';
+import { defaultReportTemplate } from '../builder/report-template';
 
 /**
  * Composite taint analysis combining security and randomness analyses.
@@ -10,5 +11,5 @@ import { randomnessAnalysis } from './randomness-analysis';
 export const determinism = TaintAnalysisDefinition.compose(
 	'determinism',
 	[securityAnalysis, randomnessAnalysis],
-	{ report: 'Indeterminism flowing to sensitive functions' }
+	{ report: defaultReportTemplate('Indeterminism flowing to sensitive functions') }
 );

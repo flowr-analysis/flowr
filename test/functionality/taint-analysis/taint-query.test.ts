@@ -35,10 +35,10 @@ describe('Taint Query', () => {
 		test('findings are reflected in the result entry', async() => {
 			const result = await runTaintQuery('x <- scale(x)\nx <- mean(x)', ['scale']);
 			const findings = result.results.get('scale')?.findings;
-			assert.strictEqual(result.results.get('scale')?.msg, 'Aggregation of scaled data yields a known constant');
+			assert.strictEqual(result.results.get('scale')?.msg, undefined);
 			assert.deepStrictEqual(findings, [
-				{ nodeId: 10, loc: [2, 6, 2, 12] },
-				{ nodeId: 6, loc: [2, 1, 2, 1] }
+				{ nodeId: 10, loc: [2, 6, 2, 12], msg: 'mean calculated on normalized data [2.6-12]' },
+				{ nodeId: 6, loc: [2, 1, 2, 1], msg: 'Known summary statistic calculated on normalized data [2.1]' }
 			]);
 		});
 	});
@@ -49,10 +49,9 @@ describe('Taint Query', () => {
 			const json = JSON.parse(JSON.stringify(TaintQueryDefinition.jsonFormatter(result), jsonReplacer)) as { results: [string, { domains: unknown, findings?: unknown, msg?: string }][] };
 			assert.deepStrictEqual(json.results, [['scale', {
 				domains:  { '0': 'z-Score', '4': 'z-Score', '6': 'bottom', '10': 'bottom' },
-				msg:      'Aggregation of scaled data yields a known constant',
 				findings: [
-					{ nodeId: 10, loc: [2, 6, 2, 12] },
-					{ nodeId: 6, loc: [2, 1, 2, 1] }
+					{ nodeId: 10, loc: [2, 6, 2, 12], msg: 'mean calculated on normalized data [2.6-12]' },
+					{ nodeId: 6, loc: [2, 1, 2, 1], msg: 'Known summary statistic calculated on normalized data [2.1]' }
 				]
 			}]]);
 		});
@@ -77,9 +76,8 @@ describe('Taint Query', () => {
 			const result = await runTaintQuery('x <- scale(x)\nx <- mean(x)', ['scale']);
 			const lines: string[] = [];
 			TaintQueryDefinition.asciiSummarizer(voidFormatter, undefined as never, result, lines);
-			assert.ok(lines.some(line => line.includes('Aggregation of scaled data yields a known constant')));
-			assert.ok(lines.some(line => line.includes('at 2.6-12')));
-			assert.ok(lines.some(line => line.includes('at 2.1')));
+			assert.ok(lines.some(line => line.includes('Known summary statistic calculated on normalized data')));
+			assert.ok(lines.some(line => line.includes('mean calculated on normalized data')));
 		});
 	});
 

@@ -24,7 +24,7 @@ const marker = TaintAnalysisDefinition.create('marker', lattice)
 	.from([
 		{ identifier: Identifier.make('taint'), taint: TaintA },
 		{ identifier: Identifier.make('TaintB'), taint: TaintB },
-	]).through([]).to([]).report('');
+	]).getPartialDefinition();
 
 /** Checks whether the first argument has been tainted, returning the given constant taint or undefined */
 const toConst = (taint: symbol) =>
@@ -60,7 +60,7 @@ const conflict = TaintAnalysisDefinition.create('conflict', lattice)
 				conditionFn: toConst(TaintB)
 			}
 		},
-	]).report('');
+	]).getPartialDefinition();
 
 function testPropagate(
 	name: string,
@@ -183,7 +183,7 @@ describe('Taint Propagation', () => {
 				.through([
 					{ identifier: Identifier.make('oneCloserToTop'), condition: { argTaints: [{ pos: 0 }], conditionFn: walk(ladder, 1) } },
 					{ identifier: Identifier.make('oneCloserToBot'), condition: { argTaints: [{ pos: 0 }], conditionFn: walk(ladder, -1) } },
-				]).to([]).report('');
+				]).getPartialDefinition();
 		}
 
 		const climbToTop = climber('climb-to-top', toTopLadder);
@@ -197,7 +197,7 @@ describe('Taint Propagation', () => {
 			])
 			.through([
 				{ identifier: Identifier.make('glb'), condition: { argTaints: [{ pos: 0 }, { pos: 1 }], conditionFn: (_args, [p, q]) => diamond.create(p ?? Top).meet(diamond.create(q ?? Top)).value } },
-			]).to([]).report('');
+			]).getPartialDefinition();
 
 		const thresholds = [1, 2, 4, 8];
 

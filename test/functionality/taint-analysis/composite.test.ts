@@ -24,9 +24,9 @@ describe('Composite Taint Analysis', () => {
 			.build();
 
 		const alpha = TaintAnalysisDefinition.create('alpha', domainA).from([])
-			.through([{ identifier: Identifier.make('c'), taint: TagA }]).to([]).report('');
+			.through([{ identifier: Identifier.make('c'), taint: TagA }]).getPartialDefinition();
 		const beta = TaintAnalysisDefinition.create('beta', domainB).from([])
-			.through([{ identifier: Identifier.make('list'), taint: TagB }]).to([]).report('');
+			.through([{ identifier: Identifier.make('list'), taint: TagB }]).getPartialDefinition();
 
 		const composed = TaintAnalysisDefinition.compose('alpha-x-beta', [alpha, beta]);
 

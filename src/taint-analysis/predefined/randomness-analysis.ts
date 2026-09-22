@@ -48,4 +48,4 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 			Identifier.make('rsignrank', 'stats'),
 		],
 		taint: Random
-	}]).through([]).to([]).report('');
+	}]).getPartialDefinition();

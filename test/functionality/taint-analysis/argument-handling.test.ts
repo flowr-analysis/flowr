@@ -41,7 +41,7 @@ const argumentTaintAnalysis = TaintAnalysisDefinition.create('arguments-eval', l
 					}
 				}
 			}
-	}]).report('');
+	}]).getPartialDefinition();
 
 function argumentTest(
 	arg1Value: boolean | undefined,

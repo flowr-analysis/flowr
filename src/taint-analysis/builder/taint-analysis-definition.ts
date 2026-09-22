@@ -56,6 +56,8 @@ export interface TaintAnalysisThroughStage<Name extends string = string, Domain 
 export interface TaintAnalysisFromStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
 	from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
+	/** Shortcut when no transformers, sinks, and/or a report message should be defined */
+	getPartialDefinition(): TaintAnalysisDefinition<Name, Domain>;
 }
 
 /**
@@ -112,6 +114,10 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 
 	public createVisitor(config: TaintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> {
 		return new TaintInferenceVisitor(this.domain, this.mapper, { ...this.config, ...config });
+	}
+
+	public getPartialDefinition(): this {
+		return this;
 	}
 
 	/**

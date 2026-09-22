@@ -27,7 +27,7 @@ const protocolTaint = (path: unknown) =>
 	typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
 
 export const securityAnalysis = TaintAnalysisDefinition.create('security', securityDomain)
-	.from([
+	.from(
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User)],
 			taint:      UserInput
@@ -67,9 +67,9 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 				conditionFn: ([path]) => protocolTaint(path)
 			}
 		},
-	])
-	.through([])
-	.to([
+	)
+	.through()
+	.to(
 		{
 			identifier: [
 				Identifier.make('eval', 'base'),
@@ -121,5 +121,4 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 				conditionFn: (_args, [taint]) => (taint === UserInput || taint === NetworkInput || taint === FileInput) ? Bottom : undefined
 			}
 		}
-	])
-	.report('User input potentially flowing to output');
+	).report('User input potentially flowing to output');

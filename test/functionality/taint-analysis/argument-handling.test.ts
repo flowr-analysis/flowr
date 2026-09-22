@@ -17,8 +17,8 @@ const lattice = new FiniteDomainBuilder()
 	.build();
 
 const argumentTaintAnalysis = TaintAnalysisDefinition.create('arguments-eval', lattice)
-	.from([]).through([])
-	.to([{
+	.from().through()
+	.to({
 		identifier: Identifier.make('myTestFunc'),
 		condition:
 			{
@@ -41,7 +41,7 @@ const argumentTaintAnalysis = TaintAnalysisDefinition.create('arguments-eval', l
 					}
 				}
 			}
-	}]).getPartialDefinition();
+	}).getPartialDefinition();
 
 function argumentTest(
 	arg1Value: boolean | undefined,

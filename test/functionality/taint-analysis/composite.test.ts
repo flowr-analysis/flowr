@@ -23,10 +23,10 @@ describe('Composite Taint Analysis', () => {
 			.addLeqOrder(TagB, Top)
 			.build();
 
-		const alpha = TaintAnalysisDefinition.create('alpha', domainA).from([])
-			.through([{ identifier: Identifier.make('c'), taint: TagA }]).getPartialDefinition();
-		const beta = TaintAnalysisDefinition.create('beta', domainB).from([])
-			.through([{ identifier: Identifier.make('list'), taint: TagB }]).getPartialDefinition();
+		const alpha = TaintAnalysisDefinition.create('alpha', domainA).from()
+			.through({ identifier: Identifier.make('c'), taint: TagA }).getPartialDefinition();
+		const beta = TaintAnalysisDefinition.create('beta', domainB).from()
+			.through({ identifier: Identifier.make('list'), taint: TagB }).getPartialDefinition();
 
 		const composed = TaintAnalysisDefinition.compose('alpha-x-beta', [alpha, beta]);
 

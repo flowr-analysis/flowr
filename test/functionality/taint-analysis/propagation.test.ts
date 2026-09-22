@@ -21,24 +21,24 @@ const lattice = new FiniteDomainBuilder()
 	.build();
 
 const marker = TaintAnalysisDefinition.create('marker', lattice)
-	.from([
+	.from(
 		{ identifier: Identifier.make('taint'), taint: TaintA },
 		{ identifier: Identifier.make('TaintB'), taint: TaintB },
-	]).getPartialDefinition();
+	).getPartialDefinition();
 
 /** Checks whether the first argument has been tainted, returning the given constant taint or undefined */
 const toConst = (taint: symbol) =>
 	(_args: unknown[], [incoming]: symbol[]) => incoming === undefined || incoming === Top ? Top : taint;
 
 const conflict = TaintAnalysisDefinition.create('conflict', lattice)
-	.from([
+	.from(
 		{ identifier: Identifier.make('taint'), taint: TaintA },
 		{ identifier: Identifier.make('sink'), taint: TaintA },
 		{ identifier: Identifier.make('reclassify'), taint: TaintA },
 		{ identifier: Identifier.make('narrow'), taint: TaintC },
-	])
-	.through([])
-	.to([
+	)
+	.through()
+	.to(
 		{
 			identifier: Identifier.make('sink'),
 			condition:  {
@@ -60,7 +60,7 @@ const conflict = TaintAnalysisDefinition.create('conflict', lattice)
 				conditionFn: toConst(TaintB)
 			}
 		},
-	]).getPartialDefinition();
+	).getPartialDefinition();
 
 function testPropagate(
 	name: string,
@@ -176,28 +176,28 @@ describe('Taint Propagation', () => {
 
 		function climber(name: string, ladder: symbol[]): TaintAnalysisDefinition {
 			return TaintAnalysisDefinition.create(name, chain)
-				.from([
+				.from(
 					{ identifier: Identifier.make('bot'), taint: Bottom },
 					{ identifier: Identifier.make('tainted'), taint: High },
-				])
-				.through([
+				)
+				.through(
 					{ identifier: Identifier.make('oneCloserToTop'), condition: { argTaints: [{ pos: 0 }], conditionFn: walk(ladder, 1) } },
 					{ identifier: Identifier.make('oneCloserToBot'), condition: { argTaints: [{ pos: 0 }], conditionFn: walk(ladder, -1) } },
-				]).getPartialDefinition();
+				).getPartialDefinition();
 		}
 
 		const climbToTop = climber('climb-to-top', toTopLadder);
 		const climbBounded = climber('climb-bounded', boundedLadder);
 
 		const merges = TaintAnalysisDefinition.create('merges', diamond)
-			.from([
+			.from(
 				{ identifier: Identifier.make('bot'), taint: Bottom },
 				{ identifier: Identifier.make('taintA'), taint: A },
 				{ identifier: Identifier.make('taintB'), taint: B },
-			])
-			.through([
+			)
+			.through(
 				{ identifier: Identifier.make('glb'), condition: { argTaints: [{ pos: 0 }, { pos: 1 }], conditionFn: (_args, [p, q]) => diamond.create(p ?? Top).meet(diamond.create(q ?? Top)).value } },
-			]).getPartialDefinition();
+			).getPartialDefinition();
 
 		const thresholds = [1, 2, 4, 8];
 

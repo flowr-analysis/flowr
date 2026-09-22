@@ -13,7 +13,7 @@ export const randomnessDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Botto
 	.build();
 
 export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', randomnessDomain)
-	.from([ {
+	.from({
 		identifier: Identifier.make('c', 'base'),
 		taint:      Deterministic
 	},
@@ -48,4 +48,4 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 			Identifier.make('rsignrank', 'stats'),
 		],
 		taint: Random
-	}]).getPartialDefinition();
+	}).getPartialDefinition();

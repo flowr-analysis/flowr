@@ -30,7 +30,7 @@ function constantAggregate(...elements: symbol[]): TaintCondition<typeof scaleDo
 }
 
 export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain)
-	.from([
+	.from(
 		{
 			identifier: Identifier.make('scale', 'base'),
 			condition:  {
@@ -52,8 +52,8 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 			}
 		},
 		{ identifier: Identifier.make('scales', 'rescale'), taint: MinMax },
-	])
-	.through([
+	)
+	.through(
 		// non-linear elementwise transformations
 		{
 			identifier: [
@@ -96,11 +96,10 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 			],
 			taint: Unscaled
 		}
-	])
-	.to([
+	)
+	.to(
 		{ identifier: 'mean', condition: constantAggregate(ZeroCentered, ZScore) },
 		{ identifier: 'sd', condition: constantAggregate(UnitVariance, ZScore) },
 		{ identifier: 'var', condition: constantAggregate(UnitVariance, ZScore) },
 		{ identifier: ['min', 'max', 'range'], condition: constantAggregate(MinMax) }
-	])
-	.report('Aggregation of scaled data yields a known constant');
+	).report('Aggregation of scaled data yields a known constant');

@@ -45,17 +45,17 @@ export interface TaintAnalysisReportStage<Name extends string = string, Domain e
 
 export interface TaintAnalysisToStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisThroughStage<Name, Domain> {
 	/** Add sink rules signaling findings by yielding Bottom. */
-	to(fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain>;
+	to(...fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain>;
 }
 
 export interface TaintAnalysisThroughStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> extends TaintAnalysisFromStage<Name, Domain> {
 	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
-	through(fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain>;
+	through(...fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain>;
 }
 
 export interface TaintAnalysisFromStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
-	from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
+	from(...fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
 	/** Shortcut when no transformers, sinks, and/or a report message should be defined */
 	getPartialDefinition(): TaintAnalysisDefinition<Name, Domain>;
 }
@@ -92,17 +92,17 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 		return new TaintAnalysisDefinition(name, domain, config);
 	}
 
-	public from(fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain> {
+	public from(...fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain> {
 		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Source })));
 		return this;
 	}
 
-	public through(fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain> {
+	public through(...fnMapping: TaintMapper<Domain>): TaintAnalysisToStage<Name, Domain> {
 		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Transformer })));
 		return this;
 	}
 
-	public to(fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain> {
+	public to(...fnMapping: TaintMapper<Domain>): TaintAnalysisReportStage<Name, Domain> {
 		this.mapper.push(...fnMapping.map(m => ({ ...m, role: TaintRole.Sink })));
 		return this;
 	}

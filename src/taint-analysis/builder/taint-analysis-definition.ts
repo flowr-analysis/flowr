@@ -1,4 +1,4 @@
-import type { TaintMapper } from '../function-mapper';
+import type { TaintConditionFunction, TaintMapper } from '../function-mapper';
 import { TaintRole } from '../function-mapper';
 import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
@@ -10,6 +10,8 @@ import { guard } from '../../util/assert';
 import type { ProductReduction } from '../../abstract-interpretation/domains/partial-product-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import type { ReportTemplate } from './report-template';
+import type { TaintFnCategory } from '../function-categories';
+import { resolveCategoryToTaintMappings } from '../function-categories';
 
 export type TaintAnalysisName<Definition> =
 	Definition extends RunnableTaintAnalysisDefinition<infer Name> ? Name : never;
@@ -56,6 +58,8 @@ export interface TaintAnalysisThroughStage<Name extends string = string, Domain 
 
 export interface TaintAnalysisFromStage<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
+	on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): TaintAnalysisFromStage<Name, Domain>;
+	/** Add propagator or sanitizer rules that determine the resulting taint of matching calls. */
 	from(...fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain>;
 	/** Shortcut when no transformers, sinks, and/or a report message should be defined */
 	getPartialDefinition(): TaintAnalysisDefinition<Name, Domain>;
@@ -91,6 +95,12 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 	 */
 	public static create<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>(name: Name, domain: Domain, config?: Config): TaintAnalysisFromStage<Name, Domain> {
 		return new TaintAnalysisDefinition(name, domain, config);
+	}
+
+	public on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>) {
+		const resolved = resolveCategoryToTaintMappings<Domain>(category, handler);
+		this.mapper.push(...resolved);
+		return this;
 	}
 
 	public from(...fnMapping: TaintMapper<Domain>): TaintAnalysisThroughStage<Name, Domain> {

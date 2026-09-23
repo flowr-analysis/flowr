@@ -35,7 +35,7 @@ describe('Composite Taint Analysis: Security + Randomness', () => {
 
 	test('deterministic values tracked as Top in security, Deterministic in randomness', async() => {
 		await testCompositeTaintAnalysis(`
-			x <- c(1, 2, 3)`,
+			x <- vector(1, 2, 3)`,
 		determinism,
 		{
 			'1@x': { security: Top, randomness: Deterministic },

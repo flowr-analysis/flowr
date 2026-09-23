@@ -1,7 +1,7 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
 import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { PkgName  } from '../../dataflow/environments/identifier';
 import type { TaintCondition } from '../taint-mapping';
 
 export const MinMax = Symbol('Min-Max');
@@ -21,18 +21,17 @@ export const scaleDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ..
 	.addLeqOrder(Unscaled, Top)
 	.build();
 
-/** Sink condition reporting the aggregate of data whose taint is one of the given elements as a known constant. */
-function constantAggregate(...elements: symbol[]): TaintCondition<typeof scaleDomain> {
+const checkCalcOnNormalizedInput = (...checkedTaints: symbol[]): TaintCondition<typeof scaleDomain> => {
 	return {
 		argTaints:   [{ pos: 0, name: 'x' }],
-		conditionFn: (_args, [taint]) => elements.includes(taint.value) ? Bottom : (taint.value ?? Top)
+		conditionFn: (_args, [taint]) => checkedTaints.includes(taint.value) ? Bottom : (taint.value ?? Top)
 	};
-}
+};
 
 export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain)
 	.from(
 		{
-			identifier: Identifier.make('scale', 'base'),
+			identifier: ['scale', PkgName.Base],
 			condition:  {
 				argValues: [
 					{ pos: 1, name: 'center', default: true },
@@ -51,57 +50,65 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 				}
 			}
 		},
-		{ identifier: Identifier.make('scales', 'rescale'), taint: MinMax },
+		{ identifier: ['rescale', 'scales'], taint: MinMax },
 	)
 	.through(
 		// non-linear elementwise transformations
 		{
 			identifier: [
-				Identifier.make('abs', 'base'),
+				['abs', PkgName.Base],
 
 				// Logarithms
-				Identifier.make('log', 'base'),
-				Identifier.make('log2', 'base'),
-				Identifier.make('log10', 'base'),
-				Identifier.make('log1p', 'base'),
+				['log', PkgName.Base],
+				['log2', PkgName.Base],
+				['log10', PkgName.Base],
+				['log1p', PkgName.Base],
 
 				// Exponentials
-				Identifier.make('exp', 'base'),
-				Identifier.make('expm1', 'base'),
+				['exp', PkgName.Base],
+				['expm1', PkgName.Base],
 
-				Identifier.make('sqrt', 'base'),
+				['sqrt', PkgName.Base],
 
 				// Rounding
-				Identifier.make('sign', 'base'),
-				Identifier.make('round', 'base'),
-				Identifier.make('signif', 'base'),
-				Identifier.make('floor', 'base'),
-				Identifier.make('ceiling', 'base'),
-				Identifier.make('trunc', 'base'),
+				['sign', PkgName.Base],
+				['signif', PkgName.Base],
+				['floor', PkgName.Base],
+				['ceiling', PkgName.Base],
+				['trunc', PkgName.Base],
 
 				// Trigonometrics
-				Identifier.make('sin', 'base'),
-				Identifier.make('cos', 'base'),
-				Identifier.make('tan', 'base'),
+				['sin', PkgName.Base],
+				['cos', PkgName.Base],
+				['tan', PkgName.Base],
 			],
 			taint: Unscaled
 		},
-		// dropping elements removes our assumptions
+		{
+			identifier: ['round', PkgName.Base],
+			condition:  {
+				argTaints:   [{ pos: 0, name: 'x' }],
+				// Rounding only removes centering and variance assumption, min-max taint is kept
+				conditionFn: (_args, [taint]) =>
+					taint.value == ZScore || taint.value == ZeroCentered || taint.value == UnitVariance ? Unscaled : taint.value
+			}
+		},
+		// dropping elements
 		{
 			identifier: [
-				Identifier.make('subset', 'base'),
-				Identifier.make('Filter', 'base'),
-				Identifier.make('head', 'utils'),
-				Identifier.make('tail', 'utils'),
+				['subset', PkgName.Base],
+				['Filter', PkgName.Base],
+				['head', PkgName.Utils],
+				['tail', PkgName.Utils],
 			],
-			taint: Unscaled
+			taint: Top
 		}
 	)
 	.to(
-		{ identifier: 'mean', condition: constantAggregate(ZeroCentered, ZScore) },
-		{ identifier: 'sd', condition: constantAggregate(UnitVariance, ZScore) },
-		{ identifier: 'var', condition: constantAggregate(UnitVariance, ZScore) },
-		{ identifier: ['min', 'max', 'range'], condition: constantAggregate(MinMax) }
+		{ identifier: 'mean', condition: checkCalcOnNormalizedInput(ZeroCentered, ZScore) },
+		{ identifier: 'sd', condition: checkCalcOnNormalizedInput(UnitVariance, ZScore) },
+		{ identifier: 'var', condition: checkCalcOnNormalizedInput(UnitVariance, ZScore) },
+		{ identifier: ['min', 'max', 'range'], condition: checkCalcOnNormalizedInput(MinMax) }
 	).report((f) => {
 		return f.functionName ? `${f.functionName} calculated on normalized data [${f.locString}]` : `Known summary statistic calculated on normalized data [${f.locString}]`;
 	});

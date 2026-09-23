@@ -11,6 +11,7 @@ import type {
 } from './taint-mapping';
 import { TaintRole } from './taint-mapping';
 import type { Identifier } from '../dataflow/environments/identifier';
+import { Top } from '../abstract-interpretation/domains/lattice';
 
 export type TaintArgSelector = {
 	/** Argument properties of the function category */
@@ -55,7 +56,8 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 			argSelection: 'AtLeastOne',
 		},
 		/** Least-upper bound of incoming taints */
-		handler: ([_arg], taints) => taints.length > 0 ? AbstractDomain.joinAll(taints).value : undefined
+		handler: ([_arg], taints) =>
+			taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top
 	}
 };
 

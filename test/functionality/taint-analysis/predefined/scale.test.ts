@@ -67,9 +67,18 @@ describe('Taint Analysis Scale', () => {
 		});
 	});
 
-	test('call to rescale package -> MinMax', async() => {
+	test('call to rescale after scales package import -> MinMax', async() => {
 		await testScaleAnalysis(`
-			x <- rescale::scales(x)`,
+			library(scales)
+			x <- rescale(x)`,
+		{
+			'2@x': MinMax,
+		});
+	});
+
+	test('call to rescale from scales package -> MinMax', async() => {
+		await testScaleAnalysis(`
+			x <- scales::rescale(x)`,
 		{
 			'1@x': MinMax,
 		});

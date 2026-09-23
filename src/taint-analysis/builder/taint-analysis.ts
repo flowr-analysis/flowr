@@ -19,7 +19,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { SourceLocation } from '../../util/range';
 import { guard, isNotUndefined } from '../../util/assert';
 import { buildFindingContext, renderReport } from './report-template';
-import type { TaintRole } from '../function-mapper';
 import type { TaintConditionFunction, TaintRole } from '../taint-mapping';
 import type { TaintFnCategory } from '../function-categories';
 

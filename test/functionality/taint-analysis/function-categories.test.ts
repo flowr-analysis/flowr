@@ -58,7 +58,7 @@ describe('Taint Function Categories', () => {
 	describe('Pure Aliasing Functions (pureAlias)', () => {
 		const aliasAnalysis = TaintAnalysisDefinition.create('pure-alias', lattice)
 			.on(TaintFnCategory.pureAlias)
-			.from([source]).through([]).to([]).report('');
+			.from(source).getPartialDefinition();
 
 		testCategory('identity forwards the taint of its argument', 'x <- identity(taint())', { '1@x': Tainted }, aliasAnalysis);
 		testCategory('force forwards the taint of its argument', 'x <- force(taint())', { '1@x': Tainted }, aliasAnalysis);
@@ -70,7 +70,7 @@ describe('Taint Function Categories', () => {
 	describe('Pure Computing Functions (pureComputer)', () => {
 		const computerAnalysis = TaintAnalysisDefinition.create('pure-computer', lattice)
 			.on(TaintFnCategory.pureComputer)
-			.from([source]).through([]).to([]).report('');
+			.from(source).getPartialDefinition();
 
 		testCategory('abs forwards the taint of its argument', 'x <- abs(taint())', { '1@x': Tainted }, computerAnalysis);
 		testCategory('sqrt forwards the taint of its argument', 'x <- sqrt(taint())', { '1@x': Tainted }, computerAnalysis);
@@ -83,7 +83,7 @@ describe('Taint Function Categories', () => {
 		const combinedAnalysis = TaintAnalysisDefinition.create('pure-both', lattice)
 			.on(TaintFnCategory.pureAlias)
 			.on(TaintFnCategory.pureComputer)
-			.from([source]).through([]).to([]).report('');
+			.from(source).getPartialDefinition();
 
 		testCategory('an aliasing call wrapping a computing call forwards the taint', 'x <- identity(abs(taint()))', { '1@x': Tainted }, combinedAnalysis);
 		testCategory('a computing call wrapping an aliasing call forwards the taint', 'x <- sqrt(force(taint()))', { '1@x': Tainted }, combinedAnalysis);
@@ -94,7 +94,7 @@ describe('Taint Function Categories', () => {
 		const reclassAnalysis = TaintAnalysisDefinition.create('reclassify', reclassLattice)
 			.on(TaintFnCategory.pureAlias, () => TaintA)
 			.on(TaintFnCategory.pureComputer, () => TaintB)
-			.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
+			.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
 
 		testCategory('the raw source keeps its own taint', 'x <- taint()', { '1@x': Src }, reclassAnalysis);
 		testCategory('going through an aliasing function maps to TaintA', 'x <- identity(taint())', { '1@x': TaintA }, reclassAnalysis);
@@ -109,7 +109,7 @@ describe('Taint Function Categories', () => {
 		const evalAnalysis = TaintAnalysisDefinition.create('reclassify-eval', reclassLattice)
 			.on(TaintFnCategory.pureAlias, (_args, [incoming]) => incoming.value === Src ? TaintA : incoming.value)
 			.on(TaintFnCategory.pureComputer, (_args, [incoming]) => incoming.value === TaintA ? Top : incoming.value)
-			.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
+			.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
 
 		testCategory('the aliasing handler relabels the raw source to TaintA', 'x <- identity(taint())', { '1@x': TaintA }, evalAnalysis);
 		testCategory('the aliasing handler leaves an already-classified taint untouched', 'x <- taint()\ny <- identity(x)\nz <- identity(y)', { '2@y': TaintA, '3@z': TaintA }, evalAnalysis);
@@ -130,17 +130,17 @@ describe('Taint Function Categories', () => {
 
 		const lubOrderedAnalysis = TaintAnalysisDefinition.create('lub-ordered', orderedLattice)
 			.on(TaintFnCategory.pureComputer)
-			.from([
+			.from(
 				{ identifier: Identifier.make('taintLow'), taint: Low },
 				{ identifier: Identifier.make('taintHigh'), taint: High },
-			]).through([]).to([]).report('');
+			).getPartialDefinition();
 
 		const lubIncomparableAnalysis = TaintAnalysisDefinition.create('lub-incomparable', reclassLattice)
 			.on(TaintFnCategory.pureComputer)
-			.from([
+			.from(
 				{ identifier: Identifier.make('taintA'), taint: TaintA },
 				{ identifier: Identifier.make('taintB'), taint: TaintB },
-			]).through([]).to([]).report('');
+			).getPartialDefinition();
 
 		testCategory('the least upper bound of two equal argument taints is that taint', 'x <- atan2(taintLow(), taintLow())', { '1@x': Low }, lubOrderedAnalysis);
 		testCategory('the least upper bound of two comparable taints is the greater one', 'x <- atan2(taintLow(), taintHigh())', { '1@x': High }, lubOrderedAnalysis);
@@ -153,8 +153,8 @@ describe('Taint Function Categories', () => {
 
 	describe('Analysis-Level Categories (TaintAnalysis.on)', () => {
 		test('a category declared on the shared TaintAnalysis builder is used by every analysis added to it', async() => {
-			const analysisA = TaintAnalysisDefinition.create('shared-alias-a', lattice).from([source]).through([]).to([]).report('');
-			const analysisB = TaintAnalysisDefinition.create('shared-alias-b', lattice).from([source]).through([]).to([]).report('');
+			const analysisA = TaintAnalysisDefinition.create('shared-alias-a', lattice).from(source).getPartialDefinition();
+			const analysisB = TaintAnalysisDefinition.create('shared-alias-b', lattice).from(source).getPartialDefinition();
 
 			await testTaintAnalyses('x <- identity(taint())', new Set([
 				['shared-alias-a', analysisA, { '1@x': Tainted }],
@@ -163,8 +163,8 @@ describe('Taint Function Categories', () => {
 		});
 
 		test('multiple categories declared on the shared builder combine for every analysis added to it', async() => {
-			const analysisA = TaintAnalysisDefinition.create('shared-combined-a', lattice).from([source]).through([]).to([]).report('');
-			const analysisB = TaintAnalysisDefinition.create('shared-combined-b', lattice).from([source]).through([]).to([]).report('');
+			const analysisA = TaintAnalysisDefinition.create('shared-combined-a', lattice).from(source).getPartialDefinition();
+			const analysisB = TaintAnalysisDefinition.create('shared-combined-b', lattice).from(source).getPartialDefinition();
 
 			await testTaintAnalyses('x <- identity(abs(taint()))', new Set([
 				['shared-combined-a', analysisA, { '1@x': Tainted }],
@@ -175,12 +175,12 @@ describe('Taint Function Categories', () => {
 		test('categories declared on one TaintAnalysis do not persist into a separately created TaintAnalysis', async() => {
 			const code = 'x <- identity(taint())';
 
-			const withCategory = TaintAnalysisDefinition.create('isolated-with-category', lattice).from([source]).through([]).to([]).report('');
+			const withCategory = TaintAnalysisDefinition.create('isolated-with-category', lattice).from(source).getPartialDefinition();
 			await testTaintAnalyses(code, new Set([
 				['isolated-with-category', withCategory, { '1@x': Tainted }],
 			]), undefined, builder => builder.on(TaintFnCategory.pureAlias));
 
-			const withoutCategory = TaintAnalysisDefinition.create('isolated-without-category', lattice).from([source]).through([]).to([]).report('');
+			const withoutCategory = TaintAnalysisDefinition.create('isolated-without-category', lattice).from(source).getPartialDefinition();
 			await testTaintAnalyses(code, new Set([
 				['isolated-without-category', withoutCategory, { '1@x': Top }],
 			]));
@@ -189,9 +189,9 @@ describe('Taint Function Categories', () => {
 		describe('Custom Handler on the Shared Builder', () => {
 			test('a custom handler passed directly to .on() overrides the category default for every analysis added to it', async() => {
 				const analysisA = TaintAnalysisDefinition.create('shared-handler-a', reclassLattice)
-					.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
+					.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
 				const analysisB = TaintAnalysisDefinition.create('shared-handler-b', reclassLattice)
-					.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
+					.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
 
 				await testTaintAnalyses('x <- identity(taint())', new Set([
 					['shared-handler-a', analysisA, { '1@x': TaintA }],
@@ -201,9 +201,9 @@ describe('Taint Function Categories', () => {
 
 			test('a custom handler passed directly to .on() can evaluate the incoming taint', async() => {
 				const analysisA = TaintAnalysisDefinition.create('shared-handler-eval-a', reclassLattice)
-					.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
+					.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
 				const analysisB = TaintAnalysisDefinition.create('shared-handler-eval-b', reclassLattice)
-					.from([{ identifier: Identifier.make('taint'), taint: TaintB }]).through([]).to([]).report('');
+					.from({ identifier: Identifier.make('taint'), taint: TaintB }).getPartialDefinition();
 
 				await testTaintAnalyses('x <- taint()\ny <- identity(x)\nz <- abs(y)\nw <- identity(z)', new Set([
 					['shared-handler-eval-a', analysisA, { '1@x': Src, '2@y': TaintA, '3@z': TaintA, '4@w': TaintA }],
@@ -218,9 +218,9 @@ describe('Taint Function Categories', () => {
 			test('an explicit rule on the analysis takes precedence over both a definition-level and an analysis-level category mapping', async() => {
 				const analysis = TaintAnalysisDefinition.create('precedence-explicit', precedenceLattice)
 					.on(TaintFnCategory.pureAlias, () => DefinitionCategory)
-					.from([precedenceSource])
-					.through([{ identifier: Identifier.make('identity'), taint: Explicit }])
-					.to([]).report('');
+					.from()
+					.through({ identifier: Identifier.make('identity'), taint: Explicit })
+					.getPartialDefinition();
 
 				await testTaintAnalyses('x <- identity(taint())', new Set([
 					['precedence-explicit', analysis, { '1@x': Explicit }],
@@ -230,9 +230,7 @@ describe('Taint Function Categories', () => {
 			test('a definition-level category mapping takes precedence over an analysis-level category mapping when no explicit rule matches', async() => {
 				const analysis = TaintAnalysisDefinition.create('precedence-definition-category', precedenceLattice)
 					.on(TaintFnCategory.pureAlias, () => DefinitionCategory)
-					.from([precedenceSource])
-					.through([])
-					.to([]).report('');
+					.from(precedenceSource).getPartialDefinition();
 
 				await testTaintAnalyses('x <- identity(taint())', new Set([
 					['precedence-definition-category', analysis, { '1@x': DefinitionCategory }],
@@ -241,9 +239,7 @@ describe('Taint Function Categories', () => {
 
 			test('an analysis-level category mapping applies when neither an explicit rule nor a definition-level category mapping matches', async() => {
 				const analysis = TaintAnalysisDefinition.create('precedence-analysis-category', precedenceLattice)
-					.from([precedenceSource])
-					.through([])
-					.to([]).report('');
+					.from(precedenceSource).getPartialDefinition();
 
 				await testTaintAnalyses('x <- identity(taint())', new Set([
 					['precedence-analysis-category', analysis, { '1@x': AnalysisCategory }],
@@ -259,7 +255,7 @@ describe('Taint Function Categories', () => {
 
 			const definitionOverride = TaintAnalysisDefinition.create('isolation-definition-override', reclassLattice)
 				.on(TaintFnCategory.pureAlias, () => TaintA)
-				.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
+				.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
 			await testTaintAnalysis('x <- identity(taint())', definitionOverride, { '1@x': TaintA });
 			assert.strictEqual(TaintFnCategory.pureAlias.handler, originalHandler);
 		});
@@ -269,7 +265,7 @@ describe('Taint Function Categories', () => {
 			assert.isDefined(originalHandler, 'Expected pureAlias to have a default handler');
 
 			const analysisOverride = TaintAnalysisDefinition.create('isolation-analysis-override', reclassLattice)
-				.from([{ identifier: Identifier.make('taint'), taint: Src }]).through([]).to([]).report('');
+				.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
 			await testTaintAnalyses('x <- identity(taint())', new Set([
 				['isolation-analysis-override', analysisOverride, { '1@x': TaintB }],
 			]), undefined, builder => builder.on(TaintFnCategory.pureAlias, () => TaintB));

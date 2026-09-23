@@ -20,6 +20,8 @@ import { SourceLocation } from '../../util/range';
 import { guard, isNotUndefined } from '../../util/assert';
 import { buildFindingContext, renderReport } from './report-template';
 import type { TaintRole } from '../function-mapper';
+import type { TaintConditionFunction, TaintRole } from '../taint-mapping';
+import type { TaintFnCategory } from '../function-categories';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -81,6 +83,12 @@ export interface TaintInferenceResult {
  */
 export interface TaintAnalysisBuilder<Defs extends readonly string[]> {
 	/**
+	 * Add rules for function categories (i.e. sets of functions from {@link BuiltInIndex} fulfilling certain properties).
+	 * These rules are applied to all added analyses.
+	 */
+	on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): this;
+
+	/**
 	 * Add a callback hook that is invoked for each function call mapping during taint analysis.
 	 */
 	withHook(fnCallHook: FnCallHook): this;
@@ -116,6 +124,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 	private readonly analyzer?: ReadonlyFlowrAnalysisProvider;
 	private readonly defs:      RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
 	private fnCallHook:         FnCallHook | undefined;
+	private categories:         TaintFnCategory[] = [];
 
 	private constructor(analyzer?: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
@@ -127,6 +136,12 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 	 */
 	public static create<Defs extends readonly string[] = []>(analyzer?: ReadonlyFlowrAnalysisProvider): TaintAnalysisBuilder<Defs> {
 		return new TaintAnalysis<Defs>(analyzer);
+	}
+
+	on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): this {
+		guard(handler || category.handler, 'No handler set for given function category');
+		this.categories.push({ ...category, handler: handler ?? category.handler });
+		return this;
 	}
 
 	public withHook(fnCallHook: FnCallHook): this {
@@ -169,7 +184,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
 			};
 
-			const visitor = def.createVisitor(baseConfig);
+			const visitor = def.createVisitor(baseConfig, this.categories);
 			visitor.start();
 
 			const endState = visitor.getEndState();

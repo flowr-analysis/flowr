@@ -1,11 +1,15 @@
 import type { ArgProps, CallProps } from '../dataflow/environments/built-in-props';
 import { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../dataflow/environments/query-fn-props';
-import type { TaintConditionFunction, TaintMapper, TaintMapping, TaintParameterLocation } from './function-mapper';
-import { TaintRole } from './function-mapper';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { isNotUndefined } from '../util/assert';
+import type {
+	TaintConditionFunction,
+	TaintMapping,
+	TaintParameterLocation
+} from './taint-mapping';
+import { TaintRole } from './taint-mapping';
 import type { Identifier } from '../dataflow/environments/identifier';
 
 export type TaintArgSelector = {
@@ -21,13 +25,13 @@ export type TaintArgSelector = {
 
 export type TaintFnCategory = {
 	/** Role the functions of the category should get assigned to */
-	role:           TaintRole,
+	role:      TaintRole,
 	/** Call properties of the function category */
-	callProps:      CallProps,
+	callProps: CallProps,
 	/** Argument properties of the function category */
-	args:           TaintArgSelector,
-	/** Default handler describing the calculation of the resulting taint */
-	defaultHandler: TaintConditionFunction<AnyAbstractDomain>
+	args:      TaintArgSelector,
+	/** Handler describing the calculation of the resulting taint */
+	handler:   TaintConditionFunction<AnyAbstractDomain>
 };
 
 export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCategory> = {
@@ -40,7 +44,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 			argSelection: 'ExactlyOne',
 		},
 		/** Pass through of incoming taint */
-		defaultHandler: ([_arg], [taint]) => taint.value
+		handler: ([_arg], [taint]) => taint.value
 	},
 	/** Pure functions which calculate their result on one or multiple arguments */
 	pureComputer: {
@@ -51,14 +55,14 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 			argSelection: 'AtLeastOne',
 		},
 		/** Least-upper bound of incoming taints */
-		defaultHandler: ([_arg], taints) => taints.length > 0 ? AbstractDomain.joinAll(taints).value : undefined
+		handler: ([_arg], taints) => taints.length > 0 ? AbstractDomain.joinAll(taints).value : undefined
 	}
 };
 
 /**
  * Get the whole set of taint mappings for a given {@link TaintFnCategory}.
  */
-export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): TaintMapper<Domain> {
+export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory): TaintMapping<Domain>[] {
 	const idx = BuiltInIndex.default();
 	const mappings: (TaintMapping<Domain> | undefined)[] = idx.withAll(category.callProps).map(i => {
 		const relevantArgs = getRelevantArg(i, category.args);
@@ -68,7 +72,7 @@ export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>
 				identifier: i,
 				condition:  {
 					argTaints:   relevantArgs,
-					conditionFn: handler ?? category.defaultHandler
+					conditionFn: category.handler
 				}
 			} : undefined;
 	});

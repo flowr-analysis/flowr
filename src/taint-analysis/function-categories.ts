@@ -56,7 +56,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer', TaintFnCatego
 };
 
 /**
- *
+ * Get the whole set of taint mappings for a given {@link TaintFnCategory}.
  */
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): TaintMapper<Domain> {
 	const idx = BuiltInIndex.default();

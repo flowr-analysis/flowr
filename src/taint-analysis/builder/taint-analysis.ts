@@ -1,5 +1,9 @@
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import type { TaintAnalysisDefinition, CompositeTaintAnalysisDefinition, RunnableTaintAnalysisDefinition } from './taint-analysis-definition';
+import type {
+	CompositeTaintAnalysisDefinition,
+	RunnableTaintAnalysisDefinition,
+	TaintAnalysisDefinition
+} from './taint-analysis-definition';
 import type { AnyPredefinedTaintAnalysisName } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
 import type { StateAbstractDomain } from '../../abstract-interpretation/domains/state-abstract-domain';
@@ -7,13 +11,15 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { TaintRole } from '../function-mapper';
 import type { ArgTaintProjector, TaintVisitorConfiguration, TaintVisitorHook } from '../taint-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SourceLocation } from '../../util/range';
+import { guard, isNotUndefined } from '../../util/assert';
+import { buildFindingContext, renderReport } from './report-template';
+import type { TaintRole } from '../function-mapper';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -52,6 +58,8 @@ export interface TaintFinding {
 	nodeId: NodeId
 	/** The source location of the AST node, if it could be resolved */
 	loc?:   SourceLocation
+	/** The rendered report message for this finding, set only when the analysis uses a per-finding {@link ReportTemplate} */
+	msg?:   string
 }
 
 /**
@@ -67,65 +75,97 @@ export interface TaintInferenceResult {
 }
 
 /**
- * Fluent builder class for conducting taint analyses.
- * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
+ * Builder stage of a taint analysis, before any analysis definition has been added.
+ * {@link RunnableTaintAnalysis.run} only becomes available once
+ * {@link add}, {@link addComposite}, or {@link addPredefined} has been called.
  */
-export class TaintAnalysis<Defs extends readonly string[] = []> {
-	private readonly analyzer: ReadonlyFlowrAnalysisProvider;
-	private readonly defs:     RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
-	private fnCallHook:        FnCallHook | undefined;
-
-	constructor(analyzer: ReadonlyFlowrAnalysisProvider) {
-		this.analyzer = analyzer;
-	}
-
+export interface TaintAnalysisBuilder<Defs extends readonly string[]> {
 	/**
 	 * Add a callback hook that is invoked for each function call mapping during taint analysis.
 	 */
-	public withHook(fnCallHook: FnCallHook): this {
-		this.fnCallHook = fnCallHook;
-		return this;
-	}
+	withHook(fnCallHook: FnCallHook): this;
 
 	/**
 	 * Add a predefined taint analysis by name.
 	 */
-	public addPredefined<Name extends AnyPredefinedTaintAnalysisName>(name: Name): TaintAnalysis<readonly [...Defs, Name]> {
-		this.defs.push(predefinedTaintAnalyses[name]);
-		return this as unknown as TaintAnalysis<readonly [...Defs, Name]>;
-	}
+	addPredefined<Name extends AnyPredefinedTaintAnalysisName>(...names: Name[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
 
 	/**
 	 * Add a custom taint analysis definition.
 	 */
-	public add<Name extends string>(def: TaintAnalysisDefinition<Name>): TaintAnalysis<readonly [...Defs, Name]> {
-		this.defs.push(def);
-		return this as unknown as TaintAnalysis<readonly [...Defs, Name]>;
-	}
+	add<Name extends string>(...defs: TaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
 
 	/**
 	 * Add a composite taint analysis that combines multiple taint analyses into a product of their lattice values.
 	 * @see {@link TaintAnalysisDefinition.compose} to create a composite taint analysis definition.
 	 */
-	public addComposite<Name extends string>(def: CompositeTaintAnalysisDefinition<Name>): TaintAnalysis<readonly [...Defs, Name]> {
-		this.defs.push(def);
-		return this as unknown as TaintAnalysis<readonly [...Defs, Name]>;
+	addComposite<Name extends string>(...defs: CompositeTaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
+}
+
+export interface RunnableTaintAnalysis<Defs extends readonly string[]> extends TaintAnalysisBuilder<Defs> {
+	run(analyzer?: ReadonlyFlowrAnalysisProvider): Promise<Map<Defs[number], TaintInferenceResult>>;
+}
+
+/**
+ * Fluent builder class for conducting taint analyses.
+ * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
+ * Use {@link TaintAnalysis.create} to obtain an instance; {@link TaintAnalysis.run} is only reachable
+ * after at least one of {@link add}, {@link addComposite}, or {@link addPredefined} has been called.
+ */
+export class TaintAnalysis<Defs extends readonly string[] = []> implements RunnableTaintAnalysis<Defs> {
+	private readonly analyzer?: ReadonlyFlowrAnalysisProvider;
+	private readonly defs:      RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
+	private fnCallHook:         FnCallHook | undefined;
+
+	private constructor(analyzer?: ReadonlyFlowrAnalysisProvider) {
+		this.analyzer = analyzer;
+	}
+
+	/**
+	 * Create a new taint analysis builder. {@link run} is unreachable on the result until at least
+	 * one of {@link add}, {@link addComposite}, or {@link addPredefined} has been called on it.
+	 */
+	public static create<Defs extends readonly string[] = []>(analyzer?: ReadonlyFlowrAnalysisProvider): TaintAnalysisBuilder<Defs> {
+		return new TaintAnalysis<Defs>(analyzer);
+	}
+
+	public withHook(fnCallHook: FnCallHook): this {
+		this.fnCallHook = fnCallHook;
+		return this;
+	}
+
+	public addPredefined<Name extends AnyPredefinedTaintAnalysisName>(...names: Name[]): RunnableTaintAnalysis<readonly [...Defs, Name]> {
+		for(const name of names) {
+			this.defs.push(predefinedTaintAnalyses[name]);
+		}
+		return this as unknown as RunnableTaintAnalysis<readonly [...Defs, Name]>;
+	}
+
+	public add<Name extends string>(...defs: TaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]> {
+		this.defs.push(...defs);
+		return this as unknown as RunnableTaintAnalysis<readonly [...Defs, Name]>;
+	}
+
+	public addComposite<Name extends string>(...defs: CompositeTaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]> {
+		this.defs.push(...defs);
+		return this as unknown as RunnableTaintAnalysis<readonly [...Defs, Name]>;
 	}
 
 	/**
 	 * Run one or multiple taint analyses.
-	 * Note: Requires a prior call to {@link TaintAnalysis.add}, {@link TaintAnalysis.addComposite}, or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<Defs[number], TaintInferenceResult>> {
+	public async run(analyzer: ReadonlyFlowrAnalysisProvider | undefined = this.analyzer): Promise<Map<Defs[number], TaintInferenceResult>> {
+		guard(isNotUndefined(analyzer), 'No analyzer has been set');
+
 		const results: Map<Defs[number], TaintInferenceResult> = new Map();
-		const dfg = (await this.analyzer.dataflow()).graph;
-		const ctx = this.analyzer.inspectContext();
+		const dfg = (await analyzer.dataflow()).graph;
+		const ctx = analyzer.inspectContext();
 		for(const def of this.defs) {
 			const baseConfig: TaintVisitorConfiguration = {
-				controlFlow:   await this.analyzer.controlflow(),
+				controlFlow:   await analyzer.controlflow(),
 				ctx:           ctx,
 				dfg:           dfg,
-				normalizedAst: await this.analyzer.normalize(),
+				normalizedAst: await analyzer.normalize(),
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
 			};
 
@@ -133,12 +173,18 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 			visitor.start();
 
 			const endState = visitor.getEndState();
-			const msg = def.msg;
-			const findings: TaintFinding[] = msg === undefined ? [] : endState.getBottomNodes().map(nodeId => ({
-				nodeId,
-				loc: SourceLocation.fromNode(baseConfig.normalizedAst.idMap.get(nodeId))
-			}));
+			const report = def.msg;
+			const idMap = baseConfig.normalizedAst.idMap;
+			const findings: TaintFinding[] = report === undefined ? [] : endState.getBottomNodes().map(nodeId => {
+				const node = idMap.get(nodeId);
+				const loc = SourceLocation.fromNode(node);
+				return typeof report === 'function'
+					? { nodeId, loc, msg: renderReport(report, buildFindingContext(def.name, nodeId, node, loc)) }
+					: { nodeId, loc };
+			});
 
+			// If the report message is a constant string, save it only once
+			const msg = typeof report === 'string' ? report : undefined;
 			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, msg, findings });
 		}
 		return results;

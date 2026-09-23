@@ -107,10 +107,9 @@ describe('taint-analysis evaluation', () => {
 				'28': 'File Input',
 				'32': 'File Input',
 			},
-			msg:      'User input potentially flowing to output',
 			findings: [
-				{ nodeId: 19, loc: [4, 6, 4, 47, filePath] },
-				{ nodeId: 10, loc: [4, 1, 4, 1, filePath] },
+				{ nodeId: 19, loc: [4, 6, 4, 47, filePath], msg: `Untrusted input reached security-sensitive sink function 'source' [${filePath}:4.6-47]` },
+				{ nodeId: 10, loc: [4, 1, 4, 1, filePath], msg: `Untrusted input reached a security-sensitive sink (possible code or command injection) [${filePath}:4.1]` },
 			],
 		});
 	});

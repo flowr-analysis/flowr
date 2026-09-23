@@ -26,8 +26,8 @@ const NetworkProtocolRegex = /^(https?|ftps?):\/\//;
 const protocolTaint = (path: unknown) =>
 	typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
 
-export const securityAnalysis = new TaintAnalysisDefinition('security', securityDomain)
-	.from([
+export const securityAnalysis = TaintAnalysisDefinition.create('security', securityDomain)
+	.from(
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User)],
 			taint:      UserInput
@@ -67,8 +67,9 @@ export const securityAnalysis = new TaintAnalysisDefinition('security', security
 				conditionFn: ([path]) => protocolTaint(path)
 			}
 		},
-	])
-	.to([
+	)
+	.through()
+	.to(
 		{
 			identifier: [
 				Identifier.make('eval', 'base'),
@@ -120,5 +121,7 @@ export const securityAnalysis = new TaintAnalysisDefinition('security', security
 				conditionFn: (_args, [taint]) => (taint === UserInput || taint === NetworkInput || taint === FileInput) ? Bottom : undefined
 			}
 		}
-	])
-	.report('User input potentially flowing to output');
+	).report((f) => {
+		return f.functionName ? `Untrusted input reached security-sensitive sink function '${f.functionName}' [${f.locString}]`
+			: `Untrusted input reached a security-sensitive sink (possible code or command injection) [${f.locString}]`;
+	});

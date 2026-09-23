@@ -70,6 +70,17 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 		{
 			identifier: [['match.arg', PkgName.Base], ['make.names', PkgName.Base]],
 			taint:      Top
+		},
+		{
+			// additional common functions
+			identifier: [
+				['rep', PkgName.Base],
+				['which', PkgName.Base]
+			],
+			condition: {
+				argTaints:   [{ pos: 0, name: 'x' }],
+				conditionFn: (_args, [taint]) => taint.value
+			}
 		}
 	)
 	.to(

@@ -3,6 +3,7 @@ import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
 import { PkgName  } from '../../dataflow/environments/identifier';
 import type { TaintCondition } from '../taint-mapping';
+import { TaintFnCategory } from '../function-categories';
 
 export const MinMax = Symbol('Min-Max');
 export const ZeroCentered = Symbol('Zero Centered');
@@ -29,6 +30,7 @@ const checkCalcOnNormalizedInput = (...checkedTaints: symbol[]): TaintCondition<
 };
 
 export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain)
+	.on(TaintFnCategory.pureShape, (_args, _taints) => Top)
 	.from(
 		{
 			identifier: ['scale', PkgName.Base],
@@ -93,18 +95,25 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 					taint.value == ZScore || taint.value == ZeroCentered || taint.value == UnitVariance ? Unscaled : taint.value
 			}
 		},
-		// dropping elements
 		{
 			identifier: [
+				// dropping elements
 				['subset', PkgName.Base],
-				['Filter', PkgName.Base],
+				['filter', PkgName.Base],
 				['head', PkgName.Utils],
 				['tail', PkgName.Utils],
+
+				// additional common functions
+				['rep', PkgName.Base], ['rep.int', PkgName.Base], ['rep_len', PkgName.Base], ['which', PkgName.Base]
 			],
-			taint: Top
-		}
-	)
-	.to(
+			condition: {
+				argTaints:   [{ pos: 0, name: 'x' }],
+				conditionFn: (_args, [taint]) =>
+					taint.value !== Unscaled ? Top : Unscaled
+			}
+
+		},
+	).to(
 		{ identifier: 'mean', condition: checkCalcOnNormalizedInput(ZeroCentered, ZScore) },
 		{ identifier: 'sd', condition: checkCalcOnNormalizedInput(UnitVariance, ZScore) },
 		{ identifier: 'var', condition: checkCalcOnNormalizedInput(UnitVariance, ZScore) },

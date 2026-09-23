@@ -7,6 +7,7 @@ import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { TaintFnCategory } from '../function-categories';
 import { taintMappingFromBuiltInIndex } from '../builtin-index-bridge';
+import type { TaintConditionFunction } from '../taint-mapping';
 
 export const Random = Symbol('Random');
 export const Deterministic = Symbol('Deterministic');
@@ -16,6 +17,9 @@ export const randomnessDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Botto
 	.addLeqOrder(Random, Top)
 	.addLeqOrder(Deterministic, Top)
 	.build();
+
+const randomnessSinkCondition: TaintConditionFunction<typeof randomnessDomain> =
+	(_args, taints) => taints.some(taint => taint.value === Random) ? Bottom : AbstractDomain.joinAll(taints).value;
 
 export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', randomnessDomain)
 	.on(TaintFnCategory.pureComputer, ([_arg], taints) => {
@@ -91,14 +95,40 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 				['as.ordered', PkgName.Base],
 
 				// repetition
-				['rep', PkgName.Base], ['rep.int', PkgName.Base], ['rep_len', PkgName.Base]
+				['rep', PkgName.Base], ['rep.int', PkgName.Base], ['rep_len', PkgName.Base],
+
+				// additional common functions
+				['which', PkgName.Base]
 			],
 			condition: {
 				argTaints:   [{ pos: 0, name: 'x' }],
-				conditionFn: (_args, [taint]) =>
-					taint.value
+				conditionFn: (_args, [taint]) => taint.value
 			}
 		},
+	)
+	.to(
+		{
+			identifier: ['summary', PkgName.Base],
+			condition:  {
+				argTaints:   [{ pos: 0, name: 'object' }],
+				conditionFn: randomnessSinkCondition
+			}
+		},
+		{
+			identifier: ['lm', PkgName.Base],
+			condition:  {
+				argTaints:   [{ pos: 0, name: 'formula' }, { pos: 1, name: 'data' }],
+				conditionFn: randomnessSinkCondition
+			}
+		},
+		{
+			identifier: ['ggplot', PkgName.GgPlot2],
+			condition:  {
+				argTaints:   [{ pos: 0, name: 'data' }],
+				conditionFn: randomnessSinkCondition
+			}
+		},
+		...taintMappingFromBuiltInIndex<typeof randomnessDomain>([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value, randomnessSinkCondition)
 	).to(...taintMappingFromBuiltInIndex<typeof randomnessDomain>([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value,
 		(_args, taints) => taints.some(taint => taint.value === Random) ? Bottom : AbstractDomain.joinAll(taints).value)
 	).report('Non-deterministic random data is written to output (result may not be reproducible)');

@@ -1,43 +1,22 @@
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../dataflow/environments/identifier';
-import type { AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { VariableResolve } from '../config';
-import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/mappers/arguments';
 import {
 	getArgumentValue,
 	getFunctionArgument,
 	getFunctionArguments
 } from '../abstract-interpretation/data-frame/mappers/arguments';
 import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument, RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Top } from '../abstract-interpretation/domains/lattice';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { isNotUndefined } from '../util/assert';
+import { isNotUndefined, isUndefined } from '../util/assert';
 import { taintLogger } from './logger';
-
-/**
- * Gets all defined mappings for a given function call.
- * @param node   - The function call
- * @param mapper - Function mapper containing relations between function names and their tainting behavior
- */
-export function getMappingsForCall<Domain extends AnyAbstractDomain>(
-	node: RNode<ParentInformation>,
-	mapper: TaintMapper<Domain>,
-): TaintMapping<Domain>[] {
-	if(!RFunctionCall.is(node) || !node.named) {
-		return [];
-	}
-
-	const functionName = node.functionName.content;
-	const matchesCall = (id: Identifier) => Identifier.matches(id, functionName)
-		|| (Identifier.getNamespace(functionName) === undefined && Identifier.matches(functionName, id));
-	return mapper.filter(m =>
-		Identifier.is(m.identifier) ? matchesCall(m.identifier) : m.identifier.some(matchesCall));
-}
+import type { TaintConditionDomain, TaintConditionMapping, TaintMapping } from './taint-mapping';
+import { TaintRole } from './taint-mapping';
 
 /**
  * Resolves all {@link TaintMapping}s that apply to a function call
@@ -111,57 +90,16 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 
 	const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
 		const arg = getFunctionArgument(allArgs, location, resolveInfo);
-		if(!arg) {
+		if(isNotUndefined(arg)) {
 			taintLogger.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
 		}
 		return arg;
 	}) : [];
 
 	const incomingTaints = taintArgs
-		.map(arg => (arg === EmptyArgument || !arg?.value?.info) ? domain.create(Top) : projectArg(arg.value.info.id))
-		.filter((value) => isNotUndefined(value))
-		.map(value => value.value as AbstractValue<Domain>);
+		.map(arg => (arg === EmptyArgument || !arg?.value?.info) ? domain.top() : projectArg(arg.value.info.id))
+		.map((value) => isUndefined(value) ? domain.top() : value);
 
-	return mapping.condition.conditionFn(valArgs, incomingTaints);
+	return mapping.condition.conditionFn(valArgs, incomingTaints as unknown as TaintConditionDomain<Domain>[]);
 }
 
-export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];
-
-export enum TaintRole {
-	Source = 'Source',
-	Transformer = 'Transformer',
-	Sink = 'Sink',
-}
-
-type TaintMappingBase = {
-	readonly role?:      TaintRole;
-	readonly identifier: Identifier | Identifier[];
-};
-
-/** A mapping that assigns a fixed taint to a matched call. */
-export type TaintFixedMapping<Domain extends AnyAbstractDomain> = TaintMappingBase & {
-	taint: AbstractValue<Domain>;
-};
-
-/** A mapping whose taint is computed from a {@link TaintCondition} over the call's argument values and taints. */
-export type TaintConditionMapping<Domain extends AnyAbstractDomain> = TaintMappingBase & {
-	condition: TaintCondition<Domain>;
-};
-
-export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
-	argValues?:  FunctionParameterLocation<unknown>[],
-	argTaints?:  TaintParameterLocation[],
-	conditionFn: TaintConditionFunction<Domain>
-};
-
-export type TaintMapping<Domain extends AnyAbstractDomain> =
-	| TaintFixedMapping<Domain>
-	| TaintConditionMapping<Domain>;
-
-export type TaintConditionFunction<Domain extends AnyAbstractDomain> =
-	( args: unknown[], taints: AbstractValue<Domain>[]) => AbstractValue<Domain> | undefined;
-
-export interface TaintParameterLocation {
-	pos:   number,
-	name?: string
-}

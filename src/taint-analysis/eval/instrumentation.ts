@@ -1,7 +1,6 @@
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from '../builder/taint-analysis';
-import type { TaintRole } from '../function-mapper';
 import { getFunctionArguments } from '../../abstract-interpretation/data-frame/mappers/arguments';
 import { VariableResolve } from '../../config';
 import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -16,6 +15,7 @@ import { happensInEveryBranch } from '../../dataflow/info';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
+import type { TaintRole } from '../taint-mapping';
 
 export interface LoggedFnCallInfo {
 	mappedCalls:   MappedCallInfo[],

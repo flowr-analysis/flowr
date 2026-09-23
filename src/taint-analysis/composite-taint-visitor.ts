@@ -2,13 +2,13 @@ import type { AbsintVisitorConfiguration } from '../abstract-interpretation/absi
 import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { TaintMapper } from './function-mapper';
-import { getMappingsForCall, resolveFnCallToTaint } from './function-mapper';
+import { resolveFnCallToTaint } from './taint-resolve';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
 import { type MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
 import type { Writable } from 'ts-essentials';
 import { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { TaintMapper } from './taint-mapping';
 
 /**
  * The abstract product mapping the name of a (component) taint analysis to its (value) abstract domain.
@@ -70,10 +70,9 @@ export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisito
 		const product: Writable<TaintProduct> = {};
 
 		for(const component of this.components) {
-			const taint = getMappingsForCall(node, component.mapper);
-
+			const mappings = component.mapper.getMappings(node.functionName.content);
 			// project the product state of an argument node onto the component of this analysis (defaulting to Top)
-			const resolved = resolveFnCallToTaint(node, taint, component.domain, argId =>
+			const resolved = resolveFnCallToTaint(node, mappings, component.domain, argId =>
 				this.getAbstractValue(argId)?.value[component.name] ?? component.domain.top(), this.config.dfg, this.config.ctx);
 			product[component.name] = resolved?.value;
 		}

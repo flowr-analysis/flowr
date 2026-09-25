@@ -149,7 +149,7 @@ export interface LintingResult {
 	/**
 	 * The source location where this linting result occurs
 	 */
-	readonly loc:        SourceLocation;
+	readonly loc:        SourceLocation | undefined;
 }
 
 

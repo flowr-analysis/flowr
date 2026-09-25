@@ -1,5 +1,5 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { FileRole } from '../../project/context/flowr-file';
 import { LintingRuleTag } from '../linter-tags';
 import type { MergeableRecord } from '../../util/objects';
@@ -9,15 +9,31 @@ export interface AutoloadResult extends LintingResult {
 }
 
 export interface AutoloadConfig extends MergeableRecord {
+	readonly allowEmptyFiles:     boolean
 	readonly allowedFilePatterns: (string | RegExp)[]
 }
 
 export const AUTOLOAD_FILES = {
 	createSearch:        () => undefined as never,
 	processSearchResult: (_elements, config, data) => {
+		const results: AutoloadResult[] = [];
 		const ctx = data.inspectContext();
+		const patterns = config.allowedFilePatterns.map(p => typeof p == 'string' ? new RegExp(p) : p);
 		for(const file of ctx.files.getFilesByRole(FileRole.Startup)) {
-			// TODO see if files have any content; if so, report them
+			const path = file.path();
+			if(patterns.some(p => p.exec(path))) {
+				continue;
+			}
+			if(config.allowEmptyFiles && file.content().toString().trim().length <= 0) {
+				continue;
+			}
+			results.push({
+				certainty:  LintingResultCertainty.Certain,
+				filePath:   path,
+				involvedId: undefined,
+				loc:        undefined
+			});
+
 			// TODO see if files source *further* files (-> dependencies query?) and report those as well (recursively!)
 		}
 		return { results, '.meta': {} };
@@ -32,6 +48,7 @@ export const AUTOLOAD_FILES = {
 		tags:          [LintingRuleTag.Security],
 		certainty:     LintingRuleCertainty.OverApproximative,
 		defaultConfig: () => ({
+			allowEmptyFiles:     true,
 			allowedFilePatterns: []
 		})
 	}

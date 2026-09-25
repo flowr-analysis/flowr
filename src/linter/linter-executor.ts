@@ -16,7 +16,7 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		const ruleSearch = rule.createSearch(fullConfig, input);
 
 		const searchStart = Date.now();
-		const searchResult = await runSearch(ruleSearch, input);
+		const searchResult = ruleSearch !== undefined ? await runSearch(ruleSearch, input) : undefined as never;
 		const searchTime = Date.now() - searchStart;
 
 		const processStart = Date.now();

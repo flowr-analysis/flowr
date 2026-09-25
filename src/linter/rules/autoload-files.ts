@@ -49,6 +49,7 @@ export const AUTOLOAD_FILES = {
 			});
 
 			// TODO this doesn't work yet because the dependency query doesn't include files that are just "added on" through addFile, it only looks at parse requests! -> how solve :(
+			// TODO Flo sagt wir können erstmal einen neuen Analyzer erstellen und das eine File damit dependency-query-en
 			const sourcedInFile = elements.getElements().filter(e => e.node.info.file === path).map(e => sourced.get(e.node.info.id)?.value);
 			console.log(path, elements.getElements().map(e => e.node.info.file), sourced, sourcedInFile);
 			for(const sourced of sourcedInFile) {

@@ -38,7 +38,6 @@ export type GeneratorNames = keyof typeof generators;
  */
 export const generators = {
 	all:          generateAll,
-	none:         generateNone,
 	get:          generateGet,
 	criterion:    generateCriterion,
 	from:         generateFrom,
@@ -49,10 +48,6 @@ export const generators = {
 async function generateAll(data: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
 	return new FlowrSearchElements((await getAllNodes(data))
 		.map(node => ({ node })));
-}
-
-function generateNone(): FlowrSearchElements<ParentInformation> {
-	return new FlowrSearchElements();
 }
 
 async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWithParent[]> {

@@ -1,6 +1,5 @@
 import type { LintingResult, LintingRule } from '../linter-format';
 import { LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
-import { Q } from '../../search/flowr-search-builder';
 import { FileRole } from '../../project/context/flowr-file';
 import { LintingRuleTag } from '../linter-tags';
 import type { MergeableRecord } from '../../util/objects';
@@ -14,7 +13,7 @@ export interface AutoloadConfig extends MergeableRecord {
 }
 
 export const AUTOLOAD_FILES = {
-	createSearch:        () => Q.none(),
+	createSearch:        () => undefined as never,
 	processSearchResult: (_elements, config, data) => {
 		const ctx = data.inspectContext();
 		for(const file of ctx.files.getFilesByRole(FileRole.Startup)) {
@@ -36,4 +35,4 @@ export const AUTOLOAD_FILES = {
 			allowedFilePatterns: []
 		})
 	}
-} as const satisfies LintingRule<AutoloadResult, MergeableRecord, AutoloadConfig>;
+} as const satisfies LintingRule<AutoloadResult, MergeableRecord, AutoloadConfig, never, never>;

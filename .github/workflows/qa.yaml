@@ -80,6 +80,9 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           cache: npm
 
+      - name: "🔍 Typecheck"
+        run: bash .github/workflows/scripts/run-flowr-command.sh typecheck
+
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
 
@@ -104,6 +107,9 @@ jobs:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
           cache: npm
+
+      - name: "🔍 Typecheck"
+        run: bash .github/workflows/scripts/run-flowr-command.sh typecheck
 
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-21, 16:17:54 UTC (v2.15.9, R v4.5.0), do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
@@ -6,7 +6,7 @@ For example:
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.8, R grammar v14 (tree-sitter engine)
+flowR repl v2.15.9, R grammar v14 (tree-sitter engine)
 R> :query @linter "read.csv(\"/root/x.txt\")"
 ```
 
@@ -14,7 +14,7 @@ R> :query @linter "read.csv(\"/root/x.txt\")"
 <summary style='color:gray'>Output</summary>
 
 ```text
-Query: linter (12 ms)
+Query: linter (9 ms)
    ╰ Deprecated Functions (deprecated-functions): no findings
    ╰ File Path Validity (file-path-validity): no findings
    ╰ Seeded Randomness (seeded-randomness): no findings
@@ -46,7 +46,7 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (24 ms)\
+Query: **linter** (27 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -135,7 +135,7 @@ The following linting rules are available:
 **[Dead Code](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Dead%20Code):** Marks areas of code that are never reached during execution. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dead-code.ts#L29">src/linter/rules/dead-code.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
 
-**[Deprecated Functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Deprecated%20Functions):** Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L229">src/linter/rules/deprecated-functions.ts</a>]\
+**[Deprecated Functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Deprecated%20Functions):** Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L180">src/linter/rules/deprecated-functions.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This signals the use of deprecated functions or features."><a href='#deprecated'>![deprecated](https://img.shields.io/badge/deprecated-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
 
 **[File Path Validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20File%20Path%20Validity):** Checks whether file paths used in read and write operations are valid and point to existing files. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/file-path-validity.ts#L63">src/linter/rules/file-path-validity.ts</a>]\

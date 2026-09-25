@@ -38,7 +38,7 @@ It offers a wide variety of features, for example:
     	
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.15.8, R grammar v14 (tree-sitter engine)
+    flowR repl v2.15.9, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -46,7 +46,7 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (17 ms)
+    Query: linter (10 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -65,7 +65,7 @@ It offers a wide variety of features, for example:
        ╰ Unclosed Connection (unclosed-connection): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈17 ms (1ms accuracy, total 17 ms)
+    All queries together required ≈10 ms (1ms accuracy, total 10 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -79,7 +79,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (24 ms)\
+    Query: **linter** (19 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -102,7 +102,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈24 ms (1ms accuracy, total 25 ms)_
+    _All queries together required ≈19 ms (1ms accuracy, total 20 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -189,7 +189,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.15.8, R grammar v14 (tree-sitter engine)
+    flowR repl v2.15.9, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -202,7 +202,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈5 ms (1ms accuracy, total 5 ms)
+    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
     ```
     
     </details>
@@ -210,7 +210,7 @@ It offers a wide variety of features, for example:
     </details>
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">101.4 ms</span></i> (as of Aug 27, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">111.3 ms</span></i> (as of Sep 17, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg).
   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&p=13:1 "run this script in flowR's playground, no setup")&nbsp;)
@@ -241,7 +241,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.15.8, R grammar v14 (tree-sitter engine)
+    flowR repl v2.15.9, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     

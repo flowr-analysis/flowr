@@ -90,7 +90,7 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 
 	const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
 		const arg = getFunctionArgument(allArgs, location, resolveInfo);
-		if(isNotUndefined(arg)) {
+		if(isUndefined(arg)) {
 			taintLogger.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
 		}
 		return arg;

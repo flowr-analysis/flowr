@@ -37,15 +37,15 @@ const securitySinkCondition: TaintConditionFunction<typeof securityDomain> =
 export const securityAnalysis = TaintAnalysisDefinition.create('security', securityDomain)
 	.from(
 		{
-			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User)],
+			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User, [SemanticCallTag.Network, SemanticCallTag.File])],
 			taint:      UserInput
 		},
 		{
-			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Network)],
+			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Network, [SemanticCallTag.User, SemanticCallTag.File])],
 			taint:      NetworkInput,
 		},
 		{
-			identifier: [...BuiltInIndex.default().withAll([SemanticCallTag.File, SemanticCallTag.Reads])],
+			identifier: [...BuiltInIndex.default().withAll([SemanticCallTag.File, SemanticCallTag.Reads], SemanticCallTag.User)],
 			condition:  {
 				argValues:   [{ pos: 0, name: 'file' }],
 				conditionFn: ([path]) => protocolTaint(path)

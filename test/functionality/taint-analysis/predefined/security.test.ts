@@ -18,7 +18,7 @@ describe('Security Taint Analysis', () => {
 		testSecurity('namespaced base::readline is UserInput', 'x <- base::readline("name: ")', { '1@x': UserInput });
 		testSecurity('file.choose is UserInput', 'x <- file.choose()', { '1@x': UserInput });
 		testSecurity('menu is UserInput', 'x <- menu(c("a", "b"))', { '1@x': UserInput });
-		testSecurity('scan is UserInput', 'x <- scan()', { '1@x': UserInput });
+		testSecurity('scan is left unmapped (ambiguous source), so its result defaults to Top', 'x <- scan()', { '1@x': Top });
 	});
 
 	describe('Connection Argument Aware', () => {

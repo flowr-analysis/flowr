@@ -49,7 +49,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ certainty: LintingResultCertainty.Certain, filePath: `${path.sep}project${path.sep}.RProfile`, loc: undefined },
 			{ certainty: LintingResultCertainty.Certain, filePath: `${path.sep}project${path.sep}test1.R`, loc: undefined },
 			{ certainty: LintingResultCertainty.Certain, filePath: `${path.sep}project${path.sep}nested${path.sep}test2.R`, loc: undefined },
-		], {}, { allowInvalidFiles: false, allowEmptyFiles:   false, addFiles:          [
+		], {}, { addFiles: [
 			new FlowrInlineTextFile(`${path.sep}project${path.sep}.RProfile`, 'source("./test1.R")'),
 			new FlowrInlineTextFile(`${path.sep}project${path.sep}test1.R`, 'source("./nested/test2.R")'),
 			new FlowrInlineTextFile(`${path.sep}project${path.sep}nested${path.sep}test2.R`, 'system("rm -rf /")'),

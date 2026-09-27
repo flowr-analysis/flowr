@@ -4,8 +4,12 @@ import type { FlowrFileProvider } from '../../project/context/flowr-file';
 import { FileRole } from '../../project/context/flowr-file';
 import { LintingRuleTag } from '../linter-tags';
 import type { MergeableRecord } from '../../util/objects';
-import { Q } from '../../search/flowr-search-builder';
-import { Enrichment } from '../../search/search-executor/search-enrichers';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
+import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { isNotUndefined } from '../../util/assert';
+import type { QueryResults } from '../../queries/query';
+import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
+import type { FlowrLaxSourcingOptions } from '../../config';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface AutoloadResult extends LintingResult {
@@ -19,21 +23,20 @@ export interface AutoloadConfig extends MergeableRecord {
 }
 
 export const AUTOLOAD_FILES = {
-	createSearch:        () => Q.fromQuery([{ type: 'dependencies', enabledCategories: ['source'] }]),
-	processSearchResult: (elements, config, data) => {
+	createSearch:        () => undefined as never,
+	processSearchResult: async(_elements, config, data) => {
 		const results: AutoloadResult[] = [];
 		const patterns = config.allowedFilePatterns.map(p => typeof p == 'string' ? new RegExp(p) : p);
-		const sourced = new Map(elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].source
-			.filter(s => s.nodeId !== undefined).map(s => [s.nodeId as NodeId, s]));
-		const files = data.inspectContext().files;
-		for(const file of files.getFilesByRole(FileRole.Startup)) {
-			analyzeFile(file);
+		const ctx = data.inspectContext();
+		const wdRootsFor = WorkingDirectory.rootsResolver((await data.dataflow()).graph, (await data.controlflow()).graph, ctx);
+		for(const file of ctx.files.getFilesByRole(FileRole.Startup)) {
+			await analyzeFile(file, []);
 		}
 		return { results, '.meta': {} };
 
-		function analyzeFile(file: FlowrFileProvider) {
+		async function analyzeFile(file: FlowrFileProvider, prevReferences: string[]) {
 			const path = file.path();
-			if(patterns.some(p => p.exec(path))) {
+			if(patterns.some(p => p.exec(path)) || results.some(r => r.filePath === path)) {
 				return;
 			}
 			const content = file.content().toString();
@@ -48,24 +51,36 @@ export const AUTOLOAD_FILES = {
 				loc:        undefined
 			});
 
-			// TODO this doesn't work yet because the dependency query doesn't include files that are just "added on" through addFile, it only looks at parse requests! -> how solve :(
-			// TODO Flo sagt wir können erstmal einen neuen Analyzer erstellen und das eine File damit dependency-query-en
-			const sourcedInFile = elements.getElements().filter(e => e.node.info.file === path).map(e => sourced.get(e.node.info.id)?.value);
-			console.log(path, elements.getElements().map(e => e.node.info.file), sourced, sourcedInFile);
-			for(const sourced of sourcedInFile) {
-				if(sourced !== undefined) {
-					const otherFile = files.getFileByPath(sourced);
-					if(otherFile !== undefined) {
-						// TODO check if the file is already in our results list, otherwise we may go into an endless loop!
-						analyzeFile(otherFile);
-					} else if(!config.allowInvalidFiles) {
+			let deps: QueryResults<'dependencies'>;
+			const analyzer = await new FlowrAnalyzerBuilder().setConfig(ctx.config).build();
+			try {
+				analyzer.addRequest(content);
+				deps = await analyzer.query([{ type: 'dependencies', enabledCategories: ['source'] }]);
+			} finally {
+				analyzer.close();
+			}
+			const referenceChain = prevReferences.concat(path);
+			for(const sourced of deps.dependencies.source) {
+				if(sourced.value === undefined) {
+					continue;
+				}
+				const wdRoots = wdRootsFor(sourced.nodeId as NodeId, path);
+				const withWd = { ...ctx.config.solver.resolveSource, searchPath: [...(ctx.config.solver.resolveSource?.searchPath ?? []), ...wdRoots] };
+				const sources = findSource(withWd as FlowrLaxSourcingOptions, sourced.value, { ctx, referenceChain });
+				const sourcedFiles = sources?.map(p => ctx.files.getFileByPath(p)).filter(isNotUndefined);
+				if(!sourcedFiles?.length) {
+					if(!config.allowInvalidFiles) {
 						results.push({
 							certainty:  LintingResultCertainty.Uncertain,
-							filePath:   sourced,
+							filePath:   sourced.value,
 							involvedId: undefined,
 							loc:        undefined
 						});
 					}
+					continue;
+				}
+				for(const sourcedFile of sourcedFiles) {
+					await analyzeFile(sourcedFile, referenceChain);
 				}
 			}
 		}
@@ -85,4 +100,4 @@ export const AUTOLOAD_FILES = {
 			allowedFilePatterns: []
 		})
 	}
-} as const satisfies LintingRule<AutoloadResult, MergeableRecord, AutoloadConfig>;
+} as const satisfies LintingRule<AutoloadResult, MergeableRecord, AutoloadConfig, never, never>;

@@ -1,14 +1,15 @@
 import type Parser from 'web-tree-sitter';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
 import { InvalidationEventType } from '../cache/flowr-cache';
-import { assertUnreachable } from '../../util/assert';
+import { assertUnreachable, guard } from '../../util/assert';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { FilePath } from './flowr-file';
 import type { ParseStepOutput } from '../../r-bridge/parser';
 import fs from 'fs';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { IncrementalUpdateResult } from '../incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
+import type { IncrementalUpdateResult } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
+import { FlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 import type { ExitPoint } from '../../dataflow/info';
 import type { IdentifierReference } from '../../dataflow/environments/identifier';
 import type { HookInformation } from '../../dataflow/hooks';
@@ -66,10 +67,12 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	private persistedDataflowGraphs:      Map<string, PersistedDataflowGraphEntry> = new Map();
 	private readonly lastKnownMtime:      Map<FilePath, number> = new Map();
 	private lastAppliedIncrementalUpdate: IncrementalUpdateResult | undefined = undefined;
+	private readonly updateTypePlugin:    FlowrAnalyzerIncrementalDataflowUpdateTypePlugin;
 
-
-	constructor(context: FlowrAnalyzerContext) {
+	constructor(context: FlowrAnalyzerContext, updateTypePlugins: readonly FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[] = []) {
 		this.context = context;
+		guard(updateTypePlugins.length <= 1, () => `at most one incremental-dataflow-update-type plugin may be registered, got ${updateTypePlugins.length}`);
+		this.updateTypePlugin = updateTypePlugins[0] ?? FlowrAnalyzerIncrementalDataflowUpdateTypePlugin.defaultPlugin();
 	}
 
 	public reset(): void {
@@ -157,6 +160,13 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 
 	handleShouldReparseDataflow(ctx: FlowrAnalyzerContext): boolean {
 		return ctx.config.incremental.dataflow.activated;
+	}
+
+	/**
+	 * Classifies how `oldAst` and `newAst` differ, using whichever {@link FlowrAnalyzerIncrementalDataflowUpdateTypePlugin} is active.
+	 */
+	determineUpdateTypes(oldAst: NormalizedAst | undefined, newAst: NormalizedAst, ctx: FlowrAnalyzerContext): IncrementalUpdateResult {
+		return this.updateTypePlugin.processor(ctx, { oldNormalizedAst: oldAst, newNormalizedAst: newAst });
 	}
 
 	receive(event: InvalidationEvent): void {

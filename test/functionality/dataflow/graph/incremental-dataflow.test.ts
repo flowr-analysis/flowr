@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { IncrementalMutationType } from '../../util/incremental/dataflow-graph/incremental-mutations';
-import { assertIncrementalDataflowGraphMatches } from '../../_helper/shell';
+import { assertIncrementalDataflowGraphMatches } from '../../util/incremental/dataflow-graph/incremental-assert';
 
 const singleFile = {
 	'script.R': `x <- 1

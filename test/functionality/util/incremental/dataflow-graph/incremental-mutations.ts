@@ -1,5 +1,5 @@
 import seedrandom from 'seedrandom';
-import { IncrementalUpdateType } from '../../../../../src/project/incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
+import { IncrementalUpdateType } from '../../../../../src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 import { SeededRandom } from '../../project/plugin/random-r-code-generator';
 
 /** Types of incremental mutations that we test for */
@@ -105,11 +105,11 @@ export const Mutations: Partial<Record<IncrementalMutationType, Mutation>> = {
 		apply:        rootFileMutation(lines => ({ oldLines: lines, newLines: ['\n', ...lines, '    ', '\n'] }))
 	},
 	[IncrementalMutationType.AddSourcedFile]: {
-		expectedType: IncrementalUpdateType.NewFileAtEnd,
+		expectedType: IncrementalUpdateType.AddedAtEnd,
 		apply:        sourcedFileMutation('add')
 	},
 	[IncrementalMutationType.RemoveSourcedFile]: {
-		expectedType: IncrementalUpdateType.RemovedFileAtEnd,
+		expectedType: IncrementalUpdateType.RemovedAtEnd,
 		apply:        sourcedFileMutation('remove')
 	}
 };

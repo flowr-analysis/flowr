@@ -65,6 +65,9 @@ import {
 import {
 	FlowrAnalyzerLoadingOrderIncludedFilesPlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
+import {
+	DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin
+} from './incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -106,7 +109,8 @@ export const BuiltInPlugins = [
 	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],
 	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin],
 	['project-discovery:default', FlowrAnalyzerDefaultProjectDiscoveryPlugin],
-	['project-discovery:full', FlowrAnalyzerFullProjectDiscoveryPlugin]
+	['project-discovery:full', FlowrAnalyzerFullProjectDiscoveryPlugin],
+	['incremental-dataflow-update-type:default', DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

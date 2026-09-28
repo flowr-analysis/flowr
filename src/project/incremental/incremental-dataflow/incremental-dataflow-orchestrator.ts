@@ -13,10 +13,14 @@ import { SourceRange } from '../../../util/range';
 import type { IEnvironment, REnvironmentInformation } from '../../../dataflow/environments/environment';
 import type { IdentifierReference } from '../../../dataflow/environments/identifier';
 import type { HookInformation } from '../../../dataflow/hooks';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { hashAst, IncrementalUpdateType, type IncrementalUpdateResult } from './incremental-dataflow-update-type-detector';
+import {
+	IncrementalUpdateType,
+	type IncrementalUpdateResult,
+	hashAst
+} from '../../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 
 export type DataflowProcessorInformationBase<OtherInfo> = Omit<DataflowProcessorInformation<OtherInfo>, 'environment' | 'referenceChain' | 'cds'>;
 
@@ -201,6 +205,19 @@ export function tryIncrementalUpdate(
 
 		if(revived.out.some(ref => removedIds.has(ref.nodeId))) {
 			return undefined;
+		}
+
+		// if we delete a user-defined function call, we cannot (for now) be safe of it's side effects
+		for(const id of removedIds) {
+			const outgoing = revived.graph.outgoingEdges(id);
+			if(outgoing === undefined) {
+				continue;
+			}
+			for(const [target, edge] of outgoing) {
+				if(DfEdge.includesType(edge, EdgeType.Calls) && !NodeId.isBuiltIn(target)) {
+					return undefined;
+				}
+			}
 		}
 
 		// find new entrypoint

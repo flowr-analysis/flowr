@@ -131,7 +131,7 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 
 addExtension({
 	Class: BiMap,
-	type:  3,
+	type:  3, //unique id for msgpackr
 	write: (instance: BiMap<unknown, object>) => Array.from(instance.entries()),
 	read:  (data: [unknown, object][]) => new BiMap(data)
 });

@@ -53,6 +53,9 @@ import {
 	type ReadOnlyFlowrAnalyzerGasContext
 } from './flowr-analyzer-gas-context';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
+import type {
+	FlowrAnalyzerIncrementalDataflowUpdateTypePlugin
+} from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -249,7 +252,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
-		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this,
+			(byType.get(PluginType.IncrementalDataflowUpdateType) ?? []) as FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[]);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (byType.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand

@@ -26,11 +26,7 @@ const staticDataflowCommon = {
 } as const;
 
 function processor(results: { normalize?: NormalizedAst }, input: { parser?: Parser<KnownParserType>, context?: FlowrAnalyzerContext }) {
-	const ctx = input.context as FlowrAnalyzerContext;
-
-	const df = produceDataFlowGraph(input.parser as Parser<KnownParserType>, results.normalize as NormalizedAst, ctx);
-
-	return df;
+	return produceDataFlowGraph(input.parser as Parser<KnownParserType>, results.normalize as NormalizedAst, input.context as FlowrAnalyzerContext);
 }
 
 export const STATIC_DATAFLOW = {

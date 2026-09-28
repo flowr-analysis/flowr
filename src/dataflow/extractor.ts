@@ -38,8 +38,10 @@ import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
 import { Dataflow } from './graph/df-helper';
 import { uniqueArray } from '../util/collections/arrays';
-import { hashAst, determineUpdateTypes } from '../project/incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
 import { tryIncrementalUpdate, type DataflowProcessorInformationBase } from '../project/incremental/incremental-dataflow/incremental-dataflow-orchestrator';
+import {
+	hashAst
+} from '../project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -138,7 +140,7 @@ function tryIncrementalDataflow<OtherInfo>(
 	if(oldAst === undefined) {
 		return undefined;
 	}
-	const updateResult = determineUpdateTypes(oldAst, completeAst, ctx);
+	const updateResult = ctx.inc.determineUpdateTypes(oldAst, completeAst, ctx);
 	const df = tryIncrementalUpdate(oldAst, completeAst, ctx, dfDataBase as unknown as DataflowProcessorInformationBase<ParentInformation>, updateResult);
 	ctx.inc.storeAppliedIncrementalUpdate({ ...updateResult, applied: df !== undefined });
 	dataflowLogger.info(`[Incremental DFG]: Patched dataflow graph incrementally (${updateResult.types.toString()}) for '${updateResult.filePath ?? 'the whole project'}'.`);

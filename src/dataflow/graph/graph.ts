@@ -1,21 +1,21 @@
 import { guard } from '../../util/assert';
 import type { DFControlFlowEdge, EdgeType } from './edge';
 import { DfEdge } from './edge';
-import type { DataflowInformation } from '../info';
+import type { ControlDependency, DataflowInformation, ExitPoint } from '../info';
 import {
 	type DataflowGraphVertexArgument,
+	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
 	type DataflowGraphVertexVariableDefinition,
-	type DataflowGraphVertices, FunctionCallVertex, VertexType
+	type DataflowGraphVertices, type FunctionOriginInformation, FunctionCallVertex, VertexType
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import { ReferenceType, type BrandedIdentifier, type Identifier, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
-	type Jsonified,
 	Environment,
 	type EnvType,
 	type IEnvironment,
@@ -25,8 +25,9 @@ import {
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo, LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
+import type { Value } from '../eval/values/r-value';
 import type { Writable } from 'ts-essentials';
-import type { BuiltInMemory } from '../environments/built-in';
+import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition, BuiltInMemory } from '../environments/built-in';
 import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVertex } from './vertex';
 import { Packr } from 'msgpackr';
 
@@ -856,12 +857,10 @@ export class DataflowGraph<
 	/** Marks the given node as having unknown side effects */
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
-			const linkTo = typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>;
-			const cascadeIf = cascadeIfOf(linkTo);
-			if(linkTo.ignoreIf !== undefined || cascadeIf !== undefined) {
-				linkedClosureCache.set(linkToClosureKey(linkTo), { ignoreIf: linkTo.ignoreIf, cascadeIf });
-			}
-			this._unknownSideEffects.add({ id: NodeId.normalize(id), linkTo });
+			this._unknownSideEffects.add({
+				id:     NodeId.normalize(id),
+				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
+			});
 			return this;
 		}
 		this._unknownSideEffects.add(NodeId.normalize(id));
@@ -897,29 +896,36 @@ export class DataflowGraph<
 	public toPersistedJson(builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): IPersistedDataflowGraph {
 		const serializer = new PersistedEnvironmentSerializer(builtInEnv, emptyBuiltInEnv);
 		const json = this.toJSON();
-		const vertexInformation = json.vertexInformation.map(([id, vertex]): [NodeId, DataflowGraphVertexInfo] => {
-			const v = { ...vertex } as Writable<DataflowGraphVertexInfo>;
-			if(v.environment) {
-				v.environment = serializer.renv(v.environment) as unknown as REnvironmentInformation;
+		const vertexInformation = json.vertexInformation.map(([id, vertex]): [NodeId, PersistedVertexInfo] => {
+			if(FunctionCallVertex.is(vertex)) {
+				const { newEnvParent, ...rest } = vertex;
+				return [id, {
+					...rest,
+					environment: serializer.renv(vertex.environment),
+					...('newEnvParent' in vertex && { newEnvParent: serializer.renv(newEnvParent) })
+				}];
 			}
-			if(FunctionCallVertex.is(v) && v.newEnvParent) {
-				v.newEnvParent = serializer.renv(v.newEnvParent) as unknown as REnvironmentInformation;
+			if(FunctionDefinitionVertex.is(vertex)) {
+				const { environment, returnEnvState, ...rest } = vertex;
+				const subflowEnv = serializer.renv(vertex.subflow.environment);
+				guard(subflowEnv !== undefined, 'a live subflow always has a defined environment');
+				return [id, {
+					...rest,
+					subflow: { ...vertex.subflow, environment: subflowEnv },
+					...('environment' in vertex && { environment: serializer.renv(environment) }),
+					...('returnEnvState' in vertex && { returnEnvState: serializer.renv(returnEnvState) })
+				}];
 			}
-			if(FunctionDefinitionVertex.is(v)) {
-				if(v.subflow?.environment) {
-					v.subflow = { ...v.subflow, environment: serializer.renv(v.subflow.environment) as unknown as REnvironmentInformation };
-				}
-				if(v.returnEnvState) {
-					v.returnEnvState = serializer.renv(v.returnEnvState) as unknown as REnvironmentInformation;
-				}
-			}
-			return [id, v];
+			return [id, vertex];
 		});
 		const _unknownSideEffects: PersistedUnknownSideEffect[] = json._unknownSideEffects.map(effect => {
 			if(!UnknownSideEffect.isLinked(effect)) {
 				return effect;
 			}
 			const cascadeIf = cascadeIfOf(effect.linkTo);
+			if(effect.linkTo.ignoreIf !== undefined || cascadeIf !== undefined) {
+				linkedClosureCache.set(linkToClosureKey(effect.linkTo), { ignoreIf: effect.linkTo.ignoreIf, cascadeIf });
+			}
 			const rest = { ...effect.linkTo } as Record<string, unknown>;
 			delete rest.ignoreIf;
 			delete rest.cascadeIf;
@@ -941,31 +947,38 @@ export class DataflowGraph<
 	}
 
 	public static reviveEnvironment(data: Buffer, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): REnvironmentInformation {
-		return new PersistedEnvironmentReviver(builtInEnv, emptyBuiltInEnv).renv(packr.unpack(data) as REnvironmentInformation);
+		const revived = new PersistedEnvironmentReviver(builtInEnv, emptyBuiltInEnv).renv(packr.unpack(data) as SerializedEnvironmentInfo);
+		guard(revived !== undefined, 'persistEnvironment is only ever called with a defined REnvironmentInformation, so revive always yields one too');
+		return revived;
 	}
 
 	public static revive(data: IPersistedDataflowGraph, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): DataflowGraph {
 		const reviver = new PersistedEnvironmentReviver(builtInEnv, emptyBuiltInEnv);
 		const graph = new DataflowGraph(data._idMap);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);
-		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
-
-		for(const [, vertex] of graph.vertexInformation) {
-			if(vertex.environment) {
-				(vertex.environment as Writable<REnvironmentInformation>) = reviver.renv(vertex.environment);
+		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation.map(([id, vertex]: [NodeId, PersistedVertexInfo]): [NodeId, DataflowGraphVertexInfo] => {
+			if(vertex.tag === VertexType.FunctionCall) {
+				const { newEnvParent, ...rest } = vertex;
+				const revived = {
+					...rest,
+					environment: reviver.renv(vertex.environment),
+					...('newEnvParent' in vertex && { newEnvParent: reviver.renv(newEnvParent) })
+				} as DataflowGraphVertexFunctionCall;
+				return [id, revived as DataflowGraphVertexInfo];
 			}
-			if(FunctionCallVertex.is(vertex) && vertex.newEnvParent) {
-				(vertex.newEnvParent as Writable<REnvironmentInformation>) = reviver.renv(vertex.newEnvParent);
+			if(vertex.tag === VertexType.FunctionDefinition) {
+				const { environment, returnEnvState, subflow, ...rest } = vertex;
+				guard(subflow !== undefined, 'a FunctionDefinition vertex always has a subflow');
+				const revived = {
+					...rest,
+					subflow: { ...subflow, environment: reviver.renv(subflow.environment) },
+					...('environment' in vertex && { environment: reviver.renv(environment) }),
+					...('returnEnvState' in vertex && { returnEnvState: reviver.renv(returnEnvState) })
+				} as DataflowGraphVertexFunctionDefinition;
+				return [id, revived as DataflowGraphVertexInfo];
 			}
-			if(FunctionDefinitionVertex.is(vertex)) {
-				if(vertex.subflow?.environment) {
-					(vertex.subflow.environment as Writable<REnvironmentInformation>) = reviver.renv(vertex.subflow.environment);
-				}
-				if(vertex.returnEnvState) {
-					(vertex.returnEnvState as Writable<REnvironmentInformation>) = reviver.renv(vertex.returnEnvState);
-				}
-			}
-		}
+			return [id, vertex as DataflowGraphVertexInfo];
+		}));
 
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
 
@@ -1000,15 +1013,69 @@ const packr = new Packr({
 	structuredClone: true,
 });
 
-interface IPersistedDataflowGraph extends Omit<DataflowGraphJson, '_unknownSideEffects'> {
-	readonly types:               [DataflowGraphVertexInfo['tag'], NodeId[]][];
-	_idMap:                       AstIdMap | undefined;
-	readonly _unknownSideEffects: PersistedUnknownSideEffect[];
+type SerializedEnvironmentInfo = { current: SerializedEnvironment | undefined, level: number };
+
+interface IPersistedBuiltInEnv {
+	readonly fullBuiltInEnv: boolean;
 }
 
-interface IPersistedEnvironmentJson extends IEnvironmentJson {
-	c?:              NodeId;
-	fullBuiltInEnv?: boolean;
+interface ISerializedEnvironmentJson {
+	id:          NodeId;
+	parent:      SerializedEnvironment | undefined;
+	builtInEnv?: true;
+	memory:      Record<string, PersistedIdentifierDefinition[]>;
+	n?:          string;
+	t?:          EnvType;
+	globalEnv?:  true;
+	c?:          NodeId;
+}
+
+type SerializedEnvironment = ISerializedEnvironmentJson | IPersistedBuiltInEnv;
+
+/** {@link InGraphIdentifierDefinition}'s persisted counterpart. */
+type PersistedInGraphIdentifierDefinition = Omit<InGraphIdentifierDefinition, 'envState' | 'returnsEnvState'> & {
+	envState?:        SerializedEnvironmentInfo | undefined;
+	returnsEnvState?: SerializedEnvironmentInfo | undefined;
+};
+
+/**
+ * {@link IdentifierDefinition}, but with {@link InGraphIdentifierDefinition}'s `envState`/`returnsEnvState`
+ */
+type PersistedIdentifierDefinition =
+	| PersistedInGraphIdentifierDefinition
+	| BuiltInIdentifierDefinition
+	| BuiltInIdentifierConstant;
+
+/**
+ * {@link DataflowGraphVertexInfo}, but wherever a live {@link REnvironmentInformation} would sit, this holds the
+ * persisted {@link SerializedEnvironmentInfo} shape instead.
+ */
+interface PersistedVertexInfo {
+	readonly tag:    VertexType;
+	id:              NodeId;
+	cds:             ControlDependency[] | undefined;
+	link?:           DataflowGraphVertexAstLink;
+	environment?:    SerializedEnvironmentInfo;
+	name?:           Identifier;
+	args?:           FunctionArgument[];
+	onlyBuiltin?:    boolean;
+	origin?:         FunctionOriginInformation[] | 'unnamed';
+	newEnvParent?:   SerializedEnvironmentInfo;
+	subflow?:        Omit<DataflowFunctionFlowInformation, 'environment'> & { environment: SerializedEnvironmentInfo };
+	exitPoints?:     readonly ExitPoint[];
+	params?:         Record<NodeId, boolean>;
+	mode?:           ('s3' | 's4' | 's7')[];
+	returnEnvState?: SerializedEnvironmentInfo;
+	par?:            true;
+	source?:         readonly NodeId[];
+	value?:          Value;
+}
+
+interface IPersistedDataflowGraph extends Omit<DataflowGraphJson, '_unknownSideEffects' | 'vertexInformation'> {
+	readonly types:               [DataflowGraphVertexInfo['tag'], NodeId[]][];
+	readonly vertexInformation:   [NodeId, PersistedVertexInfo][];
+	_idMap:                       AstIdMap | undefined;
+	readonly _unknownSideEffects: PersistedUnknownSideEffect[];
 }
 
 class PersistedEnvironmentSerializer {
@@ -1017,45 +1084,55 @@ class PersistedEnvironmentSerializer {
 		private readonly emptyBuiltInEnv: IEnvironment
 	) {}
 
-	public renv(renv: REnvironmentInformation | undefined): { current: Jsonified & { c?: NodeId }, level: number } | undefined {
+	public renv(renv: REnvironmentInformation | undefined): SerializedEnvironmentInfo | undefined {
 		if(renv === undefined) {
 			return undefined;
 		}
-		return { current: this.env(renv.current) as Jsonified & { c?: NodeId }, level: renv.level };
+		return { current: this.env(renv.current), level: renv.level };
 	}
 
-	private env(env: Environment | undefined): (Jsonified & { c?: NodeId }) | undefined {
+	private env(env: Environment | undefined): SerializedEnvironment | undefined {
 		if(env === undefined) {
 			return undefined;
 		}
 		if(isDefaultBuiltInEnvironment(env)) {
 			if(env === this.builtInEnv) {
-				return { fullBuiltInEnv: true } as unknown as Jsonified & { c?: NodeId };
+				return { fullBuiltInEnv: true };
 			}
 			if(env === this.emptyBuiltInEnv) {
-				return { fullBuiltInEnv: false } as unknown as Jsonified & { c?: NodeId };
+				return { fullBuiltInEnv: false };
 			}
 		}
 
 		const json = env.toPersistedJSON();
-		const result = { ...json } as Jsonified & { c?: NodeId };
 
-		const memory: Record<string, IdentifierDefinition[]> = {};
+		const memory: Record<string, PersistedIdentifierDefinition[]> = {};
 		for(const [key, defs] of env.memory) {
-			memory[key] = defs.map(def => {
-				const rec = { ...def } as Record<'envState' | 'returnsEnvState', REnvironmentInformation | undefined>;
-				if(rec.envState) {
-					rec.envState = this.renv(rec.envState) as unknown as REnvironmentInformation;
+			memory[key] = defs.map((def): PersistedIdentifierDefinition => {
+				if(def.type === ReferenceType.BuiltInFunction || def.type === ReferenceType.BuiltInConstant) {
+					return def;
 				}
-				if(rec.returnsEnvState) {
-					rec.returnsEnvState = this.renv(rec.returnsEnvState) as unknown as REnvironmentInformation;
-				}
-				return rec as unknown as IdentifierDefinition;
+
+				const { envState: _envState, returnsEnvState: _returnsEnvState, ...rest } = def;
+				const persisted: PersistedInGraphIdentifierDefinition = {
+					...rest,
+					...(def.envState !== undefined && { envState: this.renv(def.envState) }),
+					...(def.returnsEnvState !== undefined && { returnsEnvState: this.renv(def.returnsEnvState) })
+				};
+				return persisted;
 			});
 		}
-		result.memory = memory as unknown as BuiltInMemory;
-		result.parent = this.env(env.parent);
-		return result;
+
+		return {
+			id:         json.id,
+			builtInEnv: json.builtInEnv,
+			n:          json.n,
+			t:          json.t,
+			globalEnv:  json.globalEnv,
+			c:          json.c,
+			memory,
+			parent:     this.env(env.parent)
+		};
 	}
 }
 
@@ -1077,39 +1154,42 @@ class PersistedEnvironmentReviver {
 		return `${nodeId}::${JSON.stringify(name)}`;
 	}
 
-	public renv(renv: REnvironmentInformation): REnvironmentInformation {
-		return this.renvFromJson(renv as unknown as REnvironmentInformationJson);
+	public renv(renv: SerializedEnvironmentInfo | undefined): REnvironmentInformation | undefined {
+		if(renv === undefined) {
+			return undefined;
+		}
+		guard(renv.current !== undefined, 'top-level environment info always has a defined current environment');
+		const current = this.envFromJson(renv.current);
+		guard(current !== undefined, 'envFromJson only returns undefined for an undefined input');
+		return { current, level: renv.level };
 	}
 
-	private renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {
-		return { current: this.envFromJson(json.current), level: json.level };
-	}
-
-	private envFromJson(json: IPersistedEnvironmentJson): Environment {
-		if(json.fullBuiltInEnv !== undefined){
-			if(json.fullBuiltInEnv) {
-				return this.builtInEnv as Environment;
-			} else {
-				return this.emptyBuiltInEnv as Environment;
-			}
+	private envFromJson(json: SerializedEnvironment | undefined): Environment | undefined {
+		if(json === undefined) {
+			return undefined;
+		}
+		if('fullBuiltInEnv' in json) {
+			return (json.fullBuiltInEnv ? this.builtInEnv : this.emptyBuiltInEnv) as Environment;
 		}
 
-		const parent = json.parent ? this.envFromJson(json.parent) : undefined;
-		const rawMemory: BuiltInMemory = json.memory instanceof Map
-			? json.memory
-			: new Map(Object.entries(json.memory));
+		const parent = this.envFromJson(json.parent);
 		const memory: BuiltInMemory = new Map();
-		for(const [key, defs] of rawMemory) {
-			memory.set(key, defs.map(def => {
+		for(const [key, defs] of Object.entries(json.memory)) {
+			memory.set(key, defs.map((def): IdentifierDefinition => {
 				const canonical = this.builtInLookup.get(PersistedEnvironmentReviver.lookupKey(def.nodeId, def.name));
-				const rec = { ...(canonical ?? def) } as Record<'envState' | 'returnsEnvState', REnvironmentInformation | undefined>;
-				if(rec.envState) {
-					rec.envState = this.renv(rec.envState);
+				if(canonical) {
+					return canonical;
 				}
-				if(rec.returnsEnvState) {
-					rec.returnsEnvState = this.renv(rec.returnsEnvState);
+				if(def.type === ReferenceType.BuiltInFunction || def.type === ReferenceType.BuiltInConstant) {
+					return def;
 				}
-				return rec as unknown as IdentifierDefinition;
+				const { envState: _envState, returnsEnvState: _returnsEnvState, ...rest } = def;
+				const revived: InGraphIdentifierDefinition = {
+					...rest,
+					...(def.envState !== undefined && { envState: this.renv(def.envState) }),
+					...(def.returnsEnvState !== undefined && { returnsEnvState: this.renv(def.returnsEnvState) })
+				};
+				return revived;
 			}));
 		}
 		const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);

@@ -9,9 +9,7 @@ import { predefinedTaintAnalyses } from '../predefined/predefined';
 import type { StateAbstractDomain } from '../../abstract-interpretation/domains/state-abstract-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
-import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { ArgTaintProjector, TaintVisitorConfiguration, TaintVisitorHook } from '../taint-visitor';
+import type { ArgTaintProjector, TaintCallNode, TaintVisitorConfiguration, TaintVisitorHook } from '../taint-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -31,7 +29,7 @@ export interface FnCallHookInfo {
 	/** The role of the matched mapping (source/propagator/sink), or `undefined` for unmapped calls */
 	role:       TaintRole | undefined;
 	/** The AST node representing the function call */
-	node:       RNamedFunctionCall<ParentInformation>;
+	node:       TaintCallNode;
 	/** Whether the function call had an explicit mapping */
 	wasMapped:  boolean;
 	/** The abstract domain value at this point (the outgoing/resolved taint) */
@@ -120,10 +118,10 @@ export interface RunnableTaintAnalysis<Defs extends readonly string[]> extends T
  * after at least one of {@link add}, {@link addComposite}, or {@link addPredefined} has been called.
  */
 export class TaintAnalysis<Defs extends readonly string[] = []> implements RunnableTaintAnalysis<Defs> {
-	private readonly analyzer?: ReadonlyFlowrAnalysisProvider;
-	private readonly defs:      RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
-	private fnCallHook:         FnCallHook | undefined;
-	private categories:         TaintFnCategory[] = [];
+	private readonly analyzer?:  ReadonlyFlowrAnalysisProvider;
+	private readonly defs:       RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
+	private readonly categories: TaintFnCategory[] = [];
+	private fnCallHook:          FnCallHook | undefined;
 
 	private constructor(analyzer?: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;

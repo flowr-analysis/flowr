@@ -91,12 +91,12 @@ describe('Taint Analysis Scale', () => {
 	});
 
 	describe('Untracked Operations Mapped to Top', () => {
-		testScale('arithmetic on a scaled value breaks the chain (untracked, not Top)', `
+		testScale('arithmetic on a scaled value breaks the chain to Top (addition op has no mapping)', `
 				x <- scale(x)
 				y <- x + 1`,
 		{
 			'1@x': ZScore,
-			'2@y': undefined,
+			'2@y': Top,
 		});
 
 		testScale('indexing a scaled value breaks the chain (untracked, not Top)', `

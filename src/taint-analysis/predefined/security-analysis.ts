@@ -41,7 +41,7 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 			taint:      UserInput
 		},
 		{
-			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Network, [SemanticCallTag.User, SemanticCallTag.File])],
+			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Network, SemanticCallTag.User)],
 			taint:      NetworkInput,
 		},
 		{

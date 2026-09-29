@@ -7,6 +7,7 @@ import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { TaintConditionFunction } from '../taint-mapping';
 import { taintMappingFromBuiltInIndex } from '../builtin-index-bridge';
+import { TaintFnCategory } from '../function-categories';
 
 export const UserInput = Symbol('User Input');
 export const NetworkInput = Symbol('Network Input');
@@ -35,6 +36,9 @@ const securitySinkCondition: TaintConditionFunction<typeof securityDomain> =
 		: taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top;
 
 export const securityAnalysis = TaintAnalysisDefinition.create('security', securityDomain)
+	.on(TaintFnCategory.pureAlias)
+	.on(TaintFnCategory.pureComputer)
+	.on(TaintFnCategory.pureShape)
 	.from(
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User, [SemanticCallTag.Network, SemanticCallTag.File])],
@@ -45,16 +49,26 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 			taint:      NetworkInput,
 		},
 		{
-			identifier: [...BuiltInIndex.default().withAll([SemanticCallTag.File, SemanticCallTag.Reads], SemanticCallTag.User)],
-			condition:  {
+			identifier: [
+				['readRDS', PkgName.Base],
+				['load', PkgName.Base],
+				['read.table', PkgName.Utils],
+				['read.csv', PkgName.Utils],
+				['read.csv2', PkgName.Utils],
+				['read.delim', PkgName.Utils],
+				['read.delim2', PkgName.Utils],
+			],
+			condition: {
 				argValues:   [{ pos: 0, name: 'file' }],
 				conditionFn: ([path]) => protocolTaint(path)
 			}
 		},
 		{
 			identifier: [
+				['readBin', PkgName.Base],
+				['readChar', PkgName.Base],
 				['readLines', PkgName.Base],
-				['gzcon', PkgName.Base]
+				['gzcon', 'base']
 			],
 			condition: {
 				argValues:   [{ pos: 0, name: 'con' }],

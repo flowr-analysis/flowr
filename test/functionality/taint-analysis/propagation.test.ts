@@ -113,6 +113,7 @@ describe('Taint Propagation', () => {
 
 	describe('Expression Structure', () => {
 		testPropagate('pipe forwards the taint of the final stage', 'y <- 1 |> taint()', { '1@y': TaintA });
+		testPropagate('magrittr pipe forwards the taint of the final stage', 'y <- 1 %>% taint()', { '1@y': TaintA });
 		testPropagate('a `{ ...; last }` block takes the taint of its last expression only', 'y <- { 1; taint() }', { '1@y': TaintA });
 	});
 

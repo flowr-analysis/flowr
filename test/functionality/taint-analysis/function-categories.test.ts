@@ -75,7 +75,7 @@ describe('Taint Function Categories', () => {
 		testCategory('abs forwards the taint of its argument', 'x <- abs(taint())', { '1@x': Tainted }, computerAnalysis);
 		testCategory('sqrt forwards the taint of its argument', 'x <- sqrt(taint())', { '1@x': Tainted }, computerAnalysis);
 		testCategory('tolower forwards the taint of its argument', 'x <- tolower(taint())', { '1@x': Tainted }, computerAnalysis);
-		testCategory('taint passes through a pipe chain of computing calls', 'y <- taint() |> abs() |> sqrt()', { '1@y': Tainted }, computerAnalysis);
+		testCategory('taint passes through a chain of computing calls', 'x <- sqrt(abs(taint()))', { '1@x': Tainted }, computerAnalysis);
 		testCategory('an aliasing function is outside this category, so it breaks the chain to Top', 'x <- taint()\ny <- identity(x)\nz <- abs(y)', { '2@y': Top, '3@z': Top }, computerAnalysis);
 	});
 

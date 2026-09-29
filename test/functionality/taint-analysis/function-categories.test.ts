@@ -170,6 +170,102 @@ describe('Taint Function Categories', () => {
 		});
 	});
 
+	describe('Operators as Propagators', () => {
+		const computerAnalysis = TaintAnalysisDefinition.create('binop-computer', lattice)
+			.on(TaintFnCategory.pureComputer)
+			.from(source).getPartialDefinition();
+
+		describe('arithmetic and comparison operators forward taint (pureComputer)', () => {
+			for(const op of ['+', '-', '*', '/', '^', ':', '==', '!=', '>', '<', '>=', '<=']) {
+				testCategory(`operator ${op} forwards the taint of its operands`,
+					`x <- taint() ${op} taint()`, { '1@x': Tainted }, computerAnalysis);
+			}
+		});
+
+		testCategory('an untainted operand raises the result to Top',
+			'x <- taint() + 1', { '1@x': Top }, computerAnalysis);
+		testCategory('taint propagates through a chain of binary operators',
+			'x <- taint() + taint() * taint()', { '1@x': Tainted }, computerAnalysis);
+		testCategory('a repeated variable operand forwards its taint',
+			'y <- taint()\nx <- y - y', { '2@x': Tainted }, computerAnalysis);
+		testCategory('the taint of a binary operator result flows into a subsequent call',
+			'y <- taint() + taint()\nx <- abs(y)', { '2@x': Tainted }, computerAnalysis);
+		testCategory('a binary operator wrapping computing calls forwards the taint',
+			'x <- abs(taint()) * sqrt(taint())', { '1@x': Tainted }, computerAnalysis);
+
+		describe('unary operators forward taint (pureComputer)', () => {
+			testCategory('unary minus forwards the taint of its operand',
+				'x <- -taint()', { '1@x': Tainted }, computerAnalysis);
+			testCategory('unary plus forwards the taint of its operand',
+				'x <- +taint()', { '1@x': Tainted }, computerAnalysis);
+			testCategory('logical negation forwards the taint of its operand',
+				'x <- !taint()', { '1@x': Tainted }, computerAnalysis);
+			testCategory('nested unary operators forward the taint',
+				'x <- -(-taint())', { '1@x': Tainted }, computerAnalysis);
+			testCategory('a unary operator over an untainted operand is Top',
+				'x <- -1', { '1@x': Top }, computerAnalysis);
+		});
+
+		describe('a binary operator is not an aliasing function', () => {
+			const aliasAnalysis = TaintAnalysisDefinition.create('binop-alias', lattice)
+				.on(TaintFnCategory.pureAlias)
+				.from(source).getPartialDefinition();
+
+			testCategory('under pureAlias alone a binary operator is unmapped, so its result is Top',
+				'x <- taint() + taint()', { '1@x': Top }, aliasAnalysis);
+		});
+
+		describe('an unmapped binary operator resolves to Top', () => {
+			const sourceOnly = TaintAnalysisDefinition.create('binop-source-only', lattice)
+				.from(source).getPartialDefinition();
+
+			testCategory('with no category and no explicit rule, a binary operator is Top',
+				'x <- taint() + taint()', { '1@x': Top }, sourceOnly);
+		});
+
+		describe('custom handler reclassifies a binary operator result', () => {
+			const reclassAnalysis = TaintAnalysisDefinition.create('binop-reclass', reclassLattice)
+				.on(TaintFnCategory.pureComputer, () => TaintB)
+				.from({ identifier: Identifier.make('taint'), taint: Src }).getPartialDefinition();
+
+			testCategory('the pureComputer handler relabels the operator result',
+				'x <- taint() + taint()', { '1@x': TaintB }, reclassAnalysis);
+		});
+
+		describe('least upper bound over operand taints', () => {
+			const Low = Symbol('Low');
+			const High = Symbol('High');
+			const orderedLattice = new FiniteDomainBuilder()
+				.addLeqOrder(Bottom, Low)
+				.addLeqOrder(Low, High)
+				.addLeqOrder(High, Top)
+				.build();
+			const lubAnalysis = TaintAnalysisDefinition.create('binop-lub', orderedLattice)
+				.on(TaintFnCategory.pureComputer)
+				.from(
+					{ identifier: Identifier.make('taintLow'), taint: Low },
+					{ identifier: Identifier.make('taintHigh'), taint: High },
+				).getPartialDefinition();
+
+			testCategory('the operator result is the least upper bound of its operand taints',
+				'x <- taintLow() + taintHigh()', { '1@x': High }, lubAnalysis);
+			testCategory('the least upper bound is independent of operand order',
+				'x <- taintHigh() * taintLow()', { '1@x': High }, lubAnalysis);
+		});
+
+		describe('an operator can be mapped explicitly by its name', () => {
+			const explicitAnalysis = TaintAnalysisDefinition.create('binop-explicit', lattice)
+				.from()
+				.through({ identifier: Identifier.make('+'), taint: Tainted })
+				.getPartialDefinition();
+
+			testCategory('the explicitly mapped operator gets its fixed taint regardless of operands',
+				'x <- 1 + 2', { '1@x': Tainted }, explicitAnalysis);
+			testCategory('a different, unmapped operator is unaffected and stays Top',
+				'x <- 1 - 2', { '1@x': Top }, explicitAnalysis);
+		});
+	});
+
 	describe('Analysis-Level Categories (TaintAnalysis.on)', () => {
 		test('a category declared on the shared TaintAnalysis builder is used by every analysis added to it', async() => {
 			const analysisA = TaintAnalysisDefinition.create('shared-alias-a', lattice).from(source).getPartialDefinition();

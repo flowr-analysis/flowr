@@ -58,6 +58,11 @@ describe('Taint Analysis Randomness', () => {
 
 		testRandomness('c() over literals is Top (literals are untracked)', 'x <- c(1, 2, 3)', { '1@x': Top });
 		testRandomness('sum over literals is Top', 'x <- sum(c(1, 2, 3))', { '1@x': Top });
+
+		testRandomness('a binary operator over two random operands propagates Random', 'x <- runif(5) + rnorm(5)', { '1@x': Random });
+		testRandomness('a binary operator chain over random operands propagates Random', 'x <- runif(5) * rnorm(5) - runif(5)', { '1@x': Random });
+		testRandomness('a random operand combined with an untracked literal stays Random', 'x <- runif(5) + 1', { '1@x': Random });
+		testRandomness('a comparison of a random value stays Random', 'x <- runif(5) > 0.5', { '1@x': Random });
 	});
 
 	describe('Transformers', () => {
@@ -73,7 +78,6 @@ describe('Taint Analysis Randomness', () => {
 
 	describe('Untracked operations', () => {
 		testRandomness('unrelated literal assignment is untracked', 'x <- 42', { '1@x': undefined });
-		testRandomness('arithmetic on a random value is untracked (operators are not modelled calls)', 'x <- runif(5) + 1', { '1@x': undefined });
 		testRandomness('subassignment into a random value breaks the chain (untracked)', `
 				x <- runif(5)
 				x[1] <- 0

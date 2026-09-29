@@ -7,8 +7,24 @@ import type { AnyStateDomain } from '../abstract-interpretation/domains/state-do
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from './builder/taint-analysis';
+import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RUnaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { TaintMapper } from './taint-mapping';
+
+/**
+ * Function calls the taint analysis is able to handle:
+ * named function calls like `f(x)` and operators, including binary operators (`x + y`) and unary operators (`-x`)
+ */
+export type TaintCallNode = RNamedFunctionCall<ParentInformation> | RBinaryOp<ParentInformation> | RUnaryOp<ParentInformation>;
+
+/** Whether the given AST node can be handled by the taint analysis (see {@link TaintCallNode}). */
+export function isTaintableCallNode(node: RNode<ParentInformation> | undefined): node is TaintCallNode {
+	return RFunctionCall.isNamed(node) || RBinaryOp.is(node) || RUnaryOp.is(node);
+}
 
 /**
  * Resolves the inferred abstract taint of an argument node at the current program point, independent of any mapping
@@ -55,14 +71,14 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 		super.onFunctionCall({ call });
 
 		const node = this.getNormalizedAst(call.id);
-		if(!node || !RFunctionCall.is(node) || !RFunctionCall.isNamed(node)) {
+		if(!isTaintableCallNode(node)) {
 			return;
 		}
 
-		const mappings = this.taintMapper.getMappings(node.functionName.content);
+		const mappings = this.taintMapper.getMappings(call.name);
 
-		const { value, role } = resolveFnCallToTaint(node, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
-		this.currentState.set(node.info.id, value);
+		const { value, role } = resolveFnCallToTaint(call, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
+		this.currentState.set(call.id, value);
 
 		this.config.fnCallHook({ node, value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role: role });
 	}

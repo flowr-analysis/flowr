@@ -32,10 +32,6 @@ import type { ResolveInfo } from '../dataflow/eval/resolve/alias-tracking';
  * into a single abstract value of the given abstract domain.
  * Each {@link TaintRole} is resolved and the resulting values are met together.
  * If no mappings match at all, the call maps to the domain's top element.
- *
- * The call is identified by its data flow graph vertex rather than its AST node, so this equally serves calls
- * whose AST node is not a {@link RNamedFunctionCall} - most notably binary operators like `x + y`, which are
- * function call vertices in the data flow graph.
  * @param call       - The function call vertex whose taint is being resolved
  * @param mappings   - The mappings that apply to the call
  * @param domain     - The abstract domain the resulting abstract value belongs to

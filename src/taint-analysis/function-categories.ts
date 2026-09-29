@@ -39,7 +39,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 			argSelection: 'ExactlyOne',
 		},
 		/** Pass through of incoming taint */
-		handler: ([_arg], [taint]) => taint.value
+		handler: ([_arg], [taint]) => taint?.value
 	},
 	/** Pure functions which calculate their result on one or multiple arguments */
 	pureComputer: {
@@ -77,7 +77,8 @@ export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>
 		});
 
 	if(category.args.argSelection === 'ExactlyOne') {
-		return mappings.filter(m => m.condition.argTaints?.length === 1);
+		return mappings.filter(m =>
+			(m.condition.argSignature?.sig.filter(([, p]) => (p & category.args.argProps) !== 0).length ?? 0) === 1);
 	}
 
 	return mappings;

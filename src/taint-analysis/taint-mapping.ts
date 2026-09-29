@@ -1,5 +1,6 @@
 import type { AbstractDomain, AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/mappers/arguments';
+import type { ArgProps, FnSig } from '../dataflow/environments/built-in-props';
 import { Identifier } from '../dataflow/environments/identifier';
 
 export class TaintMapper<Domain extends AnyAbstractDomain> {
@@ -91,9 +92,10 @@ export type TaintConditionMapping<Domain extends AnyAbstractDomain> = TaintMappi
 
 /** Mapping of incoming function arguments and taints to a resulting taint */
 export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
-	argValues?:  FunctionParameterLocation<unknown>[],
-	argTaints?:  TaintParameterLocation[],
-	conditionFn: TaintConditionFunction<Domain>
+	argValues?:     FunctionParameterLocation<unknown>[],
+	argDefinition?: TaintParameterLocation[],
+	argSignature?:  { sig: FnSig, props: ArgProps },
+	conditionFn:    TaintConditionFunction<Domain>
 };
 
 /**

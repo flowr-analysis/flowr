@@ -54,7 +54,7 @@ describe('Taint Analysis Randomness', () => {
 
 		testRandomness('sum over a Deterministic source stays Deterministic', 'x <- sum(numeric(5))', { '1@x': Deterministic });
 		testRandomness('sum over a Deterministic sequence stays Deterministic', 'x <- sum(seq_len(5))', { '1@x': Deterministic });
-		testRandomness('mean over a Deterministic source widens to Top (empty ... arg joins to Top)', 'x <- mean(numeric(5))', { '1@x': Top });
+		testRandomness('mean over a Deterministic source stays Deterministic', 'x <- mean(numeric(5))', { '1@x': Deterministic });
 
 		testRandomness('c() over literals is Top (literals are untracked)', 'x <- c(1, 2, 3)', { '1@x': Top });
 		testRandomness('sum over literals is Top', 'x <- sum(c(1, 2, 3))', { '1@x': Top });

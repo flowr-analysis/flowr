@@ -31,8 +31,8 @@ const protocolTaint = (path: unknown) =>
 
 /** Tainted input on any argument leads to Bottom taint at sinks */
 const securitySinkCondition: TaintConditionFunction<typeof securityDomain> =
-	(_args, taints) => taints.some(taint => taint.value === UserInput || taint.value === NetworkInput || taint.value === FileInput)
-		? Bottom : AbstractDomain.joinAll(taints).value;
+	(_args, taints) => taints.some(taint => taint.value === UserInput || taint.value === NetworkInput || taint.value === FileInput) ? Bottom
+		: taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top;
 
 export const securityAnalysis = TaintAnalysisDefinition.create('security', securityDomain)
 	.from(
@@ -78,8 +78,8 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 				['which', PkgName.Base]
 			],
 			condition: {
-				argTaints:   [{ pos: 0, name: 'x' }],
-				conditionFn: (_args, [taint]) => taint.value
+				argDefinition: [{ pos: 0, name: 'x' }],
+				conditionFn:   (_args, [taint]) => taint.value
 			}
 		}
 	)
@@ -91,29 +91,29 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 				['parse', PkgName.Base]
 			],
 			condition: {
-				argTaints:   [{ pos: 0, name: 'file' }],
-				conditionFn: securitySinkCondition
+				argDefinition: [{ pos: 0, name: 'file' }],
+				conditionFn:   securitySinkCondition
 			}
 		},
 		{
 			identifier: ['unserialize', PkgName.Base],
 			condition:  {
-				argTaints:   [{ pos: 0, name: 'connection' }],
-				conditionFn: securitySinkCondition
+				argDefinition: [{ pos: 0, name: 'connection' }],
+				conditionFn:   securitySinkCondition
 			}
 		},
 		{
 			identifier: ['serialize', PkgName.Base],
 			condition:  {
-				argTaints:   [{ pos: 0, name: 'object' }, { pos: 1, name: 'connection' }],
-				conditionFn: securitySinkCondition
+				argDefinition: [{ pos: 0, name: 'object' }, { pos: 1, name: 'connection' }],
+				conditionFn:   securitySinkCondition
 			}
 		},
 		{
 			identifier: ['dump', PkgName.Base],
 			condition:  {
-				argTaints:   [{ pos: 0, name: 'list' }, { pos: 1, name: 'file' }],
-				conditionFn: securitySinkCondition
+				argDefinition: [{ pos: 0, name: 'list' }, { pos: 1, name: 'file' }],
+				conditionFn:   securitySinkCondition
 			}
 		},
 		...taintMappingFromBuiltInIndex<typeof securityDomain>([SemanticCallTag.Eval, SemanticCallTag.Process], ArgProp.Injectable, securitySinkCondition),

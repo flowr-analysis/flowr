@@ -43,22 +43,22 @@ const conflict = TaintAnalysisDefinition.create('conflict', lattice)
 		{
 			identifier: Identifier.make('sink'),
 			condition:  {
-				argTaints:   [{ pos: 0 }],
-				conditionFn: toConst(Bottom)
+				argDefinition: [{ pos: 0 }],
+				conditionFn:   toConst(Bottom)
 			}
 		},
 		{
 			identifier: Identifier.make('reclassify'),
 			condition:  {
-				argTaints:   [{ pos: 0 }],
-				conditionFn: toConst(TaintB)
+				argDefinition: [{ pos: 0 }],
+				conditionFn:   toConst(TaintB)
 			}
 		},
 		{
 			identifier: Identifier.make('narrow'),
 			condition:  {
-				argTaints:   [{ pos: 0 }],
-				conditionFn: toConst(TaintB)
+				argDefinition: [{ pos: 0 }],
+				conditionFn:   toConst(TaintB)
 			}
 		},
 	).getPartialDefinition();
@@ -182,8 +182,8 @@ describe('Taint Propagation', () => {
 					{ identifier: Identifier.make('tainted'), taint: High },
 				)
 				.through(
-					{ identifier: Identifier.make('oneCloserToTop'), condition: { argTaints: [{ pos: 0 }], conditionFn: walk(ladder, 1) } },
-					{ identifier: Identifier.make('oneCloserToBot'), condition: { argTaints: [{ pos: 0 }], conditionFn: walk(ladder, -1) } },
+					{ identifier: Identifier.make('oneCloserToTop'), condition: { argDefinition: [{ pos: 0 }], conditionFn: walk(ladder, 1) } },
+					{ identifier: Identifier.make('oneCloserToBot'), condition: { argDefinition: [{ pos: 0 }], conditionFn: walk(ladder, -1) } },
 				).getPartialDefinition();
 		}
 
@@ -197,7 +197,7 @@ describe('Taint Propagation', () => {
 				{ identifier: Identifier.make('taintB'), taint: B },
 			)
 			.through(
-				{ identifier: Identifier.make('glb'), condition: { argTaints: [{ pos: 0 }, { pos: 1 }], conditionFn: (_args, [p, q]) => (p ?? diamond.top()).meet(q ?? diamond.top()).value } },
+				{ identifier: Identifier.make('glb'), condition: { argDefinition: [{ pos: 0 }, { pos: 1 }], conditionFn: (_args, [p, q]) => (p ?? diamond.top()).meet(q ?? diamond.top()).value } },
 			).getPartialDefinition();
 
 		const thresholds = [1, 2, 4, 8];

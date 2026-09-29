@@ -8,15 +8,24 @@ import {
 	getFunctionArgument,
 	getFunctionArguments
 } from '../abstract-interpretation/data-frame/mappers/arguments';
-import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument, RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DataflowGraph } from '../dataflow/graph/graph';
+import { MatchArgs } from '../dataflow/graph/match-args';
+import { FunctionCallVertex } from '../dataflow/graph/vertex';
 import { isNotUndefined, isUndefined } from '../util/assert';
 import { taintLogger } from './logger';
-import type { TaintConditionDomain, TaintConditionMapping, TaintMapping } from './taint-mapping';
+import type {
+	TaintCondition,
+	TaintConditionDomain,
+	TaintConditionMapping,
+	TaintMapping,
+	TaintParameterLocation
+} from './taint-mapping';
 import { TaintRole } from './taint-mapping';
+import type { ResolveInfo } from '../dataflow/eval/resolve/alias-tracking';
 
 /**
  * Resolves all {@link TaintMapping}s that apply to a function call
@@ -83,23 +92,35 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 ) {
 	const allArgs = getFunctionArguments(node, dfg);
 
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx };
+	const resolveInfo: ResolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx };
 	const valArgs = mapping.condition.argValues
 		? mapping.condition.argValues.map(location => getArgumentValue(allArgs, location, resolveInfo))
 		: [];
 
-	const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
-		const arg = getFunctionArgument(allArgs, location, resolveInfo);
-		if(isUndefined(arg)) {
-			taintLogger.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
-		}
-		return arg;
-	}) : [];
+	const { argSignature, argDefinition } = mapping.condition;
+	const taintIds: (NodeId | undefined)[] = argSignature !== undefined
+		? taintIdsFromSignature(dfg, node.info.id, argSignature)
+		: taintIdsFromDef(allArgs, resolveInfo, node, argDefinition);
 
-	const incomingTaints = taintArgs
-		.map(arg => (arg === EmptyArgument || !arg?.value?.info) ? domain.top() : projectArg(arg.value.info.id))
+	const incomingTaints = taintIds
+		.map(id => isUndefined(id) ? domain.top() : projectArg(id))
 		.map((value) => isUndefined(value) ? domain.top() : value);
 
 	return mapping.condition.conditionFn(valArgs, incomingTaints as unknown as TaintConditionDomain<Domain>[]);
 }
 
+function taintIdsFromSignature(dfg: DataflowGraph, id: NodeId, argTaintSig: NonNullable<TaintCondition['argSignature']>): NodeId[] {
+	const vertex = dfg.getVertex(id);
+	return FunctionCallVertex.is(vertex) ? MatchArgs.findWithProps(vertex.args, argTaintSig.sig, argTaintSig.props) : [];
+}
+
+function taintIdsFromDef(allArgs: readonly PotentiallyEmptyRArgument<ParentInformation>[], resolveInfo: ResolveInfo, node: RNamedFunctionCall, argTaints: TaintParameterLocation[] | undefined) {
+	return (argTaints ?? []).map(location => {
+		const arg = getFunctionArgument(allArgs, location, resolveInfo);
+		if(isUndefined(arg)) {
+			taintLogger.warn(`Could not determine function argument for function call to ${Identifier.getName(node.functionName.content)}: Requested taint at position ${location.pos} with name ${location.name}`);
+			return undefined;
+		}
+		return arg === EmptyArgument || !arg.value?.info ? undefined : arg.value.info.id;
+	});
+}

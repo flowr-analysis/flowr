@@ -24,8 +24,8 @@ export const scaleDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ..
 
 const checkCalcOnNormalizedInput = (...checkedTaints: symbol[]): TaintCondition<typeof scaleDomain> => {
 	return {
-		argTaints:   [{ pos: 0, name: 'x' }],
-		conditionFn: (_args, [taint]) => checkedTaints.includes(taint.value) ? Bottom : (taint.value ?? Top)
+		argDefinition: [{ pos: 0, name: 'x' }],
+		conditionFn:   (_args, [taint]) => checkedTaints.includes(taint.value) ? Bottom : (taint.value ?? Top)
 	};
 };
 
@@ -39,8 +39,8 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 					{ pos: 1, name: 'center', default: true },
 					{ pos: 2, name: 'scale', default: true }
 				],
-				argTaints:   [{ pos: 0, name: 'x' }],
-				conditionFn: ([center, scale], [taint]) => {
+				argDefinition: [{ pos: 0, name: 'x' }],
+				conditionFn:   ([center, scale], [taint]) => {
 					if(center === true && scale === true) {
 						return ZScore;
 					} else if(center === true) {
@@ -89,9 +89,9 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 		{
 			identifier: ['round', PkgName.Base],
 			condition:  {
-				argTaints:   [{ pos: 0, name: 'x' }],
+				argDefinition: [{ pos: 0, name: 'x' }],
 				// Rounding only removes centering and variance assumption, min-max taint is kept
-				conditionFn: (_args, [taint]) =>
+				conditionFn:   (_args, [taint]) =>
 					taint.value == ZScore || taint.value == ZeroCentered || taint.value == UnitVariance ? Unscaled : taint.value
 			}
 		},
@@ -107,8 +107,8 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 				['rep', PkgName.Base], ['rep.int', PkgName.Base], ['rep_len', PkgName.Base], ['which', PkgName.Base]
 			],
 			condition: {
-				argTaints:   [{ pos: 0, name: 'x' }],
-				conditionFn: (_args, [taint]) =>
+				argDefinition: [{ pos: 0, name: 'x' }],
+				conditionFn:   (_args, [taint]) =>
 					taint.value !== Unscaled ? Top : Unscaled
 			}
 

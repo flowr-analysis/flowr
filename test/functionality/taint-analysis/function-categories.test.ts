@@ -149,6 +149,25 @@ describe('Taint Function Categories', () => {
 		testCategory('an untainted co-argument raises the result to Top', 'x <- atan2(taintHigh(), 1)', { '1@x': Top }, lubOrderedAnalysis);
 		testCategory('the least upper bound composes through nested computing calls', 'x <- atan2(atan2(taintLow(), taintLow()), taintHigh())', { '1@x': High }, lubOrderedAnalysis);
 		testCategory('the least upper bound of two incomparable taints is their join', 'x <- atan2(taintA(), taintB())', { '1@x': Top }, lubIncomparableAnalysis);
+
+		describe('a variadic parameter alongside fixed parameters', () => {
+			testCategory('without fixed parameter only variadic args are joined',
+				'x <- paste(taintLow(), taintLow(), taintHigh())', { '1@x': High }, lubOrderedAnalysis);
+			testCategory('a fixed Value parameter behind variadic args is joined',
+				'x <- paste(taintLow(), taintLow(), sep = taintHigh())', { '1@x': High }, lubOrderedAnalysis);
+
+			testCategory('a fixed parameter before variadic args is joined',
+				'x <- sprintf(taintHigh(), taintLow(), taintLow())', { '1@x': High }, lubOrderedAnalysis);
+			testCategory('a variadic arg past the fixed parameter is joined',
+				'x <- sprintf(taintLow(), taintLow(), taintHigh())', { '1@x': High }, lubOrderedAnalysis);
+
+			testCategory('leading fixed parameters are joined with the trailing variadic args',
+				'x <- sort(taintHigh(), taintLow(), taintLow())', { '1@x': High }, lubOrderedAnalysis);
+			testCategory('a variadic arg after fixed parameters are joined',
+				'x <- sort(taintLow(), taintLow(), taintLow(), taintHigh())', { '1@x': High }, lubOrderedAnalysis);
+			testCategory('only parameters with relevant argument properties are included in join',
+				'x <- sort(taintLow(), taintHigh(), taintLow())', { '1@x': Low }, lubOrderedAnalysis);
+		});
 	});
 
 	describe('Analysis-Level Categories (TaintAnalysis.on)', () => {

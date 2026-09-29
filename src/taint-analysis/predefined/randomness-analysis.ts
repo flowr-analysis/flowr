@@ -23,8 +23,10 @@ const randomnessSinkCondition: TaintConditionFunction<typeof randomnessDomain> =
 		: taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top;
 
 export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', randomnessDomain)
+	.on(TaintFnCategory.pureAlias)
+	// propagate randomness if any incoming argument is random
 	.on(TaintFnCategory.pureComputer, ([_arg], taints) => {
-		if(taints.some(t => t.value === Random)) {
+		if(taints.some(t => t?.value === Random)) {
 			return Random;
 		}
 		if(taints.length > 0) {
@@ -32,6 +34,8 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 		}
 		return Top;
 	})
+	// assumption: randomness seldomly affects shape of data
+	.on(TaintFnCategory.pureShape, (_args, _taints) => Top)
 	.from(
 		{
 			identifier: [
@@ -130,7 +134,6 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 				conditionFn:   randomnessSinkCondition
 			}
 		},
-		...taintMappingFromBuiltInIndex<typeof randomnessDomain>([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value, randomnessSinkCondition)
-	).to(...taintMappingFromBuiltInIndex<typeof randomnessDomain>([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value, randomnessSinkCondition)
+		...taintMappingFromBuiltInIndex<typeof randomnessDomain>([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value, randomnessSinkCondition),
 	).report('Non-deterministic random data is written to output (result may not be reproducible)');
 

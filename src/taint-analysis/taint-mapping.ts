@@ -63,7 +63,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 			return [rule as TaintMappingInternal<Domain>];
 		}
 		return rule.identifier.map(i => {
-			return { role: rule.role, identifier: i,
+			return { role: rule.role, category: rule.category, identifier: i,
 				...('taint' in rule ? { taint: rule.taint } : { condition: rule.condition }) };
 		});
 	}
@@ -77,6 +77,7 @@ export enum TaintRole {
 
 type TaintMappingBase = {
 	readonly role?:      TaintRole;
+	readonly category?:  string;
 	readonly identifier: Identifier | Identifier[];
 };
 
@@ -112,6 +113,7 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
  */
 type TaintMappingInternal<Domain extends AnyAbstractDomain> = {
 	readonly role?:      TaintRole;
+	readonly category?:  string;
 	readonly identifier: Identifier;
 } & ({ taint: AbstractValue<Domain>; } | { condition: TaintCondition<Domain>; });
 

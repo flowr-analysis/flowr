@@ -48,20 +48,23 @@ export function resolveFnCallToTaint<Domain extends AnyAbstractDomain>(
 	projectArg: (id: NodeId) => Domain | undefined,
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): { value: Domain, role?: TaintRole } {
+): { value: Domain, role?: TaintRole, category?: string } {
 	if(mappings.length === 0) {
 		return { value: domain.top() };
 	}
 	const context = { domain, call, dfg, ctx, projectArg };
 	const roleTaints = Object.values(TaintRole)
-		.map(role => ({ role, taint: resolveMappingToTaint(mappings.find(m => m.role === role), context) }))
-		.filter((entry): entry is { role: TaintRole, taint: Domain } => isNotUndefined(entry.taint));
+		.map(role => {
+			const mapping = mappings.find(m => m.role === role);
+			return { role, category: mapping?.category, taint: resolveMappingToTaint(mapping, context) };
+		})
+		.filter((entry): entry is { role: TaintRole, category: string | undefined, taint: Domain } => isNotUndefined(entry.taint));
 
 	const value = AbstractDomain.meetAll(roleTaints.map(entry => entry.taint), domain.top());
 
-	// for eval only
-	const role = roleTaints.find(entry => entry.taint.equals(value))?.role;
-	return { value, role };
+	// for eval only: the mapping whose taint determined the resolved value, and whether it stems from a function category
+	const winner = roleTaints.find(entry => entry.taint.equals(value));
+	return { value, role: winner?.role, category: winner?.category };
 }
 
 type ResolveContext<Domain extends AnyAbstractDomain> = {

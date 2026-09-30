@@ -28,6 +28,8 @@ export interface FnCallHookInfo {
 	name:       string;
 	/** The role of the matched mapping (source/propagator/sink), or `undefined` for unmapped calls */
 	role:       TaintRole | undefined;
+	/** Name of the {@link TaintFnCategory} the matched mapping stems from, or `undefined` if it was defined manually */
+	category?:  string;
 	/** The AST node representing the function call */
 	node:       TaintCallNode;
 	/** Whether the function call had an explicit mapping */
@@ -204,7 +206,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 
 	private wrapFnCallHook(fn: FnCallHook | undefined, name: string, dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): TaintVisitorHook {
 		return fn
-			? ({ node, value, wasMapped, projectArg, call, role }) => fn({ name, node, value, wasMapped, projectArg, call, dfg, ctx, role })
+			? ({ node, value, wasMapped, projectArg, call, role, category }) => fn({ name, node, value, wasMapped, projectArg, call, dfg, ctx, role, category })
 			: () => {};
 	}
 }

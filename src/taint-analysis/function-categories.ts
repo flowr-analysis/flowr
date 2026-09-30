@@ -19,6 +19,8 @@ export type TaintArgSelector = {
 };
 
 export type TaintFnCategory = {
+	/** Identifier of the function category, used to trace a resulting mapping back to its category */
+	name:      string,
 	/** Role the functions of the category should get assigned to */
 	role:      TaintRole,
 	/** Call properties of the function category */
@@ -32,6 +34,7 @@ export type TaintFnCategory = {
 export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape', TaintFnCategory> = {
 	/** Pure functions which return a single one of their arguments unchanged */
 	pureAlias: {
+		name:      'pureAlias',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
 		args:      {
@@ -43,6 +46,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 	},
 	/** Pure functions which calculate their result on one or multiple arguments */
 	pureComputer: {
+		name:      'pureComputer',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
 		args:      {
@@ -55,6 +59,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 	},
 	/** Pure functions which calculate their result based on the shape of input data */
 	pureShape: {
+		name:      'pureShape',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
 		args:      {
@@ -73,7 +78,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory): TaintMapping<Domain>[] {
 	const mappings = taintMappingFromBuiltInIndex(category.callProps, category.args.argProps, category.handler)
 		.map(m => {
-			return { role: category.role, ...m };
+			return { role: category.role, category: category.name, ...m };
 		});
 
 	if(category.args.argSelection === 'ExactlyOne') {

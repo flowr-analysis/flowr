@@ -60,7 +60,7 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 			],
 			condition: {
 				argValues:   [{ pos: 0, name: 'file' }],
-				conditionFn: ([path]) => protocolTaint(path)
+				conditionFn: protocolTaint
 			}
 		},
 		{
@@ -72,7 +72,7 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 			],
 			condition: {
 				argValues:   [{ pos: 0, name: 'con' }],
-				conditionFn: ([path]) => protocolTaint(path)
+				conditionFn: protocolTaint
 			}
 		},
 	)

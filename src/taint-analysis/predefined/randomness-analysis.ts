@@ -135,5 +135,8 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 			}
 		},
 		...taintMappingFromBuiltInIndex<typeof randomnessDomain>([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value, randomnessSinkCondition),
-	).report('Non-deterministic random data is written to output (result may not be reproducible)');
+	).report((f) => {
+		return f.functionName ? `Randomness reached write/graphics function '${f.functionName}' [${f.locString}]`
+			: `Randomness reached a write/graphics function [${f.locString}]`;
+	});
 

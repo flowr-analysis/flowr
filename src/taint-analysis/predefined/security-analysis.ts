@@ -27,8 +27,8 @@ export const securityDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom,
 const NetworkProtocolRegex = /^(https?|ftps?):\/\//;
 
 /** Maps a resolved path argument to a network or file taint depending on its protocol. */
-const protocolTaint = (path: unknown) =>
-	typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
+const protocolTaint: TaintConditionFunction<typeof securityDomain> =
+	([path]) => typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
 
 /** Tainted input on any argument leads to Bottom taint at sinks */
 const securitySinkCondition: TaintConditionFunction<typeof securityDomain> =

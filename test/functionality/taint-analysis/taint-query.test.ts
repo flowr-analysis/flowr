@@ -37,7 +37,7 @@ describe('Taint Query', () => {
 			const findings = result.results.get('normalization-constant')?.findings;
 			assert.strictEqual(result.results.get('normalization-constant')?.msg, undefined);
 			assert.deepStrictEqual(findings, [
-				{ nodeId: 10, loc: [2, 6, 2, 12], msg: 'mean calculated on normalized data [2.6-12]' },
+				{ nodeId: 10, loc: [2, 6, 2, 12], msg: 'mean calculated on normalized data yields a known result [2.6-12]' },
 				{ nodeId: 6, loc: [2, 1, 2, 1], msg: 'Known summary statistic calculated on normalized data [2.1]' }
 			]);
 		});
@@ -50,7 +50,7 @@ describe('Taint Query', () => {
 			assert.deepStrictEqual(json.results, [['normalization-constant', {
 				domains:  { '0': 'z-Score', '4': 'z-Score', '6': 'bottom', '10': 'bottom' },
 				findings: [
-					{ nodeId: 10, loc: [2, 6, 2, 12], msg: 'mean calculated on normalized data [2.6-12]' },
+					{ nodeId: 10, loc: [2, 6, 2, 12], msg: 'mean calculated on normalized data yields a known result [2.6-12]' },
 					{ nodeId: 6, loc: [2, 1, 2, 1], msg: 'Known summary statistic calculated on normalized data [2.1]' }
 				]
 			}]]);

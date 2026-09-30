@@ -4,7 +4,7 @@ import { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/tai
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
-import { normalizationAnalysis, ZScore } from '../../../src/taint-analysis/predefined/normalization-analysis';
+import { normalizationKnownConstant, ZScore } from '../../../src/taint-analysis/predefined/normalization';
 import { randomnessAnalysis } from '../../../src/taint-analysis/predefined/randomness-analysis';
 import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
 import type { ProductReduction } from '../../../src/abstract-interpretation/domains/partial-product-domain';
@@ -43,14 +43,14 @@ describe('Composite Taint Analysis', () => {
 	});
 
 	describe('direct product of predefined scale and randomness analyses', () => {
-		const composed = TaintAnalysisDefinition.compose('scale-x-randomness', [normalizationAnalysis, randomnessAnalysis]);
+		const composed = TaintAnalysisDefinition.compose('scale-x-randomness', [normalizationKnownConstant, randomnessAnalysis]);
 
 		test('combines the per-node taint of both analyses', async() => {
 			await testCompositeTaintAnalysis(`
 				x <- scale(x)`,
 			composed,
 			{
-				'1@x': { scale: ZScore, randomness: Top },
+				'1@x': { 'normalization-constant': ZScore, randomness: Top },
 			});
 		});
 	});
@@ -58,13 +58,13 @@ describe('Composite Taint Analysis', () => {
 	describe('reduced product of predefined scale and randomness analyses', () => {
 		// reduction: once a value is z-score scaled, treat the randomness component as Bottom (a contrived interaction)
 		const collapseRandomnessOnZScore: ProductReduction<TaintProduct> = value => {
-			if(value['scale']?.value === ZScore && value['randomness'] !== undefined) {
+			if(value['normalization-constant']?.value === ZScore && value['randomness'] !== undefined) {
 				return { ...value, randomness: value['randomness'].bottom() };
 			}
 			return value;
 		};
 
-		const composed = TaintAnalysisDefinition.compose('scale-x-randomness-reduced', [normalizationAnalysis, randomnessAnalysis], {
+		const composed = TaintAnalysisDefinition.compose('scale-x-randomness-reduced', [normalizationKnownConstant, randomnessAnalysis], {
 			reductions: [collapseRandomnessOnZScore]
 		});
 
@@ -73,7 +73,7 @@ describe('Composite Taint Analysis', () => {
 				x <- scale(x)`,
 			composed,
 			{
-				'1@x': { scale: ZScore, randomness: Bottom },
+				'1@x': { 'normalization-constant': ZScore, randomness: Bottom },
 			});
 		});
 	});

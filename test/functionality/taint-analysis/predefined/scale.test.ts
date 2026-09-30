@@ -1,7 +1,7 @@
 import { test, describe } from 'vitest';
 import type { TaintAnalysisExpectation } from '../helper';
 import { testPredefinedTaintAnalysis } from '../helper';
-import { scaleAnalysis, ZScore, ZeroCentered, MinMax, Unscaled } from '../../../../src/taint-analysis/predefined/scale-analysis';
+import { normalizationAnalysis, ZScore, ZeroCentered, MinMax } from '../../../../src/taint-analysis/predefined/normalization-analysis';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { decorateLabelContext, label } from '../../_helper/label';
 import { testLoopFixpoint } from '../loop-helper';
@@ -60,7 +60,7 @@ describe('Taint Analysis Scale', () => {
 			y <- f(x)`,
 	{
 		'2@x': ZScore,
-		'3@y': Unscaled,
+		'3@y': Top,
 	});
 	testScale('interprocedural tracking: sources, sinks, and transformer update the taint', `
 			g <- function(v) { head(v) }
@@ -81,13 +81,11 @@ describe('Taint Analysis Scale', () => {
 		testScale('dim of a scaled value is Top', 'x <- dim(scale(vector()))', { '1@x': Top });
 	});
 
-	describe('Reshaping transformers widen scaled data to Top but preserve Unscaled', () => {
+	describe('Reshaping transformers widen scaled data to Top', () => {
 		testScale('filter widens a z-scored value to Top', 'x <- filter(scale(vector()))', { '1@x': Top });
-		testScale('filter preserves an already Unscaled value', 'x <- filter(abs(vector()))', { '1@x': Unscaled });
+		testScale('filter of a nonlinearly transformed value stays Top', 'x <- filter(abs(vector()))', { '1@x': Top });
 		testScale('rep widens a z-scored value to Top', 'x <- rep(scale(vector()), 2)', { '1@x': Top });
-		testScale('rep preserves an already Unscaled value', 'x <- rep(abs(vector()), 2)', { '1@x': Unscaled });
 		testScale('which widens a z-scored value to Top', 'x <- which(scale(vector()))', { '1@x': Top });
-		testScale('head preserves an already Unscaled value', 'x <- head(abs(vector()))', { '1@x': Unscaled });
 	});
 
 	describe('Untracked Operations Mapped to Top', () => {
@@ -128,9 +126,9 @@ describe('Taint Analysis Scale', () => {
 	});
 
 	describe('Loops preserve the taint (no unexpected widening)', () => {
-		testLoopFixpoint(scaleAnalysis, 're-scaling each iteration stays ZScore', 'x <- scale(vector())', 'x <- scale(x)', ZScore);
-		testLoopFixpoint(scaleAnalysis, 'ZScore forwarded through the loop stays ZScore', 'x <- scale(vector())', 'x <- x', ZScore);
-		testLoopFixpoint(scaleAnalysis, 'a reshaping transformer preserves Unscaled', 'x <- abs(vector())', 'x <- head(x)', Unscaled);
-		testLoopFixpoint(scaleAnalysis, 'a transformer changing the pre-loop taint widens to Top', 'x <- scale(vector())', 'x <- head(x)', Top);
+		testLoopFixpoint(normalizationAnalysis, 're-scaling each iteration stays ZScore', 'x <- scale(vector())', 'x <- scale(x)', ZScore);
+		testLoopFixpoint(normalizationAnalysis, 'ZScore forwarded through the loop stays ZScore', 'x <- scale(vector())', 'x <- x', ZScore);
+		testLoopFixpoint(normalizationAnalysis, 'a reshaping transformer keeps an already-Top value stable', 'x <- abs(vector())', 'x <- head(x)', Top);
+		testLoopFixpoint(normalizationAnalysis, 'a transformer changing the pre-loop taint widens to Top', 'x <- scale(vector())', 'x <- head(x)', Top);
 	});
 });

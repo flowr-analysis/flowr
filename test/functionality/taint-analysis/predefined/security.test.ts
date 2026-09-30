@@ -28,6 +28,9 @@ describe('Security Taint Analysis', () => {
 		testSecurity('read.table with a local path literal is FileInput', 'x <- read.table("data.csv")', { '1@x': FileInput });
 		testSecurity('read.table with an unresolved path defaults to FileInput', 'p <- somevar\nx <- read.table(p)', { '2@x': FileInput });
 		testSecurity('download.file remains NetworkInput regardless of argument', 'x <- download.file("data.csv", "out.csv")', { '1@x': NetworkInput });
+		testSecurity('readLines with a named URL connection is NetworkInput', 'x <- readLines(con = "http://example.com/f")', { '1@x': NetworkInput });
+		testSecurity('readLines with a positional local path is FileInput', 'x <- readLines("data.txt")', { '1@x': FileInput });
+		testSecurity('readChar with a named URL connection is NetworkInput', 'x <- readChar(con = "https://example.com/f", 10)', { '1@x': NetworkInput });
 	});
 
 	describe('Hand-written sink rules', () => {

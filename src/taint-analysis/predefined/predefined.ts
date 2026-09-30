@@ -1,11 +1,11 @@
-import { scaleAnalysis } from './scale-analysis';
+import { normalizationAnalysis } from './normalization-analysis';
 import type { TaintAnalysisDefinition, TaintAnalysisName, RunnableTaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { securityAnalysis } from './security-analysis';
 import { randomnessAnalysis } from './randomness-analysis';
 import { determinism } from './determinism';
 
 export const predefinedTaintAnalyses = {
-	'scale':       scaleAnalysis,
+	'scale':       normalizationAnalysis,
 	'security':    securityAnalysis,
 	'randomness':  randomnessAnalysis,
 	'determinism': determinism

@@ -4,7 +4,7 @@ import { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/tai
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
-import { scaleAnalysis, ZScore } from '../../../src/taint-analysis/predefined/scale-analysis';
+import { normalizationAnalysis, ZScore } from '../../../src/taint-analysis/predefined/normalization-analysis';
 import { randomnessAnalysis } from '../../../src/taint-analysis/predefined/randomness-analysis';
 import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
 import type { ProductReduction } from '../../../src/abstract-interpretation/domains/partial-product-domain';
@@ -43,7 +43,7 @@ describe('Composite Taint Analysis', () => {
 	});
 
 	describe('direct product of predefined scale and randomness analyses', () => {
-		const composed = TaintAnalysisDefinition.compose('scale-x-randomness', [scaleAnalysis, randomnessAnalysis]);
+		const composed = TaintAnalysisDefinition.compose('scale-x-randomness', [normalizationAnalysis, randomnessAnalysis]);
 
 		test('combines the per-node taint of both analyses', async() => {
 			await testCompositeTaintAnalysis(`
@@ -64,7 +64,7 @@ describe('Composite Taint Analysis', () => {
 			return value;
 		};
 
-		const composed = TaintAnalysisDefinition.compose('scale-x-randomness-reduced', [scaleAnalysis, randomnessAnalysis], {
+		const composed = TaintAnalysisDefinition.compose('scale-x-randomness-reduced', [normalizationAnalysis, randomnessAnalysis], {
 			reductions: [collapseRandomnessOnZScore]
 		});
 

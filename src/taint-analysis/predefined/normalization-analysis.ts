@@ -9,27 +9,28 @@ export const MinMax = Symbol('Min-Max');
 export const ZeroCentered = Symbol('Zero Centered');
 export const UnitVariance = Symbol('Unit Variance');
 export const ZScore = Symbol('z-Score');
-export const Unscaled = Symbol('Unscaled');
 
-type ScaleLatticeElements = [typeof MinMax, typeof ZeroCentered, typeof UnitVariance, typeof ZScore, typeof Unscaled];
+type ScaleLatticeElements = [typeof MinMax, typeof ZeroCentered, typeof UnitVariance, typeof ZScore];
 
-export const scaleDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ...ScaleLatticeElements]>()
-	.addLeqOrder(Bottom, [ZScore, MinMax, Unscaled])
+export const normalizationDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ...ScaleLatticeElements]>()
+	.addLeqOrder(Bottom, [ZScore, MinMax])
 	.addLeqOrder(ZScore, [ZeroCentered, UnitVariance])
 	.addLeqOrder(ZeroCentered, Top)
 	.addLeqOrder(UnitVariance, Top)
 	.addLeqOrder(MinMax, Top)
-	.addLeqOrder(Unscaled, Top)
 	.build();
 
-const checkCalcOnNormalizedInput = (...checkedTaints: symbol[]): TaintCondition<typeof scaleDomain> => {
+const checkKnownConstant = (...checkedTaints: symbol[]): TaintCondition<typeof normalizationDomain> => {
 	return {
 		argDefinition: [{ pos: 0, name: 'x' }],
 		conditionFn:   (_args, [taint]) => checkedTaints.includes(taint.value) ? Bottom : (taint.value ?? Top)
 	};
 };
 
-export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain)
+export const normalizationAnalysis = TaintAnalysisDefinition.create('scale', normalizationDomain)
+	.on(TaintFnCategory.pureAlias)
+	// assumption: calculation on input data will usually destroy normalization
+	.on(TaintFnCategory.pureComputer, (_args, _taints) => Top)
 	.on(TaintFnCategory.pureShape, (_args, _taints) => Top)
 	.from(
 		{
@@ -84,7 +85,7 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 				['cos', PkgName.Base],
 				['tan', PkgName.Base],
 			],
-			taint: Unscaled
+			taint: Top
 		},
 		{
 			identifier: ['round', PkgName.Base],
@@ -92,7 +93,7 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 				argDefinition: [{ pos: 0, name: 'x' }],
 				// Rounding only removes centering and variance assumption, min-max taint is kept
 				conditionFn:   (_args, [taint]) =>
-					taint.value == ZScore || taint.value == ZeroCentered || taint.value == UnitVariance ? Unscaled : taint.value
+					taint.value === ZScore || taint.value === ZeroCentered || taint.value === UnitVariance ? Top : taint.value
 			}
 		},
 		{
@@ -106,18 +107,13 @@ export const scaleAnalysis = TaintAnalysisDefinition.create('scale', scaleDomain
 				// additional common functions
 				['rep', PkgName.Base], ['rep.int', PkgName.Base], ['rep_len', PkgName.Base], ['which', PkgName.Base]
 			],
-			condition: {
-				argDefinition: [{ pos: 0, name: 'x' }],
-				conditionFn:   (_args, [taint]) =>
-					taint.value !== Unscaled ? Top : Unscaled
-			}
-
+			taint: Top
 		},
 	).to(
-		{ identifier: 'mean', condition: checkCalcOnNormalizedInput(ZeroCentered, ZScore) },
-		{ identifier: 'sd', condition: checkCalcOnNormalizedInput(UnitVariance, ZScore) },
-		{ identifier: 'var', condition: checkCalcOnNormalizedInput(UnitVariance, ZScore) },
-		{ identifier: ['min', 'max', 'range'], condition: checkCalcOnNormalizedInput(MinMax) }
+		{ identifier: ['mean', PkgName.Base], condition: checkKnownConstant(ZeroCentered, ZScore) },
+		{ identifier: ['sd', PkgName.Stats], condition: checkKnownConstant(UnitVariance, ZScore) },
+		{ identifier: ['var', PkgName.Stats], condition: checkKnownConstant(UnitVariance, ZScore) },
+		{ identifier: [['min', PkgName.Base], ['max', PkgName.Base], ['range', PkgName.Base]], condition: checkKnownConstant(MinMax) }
 	).report((f) => {
 		return f.functionName ? `${f.functionName} calculated on normalized data [${f.locString}]` : `Known summary statistic calculated on normalized data [${f.locString}]`;
 	});

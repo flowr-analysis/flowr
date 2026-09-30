@@ -142,7 +142,7 @@ describe('taint-analysis evaluation', () => {
 		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inRepeat')), [{ construct: 'repeat' }, { construct: 'if', when: true }]);
 
 		// the `stopifnot` cd points at the condition expression, i.e., the `is.numeric` call
-		const condition = findUnmappedCall(sec, 'is.numeric');
+		const condition = findUnmappedCall(sec, 'is.unsorted');
 		assert.deepEqual(findUnmappedCall(sec, 'afterStopifnot').cds, [{ id: condition.nodeId, construct: 'stopifnot', when: true }]);
 
 		// the rhs of `&&` is evaluated lazily (and inherits the preceding stopifnot guard)

@@ -450,8 +450,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['?', PkgName.Utils])], /* shows the help page of what it is given */
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { sig: [['e1', ArgProp.Nse], ['e2', ArgProp.Nse]] }, assumePrimitive: true },
 	/* the result follows from how large the argument is, not from what is in it, so it is bounded (`Narrows`) */
-	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['length', 'lengths', 'nrow', 'ncol', 'NROW', 'NCOL', 'dim', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical', 'is.function', 'is.list']),
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['length', 'lengths', 'nrow', 'ncol', 'NROW', 'NCOL', 'dim', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical', 'is.function', 'is.list',
+		'is.double', 'is.integer', 'is.complex', 'is.raw', 'is.single', 'is.ordered']), processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape }, assumePrimitive: true },
 	/* the names and the class are read off the argument, so whatever it carries can show up in the result */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['dimnames', 'names', 'rownames', 'colnames', 'class']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigShape }, assumePrimitive: true },
@@ -481,7 +481,8 @@ export const WrittenBuiltinDefinitions = [
 				'cumsum', 'cumprod', 'cummax', 'cummin', 'diff', 'sort', 'rev', 'unique', 'duplicated', 't',
 				/* coercion */
 				'as.character', 'as.integer', 'as.logical', 'as.numeric', 'as.matrix', 'as.data.frame',
-				'as.factor', 'as.raw', 'as.list', 'as.array', 'as.double', 'as.complex', 'factor'
+				'as.factor', 'as.raw', 'as.list', 'as.array', 'as.double', 'as.complex', 'factor',
+				'as.single', 'as.ordered'
 			]),
 			...Identifier.fromAll(PkgName.Utils, ['head', 'tail']),
 			...Identifier.fromAll(PkgName.Stats, ['var', 'sd', 'median', 'quantile']),
@@ -508,8 +509,12 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['Re', 'Im', 'Mod', 'Arg', 'Conj']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['z', ArgProp.Value]] }, assumePrimitive: true },
 	/* the vector constructors take the length of the result, not its contents */
-	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['numeric', 'character', 'logical', 'integer', 'double', 'raw']),
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['numeric', 'character', 'logical', 'integer', 'double', 'raw', 'single']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['length', ArgProp.Value]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['vector', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['mode', ArgProp.Forced | ArgProp.Flag], ['length', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['mat.or.vec', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['nr', ArgProp.Forced | ArgProp.Value], ['nc', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['as.vector', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['x', ArgProp.Forced | ArgProp.Value], ['mode', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['rep_len', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['x', ArgProp.Forced | ArgProp.Value], ['length.out', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['na.omit', PkgName.Stats])],
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['object', ArgProp.Value], ['...', ArgProp.Value]] }, assumePrimitive: true },
 	/* two data arguments, under the names R gives them */
@@ -542,7 +547,7 @@ export const WrittenBuiltinDefinitions = [
 		type:  'function',
 		names: [
 			...Identifier.fromAll(PkgName.Base, [
-				'rep', 'rep.int', 'seq', 'seq.int', 'append', 'complex',
+				'rep', 'rep.int', 'seq.int', 'append', 'complex',
 				'matrix', 'array', 'table', 'prop.table', 'colSums', 'rowSums', 'colMeans', 'rowMeans',
 				'solve', 'det', 'eigen', 'aperm',
 				/* string */
@@ -583,6 +588,8 @@ export const WrittenBuiltinDefinitions = [
 	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['which', 'which.max', 'which.min', 'seq_len', 'seq_along']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, tags: [SemanticCallTag.Narrows] }, assumePrimitive: true },
+	/* `seq` dispatches, so `...` really is all it declares; the named formals belong to `seq.default`/`seq.int` */
+	{ type: 'function', names: [Identifier.from(['seq', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
 
 	/* they open a device that writes the plot to the file they are given, under the name each of them uses */
 	{ type:            'function', names:           [...Identifier.fromAll(PkgName.GrDevices, ['png', 'jpeg', 'bmp', 'tiff', 'svg', 'cairo_pdf']), Identifier.from(['raster_pdf', PkgName.RasterPdf]), ...Identifier.fromAll(PkgName.Ragg, ['agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp'])],
@@ -1175,7 +1182,7 @@ export const WrittenBuiltinDefinitions = [
 	{
 		type:  'function',
 		names: [
-			Identifier.from(['setnames', PkgName.DataTable]), Identifier.from(['setNames', PkgName.Base]),
+			Identifier.from(['setnames', PkgName.DataTable]), Identifier.from(['setNames', PkgName.Stats]),
 			...Identifier.fromAll(PkgName.DataTable, ['setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'])
 		],
 		processor: BuiltInProcName.Assignment,
@@ -1273,9 +1280,8 @@ export const WrittenBuiltinDefinitions = [
 		config:          { forceArgs: 'all', tags: [SemanticCallTag.File, SemanticCallTag.Glob, SemanticCallTag.Reads], sig: [['paths', ArgProp.Resource]] }, assumePrimitive: false },
 	/* language objects */
 	{
-		type:  'function',
-		names: Identifier.fromAll(PkgName.Base, ['enquote', 'call', 'as.call', 'as.expression', 'as.name', 'as.symbol',
-			'as.language', 'match.call', 'sys.call', 'args', 'deparse', 'deparse1']),
+		type:            'function',
+		names:           Identifier.fromAll(PkgName.Base, ['enquote', 'call', 'as.call', 'as.expression', 'as.name', 'as.symbol', 'match.call', 'sys.call', 'args', 'deparse', 'deparse1']),
 		processor:       BuiltInProcName.Default,
 		config:          { forceArgs: 'all', props: CallProp.Lang },
 		assumePrimitive: false
@@ -1406,7 +1412,7 @@ export const WrittenBuiltinDefinitions = [
 	{
 		type:  'function',
 		names: [
-			...Identifier.fromAll(PkgName.Fs, ['file_temp', 'dir_temp']),
+			...Identifier.fromAll(PkgName.Fs, ['file_temp', 'path_temp']),
 			...Identifier.fromAll(PkgName.Withr, ['local_tempfile', 'with_tempfile', 'local_tempdir', 'with_tempdir']),
 		],
 		processor:       BuiltInProcName.Default,

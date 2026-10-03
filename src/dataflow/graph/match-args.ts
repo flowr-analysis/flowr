@@ -16,8 +16,7 @@ import { Dataflow } from './df-helper';
 import { Identifier } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
-import type { ArgProps } from '../environments/built-in-props';
-import { FnSig } from '../environments/built-in-props';
+import type { ArgProps, FnSig  } from '../environments/built-in-props';
 
 /** the argument names in the shape {@link matchArgumentsToParameters} takes, unnamed arguments as `undefined` */
 function graphArgumentNames(args: readonly FunctionArgument[]): (string | undefined)[] {
@@ -150,11 +149,9 @@ export const MatchArgs = {
 	 * @returns The value ids of the matching arguments.
 	 */
 	findWithProps(this: void, args: readonly FunctionArgument[], signature: FnSig, props: ArgProps): NodeId[] {
-		const layout = FnSig.layout(signature);
 		const bound = matchArgumentsToParameters(args.map(FunctionArgument.getName), signature.map(([param]) => param));
-
 		return args
-			.filter((_, index) => bound[index] !== undefined && (FnSig.propAt(layout, bound[index]) & props) !== 0)
+			.filter((_, index) => bound[index] !== undefined && (signature[bound[index]][1] & props) !== 0)
 			.map(FunctionArgument.getReference).filter(isNotUndefined);
 	}
 } as const;

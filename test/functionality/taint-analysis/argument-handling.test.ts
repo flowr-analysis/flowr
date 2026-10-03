@@ -26,7 +26,7 @@ const argumentTaintAnalysis = TaintAnalysisDefinition.create('arguments-eval', l
 					{ pos: 1, name: 'myArg1', default: true },
 					{ pos: 2, name: 'myArg2', default: true },
 				],
-				argTaints: [
+				argDefinition: [
 					{ pos: 0 }
 				],
 				conditionFn: ([arg1, arg2], [taint]) => {
@@ -37,7 +37,7 @@ const argumentTaintAnalysis = TaintAnalysisDefinition.create('arguments-eval', l
 					} else if(arg2) {
 						return taint2;
 					} else {
-						return taint;
+						return taint.value;
 					}
 				}
 			}

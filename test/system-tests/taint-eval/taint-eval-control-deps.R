@@ -15,6 +15,6 @@ repeat {
   e <- inRepeat(x)
   if (done(x)) break
 }
-stopifnot(is.numeric(x))
+stopifnot(is.unsorted(x))
 f <- afterStopifnot(x)
 g <- TRUE && lazyRhs(x)

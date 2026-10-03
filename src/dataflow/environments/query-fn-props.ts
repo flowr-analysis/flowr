@@ -242,17 +242,25 @@ export class BuiltInIndex {
 		return found;
 	}
 
-	/** Every built-in carrying at least one property of `props`, like {@link SemanticCallTag.File} for the file calls. */
-	public with(props: PropSelector): readonly Identifier[] {
-		return this.cached(`with:${CallProps.key(props)}`, e => CallProps.hasAny(e, props));
+	/**
+	 * Every built-in carrying at least one property of `props`, like {@link SemanticCallTag.File} for the file calls.
+	 * @param props - The built-in must satisfy at least one of these properties.
+	 * @param excluding - Drop built-ins that also carry any of these properties.
+	 */
+	public with(props: PropSelector, excluding?: PropSelector): readonly Identifier[] {
+		const key = `with:${CallProps.key(props)}${excluding === undefined ? '' : `!${CallProps.key(excluding)}`}`;
+		return this.cached(key, e => CallProps.hasAny(e, props) && (excluding === undefined || !CallProps.hasAny(e, excluding)));
 	}
 
 	/**
 	 * Every built-in carrying *every* property of `props`, for the questions a single one cannot answer,
 	 * like {@link FileInputProps} for the calls that read a file rather than only write one.
+	 * @param props - The built-in must satisfy all of these properties.
+	 * @param excluding - Drop built-ins that also carry any of these properties.
 	 */
-	public withAll(props: PropSelector): readonly Identifier[] {
-		return this.cached(`all:${CallProps.key(props)}`, e => CallProps.hasAny(e) && CallProps.hasAll(e, props));
+	public withAll(props: PropSelector, excluding?: PropSelector): readonly Identifier[] {
+		const key = `all:${CallProps.key(props)}${excluding === undefined ? '' : `!${CallProps.key(excluding)}`}`;
+		return this.cached(key, e => CallProps.hasAny(e) && CallProps.hasAll(e, props) && (excluding === undefined || !CallProps.hasAny(e, excluding)));
 	}
 
 	/**

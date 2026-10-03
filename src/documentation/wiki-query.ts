@@ -646,7 +646,7 @@ registerQueryDocumentation('taint', {
 	functionName:     executeAbsintQuery.name,
 	functionFile:     '../queries/catalog/taint-query/taint-query-format.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const defs: AnyPredefinedTaintAnalysisName[] = ['scale'];
+		const defs: AnyPredefinedTaintAnalysisName[] = ['normalization-constant'];
 		const exampleCode = `
 			x <- c(1 , 2 , 3 , 4 , 5)\n
 			y <- scale(x)\n

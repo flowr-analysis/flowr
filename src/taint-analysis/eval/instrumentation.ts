@@ -1,21 +1,21 @@
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from '../builder/taint-analysis';
-import type { TaintRole } from '../function-mapper';
-import { getFunctionArguments } from '../../abstract-interpretation/data-frame/mappers/arguments';
+import { getVertexArguments } from '../../abstract-interpretation/data-frame/mappers/arguments';
 import { VariableResolve } from '../../config';
-import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import type { ArgTaintProjector } from '../taint-visitor';
+import type { ArgTaintProjector, TaintCallNode } from '../taint-visitor';
 import { satisfiesCallTargets, CallTargets } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranch } from '../../dataflow/info';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
+import type { TaintRole } from '../taint-mapping';
 
 export interface LoggedFnCallInfo {
 	mappedCalls:   MappedCallInfo[],
@@ -81,8 +81,8 @@ export class TaintAnalysisInstrumentation {
 		const callInfo: CallInfo = {
 			line:         node.info.fullRange?.[0].toString(),
 			nodeId:       node.info.id,
-			functionName: node.functionName.content,
-			args:         this.evaluateArguments(dfg, ctx, node, projectArg),
+			functionName: call.name,
+			args:         this.evaluateArguments(dfg, ctx, call, projectArg),
 			...(localTargets === 'no' ? {} : { localTargets }),
 			...(cds?.length ? { cds, inEveryBranch: happensInEveryBranch(call.cds) } : {}),
 		};
@@ -93,7 +93,7 @@ export class TaintAnalysisInstrumentation {
 		}
 	};
 
-	private addFile(name: string, node: RNamedFunctionCall<ParentInformation>) {
+	private addFile(name: string, node: TaintCallNode) {
 		let byFile = this._trace.get(name);
 		if(!byFile) {
 			byFile = new Map();
@@ -109,9 +109,10 @@ export class TaintAnalysisInstrumentation {
 		return fnCallInfo;
 	}
 
-	private evaluateArguments(dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, node: RNamedFunctionCall<ParentInformation>, projectArg: ArgTaintProjector) {
+	private evaluateArguments(dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, call: DataflowGraphVertexFunctionCall, projectArg: ArgTaintProjector) {
 		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx };
-		return getFunctionArguments(node, dfg).map(arg => {
+		const args = dfg.idMap !== undefined ? getVertexArguments(call, dfg.idMap) : [];
+		return args.map(arg => {
 			const resolvable = arg === EmptyArgument ? undefined : arg;
 			const valueId = resolvable?.value?.info?.id;
 			return {

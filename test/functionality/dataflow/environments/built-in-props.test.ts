@@ -99,6 +99,13 @@ describe('Built-in properties', () => {
 			assert.deepStrictEqual(custom.withAll([SemanticCallTag.Network, SemanticCallTag.Writes]).map(Identifier.toString), ['base::fetch']);
 			assert.deepStrictEqual(custom.withAll([SemanticCallTag.Network, CallProp.Pure]).map(Identifier.toString), []);
 		});
+		test(label('by the props they carry, minus an exclusion', ['name-normal'], ['other']), () => {
+			assert.deepStrictEqual(custom.with(CallProp.Pure | CallProp.Scope, CallProp.Scope).map(Identifier.toString), ['base::tally']);
+			assert.deepStrictEqual(custom.with(SemanticCallTag.Writes, CallProp.Pure).map(Identifier.toString), ['base::fetch']);
+			assert.deepStrictEqual(custom.with(SemanticCallTag.Writes, SemanticCallTag.Network).map(Identifier.toString), []);
+			assert.deepStrictEqual(custom.withAll([SemanticCallTag.Network, SemanticCallTag.Writes], CallProp.Scope).map(Identifier.toString), ['base::fetch']);
+			assert.deepStrictEqual(custom.withAll([SemanticCallTag.Network, SemanticCallTag.Writes], SemanticCallTag.Network).map(Identifier.toString), []);
+		});
 		test(label('by the props they do not carry', ['name-normal'], ['other']), () => {
 			/* `plain` states no props at all, so it is in neither answer */
 			assert.deepStrictEqual(custom.without(InputProps).map(Identifier.toString),

@@ -51,9 +51,11 @@ interface CallInfo {
 }
 
 interface MappedCallInfo extends CallInfo {
-	taint: unknown,
+	taint:     unknown,
 	/** The role of the matched mapping (source/propagator/sink). */
-	role?: TaintRole,
+	role?:     TaintRole,
+	/** Name of the {@link TaintFnCategory} the matched mapping stems from; absent for manually-defined mappings. */
+	category?: string,
 }
 
 /**
@@ -74,7 +76,7 @@ export class TaintAnalysisInstrumentation {
 		return this._trace;
 	}
 
-	fnCallHook = ({ name, node, value, wasMapped, projectArg, call, dfg, ctx, role }: FnCallHookInfo) => {
+	fnCallHook = ({ name, node, value, wasMapped, projectArg, call, dfg, ctx, role, category }: FnCallHookInfo) => {
 		const fnCallInfo = this.addFile(name, node);
 		const localTargets = satisfiesCallTargets(call, dfg, CallTargets.OnlyLocal);
 		const cds = call.cds?.map(cd => resolveControlDependency(cd, dfg));
@@ -87,7 +89,7 @@ export class TaintAnalysisInstrumentation {
 			...(cds?.length ? { cds, inEveryBranch: happensInEveryBranch(call.cds) } : {}),
 		};
 		if(wasMapped) {
-			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJSON(), role });
+			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJSON(), role, ...(category !== undefined ? { category } : {}) });
 		} else {
 			fnCallInfo.unmappedCalls.push(callInfo);
 		}

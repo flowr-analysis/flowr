@@ -114,6 +114,23 @@ describe('taint-analysis evaluation', () => {
 		});
 	});
 
+	test('records which mapped calls stem from the function-category system', async() => {
+		const output = await getEvalOutput('test/system-tests/taint-eval/taint-eval-categories.R');
+
+		const sec = Object.values(output.inferred['security'])[0];
+		assert.isDefined(sec);
+
+		const byName = (name: string) => sec.mappedCalls.find(c => c.functionName === name);
+
+		// manual source/sink mappings are not attributed to any function category
+		assert.isUndefined(byName('read.table')?.category, 'expected the manual source mapping to carry no category');
+		assert.isUndefined(byName('source')?.category, 'expected the manual sink mapping to carry no category');
+
+		// pure computing functions are propagated through the pureComputer category
+		assert.equal(byName('abs')?.category, 'pureComputer');
+		assert.equal(byName('sqrt')?.category, 'pureComputer');
+	});
+
 	test('logs the control dependencies of guarded calls', async() => {
 		const output = await getEvalOutput('test/system-tests/taint-eval/taint-eval-control-deps.R');
 

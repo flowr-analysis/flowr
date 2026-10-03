@@ -77,10 +77,10 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 
 		const mappings = this.taintMapper.getMappings(call.name);
 
-		const { value, role } = resolveFnCallToTaint(call, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
+		const { value, role, category } = resolveFnCallToTaint(call, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
 		this.currentState.set(call.id, value);
 
-		this.config.fnCallHook({ node, value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role: role });
+		this.config.fnCallHook({ node, value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role, category });
 	}
 
 	protected isUnsupportedFunctionCall(_nodeId: NodeId): boolean {

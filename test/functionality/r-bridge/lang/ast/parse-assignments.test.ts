@@ -1,132 +1,23 @@
 import { assertAst, withShell } from '../../../_helper/shell';
-import { exprList, numVal } from '../../../_helper/ast-builder';
+import { bin, exprList, group, num, str, sym } from '../../../_helper/ast-builder';
 import { label } from '../../../_helper/label';
-import { AssignmentOperators } from '../../../_helper/provider';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
-import { SourceRange } from '../../../../../src/util/range';
 
+// the plain `x <op> 5` form for every assignment operator is pinned by the binary operator tests
 describe('Parse simple assignments', { concurrent: false }, withShell(shell => {
-	describe('Constant assignments', () => {
-		for(const op of AssignmentOperators) {
-			const opOffset = op.length - 1;
-			const data = OperatorDatabase[op];
-			assertAst(label(`x ${op} 5`, ['binary-operator', 'infix-calls', 'function-calls', ...data.capabilities]),
-				shell, `x ${op} 5`, exprList({
-					type:     RType.BinaryOp,
-					location: SourceRange.from(1, 3, 1, 3 + opOffset),
-					lexeme:   op,
-					operator: op,
-					info:     {},
-					lhs:      {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 1, 1, 1),
-						lexeme:   'x',
-						content:  'x',
-						info:     {}
-					},
-					rhs: {
-						type:     RType.Number,
-						location: SourceRange.from(1, 5 + opOffset, 1, 5 + opOffset),
-						lexeme:   '5',
-						content:  numVal(5),
-						info:     {}
-					},
-				})
-			);
-		}
-	});
-
 	// allow assignments to strings and function calls
 	describe('Assignments to strings', () => {
 		assertAst(label('Assign to Given String', ['binary-operator', 'infix-calls', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'name-quoted', 'numbers']),
-			shell, '\'a\' <- 5', exprList({
-				type:     RType.BinaryOp,
-				location: SourceRange.from(1, 5, 1, 6),
-				lexeme:   '<-',
-				operator: '<-',
-				info:     {},
-				lhs:      {
-					type:     RType.String,
-					location: SourceRange.from(1, 1, 1, 3),
-					lexeme:   "'a'",
-					content:  {
-						quotes: "'",
-						str:    'a'
-					},
-					info: {}
-				},
-				rhs: {
-					type:     RType.Number,
-					location: SourceRange.from(1, 8, 1, 8),
-					lexeme:   '5',
-					content:  numVal(5),
-					info:     {}
-				},
-			})
+			shell, '\'a\' <- 5', exprList(bin('<-', [1, 5], str("'a'", [1, 1], 'a'), num('5', [1, 8])))
 		);
 	});
 
 	describe('Assignment with an expression list', () => {
 		assertAst(label('x <- { 2 * 3 }', [...OperatorDatabase['*'].capabilities, 'function-calls', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers', 'grouping']),
-			shell, 'x <- { 2 * 3 }', exprList({
-				type:     RType.BinaryOp,
-				location: SourceRange.from(1, 3, 1, 4),
-				lexeme:   '<-',
-				operator: '<-',
-				info:     {},
-				lhs:      {
-					type:     RType.Symbol,
-					location: SourceRange.from(1, 1, 1, 1),
-					lexeme:   'x',
-					content:  'x',
-					info:     {}
-				},
-				rhs: {
-					type:     RType.ExpressionList,
-					lexeme:   undefined,
-					location: undefined,
-					info:     {},
-					grouping: [{
-						type:     RType.Symbol,
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-						location: SourceRange.from(1, 6, 1, 6)
-					}, {
-						type:     RType.Symbol,
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-						location: SourceRange.from(1, 14, 1, 14)
-					}],
-					children: [{
-						type:     RType.BinaryOp,
-						location: SourceRange.from(1, 10, 1, 10),
-						lexeme:   '*',
-						operator: '*',
-						info:     {},
-						lhs:      {
-							type:     RType.Number,
-							location: SourceRange.from(1, 8, 1, 8),
-							lexeme:   '2',
-							content:  numVal(2),
-							info:     {}
-						},
-						rhs: {
-							type:     RType.Number,
-							location: SourceRange.from(1, 12, 1, 12),
-							lexeme:   '3',
-							content:  numVal(3),
-							info:     {}
-						}
-					}]
-				},
-			}), {
-				ignoreAdToks: true
-			}
+			shell, 'x <- { 2 * 3 }', exprList(bin('<-', [1, 3], sym('x', [1, 1]),
+				group('{', [1, 6], [1, 14], bin('*', [1, 10], num('2', [1, 8]), num('3', [1, 12]))))),
+			{ ignoreAdToks: true }
 		);
 	});
-})
-);
+}));

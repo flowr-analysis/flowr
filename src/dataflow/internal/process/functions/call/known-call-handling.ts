@@ -177,7 +177,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forced, nonFunction });
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forced, nonFunction, alternativesFrom: reverseOrder ? undefined : alternativeArgsFrom });
 	markArgumentsAsNonStandardEvaluation(finalGraph, rootId, processedArguments, markAsNSE, { kind: NseKind.Reevaluated });
 
 	const onlyBuiltin = data.builtInNoEnv === rootId;

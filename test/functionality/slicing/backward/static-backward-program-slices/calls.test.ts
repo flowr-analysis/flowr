@@ -523,6 +523,18 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		);
 		mapCase('Points Should Link to Plot', 'plot(f)\npoints(g)', '2@points', 'plot(f)\npoints(g)');
 		mapCase('Custom plot should have no links', 'plot <- function() {}\nplot(f)\npoints(g)', '3@points', 'points(g)');
+		describe('switch and indirect calls', () => {
+			const caps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'call-normal', 'newlines'];
+			function sliceCase(name: string, code: string, criterion: SlicingCriterion, expected: string) {
+				assertSliced(label(name, caps), shell, code, [criterion], expected);
+			}
+			/* only one arm runs, picked by the first argument */
+			sliceCase('switch arms are alternatives', 'm <- "a"\nswitch(m, a = x <- 1, b = x <- 2)\ny <- x', '3@y', 'm <- "a"\nswitch(m, a = x <- 1, b = x <- 2)\ny <- x');
+			/* an arm never sees what another arm defines (checked against R) */
+			sliceCase('switch arms do not see each other', 'x <- 0\nm <- "b"\nswitch(m, a = x <- 1, b = y <- x)\nz <- y', '4@z', 'x <- 0\nm <- "b"\nswitch(m, a = x <- 1, b = y <- x)\nz <- y');
+			sliceCase('switch may run no arm', 'x <- 0\nswitch(m, a = x <- 1)\ny <- x', '3@y', 'x <- 0\nswitch(m, a = x <- 1)\ny <- x');
+			sliceCase('do.call binding a name', 'do.call("assign", list("w", 6))\nr <- w', '2@r', 'do.call("assign", list("w", 6))\nr <- w');
+		});
 		describe('maps::map', () => {
 			mapCase('Link to the last map', 'map(f)\nx <- points(g)', '2@points', 'map(f)\npoints(g)');
 			mapCase('Link to the last map (print)', 'map(f)\nx <- points(g)\nprint(x)', '3@print', 'map(f)\nx <- points(g)\nprint(x)');

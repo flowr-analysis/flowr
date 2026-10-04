@@ -27,6 +27,7 @@ import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { applyAmbientStateOfCalledBuiltIns, readsOfAutoPrint } from './built-in-ambient-state';
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
@@ -310,6 +311,8 @@ export function processExpressionList<OtherInfo>(
 
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
 	let defaultReturnExpr: undefined | DataflowInformation = undefined;
+	/* R prints what the top level of the analyzed script leaves visible, but not what a sourced file does */
+	const autoPrint = data.referenceChain.length <= 1 && data.environment.level === 0 && data.completeAst.ast.files.some(f => f.root.info.id === rootId);
 	let hooks: DataflowInformation['hooks'] | undefined;
 
 	for(const arg of args) {
@@ -320,7 +323,10 @@ export function processExpressionList<OtherInfo>(
 		}
 		// use the current environments for processing
 		(data as Writable<DataflowProcessorInformation<OtherInfo & ParentInformation>>).environment = environment;
-		const processed = processDataflowFor(expression, data);
+		let processed = processDataflowFor(expression, data);
+		if(autoPrint) {
+			processed = readsOfAutoPrint(processed, expression, data);
+		}
 		processedExpressions.push(processed);
 		/* the expression's graph dies here, what is kept of it afterward is its entry point and its references */
 		nextGraph.mergeWith(processed.graph, true, true);
@@ -354,6 +360,12 @@ export function processExpressionList<OtherInfo>(
 				for(const exit of c.propagateExitPoints) {
 					(processed.exitPoints as Writable<ExitPoint[]>).push(exit);
 				}
+			}
+		}
+
+		for(const c of calledEnvs) {
+			if(c.calledBuiltIns !== undefined) {
+				processed = applyAmbientStateOfCalledBuiltIns(processed, c.functionCall, c.calledBuiltIns, environment, nextGraph, data);
 			}
 		}
 
@@ -446,7 +458,8 @@ export function processExpressionList<OtherInfo>(
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
-		in:                ingoing,
+		/* at the top of the script, a read of the options or graphics state nothing set reads the state R starts with */
+		in:                autoPrint ? ingoing.filter(r => typeof r.name !== 'string' || !r.name.startsWith('#')) : ingoing,
 		/* a definition that a still-effective removal undid is no longer visible to the outside */
 		out:               dropKilledWrites(out, killed),
 		environment:       environment,

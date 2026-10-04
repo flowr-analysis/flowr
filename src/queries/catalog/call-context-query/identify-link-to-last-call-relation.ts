@@ -230,6 +230,8 @@ export function identifyLinkToLastCallRelationSync(
 			const act = cascadeIf ? cascadeIf(vertex, from, graph) : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;
+			} else if(act === CascadeAction.Block) {
+				return true;
 			}
 			const tar = satisfiesCallTargets(vertex, graph, CallTargets.MustIncludeGlobal);
 			if(tar !== 'no') {

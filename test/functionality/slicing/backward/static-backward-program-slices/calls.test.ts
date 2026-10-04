@@ -505,8 +505,8 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		assertSliced(label('Configuring options', [
 			'functions-with-global-side-effects', 'built-in-options', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'
 		]), shell,
-		'options(y=2)\nx', ['2@x'],
-		'options(y=2)\nx'
+		'x <- 1\noptions(y=2)\nx', ['3@x'],
+		'x <- 1\nx'
 		);
 		assertSliced(label('Exit hooks', [
 			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments', 'implicit-return', 'function-definitions'
@@ -523,7 +523,86 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		);
 		mapCase('Points Should Link to Plot', 'plot(f)\npoints(g)', '2@points', 'plot(f)\npoints(g)');
 		mapCase('Custom plot should have no links', 'plot <- function() {}\nplot(f)\npoints(g)', '3@points', 'points(g)');
-		describe('switch and indirect calls', () => {
+		describe('options', () => {
+			const optionCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'built-in-options', 'name-normal', 'call-normal', 'named-arguments', 'newlines'];
+			function optionCase(name: string, code: string, criterion: SlicingCriterion, expected: string) {
+				assertSliced(label(name, optionCaps), shell, code, [criterion], expected);
+			}
+			optionCase('An option does not affect unrelated values', 'options(digits=2)\ny <- 3\nz <- y', '3@z', 'y <- 3\nz <- y');
+			optionCase('An option set later does not matter', 'y <- 3\noptions(digits=2)\nz <- y', '3@z', 'y <- 3\nz <- y');
+			optionCase('Printing reads the printing options', 'options(digits=2)\ny <- 3\nprint(y)', '3@print', 'options(digits=2)\ny <- 3\nprint(y)');
+			optionCase('Cat and format read the printing options', 'options(scipen=100)\noptions(foo=1)\ncat(format(1e10))', '3@cat', 'options(scipen=100)\ncat(format(1e10))');
+			optionCase('Printing a plain value ignores unrelated options', 'options(foo=2)\nprint(3)', '2@print', 'print(3)');
+			optionCase('An overwritten option is dropped', 'options(digits=2)\noptions(digits=4)\nprint(1)', '3@print', 'options(digits=4)\nprint(1)');
+			optionCase('getOption reads the option it names', 'options(foo=2)\noptions(bar=3)\nx <- getOption("foo")', '3@x', 'options(foo=2)\nx <- getOption("foo")');
+			optionCase('getOption with a default', 'options(foo=2)\noptions(bar=3)\nx <- getOption("bar", 1)', '3@x', 'options(bar=3)\nx <- getOption("bar", 1)');
+			optionCase('getOption resolves the name', 'options(foo=2)\noptions(bar=3)\nk <- "bar"\nx <- getOption(k)', '4@x', 'options(bar=3)\nk <- "bar"\nx <- getOption(k)');
+			optionCase('getOption with an unknown name reads all options', 'f <- function(k) getOption(k)\noptions(foo=2)\noptions(bar=3)\nx <- f(u)', '4@x', 'f <- function(k) getOption(k)\noptions(foo=2)\noptions(bar=3)\nx <- f(u)');
+			optionCase('Querying with options', 'options(foo=2)\noptions(bar=3)\nx <- options("foo")', '3@x', 'options(foo=2)\nx <- options("foo")');
+			optionCase('Restoring options', 'op <- options(foo=2)\noptions(op)\nx <- getOption("foo")', '3@x', 'op <- options(foo=2)\noptions(op)\nx <- getOption("foo")');
+			optionCase('The old value is only read when used', 'options(foo=1)\noptions(foo=2)\nop <- options(foo=3)\nx <- op', '4@x', 'options(foo=2)\nop <- options(foo=3)\nx <- op');
+			/* returning the call's value uses it, so the previous value matters */
+			optionCase('The old value returned implicitly', 'options(foo=1)\ng <- function() {\n\toptions(foo=2)\n}\nop <- g()\nx <- op', '6@x', 'options(foo=1)\ng <- function() options(foo=2)\nop <- g()\nx <- op');
+			optionCase('The old value returned explicitly', 'options(foo=1)\ng <- function() return(options(foo=2))\nop <- g()\nx <- op', '4@x', 'options(foo=1)\ng <- function() return(options(foo=2))\nop <- g()\nx <- op');
+			optionCase('The old value as a body without braces', 'options(foo=1)\ng <- function() options(foo=2)\nop <- g()\nx <- op', '4@x', 'options(foo=1)\ng <- function() options(foo=2)\nop <- g()\nx <- op');
+			optionCase('The old value as the value of a block', 'options(foo=1)\nop <- { options(foo=2) }\nx <- op', '3@x', 'options(foo=1)\nop <- { options(foo=2) }\nx <- op');
+			optionCase('An uncalled function sets nothing', 'options(foo=1)\ng <- function() {\n\toptions(foo=2)\n\t1\n}\nx <- getOption("foo")', '6@x', 'options(foo=1)\nx <- getOption("foo")');
+			optionCase('Setting an option in a function', 'f <- function() options(foo=1)\nf()\nx <- getOption("foo")', '3@x', 'f <- function() options(foo=1)\nf()\nx <- getOption("foo")');
+			optionCase('Reading an option in a function', 'g <- function() getOption("foo")\noptions(foo=1)\noptions(bar=1)\nx <- g()', '4@x', 'g <- function() getOption("foo")\noptions(foo=1)\nx <- g()');
+			optionCase('Setting and reading in nested functions', 'f <- function() options(foo=1)\nh <- function() f()\ng <- function() getOption("foo")\nh()\nx <- g()', '5@x', 'f <- function() options(foo=1)\nh <- function() f()\ng <- function() getOption("foo")\nh()\nx <- g()');
+			optionCase('Conditionally setting an option', 'options(foo=1)\nif(u) options(foo=2)\nx <- getOption("foo")', '3@x', 'options(foo=1)\nif(u) options(foo=2)\nx <- getOption("foo")');
+			optionCase('Options in a loop', 'for(i in 1:3) {\n\tx <- getOption("foo")\n\toptions(foo=i)\n}', '2@x', 'for(i in 1:3) {\n    x <- getOption("foo")\n    options(foo=i)\n}');
+			optionCase('Setting an option between definition and call', 'options(foo=1)\ng <- function() getOption("foo")\noptions(foo=2)\nx <- g()', '4@x', 'g <- function() getOption("foo")\noptions(foo=2)\nx <- g()');
+			optionCase('getOption in an anonymous function', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))', '2@x', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))');
+			optionCase('Setting options in an anonymous function', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")', '2@x', 'sapply(1:2, function(i) options(foo=i))\nx <- getOption("foo")');
+			optionCase('Setting options in tryCatch', 'tryCatch(options(foo=1), error=function(e) 0)\nx <- getOption("foo")', '2@x', 'options(foo=1)\nx <- getOption("foo")');
+			optionCase('Namespaced access', 'base::options(foo=1)\nx <- base::getOption("foo")', '2@x', 'base::options(foo=1)\nx <- base::getOption("foo")');
+			optionCase('Calling options through do.call', 'do.call(options, list(foo=1))\nx <- getOption("foo")', '2@x', 'do.call(options, list(foo=1))\nx <- getOption("foo")');
+			optionCase('Applying print', 'options(digits=3)\nx <- sapply(1:2, print)', '2@x', 'options(digits=3)\nx <- sapply(1:2, print)');
+			optionCase('Printing in a user function', 'f <- function(v) print(v)\noptions(digits=3)\nf(pi)', '3@f', 'f <- function(v) print(v)\noptions(digits=3)\nf(pi)');
+			optionCase('Calling a function argument', 'h <- function(g) g()\noptions(foo=1)\nx <- h(other)', '3@x', 'h <- function(g) g()\noptions(foo=1)\nx <- h(other)');
+			/* functions flowR does not model may read any option: confirmed against R for summary, strwrap, and sQuote */
+			optionCase('Functions we do not model read all options', 'options(digits=3)\nd <- data.frame(a=1)\ns <- summary(d)', '3@s', 'options(digits=3)\nd <- data.frame(a=1)\ns <- summary(d)');
+			optionCase('strwrap reads the width', 'options(width=30)\nw <- strwrap(t)', '2@w', 'options(width=30)\nw <- strwrap(t)');
+			optionCase('sQuote reads the quotes', 'options(useFancyQuotes=FALSE)\nq <- sQuote("a")', '2@q', 'options(useFancyQuotes=FALSE)\nq <- sQuote("a")');
+			optionCase('Package functions read their options', 'options(ggplot2.discrete.fill="red")\ny <- ggplot(d)', '2@y', 'options(ggplot2.discrete.fill="red")\ny <- ggplot(d)');
+			optionCase('Unknown functions read package options', 'options(lifecycle_verbosity="error")\nx <- foo(1)', '2@x', 'options(lifecycle_verbosity="error")\nx <- foo(1)');
+			optionCase('Package options do not affect arithmetic', 'options(ggplot2.discrete.fill="red")\ny <- 3', '2@y', 'y <- 3');
+			/* evaluating a captured expression runs its calls where it is evaluated */
+			optionCase('Evaluating a quoted option', 'eval(quote(options(foo=1)))\nx <- getOption("foo")', '2@x', 'eval(quote(options(foo=1)))\nx <- getOption("foo")');
+			optionCase('Evaluating a stored quote', 'e <- quote(options(foo=1))\neval(e)\nx <- getOption("foo")', '3@x', 'e <- quote(options(foo=1))\neval(e)\nx <- getOption("foo")');
+			optionCase('A quote alone sets nothing', 'e <- quote(options(foo=1))\nx <- getOption("foo")', '2@x', 'x <- getOption("foo")');
+			optionCase('evalq', 'evalq(options(foo=1))\nx <- getOption("foo")', '2@x', 'evalq(options(foo=1))\nx <- getOption("foo")');
+			/* withr and rlang scope their changes (checked against R) */
+			optionCase('with_options sets the options for its code', 'library(withr)\nx <- with_options(list(digits=3), getOption("digits"))', '2@x', 'library(withr)\nx <- with_options(list(digits=3), getOption("digits"))');
+			optionCase('with_options restores the options', 'options(digits=5)\nlibrary(withr)\nwith_options(list(digits=3), print(pi))\nx <- getOption("digits")', '4@x', 'options(digits=5)\nx <- getOption("digits")');
+			optionCase('with_options keeps what its code sets otherwise', 'library(withr)\nwith_options(list(digits=3), options(foo=1))\nx <- getOption("foo")', '3@x', 'options(foo=1)\nx <- getOption("foo")');
+			optionCase('local_options ends with the function', 'library(withr)\nf <- function() {\n\tlocal_options(list(digits=3))\n\tgetOption("digits")\n}\noptions(digits=5)\nx <- f()\ny <- getOption("digits")', '8@y', 'options(digits=5)\ny <- getOption("digits")');
+			optionCase('local_options within the function', 'library(withr)\nf <- function() {\n\tlocal_options(list(digits=3))\n\tgetOption("digits")\n}\nx <- f()', '6@x', 'library(withr)\nf <- function() {\n        local_options(list(digits=3))\n        getOption("digits")\n    }\nx <- f()');
+			optionCase('local_options at the top level stays', 'library(withr)\nlocal_options(digits=4)\nx <- getOption("digits")', '3@x', 'library(withr)\nlocal_options(digits=4)\nx <- getOption("digits")');
+			optionCase('rlang::with_options', 'library(rlang)\noptions(digits=5)\nx <- with_options(getOption("digits"), digits=2)', '3@x', 'library(rlang)\nx <- with_options(getOption("digits"), digits=2)');
+			/* R prints every visible value at the top level of a script */
+			optionCase('Auto-printing reads the printing options', 'options(digits=2)\nx <- pi\nx', '3@x', 'options(digits=2)\nx <- pi\nx');
+			optionCase('Assignments do not print', 'options(digits=2)\nx <- pi', '2@x', 'x <- pi');
+			optionCase('Invisible values do not print', 'options(digits=2)\ninvisible(pi)', '2@invisible', 'invisible(pi)');
+			optionCase('Printing a plain value ignores unrelated options', 'options(foo=2)\nx <- 3\nx', '3@x', 'x <- 3\nx');
+			optionCase('Printing an unknown value may read any option', 'options(foo=2)\nx <- foo()\nx', '3@x', 'options(foo=2)\nx <- foo()\nx');
+			optionCase('print of an unknown value may read any option', 'options(foo=2)\nprint(d)', '2@print', 'options(foo=2)\nprint(d)');
+			optionCase('Nothing prints within a function', 'f <- function() {\n\toptions(digits=2)\n\tx <- pi\n\tx\n}', '4@x', 'x <- pi\nx');
+			optionCase('options through an alias', 'o <- options\no(k=1)\ny <- getOption("k")', '3@y', 'o <- options\no(k=1)\ny <- getOption("k")');
+			optionCase('rm(list = ls()) keeps the options', 'options(k=1)\nrm(list=ls())\ny <- getOption("k")', '3@y', 'options(k=1)\ny <- getOption("k")');
+			optionCase('.Options reads the option it names', 'options(k=1)\noptions(j=2)\ny <- .Options$k', '3@y', 'options(k=1)\ny <- .Options$k');
+			optionCase('.Options with [[', 'options(k=1)\noptions(j=2)\ny <- .Options[["k"]]', '3@y', 'options(k=1)\ny <- .Options[["k"]]');
+			optionCase('.Options as a whole', 'options(k=1)\noptions(j=2)\ny <- .Options', '3@y', 'options(k=1)\noptions(j=2)\ny <- .Options');
+			optionCase('with_options with named arguments', 'options(k=1)\nlibrary(withr)\nx <- with_options(code=getOption("k"), new=list(k=2))', '3@x', 'library(withr)\nx <- with_options(code=getOption("k"), new=list(k=2))');
+			optionCase('local_options at the top level replaces the option', 'options(k=1)\nlibrary(withr)\nlocal_options(.new=list(k=2))\nx <- getOption("k")', '4@x', 'library(withr)\nlocal_options(.new=list(k=2))\nx <- getOption("k")');
+			/* these change how calls behave that we cannot name, so they stay in every slice */
+			optionCase('Options with a global effect are kept', 'options(warn=2)\ny <- 3', '2@y', 'options(warn=2)\ny <- 3');
+			optionCase('scipen changes every number to string conversion', 'options(scipen=999)\ny <- 1e5\nz <- paste(y)', '3@z', 'options(scipen=999)\ny <- 1e5\nz <- paste(y)');
+			optionCase('OutDec changes as.character', 'options(OutDec=",")\nx <- as.character(1.5)', '2@x', 'options(OutDec=",")\nx <- as.character(1.5)');
+			optionCase('Restoring unknown options is kept', 'options(op)\ny <- 3', '2@y', 'options(op)\ny <- 3');
+		});
+		describe('switch and evaluated calls', () => {
 			const caps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'call-normal', 'newlines'];
 			function sliceCase(name: string, code: string, criterion: SlicingCriterion, expected: string) {
 				assertSliced(label(name, caps), shell, code, [criterion], expected);
@@ -534,6 +613,10 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			sliceCase('switch arms do not see each other', 'x <- 0\nm <- "b"\nswitch(m, a = x <- 1, b = y <- x)\nz <- y', '4@z', 'x <- 0\nm <- "b"\nswitch(m, a = x <- 1, b = y <- x)\nz <- y');
 			sliceCase('switch may run no arm', 'x <- 0\nswitch(m, a = x <- 1)\ny <- x', '3@y', 'x <- 0\nswitch(m, a = x <- 1)\ny <- x');
 			sliceCase('do.call binding a name', 'do.call("assign", list("w", 6))\nr <- w', '2@r', 'do.call("assign", list("w", 6))\nr <- w');
+			/* a call in an evaluated capture reads the function it names */
+			sliceCase('evalq of a call', 'f <- function() x <<- 2\nevalq(f())\ny <- x', '3@y', 'f <- function() x <<- 2\nevalq(f())\ny <- x');
+			sliceCase('eval of a stored call', 'f <- function() x <<- 2\ne <- quote(f())\neval(e)\ny <- x', '4@y', 'f <- function() x <<- 2\ne <- quote(f())\neval(e)\ny <- x');
+			sliceCase('evalq of a call setting options', 'f <- function() options(k=2)\nevalq(f())\ny <- getOption("k")', '3@y', 'f <- function() options(k=2)\nevalq(f())\ny <- getOption("k")');
 		});
 		describe('maps::map', () => {
 			mapCase('Link to the last map', 'map(f)\nx <- points(g)', '2@points', 'map(f)\npoints(g)');

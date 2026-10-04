@@ -22,7 +22,7 @@ describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 	}
 
 	testSlice('a definition made by a caller reaches the evaluated read',
-		'g <- function() eval(quote(v))\nh <- function() { v <- 1; g() }\nh()', '1@v', 'v\nv <- 1');
+		'g <- function() eval(quote(v))\nh <- function() { v <- 1; g() }\nh()', '1@v', 'eval(quote(v))\nv <- 1');
 
 	/* every evaluation is checked against every definition of its names, which has to stay a single walk of the control flow */
 	test('many evaluations of many caller definitions stay fast', async() => {

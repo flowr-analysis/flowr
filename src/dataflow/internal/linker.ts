@@ -221,7 +221,8 @@ function linkFunctionCall(
 	calledFunctionDefinitions: {
 		functionCall:        NodeId;
 		called:              readonly DataflowGraphVertexInfo[],
-		propagateExitPoints: readonly ExitPoint[]
+		propagateExitPoints: readonly ExitPoint[],
+		calledBuiltIns?:     readonly NodeId[]
 	}[]
 ) {
 	const edges = graph.outgoingEdges(id);
@@ -236,7 +237,7 @@ function linkFunctionCall(
 		}
 	}
 
-	const [functionDefs] = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph);
+	const [functionDefs, builtIns] = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph);
 
 	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {
@@ -249,8 +250,9 @@ function linkFunctionCall(
 			propagateExitPoints.push(ep);
 		}
 	}
-	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
-		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray(), propagateExitPoints });
+	if(thisGraph.isRoot(id) && (functionDefs.size > 0 || builtIns.size > 0)) {
+		/* a built-in reached through a variable (`p <- par; p(...)`) was not processed as that built-in */
+		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray(), propagateExitPoints, calledBuiltIns: builtIns.size > 0 ? [...builtIns] : undefined });
 	}
 }
 
@@ -264,8 +266,8 @@ export function linkFunctionCalls(
 	thisGraph: DataflowGraph,
 	/** calls `graph` knows of that `thisGraph` does not, as a read that became a call */
 	alsoCalls: readonly NodeId[] = []
-): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] {
-	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] = [];
+): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[], calledBuiltIns?: readonly NodeId[] }[] {
+	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[], calledBuiltIns?: readonly NodeId[] }[] = [];
 	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
 		if(!info.onlyBuiltin) {
 			linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions);
@@ -419,7 +421,8 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 	RNode.visitAst<Info & ParentInformation>(node, inner => {
 		if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
-			references.push({ nodeId: inner.functionName.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
+			/* the call vertex carries the call's id, its name symbol has no vertex of its own */
+			references.push({ nodeId: inner.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
 		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
 			references.push({ nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable });
 		}

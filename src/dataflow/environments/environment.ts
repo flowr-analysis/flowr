@@ -292,7 +292,7 @@ export class Environment implements IEnvironment {
 		return newEnvironment;
 	}
 
-	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
+	public defineSuper(definition: IdentifierDefinition & { name: Identifier }, append = false): Environment {
 		const [name, ns] = Identifier.toArray(definition.name);
 		/* isolate the cds from the originating reference, see {@link define} */
 		if(definition.cds !== undefined) {
@@ -310,13 +310,13 @@ export class Environment implements IEnvironment {
 			/* `<<-` binds in the closest enclosing frame that holds the name, which for an emptied frame is what
 			 * it stood in for when the closure was created (see {@link superMemory}) */
 			if(current.lookup(name) !== undefined || current.superMemory?.has(name)) {
-				current.writableMemory.set(name, [definition]);
+				current.writableMemory.set(name, append ? [...current.lookup(name) ?? [], definition] : [definition]);
 				found = true;
 				break;
 			}
 			// `<<-` falls back to the global env, never an attached package below it
 			if(current.globalEnv) {
-				current.writableMemory.set(name, [definition]);
+				current.writableMemory.set(name, append ? [...current.lookup(name) ?? [], definition] : [definition]);
 				found = true;
 				break;
 			}
@@ -326,7 +326,7 @@ export class Environment implements IEnvironment {
 		} while(!current.builtInEnv);
 		if(!found) {
 			guard(last !== undefined, () => `Could not find global scope for ${name}`);
-			last.writableMemory.set(name, [definition]);
+			last.writableMemory.set(name, append ? [...last.lookup(name) ?? [], definition] : [definition]);
 		}
 		return newEnvironment;
 	}

@@ -63,6 +63,11 @@ export function cancelRevivedKills(kills: readonly KillReference[], writes: read
 	return remaining;
 }
 
+/** the options and graphics state flowR keeps as `#...` variables, which `rm(list = ls())` does not touch in R */
+function isAmbientState(key: BrandedIdentifier): boolean {
+	return key.startsWith('#');
+}
+
 function isBuiltInDef(d: IdentifierDefinition): boolean {
 	return d.type === ReferenceType.BuiltInFunction || d.type === ReferenceType.BuiltInConstant;
 }
@@ -89,7 +94,7 @@ function weakenAll(env: Environment, cds: readonly ControlDependency[], except?:
 		return;
 	}
 	for(const [key, defs] of env.memory) {
-		if(except?.has(key)) {
+		if(except?.has(key) || isAmbientState(key)) {
 			continue;
 		}
 		if(defs.some(d => !isBuiltInDef(d))) {
@@ -105,7 +110,7 @@ function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifi
 		return;
 	}
 	for(const [key, defs] of env.memory) {
-		if(except?.has(key) || defs.every(isBuiltInDef)) {
+		if(except?.has(key) || isAmbientState(key) || defs.every(isBuiltInDef)) {
 			continue;
 		}
 		const kept = defs.filter(isBuiltInDef);

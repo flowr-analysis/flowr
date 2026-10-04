@@ -190,8 +190,10 @@ export function processAllArguments<OtherInfo>(
 				/* a data argument holds a value, so a function of that name is not what it reads; the narrowed
 				   type stays on the reference as it bubbles through the enclosing calls */
 				const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
-				const refType = DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
-					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
+				/* a call reading the options or graphics state (`#...`, see AmbientStateName) reads a variable, not itself */
+				const refType = typeof ingoing.name === 'string' && ingoing.name.startsWith('#') ? ReferenceType.Variable
+					: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
+						: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
 
 				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
 				if(tryToResolve === undefined) {

@@ -129,8 +129,9 @@ describe('flowR search', withTreeSitter(parser => {
 
 			assertSearch('asks the user', parser, code, ['5@readline'], carrying(SemanticCallTag.User));
 			assertSearch('closes a device', parser, code, ['3@dev.off'], carrying(SemanticCallTag.Closes));
-			assertSearch('sets ambient state', parser, code, ['4@setwd'], carrying(CallProp.Configures));
-			assertSearch('any of several properties', parser, code, ['3@dev.off', '4@setwd'], carrying([SemanticCallTag.Closes, CallProp.Configures]));
+			/* opening and closing a device sets the graphics state later plots draw with */
+			assertSearch('sets ambient state', parser, code, ['1@pdf', '3@dev.off', '4@setwd'], carrying(CallProp.Configures));
+			assertSearch('any of several properties', parser, code, ['1@pdf', '3@dev.off', '4@setwd'], carrying([SemanticCallTag.Closes, CallProp.Configures]));
 			/* what a call does to a package, so loading without attaching or merely checking can be told apart */
 			const loaders = 'library(a)\nrequire(b)\nrequireNamespace("c")\nloadNamespace("d")\nattachNamespace("e")\nfind.package("f")';
 			const tag = (props: PropSelector) => ({ name: FlowrFilter.CallProps, args: { props } }) as const;

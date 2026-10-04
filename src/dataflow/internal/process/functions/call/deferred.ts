@@ -8,8 +8,7 @@ import { EdgeType, DfEdge } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
-import { happensBefore, reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
-import { Ternary } from '../../../../../util/logic';
+import { reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
@@ -18,6 +17,8 @@ export interface ForceSites {
 	readonly sites:   readonly NodeId[]
 	/** the name the deferred expression is bound to, whose binding its own writes replace */
 	readonly binding: NodeId
+	/** what reaches the sites and what they reach, filled on first use and shared by everyone handed these sites */
+	readonly reach?:  { before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean> }
 }
 
 /** Drops the read of `target` from `use`, for a binding another write has replaced. */
@@ -52,6 +53,10 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 	RNode.visitAst<Info & ParentInformation>(node, inner => {
 		if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
+			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
+			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
+				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
+			}
 			return false;
 		} else if(!RSymbol.is(inner) || callees.has(inner.info.id)) {
 			return false;
@@ -143,14 +148,25 @@ export const Deferred = {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));
 		/* one walk per direction answers every candidate, so the sets are built once and only when asked for */
-		let before: ReadonlySet<NodeId> | undefined;
-		let after: ReadonlySet<NodeId> | undefined;
+		const reach = forces?.reach ?? {};
 		/* a binding matters only if some force can see it, and a use only if some force can reach it */
 		const seenByAForce = (definition: NodeId) => forces === undefined
-			|| (before ??= reachableTo(forces.cfg, forces.sites)).has(definition);
+			|| (reach.before ??= reachableTo(forces.cfg, forces.sites)).has(definition);
 		/* the forcing read yields the promise's value, so only reads after it observe what the promise wrote */
 		const reachedByAForce = (use: NodeId) => forces === undefined
-			|| (!forces.sites.includes(use) && (after ??= reachableFrom(forces.cfg, forces.sites)).has(use));
+			|| (!forces.sites.includes(use) && (reach.after ??= reachableFrom(forces.cfg, forces.sites)).has(use));
+		/* whether some force always happens before `use`, asked again by every write of the bound name */
+		let sites: ReadonlySet<NodeId> | undefined;
+		const alwaysAfterAForce = (use: NodeId): boolean => {
+			const known = (reach.always ??= new Map<NodeId, boolean>()).get(use);
+			if(known !== undefined || forces === undefined) {
+				return known ?? false;
+			}
+			/* one walk back from the use answers it for all sites, a use is never a site itself (see `reachedByAForce`) */
+			const always = someAlwaysBefore(forces.cfg, sites ??= new Set(forces.sites), use);
+			reach.always.set(use, always);
+			return always;
+		};
 		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
 		const bindingName = forces === undefined ? undefined : removeRQuotes(NodeId.recoverName(forces.binding, idMap) ?? '');
 		for(const [node, name, writes] of within) {
@@ -160,7 +176,7 @@ export const Deferred = {
 				for(const use of index.uses.get(name) ?? []) {
 					if(!own.has(use) && reachedByAForce(use)) {
 						graph.addEdge(use, node, EdgeType.Reads);
-						if(shadows && forces.sites.some(site => happensBefore(forces.cfg, site, use) === Ternary.Always)) {
+						if(shadows && alwaysAfterAForce(use)) {
 							dropRead(graph, use, forces.binding);
 						}
 					}

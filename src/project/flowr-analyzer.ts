@@ -21,6 +21,9 @@ import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
+import type { DataflowGraph } from '../dataflow/graph/graph';
+import { VertexType } from '../dataflow/graph/vertex';
+import { Dataflow } from '../dataflow/graph/df-helper';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
 import type { FnInfo } from '../dataflow/environments/query-fn-props';
@@ -206,6 +209,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private readonly cache:  FlowrAnalyzerCache<Parser>;
 	private readonly ctx:    FlowrAnalyzerContext;
 	private parserInfo:      KnownParserInformation | undefined;
+	/** the graph whose calls are already being qualified in the background, see {@link qualifyInBackground} */
+	private qualifying:      DataflowGraph | undefined;
 
 	/**
 	 * Create a new analyzer instance.
@@ -333,7 +338,12 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
-		return this.cache.dataflow(force);
+		const dataflow = await this.cache.dataflow(force);
+		if(this.qualifying !== dataflow.graph) {
+			this.qualifying = dataflow.graph;
+			qualifyInBackground(dataflow.graph);
+		}
+		return dataflow;
 	}
 
 	public peekDataflow(): NonNullable<AnalyzerCacheType<Parser>['dataflow']> | undefined {
@@ -381,4 +391,19 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 		return this.parser?.close();
 	}
+}
+
+/** Qualifies calls (see {@link Dataflow.qualify}) in idle time on unreferenced timers, so later queries find it done. */
+function qualifyInBackground(graph: DataflowGraph): void {
+	const calls = Array.from(graph.verticesOfType(VertexType.FunctionCall), ([id]) => id);
+	let next = 0;
+	const step = () => {
+		for(const end = Math.min(next + 256, calls.length); next < end; next++) {
+			Dataflow.qualify(calls[next], graph, false);
+		}
+		if(next < calls.length) {
+			setTimeout(step, 0).unref();
+		}
+	};
+	setTimeout(step, 0).unref();
 }

@@ -17,6 +17,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { ControlFlow } from '../../../../control-flow';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
@@ -59,6 +60,7 @@ export function processRepeatLoop<OtherInfo>(
 	guard(body !== undefined, () => `Repeat-Loop ${Identifier.toString(name.content)} has no body, impossible!`);
 
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph)), body.out, body.environment);
+	linkAmbientStateWithinLoop(information.graph, body.in.concat(body.unknownReferences), body);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);

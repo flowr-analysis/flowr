@@ -19,13 +19,15 @@ import { FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../graph/vertex';
 import { linkExpressionIn, linkInputs } from '../../../linker';
 import { type MaskingCall, Nse } from './nse';
-import { Deferred } from './deferred';
+import { Deferred, type ForceSites } from './deferred';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { removeRQuotes } from '../../../../../r-bridge/retriever';
 import { reachableTo } from '../../../../../control-flow/happens-before';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { callFnProps } from '../../../../environments/query-fn-props';
 import { CallProp } from '../../../../environments/built-in-props';
+
+type Reach = NonNullable<ForceSites['reach']>;
 
 /** Calls capturing a language object. */
 const CapturingProcessors: readonly BuiltInProcName[] = [BuiltInProcName.Quote];
@@ -92,6 +94,8 @@ export const Quoted = {
 	 * forced against, and a masked name the caller binds after all loses its mark.
 	 */
 	finalize<Info>(this: void, graph: DataflowGraph, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>, controlFlow: () => ControlFlowGraph | undefined): void {
+		/* lets the forces of a parameter be reused without counting its reads again while nothing touched them (see `forcesOf`) */
+		graph.trackIncomingReads(true);
 		let names: ReturnType<typeof Deferred.indexOf> | undefined = undefined;
 		let bindings: ReadonlyMap<string, NodeId[]> | undefined = undefined;
 		let cfg: ControlFlowGraph | undefined | null = null;
@@ -100,6 +104,20 @@ export const Quoted = {
 		let sideEffects: ReadonlySet<NodeId> | undefined = undefined;
 		const sideEffectsOnce = () => sideEffects ??= callsWithSideEffects(graph);
 		let installers: ReadonlySet<NodeId> | undefined = undefined;
+		/* every call of a function forces its parameters at the same sites, so this pass works them out once */
+		const forcing = new Map<NodeId, { readonly version: number, readonly reads: number, readonly forces: ForceSites | undefined }>();
+		/* evaluations within one function and forces of one parameter share their sites, and with them what reaches them */
+		const reaches = new Map<string, Reach>();
+		let enclosing: ReadonlyMap<NodeId, readonly NodeId[]> | undefined;
+		const reachOf = (sites: readonly NodeId[]): Reach => {
+			const key = sites.join('\0');
+			let reach = reaches.get(key);
+			if(reach === undefined) {
+				reach = {};
+				reaches.set(key, reach);
+			}
+			return reach;
+		};
 		const installersOnce = () => installers ??= languageInstallersOf(graph, environment);
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
@@ -126,7 +144,7 @@ export const Quoted = {
 			} else if(hasOrigin(vertex, EvaluatingProcessors) || EvaluatingElsewhereCalls.has(Identifier.getName(vertex.name))) {
 				names ??= Deferred.indexOf(graph, idMap);
 				bindings ??= bindingsOf(graph, idMap);
-				resolveEvaluation(graph, vertex, idMap, names, bindings, cfgOnce());
+				resolveEvaluation(graph, vertex, idMap, names, bindings, cfgOnce(), reachOf, enclosing ??= enclosingDefinitions(graph));
 			} else {
 				for(const escaped of escapingArguments(graph, id)) {
 					names ??= Deferred.indexOf(graph, idMap);
@@ -137,15 +155,16 @@ export const Quoted = {
 					if(flow !== undefined) {
 						for(const [argument, parameter] of forcedParameters(graph, id)) {
 							names ??= Deferred.indexOf(graph, idMap);
-							const sites = Deferred.forcedAt(graph, parameter, flow);
-							if(sites.length > 0) {
-								Deferred.link(graph, argument, names, idMap, { cfg: flow, sites, binding: parameter });
+							const forces = forcesOf(graph, parameter, flow, forcing, reachOf);
+							if(forces !== undefined) {
+								Deferred.link(graph, argument, names, idMap, forces);
 							}
 						}
 					}
 				}
 			}
 		}
+		graph.trackIncomingReads(false);
 		/* only once every mark has settled: the read a column gets makes it look bound from here on */
 		Nse.linkMasksToData(graph, masking);
 	}
@@ -156,6 +175,30 @@ interface CapturedExpression {
 	readonly expr: NodeId
 	/** the capturing call, whose scope encloses `expr` */
 	readonly at:   NodeId
+}
+
+/** Where `parameter` is forced, shared by all calls handing it an argument; only reused while its reads are unchanged. */
+function forcesOf(graph: DataflowGraph, parameter: NodeId, cfg: ControlFlowGraph, forcing: Map<NodeId, { readonly version: number, readonly reads: number, readonly forces: ForceSites | undefined }>, reachOf: (sites: readonly NodeId[]) => Reach): ForceSites | undefined {
+	const version = graph.incomingReadsVersion(parameter);
+	const known = forcing.get(parameter);
+	if(known?.version === version) {
+		return known.forces;
+	}
+	/* counting is only needed once something touched the reads, and the same count still means the same forces */
+	let reads = 0;
+	for(const [, edge] of graph.edgesTo(parameter)) {
+		if(DfEdge.includesType(edge, EdgeType.Reads)) {
+			reads++;
+		}
+	}
+	if(known?.reads === reads) {
+		forcing.set(parameter, { ...known, version });
+		return known.forces;
+	}
+	const sites = Deferred.forcedAt(graph, parameter, cfg);
+	const forces = sites.length > 0 ? { cfg, sites, binding: parameter, reach: reachOf(sites) } : undefined;
+	forcing.set(parameter, { version, reads, forces });
+	return forces;
 }
 
 /** The name a delaying call binds, which is the definition its reads have to go through. */
@@ -249,44 +292,52 @@ function bindingsOf<Info>(graph: DataflowGraph, idMap: AstIdMap<Info & ParentInf
  * Where the evaluation happens: the call itself, or, for one inside a closure, every call of that closure (those
  * are the points whose bindings the evaluation sees). `undefined` if a nesting closure is never seen called.
  */
-function evaluationSites(graph: DataflowGraph, id: NodeId): readonly NodeId[] | undefined {
+function evaluationSites(graph: DataflowGraph, id: NodeId, enclosing: ReadonlyMap<NodeId, readonly NodeId[]>): readonly NodeId[] | undefined {
 	const sites: NodeId[] = [];
-	let nested = false;
-	for(const [definition, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		if(!vertex.subflow.graph.has(id)) {
-			continue;
-		}
-		nested = true;
+	const definitions = enclosing.get(id) ?? [];
+	for(const definition of definitions) {
 		for(const [caller, edge] of graph.edgesTo(definition)) {
 			if(DfEdge.includesType(edge, EdgeType.Calls)) {
 				sites.push(caller);
 			}
 		}
 	}
-	if(!nested) {
+	if(definitions.length === 0) {
 		return [id];
 	}
 	return sites.length > 0 ? sites : undefined;
 }
 
-/**
- * Whether some point the evaluation may run at can be reached with a definition in effect. The answer is the same
- * set for every definition, so the walk over the graph happens once, on the first question.
- */
-function mayReachFrom(sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined): (definition: NodeId) => boolean {
+/** the function definitions each vertex sits in, built once per pass instead of searching them for every evaluation */
+function enclosingDefinitions(graph: DataflowGraph): ReadonlyMap<NodeId, readonly NodeId[]> {
+	const enclosing = new Map<NodeId, NodeId[]>();
+	for(const [definition, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		for(const id of vertex.subflow.graph) {
+			const known = enclosing.get(id);
+			if(known === undefined) {
+				enclosing.set(id, [definition]);
+			} else {
+				known.push(definition);
+			}
+		}
+	}
+	return enclosing;
+}
+
+/** Whether some point the evaluation may run at is reached with a definition in effect; the same for every definition, so walked once. */
+function mayReachFrom(sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined, reach: Reach): (definition: NodeId) => boolean {
 	if(cfg === undefined || sites === undefined) {
 		return () => true;
 	}
-	let reaching: ReadonlySet<NodeId> | undefined;
-	return definition => (reaching ??= reachableTo(cfg, sites)).has(definition);
+	return definition => (reach.before ??= reachableTo(cfg, sites)).has(definition);
 }
 
 /**
  * The names the frames we know do not bind: a capture forced inside a closure may see bindings the caller made
  * after the closure was written, so every reachable definition of the name stays a candidate.
  */
-function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierReference[], bindings: ReadonlyMap<string, NodeId[]>, sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined): void {
-	const mayReach = mayReachFrom(sites, cfg);
+function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierReference[], bindings: ReadonlyMap<string, NodeId[]>, sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined, reach: Reach): void {
+	const mayReach = mayReachFrom(sites, cfg, reach);
 	for(const reference of open) {
 		if(reference.name === undefined) {
 			continue;
@@ -323,17 +374,18 @@ function* forcedParameters(graph: DataflowGraph, id: NodeId): Generator<readonly
 }
 
 /** Links a capture handed to an evaluating call, in that call's scope. */
-function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<Info & ParentInformation>, names: ReturnType<typeof Deferred.indexOf>, bindings: ReadonlyMap<string, NodeId[]>, cfg: ControlFlowGraph | undefined): void {
+function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<Info & ParentInformation>, names: ReturnType<typeof Deferred.indexOf>, bindings: ReadonlyMap<string, NodeId[]>, cfg: ControlFlowGraph | undefined, reachOf: (sites: readonly NodeId[]) => Reach, enclosing: ReadonlyMap<NodeId, readonly NodeId[]>): void {
 	const id = call.id;
 	const own = EvaluatingElsewhereCalls.has(Identifier.getName(call.name));
 	const sources = own ? capturedArgumentsOf(graph, id, true).map(expr => ({ expr, at: id })) : sourcesHandedTo(graph, call, idMap);
 	const environment = call.environment;
 	/* a frame of its own says nothing about the bindings here, so every one of them stays possible */
 	const elsewhere = own || environment === undefined || evaluatesElsewhere(idMap.get(id));
-	const sites = sources.length > 0 ? evaluationSites(graph, id) : undefined;
+	const sites = sources.length > 0 ? evaluationSites(graph, id, enclosing) : undefined;
+	const reach = sites === undefined ? {} : reachOf(sites);
 	for(const { expr, at } of sources) {
 		if(elsewhere) {
-			const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id };
+			const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id, reach };
 			Deferred.link(graph, expr, { definitions: bindings, uses: names.uses }, idMap, forces);
 			Deferred.publish(graph, expr, names, idMap, id, undefined);
 		} else {
@@ -341,10 +393,12 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 			/* R falls through to the enclosing scope for names the evaluating frame does not bind */
 			const enclosing = open.length > 0 ? graph.getVertex(at)?.environment : undefined;
 			const unbound = enclosing === undefined ? open : linkInputs(open, enclosing, [], graph, false);
-			linkAgainstAnyBinding(graph, unbound, bindings, sites, cfg);
+			linkAgainstAnyBinding(graph, unbound, bindings, sites, cfg, reach);
 			Deferred.publish(graph, expr, names, idMap, id, cfg);
 		}
 		graph.addEdge(id, expr, EdgeType.Returns);
+		/* the captured code only runs because this call evaluates it */
+		graph.addEdge(expr, id, EdgeType.Reads);
 		if(!elsewhere) {
 			/* the capture said "not evaluated here", and being handed to `eval` settles that it is */
 			Nse.unmark(graph, at);
@@ -352,6 +406,44 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 	}
 	if(sources.length > 0 && !elsewhere) {
 		forgetUnknownSideEffect(graph, id);
+	}
+	if(sources.length > 0 && environment !== undefined && !sources.some(({ expr }) => mayConfigure(graph, expr, environment))) {
+		forgetStateWrites(graph, id);
+	}
+}
+
+/** Whether evaluating `expr` may change the options or graphics state: a call states {@link CallProp.Configures} or is opaque. */
+function mayConfigure(graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation): boolean {
+	const seen = new Set<NodeId>();
+	const todo = [expr];
+	while(todo.length > 0) {
+		const id = todo.pop() as NodeId;
+		if(seen.has(id) || NodeId.isBuiltIn(id)) {
+			continue;
+		}
+		seen.add(id);
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.isFunctionCall(vertex)) {
+			const builtIn = Array.isArray(vertex.origin) && vertex.origin.every(o => String(o).startsWith('builtin:') && o !== BuiltInProcName.Function && o !== BuiltInProcName.Eval);
+			if(!builtIn || ((callFnProps(id, { graph, environment })?.props ?? 0) & CallProp.Configures) !== 0) {
+				return true;
+			}
+		}
+		for(const [target, edge] of graph.edgesFrom(id)) {
+			if(DfEdge.includesType(edge, EdgeType.Argument | EdgeType.Returns) || (DfgVertex.isUse(vertex) && DfEdge.includesType(edge, EdgeType.Reads))) {
+				todo.push(target);
+			}
+		}
+	}
+	return false;
+}
+
+/** An evaluation is assumed to write the options and graphics state until we know what it evaluates (see `evaluatesCapturedCode`). */
+function forgetStateWrites(graph: DataflowGraph, id: NodeId): void {
+	for(const [from, edge] of graph.edgesTo(id)) {
+		if(DfEdge.isOnlyType(edge, EdgeType.Reads) && DfgVertex.isFunctionCall(graph.getVertex(from))) {
+			graph.removeEdgeType(from, id, EdgeType.Reads);
+		}
 	}
 }
 

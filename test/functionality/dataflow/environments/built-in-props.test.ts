@@ -53,7 +53,7 @@ const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
 	[Identifier.from(['stop', PkgName.Base]), { props: CallProp.Throws | CallProp.Primitive }],
 	[Identifier.from(['rm', PkgName.Base]), { props: CallProp.Invisible | CallProp.Scope | CallProp.Primitive }],
 	[Identifier.from(['set.seed', PkgName.Base]), { props: CallProp.Invisible | CallProp.Configures | CallProp.Primitive, tags: [SemanticCallTag.Random] }],
-	[Identifier.from(['png', PkgName.GrDevices]), { props: CallProp.Invisible,
+	[Identifier.from(['png', PkgName.GrDevices]), { props: CallProp.Invisible | CallProp.Configures,
 		tags:  [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes] }]
 ];
 

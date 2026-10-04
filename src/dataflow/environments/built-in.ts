@@ -34,6 +34,7 @@ import { processRm } from '../internal/process/functions/call/built-in/built-in-
 import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 import { VertexType } from '../graph/vertex';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
+import { type AmbientScope, type AmbientStateAccess, applyAmbientStateAccess, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
@@ -118,6 +119,10 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	 */
 	readonly keepArgumentOut?:       boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
+	/** how the call reads or writes global state like the graphics parameters or the options, see {@link AmbientStateAccess} */
+	readonly ambient?:               AmbientStateAccess,
+	/** the call changes that state for a scope only, see {@link AmbientScope} */
+	readonly scope?:                 AmbientScope,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
 	/** Mark the given arguments as {@link EdgeType.NonStandardEvaluation|non-standard-evaluated}, like `quote`. */
@@ -173,8 +178,11 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
+	if(scope !== undefined) {
+		return processAmbientScope(name, args, rootId, data, scope);
+	}
 	/* a signature states per argument what the individual options state for all of them at once */
 	const layout = sig !== undefined ? FunctionSemantics.call.signature.layout(sig) : undefined;
 	if(layout !== undefined) {
@@ -268,7 +276,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		(res as unknown as { exitPoints: ExitPoint[] }).exitPoints = exitPoints;
 	}
 
-	return res;
+	return ambient === undefined ? res : applyAmbientStateAccess(res, args, rootId, data, ambient);
 }
 
 /** The argument positions {@link markArgumentsAsNonStandardEvaluation} would mark as quoted. */
@@ -315,7 +323,7 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, markArgsAsNSE: nse, markArgsAsMasked: masked, sig }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig'>
+	{ useAsProcessor = BuiltInProcName.Default, markArgsAsNSE: nse, markArgsAsMasked: masked, sig, ambient }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig' | 'ambient'>
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, sig, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig) });
@@ -327,7 +335,7 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	}
 	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, nse);
 	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, masked, { kind: NseKind.DataMasked });
-	return information;
+	return ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, ambient);
 }
 
 export const BuiltInProcessorMapper = {

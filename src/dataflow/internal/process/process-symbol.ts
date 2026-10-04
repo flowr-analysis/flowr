@@ -1,3 +1,4 @@
+import { Identifier, ReferenceType } from '../../environments/identifier';
 import { type DataflowInformation, ExitPointType } from '../../info';
 import type { DataflowProcessorInformation } from '../../processor';
 import { processValue } from './process-value';
@@ -6,8 +7,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RNa, RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
-import { ReferenceType } from '../../environments/identifier';
-
+import { readsOfOptionsVariable } from './functions/call/built-in/built-in-ambient-state';
 
 /**
  * Process a symbol node in the AST for dataflow analysis.
@@ -21,11 +21,13 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	const sid = symbol.info.id;
 
 	return {
-		unknownReferences: [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }],
-		in:                [],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
+		unknownReferences: Identifier.getName(symbol.content) === '.Options'
+			? [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }, ...readsOfOptionsVariable(symbol, data as DataflowProcessorInformation<OtherInfo & ParentInformation>)]
+			: [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }],
+		in:          [],
+		out:         [],
+		environment: data.environment,
+		graph:       new DataflowGraph(data.completeAst.idMap).addVertex({
 			tag: VertexType.Use,
 			id:  sid,
 			cds: data.cds

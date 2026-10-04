@@ -26,6 +26,7 @@ import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
 
 
 /**
@@ -101,6 +102,7 @@ export function processForLoop<OtherInfo>(
 	const outgoing = variable.out.concat(writtenVariable, body.out);
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
+	linkAmbientStateWithinLoop(nextGraph, bodyRefs, body);
 
 	/* the loop variable is bound by the head whenever the body runs, so reads of it are not ingoing */
 	const loopVariables = new Set(writtenVariable.map(w => w.name));

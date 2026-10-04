@@ -25,6 +25,7 @@ import { pipedCall, resolveConstantString, routeWrittenToStackEnv } from './buil
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { evaluatesCapturedCode } from './built-in-ambient-state';
 
 const SymbolConstructors: ReadonlySet<string> = new Set(['as.name', 'as.symbol']);
 const SyntacticName = /^[.a-zA-Z][.a-zA-Z0-9_]*$/;
@@ -114,7 +115,8 @@ export function processEvalCall<OtherInfo>(
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
 	handleUnknownSideEffect(information.graph, information.environment, rootId);
-	return information;
+	/* a captured expression is linked once the graph is complete, but the state its calls access has to show now */
+	return evaluatesCapturedCode(information, rootId, data);
 }
 
 

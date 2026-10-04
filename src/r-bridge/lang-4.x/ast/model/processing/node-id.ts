@@ -3,7 +3,6 @@ import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { DfgVertex } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
-import { RNode } from '../model';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
 import { compareByCodeUnit } from '../../../../../util/text/strings';
 

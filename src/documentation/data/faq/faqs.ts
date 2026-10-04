@@ -83,7 +83,7 @@ To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 		.addFaq('Where do I find *all the helper objects*?', `
 flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
 thing it is about (${ctx.link({ name: 'SourceLocation' }, undefined, { type: 'variable' })},
-${ctx.link({ name: 'Vertex' }, undefined, { type: 'variable' })},
+${ctx.link({ name: 'DfgVertex' }, undefined, { type: 'variable' })},
 ${ctx.link({ name: 'Identifier' }, undefined, { type: 'variable' })}, ...).
 The ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} wiki page lists every one of them, grouped by what
 it is about, so you can find the one that answers your question without knowing where it lives.
@@ -125,12 +125,12 @@ sections in the output of \`sessionInfo()\`.
 		.addFaq('How to get *documentation* for a function or package?', `
 There are a couple of ways to get documentation for a function or package.
 
-🖥️ Firstly, if you have already installed the package the function originated from you can simply run \`?<package name>::<function name>\` in an R session to print the
+🖥️ Firstly, if you have already installed the package the function originated from you can run \`?<package name>::<function name>\` in an R session to print the
 relevant documentation. If you don't know the origin of the package, you can use
 \`??<function name>\` in an R shell to fuzzy find all documentations containing
 \`<function name>\` or something similar.
 
-🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
+🌐 Secondly, if you don't have or don't want to install the package you can google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
 `)

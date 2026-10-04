@@ -124,7 +124,6 @@ export class BenchmarkSlicer {
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
-	private callGraph:           CallGraph | undefined;
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
@@ -366,7 +365,7 @@ export class BenchmarkSlicer {
 		const g = this.dataflow?.graph;
 		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
 
-		this.callGraph = this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
+		this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
 	}
 
 	/**

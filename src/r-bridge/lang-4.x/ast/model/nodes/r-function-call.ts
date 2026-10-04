@@ -1,5 +1,4 @@
 import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { FunctionSemantics } from '../../../../../dataflow/fn/function-semantics';
 import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';

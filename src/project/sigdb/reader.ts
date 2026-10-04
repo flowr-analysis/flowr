@@ -27,10 +27,7 @@ function dictLineRun(json: string): { start: number, names: string } {
 /** apply one `d` line to a plain array, for the whole-file form {@link readSigDbFile} reads */
 function applyDictLine(json: string, strings: string[]): void {
 	const { start, names } = dictLineRun(json);
-	const batch = names.split('\n');
-	for(let k = 0; k < batch.length; k++) {
-		strings[start + k] = batch[k];
-	}
+	names.split('\n').forEach((name, k) => strings[start + k] = name);
 }
 
 /**
@@ -457,11 +454,6 @@ function keepBlob(db: SigDatabase, blobIdx: number, bytes: number): CachedBlob {
 	return entry;
 }
 
-/** Mark `entry` read, so the hand passes over it once before dropping it. */
-function touchBlob(entry: CachedBlob): void {
-	entry.used = true;
-}
-
 /** give back what `db` held, so a closed bundle stops spending the budget of the open ones */
 function releaseBlobs(db: SigDatabase): void {
 	for(let i = cachedBlobs.length - 1; i >= 0; i--) {
@@ -555,12 +547,13 @@ export class SigDatabase implements PackageSignatureSource {
 	 * is compressed. Pass `strings` for a blob-only shard that shares an already-loaded dictionary.
 	 */
 	public static openSyncFrom(source: string, opts: OpenSyncFromOptions): SigDatabase {
-		const plain = isCompressed(source)
-			? (opts.hash !== undefined ? ensurePlainSync(source, { cacheDir: opts.cacheDir, hash: opts.hash, index: opts.index })
-				: (() => {
-					throw new Error('openSyncFrom needs a hash to key the cache for a compressed source');
-				})())
-			: source;
+		let plain = source;
+		if(isCompressed(source)) {
+			if(opts.hash === undefined) {
+				throw new Error('openSyncFrom needs a hash to key the cache for a compressed source');
+			}
+			plain = ensurePlainSync(source, { cacheDir: opts.cacheDir, hash: opts.hash, index: opts.index });
+		}
 		return SigDatabase.openSync(plain, { index: opts.index, strings: opts.strings });
 	}
 
@@ -581,12 +574,12 @@ export class SigDatabase implements PackageSignatureSource {
 		const cached = this.blobCache.get(blobIdx);
 		if(cached !== undefined) {
 			if(cached.entry !== undefined) {
-				touchBlob(cached.entry);
+				cached.entry.used = true;
 			}
 			return cached.blob;
 		}
 		if(this.fd === NoFile) {
-			return undefined;   // an in-memory database starts out with every blob cached
+			return undefined;
 		}
 		const range = this.index.blobs[blobIdx];
 		const blob = this.readBlobAt(range);
@@ -725,16 +718,7 @@ export class SigDatabase implements PackageSignatureSource {
 	 */
 	private exportsNameId(pkg: string, id: number): boolean {
 		const r = this.versionFns(pkg);
-		if(r === undefined) {
-			return false;
-		}
-		for(const i of r.fns.idxs) {
-			const fn = r.blob.fns[i];
-			if(fn[0] === id && (fn[3] & FnProp.Exported) !== 0) {
-				return true;
-			}
-		}
-		return false;
+		return r?.fns.idxs.some(i => r.blob.fns[i][0] === id && (r.blob.fns[i][3] & FnProp.Exported) !== 0) ?? false;
 	}
 
 	public classOwner(className: string, version?: string): string | undefined {
@@ -1024,10 +1008,8 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		}
 		const ref = this.manifest.shards[i];
 		const strings = ref.dict ? this.dictionaryStrings(ref.dict) : undefined;
-		const db = SigDatabase.openSyncFrom(resolveSource(this.baseDir, ref.path),
+		return this.opened[i] = SigDatabase.openSyncFrom(resolveSource(this.baseDir, ref.path),
 			{ cacheDir: this.cacheDir, hash: ref.hash, index: this.indices[i], strings });
-		this.opened[i] = db;
-		return db;
 	}
 
 	/**
@@ -1035,17 +1017,8 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	 * Afterward, the synchronous query methods, for the latest *and* historical versions, do no I/O or decompression.
 	 */
 	public async preload(pkgs?: readonly string[]): Promise<void> {
-		const need = new Set<number>();
-		if(pkgs) {
-			for(const p of pkgs) {
-				for(const i of this.routes.get(p) ?? []) {
-					need.add(i);
-				}
-			}
-		} else {
-			this.manifest.shards.forEach((_, i) => need.add(i));
-		}
-		await this.warmShards(need);
+		const need = pkgs ? pkgs.flatMap(p => this.routes.get(p) ?? []) : this.manifest.shards.map((_, i) => i);
+		await this.warmShards(new Set(need));
 	}
 
 	/**
@@ -1053,13 +1026,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	 * packages) to speed up common lookups without paying for the long tail or the history shards. See {@link preload}.
 	 */
 	public async preloadShards(include: (shard: SigDbShardRef) => boolean): Promise<void> {
-		const need = new Set<number>();
-		this.manifest.shards.forEach((s, i) => {
-			if(include(s)) {
-				need.add(i);
-			}
-		});
-		await this.warmShards(need);
+		await this.warmShards(new Set(this.manifest.shards.flatMap((s, i) => include(s) ? [i] : [])));
 	}
 
 	/** decompress the given shards + their shared dictionaries concurrently, then open them (see {@link preload}) */
@@ -1091,7 +1058,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	/** read (once) the blob from the shard with the most complete history: a `full` or `history` tier if present */
 	private historyBlob(pkg: string): PkgBlob | undefined {
 		const candidates = this.routes.get(pkg);
-		if(!candidates || candidates.length === 0) {
+		if(!candidates?.length) {
 			return undefined;
 		}
 		const full = candidates.find(i => this.manifest.shards[i].tier === 'full' || this.manifest.shards[i].tier === 'history');
@@ -1194,10 +1161,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	/** whether this is an R-core / base package (see {@link SigDatabase.isBaseR}); O(1) via the hoisted metadata */
 	public isBaseR(pkg: string): boolean {
 		const meta = this.manifest.meta?.[pkg];
-		if(meta) {
-			return meta[3] === 1;
-		}
-		return this.route(pkg).some(i => this.shard(i).isBaseR(pkg));
+		return meta ? meta[3] === 1 : this.route(pkg).some(i => this.shard(i).isBaseR(pkg));
 	}
 
 	/** the download count of the package; O(1) via the hoisted metadata, so no shard has to be unpacked for it */
@@ -1224,8 +1188,8 @@ export class SigDatabaseSet implements PackageSignatureSource {
 			return undefined;
 		}
 		const ver = version ?? newestVersion(blob, this.manifest.meta?.[pkg]?.[0] ?? '');
-		const day = ver !== undefined ? blob.dates[ver] : undefined;
-		return day !== undefined ? new Date(dayToMillis(day)) : undefined;
+		const day = ver === undefined ? undefined : blob.dates[ver];
+		return day === undefined ? undefined : new Date(dayToMillis(day));
 	}
 
 	public latestVersion(pkg: string): RVersion | undefined {
@@ -1261,11 +1225,8 @@ function isSyncOpenable(source: string): boolean {
  */
 export function getSharedSigSourceSync(source: string): PackageSignatureSource | undefined {
 	const cached = sharedSources.get(source);
-	if(cached) {
+	if(cached || !isSyncOpenable(source)) {
 		return cached;
-	}
-	if(!isSyncOpenable(source)) {
-		return undefined;
 	}
 	const opened = source.endsWith(SigDbExt) ? SigDatabase.openSync(source) : SigDatabaseSet.openManifestSync(source);
 	sharedSources.set(source, opened);
@@ -1350,7 +1311,8 @@ export async function verifyShardedDatabase(
 
 	// 2. every shard's content hash, recomputed from its re-read blobs, matches the manifest and the file header
 	const shardResults: ShardVerifyResult[] = [];
-	for(const { ref, db } of set.allShards()) {
+	const mounted = set.allShards();
+	for(const { ref, db } of mounted) {
 		const blobs = db.allBlobs();
 		// shared-dictionary shards are hashed over blobs+pkgs only; self-contained shards over their whole content
 		const actual = ref.dict ? shardHash(blobs, db.index.pkgs) : db.contentHash(blobs);
@@ -1368,7 +1330,7 @@ export async function verifyShardedDatabase(
 
 	// 3. routing covers every package that any shard holds
 	const routed = new Set(set.packageNames());
-	for(const { ref, db } of set.allShards()) {
+	for(const { ref, db } of mounted) {
 		for(const pkg of Object.keys(db.index.pkgs)) {
 			if(!routed.has(pkg)) {
 				errors.push(`package '${pkg}' in shard '${ref.id}' is not routed by the manifest`);

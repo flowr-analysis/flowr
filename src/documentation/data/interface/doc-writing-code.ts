@@ -19,7 +19,6 @@ async function staticSliceExample() {
 			criteria: ['3@x']
 		}
 	]);
-	//console.log(result['static-slice']);
 	return result;
 }
 
@@ -94,7 +93,7 @@ make sure to call ${codeInline(ctx.linkM(RShell, 'close', { codeFont: false, rea
 	})
 }
 
-You can start a new "session" simply by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.
+You can start a new "session" by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.
 
 However, there are several options that may be of interest 
 (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).

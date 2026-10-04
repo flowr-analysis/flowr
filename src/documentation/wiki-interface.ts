@@ -30,7 +30,7 @@ async function explainServer(parser: KnownParser, ctx: GeneralDocContext): Promi
 	documentAllServerMessages(ctx);
 
 	return `
-As explained in the ${ctx.linkPage('wiki/Overview', 'Overview')}, you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
+As explained in the ${ctx.linkPage('wiki/Overview', 'Overview')}, you can run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
 Currently, every connection is handled by the same underlying \`${RShell.name}\` - so the server is not designed to handle many clients at a time.
 Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary number of&nbsp;${RShell.name} sessions on the target machine).
 
@@ -110,7 +110,7 @@ async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise
 > Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')} .
 
 Although primarily meant for users to explore,
-there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error
+there is nothing which forbids calling _flowR_ as a subprocess to use standard-in, -output, and -error
 for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 

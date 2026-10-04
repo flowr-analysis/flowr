@@ -78,29 +78,6 @@ function checkEntryReachesAll(cfg: ControlFlowInformation): boolean {
 	return checkReachFrom('entry', cfg, cfg.entryPoints, visitCfgInOrder);
 }
 
-function _checkFdIOCount(cfg: ControlFlowInformation, dir: 'in' | 'out', type: 'at-most' | 'exact', limit: number) {
-	const counts = new Map<NodeId, number>();
-	for(const [from, targets] of cfg.graph.edges()) {
-		for(const [to, edge] of targets) {
-			const important = dir === 'in' ? to : from;
-			if(CfgEdge.isFlowDependency(edge)) {
-				counts.set(important, (counts.get(important) ?? 0) + 1);
-			}
-		}
-	}
-	const check = type === 'exact' ? (a: number) => a === limit : (a: number) => a <= limit;
-	for(const [node, count] of counts) {
-		if(type === 'exact' && (cfg.entryPoints.includes(node) || cfg.exitPoints.includes(node) || !cfg.graph.rootIds().has(node))) {
-			continue; // skip entry and exit points, they do not have to satisfy this
-		}
-		if(!check(count)) {
-			log.error(`Node ${node} has ${count} ${dir} edges, expected ${type} ${limit}`);
-			return false;
-		}
-	}
-	return true;
-}
-
 function checkNoDirectCycles(cfg: ControlFlowInformation, type: CfgEdgeType): boolean {
 	for(const [from, targets] of cfg.graph.edges()) {
 		for(const [to, edge] of targets) {

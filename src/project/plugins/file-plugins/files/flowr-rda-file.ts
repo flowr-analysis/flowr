@@ -134,6 +134,9 @@ function isBareSerializationStream(buf: Buffer): boolean {
 	return buf.length >= 2 && buf[1] === 0x0a && BareStreamFormats.has(String.fromCodePoint(buf[0]));
 }
 
+/** The control characters an ASCII-format string spells with a backslash escape; any other escaped character stands for itself. */
+const AsciiEscapes: Readonly<Record<string, string>> = { n: '\n', t: '\t', v: '\v', b: '\b', r: '\r', f: '\f', a: '\x07' };
+
 /** The variants {@link RDAParser.deserialize} handles. */
 const SupportedSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
 	SerializationTypeTag.MagicAsciiV2, SerializationTypeTag.MagicBinaryV2, SerializationTypeTag.MagicXdrV2,
@@ -472,7 +475,7 @@ export class RDAParser {
 				if(neLen > RDAParser.R_CODE_SET_MAX || neLen < 0)  {
 					throw new Error('invalid length of encoding name');
 				}
-				const _nativeEncoding = this.inString(neLen);
+				this.inString(neLen);
 				break;
 			}
 			default:
@@ -616,17 +619,9 @@ export class RDAParser {
 					if(c === '\\') {
 						c = String.fromCodePoint(this.buffer[this.offset++]);
 						switch(c) {
-							case 'n': result.push('\n'); break;
-							case 't': result.push('\t'); break;
-							case 'v': result.push('\v'); break;
-							case 'b': result.push('\b'); break;
-							case 'r': result.push('\r'); break;
-							case 'f': result.push('\f'); break;
-							case 'a': result.push('\x07'); break; // \a
-							case '\\': result.push('\\'); break;
-							case '?': result.push('?'); break;
-							case '\'': result.push('\''); break;
-							case '"': result.push('"'); break;
+							case 'n': case 't': case 'v': case 'b': case 'r': case 'f': case 'a':
+								result.push(AsciiEscapes[c]);
+								break;
 							case '0': case '1': case '2': case '3':
 							case '4': case '5': case '6': case '7': {
 								let d = 0;
@@ -696,12 +691,7 @@ export class RDAParser {
 		const shell = new RShellExecutor();
 		const result = shell.run(code);
 		shell.close();
-
-		const val: RObjectData = { type: SexpType.EnvSxp };
-		if(result === '<environment: R_GlobalEnv>') {
-			val.value = RValues.GlobalEnv;
-		}
-		return val;
+		return result === '<environment: R_GlobalEnv>' ? { type: SexpType.EnvSxp, value: RValues.GlobalEnv } : { type: SexpType.EnvSxp };
 	}
 
 	/**
@@ -709,8 +699,7 @@ export class RDAParser {
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3795-L3804 | R source: R_FindNamespace}
 	 */
 	R_FindNamespace(info: RObjectData): RObjectData {
-		const namespaceName = (info.value as RObjectData).name as string;
-		return this.runNamespaceLookup(`getNamespace("${namespaceName}")`);
+		return this.runNamespaceLookup(`getNamespace("${(info.value as RObjectData).name as string}")`);
 	}
 
 	/**
@@ -718,9 +707,7 @@ export class RDAParser {
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1785-L1796 | R source: R_FindNamespace1}
 	 */
 	R_FindNamespace1(info: RObjectData): RObjectData {
-		const where = this.lastName;
-		const code = `..getNamespace("${(info.value as RObjectData[])[0].name as string}", "${where as string}")`;
-		return this.runNamespaceLookup(code);
+		return this.runNamespaceLookup(`..getNamespace("${(info.value as RObjectData[])[0].name as string}", "${this.lastName as string}")`);
 	}
 
 	/**
@@ -990,7 +977,7 @@ export class RDAParser {
 			s.attributes = hasAttribute ? [skip ? this.skipItem() : this.assertRObjectData(this.readItem())] as RObjectData[] : undefined;
 			this.currentDepth--;
 		}
-		if(!skip && s.type === SexpType.BcodesSxp && !this.R_BCVersionOK(s)) {
+		if(!skip && s.type === SexpType.BcodesSxp) {
 			return this.R_BytecodeExpr(s) as RObjectData;
 		}
 		return s;
@@ -1681,27 +1668,12 @@ export class RDAParser {
 		}
 	}
 
-	/** Whether a {@link SexpType.BcodesSxp}'s version is within the supported range. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L7166-L7175 | R source: R_BCVersionOK} */
-	R_BCVersionOK(s: RObjectData): boolean {
-		if(s.type !== SexpType.BcodesSxp) {
-			return false;
-		}
-		// const version = s.code;
-		const version = 0;
-		return version >= 9 && version <= 12;
-	}
-
 	/** Source-language expression for an unsupported bytecode object: its first constant pool entry, or {@link RValues.NilValue}. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L5566-L5574 | R source: bytecodeExpr} */
 	R_BytecodeExpr(s: RObjectData): RObject {
-		if(s.type === SexpType.BcodesSxp) {
-			if(((s.cdr as RObjectData).value as RObject[])?.length > 0) {
-				return this.VECTOR_ELT(s.cdr as RObjectData, 0);
-			} else {
-				return RValues.NilValue;
-			}
-		} else {
+		if(s.type !== SexpType.BcodesSxp) {
 			return s;
 		}
+		return ((s.cdr as RObjectData).value as RObject[])?.length > 0 ? this.VECTOR_ELT(s.cdr as RObjectData, 0) : RValues.NilValue;
 	}
 
 	/**

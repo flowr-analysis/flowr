@@ -200,7 +200,6 @@ describe('Range', () => {
 			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 1, 1, 2), false);
 			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 2, 1, 1), true);
 			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 1, 2, 1), false);
-			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 1, 1, 2), false);
 			assertStarts(SourceRange.from(1, 1, 2, 1), SourceRange.from(4, 2, 9, 3), true);
 		});
 		describe('smaller right', () => {
@@ -208,7 +207,6 @@ describe('Range', () => {
 			assertStarts(SourceRange.from(1, 1, 1, 2), SourceRange.from(1, 1, 1, 1), false);
 			assertStarts(SourceRange.from(1, 2, 1, 1), SourceRange.from(1, 1, 1, 1), false);
 			assertStarts(SourceRange.from(1, 1, 2, 1), SourceRange.from(1, 1, 1, 1), false);
-			assertStarts(SourceRange.from(1, 1, 1, 2), SourceRange.from(1, 1, 1, 1), false);
 			assertStarts(SourceRange.from(4, 2, 9, 3), SourceRange.from(1, 1, 2, 1), false);
 		});
 	});

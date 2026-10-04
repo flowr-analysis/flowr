@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and the
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L177"><code><span title="Run a search on the current analysis.">runSearch</span></code></a> function.
+Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L180"><code><span title="Run a search on the current analysis.">runSearch</span></code></a> function.
 
 For an initial motivation, let's have a look at the following example:
 
@@ -63,17 +63,17 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#42;**
       *1.6-10* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:_["`Built-In:
+    built-in:_42_["`Built-In:
 #42;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_42_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-10* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 2
     linkStyle 0 stroke:gray,color:gray;
     2 -.->|"flow"| 3
@@ -82,13 +82,13 @@ flowchart LR
     3 -->|"reads, arg"| 2
     3 -.->|"flow"| 0
     linkStyle 4 stroke:gray,color:gray;
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_42_
     linkStyle 5 stroke:gray;
     0 -->|"defined-by, flow"| 4
     0 -->|"defined-by"| 3
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 10 stroke:gray;
 ```
 
@@ -176,17 +176,17 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#42;**
       *1.6-10* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:_["`Built-In:
+    built-in:_42_["`Built-In:
 #42;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_42_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-10* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 6**)`"])
     8[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -227,13 +227,13 @@ print`"]
     3 -->|"reads, arg"| 2
     3 -.->|"flow"| 0
     linkStyle 4 stroke:gray,color:gray;
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_42_
     linkStyle 5 stroke:gray;
     0 -->|"defined-by, flow"| 4
     0 -->|"defined-by"| 3
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 10 stroke:gray;
     4 -.->|"flow"| 6
     linkStyle 11 stroke:gray,color:gray;
@@ -253,13 +253,13 @@ print`"]
     12 -->|"returns, arg"| 10
     12 -.->|"flow"| 9
     linkStyle 22 stroke:gray,color:gray;
-    12 -.->|"reads, calls"| built-in:_-
+    12 -.->|"reads, calls"| built-in:_60_-
     linkStyle 23 stroke:gray;
     9 -->|"defined-by, flow"| 13
     9 -->|"defined-by"| 12
     13 -->|"reads, arg"| 12
     13 -->|"returns, arg"| 9
-    13 -.->|"reads, calls"| built-in:_-
+    13 -.->|"reads, calls"| built-in:_60_-
     linkStyle 28 stroke:gray;
     13 -.->|"flow"| 15
     linkStyle 29 stroke:gray,color:gray;
@@ -277,7 +277,7 @@ print`"]
     18 -->|"defined-by"| 19
     20 -->|"reads, arg"| 19
     20 -->|"returns, arg"| 18
-    20 -.->|"reads, calls"| built-in:_-
+    20 -.->|"reads, calls"| built-in:_60_-
     linkStyle 40 stroke:gray;
 ```
 
@@ -416,4 +416,4 @@ Every search (and consequently the search pipeline) works with an array of <a hr
 Hence, even operations such as `.first` or `.last` return an array of elements (albeit with a single or no element).
 The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
 In addition, it offers optimizer passes to optimize the search pipeline before execution.
-They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L177"><code><span title="Run a search on the current analysis.">runSearch</span></code></a>.
+They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L180"><code><span title="Run a search on the current analysis.">runSearch</span></code></a>.

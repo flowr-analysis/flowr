@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
-import { sigTmpDir, cleanupSigTmpDirs, sigdbAnalyzer, expFn, ver, hasBuiltInVertex as hasBuiltIn } from '../../../_helper/sigdb';
+import { sigTmpDir, cleanupSigTmpDirs, sigdbAnalyzer, expFn, ver, fakeSigDb, hasBuiltInVertex as hasBuiltIn } from '../../../_helper/sigdb';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { DefaultAssumedRVersion, FlowrConfig, VersionSelection } from '../../../../../src/config';
@@ -348,10 +348,7 @@ describe('sigdb source mounting: preload survives re-registration', withTreeSitt
 describe('sigdb system: the assumed R version gates which base packages are attached', withTreeSitter(ts => {
 	/** a db whose base package `parallel` mirrors reality: it only became R-core in R 2.14.0 (per the base-package store) */
 	function dbWithParallel(): SigDatabase {
-		const b = new SigDbBuilder();
-		b.addPackage('parallel', { latest: '4.5.0', core: true });
-		b.addVersion('parallel', '4.5.0', ver([expFn('mclapply')]));
-		return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
+		return fakeSigDb({ parallel: [expFn('mclapply')] });
 	}
 
 	function linkBaseAt(rVersion: string): FlowrConfig {
@@ -572,16 +569,7 @@ describe('auto-attach the project\'s declared DESCRIPTION dependencies (solver.s
 describe('R attaches its startup packages below whatever the code attaches', withTreeSitter(ts => {
 	/** `stats` and `base` (both attached on startup) share the export `mask` with two plain CRAN packages */
 	function maskDb(): SigDatabase {
-		const b = new SigDbBuilder();
-		b.addPackage('base', { latest: '4.5.0', core: true });
-		b.addVersion('base', '4.5.0', ver([expFn('mask')]));
-		b.addPackage('stats', { latest: '4.5.0', core: true });
-		b.addVersion('stats', '4.5.0', ver([expFn('mask')]));
-		b.addPackage('maskpkg', { latest: '1.0.0', downloads: 5 });
-		b.addVersion('maskpkg', '1.0.0', ver([expFn('mask')]));
-		b.addPackage('otherpkg', { latest: '1.0.0', downloads: 5 });
-		b.addVersion('otherpkg', '1.0.0', ver([expFn('mask')]));
-		return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
+		return fakeSigDb({ base: [expFn('mask')], stats: [expFn('mask')], maskpkg: [expFn('mask')], otherpkg: [expFn('mask')] });
 	}
 
 	/* title, code, and the qualified name `mask()` must resolve to (undefined if it must stay unresolved) */
@@ -602,5 +590,15 @@ describe('R attaches its startup packages below whatever the code attaches', wit
 		[label(title, ['library-loading', 'search-path'], ['dataflow']), code, expected] as const
 	))('%s', async(_title, code, expected) => {
 		expect(qualifiedName(await analyze(ts, code, maskDb()), 'mask')).toBe(expected);
+	});
+}));
+
+describe('S3 dispatch through a generic only the signature database knows', withTreeSitter(ts => {
+	/* `toString` dispatches like `length` does, but flowR knows it is generic only from the database (checked against R) */
+	test(label('the method of the generic stays in the slice', ['oop-s3-dispatch'], ['slice']), async() => {
+		const analyzer = await sigdbAnalyzer(ts, fakeSigDb({ base: [{ ...expFn('toString'), props: FnProp.Exported | FnProp.Generic }] }));
+		analyzer.addRequest('toString.zz <- function(x, ...) "ZZ"\no <- structure(1, class = "zz")\nv <- toString(o)');
+		const sliced = await analyzer.query([{ type: 'static-slice', criteria: ['3@v'] }]);
+		expect((Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code).toContain('toString.zz <- function(x, ...) "ZZ"');
 	});
 }));

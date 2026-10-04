@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -35,7 +35,7 @@ the following query checks whether the call to `f` calls `eval`:
 
 _Results (prettified and summarized):_
 
-Query: **does-call** (8ms)\
+Query: **does-call** (11ms)\
 &nbsp;&nbsp;- **calls-eval** found:\
 &nbsp;&nbsp;&nbsp;&nbsp;- Call with id **15** (2.1)\
 
@@ -68,6 +68,13 @@ We encountered unknown side effects (with ids: 8) during the analysis.
 
 ```mermaid
 flowchart LR
+    %% Environment of 10 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%   #option:*: {**#option:*** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #options:  {**#options** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #graphics: {**#graphics** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #palette:  {**#palette** (id: 8, type: Variable, cds: {}, def. @8)}
     10["`*#91;RFunctionDefinition#93;* **function**
       *1.6-28* (**id: 10**)`"]
 
@@ -91,18 +98,18 @@ eval`"]
     9[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.18* (**id: 9**)
     arg: (8)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 10)`"]
     11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-28* (**id: 11**)
     arg: (0, 10)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     13{{"`*#91;RString#93;* **#34;1 #43; 1#34;**
       *2.3-9* (**id: 13**)`"}}
     %% Environment of 15 [level: 0]:
@@ -123,27 +130,28 @@ end
     linkStyle 5 stroke:gray;
     8 -.->|"flow"| 9
     linkStyle 6 stroke:gray,color:gray;
+    8 -->|"side-effect-on-call"| 15
     9 -->|"returns, arg"| 8
-    9 -.->|"reads, calls"| built-in:_
-    linkStyle 8 stroke:gray;
+    9 -.->|"reads, calls"| built-in:_123_
+    linkStyle 9 stroke:gray;
 10 -.-|function| flow-10
 
     10 -.->|"flow"| 0
-    linkStyle 10 stroke:gray,color:gray;
+    linkStyle 11 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 11
     0 -->|"defined-by"| 10
     11 -->|"reads, arg"| 10
     11 -->|"returns, arg"| 0
-    11 -.->|"reads, calls"| built-in:_-
-    linkStyle 15 stroke:gray;
+    11 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 16 stroke:gray;
     11 -.->|"flow"| 13
-    linkStyle 16 stroke:gray,color:gray;
-    13 -.->|"flow"| 15
     linkStyle 17 stroke:gray,color:gray;
+    13 -.->|"flow"| 15
+    linkStyle 18 stroke:gray,color:gray;
     13 -->|"def-on-call"| 1
     15 -->|"reads, arg"| 13
     15 -->|"reads"| 0
-    15 -->|"returns"| 8
+    15 -->|"returns, def-on-call"| 8
     15 -->|"calls"| 10
 ```
 
@@ -155,6 +163,6 @@ end
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Does-Call Query query is `executeDoesCallQuery` in [`./src/queries/catalog/does-call-query/does-call-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/does-call-query/does-call-query-executor.ts).
+The Does-Call Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/does-call-query/does-call-query-executor.ts#L14"><code><span title="Execute does call queries on the given analyzer.">executeDoesCallQuery</span></code></a>.
 
 </details>

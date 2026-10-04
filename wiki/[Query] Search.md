@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Search Query">Search Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides access to flowR's search API\
@@ -38,7 +38,7 @@ Using the example code `x + 1`, the following query returns all uses of 'x' in t
 
 _Results (prettified and summarized):_
 
-Query: **search** (4 ms)\
+Query: **search** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ [query](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IExSXG4wKFwiPGI+Z2V0PC9iPihmaWx0ZXI6ICMxMjM7IzM0O25hbWUjMzQ7IzU4OyMzNDt4IzM0OyMxMjU7KTxici8+X2dlbmVyYXRvcl9cIikgLS0+IDFbXCI8Yj5maWx0ZXI8L2I+KGZpbHRlcjogIzM0O3VzZSMzNDspPGJyLz5fdHJhbnNmb3JtZXJfXCJdIiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19): {0}\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -87,16 +87,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 2
     linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_
+    2 -.->|"reads, calls"| built-in:_43_
     linkStyle 4 stroke:gray;
 ```
 
@@ -108,6 +108,6 @@ flowchart LR
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Search Query query is `executeSearch` in [`./src/queries/catalog/search-query/search-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/search-query/search-query-executor.ts).
+The Search Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/search-query/search-query-executor.ts#L10"><code><span title="Executes the given search queries using the provided analyzer.">executeSearch</span></code></a>.
 
 </details>

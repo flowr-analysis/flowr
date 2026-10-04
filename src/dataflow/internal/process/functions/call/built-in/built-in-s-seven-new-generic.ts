@@ -25,7 +25,8 @@ import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
-import { argFor, linkS4Declaration, linkS4Generic } from './built-in-s-four';
+import { linkS4Declaration, linkS4Generic } from './built-in-s-four';
+import { argForImpl } from '../../../../../fn/class-declaration';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 
 
@@ -157,7 +158,7 @@ function linkWrappedFunction<OtherInfo>(
 	wrapName: string | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): void {
-	const wrapped = argFor(args, { name: wrapName, idx: wrapIndex });
+	const wrapped = argForImpl(args, { name: wrapName, idx: wrapIndex });
 	if(wrapped === undefined) {
 		return;
 	}

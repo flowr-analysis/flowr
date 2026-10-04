@@ -7,7 +7,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type ClassArgRef, argFor, ClassSystem } from '../../../../../fn/class-declaration';
+import { type ClassArgRef, argForImpl, ClassSystem } from '../../../../../fn/class-declaration';
 import { type Identifier, type IdentifierReference, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -30,14 +30,15 @@ export function s4ClassName(cls: string): Identifier {
 /** Which arguments of a call name S4 registrations it depends on rather than declares. */
 export interface S4UseConfig {
 	/** the argument naming the S4 generic the call answers or asks about (`f` in `setMethod`) */
-	readonly genericArg?:   ClassArgRef;
+	readonly genericArg?:    ClassArgRef;
+	/** appended to the generic named by {@link genericArg} (`setReplaceMethod("f", ...)` answers `f<-`) */
+	readonly genericSuffix?: string;
 	/** the arguments naming S4 classes the call uses (`Class` in `new`, `signature` in `setMethod`) */
-	readonly classArgs?:    readonly ClassArgRef[];
+	readonly classArgs?:     readonly ClassArgRef[];
 	/** the argument naming an S4 class the call adds to without declaring it (`to` in `setAs`): read and registered anew, so a later use depends on this call as well as on the declaration */
-	readonly registersArg?: ClassArgRef;
+	readonly registersArg?:  ClassArgRef;
 }
 
-export { argFor };
 
 /** The names an argument states, looking through the `c(...)`/`signature(...)` wrappers a signature may use. */
 function namesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly string[] {
@@ -77,13 +78,13 @@ function defineOut<O>(info: DataflowInformation, rootId: NodeId, name: Identifie
 /** wires the S4 registrations a call *uses* (the classes and generic its arguments name by string), read against the registry so the call depends on whatever `setClass`/`setGeneric` wrote them */
 export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: NodeId, data: Data<O>, config: S4UseConfig): void {
 	for(const ref of config.classArgs ?? []) {
-		readNames(info, rootId, namesOf(argFor(args, ref), data).map(s4ClassName), ReferenceType.Variable, data);
+		readNames(info, rootId, namesOf(argForImpl(args, ref), data).map(s4ClassName), ReferenceType.Variable, data);
 	}
 	if(config.genericArg !== undefined) {
-		readNames(info, rootId, namesOf(argFor(args, config.genericArg), data), ReferenceType.Function, data);
+		readNames(info, rootId, namesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? '')), ReferenceType.Function, data);
 	}
 	if(config.registersArg !== undefined) {
-		const registered = namesOf(argFor(args, config.registersArg), data);
+		const registered = namesOf(argForImpl(args, config.registersArg), data);
 		readNames(info, rootId, registered.map(s4ClassName), ReferenceType.Variable, data);
 		for(const cls of registered) {
 			defineOut(info, rootId, s4ClassName(cls), ReferenceType.Variable, data);

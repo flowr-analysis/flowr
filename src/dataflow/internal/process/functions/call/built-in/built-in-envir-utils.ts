@@ -7,7 +7,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { unpackArg } from '../argument/unpack-argument';
-import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition, Identifier } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
@@ -151,10 +151,6 @@ export function envirOf<OtherInfo>(routing: EnvirArgRouting<OtherInfo>): EnvirRe
 	return routing === 'ambiguous' ? undefined : routing;
 }
 
-function isAmbiguousEnvirDef(d: InGraphIdentifierDefinition): boolean {
-	return d.type === ReferenceType.Parameter && !hasEnvState(d);
-}
-
 /** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirArgRouting}. */
 export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
@@ -173,8 +169,9 @@ export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 		return undefined;
 	}
 	const defs = Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable);
+	/* an environment we do not track, or a free variable of a function body bound only once the function is called */
 	return resolveDefsToEnvirResolution(defs, node.info.id, data)
-		?? ((defs as readonly InGraphIdentifierDefinition[] | undefined)?.some(isAmbiguousEnvirDef) ? 'ambiguous' : undefined);
+		?? ((defs === undefined && data.environment.level === 0) || !data.ctx.config.solver.trackEnvironments ? undefined : 'ambiguous');
 }
 
 /** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
@@ -327,7 +324,8 @@ function holdersOf(
 	while(env !== undefined && !env.builtInEnv) {
 		for(const defs of env.memory.values()) {
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
-				if(def.envState === envDef.envState && def.name !== undefined && def.nodeId !== envDef.nodeId) {
+				/* a copy (`g <- e`) holds the same environment object, even once one of them saw a write */
+				if((def.envState === envDef.envState || (def.envId !== undefined && def.envId === envDef.envId)) && def.name !== undefined && def.nodeId !== envDef.nodeId) {
 					holders.push(def as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation });
 				}
 			}
@@ -349,16 +347,23 @@ function routeWrittenToCustomEnv(
 	const written = writtenDefinitionsOf(result, definedAt);
 
 	let newEnvState = envDef.envState;
-	const namesToRemove = written.map(w => ({ name: w.name }));
+	/* only a binding the write made here moves into the environment, `local(y <- 2, envir = e)` leaves the caller's `y` alone */
+	const namesToRemove = written.filter(w => result.environment.current.lookup(Identifier.getName(w.name))?.some(d => d.nodeId === w.nodeId)).map(w => ({ name: w.name }));
 	for(const w of written) {
 		newEnvState = define(w, false, newEnvState);
 	}
 
-	let newEnvironment = { current: result.environment.current.removeAll(namesToRemove), level: result.environment.level };
-	for(const holder of holdersOf(result.environment, envDef)) {
-		newEnvironment = define({ ...holder, definedAt: newDefAt, envState: newEnvState }, false, newEnvironment);
+	const stripped = { current: result.environment.current.removeAll(namesToRemove), level: result.environment.level };
+	return { ...result, environment: rebindHolders(stripped, envDef, newEnvState, newDefAt) };
+}
+
+/** Binds every variable holding the environment of `envDef` to its new state, where that variable is bound. */
+export function rebindHolders(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
+	for(const holder of holdersOf(environment, envDef)) {
+		/* a holder bound in an enclosing frame is updated there, so the write escapes the function like a `<<-` */
+		environment = define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
 	}
-	return { ...result, environment: newEnvironment };
+	return environment;
 }
 
 /**

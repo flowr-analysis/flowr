@@ -487,6 +487,25 @@ export class DataflowGraph<
 		return this.rootVertices;
 	}
 
+	/** while tracked (see {@link trackIncomingReads}), how often a read arriving at a vertex was added or removed */
+	private readsInto: Map<NodeId, number> | undefined;
+
+	/** Starts (or stops) counting the reads added to or removed from each vertex, see {@link incomingReadsVersion}. */
+	public trackIncomingReads(on: boolean): void {
+		this.readsInto = on ? new Map() : undefined;
+	}
+
+	/** How often a read arriving at `id` was added or removed since tracking started; an equal number means the reads are unchanged. */
+	public incomingReadsVersion(id: NodeId): number {
+		return this.readsInto?.get(id) ?? 0;
+	}
+
+	private countRead(to: NodeId, type: EdgeType | number): void {
+		if(this.readsInto !== undefined && (type & EdgeType.Reads) !== 0) {
+			this.readsInto.set(to, (this.readsInto.get(to) ?? 0) + 1);
+		}
+	}
+
 	/**
 	 * Takes `type` off the edge `fromId -> toId`, dropping the edge itself once it states nothing.
 	 * An edge with no type is no edge: every removal has to go through here so none is left behind.
@@ -499,6 +518,7 @@ export class DataflowGraph<
 			return this;
 		}
 		this.dropQualifications();
+		this.countRead(to, type);
 		edge.types &= ~type;
 		if(DfEdge.hasAnyType(edge)) {
 			/* the reverse index holds this very object, so a narrowed type is already visible through it */
@@ -563,6 +583,7 @@ export class DataflowGraph<
 			return this;
 		}
 		this.dropQualifications();
+		this.countRead(toId, type);
 		const fromEdges = this.edgeInformation.get(fromId);
 		const existing = fromEdges?.get(toId);
 		if(existing !== undefined) {

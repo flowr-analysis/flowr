@@ -60,7 +60,7 @@ for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'be
 ## 🏨 Testing Suites
 
 Currently, flowR contains four testing suites: one for [functionality](#functionality-tests),
-one for [system tests](#system-tests), one for [mutation tests](#mutation-tests), and one for [performance](#performance-tests). We explain each of them in the following.
+one for [system tests](#system-tests), one for [mutation tests](#mutation-tests), and one for [performance](#performance-tests).
 In addition to running those tests, you can use the more generalized \`npm run checkup\`.
 This command includes the construction of the docker image, the generation of the wiki and landing pages, and the linter.
 It runs these jobs concurrently but caps the test workers so the combined run fits the machine (it splits the
@@ -132,7 +132,7 @@ The resulting labels are used in the test report that is generated as part of th
 They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
 The report can be found on flowR's ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 
-To add new labels, simply add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
+To add new labels, add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
 
 <a id='writing-a-test'></a>
 #### 🖋️ Writing a Test
@@ -321,7 +321,7 @@ Otherwise, the tests will not be instantiated.
 ## 🪈 CI Pipeline
 
 We have several workflows defined in ${linkFlowRSourceFile('.github/workflows')}.
-We explain the most important workflows in the following:
+The most important ones:
 
 - ${linkFlowRSourceFile('.github/workflows/qa.yaml')} is the main workflow that will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests), [system](#system-tests), [mutation](#mutation-tests), and [performance tests](#performance-tests)

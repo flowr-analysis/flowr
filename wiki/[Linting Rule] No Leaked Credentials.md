@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="no-leaked-credentials">No Leaked Credentials&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
@@ -32,7 +32,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Possible hardcoded credential in `password` at 1.1-8\
@@ -60,7 +60,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-no-leaked-credentials.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts)
 
-<h4 id="Test_Case:_no_credentials">Test Case: no credentials</h4>
+<h4 id="Test_32_Case:_32_no_32_credentials">Test Case: no credentials</h4>
 
 Given the following input:
 
@@ -74,7 +74,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L8) for the test-case implementation.
 		
-<h4 id="Test_Case:_password_assignment">Test Case: password assignment</h4>
+<h4 id="Test_32_Case:_32_password_32_assignment">Test Case: password assignment</h4>
 
 Given the following input:
 
@@ -88,7 +88,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L14) for the test-case implementation.
 		
-<h4 id="Test_Case:_api_key_assignment">Test Case: api_key assignment</h4>
+<h4 id="Test_32_Case:_32_api_key_32_assignment">Test Case: api_key assignment</h4>
 
 Given the following input:
 
@@ -102,7 +102,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L20) for the test-case implementation.
 		
-<h4 id="Test_Case:_token_assignment">Test Case: token assignment</h4>
+<h4 id="Test_32_Case:_32_token_32_assignment">Test Case: token assignment</h4>
 
 Given the following input:
 
@@ -116,7 +116,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L26) for the test-case implementation.
 		
-<h4 id="Test_Case:_case_insensitive_match">Test Case: case insensitive match</h4>
+<h4 id="Test_32_Case:_32_case_32_insensitive_32_match">Test Case: case insensitive match</h4>
 
 Given the following input:
 
@@ -130,7 +130,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L32) for the test-case implementation.
 		
-<h4 id="Test_Case:_non-string_value_not_flagged">Test Case: non-string value not flagged</h4>
+<h4 id="Test_32_Case:_32_non-string_32_value_32_not_32_flagged">Test Case: non-string value not flagged</h4>
 
 Given the following input:
 
@@ -144,7 +144,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L38) for the test-case implementation.
 		
-<h4 id="Test_Case:_numeric_value_not_flagged">Test Case: numeric value not flagged</h4>
+<h4 id="Test_32_Case:_32_numeric_32_value_32_not_32_flagged">Test Case: numeric value not flagged</h4>
 
 Given the following input:
 
@@ -158,7 +158,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L44) for the test-case implementation.
 		
-<h4 id="Test_Case:_unrelated_variable_with_plain_string_not_flagged">Test Case: unrelated variable with plain string not flagged</h4>
+<h4 id="Test_32_Case:_32_unrelated_32_variable_32_with_32_plain_32_string_32_not_32_flagged">Test Case: unrelated variable with plain string not flagged</h4>
 
 Given the following input:
 
@@ -172,7 +172,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L50) for the test-case implementation.
 		
-<h4 id="Test_Case:_multiple_assignments">Test Case: multiple assignments</h4>
+<h4 id="Test_32_Case:_32_multiple_32_assignments">Test Case: multiple assignments</h4>
 
 Given the following input:
 
@@ -188,7 +188,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L56) for the test-case implementation.
 		
-<h4 id="Test_Case:_api.key_with_dot_separator">Test Case: api.key with dot separator</h4>
+<h4 id="Test_32_Case:_32_api.key_32_with_32_dot_32_separator">Test Case: api.key with dot separator</h4>
 
 Given the following input:
 
@@ -202,7 +202,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L62) for the test-case implementation.
 		
-<h4 id="Test_Case:_custom_name_pattern">Test Case: custom name pattern</h4>
+<h4 id="Test_32_Case:_32_custom_32_name_32_pattern">Test Case: custom name pattern</h4>
 
 Given the following input:
 
@@ -221,7 +221,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L68) for the test-case implementation.
 		
-<h4 id="Test_Case:_aws_access_key_id_detected_by_value">Test Case: aws access key id detected by value</h4>
+<h4 id="Test_32_Case:_32_aws_32_access_32_key_32_id_32_detected_32_by_32_value">Test Case: aws access key id detected by value</h4>
 
 Given the following input:
 
@@ -235,7 +235,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L75) for the test-case implementation.
 		
-<h4 id="Test_Case:_github_pat_detected_by_value">Test Case: github pat detected by value</h4>
+<h4 id="Test_32_Case:_32_github_32_pat_32_detected_32_by_32_value">Test Case: github pat detected by value</h4>
 
 Given the following input:
 
@@ -249,7 +249,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L81) for the test-case implementation.
 		
-<h4 id="Test_Case:_pem_private_key_detected_by_value">Test Case: pem private key detected by value</h4>
+<h4 id="Test_32_Case:_32_pem_32_private_32_key_32_detected_32_by_32_value">Test Case: pem private key detected by value</h4>
 
 Given the following input:
 
@@ -263,7 +263,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L87) for the test-case implementation.
 		
-<h4 id="Test_Case:_slack_token_detected_by_value">Test Case: slack token detected by value</h4>
+<h4 id="Test_32_Case:_32_slack_32_token_32_detected_32_by_32_value">Test Case: slack token detected by value</h4>
 
 Given the following input:
 
@@ -277,7 +277,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L93) for the test-case implementation.
 		
-<h4 id="Test_Case:_stripe_key_detected_by_value">Test Case: stripe key detected by value</h4>
+<h4 id="Test_32_Case:_32_stripe_32_key_32_detected_32_by_32_value">Test Case: stripe key detected by value</h4>
 
 Given the following input:
 
@@ -291,7 +291,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L99) for the test-case implementation.
 		
-<h4 id="Test_Case:_name_and_value_both_match">Test Case: name and value both match</h4>
+<h4 id="Test_32_Case:_32_name_32_and_32_value_32_both_32_match">Test Case: name and value both match</h4>
 
 Given the following input:
 

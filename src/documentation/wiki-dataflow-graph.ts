@@ -125,7 +125,7 @@ async function getVertexExplanations(parser: TreeSitterExecutor, ctx: GeneralDoc
 		type:        VertexType.Value,
 		description: `
 Describes a constant value (numbers, booleans/logicals, strings, ...).
-In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
+The respective vertex is more or less a dummy vertex.
 
 ${
 	ctx.hierarchy('DataflowGraphVertexValue')
@@ -281,8 +281,7 @@ In this case, we have a function call vertex with id \`${callId}\` and the follo
 
 ${codeBlock('json', JSON.stringify(callVert.args, jsonReplacer, 2))}
 
-Of course now, this is hard to read in this form (although the ids of the arguments can be mapped pretty easily to the visualization),
-as the \`type\` of these references is a bit-mask, encoding one of the following reference types:
+This is hard to read in this form, as the \`type\` of these references is a bit-mask, encoding one of the following reference types:
 
 | Value | Reference Type |
 |------:|----------------|
@@ -403,7 +402,7 @@ Interesting program, right? Running this with \`u <- TRUE\` will cause the last 
 operator to mean multiplication, while with \`u <- FALSE\` causes \`x\` to be assigned to \`3\`.
 In short: the last line may either refer to a definition or to a use of \`x\`, and we are not fully equipped to visualize this (this causes a warning).
 First of all how can you spot that something weird is happening? Well, this definition has a ${linkEdgeName(EdgeType.Reads)} and a ${linkEdgeName(EdgeType.DefinedBy)} edge,
-but this of course does not apply to the general case.
+but this does not apply to the general case.
 
 For starters, let's have a look at the environment of the call to \`<-\` in the last line:
 
@@ -476,12 +475,12 @@ ${
 }
 Of only interest is \`par\`, which signals that the definitions is partial (e.g., in the case of \`x[a] <- 1\`).
 
-Of course, there are not just operators that define variables, but also functions, like \`assign\`.
+Functions can define variables too, like \`assign\`.
 
 ${
 	details('Example: Using <code>assign</code>',
 		await printDfGraphForCode(parser, 'assign("x", 1)\nx', { mark: new Set([1]), ctx })
-		+ `\nThe example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable \`x\` (without the quotes) as you can see with the ${linkEdgeName(EdgeType.Reads)} edge.`
+		+ `\nThe example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable \`x\` (without the quotes), as the ${linkEdgeName(EdgeType.Reads)} edge shows.`
 	)
 }
 
@@ -505,7 +504,7 @@ In this case, the definition of \`x\` is constrained by the conditional, which i
 
 ${finalEnvironment}
 
-As you can see, _flowR_ is able to recognize that the initial definition of \`x\` has no influence on the final value of the variable.
+_flowR_ recognizes that the initial definition of \`x\` has no influence on the final value of the variable.
 		`;
 })())}
 
@@ -557,7 +556,7 @@ ${details('Example: Nested Function Definitions',
 		return `
 ${text}
 
-As you can see, the vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
+The vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
 
 | Id | Vertex Ids in Subflow |
 |---:|-----------------------|
@@ -590,7 +589,7 @@ Let's first consider the following dataflow graph (of \`${code}\`):
 ${text}
 
 The function definition we are interested in has the id \`${id}\`. Looking at the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} of the code,
-we can get the parameters simply be requesting the \`parameters\` property of the function definition (yielding the names: [${normalized.parameters.map(p => `\`${p.name.content}\``).join(', ')}]):
+we can get the parameters by requesting the \`parameters\` property of the function definition (yielding the names: [${normalized.parameters.map(p => `\`${p.name.content}\``).join(', ')}]):
 
 ${ast}
 	`;
@@ -711,7 +710,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		name:        'Returns Edge',
 		type:        EdgeType.Returns,
 		description: `Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
-As you can see in the example, this happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
+This happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
 However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
 For contrast, compare this to a use of, for example, \`+\`:
 		
@@ -1052,7 +1051,7 @@ in the first line at the seventh character and ending in the first line at the n
 ${section('Arguments and Additional Information', 3, 'vtx-additional-info')}
 
 Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
-As you can see with the \`if\` example above alongside the [vertex id](#vtx-id),
+As in the \`if\` example above, alongside the [vertex id](#vtx-id),
 these vertices also have an additional line (prefixed with \`arg:\`) which lists the ids of the arguments in order to clear any ambiguity in case, for example,
 the mermaid graph layouting fumbles the order.
 

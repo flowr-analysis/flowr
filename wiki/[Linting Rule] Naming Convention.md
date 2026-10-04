@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="naming-convention">Naming Convention&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
@@ -54,7 +54,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-naming-convention.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts)
 
-<h4 id="Test_Case:_simple">Test Case: simple</h4>
+<h4 id="Test_32_Case:_32_simple">Test Case: simple</h4>
 
 > Given a symbol definition `testVar <- 5` the linter checks if it matches the configured casing rule (here we check for PascalCase) and provides a quick fix `TestVar <- 5`
 
@@ -75,7 +75,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L126) for the test-case implementation.
 		
-<h4 id="Test_Case:_no_fix_onto_a_taken_name">Test Case: no fix onto a taken name</h4>
+<h4 id="Test_32_Case:_32_no_32_fix_32_onto_32_a_32_taken_32_name">Test Case: no fix onto a taken name</h4>
 
 > A rename onto a name the program binds already would change what that name refers to, so no fix is offered
 
@@ -97,7 +97,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L135) for the test-case implementation.
 		
-<h4 id="Test_Case:_only_detect_definition">Test Case: only detect definition</h4>
+<h4 id="Test_32_Case:_32_only_32_detect_32_definition">Test Case: only detect definition</h4>
 
 > The casing of the definition is checked, and quick fixes for all usages (and the definition) are provided
 
@@ -119,7 +119,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L144) for the test-case implementation.
 		
-<h4 id="Test_Case:_function_and_call">Test Case: function and call</h4>
+<h4 id="Test_32_Case:_32_function_32_and_32_call">Test Case: function and call</h4>
 
 > Arguments will be checked for correct casing convention as well
 
@@ -142,7 +142,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L156) for the test-case implementation.
 		
-<h4 id="Test_Case:_detect_casing">Test Case: detect casing</h4>
+<h4 id="Test_32_Case:_32_detect_32_casing">Test Case: detect casing</h4>
 
 > The rule can be configured to automaticaly detect the most used casing style. The file will be linted according to the detected style
 
@@ -165,7 +165,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L180) for the test-case implementation.
 		
-<h4 id="Test_Case:_non_alpha_identifier__ignore_">Test Case: non alpha identifier (ignore)</h4>
+<h4 id="Test_32_Case:_32_non_32_alpha_32_identifier_32__40_ignore_41_">Test Case: non alpha identifier (ignore)</h4>
 
 > The rule can be configured to ignore identifier that do not contain any alphabetic characters
 
@@ -186,7 +186,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L189) for the test-case implementation.
 		
-<h4 id="Test_Case:_non_alpha_identifier__do_not_ignore_">Test Case: non alpha identifier (do not ignore)</h4>
+<h4 id="Test_32_Case:_32_non_32_alpha_32_identifier_32__40_do_32_not_32_ignore_41_">Test Case: non alpha identifier (do not ignore)</h4>
 
 > Otherwise the linter will always detect non alpha identifiers as following the wrong convention
 
@@ -207,7 +207,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L195) for the test-case implementation.
 		
-<h4 id="Test_Case:_empty_string">Test Case: empty string</h4>
+<h4 id="Test_32_Case:_32_empty_32_string">Test Case: empty string</h4>
 
 Given the following input:
 
@@ -226,7 +226,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L206) for the test-case implementation.
 		
-<h4 id="Test_Case:_empty_string__auto_detect_">Test Case: empty string (auto detect)</h4>
+<h4 id="Test_32_Case:_32_empty_32_string_32__40_auto_32_detect_41_">Test Case: empty string (auto detect)</h4>
 
 Given the following input:
 
@@ -245,7 +245,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L207) for the test-case implementation.
 		
-<h4 id="Test_Case:_ignore_leading_underscores">Test Case: ignore leading underscores</h4>
+<h4 id="Test_32_Case:_32_ignore_32_leading_32_underscores">Test Case: ignore leading underscores</h4>
 
 Given the following input:
 

@@ -7,7 +7,8 @@ import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sit
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { SigDatabase, type PackageSignatureSource } from '../../../src/project/sigdb/reader';
-import { writeSignatureDb } from '../../../src/project/sigdb/build';
+import { SigDbBuilder, writeSignatureDb } from '../../../src/project/sigdb/build';
+import { isBaseRPackage } from '../../../src/util/r-base-packages';
 import { SigDbExt, FnProp, type SigDb, type SigVersionInfo } from '../../../src/project/sigdb/schema';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowInformation } from '../../../src/dataflow/info';
@@ -48,6 +49,17 @@ export const expFn = (name: string) => ({ name, props: FnProp.Exported, params: 
 
 /** a CRAN version carrying the given functions */
 export const ver = (functions: SigVersionInfo['functions'], cran = true): SigVersionInfo => ({ cran, functions });
+
+/** an in-memory database with one version of each package, R's own packages as core ones: `fakeSigDb({ base: [expFn('paste')] })` */
+export function fakeSigDb(packages: Readonly<Record<string, SigVersionInfo['functions']>>): SigDatabase {
+	const b = new SigDbBuilder();
+	for(const [name, functions] of Object.entries(packages)) {
+		const latest = isBaseRPackage(name) ? '4.5.0' : '1.0.0';
+		b.addPackage(name, { latest, core: isBaseRPackage(name), downloads: 5 });
+		b.addVersion(name, latest, ver(functions));
+	}
+	return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
+}
 
 /** whether the export `pkg::fn`'s built-in vertex is present in the graph (i.e. `library()` attached it) */
 export function hasBuiltInVertex(df: Pick<DataflowInformation, 'graph'>, pkg: string, fn: string): boolean {

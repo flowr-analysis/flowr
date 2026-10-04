@@ -603,6 +603,10 @@ const NdjsonBatchBytes = 8_000_000;
  * rather than a JSON array of quoted strings, which loads as a single `split('\n')` instead of parsing ~1.4M elements.
  */
 function* dictLines(strings: readonly string[]): Generator<string> {
+	/* a line holding no names would read back as one empty name */
+	if(strings.length === 0) {
+		return;
+	}
 	let start = 0;
 	let parts: string[] = [];
 	let bytes = 0;

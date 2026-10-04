@@ -13,31 +13,16 @@ import {
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
-import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
-import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { exampleQueryCode } from './data/query/example-query-code';
 import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
-import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
-import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
-import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
-import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
-import { executeStaticSliceQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
-import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { NewIssueUrl } from './doc-util/doc-issue';
-import { executeLocationMapQuery } from '../queries/catalog/location-map-query/location-map-query-executor';
 import { CallTargets } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { executeConfigQuery } from '../queries/catalog/config-query/config-query-executor';
-import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
 import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
-import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
 import { documentReplSession } from './doc-util/doc-repl';
-import {
-	executeHigherOrderQuery
-} from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
 import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
 import type { ShowQueryOptions } from './doc-util/doc-query';
@@ -45,32 +30,16 @@ import { DefaultAssumedRVersion } from '../config';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
-import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
-import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
-import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
-import { executeFnPropsQuery } from '../queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor';
-import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 import type { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
-import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
 import { SliceDirection } from '../util/slice-direction';
-import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
-import { executeInputSourcesQuery } from '../queries/catalog/input-sources-query/input-sources-query-executor';
-import { executeAbsintQuery } from '../queries/catalog/absint-query/absint-query-executor';
 import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-query-format';
-import { executeDiceQuery } from '../queries/catalog/dice-query/dice-query-executor';
-import { executeDataflowLensQuery } from '../queries/catalog/dataflow-lens-query/dataflow-lens-query-executor';
-import { executeSignatureQuery } from '../queries/catalog/signature-query/signature-query-executor';
 import { warnMissingSigDb } from './doc-util/doc-sigdb';
-import {
-	executeGuessDepVersionsQuery
-} from '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor';
-import { executeFunctionInfoQuery } from '../queries/catalog/function-info-query/function-info-query-executor';
+
+
 
 registerQueryDocumentation('call-context', {
 	type:             'active',
 	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
-	functionName:     executeCallContextQueries.name,
-	functionFile:     '../queries/catalog/call-context-query/call-context-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
 Call context queries can be used to identify calls to specific functions that match criteria of your interest.
@@ -105,7 +74,7 @@ ${
 	], { showCode: false, ctx })
 }
 
-As you can see, all kinds and subkinds with the same name are grouped together.
+All kinds and subkinds with the same name are grouped together.
 Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
 See the ${linkToQueryOfName('compound')} for a way to structure your queries more compactly if you think it gets too verbose. 
 
@@ -130,8 +99,6 @@ my_test_function()
 registerQueryDocumentation('dataflow', {
 	type:             'active',
 	shortDescription: 'Returns the dataflow graph of the given code.',
-	functionName:     executeDataflowQuery.name,
-	functionFile:     '../queries/catalog/dataflow-query/dataflow-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
@@ -149,8 +116,6 @@ ${
 registerQueryDocumentation('call-graph', {
 	type:             'active',
 	shortDescription: 'Returns the call graph of the given code.',
-	functionName:     executeCallGraphQuery.name,
-	functionFile:     '../queries/catalog/call-graph-query/call-graph-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
@@ -167,8 +132,6 @@ ${
 registerQueryDocumentation('does-call', {
 	type:             'active',
 	shortDescription: 'Checks whether a function calls another function matching given constraints.',
-	functionName:     executeDoesCallQuery.name,
-	functionFile:     '../queries/catalog/does-call-query/does-call-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'f <- function(x) { eval(x) };\nf("1 + 1")';
 		return `
@@ -187,8 +150,6 @@ ${
 registerQueryDocumentation('files', {
 	type:             'active',
 	shortDescription: 'Returns the files matching the given criteria.',
-	functionName:     executeFileQuery.name,
-	functionFile:     '../queries/catalog/files-query/files-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
 This query returns the files that match the given criteria.
@@ -202,8 +163,6 @@ ${
 registerQueryDocumentation('project', {
 	type:             'active',
 	shortDescription: 'Returns information about the analyzed project',
-	functionName:     executeDataflowQuery.name,
-	functionFile:     '../queries/catalog/project-query/project-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
@@ -220,8 +179,6 @@ ${
 registerQueryDocumentation('normalized-ast', {
 	type:             'active',
 	shortDescription: 'Returns the normalized AST of the given code.',
-	functionName:     executeNormalizedAstQuery.name,
-	functionFile:     '../queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
@@ -239,8 +196,6 @@ ${
 registerQueryDocumentation('dataflow-cluster', {
 	type:             'active',
 	shortDescription: 'Calculates and returns all the clusters present in the dataflow graph.',
-	functionName:     executeDataflowClusterQuery.name,
-	functionFile:     '../queries/catalog/cluster-query/cluster-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleA = 'x <- 1; x';
 		const exampleB = 'x <- 1; y';
@@ -268,8 +223,6 @@ ${
 registerQueryDocumentation('resolve-value', {
 	type:             'active',
 	shortDescription: 'Provides access to flowR\'s value tracking (which is configurable)',
-	functionName:     executeSearch.name,
-	functionFile:     '../queries/catalog/resolve-value-query/resolve-value-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <-2\nprint(x)\nprint(y)';
 		const criteria = ['3@x', '4@y'] as SlicingCriteria;
@@ -288,8 +241,6 @@ ${
 registerQueryDocumentation('inspect-higher-order', {
 	type:             'active',
 	shortDescription: 'Determine whether functions are higher-order functions',
-	functionName:     executeHigherOrderQuery.name,
-	functionFile:     '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'f <- function() function(x) x; f()';
 		return `
@@ -313,8 +264,6 @@ ${
 registerQueryDocumentation('inspect-recursion', {
 	type:             'active',
 	shortDescription: 'Determine whether functions are recursive',
-	functionName:     executeRecursionQuery.name,
-	functionFile:     '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }';
 		return `
@@ -337,8 +286,6 @@ ${
 registerQueryDocumentation('inspect-fn-props', {
 	type:             'active',
 	shortDescription: 'Determine what functions and their formals do',
-	functionName:     executeFnPropsQuery.name,
-	functionFile:     '../queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }';
 		return `
@@ -381,8 +328,6 @@ ${
 registerQueryDocumentation('inspect-exception', {
 	type:             'active',
 	shortDescription: 'Determine whether functions throw exceptions (known to flowR)',
-	functionName:     executeExceptionQuery.name,
-	functionFile:     '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = `mayFail <- function(x) {
   if(x < 0) stop("Negative value!")
@@ -410,8 +355,6 @@ ${
 registerQueryDocumentation('origin', {
 	type:             'active',
 	shortDescription: 'Retrieve the origin of a variable, function call, ...',
-	functionName:     executeSearch.name,
-	functionFile:     '../queries/catalog/origin-query/origin-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\nprint(x)';
 		const criterion = '2@x';
@@ -430,8 +373,6 @@ ${
 registerQueryDocumentation('search', {
 	type:             'active',
 	shortDescription: 'Provides access to flowR\'s search API',
-	functionName:     executeSearch.name,
-	functionFile:     '../queries/catalog/search-query/search-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
@@ -448,8 +389,6 @@ ${
 registerQueryDocumentation('happens-before', {
 	type:             'active',
 	shortDescription: 'Check whether one normalized AST node happens before another in the CFG.',
-	functionName:     executeSearch.name,
-	functionFile:     '../queries/catalog/happens-before-query/happens-before-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2';
 		return `
@@ -470,8 +409,6 @@ ${
 registerQueryDocumentation('id-map', {
 	type:             'active',
 	shortDescription: 'Returns the id-map of the normalized AST of the given code.',
-	functionName:     executeIdMapQuery.name,
-	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
@@ -488,8 +425,6 @@ ${
 registerQueryDocumentation('config', {
 	type:             'active',
 	shortDescription: 'Returns the current configuration of flowR.',
-	functionName:     executeConfigQuery.name,
-	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
 
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
@@ -524,8 +459,6 @@ enables quick statistics after each REPL command. Likewise, ${ctx.linkConfig('re
 registerQueryDocumentation('absint', {
 	type:             'active',
 	shortDescription: 'Returns the abstract values inferred for every expression or at specific locations.',
-	functionName:     executeAbsintQuery.name,
-	functionFile:     '../queries/catalog/absint-query/absint-query-format.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const criteria: SlicingCriteria = ['1@df', '1@data.frame'];
 		const inference: AbsintQueryType = 'df-shape';
@@ -548,8 +481,6 @@ registerQueryDocumentation('compound', {
 	name:             'Compound Query',
 	type:             'virtual',
 	shortDescription: 'Combines multiple queries of the same type into one, specifying common arguments.',
-	functionName:     executeCompoundQueries.name,
-	functionFile:     '../queries/virtual-query/compound-query.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
 A compound query comes in use, whenever we want to state multiple queries of the same type with a set of common arguments.
@@ -566,7 +497,7 @@ ${
 	await showQuery(shell, exampleQueryCode, [{ type: 'compound', query: 'call-context', commonArguments: { kind: 'visualize', subkind: 'text' }, arguments: [{ callName: '^mean$' }, { callName: '^print$' }] }], { showCode: false, ctx })
 }
 
-Of course, in this specific scenario, the following query would be equivalent:
+In this specific scenario, the following query would be equivalent:
 
 ${
 	await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^(mean|print)$', kind: 'visualize', subkind: 'text' }], { showCode: false, collapseResult: true, ctx })
@@ -590,8 +521,6 @@ Now, the results no longer contain calls to \`plot\` that are not defined locall
 registerQueryDocumentation('static-slice', {
 	type:             'active',
 	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).',
-	functionName:     executeStaticSliceQuery.name,
-	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
 		const criteria = ['3@z', '4@x'] as SlicingCriteria;
@@ -647,8 +576,6 @@ This query replaces the old ${ctx.linkPage('wiki/Interface', '`request-slice`', 
 registerQueryDocumentation('provenance', {
 	type:             'active',
 	shortDescription: 'Calculate the provenance of a given variable, optionally restricted to its enveloping fdef',
-	functionName:     executeProvenanceQuery.name,
-	functionFile:     '../queries/catalog/provenance-query/provenance-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
 		const criterion: SlicingCriterion = '4@x';
@@ -670,8 +597,6 @@ ${
 registerQueryDocumentation('input-sources', {
 	type:             'active',
 	shortDescription: 'Classify the input sources of function calls',
-	functionName:     executeInputSourcesQuery.name,
-	functionFile:     '../queries/catalog/input-sources-query/input-sources-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = `
 f <- function(x) {
@@ -732,8 +657,6 @@ ${codeBlock('json', JSON.stringify({ inputSources: {
 registerQueryDocumentation('dependencies', {
 	type:             'active',
 	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R script',
-	functionName:     executeDependenciesQuery.name,
-	functionFile:     '../queries/catalog/dependencies-query/dependencies-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'library(x)';
 		const longerCode = `
@@ -753,12 +676,12 @@ This query extracts all dependencies from an R script, using a combination of a 
 and more advanced tracking in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}.
 Loaded libraries are resolved against the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
 
-In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
+For a script reading \`${exampleCode}\`, the following query returns the loaded library:
 ${
 	await showQuery(shell, exampleCode, [{ type: 'dependencies' }], { showCode: false, collapseQuery: true, ctx })
 }
 
-Of course, this works for more complicated scripts too. The query offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
+The query also handles more complicated scripts and offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
 For example, consider the following script:
 ${codeBlock('r', longerCode)}
 The following query returns the dependencies of the script.
@@ -797,14 +720,12 @@ suggest a \`library\` call for.
 registerQueryDocumentation('linter', {
 	type:             'active',
 	shortDescription: 'Lints a given R script for common issues.',
-	functionName:     executeDependenciesQuery.name,
-	functionFile:     '../queries/catalog/linter-query/linter-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'read.csv("i_do_not_exist.csv")';
 		return `
 This query lints a given R script for common issues, such as missing files, unused variables, and more.
 
-In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns all smells detected:
+For a script reading \`${exampleCode}\`, the following query returns all smells detected:
 ${
 	await showQuery(shell, exampleCode, [{ type: 'linter' }], { showCode: false, collapseQuery: true, ctx })
 }
@@ -822,14 +743,12 @@ We welcome any feedback and suggestions for new rules on this (consider opening 
 registerQueryDocumentation('control-flow', {
 	type:             'active',
 	shortDescription: 'Provides the control-flow of the program.',
-	functionName:     executeControlFlowQuery.name,
-	functionFile:     '../queries/catalog/control-flow-query/control-flow-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'if(TRUE) 1 else 2';
 		return `
 This control-flow query provides you access to the control flow graph.
 
-In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the CFG:
+For a script reading \`${exampleCode}\`, the following query returns the CFG:
 ${
 	await showQuery(shell, exampleCode, [{ type: 'control-flow' }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
 }
@@ -870,8 +789,6 @@ ${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart L
 registerQueryDocumentation('location-map', {
 	type:             'active',
 	shortDescription: 'Returns a simple mapping of ids to their location in the source file',
-	functionName:     executeLocationMapQuery.name,
-	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1\nx * 2';
 		const criteria = ['1@x', '2@x'] as SlicingCriteria;
@@ -904,8 +821,6 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 registerQueryDocumentation('dice', {
 	type:             'active',
 	shortDescription: 'Reduces the code to the parts that carry information from a given start point to a given end point.',
-	functionName:     executeDiceQuery.name,
-	functionFile:     '../queries/catalog/dice-query/dice-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- x + y\nw <- z * 2\nprint(z)';
 		return `
@@ -941,8 +856,6 @@ ${
 registerQueryDocumentation('dataflow-lens', {
 	type:             'active',
 	shortDescription: 'Returns a simplified view on the dataflow graph, reduced to definitions, uses, and calls.',
-	functionName:     executeDataflowLensQuery.name,
-	functionFile:     '../queries/catalog/dataflow-lens-query/dataflow-lens-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'f <- function(a) a + 1\nx <- 1\ny <- f(x)\nprint(y)';
 		return `
@@ -973,8 +886,6 @@ Use the ${linkToQueryOfName('dataflow')} if you need the complete graph, or the 
 registerQueryDocumentation('signature', {
 	type:             'active',
 	shortDescription: 'Inspects the signature database: packages, function signatures, source and documentation links.',
-	functionName:     executeSignatureQuery.name,
-	functionFile:     '../queries/catalog/signature-query/signature-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'library(dplyr)\nlead(1:10, n = 1)';
 		return `
@@ -1029,8 +940,6 @@ function guessDepVersionsExampleOptions(ctx: GeneralDocContext): ShowQueryOption
 registerQueryDocumentation('guess-dep-versions', {
 	type:             'active',
 	shortDescription: 'Guesses the version range each dependency must have, from declared constraints and actual code usage.',
-	functionName:     executeGuessDepVersionsQuery.name,
-	functionFile:     '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'library(dplyr)\nmutate(mtcars, across(everything(), round))';
 		return `
@@ -1093,8 +1002,6 @@ See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is
 registerQueryDocumentation('function-info', {
 	type:             'active',
 	shortDescription: 'Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.',
-	functionName:     executeFunctionInfoQuery.name,
-	functionFile:     '../queries/catalog/function-info-query/function-info-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
 This query answers "where does this function come from?" for a bare name, combining two sources flowR otherwise
@@ -1167,8 +1074,7 @@ In general, we separate two types of queries:
 1. **Active Queries**: Are exactly what you would expect from a query (e.g., the ${linkToQueryOfName('call-context')}). They fetch information from the dataflow graph.
 2. **Virtual Queries**: Are used to structure your queries (e.g., the ${linkToQueryOfName('compound')}).
 
-We separate these from a concept perspective. 
-For now, we support the following **active** queries (which we will refer to simply as a \`query\`):
+We support the following **active** queries (which we refer to as a \`query\`):
 
 ${tocForQueryType('active')}
 
@@ -1181,7 +1087,7 @@ ${tocForQueryType('virtual')}
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
-Although it is probably better to consult the detailed explanations, if you want to have a look at the schema, here is its description:
+The schema of the query format:
 
 ${describeSchema(QueriesSchema(), markdownFormatter)}
 
@@ -1189,7 +1095,7 @@ ${describeSchema(QueriesSchema(), markdownFormatter)}
 
 ### Why Queries?
 
-First, consider that you have a file like the following (of course, this is just a simple and artificial example):
+First, consider that you have a file like the following (a simple, artificial example):
 
 \`\`\`r
 ${exampleQueryCode}

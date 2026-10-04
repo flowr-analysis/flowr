@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="unescaped-arguments">Unescaped Arguments&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the shiny framework."><a href='#shiny'>![shiny](https://img.shields.io/badge/shiny-teal) </a></span>
@@ -82,7 +82,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-unescaped-arguments.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts)
 
-<h4 id="Test_Case:_constant_command">Test Case: constant command</h4>
+<h4 id="Test_32_Case:_32_constant_32_command">Test Case: constant command</h4>
 
 Given the following input:
 
@@ -96,7 +96,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L16) for the test-case implementation.
 		
-<h4 id="Test_Case:_escaped_command">Test Case: escaped command</h4>
+<h4 id="Test_32_Case:_32_escaped_32_command">Test Case: escaped command</h4>
 
 Given the following input:
 
@@ -110,7 +110,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L17) for the test-case implementation.
 		
-<h4 id="Test_Case:_unknown_command">Test Case: unknown command</h4>
+<h4 id="Test_32_Case:_32_unknown_32_command">Test Case: unknown command</h4>
 
 Given the following input:
 
@@ -124,7 +124,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L18) for the test-case implementation.
 		
-<h4 id="Test_Case:_pasted_parameter">Test Case: pasted parameter</h4>
+<h4 id="Test_32_Case:_32_pasted_32_parameter">Test Case: pasted parameter</h4>
 
 Given the following input:
 
@@ -138,7 +138,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L32) for the test-case implementation.
 		
-<h4 id="Test_Case:_pasted_parameter_with_a_constant_and_an_unknown_call">Test Case: pasted parameter with a constant and an unknown call</h4>
+<h4 id="Test_32_Case:_32_pasted_32_parameter_32_with_32_a_32_constant_32_and_32_an_32_unknown_32_call">Test Case: pasted parameter with a constant and an unknown call</h4>
 
 Given the following input:
 
@@ -154,7 +154,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L46) for the test-case implementation.
 		
-<h4 id="Test_Case:_pasted_escaped_parameter">Test Case: pasted escaped parameter</h4>
+<h4 id="Test_32_Case:_32_pasted_32_escaped_32_parameter">Test Case: pasted escaped parameter</h4>
 
 Given the following input:
 
@@ -168,7 +168,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L60) for the test-case implementation.
 		
-<h4 id="Test_Case:_partly_escaped_command">Test Case: partly escaped command</h4>
+<h4 id="Test_32_Case:_32_partly_32_escaped_32_command">Test Case: partly escaped command</h4>
 
 Given the following input:
 
@@ -182,7 +182,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L61) for the test-case implementation.
 		
-<h4 id="Test_Case:_user_input_as_command">Test Case: user input as command</h4>
+<h4 id="Test_32_Case:_32_user_32_input_32_as_32_command">Test Case: user input as command</h4>
 
 Given the following input:
 
@@ -196,7 +196,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L75) for the test-case implementation.
 		
-<h4 id="Test_Case:_unknown_arguments">Test Case: unknown arguments</h4>
+<h4 id="Test_32_Case:_32_unknown_32_arguments">Test Case: unknown arguments</h4>
 
 Given the following input:
 
@@ -210,7 +210,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L89) for the test-case implementation.
 		
-<h4 id="Test_Case:_redefined_function">Test Case: redefined function</h4>
+<h4 id="Test_32_Case:_32_redefined_32_function">Test Case: redefined function</h4>
 
 Given the following input:
 
@@ -225,7 +225,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L103) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_evaluation">Test Case: constant evaluation</h4>
+<h4 id="Test_32_Case:_32_constant_32_evaluation">Test Case: constant evaluation</h4>
 
 Given the following input:
 
@@ -239,7 +239,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L107) for the test-case implementation.
 		
-<h4 id="Test_Case:_bounded_evaluation">Test Case: bounded evaluation</h4>
+<h4 id="Test_32_Case:_32_bounded_32_evaluation">Test Case: bounded evaluation</h4>
 
 Given the following input:
 
@@ -253,7 +253,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L108) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_symbol_lookup">Test Case: constant symbol lookup</h4>
+<h4 id="Test_32_Case:_32_constant_32_symbol_32_lookup">Test Case: constant symbol lookup</h4>
 
 Given the following input:
 
@@ -267,7 +267,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L109) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_symbol_lookup_of_a_known_variable">Test Case: constant symbol lookup of a known variable</h4>
+<h4 id="Test_32_Case:_32_constant_32_symbol_32_lookup_32_of_32_a_32_known_32_variable">Test Case: constant symbol lookup of a known variable</h4>
 
 Given the following input:
 
@@ -282,7 +282,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L110) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_symbol_lookup_with_a_folded_name">Test Case: constant symbol lookup with a folded name</h4>
+<h4 id="Test_32_Case:_32_constant_32_symbol_32_lookup_32_with_32_a_32_folded_32_name">Test Case: constant symbol lookup with a folded name</h4>
 
 Given the following input:
 
@@ -297,7 +297,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L111) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_symbol_tests">Test Case: constant symbol tests</h4>
+<h4 id="Test_32_Case:_32_constant_32_symbol_32_tests">Test Case: constant symbol tests</h4>
 
 Given the following input:
 
@@ -313,7 +313,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L112) for the test-case implementation.
 		
-<h4 id="Test_Case:_symbol_lookup_of_a_parameter">Test Case: symbol lookup of a parameter</h4>
+<h4 id="Test_32_Case:_32_symbol_32_lookup_32_of_32_a_32_parameter">Test Case: symbol lookup of a parameter</h4>
 
 Given the following input:
 
@@ -327,7 +327,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L113) for the test-case implementation.
 		
-<h4 id="Test_Case:_symbol_lookup_of_user_input">Test Case: symbol lookup of user input</h4>
+<h4 id="Test_32_Case:_32_symbol_32_lookup_32_of_32_user_32_input">Test Case: symbol lookup of user input</h4>
 
 Given the following input:
 
@@ -341,7 +341,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L121) for the test-case implementation.
 		
-<h4 id="Test_Case:_unknown_evaluation">Test Case: unknown evaluation</h4>
+<h4 id="Test_32_Case:_32_unknown_32_evaluation">Test Case: unknown evaluation</h4>
 
 Given the following input:
 
@@ -355,7 +355,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L129) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_statement">Test Case: constant statement</h4>
+<h4 id="Test_32_Case:_32_constant_32_statement">Test Case: constant statement</h4>
 
 Given the following input:
 
@@ -369,7 +369,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L140) for the test-case implementation.
 		
-<h4 id="Test_Case:_interpolated_statement">Test Case: interpolated statement</h4>
+<h4 id="Test_32_Case:_32_interpolated_32_statement">Test Case: interpolated statement</h4>
 
 Given the following input:
 
@@ -383,7 +383,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L141) for the test-case implementation.
 		
-<h4 id="Test_Case:_pasted_user_input">Test Case: pasted user input</h4>
+<h4 id="Test_32_Case:_32_pasted_32_user_32_input">Test Case: pasted user input</h4>
 
 Given the following input:
 
@@ -397,7 +397,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L143) for the test-case implementation.
 		
-<h4 id="Test_Case:_statement_built_elsewhere">Test Case: statement built elsewhere</h4>
+<h4 id="Test_32_Case:_32_statement_32_built_32_elsewhere">Test Case: statement built elsewhere</h4>
 
 Given the following input:
 
@@ -412,7 +412,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L158) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_value">Test Case: constant value</h4>
+<h4 id="Test_32_Case:_32_constant_32_value">Test Case: constant value</h4>
 
 Given the following input:
 
@@ -426,7 +426,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L170) for the test-case implementation.
 		
-<h4 id="Test_Case:_escaped_user_input">Test Case: escaped user input</h4>
+<h4 id="Test_32_Case:_32_escaped_32_user_32_input">Test Case: escaped user input</h4>
 
 Given the following input:
 
@@ -440,7 +440,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L171) for the test-case implementation.
 		
-<h4 id="Test_Case:_pasted_user_input">Test Case: pasted user input</h4>
+<h4 id="Test_32_Case:_32_pasted_32_user_32_input">Test Case: pasted user input</h4>
 
 Given the following input:
 
@@ -454,7 +454,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L172) for the test-case implementation.
 		
-<h4 id="Test_Case:_constant_code">Test Case: constant code</h4>
+<h4 id="Test_32_Case:_32_constant_32_code">Test Case: constant code</h4>
 
 Given the following input:
 
@@ -468,7 +468,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L189) for the test-case implementation.
 		
-<h4 id="Test_Case:_serialized_user_input">Test Case: serialized user input</h4>
+<h4 id="Test_32_Case:_32_serialized_32_user_32_input">Test Case: serialized user input</h4>
 
 Given the following input:
 
@@ -482,7 +482,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L190) for the test-case implementation.
 		
-<h4 id="Test_Case:_pasted_user_input">Test Case: pasted user input</h4>
+<h4 id="Test_32_Case:_32_pasted_32_user_32_input">Test Case: pasted user input</h4>
 
 Given the following input:
 
@@ -496,7 +496,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L192) for the test-case implementation.
 		
-<h4 id="Test_Case:_unknown_code">Test Case: unknown code</h4>
+<h4 id="Test_32_Case:_32_unknown_32_code">Test Case: unknown code</h4>
 
 Given the following input:
 

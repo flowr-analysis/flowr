@@ -192,6 +192,13 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		this.currentState = this.stateDomain.top();
 	}
 
+	/** Applies a handler to the abstract semantics of every domain of the analysis, together with the state view and context of that domain. */
+	private applySemantics(apply: (semantics: DomainSemantics<Domains>[keyof Domains], state: StateDomain<Domains[keyof Domains]>, ctx: AbsintContext<StateDomain<Domains[keyof Domains]>>) => void, state = this.currentState): void {
+		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
+			apply(semantics, this.getState(type, state), this.getContext(type));
+		}
+	}
+
 	/**
 	 * Creates the abstract interpretation context that is passed to the abstract semantics of one of the abstract domains of the analysis.
 	 * The context provides access to the analyzed program and to the abstract states and values inferred for the requested abstract domain so far.
@@ -474,52 +481,38 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 	protected override onExpressionList({ call }: OnCall): void {
 		const node = this.getNormalizedAst(call.id);
-		let expressions: NodeId[];
-
-		if(RExpressionList.is(node)) {
-			expressions = node.children.map(child => child.info.id);
-		} else {
-			expressions = call.args.map(arg => FunctionArgument.isNotEmpty(arg) ? arg.nodeId : undefined).filter(isNotUndefined);
-		}
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleExpressionList?.(this.getState(type), call, this.getContext(type), expressions);
-		}
+		const expressions = RExpressionList.is(node)
+			? node.children.map(child => child.info.id)
+			: call.args.filter(FunctionArgument.isNotEmpty).map(arg => arg.nodeId);
+		this.applySemantics((semantics, state, ctx) => semantics.handleExpressionList?.(state, call, ctx, expressions));
 	}
 
 	protected override onIfThenElseCall({ call, condition, yes, no }: OnCall & { condition: NodeId | undefined; yes: NodeId | undefined; no: NodeId | undefined; }): void {
 		if(condition === undefined || yes === undefined) {
 			return;
 		}
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleIfThenElse?.(this.getState(type), call, this.getContext(type), condition, yes, no);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleIfThenElse?.(state, call, ctx, condition, yes, no));
 	}
 
 	protected override onForLoopCall({ call, variable, vector, body }: OnCall & { variable: FunctionArgument; vector: FunctionArgument; body: FunctionArgument; }): void {
 		if(FunctionArgument.isEmpty(variable) || FunctionArgument.isEmpty(vector) || FunctionArgument.isEmpty(body)) {
 			return;
 		}
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleForLoop?.(this.getState(type), call, this.getContext(type), variable.nodeId, vector.nodeId, body.nodeId);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleForLoop?.(state, call, ctx, variable.nodeId, vector.nodeId, body.nodeId));
 	}
 
 	protected override onWhileLoopCall({ call, condition, body }: OnCall & { condition: FunctionArgument; body: FunctionArgument; }): void {
 		if(FunctionArgument.isEmpty(condition) || FunctionArgument.isEmpty(body)) {
 			return;
 		}
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleWhileLoop?.(this.getState(type), call, this.getContext(type), condition.nodeId, body.nodeId);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleWhileLoop?.(state, call, ctx, condition.nodeId, body.nodeId));
 	}
 
 	protected override onRepeatLoopCall({ call, body }: OnCall & { body: FunctionArgument; }): void {
 		if(FunctionArgument.isEmpty(body)) {
 			return;
 		}
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleRepeatLoop?.(this.getState(type), call, this.getContext(type), body.nodeId);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleRepeatLoop?.(state, call, ctx, body.nodeId));
 	}
 
 	/**
@@ -529,9 +522,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * @protected
 	 */
 	protected onFunctionCall({ call }: OnCall) {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleFunctionCall?.(this.getState(type), call, this.getContext(type));
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleFunctionCall?.(state, call, ctx));
 	}
 
 	protected override onAssignmentCall({ call, target, source }: OnCall & { target?: NodeId, source?: NodeId }): void {
@@ -540,9 +531,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		this.unassigned.delete(target);
 
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleAssignmentCall?.(this.getState(type), call, this.getContext(type), target, source);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleAssignmentCall?.(state, call, ctx, target, source));
 		// the assignment target is visited before the assignment, so we update its state with the assigned values
 		this.trace.set(target, this.currentState);
 	}
@@ -553,9 +542,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		this.unassigned.delete(target);
 
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleReplacementCall?.(this.getState(type), call, this.getContext(type), target, source);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleReplacementCall?.(state, call, ctx, target, source));
 	}
 
 	protected override onAccessCall({ call }: OnCall): void {
@@ -572,79 +559,55 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 			}
 			target = accessed.nodeId;
 		}
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleAccessCall?.(this.getState(type), call, this.getContext(type), target);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleAccessCall?.(state, call, ctx, target));
 	}
 
 	protected override onPipeCall({ call }: OnCall) {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handlePipeCall?.(this.getState(type), call, this.getContext(type));
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handlePipeCall?.(state, call, ctx));
 	}
 
 	protected override onBreakCall({ call }: OnCall) {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleBreakCall?.(this.getState(type), call, this.getContext(type));
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleBreakCall?.(state, call, ctx));
 	}
 
 	protected override onReturnCall({ call }: OnCall) {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleReturnCall?.(this.getState(type), call, this.getContext(type));
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleReturnCall?.(state, call, ctx));
 	}
 
 	protected override onStringConstant({ vertex, node }: { vertex: DataflowGraphVertexValue; node: RString; }): void {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleStringConstant?.(this.getState(type), vertex, this.getContext(type), node.content);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleStringConstant?.(state, vertex, ctx, node.content));
 	}
 
 	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue; node: RNumber; }): void {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleNumberConstant?.(this.getState(type), vertex, this.getContext(type), node.content);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleNumberConstant?.(state, vertex, ctx, node.content));
 	}
 
 	protected override onLogicalConstant({ vertex, node }: { vertex: DataflowGraphVertexValue; node: RLogical; }): void {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleLogicalConstant?.(this.getState(type), vertex, this.getContext(type), node.content);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleLogicalConstant?.(state, vertex, ctx, node.content));
 	}
 
 	protected override onNullConstant({ vertex, node }: { vertex: DataflowGraphVertexValue; node: RSymbol<object & ParentInformation, typeof RNull>; }): void {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleNullConstant?.(this.getState(type), vertex, this.getContext(type), node.content);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleNullConstant?.(state, vertex, ctx, node.content));
 	}
 
 	protected override onSymbolConstant({ vertex, node }: { vertex: DataflowGraphVertexValue; node: RSymbol; }): void {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleSymbolConstant?.(this.getState(type), vertex, this.getContext(type), node.content);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleSymbolConstant?.(state, vertex, ctx, node.content));
 	}
 
 	protected override onVariableUse({ vertex }: { vertex: DataflowGraphVertexUse; }): void {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleVariableUse?.(this.getState(type), vertex, this.getContext(type));
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleVariableUse?.(state, vertex, ctx));
 	}
 
 	protected override onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
 		if(!this.trace.has(vertex.id)) {
 			this.unassigned.add(vertex.id);
 		}
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleVariableDefinition?.(this.getState(type), vertex, this.getContext(type));
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleVariableDefinition?.(state, vertex, ctx));
 		this.bindParameterDefault(vertex.id);
 	}
 
 	protected override onFunctionDefinition({ vertex, parameters }: { vertex: DataflowGraphVertexFunctionDefinition; parameters?: readonly NodeId[]; }): void {
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleFunctionDefinition?.(this.getState(type), vertex, this.getContext(type), parameters ?? Record.keys(vertex.params));
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleFunctionDefinition?.(state, vertex, ctx, parameters ?? Record.keys(vertex.params)));
 	}
 
 	/**
@@ -700,9 +663,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		const newState = state.create(state.value);
 
-		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-			semantics.handleConditionBranch?.(this.getState(type, newState), conditionVertex, this.getContext(type), branch);
-		}
+		this.applySemantics((semantics, state, ctx) => semantics.handleConditionBranch?.(state, conditionVertex, ctx, branch), newState);
 		return newState;
 	}
 
@@ -754,10 +715,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		const conditionVertex = this.getDataflowGraph(branch.id);
 
-		if(conditionVertex === undefined) {
-			return predState;
-		}
-		return this.handleConditionBranch(predState, conditionVertex, branch.when ? RTrue : RFalse);
+		return conditionVertex === undefined ? predState : this.handleConditionBranch(predState, conditionVertex, branch.when ? RTrue : RFalse);
 	}
 
 	protected override visitFunctionCall(call: DataflowGraphVertexFunctionCall): void {
@@ -1021,12 +979,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		 * those that can reach it: `x` within `for(i in 1:nrow(x)) x$a[i] <- 1` is a definition of the `x` in
 		 * the head of the loop, but the head runs before the body ever does.
 		 */
-		return origins.length > 1 ? origins.filter(origin => this.reaches(origin, nodeId)) : origins;
-	}
-
-	/** Whether the control flow may get from one vertex to another, answered from one traversal per source. */
-	private reaches(from: NodeId, to: NodeId): boolean {
-		return this.reachableSet(from).has(to);
+		return origins.length > 1 ? origins.filter(origin => this.reachableSet(origin).has(nodeId)) : origins;
 	}
 
 	/** Everything the control flow may reach from a vertex, walked once per source and kept. */

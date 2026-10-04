@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Project Query">Project Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns information about the analyzed project\
@@ -78,16 +78,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 2
     linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_
+    2 -.->|"reads, calls"| built-in:_43_
     linkStyle 4 stroke:gray;
 ```
 
@@ -99,6 +99,6 @@ flowchart LR
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Project Query query is `executeDataflowQuery` in [`./src/queries/catalog/project-query/project-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/project-query/project-query-executor.ts).
+The Project Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/project-query/project-query-executor.ts#L56"><code><span title="Executes the given project queries.">executeProjectQuery</span></code></a>.
 
 </details>

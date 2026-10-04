@@ -86,3 +86,29 @@ describe('Default (scoped) project discovery', () => {
 		assert.notInclude(got, 'data.csv');
 	});
 });
+
+describe('R sources with the other extensions R allows', () => {
+	/** the root-relative posix paths discovered as R sources to parse, not as text */
+	function parsed(root: string): string[] {
+		const plugin = new FlowrAnalyzerDefaultProjectDiscoveryPlugin();
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), [plugin]);
+		return plugin.processor(ctx, { request: 'project', content: root })
+			.filter(r => isParseRequest(r) && r.request === 'file')
+			.map(r => path.relative(root, (r as { content: string }).content).replaceAll(path.sep, '/'))
+			.sort();
+	}
+
+	test('.S, .s and .q directly below R/ are parsed, elsewhere they are not', () => {
+		const got = parsed(project({
+			'DESCRIPTION': 'Package: mypkg\nType: Package\n',
+			'R/a.S':       'a <- function() 1',
+			'R/b.s':       'b <- function() 2',
+			'R/c.q':       'c <- function() 3',
+			'R/d.R':       'd <- function() 4',
+			'R/sub/e.S':   'e <- function() 5',
+			'src/asm.s':   'mov eax, 1',
+			'other/f.q':   'f <- function() 6'
+		}));
+		assert.deepStrictEqual(got, ['R/a.S', 'R/b.s', 'R/c.q', 'R/d.R']);
+	});
+});

@@ -183,16 +183,18 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(!dl.sigDbNeedsSync()) {
 				return;
 			}
-			sigDbLog.info('sigdb: committed link file changed, re-syncing shards in the background');
-			const { files } = await dl.downloadFullSigDb({
+			sigDbLog.info('sigdb: the committed link file names shards missing from the cache, syncing them in the background');
+			const { tag, files, downloaded, stale } = await dl.downloadFullSigDb({
 				repo:       ctx.config.solver.sigdb.downloadRepo,
 				onProgress: msg => sigDbLog.info(`sigdb sync: ${msg}`)
 			});
-			for(const manifest of files.filter(f => /\.manifest\.json(\.br)?$/.test(f))) {
+			const manifests = files.filter(f => dl.isManifestFile(f));
+			for(const manifest of manifests) {
 				await ctx.deps.addDatabaseSource(manifest);
 			}
+			sigDbLog.info(`sigdb sync: ${tag} ready (${downloaded.length} file(s) fetched, ${manifests.length} manifest(s) mounted${stale.length > 0 ? `, ${stale.length} older bundle(s) still cached` : ''})`);
 		})().catch((e: unknown) => {
-			sigDbLog.warn(`background sigdb sync failed (keeping the cached shards): ${(e as Error).message}`);
+			sigDbLog.warn(`background sigdb sync failed, analyzing with the signatures already cached: ${(e as Error).message}`);
 		});
 	}
 

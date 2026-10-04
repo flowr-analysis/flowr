@@ -118,7 +118,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testProps('nor any of the other replacements', 'f <- function(x) { x[1] <- 1; attr(x, "k") <- 1; class(x) <- "a"; levels(x) <- 1; x }', [{ props: CallProp.Strict }]);
 	testProps('a super-assigning replacement does', 'f <- function(x) { names(x) <<- "n"; x }', [{ props: CallProp.Scope | CallProp.Strict }]);
 	testProps('so does a super-assignment of the formal', 'f <- function(x) { x <<- 5; 1 }', [{ props: CallProp.Scope }]);
-	testProps('and attaching a package', 'f <- function(x) { library(stats); x }', [{ props: CallProp.Scope | CallProp.Strict }]);
+	testProps('and attaching a package', 'f <- function(x) { library(stats); x }', [{ props: CallProp.Scope | CallProp.Strict, tags: [SemanticCallTag.AttachesPackage, SemanticCallTag.LoadsPackage] }]);
 
 	/* the formals of the same bodies, so a fix to one half cannot quietly move the other */
 	testRoles('a default keeps the other formals apart', 'f <- function(x, y = 2) x', { x: ArgProp.Forced | ArgProp.Alias, y: ArgProp.Lazy });

@@ -1,440 +1,59 @@
 import { assertAst, withShell } from '../../../_helper/shell';
-import { exprList, numVal, parameter } from '../../../_helper/ast-builder';
+import type { Pos } from '../../../_helper/ast-builder';
+import { bin, comment, exprList, group, num, parameter, str, sym } from '../../../_helper/ast-builder';
 import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
+import type { RComment } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import type { RParameter } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
+/** `function(...) { children }` starting at the beginning of the first line, with the braces at `open` and `close` */
+function fn(parameters: RParameter[], open: Pos, close: Pos, children: RNode[] = [], adToks?: RComment[]): RNode {
+	return {
+		type:     RType.FunctionDefinition,
+		location: SourceRange.from(1, 1, 1, 8),
+		lexeme:   'function',
+		parameters,
+		body:     group('{', open, close, ...children),
+		info:     adToks ? { adToks } : {}
+	};
+}
+
+const p = (name: string, col: number, defaultValue?: RNode) => parameter(name, SourceRange.from(1, col, 1, col + name.length - 1), defaultValue);
+const dots = (col: number) => parameter('...', SourceRange.from(1, col, 1, col + 2), undefined, true);
+
 describe('Parse function definitions', { concurrent: false }, withShell(shell => {
+	const opts = { ignoreAdToks: true };
 	describe('without parameters', () => {
 		assertAst(label('Noop', ['normal-definition', 'grouping']),
-			shell, 'function() { }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [],
-				info:       {},
-				body:       {
-					type:     RType.ExpressionList,
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 12, 1, 12),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 14, 1, 14),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					location: undefined,
-					lexeme:   undefined,
-					children: [],
-					info:     {}
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
+			shell, 'function() { }', exprList(fn([], [1, 12], [1, 14])), opts);
 		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
-			shell, 'function() { x + 2 * 3 }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [],
-				info:       {},
-				body:       {
-					type:     RType.ExpressionList,
-					location: undefined,
-					lexeme:   undefined,
-					info:     {},
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 12, 1, 12),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 24, 1, 24),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					children: [{
-						type:     RType.BinaryOp,
-						location: SourceRange.from(1, 16, 1, 16),
-						lexeme:   '+',
-						operator: '+',
-						info:     {},
-						lhs:      {
-							type:     RType.Symbol,
-							location: SourceRange.from(1, 14, 1, 14),
-							lexeme:   'x',
-							content:  'x',
-							info:     {}
-						},
-						rhs: {
-							type:     RType.BinaryOp,
-							location: SourceRange.from(1, 20, 1, 20),
-							lexeme:   '*',
-							operator: '*',
-							info:     {},
-							lhs:      {
-								type:     RType.Number,
-								location: SourceRange.from(1, 18, 1, 18),
-								lexeme:   '2',
-								content:  numVal(2),
-								info:     {}
-							},
-							rhs: {
-								type:     RType.Number,
-								location: SourceRange.from(1, 22, 1, 22),
-								lexeme:   '3',
-								content:  numVal(3),
-								info:     {}
-							}
-						}
-					}]
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
+			shell, 'function() { x + 2 * 3 }', exprList(fn([], [1, 12], [1, 24], [
+				bin('+', [1, 16], sym('x', [1, 14]), bin('*', [1, 20], num('2', [1, 18]), num('3', [1, 22])))
+			])), opts);
 	});
 	describe('with unnamed parameters', () => {
-		assertAst(label('One parameter', ['normal-definition', 'formals-named', 'grouping']),
-			shell, 'function(x) { }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [parameter('x', SourceRange.from(1, 10, 1, 10))],
-				info:       {},
-				body:       {
-					type:     RType.ExpressionList,
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 13, 1, 13),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 15, 1, 15),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					location: undefined,
-					lexeme:   undefined,
-					children: [],
-					info:     {}
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
 		assertAst(label('Multiple parameters', ['normal-definition', 'name-normal', 'formals-named', 'grouping']),
-			shell, 'function(a,the,b) { b }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [
-					parameter('a', SourceRange.from(1, 10, 1, 10)),
-					parameter('the', SourceRange.from(1, 12, 1, 14)),
-					parameter('b', SourceRange.from(1, 16, 1, 16))
-				],
-				info: {},
-				body: {
-					type:     RType.ExpressionList,
-					location: undefined,
-					lexeme:   undefined,
-					info:     {},
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 19, 1, 19),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 23, 1, 23),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					children: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 21, 1, 21),
-						lexeme:   'b',
-						content:  'b',
-						info:     {}
-					}]
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
+			shell, 'function(a,the,b) { b }', exprList(fn([p('a', 10), p('the', 12), p('b', 16)], [1, 19], [1, 23], [sym('b', [1, 21])])), opts);
 	});
-
 	assertAst(label('With comments in parameter', ['normal-definition', 'comments', 'grouping']),
-		shell, `function(x=3, # hehehe
-  foo) { }`, exprList({
-			type:       RType.FunctionDefinition,
-			location:   SourceRange.from(1, 1, 1, 8),
-			lexeme:     'function',
-			parameters: [
-				parameter('x', SourceRange.from(1, 10, 1, 10), {
-					type:     RType.Number,
-					location: SourceRange.from(1, 12, 1, 12),
-					lexeme:   '3',
-					content:  numVal(3),
-					info:     {}
-				}),
-				parameter('foo', SourceRange.from(2, 3, 2, 5))
-			],
-			body: {
-				type:     RType.ExpressionList,
-				grouping: [{
-					type:     RType.Symbol,
-					location: SourceRange.from(2, 8, 2, 8),
-					lexeme:   '{',
-					content:  '{',
-					info:     {},
-				}, {
-					type:     RType.Symbol,
-					location: SourceRange.from(2, 10, 2, 10),
-					lexeme:   '}',
-					content:  '}',
-					info:     {},
-				}],
-				location: undefined,
-				lexeme:   undefined,
-				children: [],
-				info:     {}
-			},
-			info: {
-				adToks: [
-					{
-						type:     RType.Comment,
-						location: SourceRange.from(1, 15, 1, 22),
-						lexeme:   '# hehehe',
-						info:     {}
-					}
-				]
-			},
-		}), {
-			ignoreAdToks: false
-		}
+		shell, 'function(x=3, # hehehe\n  foo) { }',
+		exprList(fn([p('x', 10, num('3', [1, 12])), parameter('foo', SourceRange.from(2, 3, 2, 5))], [2, 8], [2, 10], [], [comment('# hehehe', [1, 15])])),
+		{ ignoreAdToks: false }
 	);
-
 	describe('With Special Parameters (...)', () => {
-		assertAst(label('As Single Argument', ['normal-definition', 'formals-dot-dot-dot', 'grouping']),
-			shell, 'function(...) { }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [parameter('...', SourceRange.from(1, 10, 1, 12), undefined, true)],
-				info:       {},
-				body:       {
-					type:     RType.ExpressionList,
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 15, 1, 15),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 17, 1, 17),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					location: undefined,
-					lexeme:   undefined,
-					children: [],
-					info:     {}
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
-
 		assertAst(label('As first arg', ['normal-definition', 'formals-dot-dot-dot', 'grouping', 'formals-named']),
-			shell, 'function(..., a) { }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [
-					parameter('...', SourceRange.from(1, 10, 1, 12), undefined, true),
-					parameter('a', SourceRange.from(1, 15, 1, 15))
-				],
-				info: {},
-				body: {
-					type:     RType.ExpressionList,
-					location: undefined,
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 18, 1, 18),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 20, 1, 20),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					lexeme:   undefined,
-					children: [],
-					info:     {}
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
-
+			shell, 'function(..., a) { }', exprList(fn([dots(10), p('a', 15)], [1, 18], [1, 20])), opts);
 		assertAst(label('As last arg', ['normal-definition', 'formals-dot-dot-dot', 'grouping', 'formals-named', 'name-normal']),
-			shell, 'function(a, the, ...) { ... }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [
-					parameter('a', SourceRange.from(1, 10, 1, 10)),
-					parameter('the', SourceRange.from(1, 13, 1, 15)),
-					parameter('...', SourceRange.from(1, 18, 1, 20), undefined, true)
-				],
-				info: {},
-				body: {
-					type:     RType.ExpressionList,
-					location: undefined,
-					lexeme:   undefined,
-					info:     {},
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 23, 1, 23),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 29, 1, 29),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					children: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 25, 1, 27),
-						lexeme:   '...',
-						content:  '...',
-						info:     {}
-					}]
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
+			shell, 'function(a, the, ...) { ... }', exprList(fn([p('a', 10), p('the', 13), dots(18)], [1, 23], [1, 29], [sym('...', [1, 25])])), opts);
 	});
 	describe('With Named Parameters', () => {
-		assertAst(label('One Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers']),
-			shell, 'function(x=3) { }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [
-					parameter('x', SourceRange.from(1, 10, 1, 10), {
-						type:     RType.Number,
-						location: SourceRange.from(1, 12, 1, 12),
-						lexeme:   '3',
-						content:  numVal(3),
-						info:     {}
-					})
-				],
-				info: {},
-				body: {
-					type:     RType.ExpressionList,
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 15, 1, 15),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 17, 1, 17),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					location: undefined,
-					lexeme:   undefined,
-					children: [],
-					info:     {}
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
-
-		assertAst(label('Multiple Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers', 'name-normal', 'strings']),
-			shell, 'function(a, x=3, huhu="hehe") { x }', exprList({
-				type:       RType.FunctionDefinition,
-				location:   SourceRange.from(1, 1, 1, 8),
-				lexeme:     'function',
-				parameters: [
-					parameter('a', SourceRange.from(1, 10, 1, 10)),
-					parameter('x', SourceRange.from(1, 13, 1, 13), {
-						type:     RType.Number,
-						location: SourceRange.from(1, 15, 1, 15),
-						lexeme:   '3',
-						content:  numVal(3),
-						info:     {}
-					}),
-					parameter('huhu', SourceRange.from(1, 18, 1, 21), {
-						type:     RType.String,
-						location: SourceRange.from(1, 23, 1, 28),
-						lexeme:   '"hehe"',
-						content:  { str: 'hehe', quotes: '"' },
-						info:     {}
-					})
-				],
-				info: {},
-				body: {
-					type:     RType.ExpressionList,
-					lexeme:   undefined,
-					location: undefined,
-					info:     {},
-					grouping: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 31, 1, 31),
-						lexeme:   '{',
-						content:  '{',
-						info:     {},
-					}, {
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 35, 1, 35),
-						lexeme:   '}',
-						content:  '}',
-						info:     {},
-					}],
-					children: [{
-						type:     RType.Symbol,
-						location: SourceRange.from(1, 33, 1, 33),
-						lexeme:   'x',
-						content:  'x',
-						info:     {}
-					}]
-				}
-			}), {
-				ignoreAdToks: true
-			}
-		);
+		assertAst(label('Multiple Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers', 'strings']),
+			shell, 'function(a, x=3, huhu="hehe") { x }', exprList(fn([
+				p('a', 10), p('x', 13, num('3', [1, 15])), p('huhu', 18, str('"hehe"', [1, 23], 'hehe'))
+			], [1, 31], [1, 35], [sym('x', [1, 33])])), opts);
 	});
-})
-);
+}));

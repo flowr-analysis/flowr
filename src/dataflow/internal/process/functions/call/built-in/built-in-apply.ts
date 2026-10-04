@@ -21,6 +21,9 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { applyAmbientStateOfCallee } from './built-in-ambient-state';
+import { CallProp, CallProps, SemanticCallTag } from '../../../../../environments/built-in-props';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** the function reference extracted from an argument passed to a higher-order call */
 export interface ResolvedFunctionArgument {
@@ -181,6 +184,12 @@ export function processApply<OtherInfo>(
 			ClosureRefs.resolveOpenIngoing(information.graph, functionId, called, data.environment);
 		}
 	} else {
+		information = applyAmbientStateOfCallee(information, functionId, functionName, data);
+		/* a callee binding names (`do.call("assign", ...)`) does so with arguments we cannot see here; loading a package is handled on its own */
+		if(Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)?.some(t => t.type === ReferenceType.BuiltInFunction
+			&& CallProps.hasAny(t.config, CallProp.Scope) && !CallProps.hasAny(t.config, SemanticCallTag.LoadsPackage))) {
+			information.graph.markIdForUnknownSideEffects(rootId);
+		}
 		/* identify it as a full-blown function call :) */
 		information.graph.updateToFunctionCall({
 			tag:         VertexType.FunctionCall,

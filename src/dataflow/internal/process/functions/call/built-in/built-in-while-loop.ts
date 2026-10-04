@@ -31,6 +31,7 @@ import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-ki
 import { appendEnvironment } from '../../../../../environments/append';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
 
 
 /**
@@ -116,6 +117,7 @@ export function processWhileLoop<OtherInfo>(
 	applyCdToReferences(body.out, cdTrue);
 
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, new Set(condition.in.map(i => i.nodeId)))), body.out, body.environment);
+	linkAmbientStateWithinLoop(information.graph, bodyRead.concat(condition.in, condition.unknownReferences), body);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	// as the while-loop always evaluates its condition

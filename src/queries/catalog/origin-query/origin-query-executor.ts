@@ -14,7 +14,7 @@ export function fingerPrintOfQuery(query: OriginQuery): SlicingCriterion {
 /**
  * Execute origin queries, catching duplicates with the same fingerprint
  */
-export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
+export async function executeOriginQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
 	const start = Date.now();
 	const results: OriginQueryResult['results'] = {};
 	for(const query of queries) {

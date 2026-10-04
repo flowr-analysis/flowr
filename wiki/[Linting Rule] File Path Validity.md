@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="file-path-validity">File Path Validity&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -45,7 +45,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (5 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `C:/Users/me/Documents/My R Scripts/Reproducible.csv` at 2.12-74\
@@ -78,7 +78,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-file-path-validity.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts)
 
-<h4 id="Test_Case:_none">Test Case: none</h4>
+<h4 id="Test_32_Case:_32_none">Test Case: none</h4>
 
 > As the script contains no file paths, we expect no issues
 
@@ -94,7 +94,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L18) for the test-case implementation.
 		
-<h4 id="Test_Case:_simple">Test Case: simple</h4>
+<h4 id="Test_32_Case:_32_simple">Test Case: simple</h4>
 
 > Assuming, that `file.csv` exists, we expect the linter to not report any issues, but to report an invalid file path for `file-missing.csv`
 
@@ -117,7 +117,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L20) for the test-case implementation.
 		
-<h4 id="Test_Case:_simple_ignore_case">Test Case: simple ignore case</h4>
+<h4 id="Test_32_Case:_32_simple_32_ignore_32_case">Test Case: simple ignore case</h4>
 
 > If we configure the linter to ignore capitalization, we expect the linter to not report an issue for `file.csv`, but still report an issue for `file-missing.csv`
 
@@ -140,7 +140,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L24) for the test-case implementation.
 		
-<h4 id="Test_Case:_deep">Test Case: deep</h4>
+<h4 id="Test_32_Case:_32_deep">Test Case: deep</h4>
 
 > Linting should also work for relative paths, as long as the file exists, we assume `path/to/deep-file.csv` to exist
 
@@ -163,7 +163,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L28) for the test-case implementation.
 		
-<h4 id="Test_Case:_deep_lax">Test Case: deep lax</h4>
+<h4 id="Test_32_Case:_32_deep_32_lax">Test Case: deep lax</h4>
 
 > If we use a relative path that is not valid (we expect there to be no `invalid/` folder), we expect the linter to report an issue too
 
@@ -186,7 +186,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L32) for the test-case implementation.
 		
-<h4 id="Test_Case:_setwd_relative_valid">Test Case: setwd relative valid</h4>
+<h4 id="Test_32_Case:_32_setwd_32_relative_32_valid">Test Case: setwd relative valid</h4>
 
 Given the following input:
 
@@ -206,7 +206,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L37) for the test-case implementation.
 		
-<h4 id="Test_Case:_no_setwd_relative_missing">Test Case: no setwd relative missing</h4>
+<h4 id="Test_32_Case:_32_no_32_setwd_32_relative_32_missing">Test Case: no setwd relative missing</h4>
 
 > without the setwd the same relative path is missing (guards the case above against a false pass)
 
@@ -227,7 +227,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L40) for the test-case implementation.
 		
-<h4 id="Test_Case:_write_before">Test Case: write before</h4>
+<h4 id="Test_32_Case:_32_write_32_before">Test Case: write before</h4>
 
 > If we use a relative path that is not valid, but we create a file of such a name within the script, we expect the linter to not report an issue
 
@@ -249,7 +249,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L44) for the test-case implementation.
 		
-<h4 id="Test_Case:_write_before_ignore_case">Test Case: write before ignore case</h4>
+<h4 id="Test_32_Case:_32_write_32_before_32_ignore_32_case">Test Case: write before ignore case</h4>
 
 > If we use a relative path that is not valid, but we create a file of such a name within the script, and ignore case, we expect the linter to not report an issue
 
@@ -271,7 +271,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L46) for the test-case implementation.
 		
-<h4 id="Test_Case:_write_before_never">Test Case: write before never</h4>
+<h4 id="Test_32_Case:_32_write_32_before_32_never">Test Case: write before never</h4>
 
 > If the code that is supposed to write the file is never executed, we expect the linter to report an issue for the missing file
 
@@ -293,7 +293,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L48) for the test-case implementation.
 		
-<h4 id="Test_Case:_const">Test Case: const</h4>
+<h4 id="Test_32_Case:_32_const">Test Case: const</h4>
 
 > We should be able to recognize file paths that are bound to variables
 
@@ -314,7 +314,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L52) for the test-case implementation.
 		
-<h4 id="Test_Case:_unknown_off">Test Case: unknown off</h4>
+<h4 id="Test_32_Case:_32_unknown_32_off">Test Case: unknown off</h4>
 
 > If we configure the linter to do nothing for unknown file paths, we expect it to not report an issue for the unknown file path
 
@@ -335,7 +335,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L55) for the test-case implementation.
 		
-<h4 id="Test_Case:_unknown_on">Test Case: unknown on</h4>
+<h4 id="Test_32_Case:_32_unknown_32_on">Test Case: unknown on</h4>
 
 > If we configure the linter to report unknown file paths, we expect it to report an issue for the unknown file path
 
@@ -356,7 +356,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L58) for the test-case implementation.
 		
-<h4 id="Test_Case:_url_and_missing_file">Test Case: url and missing file</h4>
+<h4 id="Test_32_Case:_32_url_32_and_32_missing_32_file">Test Case: url and missing file</h4>
 
 Given the following input:
 
@@ -371,7 +371,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L78) for the test-case implementation.
 		
-<h4 id="Test_Case:_url_and_existing_file">Test Case: url and existing file</h4>
+<h4 id="Test_32_Case:_32_url_32_and_32_existing_32_file">Test Case: url and existing file</h4>
 
 Given the following input:
 
@@ -391,7 +391,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-file-path-validity.test.ts#L81) for the test-case implementation.
 		
-<h4 id="Test_Case:_file://_missing">Test Case: file:// missing</h4>
+<h4 id="Test_32_Case:_32_file://_32_missing">Test Case: file:// missing</h4>
 
 Given the following input:
 

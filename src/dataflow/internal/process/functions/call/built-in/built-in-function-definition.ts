@@ -34,7 +34,7 @@ import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/mod
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { queryFnProps } from '../../../../../environments/query-fn-props';
-import { CallProp } from '../../../../../environments/built-in-props';
+import { CallProp, CallProps } from '../../../../../environments/built-in-props';
 import { arraysGroupBy } from '../../../../../../util/collections/arrays';
 
 /**
@@ -521,8 +521,9 @@ function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfIn
 }
 
 /** Whether `name` resolves to a built-in that dispatches, so the methods the code writes for it are reachable. */
-function dispatchesOnClass(name: Identifier, environment: REnvironmentInformation): boolean {
-	return ((queryFnProps(name, { environment })?.props ?? 0) & CallProp.Generic) !== 0;
+function dispatchesOnClass(name: Identifier, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): boolean {
+	/* a generic only the signature database knows (`toString`) dispatches as well */
+	return CallProps.hasAny(queryFnProps(name, { environment }) ?? ctx.functionInfo(name), CallProp.Generic);
 }
 
 /**
@@ -569,7 +570,7 @@ export function updateNestedFunctionCalls(
 		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
 		const collectedNextMethods: Set<NodeId> = new Set();
 		let treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
-		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment)) {
+		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, ctx)) {
 			for(const method of linkOwnS3Methods(id, name, graph, effectiveEnvironment)) {
 				targets.add(method);
 			}

@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -25,6 +26,7 @@ import { pipedCall, resolveConstantString, routeWrittenToStackEnv } from './buil
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { evaluatesCapturedCode } from './built-in-ambient-state';
 
 const SymbolConstructors: ReadonlySet<string> = new Set(['as.name', 'as.symbol']);
 const SyntacticName = /^[.a-zA-Z][.a-zA-Z0-9_]*$/;
@@ -114,7 +116,8 @@ export function processEvalCall<OtherInfo>(
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
 	handleUnknownSideEffect(information.graph, information.environment, rootId);
-	return information;
+	/* a captured expression is linked once the graph is complete, but the state its calls access has to show now */
+	return evaluatesCapturedCode(information, rootId, data);
 }
 
 
@@ -173,15 +176,21 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 				return handlePaste(arg.value.arguments, data, Identifier.getName(arg.value.functionName.content) === 'paste' ? [' '] : ['']);
 			}
 			return getAsString(arg.value, data);
+		} else if(RFunctionCall.isNamed(val) && ['str2lang', 'str2expression'].includes(Identifier.getName(val.functionName.content))) {
+			/* both parse their string, like `parse(text = s)` */
+			return getAsString(RFunctionCall.soleArgument(val.arguments)?.value, data);
 		} else if(RFunctionCall.isNamed(val) && SymbolConstructors.has(Identifier.getName(val.functionName.content))
 			&& Resolve.isBuiltIn(val.functionName.content, data.environment, ReferenceType.Function)) {
 			const arg = RFunctionCall.soleArgument(val.arguments);
 			const named = arg?.value ? resolveConstantString(arg.value, data) : undefined;
 			return named !== undefined && SyntacticName.test(named) ? [named] : undefined;
 		} else if(RSymbol.is(val)) {
-			// const resolved = resolveValueOfVariable(val.content, env);
-			// see https://github.com/flowr-analysis/flowr/pull/1467
-			return undefined;
+			/* `nm <- as.name("w"); eval(nm)`: a name bound once to code we can read is that code */
+			const defs = Resolve.byName(val.content, data.environment);
+			const target = defs?.length === 1 ? defs[0].nodeId : undefined;
+			const assignment = target === undefined ? undefined : data.completeAst.idMap.get(data.completeAst.idMap.get(target)?.info.parent ?? '');
+			const source = RBinaryOp.is(assignment) ? assignment.lhs.info.id === target ? assignment.rhs : assignment.lhs : undefined;
+			return source === undefined || RSymbol.is(source) ? undefined : resolveEvalToCode(source, config, data);
 		} else {
 			return undefined;
 		}

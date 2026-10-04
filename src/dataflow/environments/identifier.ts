@@ -696,6 +696,8 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * Use this to resolve variables assigned via `assign(name, val, envir=<this var>)`.
 	 */
 	readonly envState?:        REnvironmentInformation
+	/** Names the environment object {@link envState} tracks, so that every variable aliasing it sees the same writes. */
+	readonly envId?:           NodeId
 	/**
 	 * If this is a function that returns a tracked environment, stores the envState
 	 * that the function returns (best-effort: only set when statically detectable).

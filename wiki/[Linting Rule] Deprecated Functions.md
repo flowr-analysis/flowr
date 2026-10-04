@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-21, 16:17:54 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="deprecated-functions">Deprecated Functions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This signals the use of deprecated functions or features."><a href='#deprecated'>![deprecated](https://img.shields.io/badge/deprecated-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
@@ -71,7 +71,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-deprecated-functions.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts)
 
-<h4 id="Test_Case:_no_function_listed">Test Case: no function listed</h4>
+<h4 id="Test_32_Case:_32_no_32_function_32_listed">Test Case: no function listed</h4>
 
 > Here, we expect no deprecated functions to be found, as neither `cat` nor `print` nor `<-` are listed as deprecated, we specifically clean the list of deprecated functions
 
@@ -95,7 +95,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L51) for the test-case implementation.
 		
-<h4 id="Test_Case:_cat">Test Case: cat</h4>
+<h4 id="Test_32_Case:_32_cat">Test Case: cat</h4>
 
 > Given that we declare `cat` as deprecated, we expect all uses to be marked!
 
@@ -120,7 +120,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L57) for the test-case implementation.
 		
-<h4 id="Test_Case:_custom_cat">Test Case: custom cat</h4>
+<h4 id="Test_32_Case:_32_custom_32_cat">Test Case: custom cat</h4>
 
 > Overwriting the `cat` function with a user defined implementation (even though it is useless), should cause the linter to not mark calls to the custom `cat` function as deprecated
 
@@ -145,7 +145,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L66) for the test-case implementation.
 		
-<h4 id="Test_Case:_with_defaults">Test Case: with defaults</h4>
+<h4 id="Test_32_Case:_32_with_32_defaults">Test Case: with defaults</h4>
 
 > Using the default linter configuration, a function such as `all_equal` should be marked as deprecated.
 		   Nothing attaches dplyr here, so the call may be any `all_equal` and the finding is a guess
@@ -162,7 +162,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L75) for the test-case implementation.
 		
-<h4 id="Test_Case:_with_defaults_nested">Test Case: with defaults nested</h4>
+<h4 id="Test_32_Case:_32_with_32_defaults_32_nested">Test Case: with defaults nested</h4>
 
 > We should find deprecated functions even if they are nested in other function calls
 
@@ -178,7 +178,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L82) for the test-case implementation.
 		
-<h4 id="Test_Case:_with_defaults__package_attached">Test Case: with defaults, package attached</h4>
+<h4 id="Test_32_Case:_32_with_32_defaults_44__32_package_32_attached">Test Case: with defaults, package attached</h4>
 
 > attaching the package the name belongs to settles which function it is
 
@@ -195,7 +195,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L89) for the test-case implementation.
 		
-<h4 id="Test_Case:_with_a__controlled__package_database">Test Case: with a (controlled) package database</h4>
+<h4 id="Test_32_Case:_32_with_32_a_32__40_controlled_41__32_package_32_database">Test Case: with a (controlled) package database</h4>
 
 > // regression: the loaded-package export must still count as a built-in call target
 
@@ -217,7 +217,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L105) for the test-case implementation.
 		
-<h4 id="Test_Case:_without_any_package_database">Test Case: without any package database</h4>
+<h4 id="Test_32_Case:_32_without_32_any_32_package_32_database">Test Case: without any package database</h4>
 
 Given the following input:
 
@@ -237,7 +237,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L111) for the test-case implementation.
 		
-<h4 id="Test_Case:_deprecated_arg_but_value_not_set">Test Case: deprecated arg but value not set</h4>
+<h4 id="Test_32_Case:_32_deprecated_32_arg_32_but_32_value_32_not_32_set">Test Case: deprecated arg but value not set</h4>
 
 Given the following input:
 
@@ -256,7 +256,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L120) for the test-case implementation.
 		
-<h4 id="Test_Case:_deprecated_arg_present">Test Case: deprecated arg present</h4>
+<h4 id="Test_32_Case:_32_deprecated_32_arg_32_present">Test Case: deprecated arg present</h4>
 
 Given the following input:
 
@@ -275,7 +275,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L127) for the test-case implementation.
 		
-<h4 id="Test_Case:_deprecated_arg_but_not_present">Test Case: deprecated arg but not present</h4>
+<h4 id="Test_32_Case:_32_deprecated_32_arg_32_but_32_not_32_present">Test Case: deprecated arg but not present</h4>
 
 Given the following input:
 
@@ -294,7 +294,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L146) for the test-case implementation.
 		
-<h4 id="Test_Case:_deprecated_arg_present">Test Case: deprecated arg present</h4>
+<h4 id="Test_32_Case:_32_deprecated_32_arg_32_present">Test Case: deprecated arg present</h4>
 
 Given the following input:
 
@@ -313,7 +313,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L153) for the test-case implementation.
 		
-<h4 id="Test_Case:__arg__unresolved_version_should_make_result_uncertain">Test Case: (arg) unresolved version should make result uncertain</h4>
+<h4 id="Test_32_Case:_32__40_arg_41__32_unresolved_32_version_32_should_32_make_32_result_32_uncertain">Test Case: (arg) unresolved version should make result uncertain</h4>
 
 Given the following input:
 
@@ -333,7 +333,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L178) for the test-case implementation.
 		
-<h4 id="Test_Case:__arg__version_resolved_and_constraint_satisfied">Test Case: (arg) version resolved and constraint satisfied</h4>
+<h4 id="Test_32_Case:_32__40_arg_41__32_version_32_resolved_32_and_32_constraint_32_satisfied">Test Case: (arg) version resolved and constraint satisfied</h4>
 
 Given the following input:
 
@@ -353,7 +353,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L195) for the test-case implementation.
 		
-<h4 id="Test_Case:__arg__version_resolved_and_constraint_not_satisfied">Test Case: (arg) version resolved and constraint not satisfied</h4>
+<h4 id="Test_32_Case:_32__40_arg_41__32_version_32_resolved_32_and_32_constraint_32_not_32_satisfied">Test Case: (arg) version resolved and constraint not satisfied</h4>
 
 Given the following input:
 
@@ -373,7 +373,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L216) for the test-case implementation.
 		
-<h4 id="Test_Case:__fn__unresolved_version_should_make_result_uncertain">Test Case: (fn) unresolved version should make result uncertain</h4>
+<h4 id="Test_32_Case:_32__40_fn_41__32_unresolved_32_version_32_should_32_make_32_result_32_uncertain">Test Case: (fn) unresolved version should make result uncertain</h4>
 
 Given the following input:
 
@@ -393,7 +393,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L227) for the test-case implementation.
 		
-<h4 id="Test_Case:__fn__version_resolved_and_constraint_satisfied">Test Case: (fn) version resolved and constraint satisfied</h4>
+<h4 id="Test_32_Case:_32__40_fn_41__32_version_32_resolved_32_and_32_constraint_32_satisfied">Test Case: (fn) version resolved and constraint satisfied</h4>
 
 Given the following input:
 
@@ -413,7 +413,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L243) for the test-case implementation.
 		
-<h4 id="Test_Case:__fn__version_resolved_and_constraint_not_satisfied">Test Case: (fn) version resolved and constraint not satisfied</h4>
+<h4 id="Test_32_Case:_32__40_fn_41__32_version_32_resolved_32_and_32_constraint_32_not_32_satisfied">Test Case: (fn) version resolved and constraint not satisfied</h4>
 
 Given the following input:
 
@@ -433,7 +433,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L263) for the test-case implementation.
 		
-<h4 id="Test_Case:_sigdb-deprecated_function_not_in_fns">Test Case: sigdb-deprecated function not in fns</h4>
+<h4 id="Test_32_Case:_32_sigdb-deprecated_32_function_32_not_32_in_32_fns">Test Case: sigdb-deprecated function not in fns</h4>
 
 Given the following input:
 
@@ -453,7 +453,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L276) for the test-case implementation.
 		
-<h4 id="Test_Case:_not_flagged_without_a_package_database">Test Case: not flagged without a package database</h4>
+<h4 id="Test_32_Case:_32_not_32_flagged_32_without_32_a_32_package_32_database">Test Case: not flagged without a package database</h4>
 
 Given the following input:
 
@@ -473,7 +473,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L282) for the test-case implementation.
 		
-<h4 id="Test_Case:_first_argument">Test Case: first argument</h4>
+<h4 id="Test_32_Case:_32_first_32_argument">Test Case: first argument</h4>
 
 Given the following input:
 
@@ -492,7 +492,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L291) for the test-case implementation.
 		
-<h4 id="Test_Case:_first_argument_behind_a_named_one">Test Case: first argument behind a named one</h4>
+<h4 id="Test_32_Case:_32_first_32_argument_32_behind_32_a_32_named_32_one">Test Case: first argument behind a named one</h4>
 
 > a name binds its argument wherever it stands, so `99` still fills the first position
 
@@ -513,7 +513,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L298) for the test-case implementation.
 		
-<h4 id="Test_Case:_the_package_the_entry_names">Test Case: the package the entry names</h4>
+<h4 id="Test_32_Case:_32_the_32_package_32_the_32_entry_32_names">Test Case: the package the entry names</h4>
 
 Given the following input:
 
@@ -527,7 +527,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L307) for the test-case implementation.
 		
-<h4 id="Test_Case:_some_other_package">Test Case: some other package</h4>
+<h4 id="Test_32_Case:_32_some_32_other_32_package">Test Case: some other package</h4>
 
 Given the following input:
 
@@ -541,7 +541,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-deprecated-functions.test.ts#L312) for the test-case implementation.
 		
-<h4 id="Test_Case:_ggplot2_size_becomes_linewidth">Test Case: ggplot2 size becomes linewidth</h4>
+<h4 id="Test_32_Case:_32_ggplot2_32_size_32_becomes_32_linewidth">Test Case: ggplot2 size becomes linewidth</h4>
 
 Given the following input:
 

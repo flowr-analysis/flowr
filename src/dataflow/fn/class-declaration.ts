@@ -134,15 +134,6 @@ export function argForImpl<Info>(args: readonly PotentiallyEmptyRArgument<Info &
 	return undefined;
 }
 
-/**
- * The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise.
- * Exported so `built-in-s-four.ts` can drop its own copy of this instead of hand-rolling it again; that file
- * already imports {@link ClassArgRef} from here, so the reverse import would cycle.
- * @deprecated use {@link argForImpl} instead
- */
-export function argFor<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
-	return argForImpl(args, ref);
-}
 
 /** The string a node states literally, `undefined` for anything that is not a literal (a variable, a call, ...). */
 function literal<Info>(node: RNode<Info & ParentInformation> | undefined): string | undefined {
@@ -311,10 +302,6 @@ export function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredC
 	return classes;
 }
 
-/** @deprecated use {@link declaredClassesImpl} instead */
-export function declaredClasses(graph: DataflowGraph): Map<string, DeclaredClass> {
-	return declaredClassesImpl(graph);
-}
 
 /** Variable name to the class its generator declares, for the `Cls <- R6Class(...)`/`Cls <- new_class(...)` bindings. */
 function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, DeclaredClass>): Map<string, string> {
@@ -390,9 +377,3 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 	}
 	return records;
 }
-
-/** @deprecated use {@link toSigClassesImpl} instead */
-export function toSigClasses(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
-	return toSigClassesImpl(classes, ownerOf);
-}
-

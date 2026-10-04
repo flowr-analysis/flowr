@@ -26,6 +26,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfgVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
@@ -122,6 +123,21 @@ function environmentsOfCallee(info: DataflowGraphVertexFunctionCall): readonly R
 	return (Resolve.byName(info.name, info.environment) ?? []).filter(hasEnvState).map(d => d.envState);
 }
 
+const AliasFlowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+
+/** `start` and everything that takes over what it reads: aliases and nested uses of an environment all share it. */
+function aliasReadsOf(graph: DataflowGraph, start: NodeId): Set<NodeId> {
+	const found = new Set<NodeId>([start]);
+	for(const id of found) {
+		for(const [from, edge] of graph.edgesTo(id)) {
+			if(DfEdge.includesType(edge, AliasFlowBits)) {
+				found.add(from);
+			}
+		}
+	}
+	return found;
+}
+
 /**
  * Links a function call with a single target function definition.
  */
@@ -158,8 +174,20 @@ export function linkFunctionCallWithSingleTarget(
 				if(!fnSubflow.graph.has(nodeId) && !NodeId.isBuiltIn(nodeId)) {
 					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
-					if(envState !== undefined) {
-						bindAccessedField(graph, ingoing.nodeId, envState, idMap);
+					for(const read of envState === undefined ? [] : aliasReadsOf(graph, ingoing.nodeId)) {
+						bindAccessedField(graph, read, envState as REnvironmentInformation, idMap);
+						const write = fieldAssignmentOf(read, idMap);
+						if(write !== undefined) {
+							graph.addEdge(id, write, EdgeType.Reads);
+							graph.addEdge(nodeId, id, EdgeType.SideEffectOnCall);
+							/* a write in a nested function only runs when that function is called */
+							const within = RNode.findEnclosing(write, idMap, RFunctionDefinition.is);
+							for(const [caller, edge] of within === undefined || within === fnId ? [] : graph.edgesTo(within)) {
+								if(DfEdge.includesType(edge, EdgeType.Calls)) {
+									graph.addEdge(write, caller, EdgeType.Reads);
+								}
+							}
+						}
 					}
 					if(definedAt !== undefined && definedAt !== nodeId && !NodeId.isBuiltIn(definedAt)
 						&& graph.hasVertex(definedAt) && !DfgVertex.isVariableDefinition(graph.getVertex(nodeId))) {
@@ -206,6 +234,10 @@ function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Re
 	for(const [arg, param] of maps.entries()) {
 		if(readParams[String(param)]) {
 			graph.addEdge(callId, arg, EdgeType.Reads);
+			/* a call in the argument only runs when the call forces it, so its side effects depend on the call */
+			if(DfgVertex.isFunctionCall(graph.getVertex(arg))) {
+				graph.addEdge(arg, callId, EdgeType.Reads);
+			}
 		}
 	}
 }
@@ -221,7 +253,8 @@ function linkFunctionCall(
 	calledFunctionDefinitions: {
 		functionCall:        NodeId;
 		called:              readonly DataflowGraphVertexInfo[],
-		propagateExitPoints: readonly ExitPoint[]
+		propagateExitPoints: readonly ExitPoint[],
+		calledBuiltIns?:     readonly NodeId[]
 	}[]
 ) {
 	const edges = graph.outgoingEdges(id);
@@ -236,7 +269,7 @@ function linkFunctionCall(
 		}
 	}
 
-	const [functionDefs] = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph);
+	const [functionDefs, builtIns] = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph);
 
 	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {
@@ -249,8 +282,9 @@ function linkFunctionCall(
 			propagateExitPoints.push(ep);
 		}
 	}
-	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
-		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray(), propagateExitPoints });
+	if(thisGraph.isRoot(id) && (functionDefs.size > 0 || builtIns.size > 0)) {
+		/* a built-in reached through a variable (`p <- par; p(...)`) was not processed as that built-in */
+		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray(), propagateExitPoints, calledBuiltIns: builtIns.size > 0 ? [...builtIns] : undefined });
 	}
 }
 
@@ -264,8 +298,8 @@ export function linkFunctionCalls(
 	thisGraph: DataflowGraph,
 	/** calls `graph` knows of that `thisGraph` does not, as a read that became a call */
 	alsoCalls: readonly NodeId[] = []
-): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] {
-	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] = [];
+): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[], calledBuiltIns?: readonly NodeId[] }[] {
+	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[], calledBuiltIns?: readonly NodeId[] }[] = [];
 	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
 		if(!info.onlyBuiltin) {
 			linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions);
@@ -419,7 +453,8 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 	RNode.visitAst<Info & ParentInformation>(node, inner => {
 		if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
-			references.push({ nodeId: inner.functionName.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
+			/* the call vertex carries the call's id, its name symbol has no vertex of its own */
+			references.push({ nodeId: inner.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
 		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
 			references.push({ nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable });
 		}
@@ -427,7 +462,23 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 	});
 	const unresolved: IdentifierReference[] = [];
 	linkInputs(references, environment, unresolved, graph, false);
+	for(const call of references.filter(r => r.type === ReferenceType.Function)) {
+		linkCallToDefinitions(graph, call.nodeId, Resolve.byNameAndType(call.name as Identifier, environment, ReferenceType.Function)?.map(d => d.nodeId) ?? [], idMap);
+	}
 	return unresolved;
+}
+
+/** Links the call `callId` to the functions the given definitions bind, which it did not know of when it was processed. */
+export function linkCallToDefinitions(graph: DataflowGraph, callId: NodeId, definitions: readonly NodeId[], idMap: AstIdMap): void {
+	const call = graph.getVertex(callId);
+	if(definitions.length === 0 || !DfgVertex.isFunctionCall(call)) {
+		return;
+	}
+	for(const fn of getAllLinkedFunctionDefinitions(new Set(definitions), graph)[0]) {
+		if(!DfEdge.includesType(graph.outgoingEdges(callId)?.get(fn.id) ?? { types: 0 }, EdgeType.Calls)) {
+			linkFunctionCallWithSingleTarget(graph, fn, call, idMap);
+		}
+	}
 }
 
 /**
@@ -600,6 +651,20 @@ export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs
 			graph.addEdge(accessId, fd.nodeId, EdgeType.Returns);
 		}
 	}
+}
+
+/** The call writing a field into the environment the symbol `readId` holds: `x$f <- v` (its replacement call) or `assign("f", v, envir = x)`. */
+function fieldAssignmentOf(readId: NodeId, idMap: AstIdMap): NodeId | undefined {
+	const read = idMap.get(readId);
+	const access = read === undefined ? undefined : RNode.directParent(read, idMap);
+	/* `assign("f", v, envir = x)` writes into `x` as well */
+	const call = access === undefined ? undefined : RNode.directParent(access, idMap);
+	if(RFunctionCall.isNamed(call) && Identifier.getName(call.functionName.content) === 'assign' && call.arguments.indexOf(access as never) >= 2) {
+		return call.info.id;
+	}
+	const assign = RAccess.is(access) && access.accessed.info.id === readId ? call : undefined;
+	/* the replacement call `$<-` carries the id of the access it writes through */
+	return RBinaryOp.is(assign) && assign.lhs.info.id === access?.info.id && /^(<<?-|=)$/.test(assign.operator) ? access.info.id : undefined;
 }
 
 /**

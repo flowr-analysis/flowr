@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Inspect Higher-Order Functions Query">Inspect Higher-Order Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are higher-order functions\
@@ -19,7 +19,7 @@ Using the example code `f <- function() function(x) x; f()` the following query 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (4ms)\
+Query: **inspect-higher-order** (7ms)\
 &nbsp;&nbsp;- Function **5** (1.17-29) is not a higher-order function\
 &nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
 
@@ -75,9 +75,9 @@ end
     8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-29* (**id: 8**)
     arg: (0, 7)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 10 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -97,7 +97,7 @@ end
     0 -->|"defined-by"| 7
     8 -->|"reads, arg"| 7
     8 -->|"returns, arg"| 0
-    8 -.->|"reads, calls"| built-in:_-
+    8 -.->|"reads, calls"| built-in:_60_-
     linkStyle 9 stroke:gray;
     8 -.->|"flow"| 10
     linkStyle 10 stroke:gray,color:gray;
@@ -127,7 +127,7 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (2ms)\
+Query: **inspect-higher-order** (14ms)\
 &nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -147,6 +147,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Inspect Higher-Order Functions Query query is `executeHigherOrderQuery` in [`./src/queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor.ts).
+The Inspect Higher-Order Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor.ts#L14"><code><span title="Execute higher-order function inspection queries on the given analyzer.">executeHigherOrderQuery</span></code></a>.
 
 </details>

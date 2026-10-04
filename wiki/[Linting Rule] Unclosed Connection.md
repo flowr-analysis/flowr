@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="unclosed-connection">Unclosed Connection&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -77,7 +77,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-unclosed-connection.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts)
 
-<h4 id="Test_Case:_All_closed">Test Case: All closed</h4>
+<h4 id="Test_32_Case:_32_All_32_closed">Test Case: All closed</h4>
 
 Given the following input:
 
@@ -98,7 +98,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L10) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_inline">Test Case: Closed inline</h4>
+<h4 id="Test_32_Case:_32_Closed_32_inline">Test Case: Closed inline</h4>
 
 Given the following input:
 
@@ -112,7 +112,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L21) for the test-case implementation.
 		
-<h4 id="Test_Case:_Never_closed">Test Case: Never closed</h4>
+<h4 id="Test_32_Case:_32_Never_32_closed">Test Case: Never closed</h4>
 
 Given the following input:
 
@@ -126,7 +126,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L25) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_after_the_loop_using_it">Test Case: Closed after the loop using it</h4>
+<h4 id="Test_32_Case:_32_Closed_32_after_32_the_32_loop_32_using_32_it">Test Case: Closed after the loop using it</h4>
 
 Given the following input:
 
@@ -141,7 +141,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L38) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_after_the_last_use">Test Case: Closed after the last use</h4>
+<h4 id="Test_32_Case:_32_Closed_32_after_32_the_32_last_32_use">Test Case: Closed after the last use</h4>
 
 Given the following input:
 
@@ -158,7 +158,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L51) for the test-case implementation.
 		
-<h4 id="Test_Case:_Only_one_closed">Test Case: Only one closed</h4>
+<h4 id="Test_32_Case:_32_Only_32_one_32_closed">Test Case: Only one closed</h4>
 
 Given the following input:
 
@@ -179,7 +179,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L67) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_with_new_definer">Test Case: Closed with new definer</h4>
+<h4 id="Test_32_Case:_32_Closed_32_with_32_new_32_definer">Test Case: Closed with new definer</h4>
 
 Given the following input:
 
@@ -196,7 +196,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L87) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_by_a_wrapper_function">Test Case: Closed by a wrapper function</h4>
+<h4 id="Test_32_Case:_32_Closed_32_by_32_a_32_wrapper_32_function">Test Case: Closed by a wrapper function</h4>
 
 Given the following input:
 
@@ -212,7 +212,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L94) for the test-case implementation.
 		
-<h4 id="Test_Case:_Opened_by_a_wrapper_function">Test Case: Opened by a wrapper function</h4>
+<h4 id="Test_32_Case:_32_Opened_32_by_32_a_32_wrapper_32_function">Test Case: Opened by a wrapper function</h4>
 
 Given the following input:
 
@@ -228,7 +228,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L100) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_in_both_branches">Test Case: Closed in both branches</h4>
+<h4 id="Test_32_Case:_32_Closed_32_in_32_both_32_branches">Test Case: Closed in both branches</h4>
 
 Given the following input:
 
@@ -247,7 +247,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L106) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_on_exit">Test Case: Closed on exit</h4>
+<h4 id="Test_32_Case:_32_Closed_32_on_32_exit">Test Case: Closed on exit</h4>
 
 Given the following input:
 
@@ -266,7 +266,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L115) for the test-case implementation.
 		
-<h4 id="Test_Case:_Closed_by_withr">Test Case: Closed by withr</h4>
+<h4 id="Test_32_Case:_32_Closed_32_by_32_withr">Test Case: Closed by withr</h4>
 
 Given the following input:
 
@@ -281,7 +281,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L124) for the test-case implementation.
 		
-<h4 id="Test_Case:_Database_connection_closed">Test Case: Database connection closed</h4>
+<h4 id="Test_32_Case:_32_Database_32_connection_32_closed">Test Case: Database connection closed</h4>
 
 Given the following input:
 
@@ -296,7 +296,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L129) for the test-case implementation.
 		
-<h4 id="Test_Case:_Database_connection_left_open">Test Case: Database connection left open</h4>
+<h4 id="Test_32_Case:_32_Database_32_connection_32_left_32_open">Test Case: Database connection left open</h4>
 
 Given the following input:
 
@@ -310,7 +310,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L134) for the test-case implementation.
 		
-<h4 id="Test_Case:_Configured_functions">Test Case: Configured functions</h4>
+<h4 id="Test_32_Case:_32_Configured_32_functions">Test Case: Configured functions</h4>
 
 Given the following input:
 
@@ -331,7 +331,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L147) for the test-case implementation.
 		
-<h4 id="Test_Case:_Not_necessarily_closed">Test Case: Not necessarily closed</h4>
+<h4 id="Test_32_Case:_32_Not_32_necessarily_32_closed">Test Case: Not necessarily closed</h4>
 
 Given the following input:
 
@@ -351,7 +351,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L164) for the test-case implementation.
 		
-<h4 id="Test_Case:_Opened_conditionally__closed_unconditionally">Test Case: Opened conditionally, closed unconditionally</h4>
+<h4 id="Test_32_Case:_32_Opened_32_conditionally_44__32_closed_32_unconditionally">Test Case: Opened conditionally, closed unconditionally</h4>
 
 Given the following input:
 
@@ -368,7 +368,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L177) for the test-case implementation.
 		
-<h4 id="Test_Case:_Openend_and_closed_in_different_branches">Test Case: Openend and closed in different branches</h4>
+<h4 id="Test_32_Case:_32_Openend_32_and_32_closed_32_in_32_different_32_branches">Test Case: Openend and closed in different branches</h4>
 
 Given the following input:
 
@@ -394,7 +394,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L184) for the test-case implementation.
 		
-<h4 id="Test_Case:_Nested_branches_-_not_necessarily_closed">Test Case: Nested branches - not necessarily closed</h4>
+<h4 id="Test_32_Case:_32_Nested_32_branches_32_-_32_not_32_necessarily_32_closed">Test Case: Nested branches - not necessarily closed</h4>
 
 Given the following input:
 
@@ -416,7 +416,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L206) for the test-case implementation.
 		
-<h4 id="Test_Case:_Opened_and_closed_within_the_loop">Test Case: Opened and closed within the loop</h4>
+<h4 id="Test_32_Case:_32_Opened_32_and_32_closed_32_within_32_the_32_loop">Test Case: Opened and closed within the loop</h4>
 
 Given the following input:
 
@@ -434,7 +434,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unclosed-connection.test.ts#L230) for the test-case implementation.
 		
-<h4 id="Test_Case:_Nested_branches_-_not_closed">Test Case: Nested branches - not closed</h4>
+<h4 id="Test_32_Case:_32_Nested_32_branches_32_-_32_not_32_closed">Test Case: Nested branches - not closed</h4>
 
 Given the following input:
 

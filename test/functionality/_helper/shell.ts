@@ -253,14 +253,8 @@ export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfigurati
 		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`);
 }
 
-/** Comfort for {@link assertAst} to run the same test for multiple steps */
-export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T }[] {
-	return steps.map(step => ({ step, wanted }));
-}
-
 /**
  * For a given input code, this takes multiple ASTs depending on the respective normalizer step to run!
- * @see sameForSteps
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdToks:   boolean,

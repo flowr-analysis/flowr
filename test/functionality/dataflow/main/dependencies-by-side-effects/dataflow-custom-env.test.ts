@@ -473,7 +473,9 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('3@e')
-				.reads('3@e', '1@e'),
+				/* the read sees the environment through the field write, which reads the environment it writes into */
+				.reads('3@e', '2@e')
+				.reads('2@e', '1@e'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 	});
@@ -541,7 +543,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			].join('\n'),
 			emptyGraph()
 				.defineVariable('1@x', 'x')
-				.use('3@x').reads('3@x', '1@x')
+				.use('3@x').reads('3@x', '2@x').reads('2@x', '1@x')
 				.use('4@foo').reads('4@foo', '2@42')
 				.defineVariable('5@foo', 'foo')
 				.use('6@foo').reads('6@foo', '5@foo')

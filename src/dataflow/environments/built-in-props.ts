@@ -153,7 +153,13 @@ export enum SemanticCallTag {
 	/** produces raw HTML or JavaScript, such as `shiny::HTML` */
 	Html        = 'html',
 	/** produces raw JavaScript code, such as `shinyjs::runjs` */
-	JavaScript  = 'javascript'
+	JavaScript  = 'javascript',
+	/** loads a package's namespace (running its `.onLoad`), like `library` or `loadNamespace` */
+	LoadsPackage    = 'loads-package',
+	/** puts a package's exports on the search path, so their bare names resolve, like `library` or `attachNamespace` */
+	AttachesPackage = 'attaches-package',
+	/** answers whether a package is available, like `require`, `requireNamespace`, or `find.package` */
+	ChecksPackage   = 'checks-package'
 }
 
 /** a bitfield of {@link ArgProp} */
@@ -245,7 +251,8 @@ export const PropagatedProps: PropMask = getPropMask([
 	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network,
 	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
 	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints,
-	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript
+	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript, SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage,
+	SemanticCallTag.ChecksPackage
 ]);
 
 /** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s */

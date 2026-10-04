@@ -34,6 +34,17 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
 		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
 
+	/* R attaches only part of the exports for these (checked against R with dplyr's `filter`) */
+	assertDataflow(label('library include.only attaches only the named symbols', ['library-loading', 'search-path']), ts,
+		'library(pkgA, include.only = c("fa"))\nfa()\nfb()',
+		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
+
+	assertDataflow(label('require exclude leaves the named symbols out', ['library-loading', 'search-path']), ts,
+		'require(pkgA, exclude = "fb")\nfa()\nfb()',
+		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
+
 	assertDataflow(label('import::from alias binds under the new name', ['library-loading', 'search-path']), ts,
 		'import::from(pkgA, keep = fa)\nkeep()',
 		emptyGraph().addEdge('2@keep', faBuiltIn, EdgeType.Reads | EdgeType.Calls),

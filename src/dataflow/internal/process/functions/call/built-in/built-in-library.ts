@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import { RValue } from '../../../../../eval/values/r-value';
+import { isValue, RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation, ControlDependency } from '../../../../../info';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -27,6 +27,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
+import { collectStrings } from '../../../../../eval/values/string/string-constants';
 import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
 import { attachedAlongside } from '../../../../../../project/attached-packages';
 import { getCallables, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
@@ -84,9 +85,23 @@ export function processLibrary<OtherInfo>(
 	/* parse the import selection before the library flow rewrites `args` below */
 	const parsedSpec: AttachSpec = config.fromImports ? parseFromSpec(args) : { namespaceOnly: config.namespaceOnly };
 	// 'pos' last, so the positional fallback keeps its previous order; `import::from` has no `pos`, its extra arguments name exports
-	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), { 'package': 'pkg', 'character.only': 'char', 'pos': 'pos' });
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), { 'package': 'pkg', 'character.only': 'char', 'pos': 'pos', 'include.only': 'only', 'exclude': 'except' });
 	const charId = uniqueArray(argMaps.get('char') ?? []);
-	const spec: AttachSpec = { ...parsedSpec, pos: config.fromImports ? undefined : resolveAttachPosition(argMaps.get('pos')?.[0], data) };
+	/* `library(pkg, include.only = "f")` and `exclude = "f"` attach only part of the exports, as `import::from` does */
+	const namesIn = (key: 'only' | 'except'): string[] | undefined => {
+		const value = RArgument.getValue<OtherInfo & ParentInformation>(args, argMaps.get(key)?.[0] ?? '');
+		/* usually a vector of names, `c("f", "g")` */
+		const elements = value === undefined ? undefined : NodeValue.setOf(value.info.id, data)?.elements.flatMap(v => v.type === 'vector' && isValue(v.elements) ? v.elements : [v]);
+		return elements === undefined ? undefined : collectStrings(elements);
+	};
+	const only = config.fromImports ? undefined : namesIn('only');
+	const except = config.fromImports ? undefined : namesIn('except');
+	const spec: AttachSpec = {
+		...parsedSpec,
+		pos: config.fromImports ? undefined : resolveAttachPosition(argMaps.get('pos')?.[0], data),
+		...(only !== undefined ? { include: new Map(only.map(n => [n, n])) } : {}),
+		...(except !== undefined ? { exclude: new Set(except), all: true } : {})
+	};
 
 	type PkgNameNode = RSymbol<OtherInfo & ParentInformation> | RString<OtherInfo & ParentInformation>;
 	/* only a symbol or string literal names a package */
@@ -638,7 +653,8 @@ function attachStatedDefinitions(pack: string, envInfo: REnvironmentInformation,
 		return envInfo;
 	}
 	/* keyed as the configuration states them: a replacement is bound under `f<-`, which its `name` does not say */
-	const memory: BuiltInMemory = new Map(stated);
+	const memory: BuiltInMemory = new Map(spec.include === undefined && spec.exclude === undefined ? stated
+		: [...stated].filter(([key]) => (spec.all || spec.include === undefined || spec.include.has(key)) && !spec.exclude?.has(key)));
 	if(loadedAt !== undefined) {
 		/* the marker an unresolved load leaves behind, so a call links back to the `library()` that made it resolve */
 		memory.set(libraryLoadMarker, [{

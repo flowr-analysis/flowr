@@ -279,6 +279,45 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		);
 	});
 
+	describe('whole-environment reads and writes from calls', () => {
+		const caps: readonly FlowrCapabilityId[] = ['dynamic-environment-resolution', 'environment-sharing'];
+		keepsAll('as.list reads every field write', caps, 'e <- new.env()\ne$x <- 10\nprint(as.list(e))', ['3@print']);
+		keepsAll('evalq reads the field write', caps, 'e <- new.env()\ne$x <- 10\nprint(evalq(x, e))', ['3@print']);
+		assertSliced(label('delayedAssign reads the field write of its eval.env', caps),
+			shell, 'e <- new.env()\ne$x <- 10\ndelayedAssign("p", x, eval.env = e)\nx <- 5\nprint(p)', ['5@print'],
+			'e <- new.env()\ne$x <- 10\ndelayedAssign("p", x, eval.env = e)\nprint(p)'
+		);
+		keepsAll('delayedAssign falls back to every binding for a name its eval.env lacks', caps, 'e <- new.env()\ne$y <- 10\ndelayedAssign("p", x, eval.env = e)\nx <- 5\nprint(p)', ['5@print']);
+		keepsAll('assign into a free environment variable keeps the call', caps, 'e <- new.env()\nf <- function() assign("v", 5, envir = e)\nf()\nprint(get("v", e))', ['4@print']);
+		keepsAll('field write on a free environment variable keeps the call', caps, 'e <- new.env()\nf <- function() e$v <- 1\nf()\nprint(e$v)', ['4@print']);
+		keepsAll('field write in a nested function keeps the calls that run it', caps, 'e <- new.env()\nf <- function() {\n        h <- function() e$v <- 2\n        h()\n    }\nf()\nprint(e$v)', ['7@print']);
+		keepsAll('field write through a copy of the environment variable reaches the original', caps, 'e <- new.env()\ng <- e\ng$v <- 3\nprint(e$v)', ['4@print']);
+		keepsAll('field write through the original reaches the copy', caps, 'e <- new.env()\ng <- e\ne$v <- 3\nprint(g$v)', ['4@print']);
+		assertSliced(label('local with envir leaves the binding of the calling function alone', ['local-envir-argument']),
+			shell, 'f <- function() {\n        y <- 1\n        e <- new.env()\n        local(y <- 2, envir = e)\n        y\n    }\nr <- f()', ['7@r'],
+			'f <- function() {\n        y <- 1\n        y\n    }\nr <- f()'
+		);
+		keepsAll('assign through a copy made in a function reaches the original', caps, 'e <- new.env()\nf <- function() {\n        g <- e\n        assign("w", 4, envir = g)\n    }\nf()\nprint(e$w)', ['7@print']);
+		keepsAll('field write through a copy made in a function reaches the original', caps, 'e <- new.env()\nf <- function() {\n        g <- e\n        g$v <- 3\n    }\nf()\nprint(e$v)', ['7@print']);
+		keepsAll('super-assigned field write after a local field write reaches the original', caps, 'e <- new.env()\nf <- function() {\n        e$v <- 1\n        h <- function() e$v <<- 2\n        h()\n    }\nf()\nprint(e$v)', ['8@print']);
+		assertSliced(label('assign inside local keeps the body', caps),
+			shell, 'e <- new.env()\nlocal({ y <- 3; assign("z", y * 2, envir = e) })\nprint(e$z)', ['3@print'],
+			'e <- new.env()\nlocal({ y <- 3; assign("z", y * 2, envir = e) })\nprint(e$z)'
+		);
+		assertSliced(label('a local body does not leak its definitions', caps),
+			shell, 'y <- 1\nlocal({ y <- 3 })\nprint(y)', ['3@print'],
+			'y <- 1\nprint(y)'
+		);
+		assertSliced(label('a local body in a slice keeps the local call', caps),
+			shell, 'y <- 1\nlocal({ y <- 3; assign("z", y, envir = e) })\nprint(y)', ['2@y'],
+			'local({ y <- 3; assign("z", y, envir = e) })'
+		);
+		assertSliced(label('sink inside local keeps the local call', caps),
+			shell, 'local({ sink("a") })\nprint(1)', ['2@print'],
+			'local({ sink("a") })\nprint(1)'
+		);
+	});
+
 	describe('config: trackEnvironments disabled', () => {
 		const noTrack = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.trackEnvironments', false);
 

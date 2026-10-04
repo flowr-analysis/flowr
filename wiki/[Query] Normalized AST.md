@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Normalized AST Query">Normalized AST Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the normalized AST of the given code.\
@@ -17,7 +17,7 @@ Using the example code `x + 1`, the following query returns the normalized AST o
 
 _Results (prettified and summarized):_
 
-Query: **normalized-ast** (1 ms)\
+Query: **normalized-ast** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ [Normalized AST](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjMoW1wiUkV4cHJlc3Npb25MaXN0ICgzKVxuIFwiXSlcbiAgICBuMihbXCJSQmluYXJ5T3AgKDIpXG4jNDM7XCJdKVxuICAgIG4zIC0tPnxcImVsLWMtMFwifCBuMlxuICAgIG4wKFtcIlJTeW1ib2wgKDApXG54XCJdKVxuICAgIG4yIC0tPnxcImJpbi1sXCJ8IG4wXG4gICAgbjEoW1wiUk51bWJlciAoMSlcbjFcIl0pXG4gICAgbjIgLS0+fFwiYmluLXJcInwgbjFcbiIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -177,16 +177,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 2
     linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_
+    2 -.->|"reads, calls"| built-in:_43_
     linkStyle 4 stroke:gray;
 ```
 
@@ -198,6 +198,6 @@ flowchart LR
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Normalized AST Query query is `executeNormalizedAstQuery` in [`./src/queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts).
+The Normalized AST Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts#L8"><code><span title="Executes the normalized-AST query.">executeNormalizedAstQuery</span></code></a>.
 
 </details>

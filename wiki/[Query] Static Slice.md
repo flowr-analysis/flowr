@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Static Slice Query">Static Slice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).\
@@ -84,7 +84,7 @@ you can use the `noReconstruction` flag.
 
 _Results (prettified and summarized):_
 
-Query: **static-slice** (2 ms)\
+Query: **static-slice** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice "4@x" \
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {9, 0, 2, 1}\
 
@@ -204,6 +204,6 @@ This query replaces the old [`request-slice`](https://github.com/flowr-analysis/
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Static Slice Query query is `executeStaticSliceQuery` in [`./src/queries/catalog/static-slice-query/static-slice-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-executor.ts).
+The Static Slice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-executor.ts#L26"><code><span title="Execute static slice queries, catching duplicates with the same fingerprint">executeStaticSliceQuery</span></code></a>.
 
 </details>

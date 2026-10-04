@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
+import { hidesBody, readsAllAmbientState } from './built-in/built-in-ambient-state';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
 import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
@@ -8,7 +9,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, ReferenceType } from '../../../../environments/identifier';
-import { baseRExportOwner } from '../../../../../util/r-base-packages';
+import { baseRExportOwner, isBaseRPackage } from '../../../../../util/r-base-packages';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import type { BuiltInIdentifierDefinition } from '../../../../environments/built-in';
 import { EdgeType } from '../../../../graph/edge';
@@ -105,6 +106,9 @@ export function processNamedCall<OtherInfo>(
 	let builtIn = false;
 	/* a set, because an export and the built-in behind it are two ways to the same definition */
 	const toRun = new Set<BuiltInIdentifierDefinition>();
+	/* within a function, a call may still resolve to a user function where the function is called, so only the top
+	   level knows an unresolved call goes to a function we cannot see */
+	let unknownBody = resolved.length === 0 && data.environment.level === 0;
 	for(const resolvedFunction of resolved) {
 		const isBuiltIn = resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function';
 		/* the call goes through the attached export, so it is not built-in only, but flowR's own
@@ -112,13 +116,20 @@ export function processNamedCall<OtherInfo>(
 		const own = isBuiltIn ? resolvedFunction : builtInBehindExport(data, resolvedFunction);
 		if(own === undefined) {
 			defaultProcessor = true;
+			/* a user function's body states what it reads itself */
+			unknownBody ||= hidesBody(resolvedFunction);
 			continue;
 		}
 		builtIn ||= isBuiltIn && own.config?.libFn !== true;
 		toRun.add(own);
 	}
+	/* flowR models what a package function does with its arguments, but not which of its options it reads */
+	let packageFn = false;
 	for(const own of toRun) {
 		information = mergeInformation(information, own.processor(name, args, rootId, data));
+		const pkg = own.name === undefined ? undefined : Identifier.getNamespace(own.name);
+		/* unless flowR states how it accesses the state, as for `withr::with_options` */
+		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg));
 	}
 
 	if(defaultProcessor) {
@@ -128,6 +139,10 @@ export function processNamedCall<OtherInfo>(
 	} else if(information && builtIn) {
 		// mark the function call as built in only
 		markAsOnlyBuiltIn(information.graph, rootId, keepEnvironment);
+	}
+	/* a function whose body we do not see may read any option or draw on the device */
+	if(information !== undefined && (unknownBody || packageFn)) {
+		information = readsAllAmbientState(information, rootId, data, unknownBody);
 	}
 
 	// on demand: materialize the built-in vertex for any package export this call resolves to and, when we

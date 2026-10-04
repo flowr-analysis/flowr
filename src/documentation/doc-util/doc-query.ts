@@ -8,7 +8,7 @@ import { guard } from '../../util/assert';
 import path from 'path';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
-import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
+import { FlowrWikiBaseRef } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
@@ -115,9 +115,6 @@ export interface QueryDocumentation {
 	readonly name?:            string;
 	readonly type:             'virtual' | 'active';
 	readonly shortDescription: string;
-	readonly functionName:     string;
-	/** Path to the file implementing the query function, the wiki generation will fail if this isn't found */
-	readonly functionFile:     string;
 	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }
 
@@ -182,9 +179,10 @@ export function tocForQueryType(type: 'active' | 'virtual') {
 	return result.join('\n');
 }
 
-async function explainQuery(shell: RShell, ctx: GeneralDocContext, id: string, { shortDescription, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+async function explainQuery(shell: RShell, ctx: GeneralDocContext, id: string, { shortDescription, buildExplanation }: QueryDocumentation) {
 	const name = getQueryTitle(id);
-	const syntax = (SupportedQueries[id as SupportedQueryTypes] as SupportedQuery | undefined)?.syntax;
+	const supported = SupportedQueries[id as SupportedQueryTypes] as SupportedQuery | undefined;
+	const syntax = supported?.syntax;
 	return `
 ${autoGenHeader({ filename: QueryDocFile, purpose: 'query API' })}
 ${section(name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Query-API">overview</a>]</sup>`, 2, name)}
@@ -198,7 +196,7 @@ ${await buildExplanation(shell, ctx)}
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
+The ${name} is executed by ${ctx.link((supported?.executor ?? SupportedVirtualQueries[id as SupportedVirtualQueryTypes]).name)}.
 
 </details>
 

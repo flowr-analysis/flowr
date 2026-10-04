@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="roxygen-arguments">Roxygen Arguments&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments."><a href='#documentation'>![documentation](https://img.shields.io/badge/documentation-teal) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
@@ -29,7 +29,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function at 3.5-29 has undocumented argument 'b'\
@@ -57,7 +57,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-roxygen-arguments.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts)
 
-<h4 id="Test_Case:_More__param_documented_than_implemented">Test Case: More @param documented than implemented</h4>
+<h4 id="Test_32_Case:_32_More_32__64_param_32_documented_32_than_32_implemented">Test Case: More @param documented than implemented</h4>
 
 Given the following input:
 
@@ -75,7 +75,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L9) for the test-case implementation.
 		
-<h4 id="Test_Case:_Less__param_documented_than_implemented">Test Case: Less @param documented than implemented</h4>
+<h4 id="Test_32_Case:_32_Less_32__64_param_32_documented_32_than_32_implemented">Test Case: Less @param documented than implemented</h4>
 
 Given the following input:
 
@@ -92,7 +92,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L21) for the test-case implementation.
 		
-<h4 id="Test_Case:_Same__param_documented_as_implemented">Test Case: Same @param documented as implemented</h4>
+<h4 id="Test_32_Case:_32_Same_32__64_param_32_documented_32_as_32_implemented">Test Case: Same @param documented as implemented</h4>
 
 Given the following input:
 
@@ -110,7 +110,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L32) for the test-case implementation.
 		
-<h4 id="Test_Case:_Parameterized_function__not_commented">Test Case: Parameterized function, not commented</h4>
+<h4 id="Test_32_Case:_32_Parameterized_32_function_44__32_not_32_commented">Test Case: Parameterized function, not commented</h4>
 
 Given the following input:
 
@@ -124,7 +124,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L33) for the test-case implementation.
 		
-<h4 id="Test_Case:_Unparameterized_function__not_commented">Test Case: Unparameterized function, not commented</h4>
+<h4 id="Test_32_Case:_32_Unparameterized_32_function_44__32_not_32_commented">Test Case: Unparameterized function, not commented</h4>
 
 Given the following input:
 
@@ -138,7 +138,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L34) for the test-case implementation.
 		
-<h4 id="Test_Case:_Different__param_documented_than_implemented">Test Case: Different @param documented than implemented</h4>
+<h4 id="Test_32_Case:_32_Different_32__64_param_32_documented_32_than_32_implemented">Test Case: Different @param documented than implemented</h4>
 
 Given the following input:
 
@@ -153,7 +153,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L35) for the test-case implementation.
 		
-<h4 id="Test_Case:__param_documented__but_function_not_parameterized">Test Case: @param documented, but function not parameterized</h4>
+<h4 id="Test_32_Case:_32__64_param_32_documented_44__32_but_32_function_32_not_32_parameterized">Test Case: @param documented, but function not parameterized</h4>
 
 Given the following input:
 
@@ -168,7 +168,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L43) for the test-case implementation.
 		
-<h4 id="Test_Case:_Parameterized_function___param_not_documented">Test Case: Parameterized function, @param not documented</h4>
+<h4 id="Test_32_Case:_32_Parameterized_32_function_44__32__64_param_32_not_32_documented">Test Case: Parameterized function, @param not documented</h4>
 
 Given the following input:
 
@@ -183,7 +183,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L51) for the test-case implementation.
 		
-<h4 id="Test_Case:_Unparameterized_function__no__param_documented">Test Case: Unparameterized function, no @param documented</h4>
+<h4 id="Test_32_Case:_32_Unparameterized_32_function_44__32_no_32__64_param_32_documented">Test Case: Unparameterized function, no @param documented</h4>
 
 Given the following input:
 
@@ -198,7 +198,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L59) for the test-case implementation.
 		
-<h4 id="Test_Case:_Function_inherits_all__param_needed">Test Case: Function inherits all @param needed</h4>
+<h4 id="Test_32_Case:_32_Function_32_inherits_32_all_32__64_param_32_needed">Test Case: Function inherits all @param needed</h4>
 
 Given the following input:
 
@@ -216,7 +216,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L60) for the test-case implementation.
 		
-<h4 id="Test_Case:_More__param_inherited__from_2__than_used">Test Case: More @param inherited (from 2) than used</h4>
+<h4 id="Test_32_Case:_32_More_32__64_param_32_inherited_32__40_from_32_2_41__32_than_32_used">Test Case: More @param inherited (from 2) than used</h4>
 
 Given the following input:
 
@@ -238,7 +238,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L61) for the test-case implementation.
 		
-<h4 id="Test_Case:_Function_inherits__but_still_missing__param">Test Case: Function inherits, but still missing @param</h4>
+<h4 id="Test_32_Case:_32_Function_32_inherits_44__32_but_32_still_32_missing_32__64_param">Test Case: Function inherits, but still missing @param</h4>
 
 Given the following input:
 
@@ -257,7 +257,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L62) for the test-case implementation.
 		
-<h4 id="Test_Case:_Inheriting_param_from_different_functions">Test Case: Inheriting param from different functions</h4>
+<h4 id="Test_32_Case:_32_Inheriting_32_param_32_from_32_different_32_functions">Test Case: Inheriting param from different functions</h4>
 
 Given the following input:
 
@@ -281,7 +281,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L70) for the test-case implementation.
 		
-<h4 id="Test_Case:_Inheriting_param_from_different_functions__mistakes_from_several_func">Test Case: Inheriting param from different functions, mistakes from several func</h4>
+<h4 id="Test_32_Case:_32_Inheriting_32_param_32_from_32_different_32_functions_44__32_mistakes_32_from_32_several_32_func">Test Case: Inheriting param from different functions, mistakes from several func</h4>
 
 Given the following input:
 
@@ -306,7 +306,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L78) for the test-case implementation.
 		
-<h4 id="Test_Case:_...">Test Case: ...</h4>
+<h4 id="Test_32_Case:_32_...">Test Case: ...</h4>
 
 Given the following input:
 
@@ -323,7 +323,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L92) for the test-case implementation.
 		
-<h4 id="Test_Case:_...">Test Case: ...</h4>
+<h4 id="Test_32_Case:_32_...">Test Case: ...</h4>
 
 Given the following input:
 
@@ -338,7 +338,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L93) for the test-case implementation.
 		
-<h4 id="Test_Case:_Inheriting_param_____...__">Test Case: Inheriting param + \'...\'</h4>
+<h4 id="Test_32_Case:_32_Inheriting_32_param_32__43__32__92__39_..._92__39_">Test Case: Inheriting param + \'...\'</h4>
 
 Given the following input:
 
@@ -357,7 +357,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L101) for the test-case implementation.
 		
-<h4 id="Test_Case:_Inheriting_param_____...__">Test Case: Inheriting param + \'...\'</h4>
+<h4 id="Test_32_Case:_32_Inheriting_32_param_32__43__32__92__39_..._92__39_">Test Case: Inheriting param + \'...\'</h4>
 
 Given the following input:
 
@@ -376,7 +376,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-roxygen-arguments.test.ts#L109) for the test-case implementation.
 		
-<h4 id="Test_Case:_comma-separated__param_documents_each_name">Test Case: comma-separated @param documents each name</h4>
+<h4 id="Test_32_Case:_32_comma-separated_32__64_param_32_documents_32_each_32_name">Test Case: comma-separated @param documents each name</h4>
 
 Given the following input:
 

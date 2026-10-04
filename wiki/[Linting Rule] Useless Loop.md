@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="useless-loop">Useless Loops&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -55,7 +55,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-useless-loop.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts)
 
-<h4 id="Test_Case:_i_in_c_1_">Test Case: i in c(1)</h4>
+<h4 id="Test_32_Case:_32_i_32_in_32_c_40_1_41_">Test Case: i in c(1)</h4>
 
 > Given a for-loop the linter checks, if the vector only contains one element
 
@@ -71,7 +71,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L9) for the test-case implementation.
 		
-<h4 id="Test_Case:_i_in_a_scalar">Test Case: i in a scalar</h4>
+<h4 id="Test_32_Case:_32_i_32_in_32_a_32_scalar">Test Case: i in a scalar</h4>
 
 Given the following input:
 
@@ -85,7 +85,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L15) for the test-case implementation.
 		
-<h4 id="Test_Case:_always_break">Test Case: always break</h4>
+<h4 id="Test_32_Case:_32_always_32_break">Test Case: always break</h4>
 
 > Given a loop the linter checks, if the loop is always stopped after the first iteration
 
@@ -101,7 +101,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-useless-loop.test.ts#L22) for the test-case implementation.
 		
-<h4 id="Test_Case:_repeat_with_break">Test Case: repeat with break</h4>
+<h4 id="Test_32_Case:_32_repeat_32_with_32_break">Test Case: repeat with break</h4>
 
 Given the following input:
 

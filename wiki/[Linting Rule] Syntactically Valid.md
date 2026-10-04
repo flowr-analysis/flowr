@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="syntactically-valid">Syntactically Valid&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -36,7 +36,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Syntactically Valid** (syntactically-valid):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Missing `)` at 1.12-11 (1 quick fix(es) available)\
@@ -77,7 +77,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-syntactically-valid.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts)
 
-<h4 id="Test_Case:_label__valid_code_has_no_syntax_errors_____syntax-errors______linter___">Test Case: label('valid code has no syntax errors', ['syntax-errors'], ['linter'])</h4>
+<h4 id="Test_32_Case:_32_label_40__39_valid_32_code_32_has_32_no_32_syntax_32_errors_39__44__32__91__39_syntax-errors_39__93__44__32__91__39_linter_39__93__41_">Test Case: label('valid code has no syntax errors', ['syntax-errors'], ['linter'])</h4>
 
 Given the following input:
 
@@ -92,7 +92,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L9) for the test-case implementation.
 		
-<h4 id="Test_Case:_label__missing_closing_parenthesis_____syntax-errors______linter___">Test Case: label('missing closing parenthesis', ['syntax-errors'], ['linter'])</h4>
+<h4 id="Test_32_Case:_32_label_40__39_missing_32_closing_32_parenthesis_39__44__32__91__39_syntax-errors_39__93__44__32__91__39_linter_39__93__41_">Test Case: label('missing closing parenthesis', ['syntax-errors'], ['linter'])</h4>
 
 Given the following input:
 
@@ -106,7 +106,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L15) for the test-case implementation.
 		
-<h4 id="Test_Case:_label__unbalanced_brace_____syntax-errors______linter___">Test Case: label('unbalanced brace', ['syntax-errors'], ['linter'])</h4>
+<h4 id="Test_32_Case:_32_label_40__39_unbalanced_32_brace_39__44__32__91__39_syntax-errors_39__93__44__32__91__39_linter_39__93__41_">Test Case: label('unbalanced brace', ['syntax-errors'], ['linter'])</h4>
 
 Given the following input:
 
@@ -120,7 +120,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L27) for the test-case implementation.
 		
-<h4 id="Test_Case:_dangling_assignment_operator">Test Case: dangling assignment operator</h4>
+<h4 id="Test_32_Case:_32_dangling_32_assignment_32_operator">Test Case: dangling assignment operator</h4>
 
 Given the following input:
 
@@ -134,7 +134,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L39) for the test-case implementation.
 		
-<h4 id="Test_Case:_dangling_operator_prefers_the_add_direction_when_configured">Test Case: dangling operator prefers the add direction when configured</h4>
+<h4 id="Test_32_Case:_32_dangling_32_operator_32_prefers_32_the_32_add_32_direction_32_when_32_configured">Test Case: dangling operator prefers the add direction when configured</h4>
 
 > // preferFix flips the direction: with `add`, the same error offers the NULL placeholder instead of the removal
 
@@ -155,7 +155,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L52) for the test-case implementation.
 		
-<h4 id="Test_Case:_fuzzy-completes_an_unfinished_operator">Test Case: fuzzy-completes an unfinished operator</h4>
+<h4 id="Test_32_Case:_32_fuzzy-completes_32_an_32_unfinished_32_operator">Test Case: fuzzy-completes an unfinished operator</h4>
 
 Given the following input:
 
@@ -169,7 +169,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L65) for the test-case implementation.
 		
-<h4 id="Test_Case:_typographic_quotes">Test Case: typographic quotes</h4>
+<h4 id="Test_32_Case:_32_typographic_32_quotes">Test Case: typographic quotes</h4>
 
 > // what a word processor or a PDF leaves behind
 
@@ -186,7 +186,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L92) for the test-case implementation.
 		
-<h4 id="Test_Case:_comment-out_fallback_for_a_stray_token">Test Case: comment-out fallback for a stray token</h4>
+<h4 id="Test_32_Case:_32_comment-out_32_fallback_32_for_32_a_32_stray_32_token">Test Case: comment-out fallback for a stray token</h4>
 
 > // a stray token no other pattern can repair falls back to commenting it out
 
@@ -202,7 +202,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L111) for the test-case implementation.
 		
-<h4 id="Test_Case:_disabling_a_fix_drops_its_suggestion">Test Case: disabling a fix drops its suggestion</h4>
+<h4 id="Test_32_Case:_32_disabling_32_a_32_fix_32_drops_32_its_32_suggestion">Test Case: disabling a fix drops its suggestion</h4>
 
 > // disabling the only applicable pattern leaves the error reported but without a quick-fix
 
@@ -223,7 +223,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L124) for the test-case implementation.
 		
-<h4 id="Test_Case:_stray_closing_parenthesis">Test Case: stray closing parenthesis</h4>
+<h4 id="Test_32_Case:_32_stray_32_closing_32_parenthesis">Test Case: stray closing parenthesis</h4>
 
 > // a copy that stopped short of the opening bracket leaves closers that close nothing
 
@@ -239,7 +239,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L138) for the test-case implementation.
 		
-<h4 id="Test_Case:_copied_REPL_prompt">Test Case: copied REPL prompt</h4>
+<h4 id="Test_32_Case:_32_copied_32_REPL_32_prompt">Test Case: copied REPL prompt</h4>
 
 > // lines copied out of the REPL keep their prompt
 
@@ -255,7 +255,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-syntactically-valid.test.ts#L164) for the test-case implementation.
 		
-<h4 id="Test_Case:_pasted_console_output">Test Case: pasted console output</h4>
+<h4 id="Test_32_Case:_32_pasted_32_console_32_output">Test Case: pasted console output</h4>
 
 > // printed results pasted back into the script: the whole line is missing its `#`
 

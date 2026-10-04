@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
@@ -13,7 +13,7 @@ This query infers all shapes of dataframes within the code using abstract interp
 
 _Results (prettified and summarized):_
 
-Query: **absint** (5 ms)\
+Query: **absint** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
@@ -78,17 +78,17 @@ filter`"]
     15[["`*#91;RPipe#93;* **|#62;**
       *1.7-2.19* (**id: 15**)
     arg: (7, 14)`"]]
-    built-in:__["`Built-In:
+    built-in:_124__62_["`Built-In:
 |#62;`"]
-    style built-in:__ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_124__62_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **df**
       *1.1-2* (**id: 0**, v: 15)`"]
     16[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-2.19* (**id: 16**)
     arg: (0, 15)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3 -.->|"flow"| 4
     linkStyle 0 stroke:gray,color:gray;
     4 -.->|"flow"| 5
@@ -124,13 +124,13 @@ filter`"]
     15 -->|"returns, arg"| 14
     15 -.->|"flow"| 0
     linkStyle 22 stroke:gray,color:gray;
-    15 -.->|"reads, calls"| built-in:__
+    15 -.->|"reads, calls"| built-in:_124__62_
     linkStyle 23 stroke:gray;
     0 -->|"defined-by, flow"| 16
     0 -->|"defined-by"| 15
     16 -->|"reads, arg"| 15
     16 -->|"returns, arg"| 0
-    16 -.->|"reads, calls"| built-in:_-
+    16 -.->|"reads, calls"| built-in:_60_-
     linkStyle 28 stroke:gray;
 ```
 
@@ -148,7 +148,7 @@ The query optionally also accepts slice criteria to narrow the results to specif
 
 _Results (prettified and summarized):_
 
-Query: **absint** (1 ms)\
+Query: **absint** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ 1@df: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ 1@data.frame: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 
@@ -218,17 +218,17 @@ filter`"]
     15[["`*#91;RPipe#93;* **|#62;**
       *1.7-2.19* (**id: 15**)
     arg: (7, 14)`"]]
-    built-in:__["`Built-In:
+    built-in:_124__62_["`Built-In:
 |#62;`"]
-    style built-in:__ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_124__62_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **df**
       *1.1-2* (**id: 0**, v: 15)`"]
     16[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-2.19* (**id: 16**)
     arg: (0, 15)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3 -.->|"flow"| 4
     linkStyle 0 stroke:gray,color:gray;
     4 -.->|"flow"| 5
@@ -264,13 +264,13 @@ filter`"]
     15 -->|"returns, arg"| 14
     15 -.->|"flow"| 0
     linkStyle 22 stroke:gray,color:gray;
-    15 -.->|"reads, calls"| built-in:__
+    15 -.->|"reads, calls"| built-in:_124__62_
     linkStyle 23 stroke:gray;
     0 -->|"defined-by, flow"| 16
     0 -->|"defined-by"| 15
     16 -->|"reads, arg"| 15
     16 -->|"returns, arg"| 0
-    16 -.->|"reads, calls"| built-in:_-
+    16 -.->|"reads, calls"| built-in:_60_-
     linkStyle 28 stroke:gray;
 ```
 
@@ -282,6 +282,6 @@ filter`"]
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Abstract Interpretation Query query is `executeAbsintQuery` in [`./src/queries/catalog/absint-query/absint-query-format.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-format.ts).
+The Abstract Interpretation Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-executor.ts#L10"><code><span title="Executes the given abstract interpretation queries using the provided analyzer.">executeAbsintQuery</span></code></a>.
 
 </details>

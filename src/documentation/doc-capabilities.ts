@@ -2,6 +2,7 @@ import type { FlowrCapability } from '../r-bridge/data/types';
 import { flowrCapabilities } from '../r-bridge/data/data';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import type { SerializedTestLabel, TestLabel, TestLabelContext } from '../../test/functionality/_helper/label';
 import { TestSuites } from '../../test/functionality/summary-def';
@@ -21,13 +22,14 @@ interface SignatureTest {
 	readonly line:    number;
 	/** how many capabilities the test claims, as one that claims few of them demonstrates each of them better */
 	readonly claimed: number;
-	/** true when the label array uses a spread we could not statically resolve */
-	readonly opaque:  boolean;
+	/** the author marked the test with a `// \@signature <id>` comment */
+	readonly pinned?: boolean;
 }
 
 interface TestSourceIndex {
 	readonly byCapability: DefaultMap<string, SignatureTest[]>;
-	readonly byName:       DefaultMap<string, SignatureTest[]>;
+	/** where each string literal of the test sources first appears, which also finds a test a helper labels (`optionCase('name', ...)`) */
+	readonly literals:     ReadonlyMap<string, { readonly file: string, readonly line: number }>;
 }
 
 interface CapabilityInformation {
@@ -40,19 +42,39 @@ interface CapabilityInformation {
 
 const labelCallRegex = /\blabel\(\s*(['"`])((?:\\.|(?!\1)[^])*?)\1\s*,\s*\[((?:[^[\]]|\[[^[\]]*\])*)\]/g;
 const quotedStringRegex = /(['"])((?:\\.|(?!\1)[^])*?)\1/g;
+const literalRegex = /(['"`])((?:\\.|(?!\1)[^\\\n])*)\1/g;
+/* suites about the tooling around the analysis, whose tests rarely show what a capability means */
+const toolingSuiteRegex = /\/(project|plugins?|cli|server|repl)\//;
+const genericWords: ReadonlySet<string> = new Set(['empty', 'single', 'simple', 'basic', 'test', 'next', 'one', 'two', 'all', 'some', 'multiple', 'other', 'foo', 'bar']);
 const operatorSpreadRegex = /\.{3}\s*OperatorDatabase\[\s*(['"])((?:\\.|(?!\1)[^])*?)\1\s*]\s*\.capabilities/g;
 
-function claimedCapabilities(array: string): { ids: string[], opaque: boolean } {
+function claimedCapabilities(array: string): string[] {
 	const ids = [...array.matchAll(quotedStringRegex)].map(([,, id]) => id).filter(id => capabilityNames.has(id));
 	for(const [, , operator] of array.matchAll(operatorSpreadRegex)) {
 		ids.push(...OperatorDatabase[operator]?.capabilities ?? []);
 	}
-	return { ids: [...new Set(ids)], opaque: /\.{3}/.test(array.replace(operatorSpreadRegex, '')) };
+	return [...new Set(ids)];
+}
+
+/** a test name as the source spells it, with its escapes (`\\name`) resolved */
+function unescapeSource(name: string): string {
+	return name.replace(/\\([^])/g, (_, c: string) => /[ntr]/.test(c) ? ' ' : c);
+}
+
+/** the capabilities a `// \@signature <ids>` comment on the line of `index` or the line above names */
+function pinnedCapabilities(content: string, index: number): string[] {
+	const from = content.lastIndexOf('\n', content.lastIndexOf('\n', index - 1) - 1) + 1;
+	const marker = /@signature\b(.*)/.exec(content.slice(from, index));
+	return marker === null ? [] : marker[1].split(/[\s,]+/).filter(id => capabilityNames.has(id));
+}
+
+function lineAt(content: string, index: number): number {
+	return content.slice(0, index).split('\n').length;
 }
 
 function indexTestSources(): TestSourceIndex {
 	const byCapability = new DefaultMap<string, SignatureTest[]>(() => []);
-	const byName = new DefaultMap<string, SignatureTest[]>(() => []);
+	const literals = new Map<string, { file: string, line: number }>();
 	for(const { folder: testSourceFolder } of testSuites) {
 		if(!fs.existsSync(testSourceFolder)) {
 			continue;
@@ -60,39 +82,59 @@ function indexTestSources(): TestSourceIndex {
 		const files = fs.readdirSync(testSourceFolder, { recursive: true, encoding: 'utf-8' }).filter(f => f.endsWith('.ts')).sort();
 		for(const file of files) {
 			const content = fs.readFileSync(path.join(testSourceFolder, file), 'utf-8');
+			const source = `${testSourceFolder}/${file.split(path.sep).join('/')}`;
+			let previousLine = 0;
+			for(const match of content.matchAll(literalRegex)) {
+				const name = unescapeSource(match[2]);
+				const line = lineAt(content, match.index);
+				if(!literals.has(name)) {
+					literals.set(name, { file: source, line });
+				}
+				/* a marker pins the name of the test, the first literal of its line, never the code after it */
+				if(line !== previousLine) {
+					for(const id of pinnedCapabilities(content, match.index)) {
+						byCapability.get(id).push({ name, file: source, line, claimed: 0, pinned: true });
+					}
+				}
+				previousLine = line;
+			}
 			for(const match of content.matchAll(labelCallRegex)) {
-				const { ids, opaque } = claimedCapabilities(match[3]);
-				const test: SignatureTest = {
-					name:    match[2],
-					file:    `${testSourceFolder}/${file.split(path.sep).join('/')}`,
-					line:    content.slice(0, match.index).split('\n').length,
-					claimed: ids.length,
-					opaque
-				};
-				byName.get(test.name.toLowerCase()).push(test);
+				const ids = claimedCapabilities(match[3]);
+				const test: SignatureTest = { name: unescapeSource(match[2]), file: source, line: lineAt(content, match.index), claimed: ids.length };
 				for(const id of ids) {
 					byCapability.get(id).push(test);
 				}
 			}
 		}
 	}
-	return { byCapability, byName };
+	return { byCapability, literals };
 }
 
 function displayName(name: string): string {
-	return name.replace(/\$\{[^}]*}/g, '...').trim();
+	return name.replace(/\$\{[^}]*}/g, '...').replace(/\s+/g, ' ').trim();
+}
+
+/** the words of a test name that say something, so `simple x` says nothing and `a call reads its arguments` a lot */
+function telling(name: string): number {
+	return displayName(name).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 2 && !genericWords.has(w)).length;
+}
+
+/** lower is better: a pinned test wins, then a test that claims little and describes what it shows in words */
+function signatureScore(test: SignatureTest, preferred: ReadonlySet<string>): number {
+	return (test.pinned ? -1000 : 0) + test.claimed * 2
+		+ (preferred.has(test.name.toLowerCase()) ? 0 : 6)
+		+ (toolingSuiteRegex.test(test.file) ? 20 : 0)
+		+ Math.max(0, 4 - telling(test.name)) * 6;
 }
 
 function pickSignatureTests(tests: readonly SignatureTest[], preferred: ReadonlySet<string>): SignatureTest[] {
 	const unique = [...new Map(tests.map(t => [`${t.file}:${t.line}`, t])).values()];
-	const literal = unique.filter(t => !t.name.includes('${'));
-	const named = literal.length > 0 ? literal : unique.filter(t => /[A-Za-z0-9]/.test(displayName(t.name)));
+	const named = unique.filter(t => /[A-Za-z0-9]/.test(displayName(t.name)));
 	const picked = new Map<string, SignatureTest>();
-	const rank = (t: SignatureTest) => preferred.has(t.name.toLowerCase()) ? 0 : 1;
-	for(const test of named.sort((a, b) => rank(a) - rank(b) || a.claimed - b.claimed || a.name.length - b.name.length || a.file.localeCompare(b.file) || a.line - b.line)) {
-		const key = displayName(test.name).toLowerCase();
+	for(const t of named.sort((a, b) => signatureScore(a, preferred) - signatureScore(b, preferred) || a.name.length - b.name.length || a.file.localeCompare(b.file) || a.line - b.line)) {
+		const key = displayName(t.name).toLowerCase();
 		if(!picked.has(key)) {
-			picked.set(key, test);
+			picked.set(key, t);
 		}
 	}
 	return [...picked.values()].slice(0, maxSignatureTests);
@@ -101,18 +143,12 @@ function pickSignatureTests(tests: readonly SignatureTest[], preferred: Readonly
 function signatureTestsFor(info: CapabilityInformation, capability: FlowrCapability): SignatureTest[] {
 	const recorded = info.info?.get(capability.id) ?? [];
 	const preferred = new Set(recorded.filter(l => l.context.has(preferredContext)).map(l => l.name));
-	const direct = info.tests.byCapability.get(capability.id);
-	if(direct.length > 0) {
-		return pickSignatureTests(direct, preferred);
-	}
-	const byName: SignatureTest[] = [];
-	for(const { name } of recorded) {
-		const locations = info.tests.byName.get(name);
-		if(locations.length === 1 && !locations[0].opaque) {
-			byName.push(locations[0]);
-		}
-	}
-	return pickSignatureTests(byName, preferred);
+	/* a test a helper labels is found where its name is written */
+	const located = recorded.flatMap(({ name, capabilities }) => {
+		const at = info.tests.literals.get(name);
+		return at === undefined ? [] : [{ name, claimed: capabilities.size, ...at }];
+	});
+	return pickSignatureTests([...info.tests.byCapability.get(capability.id), ...located], preferred);
 }
 
 function capabilitySearchUrl(id: string): string {
@@ -351,6 +387,22 @@ function foldHtml(cssClass: string, icon: string, tooltip: string, label: string
 	return `<details class="${cssClass}"${open ? ' open' : ''}><summary title="${escapeHtml(tooltip)}">${icon}<span>${label}</span></summary>${content}</details>`;
 }
 
+let revision: string | undefined;
+
+/** the commit the page is generated from, so a link to a test line keeps pointing at that line */
+function currentRevision(): string {
+	try {
+		revision ??= process.env.GITHUB_SHA ?? execSync('git rev-parse HEAD', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+	} catch{
+		revision = 'main';
+	}
+	return revision;
+}
+
+function permalinkOf(file: string, line: number): string {
+	return `${flowrSourceFileUrl(file).replace('/tree/main/', `/blob/${currentRevision()}/`)}#L${line}`;
+}
+
 function signatureTestsHtml(info: CapabilityInformation, capability: FlowrCapability): string {
 	const tests = signatureTestsFor(info, capability);
 	if(tests.length === 0) {
@@ -358,7 +410,7 @@ function signatureTestsHtml(info: CapabilityInformation, capability: FlowrCapabi
 	}
 	const links = tests.map(t => {
 		const name = displayName(t.name);
-		return `<a href="${flowrSourceFileUrl(t.file)}#L${t.line}">${escapeHtml(name.length > 72 ? name.slice(0, 69) + '...' : name)}</a>`;
+		return `<a href="${permalinkOf(t.file, t.line)}">${escapeHtml(name.length > 72 ? name.slice(0, 69) + '...' : name)}</a>`;
 	});
 	return foldHtml('proof', icon('i-proof'), 'the tests that demonstrate this capability', 'signature tests', `<p>${links.join(', ')}</p>`);
 }
@@ -466,9 +518,11 @@ async function capabilityHtml(info: CapabilityInformation, capability: FlowrCapa
 	const support = capability.supported;
 	const prose = proseOf(info, capability.id);
 	const parts = [
-		`<div class="head"><a class="anchor" href="#${capability.id}"${iconLabel('link to this capability')}>#</a>`,
+		'<div class="head">',
 		support ? `<span class="badge ${support}" title="${support} supported"></span>` : '',
-		`<span class="name" id="${capability.id}" title="${escapeHtml(capability.id)}">${escapeHtml(capability.name)}</span>`,
+		/* after the badge, so the permalink lies on top of the bullet it replaces on hover */
+		`<a class="hash" href="#${capability.id}"${iconLabel('link to this capability')}>#</a>`,
+		`<a class="name" id="${capability.id}" href="#${capability.id}" title="${escapeHtml(capability.id)}">${escapeHtml(capability.name)}</a>`,
 		versionHtml(capability),
 		testDetails(info, capability),
 		signatureTestsHtml(info, capability),

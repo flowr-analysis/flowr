@@ -4,7 +4,7 @@ import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query'
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
-import { executeResolveValueQuery } from './origin-query-executor';
+import { executeOriginQuery } from './origin-query-executor';
 import type { Origin } from '../../../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
@@ -43,7 +43,7 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 
 export const OriginQueryDefinition = {
 	title:           'Origin Query',
-	executor:        executeResolveValueQuery,
+	executor:        executeOriginQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'origin'>['origin'];
 		result.push(`Query: ${bold('origin', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);

@@ -15,6 +15,7 @@ import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import { AmbientStateName } from './built-in/built-in-ambient-state';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { processFunctionArgument } from '../process-argument';
@@ -23,21 +24,24 @@ import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { DfgVertex } from '../../../../graph/vertex';
+import { appendEnvironment } from '../../../../environments/append';
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	/** which of the arguments the call evaluates, as {@link FunctionSemantics.call.signature.forced} answers it for the signature */
-	readonly forced?:        readonly boolean[]
-	readonly functionName:   DataflowInformation
-	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
-	readonly data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
-	readonly finalGraph:     DataflowGraph
-	readonly functionRootId: NodeId
+	readonly forced?:           readonly boolean[]
+	readonly functionName:      DataflowInformation
+	readonly args:              readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
+	readonly data:              DataflowProcessorInformation<OtherInfo & ParentInformation>
+	readonly finalGraph:        DataflowGraph
+	readonly functionRootId:    NodeId
 	/* allows passing a data processor in-between each argument; cannot modify env currently */
-	readonly patchData?:     (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
+	readonly patchData?:        (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** which arguments are to be marked as {@link EdgeType#NonStandardEvaluation|non-standard-evaluation}? */
-	readonly markAsNSE?:     readonly number[]
+	readonly markAsNSE?:        readonly number[]
 	/** symbols that name data rather than code, so they must not resolve to a function of the same name */
-	readonly nonFunction?:   ReadonlySet<NodeId>
+	readonly nonFunction?:      ReadonlySet<NodeId>
+	/** the arguments from this index on are alternatives of which at most one runs (the arms of `switch`) */
+	readonly alternativesFrom?: number
 }
 
 export interface ProcessAllArgumentResult {
@@ -126,16 +130,27 @@ export function isPipedArgument<OtherInfo>(
  * Processes all arguments for a function call, updating the given final graph and environment.
  */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	const callArgs: FunctionArgument[] = [];
 	const processedArguments: (DataflowInformation | undefined)[] = [];
 	const remainingReadInArgs = [];
 	let i = -1;
+	/* each alternative starts from what holds before all of them, and what one of them defines only may hold afterward */
+	let beforeAlternatives: REnvironmentInformation | undefined;
+	let afterAlternatives: REnvironmentInformation | undefined;
 	for(const arg of args) {
 		i++;
+		if(alternativesFrom !== undefined && i >= alternativesFrom) {
+			beforeAlternatives ??= finalEnv;
+			finalEnv = beforeAlternatives;
+		}
 		data = { ...data, environment: finalEnv };
+		if(beforeAlternatives !== undefined) {
+			/* whether an alternative runs depends on what the call picks */
+			data = { ...data, cds: [...data.cds ?? [], { id: functionRootId, when: true }] };
+		}
 		data = patchData?.(data, i) ?? data;
 		if(RArgument.isEmpty(arg)) {
 			callArgs.push(EmptyArgument);
@@ -162,6 +177,9 @@ export function processAllArguments<OtherInfo>(
 		processedArguments.push(processed);
 
 		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
+		if(beforeAlternatives !== undefined) {
+			afterAlternatives = appendEnvironment(afterAlternatives ?? beforeAlternatives, finalEnv);
+		}
 		/* nothing reads the argument's own graph past this point, only its entry point and references */
 		finalGraph.mergeWith(processed.graph, true, ownsGraph);
 
@@ -173,8 +191,10 @@ export function processAllArguments<OtherInfo>(
 				/* a data argument holds a value, so a function of that name is not what it reads; the narrowed
 				   type stays on the reference as it bubbles through the enclosing calls */
 				const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
-				const refType = DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
-					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
+				/* a call reading the options or graphics state (`#...`, see AmbientStateName) reads a variable, not itself */
+				const refType = AmbientStateName.is(ingoing.name) ? ReferenceType.Variable
+					: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
+						: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
 
 				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
 				if(tryToResolve === undefined) {
@@ -204,7 +224,7 @@ export function processAllArguments<OtherInfo>(
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);
 	}
-	return { finalEnv, callArgs, remainingReadInArgs, processedArguments };
+	return { finalEnv: afterAlternatives ?? finalEnv, callArgs, remainingReadInArgs, processedArguments };
 }
 
 export interface PatchFunctionCallInput<OtherInfo> {

@@ -513,4 +513,10 @@ testFuncCorrect(1:5, sum)
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});
+	/* only one arm of `switch` runs, so an arm reads what held before the call, never what another arm defines (checked against R) */
+	assertDataflow(label('switch arms do not see each other', ['name-normal', 'call-normal']), ts,
+		'x <- 0\nswitch(m, a = x <- 1, b = y <- x)',
+		emptyGraph().reads('2:32', '1@x'),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['2:32', '2:15']] }
+	);
 }));

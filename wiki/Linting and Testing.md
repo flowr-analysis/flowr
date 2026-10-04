@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-09-15, 21:18:21 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
@@ -32,7 +32,7 @@ for the latest benchmark results, see the [benchmark results](https://flowr-anal
 ## 🏨 Testing Suites
 
 Currently, flowR contains four testing suites: one for [functionality](#functionality-tests),
-one for [system tests](#system-tests), one for [mutation tests](#mutation-tests), and one for [performance](#performance-tests). We explain each of them in the following.
+one for [system tests](#system-tests), one for [mutation tests](#mutation-tests), and one for [performance](#performance-tests).
 In addition to running those tests, you can use the more generalized `npm run checkup`.
 This command includes the construction of the docker image, the generation of the wiki and landing pages, and the linter.
 It runs these jobs concurrently but caps the test workers so the combined run fits the machine (it splits the
@@ -114,7 +114,7 @@ The resulting labels are used in the test report that is generated as part of th
 They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
 The report can be found on flowR's [capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
 
-To add new labels, simply add them to the relevant section in [`./src/r-bridge/data/data.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/data/data.ts) as part of a pull request.
+To add new labels, add them to the relevant section in [`./src/r-bridge/data/data.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/data/data.ts) as part of a pull request.
 
 <a id='writing-a-test'></a>
 #### 🖋️ Writing a Test
@@ -134,13 +134,13 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
-Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L391"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L413"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L34"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
+Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L385"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L465"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L34"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L364"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L358"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
   The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L369"><code><span title="Before comparing, resolve every NodeId in the expected graph as if it were a slicing criterion (e.g. 12@a). Still a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L363"><code><span title="Before comparing, resolve every NodeId in the expected graph as if it were a slicing criterion (e.g. 12@a). Still a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
   For example, passing `12@a` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
 The following example shows both in use:
@@ -316,7 +316,7 @@ Otherwise, the tests will not be instantiated.
 ## 🪈 CI Pipeline
 
 We have several workflows defined in [.github/workflows](https://github.com/flowr-analysis/flowr/tree/main/.github/workflows).
-We explain the most important workflows in the following:
+The most important ones:
 
 - [.github/workflows/qa.yaml](https://github.com/flowr-analysis/flowr/tree/main/.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests), [system](#system-tests), [mutation](#mutation-tests), and [performance tests](#performance-tests)
@@ -366,7 +366,7 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 <a id='flowr-specific-rules'></a>
 ### 🧭 flowR-Specific Rules
 
-flowR groups its functions in helper objects (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L9"><code><span title="An edge consist of only of the type (source and target are encoded with the Dataflow Graph). Multiple edges are encoded by joining the respective type bits.">DfEdge</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L38"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L15"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a>, and
+flowR groups its functions in helper objects (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L9"><code><span title="An edge consist of only of the type (source and target are encoded with the Dataflow Graph). Multiple edges are encoded by joining the respective type bits.">DfEdge</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L38"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L14"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a>, and
 friends) so that there is one obvious entry point per topic. Two rules of the
 [`flowr` plugin](https://github.com/flowr-analysis/flowr-lint) keep the code on those entry points, both part of `npm run lint`.
 Each is fixed on the spot where the replacement is already imported, and offered as an editor suggestion otherwise.

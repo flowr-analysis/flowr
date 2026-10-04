@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="seeded-randomness">Seeded Randomness&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -34,7 +34,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function `runif` at 1.1-8\
@@ -67,7 +67,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-seeded-randomness.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts)
 
-<h4 id="Test_Case:_none">Test Case: none</h4>
+<h4 id="Test_32_Case:_32_none">Test Case: none</h4>
 
 Given the following input:
 
@@ -81,7 +81,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L15) for the test-case implementation.
 		
-<h4 id="Test_Case:_no_producer">Test Case: no producer</h4>
+<h4 id="Test_32_Case:_32_no_32_producer">Test Case: no producer</h4>
 
 Given the following input:
 
@@ -95,7 +95,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L16) for the test-case implementation.
 		
-<h4 id="Test_Case:_no_consumer">Test Case: no consumer</h4>
+<h4 id="Test_32_Case:_32_no_32_consumer">Test Case: no consumer</h4>
 
 Given the following input:
 
@@ -109,7 +109,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L18) for the test-case implementation.
 		
-<h4 id="Test_Case:_both">Test Case: both</h4>
+<h4 id="Test_32_Case:_32_both">Test Case: both</h4>
 
 Given the following input:
 
@@ -124,7 +124,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L19) for the test-case implementation.
 		
-<h4 id="Test_Case:_after">Test Case: after</h4>
+<h4 id="Test_32_Case:_32_after">Test Case: after</h4>
 
 Given the following input:
 
@@ -139,7 +139,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L20) for the test-case implementation.
 		
-<h4 id="Test_Case:_multiple_seeds">Test Case: multiple seeds</h4>
+<h4 id="Test_32_Case:_32_multiple_32_seeds">Test Case: multiple seeds</h4>
 
 Given the following input:
 
@@ -155,7 +155,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L23) for the test-case implementation.
 		
-<h4 id="Test_Case:_multiple_consumers">Test Case: multiple consumers</h4>
+<h4 id="Test_32_Case:_32_multiple_32_consumers">Test Case: multiple consumers</h4>
 
 Given the following input:
 
@@ -172,7 +172,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L24) for the test-case implementation.
 		
-<h4 id="Test_Case:_with_a__controlled__package_database">Test Case: with a (controlled) package database</h4>
+<h4 id="Test_32_Case:_32_with_32_a_32__40_controlled_41__32_package_32_database">Test Case: with a (controlled) package database</h4>
 
 > // regression: the loaded-package export must still count as a built-in call target
 
@@ -194,7 +194,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L29) for the test-case implementation.
 		
-<h4 id="Test_Case:_without_any_package_database">Test Case: without any package database</h4>
+<h4 id="Test_32_Case:_32_without_32_any_32_package_32_database">Test Case: without any package database</h4>
 
 Given the following input:
 
@@ -214,7 +214,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L33) for the test-case implementation.
 		
-<h4 id="Test_Case:_invalid">Test Case: invalid</h4>
+<h4 id="Test_32_Case:_32_invalid">Test Case: invalid</h4>
 
 Given the following input:
 
@@ -228,7 +228,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L40) for the test-case implementation.
 		
-<h4 id="Test_Case:_valid">Test Case: valid</h4>
+<h4 id="Test_32_Case:_32_valid">Test Case: valid</h4>
 
 Given the following input:
 
@@ -242,7 +242,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L42) for the test-case implementation.
 		
-<h4 id="Test_Case:_both_false">Test Case: both false</h4>
+<h4 id="Test_32_Case:_32_both_32_false">Test Case: both false</h4>
 
 Given the following input:
 
@@ -257,7 +257,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L46) for the test-case implementation.
 		
-<h4 id="Test_Case:_both_true">Test Case: both true</h4>
+<h4 id="Test_32_Case:_32_both_32_true">Test Case: both true</h4>
 
 Given the following input:
 
@@ -272,7 +272,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L47) for the test-case implementation.
 		
-<h4 id="Test_Case:_false">Test Case: false</h4>
+<h4 id="Test_32_Case:_32_false">Test Case: false</h4>
 
 Given the following input:
 
@@ -287,7 +287,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L48) for the test-case implementation.
 		
-<h4 id="Test_Case:_true">Test Case: true</h4>
+<h4 id="Test_32_Case:_32_true">Test Case: true</h4>
 
 Given the following input:
 
@@ -302,7 +302,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L50) for the test-case implementation.
 		
-<h4 id="Test_Case:_unclear">Test Case: unclear</h4>
+<h4 id="Test_32_Case:_32_unclear">Test Case: unclear</h4>
 
 Given the following input:
 
@@ -317,7 +317,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L51) for the test-case implementation.
 		
-<h4 id="Test_Case:_unclear">Test Case: unclear</h4>
+<h4 id="Test_32_Case:_32_unclear">Test Case: unclear</h4>
 
 Given the following input:
 
@@ -332,7 +332,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L53) for the test-case implementation.
 		
-<h4 id="Test_Case:_unclear_after_definite_seed">Test Case: unclear after definite seed</h4>
+<h4 id="Test_32_Case:_32_unclear_32_after_32_definite_32_seed">Test Case: unclear after definite seed</h4>
 
 Given the following input:
 
@@ -347,7 +347,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L55) for the test-case implementation.
 		
-<h4 id="Test_Case:_exhaustive">Test Case: exhaustive</h4>
+<h4 id="Test_32_Case:_32_exhaustive">Test Case: exhaustive</h4>
 
 Given the following input:
 
@@ -362,7 +362,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L56) for the test-case implementation.
 		
-<h4 id="Test_Case:_reversed">Test Case: reversed</h4>
+<h4 id="Test_32_Case:_32_reversed">Test Case: reversed</h4>
 
 Given the following input:
 
@@ -377,7 +377,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L57) for the test-case implementation.
 		
-<h4 id="Test_Case:_separate">Test Case: separate</h4>
+<h4 id="Test_32_Case:_32_separate">Test Case: separate</h4>
 
 Given the following input:
 
@@ -391,7 +391,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L58) for the test-case implementation.
 		
-<h4 id="Test_Case:_nested_true">Test Case: nested true</h4>
+<h4 id="Test_32_Case:_32_nested_32_true">Test Case: nested true</h4>
 
 Given the following input:
 
@@ -406,7 +406,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L60) for the test-case implementation.
 		
-<h4 id="Test_Case:_nested_producer_false">Test Case: nested producer false</h4>
+<h4 id="Test_32_Case:_32_nested_32_producer_32_false">Test Case: nested producer false</h4>
 
 Given the following input:
 
@@ -421,7 +421,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L61) for the test-case implementation.
 		
-<h4 id="Test_Case:_nested_consumer">Test Case: nested consumer</h4>
+<h4 id="Test_32_Case:_32_nested_32_consumer">Test Case: nested consumer</h4>
 
 Given the following input:
 
@@ -435,7 +435,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L63) for the test-case implementation.
 		
-<h4 id="Test_Case:_set_.Random.seed">Test Case: set .Random.seed</h4>
+<h4 id="Test_32_Case:_32_set_32_.Random.seed">Test Case: set .Random.seed</h4>
 
 Given the following input:
 
@@ -450,7 +450,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L67) for the test-case implementation.
 		
-<h4 id="Test_Case:_set_.Random.seed_with_assignment_inbetween">Test Case: set .Random.seed with assignment inbetween</h4>
+<h4 id="Test_32_Case:_32_set_32_.Random.seed_32_with_32_assignment_32_inbetween">Test Case: set .Random.seed with assignment inbetween</h4>
 
 Given the following input:
 
@@ -466,7 +466,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L69) for the test-case implementation.
 		
-<h4 id="Test_Case:_set_.Random.seed_reverse">Test Case: set .Random.seed reverse</h4>
+<h4 id="Test_32_Case:_32_set_32_.Random.seed_32_reverse">Test Case: set .Random.seed reverse</h4>
 
 Given the following input:
 
@@ -481,7 +481,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L71) for the test-case implementation.
 		
-<h4 id="Test_Case:_set_.Random.seed_override__-">Test Case: set .Random.seed override <-</h4>
+<h4 id="Test_32_Case:_32_set_32_.Random.seed_32_override_32__60_-">Test Case: set .Random.seed override <-</h4>
 
 Given the following input:
 
@@ -497,7 +497,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L73) for the test-case implementation.
 		
-<h4 id="Test_Case:_seed_a_local_folds_to">Test Case: seed a local folds to</h4>
+<h4 id="Test_32_Case:_32_seed_32_a_32_local_32_folds_32_to">Test Case: seed a local folds to</h4>
 
 Given the following input:
 
@@ -513,7 +513,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L78) for the test-case implementation.
 		
-<h4 id="Test_Case:_non-constant_seed">Test Case: non-constant seed</h4>
+<h4 id="Test_32_Case:_32_non-constant_32_seed">Test Case: non-constant seed</h4>
 
 Given the following input:
 
@@ -529,7 +529,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L80) for the test-case implementation.
 		
-<h4 id="Test_Case:_random_seed">Test Case: random seed</h4>
+<h4 id="Test_32_Case:_32_random_32_seed">Test Case: random seed</h4>
 
 Given the following input:
 
@@ -550,7 +550,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L83) for the test-case implementation.
 		
-<h4 id="Test_Case:_custom_set.seed">Test Case: custom set.seed</h4>
+<h4 id="Test_32_Case:_32_custom_32_set.seed">Test Case: custom set.seed</h4>
 
 Given the following input:
 
@@ -566,7 +566,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L89) for the test-case implementation.
 		
-<h4 id="Test_Case:_set_in_function_call">Test Case: set in function call</h4>
+<h4 id="Test_32_Case:_32_set_32_in_32_function_32_call">Test Case: set in function call</h4>
 
 Given the following input:
 
@@ -580,7 +580,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L92) for the test-case implementation.
 		
-<h4 id="Test_Case:_get_in_function_call">Test Case: get in function call</h4>
+<h4 id="Test_32_Case:_32_get_32_in_32_function_32_call">Test Case: get in function call</h4>
 
 Given the following input:
 
@@ -595,7 +595,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L94) for the test-case implementation.
 		
-<h4 id="Test_Case:_some_is_not_a_randomness_consumer">Test Case: some is not a randomness consumer</h4>
+<h4 id="Test_32_Case:_32_some_32_is_32_not_32_a_32_randomness_32_consumer">Test Case: some is not a randomness consumer</h4>
 
 Given the following input:
 

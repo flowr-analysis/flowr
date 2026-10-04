@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="dataframe-access-validation">Dataframe Access Validation&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
@@ -32,7 +32,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (10 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Access of row 6 of `df` at 3.1-14\
@@ -69,7 +69,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-dataframe-access-validation.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts)
 
-<h4 id="Test_Case:_dollar_matches_a_prefix">Test Case: dollar matches a prefix</h4>
+<h4 id="Test_32_Case:_32_dollar_32_matches_32_a_32_prefix">Test Case: dollar matches a prefix</h4>
 
 Given the following input:
 
@@ -84,7 +84,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L156) for the test-case implementation.
 		
-<h4 id="Test_Case:_double_bracket_does_not">Test Case: double bracket does not</h4>
+<h4 id="Test_32_Case:_32_double_32_bracket_32_does_32_not">Test Case: double bracket does not</h4>
 
 Given the following input:
 
@@ -99,7 +99,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L157) for the test-case implementation.
 		
-<h4 id="Test_Case:_Column_access_by_name">Test Case: Column access by name</h4>
+<h4 id="Test_32_Case:_32_Column_32_access_32_by_32_name">Test Case: Column access by name</h4>
 
 > We expect the linter to report an issue, if a column is accessed by name via `$` that does not exist in the data frame.
 
@@ -116,7 +116,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L163) for the test-case implementation.
 		
-<h4 id="Test_Case:_Column_access_by_index">Test Case: Column access by index</h4>
+<h4 id="Test_32_Case:_32_Column_32_access_32_by_32_index">Test Case: Column access by index</h4>
 
 > We expect the linter to report an issue, if a column is accessed by index via `[` or `[[` that does not exist in the data frame.
 
@@ -133,7 +133,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L172) for the test-case implementation.
 		
-<h4 id="Test_Case:_Row_access_by_index">Test Case: Row access by index</h4>
+<h4 id="Test_32_Case:_32_Row_32_access_32_by_32_index">Test Case: Row access by index</h4>
 
 > We expect the linter to report an issue, if a row is accessed by index via `[` or `[[` that does not exist in the data frame.
 
@@ -150,7 +150,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L181) for the test-case implementation.
 		
-<h4 id="Test_Case:_Filter_access">Test Case: Filter access</h4>
+<h4 id="Test_32_Case:_32_Filter_32_access">Test Case: Filter access</h4>
 
 > We expect the linter to report an issue, if a column is used in a `filter` function call that does not exist in the data frame.
 
@@ -167,7 +167,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L190) for the test-case implementation.
 		
-<h4 id="Test_Case:_Select_access">Test Case: Select access</h4>
+<h4 id="Test_32_Case:_32_Select_32_access">Test Case: Select access</h4>
 
 > We expect the linter to report an issue, if a column is selected or unselected in a `select` function that does not exist in the data frame.
 
@@ -184,7 +184,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dataframe-access-validation.test.ts#L199) for the test-case implementation.
 		
-<h4 id="Test_Case:_Code_example">Test Case: Code example</h4>
+<h4 id="Test_32_Case:_32_Code_32_example">Test Case: Code example</h4>
 
 > We expect the linter to report an issue for all non-existent columns accessed in transformation functions like `filter`, `mutate`, and `select`, as well as all non-existent columns and rows accessed via access operators like `[`.
 

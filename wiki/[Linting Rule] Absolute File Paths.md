@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-17, 20:16:52 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="absolute-file-paths">Absolute Paths&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -76,7 +76,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-absolute-path.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts)
 
-<h4 id="Test_Case:_is_relative_to_home">Test Case: is relative to home</h4>
+<h4 id="Test_32_Case:_32_is_32_relative_32_to_32_home">Test Case: is relative to home</h4>
 
 > Given an absolute path and assuming a home directory of `/home/me`, we expect the linter to suggest a relative path
 
@@ -97,7 +97,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L48) for the test-case implementation.
 		
-<h4 id="Test_Case:_is_relative_to_home">Test Case: is relative to home</h4>
+<h4 id="Test_32_Case:_32_is_32_relative_32_to_32_home">Test Case: is relative to home</h4>
 
 > Replacing absolute paths with relative paths should work within function calls as well
 
@@ -118,7 +118,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L66) for the test-case implementation.
 		
-<h4 id="Test_Case:_none">Test Case: none</h4>
+<h4 id="Test_32_Case:_32_none">Test Case: none</h4>
 
 > If the script contains no function that reads a file path, we expect no issues
 
@@ -134,7 +134,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L85) for the test-case implementation.
 		
-<h4 id="Test_Case:_none_with_all_strings">Test Case: none with all strings</h4>
+<h4 id="Test_32_Case:_32_none_32_with_32_all_32_strings">Test Case: none with all strings</h4>
 
 > If the script contains no file paths, but we include all strings, we expect no issues either
 
@@ -155,7 +155,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L87) for the test-case implementation.
 		
-<h4 id="Test_Case:_too_short">Test Case: too short</h4>
+<h4 id="Test_32_Case:_32_too_32_short">Test Case: too short</h4>
 
 > if we consider all strings for absolute paths, and the string contains something that might be a path, yet we deem it too short, we expect no issues
 
@@ -176,7 +176,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L96) for the test-case implementation.
 		
-<h4 id="Test_Case:_change_fsep">Test Case: change fsep</h4>
+<h4 id="Test_32_Case:_32_change_32_fsep">Test Case: change fsep</h4>
 
 > As we also incorporate the `file.path` function, we should be able to detect relative paths with a given separator
 
@@ -192,7 +192,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L200) for the test-case implementation.
 		
-<h4 id="Test_Case:_skrewed_fsep">Test Case: skrewed fsep</h4>
+<h4 id="Test_32_Case:_32_skrewed_32_fsep">Test Case: skrewed fsep</h4>
 
 Given the following input:
 
@@ -206,7 +206,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L201) for the test-case implementation.
 		
-<h4 id="Test_Case:_skrewed_fsep">Test Case: skrewed fsep</h4>
+<h4 id="Test_32_Case:_32_skrewed_32_fsep">Test Case: skrewed fsep</h4>
 
 Given the following input:
 
@@ -220,7 +220,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L209) for the test-case implementation.
 		
-<h4 id="Test_Case:_change_fsep">Test Case: change fsep</h4>
+<h4 id="Test_32_Case:_32_change_32_fsep">Test Case: change fsep</h4>
 
 Given the following input:
 
@@ -234,7 +234,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L223) for the test-case implementation.
 		
-<h4 id="Test_Case:_skrewed_fsep">Test Case: skrewed fsep</h4>
+<h4 id="Test_32_Case:_32_skrewed_32_fsep">Test Case: skrewed fsep</h4>
 
 > If someone constructs an absolute path due to a (cursed) fsep, we should still be able to detect it
 

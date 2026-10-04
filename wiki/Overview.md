@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's modules">Generated</span> from '[wiki-overview.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-overview.ts "src/documentation/wiki-overview.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's modules">Generated</span> from '[wiki-overview.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-overview.ts "src/documentation/wiki-overview.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
 
 First of all, if you have never used _flowR_ before,
 please refer to the [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page first, 
@@ -21,10 +21,10 @@ for instructions on how to install _flowR_.
 
 Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://www.r-project.org/) programming language.
 Its subcomponents (like the custom <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a>) or the internals of the static <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L192"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>) 
-are not important if you simply wish to use _flowR_.
-If you wish to use _flowR_, check out one of its extensions (e.g., the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr)),
+are not important if you only wish to use _flowR_.
+Instead, check out one of its extensions (e.g., the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr)),
 the [REPL and server interfaces](#using-flowr-from-the-outside) or its coding API with the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, which you build with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L37"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a>:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L205"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, which you build with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L37"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a>:
 
 ```ts
 
@@ -55,10 +55,10 @@ _flowR_ itself has two main ways to operate:
 Besides these two ways, there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use _flowR_ directly from within the editor (it is available on [open-vsx](https://open-vsx.org/extension/code-inspect/vscode-flowr) as well).
 Similarly, we offer an [Addin for RStudio](https://github.com/flowr-analysis/rstudio-addin-flowr), as well as an [R package](https://github.com/flowr-analysis/flowr-r-adapter).
 
-🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the <span title="Description (Command Line Argument): Do not drop into a repl, but instead start a server on the given port (default: 1042) and listen for messages.">`--server`</span> argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
+🐳️ If you use the docker-version, starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the <span title="Description (Command Line Argument): Do not drop into a repl, but instead start a server on the given port (default: 1042) and listen for messages.">`--server`</span> argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
 ⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by the main script `npm run flowr` or in the development mode `npm run main-dev`.
 
-Independent of your way of launching *flowr*, we will write simply `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`npm run flowr`.
+Independent of your way of launching *flowr*, we write `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`npm run flowr`.
 See the [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page for more information on how to get _flowR_ running.
 
 ### The Read-Eval-Print Loop (REPL)
@@ -149,7 +149,7 @@ The server allows accessing the REPL as well
 ## Calling the Scripts Directly
 
 This describes the old way of using _flowR_ by creating and calling the respective scripts directly.
-Although this is no longer necessary, the scripts still remain, fully integrated into the REPL of _flowR_ (you can access them simply by adding a colon `:` before the name).
+Although this is no longer necessary, the scripts still remain, fully integrated into the REPL of _flowR_ (you can access them by adding a colon `:` before the name).
 
 ### Generate Static Slices
 
@@ -210,7 +210,7 @@ For this, you can make use of the _summarizer_ script from within the `cli` dire
 npm run summarizer -- "<output.json>"
 ```
 
-Please note that the summarizer may require a long time as it parses, normalizes, and analyzes _each_ slice produced, to calculate the reduction numbers. Therefore, it actually executes two steps:
+The summarizer may require a long time as it parses, normalizes, and analyzes _each_ slice produced, to calculate the reduction numbers. Therefore, it actually executes two steps:
 
 1. For each file, it calculates the reduction, required time, and other information, written to `<output-summary.json>`
 2. Calculate the "ultimate" summary by aggregating the intermediate results for each file

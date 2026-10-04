@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Linter Query">Linter Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Lints a given R script for common issues.\
@@ -7,7 +7,7 @@ Run in the REPL: `:query @linter [rules:<r1>,<r2>,...] [format:<fmt>] <code | fi
 
 This query lints a given R script for common issues, such as missing files, unused variables, and more.
 
-In other words, if you have a script simply reading: `read.csv("i_do_not_exist.csv")`, the following query returns all smells detected:
+For a script reading `read.csv("i_do_not_exist.csv")`, the following query returns all smells detected:
 
 ```json
 [ { "type": "linter" } ]
@@ -17,7 +17,7 @@ In other words, if you have a script simply reading: `read.csv("i_do_not_exist.c
 
 _Results (prettified and summarized):_
 
-Query: **linter** (120 ms)\
+Query: **linter** (141 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -96,7 +96,7 @@ You can also configure which rules to apply and what settings to use for these r
 
 _Results (prettified and summarized):_
 
-Query: **linter** (3 ms)\
+Query: **linter** (13 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30\
@@ -131,6 +131,6 @@ We welcome any feedback and suggestions for new rules on this (consider opening 
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Linter Query query is `executeDependenciesQuery` in [`./src/queries/catalog/linter-query/linter-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-executor.ts).
+The Linter Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-executor.ts#L18"><code><span title="Executes the given linter queries using the provided analyzer. A query without an explicit rule list runs only the rules that are active by default.">executeLinterQuery</span></code></a>.
 
 </details>

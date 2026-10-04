@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="software-has-license">Software Has License&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments."><a href='#documentation'>![documentation](https://img.shields.io/badge/documentation-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
@@ -30,7 +30,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Software Has License** (software-has-license):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No license found in the project\
@@ -58,7 +58,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-software-has-license.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts)
 
-<h4 id="Test_Case:_no_license_in_plain_script">Test Case: no license in plain script</h4>
+<h4 id="Test_32_Case:_32_no_32_license_32_in_32_plain_32_script">Test Case: no license in plain script</h4>
 
 Given the following input:
 
@@ -72,7 +72,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L9) for the test-case implementation.
 		
-<h4 id="Test_Case:_license_file_present">Test Case: license file present</h4>
+<h4 id="Test_32_Case:_32_license_32_file_32_present">Test Case: license file present</h4>
 
 Given the following input:
 
@@ -91,7 +91,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L15) for the test-case implementation.
 		
-<h4 id="Test_Case:_license.md_present">Test Case: license.md present</h4>
+<h4 id="Test_32_Case:_32_license.md_32_present">Test Case: license.md present</h4>
 
 Given the following input:
 
@@ -110,7 +110,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L22) for the test-case implementation.
 		
-<h4 id="Test_Case:_unrelated_file_does_not_count">Test Case: unrelated file does not count</h4>
+<h4 id="Test_32_Case:_32_unrelated_32_file_32_does_32_not_32_count">Test Case: unrelated file does not count</h4>
 
 Given the following input:
 
@@ -129,7 +129,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L29) for the test-case implementation.
 		
-<h4 id="Test_Case:_description_file_with_license">Test Case: description file with license</h4>
+<h4 id="Test_32_Case:_32_description_32_file_32_with_32_license">Test Case: description file with license</h4>
 
 Given the following input:
 
@@ -148,7 +148,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L36) for the test-case implementation.
 		
-<h4 id="Test_Case:_description_file_without_license_field">Test Case: description file without license field</h4>
+<h4 id="Test_32_Case:_32_description_32_file_32_without_32_license_32_field">Test Case: description file without license field</h4>
 
 Given the following input:
 
@@ -167,7 +167,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-license.test.ts#L43) for the test-case implementation.
 		
-<h4 id="Test_Case:_description_check_disabled">Test Case: description check disabled</h4>
+<h4 id="Test_32_Case:_32_description_32_check_32_disabled">Test Case: description check disabled</h4>
 
 Given the following input:
 

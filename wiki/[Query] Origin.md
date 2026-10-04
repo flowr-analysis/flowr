@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Origin Query">Origin Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Retrieve the origin of a variable, function call, ...\
@@ -24,7 +24,7 @@ print(x)` (with the `print(x)` in the second line), the following query returns 
 
 _Results (prettified and summarized):_
 
-Query: **origin** (2 ms)\
+Query: **origin** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ Origins for {2@x}\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ {"type":0,"id":0}\
 
@@ -64,9 +64,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**)`"])
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -81,7 +81,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -101,6 +101,6 @@ print`"]
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Origin Query query is `executeSearch` in [`./src/queries/catalog/origin-query/origin-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-executor.ts).
+The Origin Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-executor.ts#L17"><code><span title="Execute origin queries, catching duplicates with the same fingerprint">executeOriginQuery</span></code></a>.
 
 </details>

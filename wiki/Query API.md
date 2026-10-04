@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-15, 21:18:21 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -18,8 +18,7 @@ In general, we separate two types of queries:
 1. **Active Queries**: Are exactly what you would expect from a query (e.g., the [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context)). They fetch information from the dataflow graph.
 2. **Virtual Queries**: Are used to structure your queries (e.g., the [Compound Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Compound)).
 
-We separate these from a concept perspective. 
-For now, we support the following **active** queries (which we will refer to simply as a `query`):
+We support the following **active** queries (which we refer to as a `query`):
 
 1. [Abstract Interpretation Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Abstract-Interpretation) (`absint`):\
     Returns the abstract values inferred for every expression or at specific locations.
@@ -93,7 +92,7 @@ Similarly, we support the following **virtual** queries:
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
-Although it is probably better to consult the detailed explanations, if you want to have a look at the schema, here is its description:
+The schema of the query format:
 
 - _Queries to run on the file analysis information (in the form of an array)_ (array)
 Valid item types:
@@ -424,7 +423,7 @@ Valid item types:
                 - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp/SemanticCallTag members they are._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Statistics', 'Deprecated', 'Eval', 'Html', 'JavaScript'
+                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Statistics', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage'
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'resolve-value'
@@ -524,7 +523,7 @@ Valid item types:
 
 ### Why Queries?
 
-First, consider that you have a file like the following (of course, this is just a simple and artificial example):
+First, consider that you have a file like the following (a simple, artificial example):
 
 ```r
 library(ggplot)
@@ -584,9 +583,9 @@ read#95;csv`"]
     17[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *6.1-28* (**id: 17**)
     arg: (12, 16)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     20{{"`*#91;RString#93;* **#39;data2.csv#39;**
       *7.19-29* (**id: 20**)`"}}
     %% Environment of 22 [level: 0]:
@@ -743,9 +742,9 @@ read#95;csv`"]
     29[["`*#91;RAccess#93;* base#58;#58;**$**
       *9.11-16* (**id: 29**)
     arg: (26, 27)`"]]
-    built-in:_["`Built-In:
+    built-in:_36_["`Built-In:
 $`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_36_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     31[["`*#91;RFunctionCall#93;* base#58;#58;**mean**
       *9.6-17* (**id: 31**)
     arg: (29)`"]]
@@ -1067,9 +1066,9 @@ print`"]
 	ggplot(aes(x = x, y = y))**
       *12.6-8* (**id: 52**)
     arg: (38, 50)`"]]
-    built-in:___["`Built-In:
+    built-in:_37__62__37_["`Built-In:
 %#62;%`"]
-    style built-in:___ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_37__62__37_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 54 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -1216,6 +1215,9 @@ print`"]
     55[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *12.1-14.20* (**id: 55**)
     arg: (52, 54)`"]]
+    built-in:_43_["`Built-In:
+#43;`"]
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     57(["`*#91;RSymbol#93;* **data2**
       *16.6-10* (**id: 57**)`"])
     58{{"`*#91;RSymbol#93;* **x**
@@ -1302,7 +1304,7 @@ points`"]
     12 -->|"defined-by"| 16
     17 -->|"reads, arg"| 16
     17 -->|"returns, arg"| 12
-    17 -.->|"reads, calls"| built-in:_-
+    17 -.->|"reads, calls"| built-in:_60_-
     linkStyle 21 stroke:gray;
     17 -.->|"flow"| 20
     linkStyle 22 stroke:gray,color:gray;
@@ -1318,7 +1320,7 @@ points`"]
     18 -->|"defined-by"| 22
     23 -->|"reads, arg"| 22
     23 -->|"returns, arg"| 18
-    23 -.->|"reads, calls"| built-in:_-
+    23 -.->|"reads, calls"| built-in:_60_-
     linkStyle 32 stroke:gray;
     23 -.->|"flow"| 26
     linkStyle 33 stroke:gray,color:gray;
@@ -1329,7 +1331,7 @@ points`"]
     linkStyle 36 stroke:gray,color:gray;
     29 -->|"reads, returns, arg"| 26
     29 -->|"reads, arg"| 27
-    29 -.->|"reads, calls"| built-in:_
+    29 -.->|"reads, calls"| built-in:_36_
     linkStyle 39 stroke:gray;
     29 -.->|"flow"| 31
     linkStyle 40 stroke:gray,color:gray;
@@ -1342,7 +1344,7 @@ points`"]
     24 -->|"defined-by"| 31
     32 -->|"reads, arg"| 31
     32 -->|"returns, arg"| 24
-    32 -.->|"reads, calls"| built-in:_-
+    32 -.->|"reads, calls"| built-in:_60_-
     linkStyle 48 stroke:gray;
     32 -.->|"flow"| 34
     linkStyle 49 stroke:gray,color:gray;
@@ -1380,7 +1382,7 @@ points`"]
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
     52 -->|"reads"| 7
-    52 -.->|"reads, calls"| built-in:___
+    52 -.->|"reads, calls"| built-in:_37__62__37_
     linkStyle 74 stroke:gray;
     52 -.->|"flow"| 54
     linkStyle 75 stroke:gray,color:gray;
@@ -1388,7 +1390,7 @@ points`"]
     linkStyle 76 stroke:gray,color:gray;
     55 -->|"reads, arg"| 52
     55 -->|"reads, arg"| 54
-    55 -.->|"reads, calls"| built-in:_
+    55 -.->|"reads, calls"| built-in:_43_
     linkStyle 79 stroke:gray;
     55 -.->|"flow"| 57
     linkStyle 80 stroke:gray,color:gray;
@@ -1399,7 +1401,7 @@ points`"]
     linkStyle 83 stroke:gray,color:gray;
     60 -->|"reads, returns, arg"| 57
     60 -->|"reads, arg"| 58
-    60 -.->|"reads, calls"| built-in:_
+    60 -.->|"reads, calls"| built-in:_36_
     linkStyle 86 stroke:gray;
     60 -.->|"flow"| 62
     linkStyle 87 stroke:gray,color:gray;
@@ -1410,7 +1412,7 @@ points`"]
     linkStyle 90 stroke:gray,color:gray;
     65 -->|"reads, returns, arg"| 62
     65 -->|"reads, arg"| 63
-    65 -.->|"reads, calls"| built-in:_
+    65 -.->|"reads, calls"| built-in:_36_
     linkStyle 93 stroke:gray;
     65 -.->|"flow"| 67
     linkStyle 94 stroke:gray,color:gray;
@@ -1427,7 +1429,7 @@ points`"]
     linkStyle 101 stroke:gray,color:gray;
     72 -->|"reads, returns, arg"| 69
     72 -->|"reads, arg"| 70
-    72 -.->|"reads, calls"| built-in:_
+    72 -.->|"reads, calls"| built-in:_36_
     linkStyle 104 stroke:gray;
     72 -.->|"flow"| 74
     linkStyle 105 stroke:gray,color:gray;
@@ -1438,7 +1440,7 @@ points`"]
     linkStyle 108 stroke:gray,color:gray;
     77 -->|"reads, returns, arg"| 74
     77 -->|"reads, arg"| 75
-    77 -.->|"reads, calls"| built-in:_
+    77 -.->|"reads, calls"| built-in:_36_
     linkStyle 111 stroke:gray;
     77 -.->|"flow"| 79
     linkStyle 112 stroke:gray,color:gray;
@@ -1456,7 +1458,7 @@ points`"]
     linkStyle 120 stroke:gray,color:gray;
     85 -->|"reads, returns, arg"| 82
     85 -->|"reads, arg"| 83
-    85 -.->|"reads, calls"| built-in:_
+    85 -.->|"reads, calls"| built-in:_36_
     linkStyle 123 stroke:gray;
     85 -.->|"flow"| 87
     linkStyle 124 stroke:gray,color:gray;

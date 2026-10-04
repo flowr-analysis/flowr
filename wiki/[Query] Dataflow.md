@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Dataflow Query">Dataflow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the dataflow graph of the given code.\
@@ -17,8 +17,8 @@ Using the example code `x + 1`, the following query returns the dataflow graph o
 
 _Results (prettified and summarized):_
 
-Query: **dataflow** (2 ms)\
-&nbsp;&nbsp;&nbsp;╰ [Dataflow Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICoxLjEqICgqKmlkOiAwKiopYFwiXSlcbiAgICAxe3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjEuNSogKCoqaWQ6IDEqKilgXCJ9fVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNDM7KipcbiAgICAgICoxLjEtNSogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1JbjpcbiM0MztgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDAgLS4tPnxcImZsb3dcInwgMVxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMSAtLi0+fFwiZmxvd1wifCAyXG4gICAgbGlua1N0eWxlIDEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMFxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNCBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=)\
+Query: **dataflow** (5 ms)\
+&nbsp;&nbsp;&nbsp;╰ [Dataflow Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICoxLjEqICgqKmlkOiAwKiopYFwiXSlcbiAgICAxe3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjEuNSogKCoqaWQ6IDEqKilgXCJ9fVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNDM7KipcbiAgICAgICoxLjEtNSogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46XzQzX1tcImBCdWlsdC1JbjpcbiM0MztgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XzQzXyBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDAgLS4tPnxcImZsb3dcInwgMVxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMSAtLi0+fFwiZmxvd1wifCAyXG4gICAgbGlua1N0eWxlIDEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMFxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl80M19cbiAgICBsaW5rU3R5bGUgNCBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=)\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -70,16 +70,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 2
     linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_
+    2 -.->|"reads, calls"| built-in:_43_
     linkStyle 4 stroke:gray;
 ```
 
@@ -91,6 +91,6 @@ flowchart LR
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Dataflow Query query is `executeDataflowQuery` in [`./src/queries/catalog/dataflow-query/dataflow-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dataflow-query/dataflow-query-executor.ts).
+The Dataflow Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dataflow-query/dataflow-query-executor.ts#L8"><code><span title="Executes the given dataflow queries.">executeDataflowQuery</span></code></a>.
 
 </details>

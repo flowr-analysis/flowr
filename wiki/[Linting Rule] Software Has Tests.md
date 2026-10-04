@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="software-has-tests">Software Has Tests&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
@@ -30,7 +30,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Software Has Tests** (software-has-tests):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No tests found in the project\
@@ -60,7 +60,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 These examples are synthesized from the test cases in: [test/functionality/linter/lint-software-has-tests.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts)
 
-<h4 id="Test_Case:_no_tests_at_all">Test Case: no tests at all</h4>
+<h4 id="Test_32_Case:_32_no_32_tests_32_at_32_all">Test Case: no tests at all</h4>
 
 Given the following input:
 
@@ -74,7 +74,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L9) for the test-case implementation.
 		
-<h4 id="Test_Case:_test_that_call_detected">Test Case: test_that call detected</h4>
+<h4 id="Test_32_Case:_32_test_that_32_call_32_detected">Test Case: test_that call detected</h4>
 
 Given the following input:
 
@@ -88,7 +88,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L15) for the test-case implementation.
 		
-<h4 id="Test_Case:_standalone_expect_true_not_detected">Test Case: standalone expect_true not detected</h4>
+<h4 id="Test_32_Case:_32_standalone_32_expect_true_32_not_32_detected">Test Case: standalone expect_true not detected</h4>
 
 Given the following input:
 
@@ -102,7 +102,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L21) for the test-case implementation.
 		
-<h4 id="Test_Case:_test_file_in_tests_directory">Test Case: test file in tests directory</h4>
+<h4 id="Test_32_Case:_32_test_32_file_32_in_32_tests_32_directory">Test Case: test file in tests directory</h4>
 
 Given the following input:
 
@@ -121,7 +121,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L27) for the test-case implementation.
 		
-<h4 id="Test_Case:_test_file_in_test_directory__singular_">Test Case: test file in test directory (singular)</h4>
+<h4 id="Test_32_Case:_32_test_32_file_32_in_32_test_32_directory_32__40_singular_41_">Test Case: test file in test directory (singular)</h4>
 
 Given the following input:
 
@@ -140,7 +140,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L34) for the test-case implementation.
 		
-<h4 id="Test_Case:_unrelated_file_not_counted">Test Case: unrelated file not counted</h4>
+<h4 id="Test_32_Case:_32_unrelated_32_file_32_not_32_counted">Test Case: unrelated file not counted</h4>
 
 Given the following input:
 
@@ -159,7 +159,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L41) for the test-case implementation.
 		
-<h4 id="Test_Case:_standalone_expect_equal_not_detected">Test Case: standalone expect_equal not detected</h4>
+<h4 id="Test_32_Case:_32_standalone_32_expect_equal_32_not_32_detected">Test Case: standalone expect_equal not detected</h4>
 
 Given the following input:
 
@@ -173,7 +173,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L48) for the test-case implementation.
 		
-<h4 id="Test_Case:_tinytest_runner_run_test_dir">Test Case: tinytest runner run_test_dir</h4>
+<h4 id="Test_32_Case:_32_tinytest_32_runner_32_run_test_dir">Test Case: tinytest runner run_test_dir</h4>
 
 Given the following input:
 
@@ -187,7 +187,7 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-software-has-tests.test.ts#L54) for the test-case implementation.
 		
-<h4 id="Test_Case:_standalone_checkEquals_not_detected">Test Case: standalone checkEquals not detected</h4>
+<h4 id="Test_32_Case:_32_standalone_32_checkEquals_32_not_32_detected">Test Case: standalone checkEquals not detected</h4>
 
 Given the following input:
 

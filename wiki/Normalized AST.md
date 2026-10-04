@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -166,7 +166,7 @@ class RFunctionCall~Info = NoInfo~{
     <<type>>
 }
 style RFunctionCall opacity:.35,fill:#FAFAFA
-click RFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40" ""
+click RFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L39" ""
 class RNamedFunctionCall~Info = NoInfo~{
     <<interface>>
     type#58; RType.FunctionCall
@@ -174,7 +174,7 @@ class RNamedFunctionCall~Info = NoInfo~{
     functionName#58; RSymbol#60;Info, Identifier#62;
     arguments#58; #123;#125;
 }
-click RNamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17" "Calls of functions like #96;a()#96; and #96;foo(42, #34;hello#34;)#96;."
+click RNamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16" "Calls of functions like #96;a()#96; and #96;foo(42, #34;hello#34;)#96;."
 class RUnnamedFunctionCall~Info = NoInfo~{
     <<interface>>
     type#58; RType.FunctionCall
@@ -183,7 +183,7 @@ class RUnnamedFunctionCall~Info = NoInfo~{
     infixSpecial#58; boolean
     arguments#58; #123;#125;
 }
-click RUnnamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30" "Direct calls of functions like #96;(function(x) #123; x #125;)(3)#96;."
+click RUnnamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L29" "Direct calls of functions like #96;(function(x) #123; x #125;)(3)#96;."
 class RParameter~Info = NoInfo~{
     <<interface>>
     type#58; RType.Parameter
@@ -637,9 +637,9 @@ In summary, we have the following types:
          
          </details>
          
-     * [RFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40)   
+     * [RFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L39)   
      
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L39">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L39</a></summary>
        
        ```ts
        export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;
@@ -647,9 +647,9 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RNamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17)**   
+       * **[RNamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16)**   
          Calls of functions like `a()` and `foo(42, "hello")`.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16</a></summary>
          
          ```ts
          /**
@@ -690,9 +690,9 @@ In summary, we have the following types:
            
            </details>
            
-       * **[RUnnamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30)**   
+       * **[RUnnamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L29)**   
          Direct calls of functions like `(function(x) { x })(3)`.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L29">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L29</a></summary>
          
          ```ts
          /**
@@ -1432,7 +1432,7 @@ The following segments intend to give you an overview of how to work with the no
 ## How to Get a Normalized AST
 
 As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page, you can use an instance of
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L90"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L205"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L90"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder().build();
@@ -1444,7 +1444,7 @@ From the REPL, you can use the <span title="Description (Repl Command): Get merm
 
 ### Multi-File Projects
 
-With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L202"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
+With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L205"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder()

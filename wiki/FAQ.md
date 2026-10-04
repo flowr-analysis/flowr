@@ -1,22 +1,22 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
 
-- [💮 <i>flowR</i> FAQ](#____i_flowR_/i__FAQ)
-  - [🧑‍💻 <i>flowR</i> Development](#_______i_flowR_/i__Development)  
+- [💮 <i>flowR</i> FAQ](#_55357__56494__32__60_i_62_flowR_60_/i_62__32_FAQ)
+  - [🧑‍💻 <i>flowR</i> Development](#_55358__56785__8205__55357__56507__32__60_i_62_flowR_60_/i_62__32_Development)  
     
-  - [✨ Using <i>flowR</i>](#__Using__i_flowR_/i_)  
+  - [✨ Using <i>flowR</i>](#_10024__32_Using_32__60_i_62_flowR_60_/i_62_)  
     
-- [🇷 R FAQ](#___R_FAQ)
-  - [📦 R Packages](#___R_Packages)  
+- [🇷 R FAQ](#_55356__56823__32_R_32_FAQ)
+  - [📦 R Packages](#_55357__56550__32_R_32_Packages)  
     
-- [💻 Editor FAQ](#___Editor_FAQ)
-  - [⚙️ Recommended Editor Configs](#___Recommended_Editor_Configs)  
+- [💻 Editor FAQ](#_55357__56507__32_Editor_32_FAQ)
+  - [⚙️ Recommended Editor Configs](#_9881__65039__32_Recommended_32_Editor_32_Configs)  
     
-<h2 id="____i_flowR_/i__FAQ">💮 <i>flowR</i> FAQ</h2>
+<h2 id="_55357__56494__32__60_i_62_flowR_60_/i_62__32_FAQ">💮 <i>flowR</i> FAQ</h2>
 
-<h3 id="_______i_flowR_/i__Development">🧑‍💻 <i>flowR</i> Development</h3>
+<h3 id="_55358__56785__8205__55357__56507__32__60_i_62_flowR_60_/i_62__32_Development">🧑‍💻 <i>flowR</i> Development</h3>
 
 <details><summary>How do I run <b>all checks</b> before pushing?</summary>
 
@@ -128,7 +128,7 @@ npm run flowr -- --help
 
 </details>
 
-<h3 id="__Using__i_flowR_/i_">✨ Using <i>flowR</i></h3>
+<h3 id="_10024__32_Using_32__60_i_62_flowR_60_/i_62_">✨ Using <i>flowR</i></h3>
 
 <details><summary>How to <b>query</b> an R project?</summary>
 
@@ -186,16 +186,16 @@ Anything you configure directly wins over the value the project kind defaults to
 
 flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
 thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L312"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
-,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L225"><code><span title="The one helper to ask a vertex what it is. Every check tolerates an absent vertex, which is what getVertex() hands back for an id the graph does not know.">DfgVertex</span></code></a>,
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L50"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
 The [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) wiki page lists every one of them, grouped by what
 it is about, so you can find the one that answers your question without knowing where it lives.
 
 </details>
 
-<h2 id="___R_FAQ">🇷 R FAQ</h2>
+<h2 id="_55356__56823__32_R_32_FAQ">🇷 R FAQ</h2>
 
-<h3 id="___R_Packages">📦 R Packages</h3>
+<h3 id="_55357__56550__32_R_32_Packages">📦 R Packages</h3>
 
 <details><summary>How does flowR know a <b>package's exports</b>?</summary>
 
@@ -207,12 +207,12 @@ See the [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signat
 
 There are a couple of ways to get documentation for a function or package.
 
-🖥️ Firstly, if you have already installed the package the function originated from you can simply run `?<package name>::<function name>` in an R session to print the
+🖥️ Firstly, if you have already installed the package the function originated from you can run `?<package name>::<function name>` in an R session to print the
 relevant documentation. If you don't know the origin of the package, you can use
 `??<function name>` in an R shell to fuzzy find all documentations containing
 `<function name>` or something similar.
 
-🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
+🌐 Secondly, if you don't have or don't want to install the package you can google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
 
@@ -230,9 +230,9 @@ sections in the output of `sessionInfo()`.
 
 </details>
 
-<h2 id="___Editor_FAQ">💻 Editor FAQ</h2>
+<h2 id="_55357__56507__32_Editor_32_FAQ">💻 Editor FAQ</h2>
 
-<h3 id="___Recommended_Editor_Configs">⚙️ Recommended Editor Configs</h3>
+<h3 id="_9881__65039__32_Recommended_32_Editor_32_Configs">⚙️ Recommended Editor Configs</h3>
 
 <details><summary>How can I launch the flowr repl form vs code?</summary>
 

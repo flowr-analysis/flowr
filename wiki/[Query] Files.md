@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Files Query">Files Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the files matching the given criteria.\
@@ -56,6 +56,6 @@ flowchart LR
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Files Query query is `executeFileQuery` in [`./src/queries/catalog/files-query/files-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/files-query/files-query-executor.ts).
+The Files Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/files-query/files-query-executor.ts#L11"><code><span title="Executes the given files queries using the provided analyzer.">executeFileQuery</span></code></a>.
 
 </details>

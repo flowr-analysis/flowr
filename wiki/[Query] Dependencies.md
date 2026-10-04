@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -8,7 +8,7 @@ This query extracts all dependencies from an R script, using a combination of a 
 and more advanced tracking in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph).
 Loaded libraries are resolved against the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
 
-In other words, if you have a script simply reading: `library(x)`, the following query returns the loaded library:
+For a script reading `library(x)`, the following query returns the loaded library:
 
 ```json
 [ { "type": "dependencies" } ]
@@ -18,7 +18,7 @@ In other words, if you have a script simply reading: `library(x)`, the following
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (5 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_\
 
@@ -48,7 +48,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 </details>
 
-Of course, this works for more complicated scripts too. The query offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
+The query also handles more complicated scripts and offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
 For example, consider the following script:
 
 ```r
@@ -77,7 +77,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (5 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -302,6 +302,6 @@ suggest a `library` call for.
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Dependencies Query query is `executeDependenciesQuery` in [`./src/queries/catalog/dependencies-query/dependencies-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts).
+The Dependencies Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts#L29"><code><span title="Executes a dependencies query.">executeDependenciesQuery</span></code></a>.
 
 </details>

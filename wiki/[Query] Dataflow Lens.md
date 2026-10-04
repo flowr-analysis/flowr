@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Dataflow Lens Query">Dataflow Lens Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simplified view on the dataflow graph, reduced to definitions, uses, and calls.\
@@ -32,7 +32,7 @@ print(y)
 
 _Results (prettified and summarized):_
 
-Query: **dataflow-lens** (4 ms)\
+Query: **dataflow-lens** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ [Simplified Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMFtcImAqKmYqKiAoTC4gMSlcbipSU3ltYm9sKmBcIl1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAwXG4gICAgOVtcImAqKngqKiAoTC4gMilcbipSU3ltYm9sKmBcIl1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA5XG4gICAgMTQoW1wiYCoqeCoqIChMLiAzKVxuKlJTeW1ib2wqYFwiXSlcbiAgICAxNltbXCJgKipmKiogKEwuIDMpXG4qUkZ1bmN0aW9uQ2FsbCpgXCJdXVxuICAgIDEyW1wiYCoqeSoqIChMLiAzKVxuKlJTeW1ib2wqYFwiXVxuICAgIDE5KFtcImAqKnkqKiAoTC4gNClcbipSU3ltYm9sKmBcIl0pXG4gICAgMjFbW1wiYGJhc2UjNTg7IzU4OyoqcHJpbnQqKiAoTC4gNClcbipSRnVuY3Rpb25DYWxsKmBcIl1dXG4gICAgMTQgLS0+fFwicmVhZHNcInwgOVxuICAgIDE2IC0tPnxcInJlYWRzLCBhcmdcInwgMTRcbiAgICAxNiAtLT58XCJyZWFkc1wifCAwXG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAxNlxuICAgIDE5IC0tPnxcInJlYWRzXCJ8IDEyXG4gICAgMjEgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ1wifCAxOSIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -45,7 +45,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 _As the code is pretty long, we inhibit pretty printing and syntax highlighting (JSON, hiding built-in):_
 
 ```text
-{"dataflow-lens":{".meta":{},"simplifiedGraph":{"rootVertices":[0,9,14,16,12,19,21],"vertexInformation":[[0,{"tag":"vdef","id":0,"source":[7]}],[9,{"tag":"vdef","id":9,"source":[10]}],[14,{"tag":"use","id":14}],[16,{"tag":"fcall","id":16,"environment":{"current":{"id":521,"parent":"<BuiltInEnvironment>","memory":[],"globalEnv":true},"level":0},"name":"f","onlyBuiltin":false,"args":[{"nodeId":14,"type":32}],"origin":["function"]}],[12,{"tag":"vdef","id":12,"source":[16]}],[19,{"tag":"use","id":19}],[21,{"tag":"fcall","id":21,"name":"print","onlyBuiltin":true,"args":[{"nodeId":19,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[14,[[9,{"types":1}],[16,{"types":4096}]]],[16,[[14,{"types":65}],[0,{"types":1}],[12,{"types":4096}]]],[12,[[16,{"types":2}]]],[21,[[19,{"types":73}]]],[19,[[12,{"types":1}],[21,{"types":4096}]]]],"_unknownSideEffects":[]}},".meta":{}}
+{"dataflow-lens":{".meta":{},"simplifiedGraph":{"rootVertices":[0,9,14,16,12,19,21],"vertexInformation":[[0,{"tag":"vdef","id":0,"source":[7]}],[9,{"tag":"vdef","id":9,"source":[10]}],[14,{"tag":"use","id":14}],[16,{"tag":"fcall","id":16,"environment":{"current":{"id":537,"parent":"<BuiltInEnvironment>","memory":[],"globalEnv":true},"level":0},"name":"f","onlyBuiltin":false,"args":[{"nodeId":14,"type":32}],"origin":["function"]}],[12,{"tag":"vdef","id":12,"source":[16]}],[19,{"tag":"use","id":19}],[21,{"tag":"fcall","id":21,"name":"print","onlyBuiltin":true,"args":[{"nodeId":19,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[14,[[9,{"types":1}],[16,{"types":4096}]]],[16,[[14,{"types":65}],[0,{"types":1}],[12,{"types":4096}]]],[12,[[16,{"types":2}]]],[21,[[19,{"types":73}]]],[19,[[12,{"types":1}],[21,{"types":4096}]]]],"_unknownSideEffects":[]}},".meta":{}}
 ```
 
 </details>
@@ -58,6 +58,6 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Dataflow Lens Query query is `executeDataflowLensQuery` in [`./src/queries/catalog/dataflow-lens-query/dataflow-lens-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dataflow-lens-query/dataflow-lens-query-executor.ts).
+The Dataflow Lens Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dataflow-lens-query/dataflow-lens-query-executor.ts#L23"><code><span title="Executes the given dataflow lens queries using the provided analyzer.">executeDataflowLensQuery</span></code></a>.
 
 </details>

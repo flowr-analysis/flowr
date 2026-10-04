@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-09-15, 21:18:21 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L192"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -27,7 +27,7 @@ Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-
 > There is also a simplified version available with <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the simplified dataflow graph (aliases: :ds*, :dfs*)">`:dataflowsimple*`</span> that does not show everything but is easier to read.
 > For small graphs, you can also use <span title="Description (Repl Command): Returns an ASCII representation of the dataflow graph (aliases: :df!)">`:dataflowascii`</span> to print the graph as ASCII art.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L731"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L752"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
 >
 > Also, check out the [flowr-analysis/sample-analyzer-df-diff](https://github.com/flowr-analysis/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -50,9 +50,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.6* (**id: 4**)`"])
     5{{"`*#91;RNumber#93;* **1**
@@ -60,9 +60,9 @@ flowchart LR
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.6-10* (**id: 6**)
     arg: (4, 5)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3["`*#91;RSymbol#93;* **y**
       *2.1* (**id: 3**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -76,7 +76,7 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -89,13 +89,13 @@ flowchart LR
     6 -->|"reads, arg"| 5
     6 -.->|"flow"| 3
     linkStyle 12 stroke:gray,color:gray;
-    6 -.->|"reads, calls"| built-in:_
+    6 -.->|"reads, calls"| built-in:_43_
     linkStyle 13 stroke:gray;
     3 -->|"defined-by, flow"| 7
     3 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 3
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 18 stroke:gray;
     7 -.->|"flow"| 8
     linkStyle 19 stroke:gray,color:gray;
@@ -121,18 +121,18 @@ flowchart LR
 *RSymbol*`"]
     2[["`base#58;#58;**#60;#45;** (L. 1)
 *RBinaryOp*`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`**x** (L. 2)
 *RSymbol*`"])
     5{{"`**1** (L. 2)
 *RNumber*`"}}
     6[["`base#58;#58;**#43;** (L. 2)
 *RBinaryOp*`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3["`**y** (L. 2)
 *RSymbol*`"]
     7[["`base#58;#58;**#60;#45;** (L. 2)
@@ -143,18 +143,18 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 4 stroke:gray;
     4 -->|"reads"| 0
     6 -->|"reads, arg"| 4
     6 -->|"reads, arg"| 5
-    6 -.->|"reads, calls"| built-in:_
+    6 -.->|"reads, calls"| built-in:_43_
     linkStyle 8 stroke:gray;
     3 -->|"defined-by, flow"| 7
     3 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 3
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 13 stroke:gray;
     8 -->|"reads"| 3
 ```
@@ -385,7 +385,7 @@ You can access the lexeme too with <a href="https://github.com/flowr-analysis/fl
 
 <h3 id="vtx-id">Vertex Id</h3>
 
-In the second line, you will usually find the id (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a>) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form `*location* (**id: <id>**)` with the id in **bold**. This id links the vertex to the respective node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (and all other perspectives created by flowR).
+In the second line, you will usually find the id (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L32"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a>) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form `*location* (**id: <id>**)` with the id in **bold**. This id links the vertex to the respective node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (and all other perspectives created by flowR).
 To give you an example, have a look at the following graph:
 
 ```mermaid
@@ -420,7 +420,7 @@ which only triggers when the condition is `true`; a `-` suffix marks the `false`
 
 Other vertices are named by their id too: `v: <id>` is the value of a definition, `links: <id>` the AST vertices that
 contributed to the vertex. Mermaid rejects some characters in an id, so a space or a bracket shows as `_`
-(see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/mermaid.ts#L69"><code><span title="Escapes a string or number to be used as a mermaid node id.">Mermaid::<b>escapeId</b></span></code></a>); a path keeps its `/` and `.`.
+(see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/mermaid.ts#L73"><code><span title="Escapes a string or number to be used as a mermaid node id.">Mermaid::<b>escapeId</b></span></code></a>); a path keeps its `/` and `.`.
 
 <h3 id="vtx-location">Location</h3>
 
@@ -431,7 +431,7 @@ in the first line at the seventh character and ending in the first line at the n
 <h3 id="vtx-additional-info">Arguments and Additional Information</h3>
 
 Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
-As you can see with the `if` example above alongside the [vertex id](#vtx-id),
+As in the `if` example above, alongside the [vertex id](#vtx-id),
 these vertices also have an additional line (prefixed with `arg:`) which lists the ids of the arguments in order to clear any ambiguity in case, for example,
 the mermaid graph layouting fumbles the order.
 
@@ -470,7 +470,7 @@ We encountered no unknown side effects during the analysis.
 </details>
 
 Describes a constant value (numbers, booleans/logicals, strings, ...).
-In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
+The respective vertex is more or less a dummy vertex.
 
  * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L71)**   
    Marker vertex for a value in the dataflow of the program.
@@ -574,16 +574,16 @@ flowchart LR
     3[["`*#91;RAccess#93;* base#58;#58;**$**
       *1.1-9* (**id: 3**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_36_["`Built-In:
 $`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_36_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 3
     linkStyle 1 stroke:gray,color:gray;
     3 -->|"reads, returns, arg"| 0
     3 -->|"reads, arg"| 1
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_36_
     linkStyle 4 stroke:gray;
 ```
 
@@ -768,9 +768,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**)`"])
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -785,7 +785,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -826,9 +826,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **u**
       *2.4* (**id: 3**)`"])
     5{{"`*#91;RNumber#93;* **2**
@@ -858,7 +858,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -872,7 +872,7 @@ print`"]
     4 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 4
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 14 stroke:gray;
     6 -.->|"flow"| 8
     linkStyle 15 stroke:gray,color:gray;
@@ -921,9 +921,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3["`*#91;RSymbol#93;* **i**
       *2.5* (**id: 3**, v: 4)`"]
     4(["`*#91;RSymbol#93;* **v**
@@ -955,7 +955,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -972,7 +972,7 @@ print`"]
     5 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 5
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 16 stroke:gray;
     7 -.->|"flow"| 3
     linkStyle 17 stroke:gray,color:gray;
@@ -1030,18 +1030,18 @@ subgraph "flow-5" [function 5]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.17-23* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-23* (**id: 6**)
     arg: (0, 5)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     8{{"`*#91;RNumber#93;* **2**
       *2.6* (**id: 8**)`"}}
     7["`*#91;RSymbol#93;* **x**
@@ -1079,7 +1079,7 @@ print`"]
     1 -->|"side-effect-on-call"| 12
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
-    3 -.->|"reads, calls"| built-in:__-
+    3 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 6 stroke:gray;
 5 -.-|function| flow-5
 
@@ -1089,7 +1089,7 @@ print`"]
     0 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 0
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 13 stroke:gray;
     6 -.->|"flow"| 8
     linkStyle 14 stroke:gray,color:gray;
@@ -1099,7 +1099,7 @@ print`"]
     7 -->|"defined-by"| 8
     9 -->|"reads, arg"| 8
     9 -->|"returns, arg"| 7
-    9 -.->|"reads, calls"| built-in:_-
+    9 -.->|"reads, calls"| built-in:_60_-
     linkStyle 20 stroke:gray;
     9 -.->|"flow"| 10
     linkStyle 21 stroke:gray,color:gray;
@@ -1236,7 +1236,7 @@ and it should not be relied on as it may under-approximate the actual calling ta
         * For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`,
         * `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and
         * whether it can be instantiated. Filled from the {@link ClassDeclarationConfig} the built-in declares,
-        * so no argument's meaning is guessed. See {@link declaredClasses} to collect these across a graph.
+        * so no argument's meaning is guessed. See {@link declaredClassesImpl} to collect these across a graph.
         */
        classDecl?:    ClassDeclaration
    }
@@ -1402,7 +1402,7 @@ The related function argument references are defined like this:
     </details>
 
 There is another element of potential interest to you, the `origin` property which records how flowR created the respective function call.
-These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L333"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
+These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L343"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
 The entry `function` signals that flowR used a processor for a user-defined function defined within the source code, `unnamed` signals that the function as an anonymous function definition.
 However, in general, flowR may use any fitting handler as an origin (see the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enum for a *complete* list). For example, within a access definition, flowR will correspondingly redefine the meaning of `:=` to that of the `table:assign`. 
 
@@ -1472,8 +1472,7 @@ In this case, we have a function call vertex with id `8` and the following argum
 ]
 ```
 
-Of course now, this is hard to read in this form (although the ids of the arguments can be mapped pretty easily to the visualization),
-as the `type` of these references is a bit-mask, encoding one of the following reference types:
+This is hard to read in this form, as the `type` of these references is a bit-mask, encoding one of the following reference types:
 
 | Value | Reference Type |
 |------:|----------------|
@@ -1577,16 +1576,16 @@ For more information on the types of references, please consult the implementati
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-6* (**id: 2**)
 >     arg: (0, 1)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     1 -.->|"flow"| 0
 >     linkStyle 0 stroke:gray,color:gray;
 >     0 -->|"defined-by, flow"| 2
 >     0 -->|"defined-by"| 1
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
->     2 -.->|"reads, calls"| built-in:_-
+>     2 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 5 stroke:gray;
 > ```
 > 
@@ -1646,9 +1645,9 @@ For more information on the types of references, please consult the implementati
 >     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-19* (**id: 4**)
 >     arg: (0, 3)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     %% Environment of 6 [level: 0]:
 >     %% Built-in
 >     %% 1----------------------------------------
@@ -1663,7 +1662,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 3
 >     4 -->|"reads, arg"| 3
 >     4 -->|"returns, arg"| 0
->     4 -.->|"reads, calls"| built-in:_-
+>     4 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 6 stroke:gray;
 >     4 -.->|"flow"| 6
 >     linkStyle 7 stroke:gray,color:gray;
@@ -1725,9 +1724,9 @@ For more information on the types of references, please consult the implementati
 >     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-17* (**id: 4**)
 >     arg: (0, 3)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     6(["`*#91;RSymbol#93;* **f**
 >       *2.6* (**id: 6**)`"])
 >     5["`*#91;RSymbol#93;* **g**
@@ -1751,7 +1750,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 3
 >     4 -->|"reads, arg"| 3
 >     4 -->|"returns, arg"| 0
->     4 -.->|"reads, calls"| built-in:_-
+>     4 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 6 stroke:gray;
 >     4 -.->|"flow"| 6
 >     linkStyle 7 stroke:gray,color:gray;
@@ -1762,7 +1761,7 @@ For more information on the types of references, please consult the implementati
 >     5 -->|"defined-by"| 6
 >     7 -->|"reads, arg"| 6
 >     7 -->|"returns, arg"| 5
->     7 -.->|"reads, calls"| built-in:_-
+>     7 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 14 stroke:gray;
 >     7 -.->|"flow"| 9
 >     linkStyle 15 stroke:gray,color:gray;
@@ -1843,9 +1842,9 @@ For more information on the types of references, please consult the implementati
 >     18[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
 >       *1.17* (**id: 18**)
 >     arg: (9, 16, 17)`"]]
->     built-in:_["`Built-In:
+>     built-in:_123_["`Built-In:
 > #123;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     style 3 stroke:purple,stroke-width:4px; 
 >     style 10 stroke:purple,stroke-width:4px; 
 >     style 17 stroke:purple,stroke-width:4px; 
@@ -1855,9 +1854,9 @@ For more information on the types of references, please consult the implementati
 >     20[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-5.1* (**id: 20**)
 >     arg: (0, 19)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     %% Environment of 22 [level: 0]:
 >     %% Built-in
 >     %% 1----------------------------------------
@@ -1899,7 +1898,7 @@ For more information on the types of references, please consult the implementati
 >     18 -->|"arg"| 9
 >     18 -->|"arg"| 16
 >     18 -->|"returns, arg"| 17
->     18 -.->|"reads, calls"| built-in:_
+>     18 -.->|"reads, calls"| built-in:_123_
 >     linkStyle 22 stroke:gray;
 >     18 -->|"returns"| 7
 >     18 -->|"returns"| 14
@@ -1911,7 +1910,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 19
 >     20 -->|"reads, arg"| 19
 >     20 -->|"returns, arg"| 0
->     20 -.->|"reads, calls"| built-in:_-
+>     20 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 31 stroke:gray;
 >     20 -.->|"flow"| 22
 >     linkStyle 32 stroke:gray,color:gray;
@@ -1997,16 +1996,16 @@ For more information on the types of references, please consult the implementati
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-6* (**id: 2**)
 >     arg: (0, 1)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     3(["`*#91;RSymbol#93;* **u**
 >       *2.4* (**id: 3**)`"])
 >     5(["`*#91;RSymbol#93;* **#96;#42;#96;**
 >       *2.15-17* (**id: 5**, 8+)`"])
->     built-in:_["`Built-In:
+>     built-in:_42_["`Built-In:
 > #42;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_42_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     4["`*#91;RSymbol#93;* **#96;#60;#45;#96;**
 >       *2.7-10* (**id: 4**, 8+, v: 5)`"]
 >     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2036,7 +2035,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 1
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
->     2 -.->|"reads, calls"| built-in:_-
+>     2 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 5 stroke:gray;
 >     2 -.->|"flow"| 3
 >     linkStyle 6 stroke:gray,color:gray;
@@ -2046,13 +2045,13 @@ For more information on the types of references, please consult the implementati
 >     linkStyle 8 stroke:gray,color:gray;
 >     5 -.->|"flow"| 4
 >     linkStyle 9 stroke:gray,color:gray;
->     5 -.->|"reads"| built-in:_
+>     5 -.->|"reads"| built-in:_42_
 >     linkStyle 10 stroke:gray;
 >     4 -->|"defined-by, flow"| 6
 >     4 -->|"defined-by"| 5
 >     6 -->|"reads, arg"| 5
 >     6 -->|"returns, arg"| 4
->     6 -.->|"reads, calls"| built-in:_-
+>     6 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 15 stroke:gray;
 >     6 -.->|"flow"| 8
 >     linkStyle 16 stroke:gray,color:gray;
@@ -2074,9 +2073,9 @@ For more information on the types of references, please consult the implementati
 >     11 -->|"reads, arg"| 10
 >     11 -->|"returns, arg"| 9
 >     11 -->|"reads"| 4
->     11 -.->|"reads, calls"| built-in:_-
+>     11 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 29 stroke:gray;
->     11 -.->|"calls"| built-in:_
+>     11 -.->|"calls"| built-in:_42_
 >     linkStyle 30 stroke:gray;
 > ```
 > 
@@ -2091,7 +2090,7 @@ For more information on the types of references, please consult the implementati
 > operator to mean multiplication, while with `u <- FALSE` causes `x` to be assigned to `3`.
 > In short: the last line may either refer to a definition or to a use of `x`, and we are not fully equipped to visualize this (this causes a warning).
 > First of all how can you spot that something weird is happening? Well, this definition has a [`reads`](#reads) and a [`defined-by`](#defined-by) edge,
-> but this of course does not apply to the general case.
+> but this does not apply to the general case.
 > 
 > For starters, let's have a look at the environment of the call to `<-` in the last line:
 > 
@@ -2102,12 +2101,12 @@ For more information on the types of references, please consult the implementati
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
-> _Built-in Environment (664 entries)_
+> _Built-in Environment (677 entries)_
 > 
 > </details>
 > 
 > Great, you should see a definition of `<-` which is constraint by the [control dependency](#branches) to the `if`.
-> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L286"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
+> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L320"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
 > the following target ids: { `built-in:*`, `built-in:<-`, `4` }.
 > This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 > Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L75"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
@@ -2120,7 +2119,7 @@ For more information on the types of references, please consult the implementati
 > </details>
 > 
 > 
-> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L286"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> function to find all possible definitions of a function call,
+> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L320"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> function to find all possible definitions of a function call,
 > as explained in the [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) section.
 
 Function calls are the most complicated mechanism in R as essentially everything is a function call.
@@ -2191,9 +2190,9 @@ end
     5[["`*#91;RExpressionList#93;* base#58;#58;**(**
       *1.1* (**id: 5**)
     arg: (4)`"]]
-    built-in:_["`Built-In:
+    built-in:_40_["`Built-In:
 (`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_40_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6[["`*#91;RFunctionCall#93;* **(function() 1)**
       *1.1-16* (**id: 6**)`"]]
 4 -.-|function| flow-4
@@ -2204,7 +2203,7 @@ end
     5 -->|"returns, arg"| 4
     5 -.->|"flow"| 6
     linkStyle 4 stroke:gray,color:gray;
-    5 -.->|"reads, calls"| built-in:_
+    5 -.->|"reads, calls"| built-in:_40_
     linkStyle 5 stroke:gray;
     6 -->|"reads"| 5
     6 -->|"returns"| 2
@@ -2260,9 +2259,9 @@ end
     9[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-38* (**id: 9**)
     arg: (0, 8)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 11 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -2291,7 +2290,7 @@ end
     0 -->|"defined-by"| 8
     9 -->|"reads, arg"| 8
     9 -->|"returns, arg"| 0
-    9 -.->|"reads, calls"| built-in:_-
+    9 -.->|"reads, calls"| built-in:_60_-
     linkStyle 11 stroke:gray;
     9 -.->|"flow"| 11
     linkStyle 12 stroke:gray,color:gray;
@@ -2357,18 +2356,18 @@ subgraph "flow-5" [function 5]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.17-23* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-23* (**id: 6**)
     arg: (0, 5)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 8 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -2383,7 +2382,7 @@ end
     linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
-    3 -.->|"reads, calls"| built-in:__-
+    3 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 6 stroke:gray;
 5 -.-|function| flow-5
 
@@ -2393,7 +2392,7 @@ end
     0 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 0
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 13 stroke:gray;
     6 -.->|"flow"| 8
     linkStyle 14 stroke:gray,color:gray;
@@ -2433,16 +2432,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
 ```
 
@@ -2472,16 +2471,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.1-7* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:__-
+    2 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 5 stroke:gray;
 ```
 
@@ -2573,7 +2572,7 @@ The implementation is relatively sparse and similar to the other marker vertices
     </details>
 Of only interest is `par`, which signals that the definitions is partial (e.g., in the case of `x[a] <- 1`).
 
-Of course, there are not just operators that define variables, but also functions, like `assign`.
+Functions can define variables too, like `assign`.
 
 <details><summary>Example: Using <code>assign</code></summary>
 
@@ -2618,7 +2617,7 @@ x
 
 </details>
 
-The example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable `x` (without the quotes) as you can see with the [`reads`](#reads) edge.
+The example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable `x` (without the quotes), as the [`reads`](#reads) edge shows.
 
 </details>
 
@@ -2635,9 +2634,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-8* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
     1 -.->|"flow"| 0
@@ -2646,7 +2645,7 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -2680,9 +2679,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-8* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
     1 -.->|"flow"| 0
@@ -2691,7 +2690,7 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -2727,9 +2726,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **u**
       *2.4* (**id: 3**)`"])
     5{{"`*#91;RNumber#93;* **1**
@@ -2760,7 +2759,7 @@ if`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -2774,7 +2773,7 @@ if`"]
     4 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 4
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 14 stroke:gray;
     6 -.->|"flow"| 12
     linkStyle 15 stroke:gray,color:gray;
@@ -2784,7 +2783,7 @@ if`"]
     8 -->|"defined-by"| 9
     10 -->|"reads, arg"| 9
     10 -->|"returns, arg"| 8
-    10 -.->|"reads, calls"| built-in:_-
+    10 -.->|"reads, calls"| built-in:_60_-
     linkStyle 21 stroke:gray;
     10 -.->|"flow"| 12
     linkStyle 22 stroke:gray,color:gray;
@@ -2822,11 +2821,11 @@ In this case, the definition of `x` is constrained by the conditional, which is 
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (664 entries)_
+_Built-in Environment (677 entries)_
 
 </details>
 
-As you can see, _flowR_ is able to recognize that the initial definition of `x` has no influence on the final value of the variable.
+_flowR_ recognizes that the initial definition of `x` has no influence on the final value of the variable.
 		
 </details>
 
@@ -3153,15 +3152,15 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.19-35* (**id: 7**)
 >     arg: (3, 6)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     8[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
 >       *1.17* (**id: 8**)
 >     arg: (7)`"]]
->     built-in:_["`Built-In:
+>     built-in:_123_["`Built-In:
 > #123;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     style 7 stroke:purple,stroke-width:4px; 
 >     style 8 stroke:purple,stroke-width:4px; 
 > end
@@ -3170,9 +3169,9 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     10[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-37* (**id: 10**)
 >     arg: (0, 9)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 > 6 -.-|function| flow-6
 > 
 >     6 -.->|"flow"| 3
@@ -3181,12 +3180,12 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     3 -->|"defined-by"| 6
 >     7 -->|"reads, arg"| 6
 >     7 -->|"returns, arg"| 3
->     7 -.->|"reads, calls"| built-in:_-
+>     7 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 6 stroke:gray;
 >     7 -.->|"flow"| 8
 >     linkStyle 7 stroke:gray,color:gray;
 >     8 -->|"returns, arg"| 7
->     8 -.->|"reads, calls"| built-in:_
+>     8 -.->|"reads, calls"| built-in:_123_
 >     linkStyle 9 stroke:gray;
 > 9 -.-|function| flow-9
 > 
@@ -3196,7 +3195,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     0 -->|"defined-by"| 9
 >     10 -->|"reads, arg"| 9
 >     10 -->|"returns, arg"| 0
->     10 -.->|"reads, calls"| built-in:_-
+>     10 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 16 stroke:gray;
 > ```
 > 
@@ -3219,7 +3218,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > 
 > 
-> As you can see, the vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
+> The vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
 > 
 > | Id | Vertex Ids in Subflow |
 > |---:|-----------------------|
@@ -3263,9 +3262,9 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     8[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
 >       *1.25-29* (**id: 8**)
 >     arg: (6, 7)`"]]
->     built-in:_["`Built-In:
+>     built-in:_43_["`Built-In:
 > #43;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     style 8 stroke:purple,stroke-width:4px; 
 > end
 >     0["`*#91;RSymbol#93;* **f**
@@ -3273,9 +3272,9 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-29* (**id: 11**)
 >     arg: (0, 10)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     1 -.->|"flow"| 4
 >     linkStyle 0 stroke:gray,color:gray;
 >     3 -->|"defined-by"| 4
@@ -3291,7 +3290,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     linkStyle 7 stroke:gray,color:gray;
 >     8 -->|"reads, arg"| 6
 >     8 -->|"reads, arg"| 7
->     8 -.->|"reads, calls"| built-in:_
+>     8 -.->|"reads, calls"| built-in:_43_
 >     linkStyle 10 stroke:gray;
 > 10 -.-|function| flow-10
 > 
@@ -3301,7 +3300,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     0 -->|"defined-by"| 10
 >     11 -->|"reads, arg"| 10
 >     11 -->|"returns, arg"| 0
->     11 -.->|"reads, calls"| built-in:_-
+>     11 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 17 stroke:gray;
 > ```
 > 
@@ -3325,7 +3324,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > 
 > The function definition we are interested in has the id `10`. Looking at the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of the code,
-> we can get the parameters simply be requesting the `parameters` property of the function definition (yielding the names: [`x`, `y`]):
+> we can get the parameters by requesting the `parameters` property of the function definition (yielding the names: [`x`, `y`]):
 > 
 > 
 > 
@@ -3409,9 +3408,9 @@ subgraph "flow-6" [function 6]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.6-10* (**id: 4**)
     arg: (2, 3)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 4 stroke:purple,stroke-width:4px; 
 end
    %% No edges found for 6
@@ -3424,7 +3423,7 @@ end
     linkStyle 3 stroke:gray,color:gray;
     4 -->|"reads, arg"| 2
     4 -->|"reads, arg"| 3
-    4 -.->|"reads, calls"| built-in:_
+    4 -.->|"reads, calls"| built-in:_43_
     linkStyle 6 stroke:gray;
 6 -.-|function| flow-6
 ```
@@ -3463,9 +3462,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**)`"])
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -3480,7 +3479,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -3513,7 +3512,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > A [`reads`](#reads) edge is not a transitive closure and only links the "directly read" definition(s).
 > Our abstract domains resolving transitive [`reads`](#reads) edges (and for that matter, following [`returns`](#returns) as well)
-> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L286"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a>,
+> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L320"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a>,
 > as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L273"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
 > Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
 > 
@@ -3533,9 +3532,9 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-6* (**id: 2**)
 >     arg: (0, 1)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     4(["`*#91;RSymbol#93;* **x**
 >       *2.6* (**id: 4**)`"])
 >     3["`*#91;RSymbol#93;* **y**
@@ -3557,7 +3556,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     0 -->|"defined-by"| 1
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
->     2 -.->|"reads, calls"| built-in:_-
+>     2 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 5 stroke:gray;
 >     2 -.->|"flow"| 4
 >     linkStyle 6 stroke:gray,color:gray;
@@ -3569,7 +3568,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     3 -->|"defined-by"| 4
 >     5 -->|"reads, arg"| 4
 >     5 -->|"returns, arg"| 3
->     5 -.->|"reads, calls"| built-in:_-
+>     5 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 13 stroke:gray;
 >     5 -.->|"flow"| 7
 >     linkStyle 14 stroke:gray,color:gray;
@@ -3628,17 +3627,17 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     5[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
 >       *1.18-22* (**id: 5**, 8+)
 >     arg: (3, 4)`"]]
->     built-in:_["`Built-In:
+>     built-in:_43_["`Built-In:
 > #43;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     2["`*#91;RSymbol#93;* **x**
 >       *1.13* (**id: 2**, 8+, v: 5)`"]
 >     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.13-22* (**id: 6**, 8+)
 >     arg: (2, 5)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     8[["`*#91;RForLoop#93;* base#58;#58;**for**
 >       *1.1-22* (**id: 8**)
 >     arg: (0, 1, 6)`"]]
@@ -3662,13 +3661,13 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     5 -->|"reads, arg"| 4
 >     5 -.->|"flow"| 2
 >     linkStyle 9 stroke:gray,color:gray;
->     5 -.->|"reads, calls"| built-in:_
+>     5 -.->|"reads, calls"| built-in:_43_
 >     linkStyle 10 stroke:gray;
 >     2 -->|"defined-by, flow"| 6
 >     2 -->|"defined-by"| 5
 >     6 -->|"reads, arg"| 5
 >     6 -->|"returns, arg"| 2
->     6 -.->|"reads, calls"| built-in:_-
+>     6 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 15 stroke:gray;
 >     6 -.->|"flow"| 0
 >     linkStyle 16 stroke:gray,color:gray;
@@ -3720,25 +3719,25 @@ flowchart LR
 subgraph "flow-4" [function 4]
     3[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.19* (**id: 3**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 4)`"]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-20* (**id: 5**)
     arg: (0, 4)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 7 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`*#91;RFunctionCall#93;* **foo**
       *2.1-5* (**id: 7**)`"]]
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_123_
     linkStyle 0 stroke:gray;
 4 -.-|function| flow-4
 
@@ -3748,7 +3747,7 @@ end
     0 -->|"defined-by"| 4
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 0
-    5 -.->|"reads, calls"| built-in:_-
+    5 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     5 -.->|"flow"| 7
     linkStyle 8 stroke:gray,color:gray;
@@ -3788,9 +3787,9 @@ subgraph "flow-9" [function 9]
       *1.20* (**id: 4**)`"])
     8[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.23* (**id: 8**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 8 stroke:purple,stroke-width:4px; 
 end
     0["`*#91;RSymbol#93;* **f**
@@ -3798,9 +3797,9 @@ end
     10[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-24* (**id: 10**)
     arg: (0, 9)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 4
     linkStyle 0 stroke:gray,color:gray;
     3 -->|"defined-by"| 4
@@ -3810,7 +3809,7 @@ end
     linkStyle 3 stroke:gray,color:gray;
     4 -->|"reads"| 1
     linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    8 -.->|"reads, calls"| built-in:_
+    8 -.->|"reads, calls"| built-in:_123_
     linkStyle 5 stroke:gray;
 9 -.-|function| flow-9
 
@@ -3820,7 +3819,7 @@ end
     0 -->|"defined-by"| 9
     10 -->|"reads, arg"| 9
     10 -->|"returns, arg"| 0
-    10 -.->|"reads, calls"| built-in:_-
+    10 -.->|"reads, calls"| built-in:_60_-
     linkStyle 12 stroke:gray;
 ```
 
@@ -3857,9 +3856,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
@@ -3868,7 +3867,7 @@ flowchart LR
     linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
 ```
 
@@ -3898,16 +3897,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* **#45;#62;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:-_["`Built-In:
+    built-in:-_62_["`Built-In:
 #45;#62;`"]
-    style built-in:-_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:-_62_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -->|"defined-by, flow"| 2
     1 -->|"defined-by"| 0
     2 -->|"reads, arg"| 0
     2 -->|"returns, arg"| 1
-    2 -.->|"reads, calls"| built-in:-_
+    2 -.->|"reads, calls"| built-in:-_62_
     linkStyle 5 stroke:gray;
 ```
 
@@ -3943,9 +3942,9 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.6-11* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -3960,7 +3959,7 @@ flowchart LR
     3 -->|"returns, arg"| 1
     3 -.->|"flow"| 0
     linkStyle 5 stroke:gray,color:gray;
-    3 -.->|"reads, calls"| built-in:_-
+    3 -.->|"reads, calls"| built-in:_60_-
     linkStyle 6 stroke:gray;
     0 -->|"defined-by, flow"| 4
     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
@@ -3968,7 +3967,7 @@ flowchart LR
     linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 11 stroke:gray;
 ```
 
@@ -3997,17 +3996,17 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.6-10* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-10* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 2
     linkStyle 0 stroke:gray,color:gray;
     2 -.->|"flow"| 3
@@ -4016,14 +4015,14 @@ flowchart LR
     3 -->|"reads, arg"| 2
     3 -.->|"flow"| 0
     linkStyle 4 stroke:gray,color:gray;
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_43_
     linkStyle 5 stroke:gray;
     0 -->|"defined-by, flow"| 4
     0 -->|"defined-by"| 3
     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 10 stroke:gray;
 ```
 
@@ -4059,25 +4058,25 @@ flowchart LR
 subgraph "flow-4" [function 4]
     3[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.19* (**id: 3**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 4)`"]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-20* (**id: 5**)
     arg: (0, 4)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 7 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`*#91;RFunctionCall#93;* **foo**
       *2.1-5* (**id: 7**)`"]]
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_123_
     linkStyle 0 stroke:gray;
 4 -.-|function| flow-4
 
@@ -4087,7 +4086,7 @@ end
     0 -->|"defined-by"| 4
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 0
-    5 -.->|"reads, calls"| built-in:_-
+    5 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     5 -.->|"flow"| 7
     linkStyle 8 stroke:gray,color:gray;
@@ -4112,7 +4111,7 @@ foo()
 
 Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
 		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
-		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L356"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
+		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L366"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
 		
 <a id='returns'></a>
 <a id='returns-edge'> </a>
@@ -4137,9 +4136,9 @@ end
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-19* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 6 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -4155,7 +4154,7 @@ end
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
     linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 6 stroke:gray;
     4 -.->|"flow"| 6
     linkStyle 7 stroke:gray,color:gray;
@@ -4180,7 +4179,7 @@ foo()
 </details>
 
 Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
-As you can see in the example, this happens for user-defined functions (like `foo`) as well as for built-in functions (like `<-`).
+This happens for user-defined functions (like `foo`) as well as for built-in functions (like `<-`).
 However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
 For contrast, compare this to a use of, for example, `+`:
 		
@@ -4195,16 +4194,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 2
     linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_
+    2 -.->|"reads, calls"| built-in:_43_
     linkStyle 4 stroke:gray;
 ```
 
@@ -4251,9 +4250,9 @@ return`"]
     style built-in:return stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     11[["`base#58;#58;**#123;**
 *RExpressionList*`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     12{{"`**42** (L. 1)
 *RNumber*`"}}
     14[["`base#58;#58;**if** (L. 1)
@@ -4270,9 +4269,9 @@ end
 *RSymbol*`"]
     17[["`base#58;#58;**#60;#45;** (L. 1)
 *RBinaryOp*`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     19[["`**f** (L. 2)
 *RFunctionCall*`"]]
     9 -->|"returns, arg"| 7
@@ -4281,7 +4280,7 @@ end
     linkStyle 1 stroke:gray;
     11 -->|"returns, arg"| 9
     linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    11 -.->|"reads, calls"| built-in:_
+    11 -.->|"reads, calls"| built-in:_123_
     linkStyle 3 stroke:gray;
     14 -->|"returns, arg"| 11
     linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
@@ -4292,7 +4291,7 @@ end
     linkStyle 7 stroke:gray;
     15 -->|"returns, arg"| 14
     linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    15 -.->|"reads, calls"| built-in:_
+    15 -.->|"reads, calls"| built-in:_123_
     linkStyle 9 stroke:gray;
     15 -->|"returns"| 9
 16 -.-|function| flow-16
@@ -4301,7 +4300,7 @@ end
     0 -->|"defined-by"| 16
     17 -->|"reads, arg"| 16
     17 -->|"returns, arg"| 0
-    17 -.->|"reads, calls"| built-in:_-
+    17 -.->|"reads, calls"| built-in:_60_-
     linkStyle 16 stroke:gray;
     19 -->|"reads"| 0
     19 -->|"returns"| 9
@@ -4353,18 +4352,18 @@ subgraph "flow-6" [function 6]
       *1.15* (**id: 1**, v: )`"]
     5[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.18* (**id: 5**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-19* (**id: 7**)
     arg: (0, 6)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10{{"`*#91;RNumber#93;* **1**
       *2.5* (**id: 10**)`"}}
     11(["`*#91;RArgument#93;* **x**
@@ -4380,7 +4379,7 @@ end
     linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 11
     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    5 -.->|"reads, calls"| built-in:_
+    5 -.->|"reads, calls"| built-in:_123_
     linkStyle 2 stroke:gray;
 6 -.-|function| flow-6
 
@@ -4390,7 +4389,7 @@ end
     0 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 0
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 9 stroke:gray;
     7 -.->|"flow"| 10
     linkStyle 10 stroke:gray,color:gray;
@@ -4456,9 +4455,9 @@ end
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-17* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6{{"`*#91;RNumber#93;* **3**
       *2.6* (**id: 6**)`"}}
     5["`*#91;RSymbol#93;* **x**
@@ -4483,7 +4482,7 @@ end
     0 -->|"defined-by"| 3
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     4 -.->|"flow"| 6
     linkStyle 8 stroke:gray,color:gray;
@@ -4493,7 +4492,7 @@ end
     5 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 5
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 14 stroke:gray;
     7 -.->|"flow"| 9
     linkStyle 15 stroke:gray,color:gray;
@@ -4528,18 +4527,18 @@ subgraph "flow-6" [function 6]
       *1.15* (**id: 1**, v: )`"]
     5[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.18* (**id: 5**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-19* (**id: 7**)
     arg: (0, 6)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10{{"`*#91;RNumber#93;* **1**
       *2.5* (**id: 10**)`"}}
     11(["`*#91;RArgument#93;* **x**
@@ -4555,7 +4554,7 @@ end
     linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 11
     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    5 -.->|"reads, calls"| built-in:_
+    5 -.->|"reads, calls"| built-in:_123_
     linkStyle 2 stroke:gray;
 6 -.-|function| flow-6
 
@@ -4565,7 +4564,7 @@ end
     0 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 0
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 9 stroke:gray;
     7 -.->|"flow"| 10
     linkStyle 10 stroke:gray,color:gray;
@@ -4666,24 +4665,24 @@ subgraph "flow-7" [function 7]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.19-25* (**id: 5**)
     arg: (3, 4)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.17* (**id: 6**)
     arg: (5)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 7)`"]
     8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-27* (**id: 8**)
     arg: (0, 7)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 10 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -4698,12 +4697,12 @@ end
     linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 3
-    5 -.->|"reads, calls"| built-in:__-
+    5 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 6 stroke:gray;
     5 -.->|"flow"| 6
     linkStyle 7 stroke:gray,color:gray;
     6 -->|"returns, arg"| 5
-    6 -.->|"reads, calls"| built-in:_
+    6 -.->|"reads, calls"| built-in:_123_
     linkStyle 9 stroke:gray;
 7 -.-|function| flow-7
 
@@ -4713,7 +4712,7 @@ end
     0 -->|"defined-by"| 7
     8 -->|"reads, arg"| 7
     8 -->|"returns, arg"| 0
-    8 -.->|"reads, calls"| built-in:_-
+    8 -.->|"reads, calls"| built-in:_60_-
     linkStyle 16 stroke:gray;
     8 -.->|"flow"| 10
     linkStyle 17 stroke:gray,color:gray;
@@ -4900,9 +4899,9 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > </details>
 > 
 > Three helpers decide what such a mark means once the graph is complete:
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L60"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L95"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L65"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L100"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/nse.ts#L98"><code><span title="The parts of a call R does not evaluate the standard way.">Nse</span></code></a> models the escapes a quoting function offers (rlang's `!!` and `bquote`'s `.(x)`), and
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L77"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.  Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so: a name it reads may read any definition of that name, and a name it writes may be read by any use of it. Tha...">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L83"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.  Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so: a name it reads may read any definition of that name, and a name it writes may be read by any use of it. Tha...">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
 > 				
 
 <details>
@@ -4977,9 +4976,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4{{"`*#91;RNumber#93;* **2**
       *2.6* (**id: 4**)`"}}
     3["`*#91;RSymbol#93;* **y**
@@ -4993,7 +4992,7 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -5003,7 +5002,7 @@ flowchart LR
     3 -->|"defined-by"| 4
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 3
-    5 -.->|"reads, calls"| built-in:_-
+    5 -.->|"reads, calls"| built-in:_60_-
     linkStyle 12 stroke:gray;
 ```
 
@@ -5150,9 +5149,9 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.7-12* (**id: 3**, 5+)
     arg: (1, 2)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     5[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-12* (**id: 5**)
     arg: (0, 3, #91;empty#93;)`"]]
@@ -5169,7 +5168,7 @@ if`"]
     1 -->|"defined-by"| 2
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
-    3 -.->|"reads, calls"| built-in:_-
+    3 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     3 -.->|"flow"| 5
     linkStyle 8 stroke:gray,color:gray;
@@ -5207,9 +5206,9 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.7-11* (**id: 3**, 5+)
     arg: (1, 2)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     5[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-11* (**id: 5**)
     arg: (0, 3, #91;empty#93;)`"]]
@@ -5226,7 +5225,7 @@ if`"]
     linkStyle 3 stroke:gray,color:gray;
     3 -->|"reads, arg"| 1
     3 -->|"reads, arg"| 2
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_43_
     linkStyle 6 stroke:gray;
     3 -.->|"flow"| 5
     linkStyle 7 stroke:gray,color:gray;
@@ -5272,9 +5271,9 @@ if`"]
     9[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.7* (**id: 9**, 12+)
     arg: (8)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10(["`*#91;RSymbol#93;* **c**
       *1.31* (**id: 10**, 12-)`"])
     built-in:c["`Built-In:
@@ -5303,7 +5302,7 @@ c`"]
     8 -.->|"flow"| 9
     linkStyle 10 stroke:gray,color:gray;
     9 -->|"returns, arg"| 8
-    9 -.->|"reads, calls"| built-in:_
+    9 -.->|"reads, calls"| built-in:_123_
     linkStyle 12 stroke:gray;
     9 -.->|"flow"| 12
     linkStyle 13 stroke:gray,color:gray;
@@ -5345,7 +5344,7 @@ const result = await analyzer.dataflow();
 analyzer.close();
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L889">src/documentation/wiki-dataflow-graph.ts#L889</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L888">src/documentation/wiki-dataflow-graph.ts#L888</a></i>
 
 The call returns the dataflow _information_, with the graph in `result.graph`, which looks like this:
 
@@ -5358,9 +5357,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
     4{{"`*#91;RNumber#93;* **1**
@@ -5368,16 +5367,16 @@ flowchart LR
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.1-5* (**id: 5**)
     arg: (3, 4)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -5388,7 +5387,7 @@ flowchart LR
     linkStyle 9 stroke:gray,color:gray;
     5 -->|"reads, arg"| 3
     5 -->|"reads, arg"| 4
-    5 -.->|"reads, calls"| built-in:_
+    5 -.->|"reads, calls"| built-in:_43_
     linkStyle 12 stroke:gray;
 ```
 
@@ -5401,7 +5400,7 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":1195,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":1407,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
 ```
 
 </details>
@@ -5527,7 +5526,7 @@ A summarized version of the produced environment looks like this:
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (664 entries)_
+_Built-in Environment (677 entries)_
 
 </details>
 
@@ -5548,7 +5547,7 @@ Last but not least, the information contains the single **entry point** (2) and 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 
 Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L179"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
-It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L196"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
+It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L201"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
 A definition that such a removal undid is dropped from the outgoing references, so `x <- 1; rm(x)` has an empty **out** set (a conditional removal keeps the now maybe-defined `x`).
 
 ### Unknown Side Effects
@@ -5575,9 +5574,9 @@ load`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.7-11* (**id: 7**)
     arg: (5, 6)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     9[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *2.1-12* (**id: 9**)
     arg: (7)`"]]
@@ -5597,7 +5596,7 @@ print`"]
     linkStyle 5 stroke:gray,color:gray;
     7 -->|"reads, arg"| 5
     7 -->|"reads, arg"| 6
-    7 -.->|"reads, calls"| built-in:_
+    7 -.->|"reads, calls"| built-in:_43_
     linkStyle 8 stroke:gray;
     7 -.->|"flow"| 9
     linkStyle 9 stroke:gray,color:gray;
@@ -5624,7 +5623,7 @@ In general, as we cannot handle these correctly, we leave it up to other analyse
 as they see fit.
 
 The `load` call above degrades to an unknown side effect only because the file could not be found.
-When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L289"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L40"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
+When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L292"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L40"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
 You can disable this and always treat `load` as an unknown side effect with the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Whether load calls should be ignored, causing {@link processLoadCall}&#39;s behavior to be skipped.">ignoreLoadCalls</a> configuration option.
 
 #### Linked Unknown Side Effects
@@ -5699,7 +5698,7 @@ call graph will no longer contain information on variables, for example.
 <h3 id="perspectives-cg">Call Graphs</h3>
 
 These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L27"><code><span title="A call graph is a dataflow graph where all vertices are function calls. You can create a call graph from a dataflow graph using CallGraph.compute . If you want to extract a sub call graph, use CallGraph.computeSubCallGraph .">CallGraph</span></code></a> type.
-It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L356"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
+It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L366"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
 These graphs only contain function definitions and function calls as vertices, and [`calls`](#calls) edges.
 Consider the following example:
 
@@ -5818,9 +5817,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-16* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 4 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -5833,7 +5832,7 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -5886,7 +5885,7 @@ If you are interested in which features we support and which features are still 
 FlowR supports a [configurable](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value) and backed by two important functions:
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L166"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L688"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L166"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L689"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
 value resolution depending on if the environment is provided.
 The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L166"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)).

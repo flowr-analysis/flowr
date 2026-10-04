@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Dice Query">Dice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reduces the code to the parts that carry information from a given start point to a given end point.\
@@ -131,6 +131,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Dice Query query is `executeDiceQuery` in [`./src/queries/catalog/dice-query/dice-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dice-query/dice-query-executor.ts).
+The Dice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dice-query/dice-query-executor.ts#L12"><code><span title="Execute dice queries. Each dice computes the intersection of a forward slice from from and a backward slice from to, yielding only those program points that lie on a path from the start criteria to the end criteria.">executeDiceQuery</span></code></a>.
 
 </details>

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
 <h2 id="Control-Flow Query">Control-Flow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides the control-flow of the program.\
@@ -6,7 +6,7 @@ _This query is requested with the type `control-flow`._
 
 This control-flow query provides you access to the control flow graph.
 
-In other words, if you have a script simply reading: `if(TRUE) 1 else 2`, the following query returns the CFG:
+For a script reading `if(TRUE) 1 else 2`, the following query returns the CFG:
 
 ```json
 [ { "type": "control-flow" } ]
@@ -18,7 +18,7 @@ In other words, if you have a script simply reading: `if(TRUE) 1 else 2`, the fo
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (2ms)\
+Query: **control-flow** (4ms)\
 &nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -69,7 +69,7 @@ You can also overwrite the simplification passes to tune the perspective. for ex
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (1ms)\
+Query: **control-flow** (3ms)\
 &nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgc3ViZ3JhcGggbmJiLTAgW0Jsb2NrIGJiLTBdXG4gICAgICAgIGRpcmVjdGlvbiBURFxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbioqVFJVRSoqYFwiXSlcbiAgICBuMVtcImBSTnVtYmVyICgxKVxuKioxKipgXCJdXG4gICAgbjAgLS0+IG4xXG4gICAgbjVbXCJgUklmVGhlbkVsc2UgKDUpXG4qKmlmKFRSVUUpIDEgZWxzZSAyKipgXCJdXG4gICAgbjEgLS0+IG41XG4gICAgZW5kXG4gICAgc3R5bGUgbmJiLTAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuYmItMCBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -148,7 +148,7 @@ If, on the other hand, you want to prune dead code edges:
 
 _Results (prettified and summarized):_
 
-Query: **control-flow** (1ms)\
+Query: **control-flow** (3ms)\
 &nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjAoW1wiYFJMb2dpY2FsICgwKVxuKipUUlVFKipgXCJdKVxuICAgIG4xW1wiYFJOdW1iZXIgKDEpXG4qKjEqKmBcIl1cbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbioqaWYoVFJVRSkgMSBlbHNlIDIqKmBcIl1cbiAgICBuMCAtLT58XCJmbG93cyB0b1wifCBuMVxuICAgIG4xIC0tPnxcImZsb3dzIHRvXCJ8IG41XG4gICAgc3R5bGUgbjAgc3Ryb2tlOmN5YW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyAgICBzdHlsZSBuNSBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -273,6 +273,6 @@ We used the following simplifications: `unique-cf-sets`, `analyze-dead-code`, `r
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Control-Flow Query query is `executeControlFlowQuery` in [`./src/queries/catalog/control-flow-query/control-flow-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/control-flow-query/control-flow-query-executor.ts).
+The Control-Flow Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/control-flow-query/control-flow-query-executor.ts#L8"><code><span title="Executes the control flow query with the given simplification passes.">executeControlFlowQuery</span></code></a>.
 
 </details>

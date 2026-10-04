@@ -70,6 +70,9 @@ export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp 
 
 const rFileRegex = /\.[rR]$/;
 
+/** The code files directly below a package's `R/` directory: besides `.R` and `.r`, R accepts `.S`, `.s`, and `.q` there (and nowhere else, `src/*.s` is assembler). */
+export const rPackageSourceRegex = /(^|[\\/])R[\\/][^\\/]+\.(r|s|q)$/i;
+
 /**
  * Retrieves all R files in a given directory (asynchronously)
  * @param input - directory-path to start the search from, can be a file as well. Will just return the file then.

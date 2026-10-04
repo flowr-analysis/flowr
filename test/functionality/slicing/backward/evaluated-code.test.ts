@@ -21,6 +21,20 @@ describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 		});
 	}
 
+	testSlice('a definition made by a caller reaches the evaluated read',
+		'g <- function() eval(quote(v))\nh <- function() { v <- 1; g() }\nh()', '1@v', 'v\nv <- 1');
+
+	/* every evaluation is checked against every definition of its names, which has to stay a single walk of the control flow */
+	test('many evaluations of many caller definitions stay fast', async() => {
+		const count = 250;
+		const evals = Array.from({ length: count }, (_, i) => `eval(quote(v${i % 7} + w))`).join('; ');
+		const callers = Array.from({ length: count }, (_, i) => `h${i} <- function(z) { v${i % 7} <- z; w <- 2; g() }`);
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+		analyzer.addRequest([`g <- function() { ${evals} }`, ...callers].join('\n'));
+		const started = Date.now();
+		await analyzer.dataflow();
+		assert.isBelow(Date.now() - started, 10_000);
+	});
 	testSlice('what a quoted expression assigns reaches the later read',
 		'eval(quote(x <- 1))\nprint(x)', '2@print', 'x <- 1\nprint(x)');
 	testSlice('also when the expression is bound to a name first',

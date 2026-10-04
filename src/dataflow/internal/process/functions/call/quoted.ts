@@ -22,8 +22,7 @@ import { type MaskingCall, Nse } from './nse';
 import { Deferred } from './deferred';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { removeRQuotes } from '../../../../../r-bridge/retriever';
-import { happensBefore } from '../../../../../control-flow/happens-before';
-import { Ternary } from '../../../../../util/logic';
+import { reachableTo } from '../../../../../control-flow/happens-before';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { callFnProps } from '../../../../environments/query-fn-props';
 import { CallProp } from '../../../../environments/built-in-props';
@@ -270,9 +269,16 @@ function evaluationSites(graph: DataflowGraph, id: NodeId): readonly NodeId[] | 
 	return sites.length > 0 ? sites : undefined;
 }
 
-/** Whether some point the evaluation may run at can be reached with `definition` in effect. */
-function mayReach(sites: readonly NodeId[] | undefined, definition: NodeId, cfg: ControlFlowGraph | undefined): boolean {
-	return cfg === undefined || sites === undefined || sites.some(site => happensBefore(cfg, definition, site) !== Ternary.Never);
+/**
+ * Whether some point the evaluation may run at can be reached with a definition in effect. The answer is the same
+ * set for every definition, so the walk over the graph happens once, on the first question.
+ */
+function mayReachFrom(sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined): (definition: NodeId) => boolean {
+	if(cfg === undefined || sites === undefined) {
+		return () => true;
+	}
+	let reaching: ReadonlySet<NodeId> | undefined;
+	return definition => (reaching ??= reachableTo(cfg, sites)).has(definition);
 }
 
 /**
@@ -280,12 +286,13 @@ function mayReach(sites: readonly NodeId[] | undefined, definition: NodeId, cfg:
  * after the closure was written, so every reachable definition of the name stays a candidate.
  */
 function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierReference[], bindings: ReadonlyMap<string, NodeId[]>, sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined): void {
+	const mayReach = mayReachFrom(sites, cfg);
 	for(const reference of open) {
 		if(reference.name === undefined) {
 			continue;
 		}
 		for(const definition of bindings.get(Identifier.getName(reference.name)) ?? []) {
-			if(definition !== reference.nodeId && mayReach(sites, definition, cfg)) {
+			if(definition !== reference.nodeId && mayReach(definition)) {
 				graph.addEdge(reference.nodeId, definition, EdgeType.Reads);
 			}
 		}

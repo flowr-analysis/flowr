@@ -29,6 +29,34 @@ export function happensBefore(cfg: ControlFlowGraph, a: NodeId, b: NodeId): Tern
 	return Ternary.Never;
 }
 
+/** Whether one of the `candidates` always happens before `b`; one walk back from `b` settles all candidates at once. */
+export function someAlwaysBefore(cfg: ControlFlowGraph, candidates: ReadonlySet<NodeId>, b: NodeId): boolean {
+	const visited = new Set<NodeId>();
+	const met = new Set<NodeId>();
+	const stack: [NodeId, NodeId | undefined][] = [[b, undefined]];
+	while(stack.length > 0) {
+		const [current, cd] = stack.pop() as [NodeId, NodeId | undefined];
+		let useCd = cd;
+		if(current !== b && candidates.has(current) && !met.has(current)) {
+			if(!cd) {
+				return true;
+			}
+			met.add(current);
+		}
+		if(visited.has(current)) {
+			continue;
+		} else if(cd && (current === cd || visited.has(cd))) {
+			useCd = undefined;
+		}
+		visited.add(current);
+		for(const [id, t] of cfg.ingoingEdges(current) ?? []) {
+			const joinsAt = CfgEdge.isControlDependency(t) ? CfgEdge.unpackCause(t) : useCd;
+			stack.push([id, useCd ?? joinsAt]);
+		}
+	}
+	return false;
+}
+
 function closure(seeds: Iterable<NodeId>, step: (id: NodeId) => Iterable<NodeId>): ReadonlySet<NodeId> {
 	const seen = new Set<NodeId>(seeds);
 	const stack = [...seen];
@@ -51,22 +79,4 @@ export function reachableFrom(cfg: ControlFlowGraph, from: Iterable<NodeId>): Re
 /** @see {@link reachableFrom} - the other direction */
 export function reachableTo(cfg: ControlFlowGraph, to: Iterable<NodeId>): ReadonlySet<NodeId> {
 	return closure(to, id => cfg.predecessors(id));
-}
-
-/** Whether a node that may be evaluated before `to` satisfies `test`, stopping at the first that does; `to` itself is not tested. */
-export function someReachableTo(cfg: ControlFlowGraph, to: NodeId, test: (id: NodeId) => boolean): boolean {
-	const seen = new Set<NodeId>([to]);
-	const stack = [to];
-	while(stack.length > 0) {
-		for(const previous of cfg.predecessors(stack.pop() as NodeId)) {
-			if(seen.has(previous)) {
-				continue;
-			} else if(test(previous)) {
-				return true;
-			}
-			seen.add(previous);
-			stack.push(previous);
-		}
-	}
-	return false;
 }

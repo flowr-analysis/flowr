@@ -106,4 +106,11 @@ describe('is-strict-function', withTreeSitter(ts => {
 	testStrict('arguments are matched by position', 'g <- function(p, q) p\nf <- function(a, b) g(b, a)', '2@function', Ternary.Never, { a: Ternary.Never, b: Ternary.Always });
 	testStrict('and by name where one is written', 'g <- function(p, q) p\nf <- function(a, b) g(q = a, p = b)', '2@function', Ternary.Never, { a: Ternary.Never, b: Ternary.Always });
 	testStrict('a name may be given in part', 'g <- function(value, other) value\nf <- function(a, b) g(val = a, oth = b)', '2@function', Ternary.Never, { a: Ternary.Always, b: Ternary.Never });
+
+	/* every function reaches all the others, which is only feasible if what a cycle leaves open is reused */
+	const ring = Array.from({ length: 12 }, (_, i) => {
+		const others = Array.from({ length: 12 }, (_, j) => j).filter(j => j !== i).map(j => `g${j}(x)`).join('; ');
+		return `g${i} <- function(x, y) { if(runif(1) > .5) { ${others} }; x + y }`;
+	}).join('\n');
+	testStrict('mutually recursive functions answer quickly', ring, '1@function', Ternary.Always, { x: Ternary.Always, y: Ternary.Always });
 }));

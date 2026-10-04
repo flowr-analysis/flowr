@@ -555,6 +555,16 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		expect(report.errors.some(e => e.includes('recomputed hash'))).toBe(true);
 	});
 
+	test('a database without any string still verifies', async() => {
+		const dir = sigTmpDir('sigdb-empty-');
+		const sharded = new SigDbBuilder().buildSharded(meta, [{ tier: 'current' }]);
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), sharded, manifestFile);
+		const report = await verifyShardedDatabase(manifestFile);
+		expect(report.errors).toEqual([]);
+		expect(report.ok).toBe(true);
+	});
+
 	test('an in-memory database answers exactly as the same bundle written to disk does', async() => {
 		const db = builder().build(meta);
 		const dir = sigTmpDir('sigdb-memory-');

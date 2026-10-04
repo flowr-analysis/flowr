@@ -87,7 +87,14 @@ function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId
 	return found;
 }
 
-function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
+/** What an argument is, which no definition it is looked at for changes. */
+export interface ArgumentFacts {
+	readonly behind:  ReadonlySet<NodeId>
+	/** whether it hands over a function, only worked out once something asks */
+	carriesFunction?: boolean
+}
+
+function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph, facts?: Map<NodeId, ArgumentFacts>): boolean {
 	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
 
 	for(const [callerId, e] of callSites ?? []) {
@@ -103,12 +110,19 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 				continue;
 			}
 			/* an apply-family call carries the callback among its arguments, which says nothing about the callback itself */
-			const behind = definitionsBehind(arg.nodeId, graph);
-			if(behind.size === 1 && behind.has(def.id)) {
+			let known = facts?.get(arg.nodeId);
+			if(known === undefined) {
+				known = { behind: definitionsBehind(arg.nodeId, graph) };
+				facts?.set(arg.nodeId, known);
+			}
+			if(known.behind.size === 1 && known.behind.has(def.id)) {
 				continue;
 			}
-			const value = NodeValue.setOf(arg.nodeId, Resolve.info(graph, ctx), { resolve: VariableResolve.Alias });
-			if(value?.elements.some(e => e.type === 'function-definition') || readsBuiltInFunction(arg.nodeId, graph, ctx)) {
+			if(known.carriesFunction === undefined) {
+				const value = NodeValue.setOf(arg.nodeId, Resolve.info(graph, ctx), { resolve: VariableResolve.Alias });
+				known.carriesFunction = value?.elements.some(e => e.type === 'function-definition') || readsBuiltInFunction(arg.nodeId, graph, ctx);
+			}
+			if(known.carriesFunction) {
 				return true;
 			}
 		}
@@ -128,6 +142,8 @@ export interface HigherOrderFunctionsOptions {
 	readonly ctx:            ReadOnlyFlowrAnalyzerContext
 	/** the graph with edges reversed, to speed up repeat queries over the same call sites */
 	readonly invertedGraph?: DataflowGraph
+	/** what is known about the arguments, to share between the definitions asked about in one go; a call site reaching several of them resolves its arguments once */
+	readonly argumentFacts?: Map<NodeId, ArgumentFacts>
 }
 
 /**
@@ -135,13 +151,13 @@ export interface HigherOrderFunctionsOptions {
  * formals as a function. `function(x) x` alone is not higher-order.
  * @useInstead {@link FunctionSemantics.isHigherOrder}
  */
-export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph }: HigherOrderFunctionsOptions): boolean {
+export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph, argumentFacts }: HigherOrderFunctionsOptions): boolean {
 	const vert = graph.getVertex(id);
 	if(!vert || !DfgVertex.isFunctionDefinition(vert)) {
 		return false;
 	}
 
-	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
+	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph, argumentFacts);
 }
 
 

@@ -103,6 +103,9 @@ interface StrictnessState {
 	readonly asking:   Set<NodeId>
 	/** whether a cycle was answered by assumption, which makes the result unfit to keep */
 	assumed:           boolean
+
+	/** results reached under an assumption, kept until the outermost question is answered: they are never stronger than the final ones, so reusing them cannot change the verdict */
+	readonly provisional: Map<NodeId, FunctionStrictness>
 }
 
 /** The definition a node sits in. */
@@ -153,7 +156,7 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 			dispatch.set(within, { named, certain, next });
 		}
 	}
-	return { graph, idMap, owner, dispatch, fnInfo, sigs: new Map(), props: name => fnInfo(name)?.sig, known: new Map(), asking: new Set(), assumed: false };
+	return { graph, idMap, owner, dispatch, fnInfo, sigs: new Map(), props: name => fnInfo(name)?.sig, known: new Map(), provisional: new Map(), asking: new Set(), assumed: false };
 }
 
 /** What is certain becomes a possibility once something may intervene. */
@@ -335,7 +338,7 @@ function parameterIds(definition: NodeId, idMap: AstIdMap | undefined): readonly
 }
 
 function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
-	const known = state.known.get(id);
+	const known = state.known.get(id) ?? state.provisional.get(id);
 	if(known !== undefined) {
 		return known;
 	}
@@ -376,6 +379,9 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
 		state.known.set(id, result);
 	} else if(state.asking.size === 0) {
 		state.assumed = false;
+		state.provisional.clear();
+	} else {
+		state.provisional.set(id, result);
 	}
 	return result;
 }

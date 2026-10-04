@@ -5,7 +5,7 @@ import { executeQueries } from '../../../queries/query';
 import { SignatureQueryDefinition } from '../../../queries/catalog/signature-query/signature-query-format';
 import { FunctionInfoQueryDefinition } from '../../../queries/catalog/function-info-query/function-info-query-format';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import { downloadFullSigDb } from '../../../project/sigdb/sigdb-download';
+import { downloadFullSigDb, SigDbDownloadError } from '../../../project/sigdb/sigdb-download';
 import { persistSigDbPathToGlobalConfig } from '../../../config';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { signatureQueryCompleter } from '../../../queries/catalog/signature-query/signature-query-executor';
@@ -82,12 +82,12 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 	const f = output.formatter;
 	const sigdb = analyzer.flowrConfig.solver.sigdb;
 	try {
-		const { dir, manifest, files } = await downloadFullSigDb({
+		const { tag, dir, manifest, files, downloaded, bytes, ms } = await downloadFullSigDb({
 			version:    rest.find(a => a.length > 0),
 			repo:       sigdb.downloadRepo,
 			onProgress: msg => output.stdout(italic(`  ${msg}`, f))
 		});
-		output.stdout(`Downloaded ${bold(String(files.length), f)} file(s) to ${bold(dir, f)}.`);
+		output.stdout(`Signature database ${bold(tag, f)}: ${bold(String(files.length), f)} file(s) in ${bold(dir, f)}, ${downloaded.length} fetched now (${(bytes / 1e6).toFixed(1)} MB in ${(ms / 1000).toFixed(1)}s).`);
 		if(manifest) {
 			await analyzer.context().deps.addDatabaseSource(manifest);
 			analyzer.reset();
@@ -99,7 +99,15 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 			output.stderr(italic(`Could not update global config (${(e as Error).message}); add ${dir} to solver.sigdb.additionalPaths manually.`, f));
 		}
 	} catch(e) {
-		output.stderr(`Download failed: ${(e as Error).message}`);
+		if(e instanceof SigDbDownloadError) {
+			output.stderr(`Download of ${e.tag} incomplete: ${e.completed} file(s) are in place, ${e.failed.length} failed:`);
+			for(const { name, reason } of e.failed) {
+				output.stderr(`  ${name}: ${reason}`);
+			}
+			output.stderr(italic('Run the command again to fetch only what is missing.', f));
+		} else {
+			output.stderr(`Download failed: ${(e as Error).message}`);
+		}
 	}
 }
 

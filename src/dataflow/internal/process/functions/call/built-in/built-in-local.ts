@@ -2,6 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
@@ -90,13 +91,16 @@ export function processLocal<OtherInfo>(
 	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
 		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
 	);
-	for(const escaped of escaping) {
-		dfExpr.graph.addEdge(escaped.nodeId, rootId, EdgeType.Reads);
-	}
 
 	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	const graph = dfEnv.graph.mergeWith(dfExpr.graph);
+	/* the body only runs because `local` runs it */
+	for(const [id, vertex] of dfExpr.graph.vertices(false)) {
+		if(!DfgVertex.isUse(vertex) && !DfgVertex.isValue(vertex)) {
+			graph.addEdge(id, rootId, EdgeType.Reads);
+		}
+	}
 	const cfgEntry = ControlFlow.inSequence(graph, env ? [dfEnv, dfExpr] : [dfExpr], rootId);
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),

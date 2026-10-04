@@ -37,6 +37,9 @@ describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 	});
 	testSlice('what a quoted expression assigns reaches the later read',
 		'eval(quote(x <- 1))\nprint(x)', '2@print', 'x <- 1\nprint(x)');
+	/* the code a name holds is evaluated where `eval` runs, checked against R */
+	testSlice('a symbol built from a string and bound to a name', 'nm <- as.name("w")\nw <- 3\ny <- eval(nm)', '3@y', 'nm <- as.name("w")\nw <- 3\ny <- eval(nm)');
+	testSlice('a string parsed with str2lang and bound to a name', 'nm <- str2lang("w + 1")\nw <- 3\ny <- eval(nm)', '3@y', 'nm <- str2lang("w + 1")\nw <- 3\ny <- eval(nm)');
 	testSlice('also when the expression is bound to a name first',
 		'e <- quote(x <- 1)\neval(e)\nprint(x)', '3@print', 'x <- 1\nprint(x)');
 	testSlice('an interpolated name pulls its definition in',

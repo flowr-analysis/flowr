@@ -7,10 +7,13 @@
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { MatchArgs } from '../../../../graph/match-args';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../environments/identifier';
-import { Identifier } from '../../../../environments/identifier';
+import { hasEnvState, Identifier, ReferenceType } from '../../../../environments/identifier';
+import { Resolve } from '../../../../environments/resolve-helper';
+import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { Dataflow } from '../../../../graph/df-helper';
@@ -25,7 +28,7 @@ import { removeRQuotes } from '../../../../../r-bridge/retriever';
 import { reachableTo } from '../../../../../control-flow/happens-before';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { callFnProps } from '../../../../environments/query-fn-props';
-import { CallProp } from '../../../../environments/built-in-props';
+import { CallProp, CallProps } from '../../../../environments/built-in-props';
 
 type Reach = NonNullable<ForceSites['reach']>;
 
@@ -35,6 +38,7 @@ const CapturingProcessors: readonly BuiltInProcName[] = [BuiltInProcName.Quote];
 const CapturingCalls: ReadonlySet<string> = new Set(['expression']);
 /** Calls capturing an expression as a promise, forced at some later read of the variable they bind. */
 const DelayingCalls: ReadonlySet<string> = new Set(['delayedAssign']);
+const DelayedAssignFormals = ['x', 'value', 'eval.env', 'assign.env'];
 /** Calls evaluating one. */
 const EvaluatingProcessors: readonly BuiltInProcName[] = [BuiltInProcName.Eval];
 /** Calls evaluating their own unevaluated argument, in a frame of their own. */
@@ -136,9 +140,18 @@ export const Quoted = {
 					names ??= Deferred.indexOf(graph, idMap);
 					const flow = binding === undefined ? undefined : cfgOnce();
 					const sites = flow === undefined || binding === undefined ? undefined : Deferred.forcedAt(graph, binding, flow);
-					Deferred.link(graph, promise, names, idMap, flow !== undefined && sites?.length && binding !== undefined ? { cfg: flow, sites, binding } : undefined);
+					/* the promise runs in `eval.env`, so whatever that environment holds may be what it reads */
+					const call = idMap.get(id);
+					const evalEnv = RFunctionCall.is(call) ? MatchArgs.toNames(call.arguments, DelayedAssignFormals).get('eval.env')?.value : undefined;
+					const tracked = trackedEnvOf(vertex, evalEnv);
+					/* a tracked `eval.env` that binds every name the promise reads leaves no other binding in play, its writes still reach later reads */
+					const bound = tracked !== undefined && Quoted.evaluateIn(graph, promise, tracked, idMap).length === 0;
+					Deferred.link(graph, promise, bound ? { definitions: new Map(), uses: names.uses } : names, idMap, flow !== undefined && sites?.length && binding !== undefined ? { cfg: flow, sites, binding } : undefined);
 					if(binding !== undefined) {
 						linkForcesToPromise(graph, binding, promise);
+					}
+					if(evalEnv !== undefined) {
+						graph.addEdge(promise, evalEnv.info.id, EdgeType.Reads);
 					}
 				}
 			} else if(hasOrigin(vertex, EvaluatingProcessors) || EvaluatingElsewhereCalls.has(Identifier.getName(vertex.name))) {
@@ -220,6 +233,13 @@ function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: Nod
 	}
 }
 
+/** The tracked custom environment `evalEnv` names, if it is a single one. */
+function trackedEnvOf(call: DataflowGraphVertexFunctionCall, evalEnv: RNode<ParentInformation> | undefined): REnvironmentInformation | undefined {
+	const defs = RSymbol.is(evalEnv) && call.environment !== undefined ? Resolve.byNameAndType(evalEnv.content, call.environment, ReferenceType.Variable) : undefined;
+	const env = defs?.length === 1 && hasEnvState(defs[0]) ? defs[0].envState : undefined;
+	return env?.current.globalEnv || env?.current.builtInEnv ? undefined : env;
+}
+
 function* installedLanguageOf(graph: DataflowGraph, id: NodeId, installers: () => ReadonlySet<NodeId>): Generator<NodeId> {
 	for(const [definition, edge] of graph.edgesFrom(id)) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads) || !DfgVertex.isVariableDefinition(graph.getVertex(definition))) {
@@ -248,7 +268,7 @@ function languageInstallersOf(graph: DataflowGraph, environment: REnvironmentInf
 	const installers = new Set<NodeId>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)
-			&& ((callFnProps(id, { graph, environment })?.props ?? 0) & CallProp.Lang) !== 0) {
+			&& CallProps.hasAny(callFnProps(id, { graph, environment }), CallProp.Lang)) {
 			installers.add(id);
 		}
 	}
@@ -425,7 +445,7 @@ function mayConfigure(graph: DataflowGraph, expr: NodeId, environment: REnvironm
 		const vertex = graph.getVertex(id);
 		if(DfgVertex.isFunctionCall(vertex)) {
 			const builtIn = Array.isArray(vertex.origin) && vertex.origin.every(o => String(o).startsWith('builtin:') && o !== BuiltInProcName.Function && o !== BuiltInProcName.Eval);
-			if(!builtIn || ((callFnProps(id, { graph, environment })?.props ?? 0) & CallProp.Configures) !== 0) {
+			if(!builtIn || CallProps.hasAny(callFnProps(id, { graph, environment }), CallProp.Configures)) {
 				return true;
 			}
 		}
@@ -438,7 +458,7 @@ function mayConfigure(graph: DataflowGraph, expr: NodeId, environment: REnvironm
 	return false;
 }
 
-/** An evaluation is assumed to write the options and graphics state until we know what it evaluates (see `evaluatesCapturedCode`). */
+/** An evaluation is assumed to write the options and graphics state until we know what it evaluates (see `evaluatesCapturedCode`); a captured call then no longer needs the evaluation either, `eval(quote(x <- 1))` slices to `x <- 1`. */
 function forgetStateWrites(graph: DataflowGraph, id: NodeId): void {
 	for(const [from, edge] of graph.edgesTo(id)) {
 		if(DfEdge.isOnlyType(edge, EdgeType.Reads) && DfgVertex.isFunctionCall(graph.getVertex(from))) {

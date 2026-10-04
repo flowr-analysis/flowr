@@ -10,6 +10,7 @@ import { DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { linkCallToDefinitions } from '../../../linker';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -176,16 +177,23 @@ export const Deferred = {
 				for(const use of index.uses.get(name) ?? []) {
 					if(!own.has(use) && reachedByAForce(use)) {
 						graph.addEdge(use, node, EdgeType.Reads);
+						/* the write only happens because a force runs it */
+						for(const site of forces?.sites ?? []) {
+							graph.addEdge(node, site, EdgeType.Reads);
+						}
 						if(shadows && alwaysAfterAForce(use)) {
 							dropRead(graph, use, forces.binding);
 						}
 					}
 				}
 			} else {
-				for(const definition of index.definitions.get(name) ?? []) {
-					if(seenByAForce(definition)) {
-						graph.addEdge(node, definition, EdgeType.Reads);
-					}
+				const seen = (index.definitions.get(name) ?? []).filter(seenByAForce);
+				for(const definition of seen) {
+					graph.addEdge(node, definition, EdgeType.Reads);
+				}
+				if(forces !== undefined) {
+					/* a deferred call runs what its name holds at the force, which may be defined after the call was written */
+					linkCallToDefinitions(graph, node, seen, idMap);
 				}
 			}
 		}

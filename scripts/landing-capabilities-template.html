@@ -123,16 +123,16 @@ details[open] > ul.caps:hover { border-left-color: color-mix(in srgb, var(--acce
 details[open] > ul.caps:has(> li.cap:hover) { border-left-color: var(--border); }
 li.cap { padding: .45rem 0 .45rem .1rem; }
 .head { position: relative; display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; }
-.name { font-weight: 600; scroll-margin-top: 2rem; }
-/* badge dot doubles as the bullet; the anchor swaps in on hover */
-.badge { display: block; width: .5rem; height: .5rem; border-radius: 50%; top: .55em; }
-.badge, .anchor { position: absolute; left: -.95rem; transition: opacity .12s; }
-.anchor { top: 0; color: var(--muted); text-decoration: none; opacity: 0; font-size: .9em; border: 0; }
-li.cap:hover > .head > .anchor, .anchor:focus { opacity: 1; }
+/* the name links to the capability itself, its id is a tooltip */
+.name { font-weight: 600; scroll-margin-top: 2rem; color: inherit; text-decoration: none; border: 0; }
+.name:hover { color: var(--accent); }
+/* badge dot doubles as the bullet, the permalink swaps in on hover; the dot never takes the click */
+.badge, .hash { position: absolute; left: -.95rem; transition: opacity .12s; }
+.badge { display: block; width: .5rem; height: .5rem; border-radius: 50%; top: .55em; pointer-events: none; }
+.hash { top: 0; width: .95rem; color: var(--muted); text-decoration: none; border: 0; opacity: 0; }
+li.cap:hover > .head > .hash, .hash:focus-visible { opacity: 1; }
 li.cap:hover > .head > .badge { opacity: 0; }
-.anchor:hover { color: var(--accent); }
-/* test id isn't meant to be read, so it's a tooltip on the name instead */
-.name[title] { cursor: help; }
+.hash:hover { color: var(--accent); }
 /* "since" is the R version required, not a flowR version */
 .since {
 	font-size: .72rem; color: var(--muted); border: 1px solid var(--border);

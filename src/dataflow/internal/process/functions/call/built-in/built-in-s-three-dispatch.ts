@@ -17,6 +17,8 @@ import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { ControlFlow } from '../../../../control-flow';
+import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
@@ -79,6 +81,12 @@ export function processS3Dispatch<OtherInfo>(
 		});
 		const ingoing = dfObj.in.concat(dfObj.unknownReferences);
 		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
+		/* the next method receives the current values of the formals of the method it is called from */
+		const idMap = data.completeAst.idMap;
+		const enclosing = idMap.get(RNode.findEnclosing(rootId, idMap, RFunctionDefinition.is) ?? rootId);
+		for(const param of RFunctionDefinition.is(enclosing) ? enclosing.parameters : []) {
+			ingoing.push({ nodeId: rootId, name: param.name.content, cds: data.cds, type: ReferenceType.Variable });
+		}
 		const cfgEntry = ControlFlow.inSequence(dfObj.graph, [dfObj], rootId);
 		return {
 			hooks:             dfObj.hooks,

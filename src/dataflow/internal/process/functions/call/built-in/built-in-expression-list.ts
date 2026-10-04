@@ -27,7 +27,7 @@ import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { applyAmbientStateOfCalledBuiltIns, readsOfAutoPrint } from './built-in-ambient-state';
+import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, readsOfAutoPrint } from './built-in-ambient-state';
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
@@ -237,6 +237,14 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 		let callDependencies: ControlDependency[] | null | undefined = null;
 		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
 			guard(DfgVertex.isFunctionDefinition(calledFn), 'called function must be a function definition');
+			/* walk the smaller of the two, a script may hold many unknown side effects and a function many vertices */
+			const inside = calledFn.subflow.graph;
+			const effects = nextGraph.unknownSideEffects;
+			for(const effect of inside.size < effects.size ? inside : effects) {
+				if(typeof effect !== 'object' && inside.has(effect) && effects.has(effect)) {
+					nextGraph.addEdge(effect, functionCall, EdgeType.SideEffectOnCall);
+				}
+			}
 			// only merge the environments they have in common
 			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
 			if(environment.level > inputEnvironment.level) {
@@ -459,7 +467,7 @@ export function processExpressionList<OtherInfo>(
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
 		/* at the top of the script, a read of the options or graphics state nothing set reads the state R starts with */
-		in:                autoPrint ? ingoing.filter(r => typeof r.name !== 'string' || !r.name.startsWith('#')) : ingoing,
+		in:                autoPrint ? ingoing.filter(r => !AmbientStateName.is(r.name)) : ingoing,
 		/* a definition that a still-effective removal undid is no longer visible to the outside */
 		out:               dropKilledWrites(out, killed),
 		environment:       environment,

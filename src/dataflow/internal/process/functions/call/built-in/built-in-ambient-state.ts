@@ -4,7 +4,7 @@ import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bri
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { DfgVertex } from '../../../../../graph/vertex';
-import { CallProp } from '../../../../../environments/built-in-props';
+import { CallProp, CallProps } from '../../../../../environments/built-in-props';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -46,6 +46,10 @@ export const AmbientStateName = {
 	/** the pseudo variable holding the option `key`; setting the option replaces it */
 	option(this: void, key: string): string {
 		return `#option:${key}`;
+	},
+	/** whether `name` is one of these pseudo variables */
+	is(this: void, name: Identifier | undefined): name is string {
+		return typeof name === 'string' && name.startsWith('#');
 	}
 } as const;
 
@@ -55,6 +59,11 @@ const Accumulating: ReadonlySet<string> = new Set([AmbientStateName.graphics, Am
 interface AmbientWrite {
 	readonly name: string
 	readonly mode: 'local' | 'reset'
+}
+
+/** Whether calling `definition` runs a body flowR cannot see: a library function's, or whatever a parameter is bound to. */
+export function hidesBody(definition: IdentifierDefinition): boolean {
+	return NodeId.isBuiltIn(definition.nodeId) || isReferenceType(definition.type, ReferenceType.Parameter | ReferenceType.Argument);
 }
 
 /** A call into code flowR cannot see may read any option and draw on the device. */
@@ -340,8 +349,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 export function applyAmbientStateOfCallee<OtherInfo>(res: DataflowInformation, callId: NodeId, fn: Identifier, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const targets = Resolve.byNameAndType(fn, data.environment, ReferenceType.Function) ?? [];
 	res = applyAmbientStateOfTargets(res, targets, UnknownArguments, callId, data);
-	const unknown = (targets.length === 0 && data.environment.level === 0)
-		|| targets.some(t => t.type !== ReferenceType.BuiltInFunction && (NodeId.isBuiltIn(t.nodeId) || isReferenceType(t.type, ReferenceType.Parameter | ReferenceType.Argument)));
+	const unknown = (targets.length === 0 && data.environment.level === 0) || targets.some(t => t.type !== ReferenceType.BuiltInFunction && hidesBody(t));
 	return unknown ? readsAllAmbientState(res, callId, data, true) : res;
 }
 
@@ -434,7 +442,7 @@ function resultIsUsed<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformat
 /** Links state reads in a loop body to the body's own writes of a later iteration; the loops' circular linking only sees uses. */
 export function linkAmbientStateWithinLoop(graph: DataflowGraph, reads: readonly IdentifierReference[], body: DataflowInformation): void {
 	for(const r of reads) {
-		if(typeof r.name !== 'string' || !r.name.startsWith('#')) {
+		if(!AmbientStateName.is(r.name)) {
 			continue;
 		}
 		for(const def of Resolve.byName(r.name, body.environment) ?? []) {
@@ -474,7 +482,7 @@ export function processAmbientScope<OtherInfo>(
 		scope.state === 'device' ? deviceAccess({ ...DataflowInformation.initialize(rootId, data), environment }, rootId, data, local ? 'switch' : 'open').environment
 			: defineAmbient(environment, rootId, cds, writes);
 
-	let { information } = processKnownFunctionCall({
+	const { information } = processKnownFunctionCall({
 		name, args, rootId, data, origin:    BuiltInProcName.Default,
 		patchData: (d, i) => i === codeIndex ? { ...d, environment: apply(d.environment) } : d
 	});
@@ -500,8 +508,7 @@ export function processAmbientScope<OtherInfo>(
 		const kept = (Resolve.byName(AmbientStateName.graphics, environment) ?? []).filter(d => d.nodeId !== rootId);
 		environment = setAmbient(environment, AmbientStateName.graphics, kept);
 	}
-	information = { ...information, environment };
-	return information;
+	return { ...information, environment };
 }
 
 /** what a scope call writes: the options it names, or the graphics state */
@@ -580,8 +587,7 @@ function autoPrints<OtherInfo>(expression: RNode<OtherInfo & ParentInformation>,
 	}
 	/* `invisible`, `library`, ...: everything this resolves to returns invisibly */
 	const targets = Resolve.byNameAndType(vertex.name, data.environment, ReferenceType.Function);
-	return targets === undefined || targets.length === 0 || !targets.every(t => t.type === ReferenceType.BuiltInFunction
-		&& ((t.config as { props?: number } | undefined)?.props ?? 0) & CallProp.Invisible);
+	return targets === undefined || targets.length === 0 || !targets.every(t => t.type === ReferenceType.BuiltInFunction && CallProps.hasAny(t.config, CallProp.Invisible));
 }
 
 /** A call through a variable bound to a built-in (`p <- par; p(...)`), only revealed when linking the statement's calls. */
@@ -596,7 +602,7 @@ export function applyAmbientStateOfCalledBuiltIns<OtherInfo>(res: DataflowInform
 		res = applyAmbientStateOfTargets(res, targets ?? [], call.arguments, callId, data);
 	}
 	for(const read of res.unknownReferences.slice(known)) {
-		for(const def of Resolve.byName(read.name as string, before) ?? []) {
+		for(const def of Resolve.byName(read.name as Identifier, before) ?? []) {
 			graph.addEdge(read.nodeId, def.nodeId, EdgeType.Reads);
 		}
 	}

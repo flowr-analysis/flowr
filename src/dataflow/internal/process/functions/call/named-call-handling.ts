@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
-import { readsAllAmbientState } from './built-in/built-in-ambient-state';
+import { hidesBody, readsAllAmbientState } from './built-in/built-in-ambient-state';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
 import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
@@ -8,7 +8,7 @@ import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier, isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../environments/identifier';
 import { baseRExportOwner, isBaseRPackage } from '../../../../../util/r-base-packages';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import type { BuiltInIdentifierDefinition } from '../../../../environments/built-in';
@@ -116,8 +116,8 @@ export function processNamedCall<OtherInfo>(
 		const own = isBuiltIn ? resolvedFunction : builtInBehindExport(data, resolvedFunction);
 		if(own === undefined) {
 			defaultProcessor = true;
-			/* a user function's body states what it reads itself, a library function's or an argument's we cannot see */
-			unknownBody ||= NodeId.isBuiltIn(resolvedFunction.nodeId) || isReferenceType(resolvedFunction.type, ReferenceType.Parameter | ReferenceType.Argument);
+			/* a user function's body states what it reads itself */
+			unknownBody ||= hidesBody(resolvedFunction);
 			continue;
 		}
 		builtIn ||= isBuiltIn && own.config?.libFn !== true;
@@ -129,8 +129,7 @@ export function processNamedCall<OtherInfo>(
 		information = mergeInformation(information, own.processor(name, args, rootId, data));
 		const pkg = own.name === undefined ? undefined : Identifier.getNamespace(own.name);
 		/* unless flowR states how it accesses the state, as for `withr::with_options` */
-		const states = own.config !== undefined && ('ambient' in own.config || 'scope' in own.config);
-		packageFn ||= pkg !== undefined && !states && !isBaseRPackage(String(pkg));
+		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg));
 	}
 
 	if(defaultProcessor) {

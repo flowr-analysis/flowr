@@ -1117,8 +1117,15 @@ export const WrittenBuiltinDefinitions = [
 			genericArg:     { idx: 0, name: 'f' },
 			classArgs:      [{ idx: 1, name: 'signature' }], sig:            [['f', ArgProp.NoDefault], ['signature', 0], ['definition', ArgProp.NoDefault], ['where', 0], ['valueClass', 0], ['sealed', 0]]
 		}, assumePrimitive: true },
+	{ type:      'function', names:     [Identifier.from(['setReplaceMethod', PkgName.Methods])],
+		processor: BuiltInProcName.ClassRelation,
+		config:    {
+			assignmentLike: { targetVariable: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
+			genericArg:     { idx: 0, name: 'f' }, genericSuffix:  '<-',
+			classArgs:      [{ idx: 1, name: 'signature' }], sig:            [['f', ArgProp.NoDefault], ['signature', 0], ['definition', ArgProp.NoDefault], ['where', 0], ['valueClass', 0], ['sealed', 0]]
+		}, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['makeActiveBinding', PkgName.Base])], processor: BuiltInProcName.Assignment, config: { targetVariable: true, mayHaveMoreArgs: true, callsSource: true, environmentArg: 'env', props: CallProp.Scope | CallProp.Invisible, sig: [['sym', ArgProp.Value], ['fun', ArgProp.Callee], ['env', ArgProp.Written]] }, assumePrimitive: true },
-	{ type: 'function', names: [Identifier.from(['delayedAssign', PkgName.Base])], processor: BuiltInProcName.Assignment, config: { quoteSource: true, targetVariable: true, props: CallProp.Invisible | CallProp.Scope, sig: [['x', ArgProp.NoDefault], ['value', ArgProp.NoDefault | ArgProp.Nse], ['eval.env', 0], ['assign.env', 0]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['delayedAssign', PkgName.Base])], processor: BuiltInProcName.Assignment, config: { keepEnvironment: true, quoteSource: true, targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'assign.env', props: CallProp.Invisible | CallProp.Scope, sig: [['x', ArgProp.NoDefault], ['value', ArgProp.NoDefault | ArgProp.Nse], ['eval.env', ArgProp.Forced | ArgProp.Value], ['assign.env', ArgProp.Forced | ArgProp.Written]] }, assumePrimitive: true },
 	{ type: 'function', names: ['<<-'], processor: BuiltInProcName.Assignment, config: { superAssignment: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible, sig: [['x', ArgProp.NoDefault], ['value', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Alias]] }, assumePrimitive: true },
 	{ type: 'function', names: ['->'], processor: BuiltInProcName.Assignment, config: { swapSourceAndTarget: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible, sig: [['value', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Alias], ['x', ArgProp.NoDefault]] }, assumePrimitive: true },
 	{ type: 'function', names: ['->>'], processor: BuiltInProcName.Assignment, config: { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible, sig: [['value', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Alias], ['x', ArgProp.NoDefault]] }, assumePrimitive: true },

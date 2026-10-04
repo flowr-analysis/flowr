@@ -19,11 +19,12 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		return processValue(symbol, data);
 	}
 	const sid = symbol.info.id;
+	const read = { nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown };
 
 	return {
 		unknownReferences: Identifier.getName(symbol.content) === '.Options'
-			? [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }, ...readsOfOptionsVariable(symbol, data as DataflowProcessorInformation<OtherInfo & ParentInformation>)]
-			: [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }],
+			? [read, ...readsOfOptionsVariable(symbol, data as DataflowProcessorInformation<OtherInfo & ParentInformation>)]
+			: [read],
 		in:          [],
 		out:         [],
 		environment: data.environment,

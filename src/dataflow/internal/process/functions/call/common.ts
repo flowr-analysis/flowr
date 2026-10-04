@@ -15,6 +15,7 @@ import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import { AmbientStateName } from './built-in/built-in-ambient-state';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { processFunctionArgument } from '../process-argument';
@@ -191,7 +192,7 @@ export function processAllArguments<OtherInfo>(
 				   type stays on the reference as it bubbles through the enclosing calls */
 				const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
 				/* a call reading the options or graphics state (`#...`, see AmbientStateName) reads a variable, not itself */
-				const refType = typeof ingoing.name === 'string' && ingoing.name.startsWith('#') ? ReferenceType.Variable
+				const refType = AmbientStateName.is(ingoing.name) ? ReferenceType.Variable
 					: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
 						: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
 

@@ -190,13 +190,15 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 	const nsePositions = nsePositionsOf(nse, args.length);
 	let lastEnv = data.environment;
+	/* `evalq(expr)` runs `expr` right here, in the frame it is called from */
+	const inPlace = args.length === 1 && Identifier.getName(name.content) === 'evalq';
 	const { information: res, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, sig, alternativeArgsFrom,
 		origin:      useAsProcessor,
 		nonFunction: dataArgumentSymbols(args, sig),
 		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
 		patchData:   nsePositions === undefined ? undefined : (d, index) => {
-			if(nsePositions.has(index)) {
+			if(nsePositions.has(index) && !inPlace) {
 				lastEnv = d.environment;
 				return { ...d, environment: cleanEnvOf(d.environment) };
 			}

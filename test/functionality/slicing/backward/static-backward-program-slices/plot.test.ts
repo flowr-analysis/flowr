@@ -117,8 +117,9 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		`.trim());
 	describe('graphics state', () => {
 		function graphicsCase(name: string, code: string, criterion: SlicingCriterion, expected: string) {
-			assertSliced(label(name, ['functions-with-global-side-effects', 'call-normal', 'named-arguments', 'newlines']), shell, code, [criterion], expected);
+			assertSliced(label(name, ['functions-with-global-side-effects', 'graphics-state', 'call-normal', 'named-arguments', 'newlines']), shell, code, [criterion], expected);
 		}
+		// @signature graphics-state
 		graphicsCase('par affects later plots', 'par(mfrow=c(1,2))\ny <- 3\nplot(y)', '3@plot', 'par(mfrow=c(1,2))\ny <- 3\nplot(y)');
 		graphicsCase('par does not affect values', 'x <- 1\npar(mar=c(1,1,1,1))\ny <- x', '3@y', 'x <- 1\ny <- x');
 		graphicsCase('par does not affect printing', 'par(mfrow=c(1,2))\ny <- 3\nprint(y)', '3@print', 'y <- 3\nprint(y)');
@@ -136,7 +137,7 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		graphicsCase('conditional par', 'if(u) par(mfrow=c(1,2))\nplot(1)', '2@plot', 'if(u) par(mfrow=c(1,2))\nplot(1)');
 		graphicsCase('par in a loop', 'for(i in 1:2) {\n\tplot(i)\n\tpar(mfrow=c(i,2))\n}', '2@plot', 'for(i in 1:2) {\n    plot(i)\n    par(mfrow=c(i,2))\n}');
 		graphicsCase('par between definition and call of a function setting par', 'par(mar=c(1,1,1,1))\nf <- function() par(mfrow=c(1,2))\npar(cex=2)\nf()\nplot(1)', '5@plot', 'par(mar=c(1,1,1,1))\nf <- function() par(mfrow=c(1,2))\npar(cex=2)\nf()\nplot(1)');
-		graphicsCase('par within local', 'local({ par(mfrow=c(1,2)) })\nplot(1)', '2@plot', 'par(mfrow=c(1,2))\nplot(1)');
+		graphicsCase('par within local', 'local({ par(mfrow=c(1,2)) })\nplot(1)', '2@plot', 'local({ par(mfrow=c(1,2)) })\nplot(1)');
 		graphicsCase('par through do.call', 'do.call(par, list(mfrow=c(1,2)))\nplot(1)', '2@plot', 'do.call(par, list(mfrow=c(1,2)))\nplot(1)');
 		graphicsCase('par through do.call does not affect values', 'do.call(par, list(mfrow=c(1,2)))\ny <- 2\nz <- y', '3@z', 'y <- 2\nz <- y');
 		graphicsCase('restoring par on exit', 'f <- function() {\n\top <- par(mfrow=c(1,2))\n\ton.exit(par(op))\n\tplot(1)\n}\nf()\nplot(2)', '7@plot', 'f <- function() {\n        op <- par(mfrow=c(1,2))\n        on.exit(par(op))\n    }\nf()\nplot(2)');
@@ -144,6 +145,7 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		graphicsCase('palette query is no write', 'palette("Set 1")\npalette()\nplot(1)', '3@plot', 'palette("Set 1")\nplot(1)');
 		/* the parameters belong to the device (checked against R): a new one starts afresh, closing it returns to another */
 		graphicsCase('a new device starts afresh', 'par(mfrow=c(1,2))\npng("a.png")\nplot(1)', '3@plot', 'png("a.png")\nplot(1)');
+		// @signature graphics-state
 		graphicsCase('closing returns to the previous device', 'par(mfrow=c(1,2))\npng("a.png")\npar(mar=c(1,1,1,1))\ndev.off()\nplot(1)', '5@plot', 'par(mfrow=c(1,2))\nplot(1)');
 		graphicsCase('closing the only device', 'png("a.png")\npar(mar=c(1,1,1,1))\ndev.off()\nplot(1)', '4@plot', 'plot(1)');
 		graphicsCase('closing all devices', 'par(mfrow=c(1,2))\npng("a.png")\ngraphics.off()\nplot(1)', '4@plot', 'plot(1)');

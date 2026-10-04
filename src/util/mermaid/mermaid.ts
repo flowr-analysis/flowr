@@ -1,6 +1,10 @@
 import { toBase64 } from '../text/url-encoding';
 
 
+function charCode(c: string): string {
+	return `_${c.codePointAt(0)}_`;
+}
+
 /**
  * Global mermaid helper object with useful functions.
  * @helper output
@@ -67,9 +71,10 @@ export const Mermaid = {
 	 * Escapes a string or number to be used as a mermaid node id.
 	 */
 	escapeId(this: void, text: string | number): string {
-		text = String(text).replace(/[^a-zA-Z0-9:\-./]/g, '_');
+		/* each character is spelled by its code, so `built-in:{` and `built-in:+` stay apart */
+		text = String(text).replace(/[^\w:\-./]/g, charCode);
 		/* a dash before a dash or a dot reads as the start of a link, e.g. the id of `$<-.grouped_df` would cut the line in two */
-		text = text.replace(/-(?=[-.])/g, '_');
+		text = text.replace(/-(?=[-.])/g, charCode);
 		return text.replace(/(^|[:\-./])([a-zA-Z0-9_]+)/g, (_m, sep: string, tok: string) => sep + (Mermaid.reservedIds.has(tok) ? tok + '_' : tok));
 	},
 	/**

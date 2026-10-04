@@ -247,6 +247,11 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 			before ??= reachableTo(cfg ??= new ControlFlowGraph(graph), [reader.id]);
 			if(before.has(writer.id)) {
 				graph.addEdge(reader.id, writer.id, EdgeType.Reads);
+				/* whatever is linked to a diverting writer (`print` after `sink(file)`) writes to the resource as well */
+				const diverted = graph.edgesTo(writer.id).entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads)).map(([id]) => id).toArray();
+				for(const id of diverted) {
+					graph.addEdge(reader.id, id, EdgeType.Reads);
+				}
 			}
 		}
 	}
@@ -382,8 +387,8 @@ function extractDataFlowGraph<OtherInfo>(
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
 	linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
-	linkResourceReadersToWriters(df.graph, df.environment, ctx);
 	resolveLinkToSideEffects(df.graph, ctx);
+	linkResourceReadersToWriters(df.graph, df.environment, ctx);
 
 	return df;
 }

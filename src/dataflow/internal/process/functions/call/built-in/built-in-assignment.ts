@@ -32,7 +32,7 @@ import { define } from '../../../../../environments/define';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, routeWrittenToEnvir } from './built-in-envir-utils';
+import { EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import type { FnSig } from '../../../../../environments/built-in-props';
@@ -73,6 +73,8 @@ export interface AssignmentConfiguration {
 	readonly replacement?:         boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
+	/** appended to a target named by a string (`setReplaceMethod("f", ...)` binds `f<-`) */
+	readonly targetSuffix?:        string
 	/** does the call use the old value of its target (e.g. `setNames(x, nm)`), so that the target reads its previous definition? */
 	readonly readTarget?:          boolean
 	readonly mayHaveMoreArgs?:     boolean
@@ -439,7 +441,7 @@ function processAssignmentToString<OtherInfo>(
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
 		type:     RType.Symbol,
 		info:     target.info,
-		content:  removeRQuotes(target.lexeme),
+		content:  removeRQuotes(target.lexeme) + (config.targetSuffix ?? ''),
 		lexeme:   target.lexeme,
 		location: target.location,
 	};
@@ -561,6 +563,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		...envirResolution.envDef,
+		nodeId:    target.accessed.info.id,
 		definedAt: rootId,
 		envState:  newEnvState
 	};
@@ -569,7 +572,8 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		level:   normalResult.environment.level
 	};
 	normalResult.graph.addEdge(normalResult.entryPoint, target.accessed.info.id, EdgeType.Reads);
-	return { ...normalResult, environment: define(updatedEnvDef, false, strippedEnv) };
+	const environment = define(updatedEnvDef, false, strippedEnv);
+	return { ...normalResult, environment: updatedEnvDef.envId === undefined ? environment : rebindHolders(environment, { ...updatedEnvDef, envState: newEnvState }, newEnvState, rootId) };
 }
 
 /**
@@ -599,21 +603,13 @@ function tryRouteToCustomEnv<OtherInfo>(
 		return undefined;
 	}
 
-	if(envirRouting.stack === 'global') {
-		const globalResult = processAssignment(name, args, rootId, data, {
-			...config,
-			environmentArg:  undefined,   // prevent re-entry
-			superAssignment: true
-		});
-		globalResult.graph.addEdge(rootId, envirRouting.envirNodeId, EdgeType.Reads);
-		return globalResult;
+	/* run the normal assignment path to get the correct graph structure, the call reads the environment it writes into */
+	const global = envirRouting.stack === 'global';
+	const normalResult = processAssignment(name, args, rootId, data, { ...config, environmentArg: undefined, superAssignment: global || config.superAssignment });
+	normalResult.graph.addEdge(rootId, envirRouting.envirNodeId, EdgeType.Reads);
+	if(global) {
+		return normalResult;
 	}
-
-	/* run the normal assignment path to get the correct graph structure */
-	const normalResult = processAssignment(name, args, rootId, data, {
-		...config,
-		environmentArg: undefined   // prevent re-entry
-	});
 
 	/* pass rootId as definedAt so only defs made at this call site are routed */
 	return routeWrittenToEnvir(normalResult, envirRouting, rootId, data.environment, rootId);
@@ -700,8 +696,10 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	} satisfies InGraphIdentifierDefinition & { name: Identifier }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
+	let copied: (InGraphIdentifierDefinition & { envState: REnvironmentInformation }) | undefined;
 	if(data.ctx.config.solver.trackEnvironments) {
 		let envState: REnvironmentInformation | undefined;
+		let envId: NodeId | undefined;
 		let returnsEnvState: REnvironmentInformation | undefined;
 		const valueEntry = valueEntryPointOf(sourceArg);
 		const stackEnv = stackEnvStateFromSource(sourceArg, data, valueEntry);
@@ -712,8 +710,10 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			envState = stackEnv;
 		} else if(RSymbol.is(source)) {
 			const defs = Resolve.byNameAndType(source.content, data.environment, ReferenceType.Variable);
-			envState = defs?.find(hasEnvState)?.envState
-				?? findReturnsEnvState(defs);
+			copied = defs?.find(hasEnvState);
+			envState = copied?.envState ?? findReturnsEnvState(defs);
+			/* only a copied environment needs an identity, its holders are rebound on every field write */
+			envId = copied === undefined ? undefined : copied.envId ?? copied.nodeId;
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
 			if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
@@ -729,7 +729,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		}
 		if(envState) {
 			for(let i = 0; i < writeNodes.length; i++) {
-				writeNodes[i] = { ...writeNodes[i], envState };
+				writeNodes[i] = { ...writeNodes[i], envState, envId };
 			}
 		} else if(returnsEnvState) {
 			for(let i = 0; i < writeNodes.length; i++) {
@@ -760,7 +760,8 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	}
 	readTargets.push(...readFromSourceWritten);
 
-	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
+	/* a quoted source (`delayedAssign`) writes nothing yet, its writes happen where it is forced (see `Deferred`) */
+	information.environment = quoteSource ? data.environment : overwriteEnvironment(sourceArg.environment, targetArg.environment);
 	if(config.beforeDefine) {
 		information.environment = config.beforeDefine(information);
 	}
@@ -768,6 +769,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	// install assigned variables in environment
 	for(const write of writeNodes) {
 		markAsAssignment(information, write, useSourceIds, rootId, data, config);
+	}
+	if(copied?.name !== undefined && copied.envId === undefined && information.environment.current.lookup(Identifier.getName(copied.name))?.includes(copied)) {
+		information.environment = define({ ...copied, name: copied.name, envId: copied.nodeId }, false, information.environment);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

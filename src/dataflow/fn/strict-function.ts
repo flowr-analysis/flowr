@@ -306,7 +306,8 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFunctionDefinition, state: StrictnessState): Ternary {
 	const reads: Ternary[] = [];
 	for(const [read, edge] of state.graph.edgesTo(param)) {
-		if(DfEdge.includesType(edge, EdgeType.Reads)) {
+		/* a `NextMethod` hands the parameter on unforced, the methods it reaches decide below */
+		if(DfEdge.includesType(edge, EdgeType.Reads) && !DfgVertex.hasOrigin(state.graph.getVertex(read), BuiltInProcName.S3DispatchNext)) {
 			reads.push(forces(read, definition, state));
 		}
 	}

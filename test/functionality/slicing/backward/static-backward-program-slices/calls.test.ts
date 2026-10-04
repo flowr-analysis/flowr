@@ -120,6 +120,12 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, 'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n    ', ['9@b'], 'f <- function() {\n        a <- function() x\n        x <- 3\n        b <- a()\n        x <- 2\n        b\n    }\nb <- f()');
 	assertSliced(label('always dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call']), shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
 	assertSliced(label('conditionally dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call']), shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
+	describe('Lazy arguments', () => {
+		assertSliced(label('A call in an argument runs only when the callee forces it', ['name-normal', 'call-normal', 'newlines', 'side-effects-in-function-call', 'formals-promises']), shell, 'cnt <- 0\nf <- function(x) {\n  cnt <<- cnt + 1\n  x\n}\ng <- function(a, b) if(a) b else 0\ng(TRUE, f(3))\ng(FALSE, f(4))\nprint(cnt)', ['9@cnt'], 'cnt <- 0\nf <- function(x) {\n        cnt <<- cnt + 1\n        x\n    }\ng <- function(a, b) if(a) b else\n    0\ng(TRUE, f(3))\ng(FALSE, f(4))\ncnt', { expectedOutput: '[1] 3\n[1] 0\n[1] 1', expectedSliceOutput: '[1] 3\n[1] 0\n[1] 1' });
+	});
+	describe('Sink', () => {
+		assertSliced(label('Output written while a sink is active reaches its readers', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nprint(r)', ['6@r'], 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nr', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+	});
 	describe('Early return of function', () => {
 		const code = 'x <- (function() {\n  g <- function() { y }\n  y <- 5\n  if(z)\n  \treturn(g)\n  y <- 3\n  g\n})()\nres <- x()';
 		assertSliced(label('Double return points', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'call-anonymous', 'normal-definition', 'implicit-return', 'numbers', 'if', 'return', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['9@res'], '\nx <- (function() {\n        g <- function() y\n        y <- 5\n        if(z) return(g)\n        y <- 3\n        g\n    })()\nres <- x()'.trim());
@@ -194,6 +200,8 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		s3Case('dispatch forces its object', s3Caps, 'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '5@v', 'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
 		s3Case('dispatch with dots forces its object', s3Caps, 'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '5@v', 'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
 		s3Case('next-method keeps the object as well', s3Caps, 'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv', '6@v', 'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "DEF"');
+		/* `NextMethod` passes on the current value of the formals, so the reassignment before it stays */
+		s3Case('next-method sees the modified formal', s3Caps, 'f <- function(x) UseMethod("f")\nf.a <- function(x) {\n  x <- unclass(x)\n  NextMethod()\n}\nf.default <- function(x) class(x)\nr <- f(structure(1, class="a"))\nprint(r)', '8@r', 'f <- function(x) UseMethod("f")\nf.a <- function(x) {\n        x <- unclass(x)\n        NextMethod()\n    }\nf.default <- function(x) class(x)\nr <- f(structure(1, class="a"))\nr', '[1] "numeric"');
 		/* control: a plain function never forces the parameter it does not mention, so the argument may go */
 		s3Case('a plain call still drops the argument it never forces', plainCaps, 'p <- function(x) "FOO"\nu <- 1\nv <- p(u)\nv', '4@v', 'p <- function(x) "FOO"\nv <- p(u)\nv', '[1] "FOO"');
 		/* control: naming the object moves the dispatch to it, leaving the first formal lazy */
@@ -221,6 +229,8 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		s4Case('a prototype default is kept with its class', 'setClass("W", representation(v = "numeric"), prototype(v = 12))\no <- new("W")\nr <- o@v\nr', '4@r', 'setClass("W", representation(v = "numeric"), prototype(v = 12))\no <- new("W")\nr <- o@v\nr', '[1] 12');
 		/* `setMethod` answers an existing generic, so it depends on the `setGeneric` that created it */
 		s4Case('a method keeps the generic it answers', 'setGeneric("sz", function(x) standardGeneric("sz"))\nsetMethod("sz", "numeric", function(x) x * 3)\nr <- sz(4)\nr', '4@r', 'setGeneric("sz", function(x) standardGeneric("sz"))\nsetMethod("sz", "numeric", function(x) x * 3)\nr <- sz(4)\nr', '[1] "sz"\n[1] 12');
+		/* `setReplaceMethod` is `setMethod` for the `<-` generic */
+		s4Case('a replace method keeps its registration', 'setClass("S", representation(a = "numeric"))\nsetGeneric("inc<-", function(o, value) standardGeneric("inc<-"))\nsetReplaceMethod("inc", "S", function(o, value) {\n  o@a <- o@a + value\n  o\n})\ns <- new("S", a = 1)\ninc(s) <- 5\nr <- s@a\nprint(r)', '10@r', 'setClass("S", representation(a = "numeric"))\nsetGeneric("inc<-", function(o, value) standardGeneric("inc<-"))\nsetReplaceMethod("inc", "S", function(o, value) {\n  o@a <- o@a + value\n  o\n})\ns <- new("S", a = 1)\ninc(s) <- 5\nr <- s@a\nr', '[1] "inc<-"\n[1] 6');
 		/* `callNextMethod` reaches the method of the superclass, which the chain of generic reads keeps */
 		s4Case('call-next-method keeps the inherited method', 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("f", function(o) standardGeneric("f"))\nsetMethod("f", "A", function(o) o@x)\nsetMethod("f", "B", function(o) callNextMethod() + 1)\nr <- f(new("B", x = 10))\nr', '7@r', 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("f", function(o) standardGeneric("f"))\nsetMethod("f", "A", function(o) o@x)\nsetMethod("f", "B", function(o) callNextMethod() + 1)\nr <- f(new("B", x = 10))\nr', '[1] "f"\n[1] 11');
 		/* `setValidity` changes what `new` does with the class, so it is kept, and it keeps the declaration in turn */
@@ -253,6 +263,9 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 			delayedCase('using delayed-assign keeps the bindings the force may see', 'x <- 4\ndelayedAssign("y", x)\nx <- 5;\ny', '4@y', 'x <- 4\ndelayedAssign("y", x)\nx <- 5\ny', '[1] 5');
 			delayedCase('the delayed expression drags in what it reads', 'z <- 1\ndelayedAssign("d", z * 2)\nv <- d\nv', '4@v', 'z <- 1\ndelayedAssign("d", z * 2)\nv <- d\nv', '[1] 2');
 			delayedCase('the force decides which binding is read', 'z <- 1\ndelayedAssign("d", z)\nz <- 10\nv <- d\nv', '5@v', 'z <- 1\ndelayedAssign("d", z)\nz <- 10\nv <- d\nv', '[1] 10');
+			/* the writes of the delayed expression happen at the force, a read before it sees the old value (checked against R) */
+			delayedCase('the promise is bound in assign.env', 'x <- 1\ne <- new.env()\ndelayedAssign("p", x, assign.env = e)\nx <- 5\nprint(get("p", e))', '5@print', 'x <- 1\ne <- new.env()\ndelayedAssign("p", x, assign.env = e)\nx <- 5\nprint(get("p", e))', '[1] 5');
+			delayedCase('a read before the force misses what the promise writes', 'x <- 1\ndelayedAssign("p", {x <- 2; 3})\nprint(x)\ny <- p', '3@print', 'x <- 1\nprint(x)', '[1] 1');
 			/* control: an expression without free variables must not pull anything along */
 			delayedCase('a closed delayed expression drags in nothing', 'q <- 99\ndelayedAssign("d", 1 + 2)\nv <- d\nv', '4@v', 'delayedAssign("d", 1 + 2)\nv <- d\nv', '[1] 3');
 		});
@@ -530,10 +543,12 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			}
 			optionCase('An option does not affect unrelated values', 'options(digits=2)\ny <- 3\nz <- y', '3@z', 'y <- 3\nz <- y');
 			optionCase('An option set later does not matter', 'y <- 3\noptions(digits=2)\nz <- y', '3@z', 'y <- 3\nz <- y');
+			// @signature built-in-options
 			optionCase('Printing reads the printing options', 'options(digits=2)\ny <- 3\nprint(y)', '3@print', 'options(digits=2)\ny <- 3\nprint(y)');
 			optionCase('Cat and format read the printing options', 'options(scipen=100)\noptions(foo=1)\ncat(format(1e10))', '3@cat', 'options(scipen=100)\ncat(format(1e10))');
 			optionCase('Printing a plain value ignores unrelated options', 'options(foo=2)\nprint(3)', '2@print', 'print(3)');
 			optionCase('An overwritten option is dropped', 'options(digits=2)\noptions(digits=4)\nprint(1)', '3@print', 'options(digits=4)\nprint(1)');
+			// @signature built-in-options
 			optionCase('getOption reads the option it names', 'options(foo=2)\noptions(bar=3)\nx <- getOption("foo")', '3@x', 'options(foo=2)\nx <- getOption("foo")');
 			optionCase('getOption with a default', 'options(foo=2)\noptions(bar=3)\nx <- getOption("bar", 1)', '3@x', 'options(bar=3)\nx <- getOption("bar", 1)');
 			optionCase('getOption resolves the name', 'options(foo=2)\noptions(bar=3)\nk <- "bar"\nx <- getOption(k)', '4@x', 'options(bar=3)\nk <- "bar"\nx <- getOption(k)');
@@ -615,6 +630,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			sliceCase('do.call binding a name', 'do.call("assign", list("w", 6))\nr <- w', '2@r', 'do.call("assign", list("w", 6))\nr <- w');
 			/* a call in an evaluated capture reads the function it names */
 			sliceCase('evalq of a call', 'f <- function() x <<- 2\nevalq(f())\ny <- x', '3@y', 'f <- function() x <<- 2\nevalq(f())\ny <- x');
+			sliceCase('evalq sees the bindings of its call site', 'x <- 1\nf <- function() x\nr <- evalq(f())\nx <- 2\nprint(r)', '5@r', 'x <- 1\nf <- function() x\nr <- evalq(f())\nr');
 			sliceCase('eval of a stored call', 'f <- function() x <<- 2\ne <- quote(f())\neval(e)\ny <- x', '4@y', 'f <- function() x <<- 2\ne <- quote(f())\neval(e)\ny <- x');
 			sliceCase('evalq of a call setting options', 'f <- function() options(k=2)\nevalq(f())\ny <- getOption("k")', '3@y', 'f <- function() options(k=2)\nevalq(f())\ny <- getOption("k")');
 		});

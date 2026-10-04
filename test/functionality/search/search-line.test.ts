@@ -3,7 +3,7 @@ import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-builder';
 import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
-import { FlowrFilter } from '../../../src/search/flowr-search-filters';
+import { FlowrFilter, FlowrFilterCombinator } from '../../../src/search/flowr-search-filters';
 import { type CfgInformationArguments, Enrichment } from '../../../src/search/search-executor/search-enrichers';
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -131,6 +131,14 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('closes a device', parser, code, ['3@dev.off'], carrying(SemanticCallTag.Closes));
 			assertSearch('sets ambient state', parser, code, ['4@setwd'], carrying(CallProp.Configures));
 			assertSearch('any of several properties', parser, code, ['3@dev.off', '4@setwd'], carrying([SemanticCallTag.Closes, CallProp.Configures]));
+			/* what a call does to a package, so loading without attaching or merely checking can be told apart */
+			const loaders = 'library(a)\nrequire(b)\nrequireNamespace("c")\nloadNamespace("d")\nattachNamespace("e")\nfind.package("f")';
+			const tag = (props: PropSelector) => ({ name: FlowrFilter.CallProps, args: { props } }) as const;
+			assertSearch('attaches a package', parser, loaders, ['1@library', '2@require', '5@attachNamespace'], carrying(SemanticCallTag.AttachesPackage));
+			assertSearch('loads a package without attaching it', parser, loaders, ['3@requireNamespace', '4@loadNamespace'],
+				Q.all().filter(FlowrFilterCombinator.and(tag(SemanticCallTag.LoadsPackage), FlowrFilterCombinator.not(tag(SemanticCallTag.AttachesPackage)))));
+			assertSearch('only checks for a package', parser, loaders, ['6@find.package'],
+				Q.all().filter(FlowrFilterCombinator.and(tag(SemanticCallTag.ChecksPackage), FlowrFilterCombinator.not(tag(SemanticCallTag.LoadsPackage)))));
 			assertSearch('every one of them', parser, code, ['3@dev.off'], carrying([SemanticCallTag.Closes, SemanticCallTag.Graphics], 'every'));
 			/* a definition in the analyzed code shadows the built-in, so the call is no longer the one we labelled */
 			assertSearch('a shadowed built-in states nothing', parser, 'readline <- function(...) "x"\nreadline("give: ")', [], carrying(SemanticCallTag.User));

@@ -74,7 +74,7 @@ type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : n
  */
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: DistributiveOmit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
@@ -95,7 +95,7 @@ export function assertLinter<Name extends LintingRuleNames>(
  */
 export function assertLinterWithIds<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[] | ((df: DataflowInformation, ast: NormalizedAst) => (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[]),
@@ -118,7 +118,7 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
  */
 function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Result[] | ((df: DataflowInformation, ast: NormalizedAst) => Result[]),
@@ -132,8 +132,10 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 			.setInput({
 				getId: deterministicCountingIdGenerator(0)
 			})
-			.setParser(parser)
 			.configure('solver.resolveSource.dropPaths', DropPathsOption.All), assumed);
+		if(parser !== undefined) {
+			builder = builder.setParser(parser);
+		}
 		// swap in a controlled signature database (or none) so tests do not depend on the bundled collection
 		if(lintingRuleConfig?.sigDb !== undefined) {
 			builder = builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(lintingRuleConfig.sigDb));

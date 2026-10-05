@@ -21,6 +21,7 @@ import { SYNTACTICALLY_VALID } from './rules/syntactically-valid';
 import { UNCLOSED_CONNECTION } from './rules/unclosed-connection';
 import { UNESCAPED_ARGUMENTS } from './rules/unescaped-arguments';
 import { NAMESPACE_ACCESS } from './rules/namespace-access';
+import { AUTOLOAD_FILES } from './rules/autoload-files';
 
 /**
  * The registry of currently supported linting rules.
@@ -48,7 +49,8 @@ export const LintingRules = {
 	'syntactically-valid':         SYNTACTICALLY_VALID,
 	'unclosed-connection':         UNCLOSED_CONNECTION,
 	'unescaped-arguments':         UNESCAPED_ARGUMENTS,
-	'namespace-access':            NAMESPACE_ACCESS
+	'namespace-access':            NAMESPACE_ACCESS,
+	'autoload-files':              AUTOLOAD_FILES
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;

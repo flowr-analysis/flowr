@@ -189,7 +189,7 @@ export const UNDEFINED_SYMBOL = {
 					meta.suppressed.installed++;
 					return undefined;
 				}
-				return check(element, id, node.lexeme, undefined, 'variable');
+				return check(element, id, Identifier.getName(node.content), Identifier.getNamespace(node.content), 'variable');
 			}
 			return undefined;
 		}).filter(isNotUndefined);

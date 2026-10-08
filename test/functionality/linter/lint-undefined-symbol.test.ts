@@ -40,6 +40,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('namespace-qualified base function is not flagged', parser, 'stats::sd(x)',
 				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: false });
 
+			assertLinter('namespace-qualified base function is not flagged', parser, 'stats::sd',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+
 			// primitives/internals (`is.na`) and base data constants (`.Machine`) are absent from the sigdb
 			// export list but must still be recognised as defined base-R names (both calls and variable reads)
 			assertLinter('base primitives and constants are not flagged', parser,

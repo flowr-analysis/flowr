@@ -27,6 +27,7 @@ interface BenchStats {
 	tickIndices(n: number, count: number): number[];
 	fitLabels(spans: readonly (readonly [number, number])[]): boolean[];
 	stateChanges(rows: readonly (readonly (number | null)[])[]): number[];
+	withSum<T extends { name: string }>(shown: readonly T[], series: readonly T[], sum: T | null, off: ReadonlySet<string>): { shown: T[], series: T[] };
 	pickColors(names: readonly string[], known: ReadonlyMap<string, number> | null, palette: number,
 		taken?: Iterable<number>): Map<string, number>;
 	mergeInfoSuites(entries: Record<string, unknown[]>): Record<string, unknown[]>;
@@ -51,6 +52,14 @@ describe('Benchmark page helpers', () => {
 		assert.deepStrictEqual(S.rollingMedian([1, 1, 9, 1, 1], 3), [1, 1, 1, 1, 1], 'a spike is smoothed away');
 		assert.deepStrictEqual(S.rollingMedian([1, 2, 3], 1), [1, 2, 3], 'a window of one changes nothing');
 		assert.deepStrictEqual(S.rollingMedian([1, null, 3], 3), [1, null, 3], 'holes stay holes');
+	});
+
+	test('hide the sum line on its own', () => {
+		const a = { name: 'a' }, b = { name: 'b' }, sum = { name: 'sum' };
+		assert.deepStrictEqual(S.withSum([a, b], [a, b], sum, new Set()), { shown: [a, b, sum], series: [a, b, sum] });
+		assert.deepStrictEqual(S.withSum([a, b], [a, b], sum, new Set(['sum'])), { shown: [a, b], series: [a, b, sum] },
+			'a hidden sum is not drawn but stays in the legend');
+		assert.deepStrictEqual(S.withSum([a], [a, b], null, new Set(['b'])), { shown: [a], series: [a, b] }, 'no sum, nothing to add');
 	});
 
 	test('smooth a series without flattening it', () => {

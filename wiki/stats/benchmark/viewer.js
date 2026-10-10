@@ -1427,15 +1427,13 @@
 
 		// the phases add up to the analysis, so their sum is worth a line of its own
 		const sum = sumSeries(group, shown, runs.length);
-		if(sum) {
-			/* what the sum leaves out is still worth a line, only a quieter one than the parts that add up */
-			const inSum = new Set(sum.parts);
-			for(const s of shown) {
-				s.outsideSum = !inSum.has(s.name);
-			}
-			shown = shown.concat(sum);
-			series = series.concat(sum);
+		const sumShown = sum !== null && !off.has(SUM_NAME);
+		/* what the sum leaves out is still worth a line, only a quieter one than the parts that add up */
+		const inSum = new Set(sum?.parts);
+		for(const s of shown) {
+			s.outsideSum = sumShown && !inSum.has(s.name);
 		}
+		({ shown, series } = S.withSum(shown, series, sum, off));
 
 		const fig = document.createElement('figure');
 		const cap = captionHead(group, false);

@@ -112,7 +112,7 @@ describe('Dataflow', withTreeSitter(ts => {
 			'3@i':     [ro('2@i')],
 			'3@x':     [wo('3@x')],
 			'3@[2]x':  [ro('1@x'), ro('3@x')],
-			'5@x':     [ro('1@x'), ro('3@x')],
+			'5@x':     [ro('3@x')],
 			'5@print': [bo(BuiltInProcName.Default, 'print', '5@print')]
 		});
 
@@ -120,7 +120,7 @@ describe('Dataflow', withTreeSitter(ts => {
 			'3@x':    [wo('3@x')],
 			'3@[2]x': [ro('1@x'), ro('4@x')],
 			'4@x':    [wo('4@x')],
-			'6@x':    [ro('1@x'), ro('4@x')]
+			'6@x':    [ro('4@x')]
 		});
 
 		chk('f <- function(x) {\nfunction() x + 2\n}\ng <- f(1)\ng()', {

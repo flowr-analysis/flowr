@@ -92,7 +92,7 @@ x`, emptyGraph()
 
 	assertDataflow(label('Read after for loop with outer def', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
 		.use('14', 'x')
-		.reads('14', ['0', '9'])
+		.reads('14', ['9'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 		.calls('2', NodeId.toBuiltIn('<-'))
 		.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { origin: [BuiltInProcName.Default], returns: [], reads: ['4', '5', NodeId.toBuiltIn(':')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
@@ -116,7 +116,7 @@ x`, emptyGraph()
 		.use('10', 'x', { cds: [{ id: '13', when: true }] })
 		.reads('10', ['9', '0'])
 		.use('14', 'x')
-		.reads('14', ['0', '9'])
+		.reads('14', ['9'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 		.calls('2', NodeId.toBuiltIn('<-'))
 		.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { origin: [BuiltInProcName.Default], returns: [], reads: ['4', '5', NodeId.toBuiltIn(':')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
@@ -147,7 +147,7 @@ x`, emptyGraph()
 		.use('13', 'x', { cds: [{ id: '16', when: true }] })
 		.reads('13', [9])
 		.use('17', 'x')
-		.reads('17', ['0', '12'])
+		.reads('17', ['12'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 		.calls('2', NodeId.toBuiltIn('<-'))
 		.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { origin: [BuiltInProcName.Default], returns: [], reads: ['4', '5', NodeId.toBuiltIn(':')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
@@ -174,7 +174,7 @@ x`, emptyGraph()
 		.use('6', 'i', { cds: [{ id: '11', when: true }] })
 		.reads('6', ['0', '7'])
 		.use('12', 'i')
-		.reads('12', ['0', '7'])
+		.reads('12', ['7'])
 		.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { origin: [BuiltInProcName.Default], returns: [], reads: ['1', '2', NodeId.toBuiltIn(':')], onlyBuiltIn: true })
 		.calls('3', NodeId.toBuiltIn(':'))
 		.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { origin: [BuiltInProcName.Assignment], returns: ['7'], reads: [NodeId.toBuiltIn('<-'), 8], onlyBuiltIn: true, cds: [{ id: '11', when: true }] })
@@ -190,6 +190,34 @@ x`, emptyGraph()
 		.constant('8')
 		.defineVariable('7', 'i', { definedBy: ['8', '9'], cds: [{ id: '11', when: true }] })
 	);
+
+	describe('Loops that certainly run', () => {
+		const caps = ['name-normal', 'for-loop', 'numbers', 'newlines'] as const;
+		const options = { resolveIdsAsCriterion: true, expectIsSubgraph: true } as const;
+		/* the body overwrites x at least once, so the definition before the loop is dead */
+		for(const vector of ['1:3', '1:n', 'n:1', '5', 'c(1, 2)', '"a"', 'letters']) {
+			assertDataflow(label(`over ${vector}`, [...caps]), shell, `x <- 1\nfor(i in ${vector}) x <- 2\nx`,
+				emptyGraph().use('3@x').reads('3@x', '2@x'),
+				{ ...options, mustNotHaveEdges: [['3@x', '1@x']] }
+			);
+		}
+		/* the body may not run at all, or not reach the definition in its first iteration */
+		for(const [name, code] of [
+			['unknown vector', 'for(i in v) x <- 2'],
+			['empty vector', 'for(i in c()) x <- 2'],
+			['NULL', 'for(i in NULL) x <- 2'],
+			['range of unknowns (both may be empty factors)', 'for(i in u:v) x <- 2'],
+			['break before the definition', 'for(i in 1:3) { if(u) break; x <- 2 }'],
+			['next before the definition', 'for(i in 1:3) { if(u) next; x <- 2 }'],
+			['conditional definition', 'for(i in 1:3) if(u) x <- 2'],
+			['redefined colon', '`:` <- function(a, b) NULL; for(i in 1:3) x <- 2']
+		] as const) {
+			assertDataflow(label(`maybe: ${name}`, [...caps]), shell, `x <- 1\n${code}\nx`,
+				emptyGraph().use('3@x').reads('3@x', '1@x'),
+				options
+			);
+		}
+	});
 
 	describe('Branch coverage', () => {
 		describe('repeat', () => {

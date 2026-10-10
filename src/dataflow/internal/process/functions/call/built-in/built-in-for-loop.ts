@@ -27,7 +27,55 @@ import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-ki
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
+import type { Value } from '../../../../../eval/values/r-value';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { DfgVertex } from '../../../../../graph/vertex';
 
+
+/** a value R iterates over at least once, `NULL` and empty vectors are the ones it does not */
+function hasElement(value: Value): boolean {
+	switch(value.type) {
+		case 'interval':
+		case 'number':
+		case 'string':
+		case 'logical':
+			return true;
+		case 'vector':
+			return Array.isArray(value.elements) && value.elements.length > 0;
+		default:
+			return false;
+	}
+}
+
+/** whether the node certainly holds a value and every value it may hold satisfies `holds` */
+function alwaysHolds<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, holds: (value: Value) => boolean): boolean {
+	const values = NodeValue.setOf(node.info.id, data)?.elements;
+	return values !== undefined && values.length > 0 && values.every(holds);
+}
+
+/** `a:b` always has an element or fails, unless both sides are factors, which a plain value is not */
+function isNonEmptyRange<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>, entry: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	if(!RBinaryOp.is(vector) || vector.operator !== ':') {
+		return false;
+	}
+	const call = entry.graph.getVertex(vector.info.id);
+	if(!DfgVertex.isFunctionCall(call) || !call.origin.includes(BuiltInProcName.Default)) {
+		return false;
+	}
+	return [vector.lhs, vector.rhs].some(side => alwaysHolds(side, data, v => v.type !== 'vector' && hasElement(v)));
+}
+
+/** whether a for-loop over `vector` certainly runs its body at least once */
+function iteratesAtLeastOnce<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>, entry: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	return isNonEmptyRange(vector, entry, data) || alwaysHolds(vector, data, hasElement);
+}
+
+/** a `break` or `next` may cut the first iteration short */
+function mayCutIterationShort(body: DataflowInformation): boolean {
+	return body.exitPoints.some(e => e.type === ExitPointType.Break || e.type === ExitPointType.Next);
+}
 
 /**
  * Processes a for-loop call: `for(<variable> in <vector>) <body>`
@@ -59,6 +107,8 @@ export function processForLoop<OtherInfo>(
 		return vector;
 	}
 
+	/* resolved before the loop variable is bound, as it may share the name of what the vector reads */
+	const nonEmpty = iteratesAtLeastOnce(vectorArg, vector, data);
 	const variable = processDataflowFor(variableArg, data);
 	// this should not be able to exit always!
 
@@ -80,7 +130,6 @@ export function processForLoop<OtherInfo>(
 
 	const body = processDataflowFor(bodyArg, data);
 
-	const outEnvironment = appendEnvironment(headEnvironments, body.environment);
 	const cd = [{ id: name.info.id, when: true }];
 
 
@@ -98,7 +147,11 @@ export function processForLoop<OtherInfo>(
 		nextGraph.setDefinitionOfVertex(write, [vector.entryPoint]);
 	}
 
-	applyCdToReferences(body.out, cd);
+	const once = nonEmpty && !mayCutIterationShort(body);
+	/* a body that certainly runs defines as definitely as the code around the loop */
+	if(!once) {
+		applyCdToReferences(body.out, cd);
+	}
 	const outgoing = variable.out.concat(writtenVariable, body.out);
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
@@ -132,9 +185,9 @@ export function processForLoop<OtherInfo>(
 	ControlFlow.jumpsTo(nextGraph, body, ExitPointType.Next, variableEntry);
 	ControlFlow.jumpsTo(nextGraph, body, ExitPointType.Break, rootId);
 
-	// the body may never execute, so a removal within it only happens maybe; apply it as the merge cannot represent it
-	const loopKill = body.kill?.length ? makeKillsMaybe(body.kill, cd) : undefined;
-	const loopEnvironment = appendEnvironment(origEnv, outEnvironment);
+	// unless the body certainly runs, a removal within it only happens maybe; apply it as the merge cannot represent it
+	const loopKill = body.kill?.length ? (once ? body.kill : makeKillsMaybe(body.kill, cd)) : undefined;
+	const loopEnvironment = once ? body.environment : appendEnvironment(origEnv, appendEnvironment(headEnvironments, body.environment));
 
 	return {
 		unknownReferences: [],
@@ -146,7 +199,6 @@ export function processForLoop<OtherInfo>(
 		cfgEntry:          ControlFlow.entryOf(vector),
 		cfgExit:           rootId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
-		// if we can not be sure that the for-loop runs once, we have to merge back the original environment, as the body may never execute
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
 		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
 		kill:              loopKill,

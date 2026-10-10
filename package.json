@@ -36,6 +36,7 @@
     "sigdb:remote": "ts-node --transpile-only scripts/sigdb-remote.ts",
     "sigdb:sync": "ts-node --transpile-only scripts/sigdb-sync.ts",
     "sigdb:publish": "ts-node scripts/publish-sigdb.ts",
+    "preview:playground": "ts-node --transpile-only scripts/gen-playground.ts && ts-node --transpile-only scripts/serve-wiki.ts playground/",
     "wiki": "ts-node src/cli/wiki.ts",
     "wiki:watch": "node -r ts-node/register --watch src/cli/wiki.ts --keep-alive",
     "doc": "node --max-old-space-size=8192 node_modules/typedoc/dist/cli.js",

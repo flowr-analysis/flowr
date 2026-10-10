@@ -402,8 +402,13 @@ function qualifyInBackground(graph: DataflowGraph): void {
 			Dataflow.qualify(calls[next], graph, false);
 		}
 		if(next < calls.length) {
-			setTimeout(step, 0).unref();
+			later(step);
 		}
 	};
-	setTimeout(step, 0).unref();
+	later(step);
+}
+
+/** an unreferenced timer where there are such (node), a plain one elsewhere (the browser returns a number) */
+function later(step: () => void): void {
+	(setTimeout(step, 0) as { unref?: () => void }).unref?.();
 }

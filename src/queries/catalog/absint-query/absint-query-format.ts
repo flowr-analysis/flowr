@@ -84,7 +84,7 @@ function absintQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 }
 
 function absintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'absint'> {
-	const type = line[0].toLowerCase();
+	const type = (line[0] ?? '').toLowerCase();
 
 	if(!Record.has(AbsintQueryInferences, type)) {
 		output.stderr(output.formatter.format(`Invalid inference type "${type}", must be one of ${Record.keys(AbsintQueryInferences).map(type => `"${type}"`).join(', ')}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));

@@ -106,13 +106,24 @@ describe('Dataflow Plot Dependencies', { concurrent: false }, withShell(shell =>
 	);
 
 	assertDataflow(label('an rm within a loop only maybe removes the variable', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
-		'x <- 1\nfor(i in 1:3) rm(x)\nx',
+		'x <- 1\nfor(i in v) rm(x)\nx',
 		emptyGraph()
 			.use('3@x')
 			.reads('3@x', '1@x'),
 		{
 			resolveIdsAsCriterion: true,
 			expectIsSubgraph:      true
+		}
+	);
+
+	assertDataflow(label('an rm within a loop that certainly runs removes the variable', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
+		'x <- 1\nfor(i in 1:3) rm(x)\nx',
+		emptyGraph()
+			.use('3@x'),
+		{
+			resolveIdsAsCriterion: true,
+			expectIsSubgraph:      true,
+			mustNotHaveEdges:      [['3@x', '1@x']]
 		}
 	);
 

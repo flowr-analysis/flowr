@@ -126,6 +126,12 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 		});
 
+		/* Each absolute path is reported once, even if the script calls several path functions */
+		assertLinter('multiple path functions', parser, 'data <- read.csv("/home/me/data.csv")\nunused <- nrow(data)\nsetwd("/tmp")\nprint(summary(data))', 'absolute-file-paths', [
+			{ certainty: LintingResultCertainty.Certain, filePath: '/home/me/data.csv', loc: [1, 9, 1, 37] },
+			{ certainty: LintingResultCertainty.Certain, filePath: '/tmp', loc: [3, 1, 3, 13] }
+		], { totalConsidered: 7, totalUnknown: 1 });
+
 		describe('path functions', () => {
 			describe.each(['read.csv', 'source', 'png'])('%s', fn => {
 				describe('relative paths', () => {

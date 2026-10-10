@@ -727,10 +727,18 @@
 		return 'flat';
 	}
 
+	/** the sum always keeps its legend entry so it can be switched back on, but it is only drawn while it is not hidden */
+	function withSum(shown, series, sum, off) {
+		if(!sum) {
+			return { shown, series };
+		}
+		return { shown: off.has(sum.name) ? shown : shown.concat(sum), series: series.concat(sum) };
+	}
+
 	root.BenchStats = {
 		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationScales, calibrationFactors, applyFactors,
 		parseVersion, runLabel, commitTitle, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
-		logTicks, tickIndices, fitLabels, stateChanges, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
+		logTicks, tickIndices, fitLabels, stateChanges, withSum, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};
 })(typeof globalThis === 'undefined' ? this : globalThis);
 

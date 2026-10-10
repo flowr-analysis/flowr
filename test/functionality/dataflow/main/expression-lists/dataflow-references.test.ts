@@ -59,7 +59,8 @@ describe('References of an Expression List', withTreeSitter(parser => {
 		assertReferences('definition in every branch', 'if(c) x <- 1 else x <- 2\ny <- x', { in: ['c'], out: ['x', 'y'] });
 		assertReferences('definition in every nested branch', 'if(c) { if(d) x <- 1 else x <- 2 } else x <- 3\ny <- x', { in: ['c', 'd'], out: ['x', 'y'] });
 		assertReferences('conditional redefinition', 'x <- 1\nif(c) x <- 2\ny <- x', { in: ['c'], out: ['x', 'y'] });
-		assertReferences('definition within a loop', 'for(i in 1:2) x <- 1\ny <- x', { in: ['x'], out: ['i', 'x', 'y'] });
+		assertReferences('definition within a loop', 'for(i in v) x <- 1\ny <- x', { in: ['v', 'x'], out: ['i', 'x', 'y'] });
+		assertReferences('definition within a loop that certainly runs', 'for(i in 1:2) x <- 1\ny <- x', { out: ['i', 'x', 'y'] });
 		assertReferences('redefinition within a loop', 'x <- 1\nwhile(c) x <- 2\ny <- x', { in: ['c'], out: ['x', 'y'] });
 	});
 
@@ -118,7 +119,8 @@ describe('References of an Expression List', withTreeSitter(parser => {
 		assertReferences('tryCatch finally', 'tryCatch({ x <- 1 }, finally = { w <- 2 })\ny <- x\nv <- w', { out: ['v', 'w', 'x', 'y'] });
 		assertReferences('local scope', 'local({ x <- 1 })\ny <- x', { in: ['x'], out: ['y'] });
 		assertReferences('local super assignment', 'local({ x <<- 1 })\ny <- x', { out: ['x', 'y'] });
-		assertReferences('loop variable', 'for(i in 1:3) x <- i\ny <- x', { in: ['x'], out: ['i', 'x', 'y'] });
+		assertReferences('loop variable', 'for(i in v) x <- i\ny <- x', { in: ['v', 'x'], out: ['i', 'x', 'y'] });
+		assertReferences('loop variable of a loop that certainly runs', 'for(i in 1:3) x <- i\ny <- x', { out: ['i', 'x', 'y'] });
 		assertReferences('loop variable redefined in the body', 'for(i in 1:10) { i; i <- 12 }\ni', { out: ['i'] });
 	});
 }));

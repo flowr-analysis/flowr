@@ -10,6 +10,7 @@ import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
 import { rSourceUrl, helpPageUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
 import { template, writePage, committedNote } from './html-page';
+import { webRManifest, WebRBase, WebRVersion } from './playground/webr-pin';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier } from '../src/dataflow/environments/identifier';
@@ -190,6 +191,18 @@ async function main(): Promise<void> {
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `
 		+ `${Math.round(exports.length / 1024)} kB of package exports${committedNote(Target)})`);
+	/* without the guard the page refuses to run R, it never runs a webR it cannot check */
+	const guard = path.join(Target, 'webr-guard.js');
+	fs.rmSync(guard, { force: true });
+	try {
+		const manifest = await webRManifest();
+		fs.writeFileSync(guard, fs.readFileSync(path.join('scripts', 'playground', 'webr-guard.js'), 'utf8')
+			.replace('<!--WEBR-BASE-->', WebRBase)
+			.replace('<!--WEBR-MANIFEST-->', JSON.stringify(manifest)));
+		console.log(`  pinned ${Object.keys(manifest).length} files of webR ${WebRVersion}, verified against its npm signature`);
+	} catch(e) {
+		console.warn(`  could not pin webR, the playground cannot run R: ${e instanceof Error ? e.message : String(e)}`);
+	}
 }
 
 void main();

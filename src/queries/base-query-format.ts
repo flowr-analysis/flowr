@@ -37,14 +37,13 @@ export function filterLineParser<T extends string>(type: T) {
 export function singleCriterionLineParser<T extends string>(type: T, label: string, extra?: (line: readonly string[]) => Record<string, unknown>) {
 	return function(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<T> {
 		const criterion = sliceCriteriaParser(line[0]);
-		const fields = extra?.(line);
 		if(!criterion || criterion.length !== 1) {
 			output.stderr(output.formatter.format(`Invalid ${label} query format, a single slicing criterion must be given in the form "(criterion1)"`,
 				{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 			return { query: [] };
 		}
 		return {
-			query: [{ type, criterion: criterion[0], ...fields }] as ParsedQueryLine<T>['query'],
+			query: [{ type, criterion: criterion[0], ...extra?.(line) }] as ParsedQueryLine<T>['query'],
 			rCode: queryLineCode(line)
 		};
 	};

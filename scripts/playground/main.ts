@@ -2068,7 +2068,7 @@ function runRepl(line: string): void {
 	/* bare R runs for real, in the R session the run button shares, so a run's leftovers can be inspected */
 	if(!line.trimStart().startsWith(':')) {
 		if(replOut !== null) {
-			void evalInR(line, say, replOut);
+			void evalInR(line, packagesOf, say, replOut);
 		}
 		return;
 	}

@@ -8,8 +8,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
+import { WebRVersion } from './webr-version';
 
-export const WebRVersion = '0.6.0';
+export { WebRVersion };
+
 const Integrity = 'sha512-M2b8m3/ZBk7XMIR7LD97s5k/9jUla83Z0Hl4b+WnrK7XmSMpZdajCiP3XkSzHKHDUgscHKe+lVUvk3aym8q0bw==';
 /* https://registry.npmjs.org/-/npm/v1/keys, the key npm signs packages with */
 const NpmKeyId = 'SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U';

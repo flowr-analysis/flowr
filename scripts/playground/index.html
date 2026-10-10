@@ -201,6 +201,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #runrstate, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
 #runr .via a { color: inherit; text-decoration: underline dotted; }
 #runr .via a:hover { color: var(--accent); }
+#runrtrust { cursor: help; }
+#runrtrust.ok { color: #009e73; }
+#runrtrust.ok::before { content: "\2713\00a0"; }
+#runrtrust.bad { color: #d55e00; }
+#runrtrust.bad::before { content: "\2717\00a0"; }
 #runr.busy #runrstate::before {
 	content: ""; display: inline-block; width: .55rem; height: .55rem; margin-right: .4rem; vertical-align: -.05rem;
 	border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
@@ -594,7 +599,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
 		<section id="runr" hidden aria-live="polite">
-			<div class="head">R output <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a></span> <span id="runrstate"></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
+			<div class="head">R output <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
 			<div class="out" id="runrout"></div>
 			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>

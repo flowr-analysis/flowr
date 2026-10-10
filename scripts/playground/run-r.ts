@@ -3,7 +3,9 @@
  * fetched on the first run: R is about 30 MB and most visits never execute anything. Packages the
  * script loads are fetched from the webR repository right before the run that needs them.
  */
-const WebRUrl = 'https://webr.r-wasm.org/v0.6.0/webr.mjs';
+import { WebRVersion } from './webr-version';
+
+const WebRUrl = `https://webr.r-wasm.org/v${WebRVersion}/webr.mjs`;
 
 /**
  * Installs the service worker that checks every file of webR against the release pinned at build time, and
@@ -49,10 +51,30 @@ interface Session {
 
 let session: Promise<Session> | undefined;
 
-/** rejects once the guard refuses a file of webR, see `webr-guard.js` */
+/** the files of webR the guard let through, each matched the pinned release, see `webr-guard.js` */
+const verified = new Set<string>();
+
+/** what the output card says about the webR it shows, updated as the guard reports */
+function showTrust(refusal?: string): void {
+	const at = document.getElementById('runrtrust');
+	if(at === null) {
+		return;
+	}
+	at.className = refusal !== undefined ? 'bad' : verified.size > 0 ? 'ok' : '';
+	at.textContent = refusal !== undefined ? 'not verified' : verified.size > 0 ? 'signature verified' : '';
+	at.title = refusal ?? (verified.size > 0
+		? `${verified.size} files of webR ${WebRVersion} matched the release signed on npm. R packages from repo.r-wasm.org are not checked.`
+		: '');
+}
+
+/** rejects once the guard refuses a file of webR */
 function refused(): Promise<never> {
-	return new Promise((_, reject) => navigator.serviceWorker.addEventListener('message', (event: MessageEvent<{ webrRefused?: string }>) => {
-		if(event.data.webrRefused !== undefined) {
+	return new Promise((_, reject) => navigator.serviceWorker.addEventListener('message', (event: MessageEvent<{ webrRefused?: string, webrVerified?: string }>) => {
+		if(event.data.webrVerified !== undefined) {
+			verified.add(event.data.webrVerified);
+			showTrust();
+		} else if(event.data.webrRefused !== undefined) {
+			showTrust(event.data.webrRefused);
 			reject(new Error(`${event.data.webrRefused}, so R does not run`));
 		}
 	}));
@@ -73,8 +95,8 @@ function start(): Promise<Session> {
 	return session;
 }
 
-/** finds the packages a piece of R code loads, the page asks flowR's dependencies query */
-let packagesOf: (code: string) => Promise<readonly string[]> = () => Promise.resolve([]);
+/** the packages a piece of R code loads, the page answers with flowR's dependencies query */
+export type PackageFinder = (code: string) => Promise<readonly string[]>;
 
 /** fetches what the script needs and is not there yet, and says which of it webR does not have */
 async function provide(s: Session, wanted: readonly string[], say: (text: string) => void): Promise<readonly string[]> {
@@ -133,11 +155,11 @@ function canvasOf(image: ImageBitmap): HTMLCanvasElement {
 }
 
 /**
- * Evaluates `code` in the one R session of the page, after fetching the packages it loads. With `fresh`, the
+ * Evaluates `code` in the one R session of the page, after fetching the packages `packagesOf` finds in it. With `fresh`, the
  * workspace is emptied first, like a new `Rscript` would have it. Gives up silently once `current` says a newer
  * evaluation took over. Returns whether R said or drew anything.
  */
-async function evaluate(code: string, sink: Sink, plot: PlotSize, fresh: boolean, current: () => boolean): Promise<boolean> {
+async function evaluate(code: string, packagesOf: PackageFinder, sink: Sink, plot: PlotSize, fresh: boolean, current: () => boolean): Promise<boolean> {
 	sink.status(session === undefined ? 'downloading R (about 30 MB, only once)...' : 'running...');
 	const s = await start();
 	for(const p of await provide(s, await packagesOf(code), sink.status)) {
@@ -180,10 +202,10 @@ let repl = 0;
  * Evaluates one line of the repl in the session the run button uses, so what a run left behind can be inspected.
  * `into` is where plots go, `line` prints.
  */
-export async function evalInR(code: string, line: (text: string, cls?: string) => void, into: HTMLElement): Promise<void> {
+export async function evalInR(code: string, packagesOf: PackageFinder, line: (text: string, cls?: string) => void, into: HTMLElement): Promise<void> {
 	const mine = ++repl;
 	try {
-		await evaluate(code, {
+		await evaluate(code, packagesOf, {
 			line,
 			plot: canvas => {
 				into.append(canvas);
@@ -202,10 +224,9 @@ export async function evalInR(code: string, line: (text: string, cls?: string) =
 
 /**
  * Wires the run button and the output card: runs what `code` returns and shows its output and plots.
- * `packages` tells which packages a piece of code loads, so they can be installed before it runs.
+ * `packagesOf` tells which packages a piece of code loads, so they can be installed before it runs.
  */
-export function setupRunR(code: () => string, packages: (code: string) => Promise<readonly string[]>): void {
-	packagesOf = packages;
+export function setupRunR(code: () => string, packagesOf: PackageFinder): void {
 	const go = document.getElementById('runrgo') as HTMLButtonElement | null;
 	const stop = document.getElementById('runrstop') as HTMLButtonElement | null;
 	const close = document.getElementById('runrclose') as HTMLButtonElement | null;
@@ -257,7 +278,7 @@ export function setupRunR(code: () => string, packages: (code: string) => Promis
 		}
 		const begin = performance.now();
 		try {
-			const said = await evaluate(code(), {
+			const said = await evaluate(code(), packagesOf, {
 				line,
 				plot:   canvas => out.append(canvas),
 				status: text => {

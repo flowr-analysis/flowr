@@ -17,9 +17,13 @@ self.addEventListener('fetch', event => {
 	}
 });
 
+function tell(message) {
+	void self.clients.matchAll().then(pages => pages.forEach(page => page.postMessage(message)));
+}
+
 /* webR waits forever for a file its worker could not load, so the page is told why and gives up instead */
 function refuse(file, why) {
-	void self.clients.matchAll().then(pages => pages.forEach(page => page.postMessage({ webrRefused: `webR's ${file} ${why}` })));
+	tell({ webrRefused: `webR's ${file} ${why}` });
 	return new Response(`webR's ${file} ${why}, so it is not used`, { status: 403, headers: { 'Content-Type': 'text/plain' } });
 }
 
@@ -41,5 +45,6 @@ async function verified(file) {
 	if(!response.ok || base64(await crypto.subtle.digest('SHA-256', body)) !== want) {
 		return refuse(file, 'does not match the pinned release');
 	}
+	tell({ webrVerified: file });
 	return new Response(body, { headers: { 'Content-Type': response.headers.get('Content-Type') ?? 'application/octet-stream' } });
 }

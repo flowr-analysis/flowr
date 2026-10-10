@@ -2119,6 +2119,15 @@ draggable(document.getElementById('divider'), '--split', () => 0, at => {
 draggable(document.getElementById('replgrip'), '--repl-height', replBody, (at, from, begun) =>
 	`${Math.round(between(6 * 16, begun + (from.clientY - at.clientY), window.innerHeight * 0.8))}px`);
 
+/* the R output grows downwards, into the analysis below it; past most of the pane the bars under it fold away */
+draggable(document.getElementById('runrgrip'), '--runr-height', () => document.getElementById('runr')?.getBoundingClientRect().height ?? 0, (at, from, begun) => {
+	const right = document.querySelector<HTMLElement>('.right');
+	const room = right?.getBoundingClientRect().height ?? window.innerHeight;
+	const height = between(5 * 16, begun + (at.clientY - from.clientY), room * .9);
+	right?.classList.toggle('squeezed', height > room * .7);
+	return `${Math.round(height)}px`;
+});
+
 /* a link that was shared with a layout opens with it */
 for(const [property, value] of [['--split', shared.split], ['--repl-height', shared.repl]] as const) {
 	if(value !== undefined && /^[\d.]+(%|px)$/.test(value)) {

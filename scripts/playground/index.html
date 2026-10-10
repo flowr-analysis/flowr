@@ -189,7 +189,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .runbtn kbd { font: inherit; font-size: .7rem; font-weight: 400; opacity: .8; }
 /* what R said, above flowR's view of the same script */
 #runr {
-	flex: none; display: flex; flex-direction: column; max-height: 45%;
+	/* until dragged, as tall as what R said, up to under half the pane */
+	flex: none; display: flex; flex-direction: column; height: var(--runr-height, auto); max-height: var(--runr-height, 45%);
 	background: var(--panel); border-bottom: 1px solid var(--border);
 }
 #runr[hidden] { display: none; }
@@ -218,6 +219,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	min-height: 0; overflow: auto; padding: 0 1.2rem .8rem; white-space: pre-wrap; overflow-wrap: anywhere;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
 }
+#runr .out { flex: 1; }
+#runr .grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); border-top: 1px solid var(--border); }
+#runr .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
 #runr .out .note { color: var(--muted); }
 #runr .out .bad { color: #d55e00; }
 #runr .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
@@ -285,6 +289,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
 .right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); }
+/* a tall R output folds the bars under the analysis away rather than growing the page */
+.right { overflow: hidden; }
+.right.squeezed > #pointed, .right.squeezed > #signature, .right.squeezed > #views { display: none; }
 #pointed {
 	display: flex; align-items: baseline; gap: .6rem; flex: none;
 	padding: .5rem 1rem; border-top: 1px solid var(--border); background: var(--panel); min-height: 2.2rem;
@@ -589,6 +596,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 		<section id="runr" hidden aria-live="polite">
 			<div class="head">R output <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a></span> <span id="runrstate"></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
 			<div class="out" id="runrout"></div>
+			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>
 		<div id="panel"></div>
 		<div id="pointed"><span id="pinfo"><span class="pvalue">hover a name for what flowR knows about it, ctrl-click it to jump to its definition</span></span><span id="took"></span></div>

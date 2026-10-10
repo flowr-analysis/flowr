@@ -3,9 +3,23 @@
  * fetched on the first run: R is about 30 MB and most visits never execute anything. Packages the
  * script loads are fetched from the webR repository right before the run that needs them.
  */
-import { baseRPackages } from '../../src/util/r-base-packages';
-
 const WebRUrl = 'https://webr.r-wasm.org/v0.6.0/webr.mjs';
+
+/**
+ * Installs the service worker that checks every file of webR against the release pinned at build time, and
+ * waits until it watches this page. Without it, R does not run: a webR that cannot be checked is not used.
+ */
+async function guard(): Promise<void> {
+	if(!('serviceWorker' in navigator)) {
+		throw new Error('this browser cannot check webR (no service workers), so R does not run here');
+	}
+	const workers = navigator.serviceWorker;
+	await workers.register('webr-guard.js');
+	await workers.ready;
+	if(workers.controller === null) {
+		await new Promise(resolve => workers.addEventListener('controllerchange', resolve, { once: true }));
+	}
+}
 
 /* the few parts of webR the page uses, the package itself is never bundled */
 interface RString {
@@ -35,11 +49,21 @@ interface Session {
 
 let session: Promise<Session> | undefined;
 
+/** rejects once the guard refuses a file of webR, see `webr-guard.js` */
+function refused(): Promise<never> {
+	return new Promise((_, reject) => navigator.serviceWorker.addEventListener('message', (event: MessageEvent<{ webrRefused?: string }>) => {
+		if(event.data.webrRefused !== undefined) {
+			reject(new Error(`${event.data.webrRefused}, so R does not run`));
+		}
+	}));
+}
+
 function start(): Promise<Session> {
 	session ??= (async() => {
+		await guard();
 		const { WebR } = await import(WebRUrl) as { WebR: new () => WebR };
 		const r = new WebR();
-		await r.init();
+		await Promise.race([r.init(), refused()]);
 		return { r, installed: new Set(await r.evalRRaw('.packages(all.available = TRUE)', 'string[]')) };
 	})();
 	/* a failed download should not stick, the next click tries again */
@@ -49,27 +73,11 @@ function start(): Promise<Session> {
 	return session;
 }
 
-const BaseR = new Set(baseRPackages());
-const Loads = /\b(?:library|require|requireNamespace|loadNamespace|install\.packages)\s*\(\s*(?:package\s*=\s*)?["'`]?([A-Za-z][\w.]*)/g;
-const Qualified = /\b([A-Za-z][\w.]*):::?[A-Za-z.`]/g;
-
-/** the packages the script loads or reaches into, as far as one can tell without running it */
-export function packagesOf(code: string): string[] {
-	const found = new Set<string>();
-	for(const line of code.split('\n')) {
-		const live = line.replace(/#.*$/, '');
-		for(const [, pkg] of live.matchAll(Loads)) {
-			found.add(pkg);
-		}
-		for(const [, pkg] of live.matchAll(Qualified)) {
-			found.add(pkg);
-		}
-	}
-	return [...found].filter(p => !BaseR.has(p));
-}
+/** finds the packages a piece of R code loads, the page asks flowR's dependencies query */
+let packagesOf: (code: string) => Promise<readonly string[]> = () => Promise.resolve([]);
 
 /** fetches what the script needs and is not there yet, and says which of it webR does not have */
-async function provide(s: Session, wanted: readonly string[], say: (text: string) => void): Promise<string[]> {
+async function provide(s: Session, wanted: readonly string[], say: (text: string) => void): Promise<readonly string[]> {
 	const missing = wanted.filter(p => !s.installed.has(p));
 	if(missing.length === 0) {
 		return [];
@@ -132,7 +140,7 @@ function canvasOf(image: ImageBitmap): HTMLCanvasElement {
 async function evaluate(code: string, sink: Sink, plot: PlotSize, fresh: boolean, current: () => boolean): Promise<boolean> {
 	sink.status(session === undefined ? 'downloading R (about 30 MB, only once)...' : 'running...');
 	const s = await start();
-	for(const p of await provide(s, packagesOf(code), sink.status)) {
+	for(const p of await provide(s, await packagesOf(code), sink.status)) {
 		sink.line(`${p} is not available for webR, so loading it fails`, 'note');
 	}
 	if(!current()) {
@@ -192,8 +200,12 @@ export async function evalInR(code: string, line: (text: string, cls?: string) =
 	}
 }
 
-/** wires the run button and the output card: runs what `code` returns and shows its output and plots */
-export function setupRunR(code: () => string): void {
+/**
+ * Wires the run button and the output card: runs what `code` returns and shows its output and plots.
+ * `packages` tells which packages a piece of code loads, so they can be installed before it runs.
+ */
+export function setupRunR(code: () => string, packages: (code: string) => Promise<readonly string[]>): void {
+	packagesOf = packages;
 	const go = document.getElementById('runrgo') as HTMLButtonElement | null;
 	const stop = document.getElementById('runrstop') as HTMLButtonElement | null;
 	const close = document.getElementById('runrclose') as HTMLButtonElement | null;

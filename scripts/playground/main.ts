@@ -990,7 +990,13 @@ const editor = new EditorView({
 	],
 	parent: document.getElementById('editor') as HTMLElement
 });
-setupRunR(() => editor.state.doc.toString());
+/** the packages R code loads, outside of base R, as flowR's dependencies query finds them */
+async function packagesOf(code: string): Promise<readonly string[]> {
+	const answer = await (await analyzer(code)).query([{ type: 'dependencies' }] as never) as unknown as { dependencies?: { library?: readonly Dependency[] } };
+	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
+	return [...new Set(found)].filter(p => !BaseRPackages.has(p));
+}
+setupRunR(() => editor.state.doc.toString(), packagesOf);
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
 function markRanges(mark: Mark): readonly ShownRange[] {
@@ -1304,7 +1310,7 @@ function packageSource(): FlowrAnalyzerPackageVersionsSigDbPlugin | undefined {
 const packages = packageSource();
 
 let ready: Promise<void> | undefined;
-async function analyzer() {
+async function analyzer(code = editor.state.doc.toString()) {
 	ready ??= TreeSitterExecutor.initTreeSitter(undefined, rWasm, treeSitterWasm);
 	await ready;
 	const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
@@ -1316,7 +1322,7 @@ async function analyzer() {
 		builder.setConfig(settings);
 	}
 	const built = await builder.build();
-	built.addRequest({ request: 'text', content: editor.state.doc.toString() });
+	built.addRequest({ request: 'text', content: code });
 	return built;
 }
 

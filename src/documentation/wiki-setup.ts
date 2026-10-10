@@ -37,6 +37,7 @@ It can also execute the script with [webR](https://docs.r-wasm.org/webr/latest/)
 Press Run (or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to evaluate the script in a fresh workspace.
 The first run downloads R (about 30 MB), and packages loaded with \`library()\`, \`require()\`, or \`pkg::\` are installed when needed.
 In the repl, lines starting with \`:\` are _flowR_ commands (see \`:help\`), all other lines are evaluated as R in the same session.
+webR is downloaded from its CDN, and the page checks every file against the pinned webR release, whose npm signature and checksum the build verifies. A file that does not match is refused and R does not run.
 R runs inside the browser with its own in-memory file system and cannot call \`system()\`.
 Shared links contain the script and the _flowR_ commands only, never R input for the repl.
 

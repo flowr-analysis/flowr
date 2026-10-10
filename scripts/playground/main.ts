@@ -40,6 +40,7 @@ import treeSitterWasm from '../../node_modules/web-tree-sitter/tree-sitter.wasm'
 import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
 import { blank, el } from '../page-lib/dom';
 import { explain } from '../page-lib/lint-text';
+import { evalInR, setupRunR } from './run-r';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -989,6 +990,7 @@ const editor = new EditorView({
 	],
 	parent: document.getElementById('editor') as HTMLElement
 });
+setupRunR(() => editor.state.doc.toString());
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
 function markRanges(mark: Mark): readonly ShownRange[] {
@@ -1968,7 +1970,7 @@ const replIn = document.getElementById('replin') as HTMLInputElement | null;
 /** commands like `:dataflow*` answer with a url, and a url one cannot click is a url one has to select */
 const Url = /(https?:\/\/\S+)/g;
 
-function say(text: string, how?: 'said' | 'bad'): void {
+function say(text: string, how?: string): void {
 	if(replOut === null || text.length === 0) {
 		return;
 	}
@@ -2057,17 +2059,22 @@ function runRepl(line: string): void {
 		say(refused, 'bad');
 		return;
 	}
-	/* only the commands travel: bare R is not evaluated here, and a link is not a place for a program */
-	if(line.trimStart().startsWith(':')) {
-		replSaid = [...replSaid.filter(other => other !== line), line].slice(-MaxSharedCommands);
-		remember();
+	/* bare R runs for real, in the R session the run button shares, so a run's leftovers can be inspected */
+	if(!line.trimStart().startsWith(':')) {
+		if(replOut !== null) {
+			void evalInR(line, say, replOut);
+		}
+		return;
 	}
+	/* only the commands travel, a link is not a place for a program */
+	replSaid = [...replSaid.filter(other => other !== line), line].slice(-MaxSharedCommands);
+	remember();
 	void analyzer()
-		/* no R session in a browser, so `allowRSessionAccess` is off and bare R stays unevaluated */
 		.then(built => replProcessAnswer(built, replSink, line, false))
 		.catch((e: unknown) => say(String(e), 'bad'));
 }
 say('flowR\'s repl, over whatever the editor holds. :help lists what it knows, tab completes.');
+say('Plain R runs in your browser with webR, in the session Run uses, so after a run its variables are here.', 'note');
 /* a link that carried commands opens on their answers, which is what it was sent for */
 if(replSaid.length > 0) {
 	(document.getElementById('repl') as HTMLDetailsElement | null)?.setAttribute('open', '');

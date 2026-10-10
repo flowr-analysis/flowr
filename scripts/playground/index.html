@@ -54,8 +54,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .top .controls { display: inline-flex; align-items: center; gap: .3rem; flex: none; }
 /* a narrow window has no room for the aside, and the links matter more */
 @media (max-width: 68rem) { .top .note { display: none; } }
-/* a phone fits one row of names: the links move under them rather than breaking the row in two */
-@media (max-width: 46rem) {
+/* below this, names, links, and controls no longer share a row: the links move under them rather than breaking the row in two */
+@media (max-width: 56rem) {
 	.top .grow { display: none; }
 	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
 	.top .links { order: 3; flex-basis: 100%; margin-left: -.4rem; gap: .15rem; }
@@ -166,6 +166,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #repl .said { color: var(--accent); }
 #repl .out a { color: var(--accent); }
 #repl .bad { color: #d55e00; }
+#repl .note { color: var(--muted); }
+#repl .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
 #repl .ask { display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
 #repl .ask span { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 #repl input {
@@ -174,6 +176,51 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border: 1px solid var(--border); border-radius: .3rem; background: var(--bg);
 }
 #repl input:focus { outline: none; border-color: var(--accent); }
+/* running the script is the one primary action of the editor, so it gets the one filled button */
+.runbtn {
+	display: inline-flex; align-items: center; gap: .35rem; margin: 0 0 .3rem .5rem; padding: .25rem .8rem;
+	font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+	border: 1px solid var(--accent); border-radius: 1rem; background: var(--accent); color: var(--accent-fg);
+}
+.runbtn:hover { filter: brightness(1.1); }
+.runbtn:disabled { opacity: .6; cursor: progress; }
+.runbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.runbtn svg { width: .7rem; height: .7rem; fill: currentColor; }
+.runbtn kbd { font: inherit; font-size: .7rem; font-weight: 400; opacity: .8; }
+/* what R said, above flowR's view of the same script */
+#runr {
+	flex: none; display: flex; flex-direction: column; max-height: 45%;
+	background: var(--panel); border-bottom: 1px solid var(--border);
+}
+#runr[hidden] { display: none; }
+#runr .head {
+	display: flex; align-items: center; gap: .5rem; padding: .5rem 1.2rem .3rem;
+	font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+#runrstate, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
+#runr .via a { color: inherit; text-decoration: underline dotted; }
+#runr .via a:hover { color: var(--accent); }
+#runr.busy #runrstate::before {
+	content: ""; display: inline-block; width: .55rem; height: .55rem; margin-right: .4rem; vertical-align: -.05rem;
+	border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #runr.busy #runrstate::before { animation: none; } }
+@media (max-width: 46rem), (hover: none) { .runbtn kbd { display: none; } }
+#runr .head button {
+	font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0; cursor: pointer; padding: .05rem .55rem;
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+}
+#runr .head button:hover { color: var(--accent); border-color: var(--accent); }
+#runrstop { margin-left: auto; }
+#runrstop[hidden] + #runrclose { margin-left: auto; }
+#runr .out {
+	min-height: 0; overflow: auto; padding: 0 1.2rem .8rem; white-space: pre-wrap; overflow-wrap: anywhere;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+}
+#runr .out .note { color: var(--muted); }
+#runr .out .bad { color: #d55e00; }
+#runr .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
 /* a call by name, which the R mode leaves plain: weight rather than colour */
 .cm-call { color: var(--fg); font-weight: 600; }
 /* what the linter marks, and what flowR can say about a name */
@@ -524,20 +571,25 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 			<span class="tabnote" id="confignote"></span>
 			<button type="button" class="tabreset" id="configreset" hidden>reset</button>
 			<a class="tabhelp" id="confighelp" href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" target="_blank" rel="noopener" hidden>what these options do</a>
+			<button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0.5v9l8-4.5z"/></svg>Run<kbd>ctrl+enter</kbd></button>
 		</div>
 		<div id="editor"></div>
 		<div id="config" hidden></div>
 		<details class="drawer" id="repl">
-	<summary data-mark="repl"><span class="label">flowR repl</span><span class="what" title="every command the repl carries, over the script above; :help lists them">every command the repl carries, over the script above; <code>:help</code> lists them</span></summary>
+	<summary data-mark="repl"><span class="label">flowR repl</span><span class="what" title="flowR commands start with a colon, :help lists them; plain R runs in your browser with webR">flowR commands (<code>:help</code>) over the script above, plain R runs with webR</span></summary>
 	<div class="body">
 		<div class="grip" id="replgrip" role="separator" aria-label="Drag to resize the repl" title="drag to resize"></div>
 		<pre class="out" id="replout"></pre>
-		<div class="ask"><span>R&gt;</span><input id="replin" type="text" spellcheck="false" autocomplete="off" aria-label="a flowR repl command, :help lists them"></div>
+		<div class="ask"><span>R&gt;</span><input id="replin" type="text" spellcheck="false" autocomplete="off" aria-label="a flowR command (:help lists them) or R code"></div>
 	</div>
 </details>
 	</div>
 	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
+		<section id="runr" hidden aria-live="polite">
+			<div class="head">R output <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a></span> <span id="runrstate"></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
+			<div class="out" id="runrout"></div>
+		</section>
 		<div id="panel"></div>
 		<div id="pointed"><span id="pinfo"><span class="pvalue">hover a name for what flowR knows about it, ctrl-click it to jump to its definition</span></span><span id="took"></span></div>
 		<div id="signature" hidden></div>

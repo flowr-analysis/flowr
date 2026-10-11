@@ -52,6 +52,7 @@
     "test:coverage": "npm run test -- --coverage",
     "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
+    "test:yields": "vitest --config test/yields/vitest.config.mts",
     "test:mutations": "vitest --config test/mutations/vitest.config.mts",
     "test:bench": "vitest bench --config test/vitest.config.mts",
     "test:performance": "func() { cd test/performance/ && bash run-all-suites.sh \"$@\"; }; func",

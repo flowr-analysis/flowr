@@ -27,9 +27,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('only the undefined call is flagged', parser, 'g <- function() 1\ng()\nh()',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'h', kind: 'function', loc: [3, 1, 3, 3] }]);
 
-			// an unresolved library could export the symbol, so the finding is kept but marked low-confidence
-			assertLinter('flagged low-confidence when an unknown library is loaded', parser, 'library(somePkg)\nfoo()',
-				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'foo', kind: 'function', loc: [2, 1, 2, 5], mayBeProvidedByUnresolvedLibrary: true }]);
+			// an unresolved library could export any bare name, so nothing is guessed
+			assertLinter('not flagged when an unknown library is loaded', parser, 'library(somePkg)\nfoo()', 'undefined-symbol', []);
+			assertLinter('a namespaced name is still checked', parser, 'library(somePkg)\nfoo()\nbase::fooo()', 'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'fooo', kind: 'function', loc: [3, 1, 3, 12] }]);
 		});
 
 		describe('base R packages resolve via the package database', () => {

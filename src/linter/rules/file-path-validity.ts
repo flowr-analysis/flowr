@@ -3,11 +3,13 @@ import type { MergeableRecord } from '../../util/objects';
 import { isUrl, fileUrlToPath } from '../../util/text/strings';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
+import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import { Identifier } from '../../dataflow/environments/identifier';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
@@ -80,9 +82,12 @@ export const FILE_PATH_VALIDITY = {
 		const dfg = (await data.dataflow()).graph;
 		const resolveSource = data.flowrConfig.solver.resolveSource;
 		const wdRootsFor = WorkingDirectory.rootsResolver(dfg, cfg, ctx);
+		/* `data("x")` names a data set, not a file */
+		const namesOnly = new Set(readFunctions(ctx).concat(config.additionalReadFunctions).filter(f => f.resolveValue === 'library').map(f => f.name));
 		const findings = await Promise.all(elements.getElements().map(async element => {
 			const matchingRead = results.read.find(r => r.nodeId === element.node.info.id);
-			if(!matchingRead || matchingRead.nodeId === undefined) {
+			/* data built from constants, like `matrix(1:6, 2)`, reads no file */
+			if(!matchingRead || matchingRead.nodeId === undefined || matchingRead.value === Constant || namesOnly.has(Identifier.getName(matchingRead.functionName))) {
 				return [];
 			}
 			metadata.totalReads++;

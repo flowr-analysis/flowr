@@ -245,7 +245,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 			if(!foundValues) {
 				if(info.ignoreIf === 'arg-missing') {
 					continue;
-				} else if(ignoreOnArgVal()) {
+				} else if(ignoreOnArgVal() || ignoreOnArgSet()) {
 					continue;
 				}
 				const record = compactRecord({

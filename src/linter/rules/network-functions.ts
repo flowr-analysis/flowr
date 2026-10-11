@@ -80,7 +80,8 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 		const address = params === undefined ? undefined : addressParam(params);
 		return {
 			name,
-			...(address === undefined ? {} : { info: { argIdx: address.index, argName: address.name, resolveValue: true } }),
+			/* a parameter after `...` binds by name alone, as with `cat(..., file)` */
+			...(address === undefined ? {} : { info: { argIdx: index.get(name)?.sig?.slice(0, address.index).some(([n]) => n === '...') ? undefined : address.index, argName: address.name, resolveValue: true } }),
 			onlyTriggerWithArgument: UrlPattern
 		};
 	});

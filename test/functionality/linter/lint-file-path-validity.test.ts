@@ -16,6 +16,11 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		/* As the script contains no file paths, we expect no issues */
 		assertLinter('none', parser, 'cat("hello")', 'file-path-validity', [], { totalReads: 0, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
+		assertLinter('a data set name is no file', parser, 'data("rat")', 'file-path-validity', []);
+		assertLinter('a named argument is no positional file, the piped one is', parser, 'library(magrittr)\n"a.csv" %>% read.csv(stringsAsFactors = FALSE)', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Certain, filePath: 'a.csv', loc: [2, 13, 2, 46] }
+		]);
+		assertLinter('data built from constants reads no file', parser, 'm <- matrix(1:6, nrow = 2)\nt(m) %*% m', 'file-path-validity', []);
 		/* Assuming, that `file.csv` exists, we expect the linter to not report any issues, but to report an invalid file path for `file-missing.csv` */
 		assertLinter('simple', parser, 'cat("hello")\nread.csv("file.csv")\nread.csv("file-missing.csv")', 'file-path-validity', [
 			{ certainty: LintingResultCertainty.Certain, filePath: 'file-missing.csv', loc: [3, 1, 3, 28] }

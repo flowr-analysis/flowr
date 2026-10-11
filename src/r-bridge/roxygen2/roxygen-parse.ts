@@ -3,7 +3,6 @@ import { isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
 import type { RNode } from '../lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
 import { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
-import { isNotUndefined } from '../../util/assert';
 import { splitAtEscapeSensitive } from '../../util/text/args';
 import { SourceRange } from '../../util/range';
 
@@ -33,9 +32,10 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap?: AstIdMap): RoxygenBlock | undefined {
 	let comments: RComment<ParentInformation>[] | undefined;
 	let cur: RNode<ParentInformation> | undefined = node;
+	/* only `#'` comments document, and the root of a file holds what belongs to no statement in particular */
 	do{
-		comments = cur?.info.adToks
-			?.filter(RComment.is).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
+		comments = cur?.info.parent === undefined ? undefined : cur.info.adToks
+			?.filter(RComment.is).filter(r => r.lexeme?.startsWith("#'")) as RComment<ParentInformation>[] | undefined;
 		cur = cur?.info.parent ? idMap?.get(cur.info.parent) : undefined;
 	} while((comments === undefined || comments.length === 0) && cur !== undefined);
 	if(comments === undefined || comments.length === 0) {

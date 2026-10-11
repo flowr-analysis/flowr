@@ -22,13 +22,11 @@ export type UndefinedSymbolKind = 'function' | 'variable';
 
 export interface UndefinedSymbolResult extends LintingResult {
 	/** the name that could not be resolved */
-	name:                              string
+	name:                 string
 	/** whether the name is used as a function call or as a variable read */
-	kind:                              UndefinedSymbolKind
+	kind:                 UndefinedSymbolKind
 	/** packages that export this name - a hint that a `library()`/`::` might be missing (empty if none known) */
-	availableInPackages?:              readonly string[]
-	/** an unresolved `library()` is in scope that could define this name; treat as low-confidence */
-	mayBeProvidedByUnresolvedLibrary?: boolean
+	availableInPackages?: readonly string[]
 }
 
 export interface UndefinedSymbolConfig extends MergeableRecord {
@@ -50,15 +48,17 @@ export interface UndefinedSymbolConfig extends MergeableRecord {
 /** Why unresolved candidates were suppressed instead of reported, kept in the metadata for auditability. */
 export interface SuppressionCounts {
 	/** file below `inst/` (installed resource, not namespace source) */
-	installed:       number
+	installed:         number
 	/** exported by a package in scope: a loaded/DESCRIPTION package or a default-attached base package */
-	loadedPackage:   number
+	loadedPackage:     number
 	/** unconditionally bound in an enclosing scope that flowR's dataflow did not statically link */
-	enclosingScope:  number
+	enclosingScope:    number
 	/** consumed by non-standard evaluation (a quoting edge) */
-	nonStandardEval: number
+	nonStandardEval:   number
 	/** used as a `[`/`[[` subscript (muted `data.table`-style column masking) */
-	subscript:       number
+	subscript:         number
+	/** a bare name a `library()` flowR could not resolve may export */
+	unresolvedLibrary: number
 }
 
 export interface UndefinedSymbolMetadata extends MergeableRecord {
@@ -101,7 +101,7 @@ export const UNDEFINED_SYMBOL = {
 		const meta: UndefinedSymbolMetadata = {
 			totalFunctionCalls: 0,
 			totalVariableUses:  0,
-			suppressed:         { installed: 0, loadedPackage: 0, enclosingScope: 0, nonStandardEval: 0, subscript: 0 }
+			suppressed:         { installed: 0, loadedPackage: 0, enclosingScope: 0, nonStandardEval: 0, subscript: 0, unresolvedLibrary: 0 }
 		};
 
 		// `inst/` files are installed verbatim (resources, not namespace source); skip them. Key off the
@@ -117,8 +117,7 @@ export const UNDEFINED_SYMBOL = {
 		const isImplicitTestExport = (name: string, file: string | undefined): boolean =>
 			file !== undefined && testFiles.has(file) && testExports.has(name);
 
-		// a library() we could not resolve could export any of these symbols; we still report but flag the
-		// findings as low-confidence (`mayBeProvidedByUnresolvedLibrary`) so the severity can be lowered
+		// a library() we could not resolve could export any bare name, so such names are suppressed rather than guessed
 		const unknownIds = new Set<NodeId>();
 		for(const e of graph.unknownSideEffects) {
 			unknownIds.add(UnknownSideEffect.id(e));
@@ -230,6 +229,9 @@ export const UNDEFINED_SYMBOL = {
 			if(kind === 'variable' && !config.checkSubscripts && isInSubscript(graph, id)) {
 				return suppress('subscript');
 			}
+			if(unresolvedLibraryInScope && namespace === undefined) {
+				return suppress('unresolvedLibrary');
+			}
 			const loc = SourceLocation.fromNode(element.node);
 			if(loc === undefined) {
 				return undefined;
@@ -241,8 +243,7 @@ export const UNDEFINED_SYMBOL = {
 				kind,
 				involvedId: id,
 				loc,
-				...(availableInPackages.length > 0 ? { availableInPackages } : {}),
-				...(unresolvedLibraryInScope ? { mayBeProvidedByUnresolvedLibrary: true } : {})
+				...(availableInPackages.length > 0 ? { availableInPackages } : {})
 			} satisfies UndefinedSymbolResult;
 		}
 
@@ -254,18 +255,17 @@ export const UNDEFINED_SYMBOL = {
 		return { results, '.meta': meta };
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.mayBeProvidedByUnresolvedLibrary ? 'Possibly undefined' : 'Undefined'} ${result.kind} \`${result.name}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Query]: result => `Undefined ${result.kind} \`${result.name}\` at ${SourceLocation.format(result.loc)}`,
 		[LintingPrettyPrintContext.Full]:  result => {
 			const where = SourceLocation.format(result.loc);
-			const caveat = result.mayBeProvidedByUnresolvedLibrary ? ' (an unresolved library is loaded that might provide it)' : '';
 			if(result.availableInPackages && result.availableInPackages.length > 0) {
 				const pkgs = result.availableInPackages.map(p => `\`${p}\``).join(', ');
 				const hint = result.availableInPackages.length === 1 ? `\`library(${result.availableInPackages[0]})\`` : `one of ${pkgs}`;
-				return `\`${result.name}\` at ${where} is used but not defined; it is exported by ${pkgs} - did you forget to load it (e.g. ${hint})?${caveat}`;
+				return `\`${result.name}\` at ${where} is used but not defined; it is exported by ${pkgs} - did you forget to load it (e.g. ${hint})?`;
 			}
 			return result.kind === 'function'
-				? `\`${result.name}\` at ${where} is called but is neither defined locally, a base R builtin, nor exported by a loaded package${caveat}`
-				: `\`${result.name}\` at ${where} is used as a variable but is never defined in scope${caveat}`;
+				? `\`${result.name}\` at ${where} is called but is neither defined locally, a base R builtin, nor exported by a loaded package`
+				: `\`${result.name}\` at ${where} is used as a variable but is never defined in scope`;
 		}
 	},
 	info: {

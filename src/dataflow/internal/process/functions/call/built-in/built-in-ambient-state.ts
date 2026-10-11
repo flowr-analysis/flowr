@@ -44,6 +44,8 @@ export const AmbientStateName = {
 	otherDevicesOpenedBy: '#device:other',
 	/** the color palette, which, other than the graphics parameters, all devices share */
 	palette:              '#palette',
+	/** the files on disk, which every call writing a file adds to and every call reading one reads */
+	files:                '#files',
 	/** the state of the random number generator, which `set.seed` sets and every draw advances */
 	rng:                  '#rng',
 	/** the global variable R keeps that state in, so assigning it sets {@link AmbientStateName.rng} as well */
@@ -64,7 +66,7 @@ export const AmbientStateName = {
 	}
 } as const;
 
-const Accumulating: ReadonlySet<string> = new Set([AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption, AmbientStateName.warnsAsErrors]);
+const Accumulating: ReadonlySet<string> = new Set([AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption, AmbientStateName.warnsAsErrors, AmbientStateName.files]);
 
 /** A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` keeps what was there. */
 interface AmbientWrite {
@@ -219,13 +221,17 @@ export const enum AmbientStateAccessType {
 	/** sets the state of the random number generator, like `set.seed` */
 	SetRng       = 'set-rng',
 	/** draws from the random number generator, which reads its state and advances it, like `runif` */
-	DrawRng      = 'draw-rng'
+	DrawRng      = 'draw-rng',
+	/** reads a file, like `read.csv`, so it sees what was written to the files before */
+	ReadFiles    = 'read-files',
+	/** writes a file, like `write.csv` */
+	WriteFiles   = 'write-files'
 }
 
 export type AmbientStateAccess = {
 	readonly type: AmbientStateAccessType.SetOptions | AmbientStateAccessType.GetOption | AmbientStateAccessType.ReadGraphics
 		| AmbientStateAccessType.SetPalette | AmbientStateAccessType.OpenDevice | AmbientStateAccessType.SwitchDevice
-		| AmbientStateAccessType.SetRng | AmbientStateAccessType.DrawRng
+		| AmbientStateAccessType.SetRng | AmbientStateAccessType.DrawRng | AmbientStateAccessType.ReadFiles | AmbientStateAccessType.WriteFiles
 } | {
 	readonly type:        AmbientStateAccessType.ReadOptions
 	readonly keys:        readonly string[]
@@ -311,6 +317,12 @@ export function applyAmbientStateAccess<OtherInfo>(
 		case AmbientStateAccessType.DrawRng:
 			reads.push(AmbientStateName.rng);
 			writes.push(AmbientStateName.rng);
+			break;
+		case AmbientStateAccessType.ReadFiles:
+			reads.push(AmbientStateName.files);
+			break;
+		case AmbientStateAccessType.WriteFiles:
+			writes.push(AmbientStateName.files);
 			break;
 	}
 	return withAccess(res, rootId, data, reads, writes);

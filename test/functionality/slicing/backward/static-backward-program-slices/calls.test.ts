@@ -513,7 +513,13 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'
 		]), shell,
 		'seed <- 1234\nset.seed(seed)\nx', ['3@x'],
-		'seed <- 1234\nset.seed(seed)\nx'
+		'x'
+		);
+		assertSliced(label('A draw after a fixed seed', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'
+		]), shell,
+		'seed <- 1234\nset.seed(seed)\nx <- runif(1)\nx', ['4@x'],
+		'seed <- 1234\nset.seed(seed)\nx <- runif(1)\nx'
 		);
 		assertSliced(label('Configuring options', [
 			'functions-with-global-side-effects', 'built-in-options', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'

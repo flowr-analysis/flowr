@@ -34,7 +34,7 @@ import { processRm } from '../internal/process/functions/call/built-in/built-in-
 import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 import { VertexType } from '../graph/vertex';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
-import { type AmbientScope, type AmbientStateAccess, applyAmbientStateAccess, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import { type AmbientScope, type AmbientStateAccess, AmbientStateAccessType, applyAmbientStateAccess, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
@@ -73,7 +73,7 @@ import { processWithEnv } from '../internal/process/functions/call/built-in/buil
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
-import { ArgProp, type BuiltInFnInfo, type FnSig } from './built-in-props';
+import { ArgProp, type BuiltInFnInfo, type FnSig, SemanticCallTag } from './built-in-props';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { AttachedBasePackageSet } from '../../util/r-base-packages';
 import { cleanEnvOf } from './scoping';
@@ -340,6 +340,16 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	return ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, ambient);
 }
 
+/** A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk}, unless its config states otherwise. */
+function withFileAccess<Config>(config: Config): Config {
+	const { tags, ambient } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess };
+	if(ambient !== undefined || !tags?.includes(SemanticCallTag.File)) {
+		return config;
+	}
+	const type = tags.includes(SemanticCallTag.Writes) ? AmbientStateAccessType.WriteFiles : tags.includes(SemanticCallTag.Reads) ? AmbientStateAccessType.ReadFiles : undefined;
+	return type === undefined ? config : { ...config, ambient: { type } };
+}
+
 export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Access]:             processAccess,
 	[BuiltInProcName.Apply]:              processApply,
@@ -445,6 +455,7 @@ export class BuiltIns {
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		const mappedEval = evalHandler === undefined ? undefined : BuiltInEvalHandlerMapper[evalHandler];
 		guard(evalHandler === undefined || mappedEval !== undefined, () => `Eval handler ${evalHandler} is unknown! Please pass a valid one of ${JSON.stringify(Object.keys(BuiltInEvalHandlerMapper))}!`);
+		config = withFileAccess(config);
 		for(const name of names) {
 			const n = Identifier.getName(name);
 			const id = NodeId.toBuiltIn(n);

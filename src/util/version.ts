@@ -9,7 +9,7 @@ import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
 
 // this is automatically replaced with the current version by release-it
 const version = '2.15.10';
-// this is automatically replaced with the release date by release-it (regex-bumper, see package.json)
+// this is automatically replaced with the release date by release-it (scripts/bump-version.ts)
 const versionDate = '2026-10-04T18:32:24Z';
 
 /**

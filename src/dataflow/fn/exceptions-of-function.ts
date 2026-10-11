@@ -13,7 +13,6 @@ import { ArgProp } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { BuiltInLookup } from './frame-reflection';
 import { namesAnErrorHandler } from './condition-handlers';
-import { propagateToFixpoint } from './function-props';
 
 const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {
@@ -116,6 +115,78 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 	return { calls, own, defs };
 }
 
+/**
+ * What each node may raise: its own points and those of everything it calls. The calls are collapsed into their
+ * strongly connected components (Tarjan), which come out callees first, so every component is settled once and all
+ * of its members share what it may raise, however many cycles run through it.
+ */
+function raisedPerNode(calls: ReadonlyMap<NodeId, readonly NodeId[]>, own: ReadonlyMap<NodeId, readonly ExceptionPoint[]>): ReadonlyMap<NodeId, ReadonlyMap<NodeId, ExceptionPoint>> {
+	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
+	const index = new Map<NodeId, number>();
+	const low = new Map<NodeId, number>();
+	const onStack = new Set<NodeId>();
+	const stack: NodeId[] = [];
+	let counter = 0;
+	for(const root of calls.keys()) {
+		if(index.has(root)) {
+			continue;
+		}
+		/* each frame is a node and how far its callees have been looked at */
+		const frames: [NodeId, number][] = [[root, 0]];
+		while(frames.length > 0) {
+			const frame = frames[frames.length - 1];
+			const [node, at] = frame;
+			if(at === 0) {
+				index.set(node, counter);
+				low.set(node, counter++);
+				stack.push(node);
+				onStack.add(node);
+			}
+			const next = calls.get(node) ?? [];
+			if(at < next.length) {
+				frame[1]++;
+				const callee = next[at];
+				if(!index.has(callee)) {
+					frames.push([callee, 0]);
+				} else if(onStack.has(callee)) {
+					low.set(node, Math.min(low.get(node) as number, index.get(callee) as number));
+				}
+				continue;
+			}
+			frames.pop();
+			if(frames.length > 0) {
+				const parent = frames[frames.length - 1][0];
+				low.set(parent, Math.min(low.get(parent) as number, low.get(node) as number));
+			}
+			if(low.get(node) !== index.get(node)) {
+				continue;
+			}
+			const members: NodeId[] = [];
+			let member: NodeId;
+			do{
+				member = stack.pop() as NodeId;
+				onStack.delete(member);
+				members.push(member);
+			} while(member !== node);
+			const points = new Map<NodeId, ExceptionPoint>();
+			for(const m of members) {
+				for(const e of own.get(m) ?? []) {
+					points.set(e.id, e);
+				}
+				for(const callee of calls.get(m) ?? []) {
+					for(const [at, point] of raised.get(callee) ?? NoPoints) {
+						points.set(at, point);
+					}
+				}
+			}
+			for(const m of members) {
+				raised.set(m, points);
+			}
+		}
+	}
+	return raised;
+}
+
 /** What to ask for beyond the definition itself, see {@link exceptionsOfFunction}. */
 export interface FunctionExceptionsOptions {
 	/** seeds additional throwers, e.g. the result of an earlier call, so their callees are counted too */
@@ -130,23 +201,7 @@ export interface FunctionExceptionsOptions {
 export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);
 
-	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
-	for(const node of calls.keys()) {
-		raised.set(node, new Map((own.get(node) ?? []).map(e => [e.id, e])));
-	}
-	propagateToFixpoint(calls.keys(), calls, node => {
-		const into = raised.get(node) as Map<NodeId, ExceptionPoint>;
-		let grew = false;
-		for(const call of calls.get(node) ?? []) {
-			for(const [at, point] of raised.get(call) ?? NoPoints) {
-				if(!into.has(at)) {
-					into.set(at, point);
-					grew = true;
-				}
-			}
-		}
-		return grew;
-	});
+	const raised = raisedPerNode(calls, own);
 
 	const result: ExceptionsByFunction = {};
 	for(const [node, points] of raised) {

@@ -78,8 +78,10 @@ function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId
 			found.add(current);
 			continue;
 		}
+		/* what a call reads beyond its arguments (state it depends on, writes it follows) is no value it hands back */
+		const isCall = DfgVertex.isFunctionCall(graph.getVertex(current));
 		for(const [t, e] of graph.edgesFrom(current)) {
-			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy)) {
+			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.DefinedBy) || (DfEdge.includesType(e, EdgeType.Reads) && (!isCall || DfEdge.includesType(e, EdgeType.Argument)))) {
 				workingQueue.push(t);
 			}
 		}

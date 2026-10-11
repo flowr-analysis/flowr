@@ -47,9 +47,10 @@ const UntargetedCallFollow = EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeTyp
 const UntargetedCallAvoid = EdgeType.NonStandardEvaluation | EdgeType.Argument;
 
 /**
- * This tracks the known symbol origins for a function call for which we know that flowr found no targets!
+ * The origins of what a call flowR found no target for calls, following its name back through reads and
+ * parameter bindings: `f(x)` within `apply_f <- function(f, x) f(x)` ends at what callers hand in as `f`.
  */
-function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph): Set<NodeId> {
+export function fallbackUntargetedCall(vtx: Pick<DataflowGraphVertexFunctionCall, 'id'>, graph: DataflowGraph): Set<NodeId> {
 	// we track all aliases to their roots here, we know there is no known call target
 	const collected: Set<NodeId> = new Set();
 	const visited: Set<NodeId> = new Set();
@@ -66,8 +67,11 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 			continue;
 		}
 		let addedNew = false;
+		/* past the call asked about, a call hands back what it returns; a plain read of another call is state it depends on, not its name */
+		const follow = currentId !== vtx.id && DfgVertex.isFunctionCall(currentVtx) ? EdgeType.Returns : UntargetedCallFollow;
 		for(const [tar, e] of graph.edgesFrom(currentId)) {
-			if(DfEdge.includesType(e, UntargetedCallFollow) && DfEdge.doesNotIncludeType(e, UntargetedCallAvoid)) {
+			if(DfEdge.includesType(e, follow) && DfEdge.doesNotIncludeType(e, UntargetedCallAvoid)
+				&& (DfEdge.includesType(e, EdgeType.Returns) || !DfgVertex.isFunctionCall(graph.getVertex(tar)))) {
 				addedNew = true;
 				toVisit.push(tar);
 			}

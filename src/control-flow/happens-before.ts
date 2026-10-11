@@ -57,6 +57,32 @@ export function someAlwaysBefore(cfg: ControlFlowGraph, candidates: ReadonlySet<
 	return false;
 }
 
+/**
+ * The `candidates` none of the others always happens before: those some path of the control flow reaches without
+ * passing another candidate. One walk back marks what may lead to a candidate, one walk forward from where that
+ * region starts settles them all, where {@link someAlwaysBefore} walks back once per candidate. With `within`, the
+ * walk stays among those nodes (a function's body), which then start where nothing within leads to them.
+ * Without any start (the region is one cycle) every candidate is kept.
+ */
+export function firstOnSomePath(cfg: ControlFlowGraph, candidates: ReadonlySet<NodeId>, within?: ReadonlySet<NodeId>): ReadonlySet<NodeId> {
+	const inside = (id: NodeId) => within === undefined || within.has(id);
+	const predecessors = (id: NodeId) => [...cfg.ingoingEdges(id)?.keys() ?? []].filter(inside);
+	const region = closure(candidates, predecessors);
+	const starts = [...region].filter(id => predecessors(id).length === 0);
+	if(starts.length === 0) {
+		return candidates;
+	}
+	const first = new Set<NodeId>();
+	closure(starts, id => {
+		if(candidates.has(id)) {
+			first.add(id);
+			return [];
+		}
+		return [...cfg.outgoingEdges(id)?.keys() ?? []].filter(next => region.has(next));
+	});
+	return first;
+}
+
 function closure(seeds: Iterable<NodeId>, step: (id: NodeId) => Iterable<NodeId>): ReadonlySet<NodeId> {
 	const seen = new Set<NodeId>(seeds);
 	const stack = [...seen];

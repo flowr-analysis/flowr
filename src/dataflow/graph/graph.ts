@@ -218,7 +218,7 @@ export class DataflowGraph<
 	private incomingIndex?:    Map<NodeId, IngoingEdges<Edge>>;
 
 	/* tag to the ids carrying it; a lookup re-checks the vertex, as another graph may retag an object they share */
-	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
+	private types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
 	/** The id list of `tag`, created on first use, so a caller adding many ids looks it up once. */
 	private typeList(tag: Vertex['tag']): NodeId[] {
@@ -627,10 +627,33 @@ export class DataflowGraph<
 		}
 		guard(!otherGraph.consumed, 'a graph consumed by an earlier merge cannot be merged again');
 
-		this.mergeVertices(otherGraph, mergeRootVertices);
-		this.mergeEdges(otherGraph, consume);
+		if(consume && this.vertexInformation.size === 0 && this.edgeInformation.size === 0) {
+			this.adopt(otherGraph, mergeRootVertices);
+		} else {
+			this.mergeVertices(otherGraph, mergeRootVertices);
+			this.mergeEdges(otherGraph, consume);
+		}
 		otherGraph.consumed ||= consume;
 		return this;
+	}
+
+	/** An empty graph takes over the contents of a graph it consumes rather than copying them entry by entry. */
+	private adopt(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices: boolean): void {
+		this.dropQualifications();
+		this.vertexInformation = otherGraph.vertexInformation;
+		this.edgeInformation = otherGraph.edgeInformation;
+		this.types = otherGraph.types;
+		this.incomingIndex = undefined;
+		if(mergeRootVertices && this.rootVertices.size === 0) {
+			this.rootVertices = otherGraph.rootVertices;
+		} else if(mergeRootVertices) {
+			for(const root of otherGraph.rootVertices) {
+				this.rootVertices.add(root);
+			}
+		}
+		for(const unknown of otherGraph.unknownSideEffects) {
+			this._unknownSideEffects.add(unknown);
+		}
 	}
 
 	public mergeVertices(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices = true) {

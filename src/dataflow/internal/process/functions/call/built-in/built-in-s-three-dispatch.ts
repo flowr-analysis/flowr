@@ -58,7 +58,7 @@ export function processS3Dispatch<OtherInfo>(
 	const obj = unpackArg(RArgument.getWithId(args, argMaps.get('object')?.[0]));
 	const dfObj = obj ? processDataflowFor(obj, data) : DataflowInformation.initialize(rootId, data);
 
-	if(ControlFlow.alwaysExits(dfObj)) {
+	if(ControlFlow.alwaysExits(dfObj, data.cds)) {
 		patchFunctionCall({
 			nextGraph:             dfObj.graph,
 			rootId,

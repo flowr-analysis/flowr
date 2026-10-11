@@ -102,7 +102,7 @@ export function processWhileLoop<OtherInfo>(
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${Identifier.toString(name.content)} has no condition or body, impossible!`);
 	const originalDependency = data.cds;
 
-	if(ControlFlow.alwaysExits(condition)) {
+	if(ControlFlow.alwaysExits(condition, data.cds)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
 		information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 		return condition;

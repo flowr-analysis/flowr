@@ -8,7 +8,7 @@ import { EdgeType, DfEdge } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
-import { reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
+import { firstOnSomePath, reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { linkCallToDefinitions } from '../../../linker';
 
@@ -98,20 +98,29 @@ export const Deferred = {
 
 	/**
 	 * The reads that may be the one forcing `binding`: every read of it that no other read always precedes,
-	 * since an earlier read would already have forced it and cached the value.
+	 * since an earlier read would already have forced it and cached the value. With `viaClosures`, for a binding of
+	 * its own (`delayedAssign`), a closure reading it forces it when called.
 	 */
-	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph): readonly NodeId[] {
+	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph, viaClosures = false): readonly NodeId[] {
 		const reads: NodeId[] = [];
+		/* a closure reading it and the call of that closure may skip the read, so they never rule out a later force */
+		const calls: NodeId[] = [];
 		for(const [reader, edge] of graph.edgesTo(binding)) {
 			if(DfEdge.includesType(edge, EdgeType.Reads)) {
 				reads.push(reader);
+			} else if(viaClosures && DfEdge.includesType(edge, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall)) {
+				calls.push(reader);
 			}
 		}
 		if(reads.length < 2) {
-			return reads;
+			return reads.concat(calls);
 		}
 		const readSet = new Set(reads);
-		return reads.filter(r => !someAlwaysBefore(cfg, readSet, r));
+		/* the reads of a parameter all sit in its function, which is where the walk can stay */
+		const parameter = graph.idMap?.get(binding)?.info.parent;
+		const owner = graph.getVertex(graph.idMap?.get(parameter ?? '')?.info.parent ?? '');
+		const first = firstOnSomePath(cfg, readSet, DfgVertex.isFunctionDefinition(owner) && NodeId.normalize(binding) in owner.params ? owner.subflow.graph : undefined);
+		return reads.filter(r => first.has(r)).concat(calls);
 	},
 
 	/**

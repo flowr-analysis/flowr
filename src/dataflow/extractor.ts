@@ -22,6 +22,7 @@ import { identifyLinkToLastCallRelationSync } from '../queries/catalog/call-cont
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
+import { separateClosureInstances } from './internal/linker';
 import type { Environment, REnvironmentInformation } from './environments/environment';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
@@ -32,11 +33,14 @@ import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-
 import { hasEnvState, Identifier } from './environments/identifier';
 import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId as NodeIdHelper } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
 import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
 import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow } from './graph/df-helper';
+import { AmbientStateName } from './internal/process/functions/call/built-in/built-in-ambient-state';
 import { BuiltInProcName } from './environments/built-in-proc-name';
 import { uniqueArray } from '../util/collections/arrays';
 import { DefaultMap, memoize } from '../util/collections/defaultmap';
@@ -44,7 +48,7 @@ import { MatchArgs } from './graph/match-args';
 import { ArgProp, SemanticCallTag } from './environments/built-in-props';
 import type { ArgProps, BuiltInFnInfo } from './environments/built-in-props';
 import type { BuiltInIndex } from './environments/query-fn-props';
-import { callFnProps } from './environments/query-fn-props';
+import { callFnProps, queryFnProps } from './environments/query-fn-props';
 import { Resolve } from './environments/resolve-helper';
 import { reachableTo } from '../control-flow/happens-before';
 import { guardNesting } from '../util/assert';
@@ -113,6 +117,79 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 						graph.addEdge(call, write, EdgeType.Reads);
 					}
 				}
+			}
+		}
+	}
+}
+
+/**
+ * A read of an active binding (`makeActiveBinding`) runs the bound function, so it becomes a call of it, wherever the
+ * read was resolved; the call linking that follows then resolves what the function reads where the binding is read.
+ */
+function callActiveBindingsOnRead(graph: DataflowGraph): void {
+	const reads: [NodeId, Identifier][] = [];
+	for(const [id] of graph.verticesOfType(VertexType.Use)) {
+		const node = graph.idMap?.get(id);
+		const active = RSymbol.is(node) && graph.edgesFrom(id).entries().some(([target, e]) => DfEdge.includesType(e, EdgeType.Reads) && DfgVertex.isVariableDefinition(graph.getVertex(target))
+			&& graph.edgesFrom(target).values().some(t => DfEdge.includesType(t, EdgeType.Calls)));
+		if(active && RSymbol.is(node)) {
+			reads.push([id, node.content]);
+		}
+	}
+	for(const [id, name] of reads) {
+		graph.updateToFunctionCall({ tag: VertexType.FunctionCall, id, name, args: [], environment: undefined, onlyBuiltin: false, cds: graph.getVertex(id)?.cds, origin: [BuiltInProcName.Function] });
+	}
+}
+
+/**
+ * `environment()` within a function hands out that function's frame, by reference: whatever the frame binds, now or
+ * later, a closure's `<<-` included, can be read through it, so the call reads every definition of the frame.
+ */
+function readFramesThroughEnvironment(graph: DataflowGraph): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	const environmentCall = NodeIdHelper.toBuiltIn('environment');
+	for(const [, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		const frameCalls: NodeId[] = [];
+		const local = new Set<string>();
+		const definitions: NodeId[] = [];
+		const hasFrameCall = definition.subflow.graph.values().some(id => DfEdge.includesType(graph.outgoingEdges(id)?.get(environmentCall) ?? { types: 0 }, EdgeType.Calls));
+		if(!hasFrameCall) {
+			continue;
+		}
+		/* the nested functions' bodies, too, where a closure may write the frame */
+		const within = [...definition.subflow.graph];
+		for(let i = 0; i < within.length; i++) {
+			const vertex = graph.getVertex(within[i]);
+			if(DfgVertex.isFunctionDefinition(vertex) && vertex.id !== definition.id) {
+				within.push(...vertex.subflow.graph);
+			}
+		}
+		for(const id of new Set(within)) {
+			const vertex = graph.getVertex(id);
+			const own = RNode.findEnclosing(id, idMap, RFunctionDefinition.is) === definition.id;
+			if(own && DfgVertex.isFunctionCall(vertex) && vertex.args.length === 0 && DfEdge.includesType(graph.outgoingEdges(id)?.get(environmentCall) ?? { types: 0 }, EdgeType.Calls)) {
+				frameCalls.push(id);
+			} else if(DfgVertex.isVariableDefinition(vertex) && !(id in definition.params)) {
+				/* a parameter is what the call binds, which reflecting on the frame already accounts for */
+				const name = NodeIdHelper.recoverName(id, idMap);
+				if(own && name !== undefined) {
+					local.add(name);
+				}
+				definitions.push(id);
+			}
+		}
+		if(frameCalls.length === 0) {
+			continue;
+		}
+		/* a nested definition writes this frame only by `<<-` to a name it binds */
+		const frame = definitions.filter(d => local.has(NodeIdHelper.recoverName(d, idMap) ?? '')
+			&& (RNode.findEnclosing(d, idMap, RFunctionDefinition.is) === definition.id || DfgVertex.hasOrigin(graph.getVertex(idMap.get(d)?.info.parent ?? ''), BuiltInProcName.SuperAssignment)));
+		for(const call of frameCalls) {
+			for(const d of frame) {
+				graph.addEdge(call, d, EdgeType.Reads);
 			}
 		}
 	}
@@ -362,13 +439,18 @@ function extractDataFlowGraph<OtherInfo>(
 	}
 
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
+	callActiveBindingsOnRead(df.graph);
+	readFramesThroughEnvironment(df.graph);
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
 	/* carried across the rounds, so a definition already folded in does not read as growth again */
 	const foldedIn = new Set<string>();
 	const rounds = ctx.config.solver.transitiveSideEffectRounds ?? DefaultTransitiveSideEffectRounds;
+	/* a read of the options or graphics state nothing set reads the state R starts with, unless a write escaping a call replaces it */
+	const initialState = df.in.filter(r => AmbientStateName.is(r.name));
+	(df as { in: DataflowInformation['in'] }).in = df.in.filter(r => !AmbientStateName.is(r.name));
 	for(let round = 0; round < rounds; round++) {
-		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx, foldedIn);
+		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx, foldedIn, initialState);
 		(df as { environment: REnvironmentInformation }).environment = environment;
 		for(const n of roundNames) {
 			escapedNames.add(n);
@@ -384,8 +466,11 @@ function extractDataFlowGraph<OtherInfo>(
 	}
 	// link on-demand-materialized package exports back to their `library()` loaders
 	linkMaterializedExportsToLoaders(df.graph, df.environment);
+	const cleanEnvironment = ctx.env.makeCleanEnv();
+	separateClosureInstances(df.graph, name => queryFnProps(name, { environment: cleanEnvironment }));
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
+	FunctionSemantics.settleJumpsInPromises(df.graph, df.exitPoints, { ctx });
 	linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
 	resolveLinkToSideEffects(df.graph, ctx);
 	linkResourceReadersToWriters(df.graph, df.environment, ctx);

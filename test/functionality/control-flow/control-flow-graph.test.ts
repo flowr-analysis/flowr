@@ -197,7 +197,9 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 		assertCfg(parser, foreachCode, {
 			entryPoints: [4],
-			exitPoints:  [17],
+			/* nothing says whether the unknown `%do%` forces its body, so the `return` may leave as well */
+			exitPoints:  [17, 13],
+			returns:     [13],
 			graph:       new ControlFlowGraph()
 				.addVertex(CfgVertex.makeExpression(4))
 				.addVertex(CfgVertex.makeExpression(5))
@@ -212,12 +214,14 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addEdge(5, 6, CfgEdge.makeFd())
 				.addEdge(6, 11, CfgEdge.makeFd())
 				.addEdge(11, 13, CfgEdge.makeFd())
-				/* the `return` leaves the `{` it sits in, which the loop then carries on from */
+				/* the `return` leaves the `{` it sits in */
 				.addEdge(13, 14, CfgEdge.makeFd())
-				/* `%do%` evaluates its body with `eval`, so the `return` there hands its value on rather than erroring */
-				.addEdge(13, 0, CfgEdge.makeFd())
+				/* or it never runs, when `%do%` does not force the body */
+				.addEdge(13, 16, CfgEdge.makeFd())
+				.addEdge(13, 17, CfgEdge.makeFd())
+				.addEdge(16, 0, CfgEdge.makeFd())
 				.addEdge(0, 17, CfgEdge.makeFd())
-		}, { excludeProperties: ['entry-reaches-all', 'exit-reaches-all'] });
+		}, { excludeProperties: ['entry-reaches-all', 'exit-reaches-all', 'single-entry-and-exit'] });
 
 		describe('faulty uses', () => {
 			assertCfg(parser, 'ifelse()', {

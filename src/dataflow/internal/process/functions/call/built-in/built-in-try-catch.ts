@@ -25,6 +25,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { errorsOfWarnings } from './built-in-ambient-state';
 
 /**
  * Process a built-in try-catch or similar handler.
@@ -75,6 +76,14 @@ export function processTryCatch<OtherInfo>(
 	   `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`.
 	   A construct declaring no handler parameter at all, as `try` does, catches whatever arrives. */
 	const catchesError = (config.aborts ?? true) && (config.handlers.error === undefined || namesAnErrorHandler(args));
+	if(catchesError) {
+		for(const arg of res.processedArguments) {
+			const block = arg && blockArg.has(arg.entryPoint) ? data.completeAst.idMap.get(arg.entryPoint) : undefined;
+			if(arg && block) {
+				(arg.exitPoints as ExitPoint[]) = arg.exitPoints.concat(errorsOfWarnings(block, info.environment, info.graph, data));
+			}
+		}
+	}
 	// only take those exit points from the block
 	// check whether blockArg has *always* happening exceptions, if so we do not constrain the error handler
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];

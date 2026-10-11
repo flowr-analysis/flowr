@@ -2,7 +2,7 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import type { FnSig } from '../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
 import type { ExitPoint, DataflowInformation, KillReference } from '../../../../info';
-import { ExitPointType } from '../../../../info';
+import { ExitPointType, withCds } from '../../../../info';
 import { processAllArguments } from './common';
 import { applyKills } from '../../../../environments/apply-kill';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -16,6 +16,8 @@ import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { ControlFlow } from '../../../control-flow';
+import { Ternary } from '../../../../../util/logic';
+import { isNotUndefined } from '../../../../../util/assert';
 import { dataflowLogger } from '../../../../logger';
 import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
@@ -164,7 +166,7 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData = d => d, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
@@ -177,7 +179,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forced, nonFunction, alternativesFrom: reverseOrder ? undefined : alternativeArgsFrom });
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data: origin === 'default' ? ControlFlow.withinPromise(data, rootId) : data, finalGraph, functionRootId: rootId, patchData, forced, nonFunction, alternativesFrom: reverseOrder ? undefined : alternativeArgsFrom });
 	markArgumentsAsNonStandardEvaluation(finalGraph, rootId, processedArguments, markAsNSE, { kind: NseKind.Reevaluated });
 
 	const onlyBuiltin = data.builtInNoEnv === rootId;
@@ -201,52 +203,43 @@ export function processKnownFunctionCall<OtherInfo>(
 	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function };
 	inIds.push(fnRef);
 
-	// if force args is not none, we need to collect all non-default exit points from our arguments!
+	/* each argument is a promise, and how surely the call forces it decides what a jump within it does */
 	let exitPoints: ExitPoint[] | undefined = undefined;
 	/* a jump that only happens under a condition still lets the call complete, so its default exit has to stay */
 	let alwaysJumps = false;
-	if(forced) {
-		for(let i = 0; i < processedArguments.length; i++) {
-			const p = processedArguments[i];
-			if(p === undefined || !forced[i]) {
-				continue;
-			}
-			const before = exitPoints?.length ?? 0;
-			for(const exit of p.exitPoints) {
-				if(exit.type !== ExitPointType.Default) {
-					(exitPoints ??= []).push(exit);
-				}
-			}
-			alwaysJumps ||= (exitPoints?.length ?? 0) > before && ControlFlow.alwaysExits(p);
+	/* what a function flowR does not know here forces is up to its body, see `FunctionSemantics.settleJumpsInPromises` */
+	const forcing = origin === 'default' ? undefined : FunctionSemantics.call.signature.forcing(sig, processArgs.length);
+	/* exactly one alternative runs when there is a default arm, otherwise maybe none */
+	const alternatives = alternativeArgsFrom === undefined ? [] : processedArguments.slice(alternativeArgsFrom).filter(isNotUndefined);
+	const hasDefaultArm = alternativeArgsFrom !== undefined && processArgs.slice(alternativeArgsFrom).some(a => a !== EmptyArgument && (!RArgument.is(a) || a.name === undefined));
+	const allArmsJump = hasDefaultArm && alternatives.length > 0 && alternatives.every(a => ControlFlow.alwaysExits(a, data.cds));
+	for(let i = 0; i < processedArguments.length; i++) {
+		const p = processedArguments[i];
+		/* only a jump needs the gate, most arguments just complete */
+		if(p === undefined || p.exitPoints.every(e => e.type === ExitPointType.Default)) {
+			continue;
 		}
-		if(exitPoints !== undefined && !alwaysJumps) {
-			exitPoints.push({ nodeId: rootId, type: ExitPointType.Default, cds: data.cds });
+		const isAlternative = alternativeArgsFrom !== undefined && i >= alternativeArgsFrom;
+		/* the alternative that is picked runs for sure, the others not at all */
+		const f = isAlternative ? Ternary.Always : forcing?.[i] ?? Ternary.Maybe;
+		/* a call with its own control flow wires up what it does not surely force itself */
+		if(customControlFlow && f !== Ternary.Always) {
+			continue;
 		}
+		const exits = ControlFlow.promise(finalGraph, p, f, rootId);
+		if(exits.length > 0) {
+			(exitPoints ??= []).push(...isAlternative && !allArmsJump ? exits.map(e => ({ ...e, cds: withCds(e.cds, [{ id: rootId, when: true }]) })) : exits);
+			alwaysJumps ||= f === Ternary.Always && !isAlternative && ControlFlow.alwaysExits(p, data.cds);
+		}
+	}
+	alwaysJumps ||= allArmsJump;
+	if(exitPoints !== undefined && !alwaysJumps) {
+		exitPoints.push({ nodeId: rootId, type: ExitPointType.Default, cds: data.cds });
 	}
 
-	/* an alternative without a name is the default arm, which runs when nothing else matched */
 	const cfgEntry = customControlFlow ? rootId
 		: alternativeArgsFrom === undefined ? ControlFlow.inSequence(finalGraph, processedArguments, rootId)
-			: ControlFlow.picksOneOf(finalGraph, processedArguments, alternativeArgsFrom, rootId,
-				processArgs.slice(alternativeArgsFrom).some(a => a !== EmptyArgument && (!RArgument.is(a) || a.name === undefined)));
-	if(!customControlFlow) {
-		/*
-		 * A jump within an argument that the call does not pass on is caught here (the callee decides whether it
-		 * ever forces that argument), so control resumes at the call rather than leaving it.
-		 */
-		for(const argument of processedArguments) {
-			for(const exit of argument?.exitPoints ?? []) {
-				/*
-				 * A jump within an argument the call does not pass on resumes at the call. A `return` leaves the
-				 * enclosing function wherever the argument runs at all, so only a call that never evaluates it
-				 * may catch one (see `processQuote`).
-				 */
-				if(exit.type !== ExitPointType.Default && exit.type !== ExitPointType.Return && !exitPoints?.includes(exit)) {
-					finalGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
-				}
-			}
-		}
-	}
+			: ControlFlow.picksOneOf(finalGraph, processedArguments, alternativeArgsFrom, rootId, hasDefaultArm);
 
 	let kill: KillReference[] | undefined = undefined;
 	for(const p of processedArguments) {

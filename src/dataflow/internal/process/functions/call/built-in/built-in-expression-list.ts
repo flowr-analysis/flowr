@@ -58,7 +58,8 @@ function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
 	return false;
 }
 
-function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]) {
+/** @returns whether `read` sees a definition */
+function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]): boolean {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
 	const probableTarget = readName ? Resolve.byNameAndType(readName, environments, read.type) : undefined;
 
@@ -76,7 +77,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 
 	// no target: keep it as an ingoing read (read-ids are unique within the same fold); a later fold may still resolve and drop it
 	if(probableTarget === undefined) {
-		return;
+		return false;
 	}
 
 	const rid = read.nodeId;
@@ -105,22 +106,29 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 			}, environments, false);
 		}
 	}
+	return true;
 }
 
 /**
  * Expands `direct`'s directly-called functions with everything they transitively call (via `resolveEnv`): a sibling/outer
  * callee's escaped globals otherwise never fold into the caller, so a `<<-` escaping several call levels would go unlinked.
  */
-function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<{ fn: DataflowGraphVertexInfo, direct: boolean }> {
+interface TransitiveCallee {
+	readonly fn:     DataflowGraphVertexInfo
+	readonly direct: boolean
+	readonly cds?:   readonly ControlDependency[]
+}
+
+function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<TransitiveCallee> {
 	const seen = new Set<NodeId>();
-	const stack = initial.map(fn => ({ fn, direct: true }));
+	const stack: TransitiveCallee[] = initial.map(fn => ({ fn, direct: true }));
 	while(stack.length > 0) {
-		const { fn, direct } = stack.pop() as { fn: DataflowGraphVertexInfo, direct: boolean };
+		const { fn, direct, cds } = stack.pop() as TransitiveCallee;
 		if(!DfgVertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
 		seen.add(fn.id);
-		yield { fn, direct };
+		yield { fn, direct, cds };
 		for(const nodeId of fn.subflow.graph) {
 			const call = graph.getVertex(nodeId);
 			if(!DfgVertex.isFunctionCall(call) || call.onlyBuiltin || call.name === undefined) {
@@ -133,7 +141,8 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 			const [targets] = getAllLinkedFunctionDefinitions(new Set(resolved.map(r => r.nodeId)), graph);
 			for(const target of targets) {
 				if(!seen.has(target.id)) {
-					stack.push({ fn: target, direct: false });
+					/* a callee reached only on some paths writes only maybe */
+					stack.push({ fn: target, direct: false, cds: call.cds === undefined ? cds : [...cds ?? [], ...call.cds] });
 				}
 			}
 		}
@@ -235,7 +244,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 }[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap) {
 	for(const { functionCall, called } of calledEnvs) {
 		let callDependencies: ControlDependency[] | null | undefined = null;
-		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
+		for(const { fn: calledFn, direct, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
 			guard(DfgVertex.isFunctionDefinition(calledFn), 'called function must be a function definition');
 			/* walk the smaller of the two, a script may hold many unknown side effects and a function many vertices */
 			const inside = calledFn.subflow.graph;
@@ -285,7 +294,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				if(callDependencies === null) {
 					callDependencies = nextGraph.getVertex(functionCall)?.cds;
 				}
-				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
+				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, cds === undefined ? callDependencies : [...callDependencies ?? [], ...cds]);
 			}
 		}
 	}
@@ -315,12 +324,15 @@ export function processExpressionList<OtherInfo>(
 	let killed: KillReference[] | undefined;
 	const exitPoints: ExitPoint[] = [];
 	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
+	/* what the list stands under as a whole, copied since the vertices share and extend that array */
+	const context = data.cds?.slice();
 	const invertExitCds: ControlDependency[] = [];
 
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
 	let defaultReturnExpr: undefined | DataflowInformation = undefined;
 	/* R prints what the top level of the analyzed script leaves visible, but not what a sourced file does */
 	const autoPrint = data.referenceChain.length <= 1 && data.environment.level === 0 && data.completeAst.ast.files.some(f => f.root.info.id === rootId);
+	let initialState: Set<IdentifierReference> | undefined;
 	let hooks: DataflowInformation['hooks'] | undefined;
 
 	for(const arg of args) {
@@ -353,10 +365,14 @@ export function processExpressionList<OtherInfo>(
 		// all inputs that have not been written until now are read!
 		const activeReads: IdentifierReference[] = [];
 		for(const read of processed.in) {
-			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads);
+			if(!linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads) && autoPrint && AmbientStateName.is(read.name)) {
+				(initialState ??= new Set()).add(read);
+			}
 		}
 		for(const read of processed.unknownReferences) {
-			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads);
+			if(!linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads) && autoPrint && AmbientStateName.is(read.name)) {
+				(initialState ??= new Set()).add(read);
+			}
 		}
 		for(const read of activeReads) {
 			nextGraph.updateToFunctionCall({ tag: VertexType.FunctionCall, id: read.nodeId, name: read.name as Identifier, args: [], environment, onlyBuiltin: false, cds: read.cds, origin: [BuiltInProcName.Function] });
@@ -398,7 +414,7 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		/* if at least one exit point encountered happens unconditionally, we exit here (dead code) */
-		if(ControlFlow.alwaysExits(processed)) {
+		if(ControlFlow.alwaysExits(processed, context)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
 			break;
@@ -466,8 +482,9 @@ export function processExpressionList<OtherInfo>(
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
-		/* at the top of the script, a read of the options or graphics state nothing set reads the state R starts with */
-		in:                autoPrint ? ingoing.filter(r => !AmbientStateName.is(r.name)) : ingoing,
+		/* at the top of the script, only a read of the options or graphics state nothing set reads the state R starts with,
+		   which a write escaping a higher-order call may still replace, see the extractor */
+		in:                autoPrint ? ingoing.filter(r => !AmbientStateName.is(r.name) || initialState?.has(r) === true) : ingoing,
 		/* a definition that a still-effective removal undid is no longer visible to the outside */
 		out:               dropKilledWrites(out, killed),
 		environment:       environment,

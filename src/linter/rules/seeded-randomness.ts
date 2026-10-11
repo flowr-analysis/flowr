@@ -13,20 +13,23 @@ import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { FlowrFilter } from '../../search/flowr-search-filters';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
-import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
 import { NodeValue } from '../../dataflow/eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import type { ControlDependency } from '../../dataflow/info';
-import { happensInEveryBranchSet } from '../../dataflow/info';
+import { ControlDependency, happensInEveryBranch } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import { Ternary } from '../../util/logic';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
@@ -62,7 +65,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 }
 
 export const SEEDED_RANDOMNESS = {
-	createSearch: (config, data) => Q.all().filter(VertexType.FunctionCall)
+	createSearch: (config, _data) => Q.all().filter(VertexType.FunctionCall)
 		.with(Enrichment.CallTargets, {
 			onlyBuiltin:  true,
 			qualifyNames: false // we don't use qualified names for this rule yet
@@ -75,15 +78,15 @@ export const SEEDED_RANDOMNESS = {
 					targets: Identifier.regex(...config.randomnessConsumers)
 				}
 			}
-		})
-		.with(Enrichment.LastCall, [
-			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
-			{ callName: data.inspectContext().env.deriveFromDefinitions(getDefaultAssignments).flatMap(b => b.names).map(Identifier.getName), cascadeIf: () => CascadeAction.Continue }
-		]),
+		}),
 	processSearchResult: async(elements, config, data) => {
 		const dataflow = await data.dataflow();
-		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
-		const assignmentArgIndexes = new Map<string, number>(data.inspectContext().env.deriveFromDefinitions(getDefaultAssignments).flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
+		const graph = dataflow.graph;
+		const ctx = data.inspectContext();
+		const functionProducers = new Set(config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name));
+		const assignmentProducers = new Set(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
+		const consumers = new Set(config.randomnessConsumers);
+		const assignmentArgIndexes = new Map<string, number>(ctx.env.deriveFromDefinitions(getDefaultAssignments).flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
 		const metadata: SeededRandomnessMeta = {
 			consumerCalls:                 0,
 			callsWithFunctionProducers:    0,
@@ -91,82 +94,129 @@ export const SEEDED_RANDOMNESS = {
 			callsWithNonConstantProducers: 0,
 			callsWithOtherBranchProducers: 0
 		};
+
+		/** what a write of the generator state (see `AmbientStateName.rng`) is: a seed, a draw that advances it, or neither */
+		const writerKind = (vertex: DataflowGraphVertexFunctionCall): { kind: 'function' | 'assignment', constant: boolean } | 'draw' | undefined => {
+			const name = Identifier.getName(vertex.name);
+			if(functionProducers.has(name)) {
+				return { kind: 'function', constant: isConstantArgument(graph, vertex, 0, ctx) };
+			}
+			const argIdx = assignmentArgIndexes.get(name);
+			if(argIdx !== undefined) {
+				const dest = FunctionArgument.getReference(vertex.args[argIdx]);
+				if(dest !== undefined && assignmentProducers.has(NodeId.recoverName(dest, graph.idMap) as string)) {
+					/* we either have arg index 0 or 1 for the destination, so the value is at 1-argIdx */
+					return { kind: 'assignment', constant: isConstantArgument(graph, vertex, 1 - argIdx, ctx) };
+				}
+				return undefined;
+			}
+			return consumers.has(name) ? 'draw' : undefined;
+		};
+
+		const idMap = graph.idMap;
+		const forcing = FunctionSemantics.promiseForcing(graph, { ctx });
+		/** whether `writer` follows `reader` within a loop both run under, so it reaches the reader from the second iteration on */
+		const loopCarried = (reader: NodeId, writer: NodeId): boolean => {
+			const loops = graph.getVertex(reader)?.cds?.filter(cd => ControlDependency.isIterated(cd, idMap)) ?? [];
+			const shared = loops.some(loop => graph.getVertex(writer)?.cds?.some(cd => ControlDependency.same(cd, loop)));
+			const at = (n: NodeId) => idMap?.get(n)?.location ?? [0, 0];
+			const [rLine, rCol] = at(reader);
+			const [wLine, wCol] = at(writer);
+			return shared && (wLine > rLine || (wLine === rLine && wCol > rCol));
+		};
+
+		interface Seeding {
+			/** the constant seeds that reach the call, by how they were set */
+			readonly seeds: { readonly function: Set<NodeId>, readonly assignment: Set<NodeId> }
+			/** whether a seed reaching the call is not constant */
+			nonConstant:    boolean
+			/** whether a seed reaches the call only on some of the ways there */
+			otherBranch:    boolean
+			/** whether the call may see a state no constant seed set: the initial one, or a non-constant seed */
+			unseeded:       boolean
+		}
+		/** the edges a draw reads the generator state by: its own, and those of the calls running the function it sits in, which link what was written before them */
+		const statesReadBy = (id: NodeId): [NodeId, DfEdge][] => {
+			const within = idMap === undefined ? undefined : RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
+			const callers = within === undefined ? [] : [...graph.edgesTo(within)].filter(([, e]) => DfEdge.includesType(e, EdgeType.Calls)).map(([caller]) => caller);
+			return [...graph.edgesFrom(id), ...callers.flatMap(caller => [...graph.edgesFrom(caller)].filter(([, e]) => DfEdge.includesType(e, EdgeType.DefinedByOnCall)))];
+		};
+		/** how the generator state a call reads came about, following the draws back to where it was seeded */
+		const seedingOf = (id: NodeId, visiting: ReadonlySet<NodeId>): Seeding => {
+			const seeding: Seeding = { seeds: { function: new Set(), assignment: new Set() }, nonConstant: false, otherBranch: false, unseeded: false };
+			const own = new Set(graph.getVertex(id)?.cds);
+			const cds: ControlDependency[] = [];
+			let written = false;
+			let always = false;
+			for(const [target, edge] of statesReadBy(id)) {
+				const writer = graph.getVertex(target);
+				/* a draw within a function reads the state at its calls, which links it to what was written there */
+				const kind = DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedByOnCall) && DfgVertex.isFunctionCall(writer) && !visiting.has(target) ? writerKind(writer) : undefined;
+				if(kind === undefined) {
+					continue;
+				}
+				/* a write later in the same loop body reaches the call from the second iteration on only */
+				if(loopCarried(id, target)) {
+					seeding.otherBranch = seeding.unseeded = true;
+				} else {
+					written = true;
+				}
+				/* a promise surely forced is no condition */
+				const conditions = new Set(writer?.cds?.filter(cd => cd.byPromise !== true || forcing(cd.id, target) !== Ternary.Always)).difference(own);
+				always ||= conditions.size === 0;
+				cds.push(...conditions);
+				if(kind === 'draw') {
+					const before = seedingOf(target, new Set([...visiting, id]));
+					before.seeds.function.forEach(s => seeding.seeds.function.add(s));
+					before.seeds.assignment.forEach(s => seeding.seeds.assignment.add(s));
+					seeding.nonConstant ||= before.nonConstant;
+					seeding.otherBranch ||= before.otherBranch;
+					seeding.unseeded ||= before.unseeded;
+				} else if(kind.constant) {
+					seeding.seeds[kind.kind].add(target);
+				} else {
+					seeding.nonConstant = seeding.unseeded = true;
+				}
+			}
+			/* the state the program starts with is seen wherever no write reaches for sure */
+			if(!written) {
+				seeding.unseeded = true;
+			} else if(!always && !happensInEveryBranch(cds)) {
+				seeding.otherBranch = seeding.unseeded = true;
+			}
+			return seeding;
+		};
+
 		return {
 			results: elements.getElements()
-				// map and filter consumers
 				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
 					metadata.consumerCalls++;
 					return {
-						involvedId:    element.node.info.id,
-						loc:           SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-						target:        target as BrandedIdentifier,
-						searchElement: element
+						involvedId: element.node.info.id,
+						loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
+						target:     target as BrandedIdentifier
 					};
 				}))
-				// filter by calls that aren't preceded by a randomness producer
 				.flatMap(element => {
-					const dfgElement = dataflow.graph.getVertex(element.searchElement.node.info.id);
-					const cds = dfgElement ? new Set(dfgElement.cds) : new Set();
-					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
-						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
-					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(Identifier.getName(f.name)) ? 'assignment' : 'func');
-					let nonConstant = false;
-					const cdsOfProduces: Set<ControlDependency> = new Set();
-
-					// function calls are already taken care of through the LastCall enrichment itself
-					for(const f of func ?? []) {
-						if(isConstantArgument(dataflow.graph, f, 0, data.inspectContext())) {
-							const fCds = new Set(f.cds).difference(cds);
-							metadata.callsWithFunctionProducers++;
-							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)) {
-								return [];
-							} else {
-								for(const f of fCds) {
-									cdsOfProduces.add(f);
-								}
-							}
-						} else {
-							nonConstant = true;
-						}
-					}
-
-					// assignments have to be queried for their destination
-					for(const a of assignment ?? []) {
-						const argIdx = assignmentArgIndexes.get(Identifier.getName(a.name)) as number;
-						const dest = FunctionArgument.getReference(a.args[argIdx]);
-						if(dest !== undefined && assignmentProducers.has(NodeId.recoverName(dest, dataflow.graph.idMap) as string)) {
-							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
-							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, data.inspectContext())) {
-								const aCds = new Set(a.cds).difference(cds);
-								if(aCds.size <= 0 || happensInEveryBranchSet(aCds)) {
-									metadata.callsWithAssignmentProducers++;
-									return [];
-								} else {
-									for(const f of aCds) {
-										cdsOfProduces.add(f);
-									}
-								}
-							}
-						}
-					}
-					if(happensInEveryBranchSet(cdsOfProduces)) {
-						// all producers happen in every branch, so we are good
+					const seeding = seedingOf(element.involvedId, new Set());
+					metadata.callsWithFunctionProducers += seeding.seeds.function.size;
+					metadata.callsWithAssignmentProducers += seeding.seeds.assignment.size;
+					if(!seeding.unseeded) {
 						return [];
 					}
-
-					if(nonConstant) {
+					if(seeding.nonConstant) {
 						metadata.callsWithNonConstantProducers++;
 					}
-					if(cdsOfProduces.size > 0) {
+					if(seeding.otherBranch) {
 						metadata.callsWithOtherBranchProducers++;
 					}
 					/* a call within a function body is seeded by whatever its callers did first, which the control
 					   flow of this body does not show: `set.seed(1); sapply(1:3, function(i) runif(1))` is seeded.
 					   Only a call the program itself reaches can be stated as unseeded for certain. */
-					const nested = !dataflow.graph.isRoot(element.searchElement.node.info.id);
+					const nested = !graph.isRoot(element.involvedId);
 					return [{
 						involvedId: element.involvedId,
-						certainty:  cdsOfProduces.size > 0 || nested ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+						certainty:  seeding.seeds.function.size + seeding.seeds.assignment.size > 0 || nested ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
 						function:   element.target,
 						loc:        element.loc
 					}];

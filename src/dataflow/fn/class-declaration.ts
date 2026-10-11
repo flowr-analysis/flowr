@@ -4,8 +4,8 @@
  */
 
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -16,8 +16,12 @@ import { DfEdge, EdgeType } from '../graph/edge';
 import { isNotUndefined } from '../../util/assert';
 import { compactRecord } from '../../util/objects';
 import type { SigClassInfo } from '../../project/sigdb/schema';
-import { VertexType } from '../graph/vertex';
-import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall, VertexType } from '../graph/vertex';
+import type { ResolveInfo } from '../eval/resolve/alias-tracking';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { NodeValue } from '../eval/resolve/node-value';
+import { collectStrings } from '../eval/values/string/string-constants';
+import { isValue } from '../eval/values/r-value';
 
 /** The object system a declaration belongs to. */
 export const enum ClassSystem {
@@ -376,4 +380,45 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 		}
 	}
 	return records;
+}
+
+/** The class vector S3 dispatch sees for the value at `id`: a `structure(..., class = )` or a constant, `undefined` if not statically known. */
+function s3ClassOfValue(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly string[] | undefined {
+	const node = info.idMap.get(id);
+	if(RFunctionCall.is(node) && DfEdge.includesType(info.graph.outgoingEdges(id)?.get(NodeId.toBuiltIn('structure')) ?? { types: 0 }, EdgeType.Calls)) {
+		const cls = NodeValue.soleOf(argForImpl(node.arguments, { name: 'class' }), info);
+		const strings = cls?.type === 'string' ? collectStrings([cls]) : cls?.type === 'vector' && isValue(cls.elements) ? collectStrings(cls.elements) : undefined;
+		return strings?.length ? strings : undefined;
+	}
+	const value = NodeValue.soleOf(id, info);
+	if(value?.type === 'string') {
+		return ['character'];
+	} else if(value?.type === 'logical') {
+		return ['logical'];
+	} else if(value?.type === 'number' && isValue(value.value)) {
+		return value.value.complexNumber ? ['complex'] : value.value.markedAsInt ? ['integer', 'numeric'] : ['double', 'numeric'];
+	}
+	return undefined;
+}
+
+/** The value a plain assignment binds to the definition `def`, `undefined` for any other kind of definition (`class(x) <- `, `assign`, a parameter, ...). */
+function assignedValueOf(def: NodeId, graph: DataflowGraph): NodeId | undefined {
+	const vertex = graph.getVertex(def);
+	const byAssignment = graph.edgesFrom(def).entries().some(([target, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && DfgVertex.hasOrigin(graph.getVertex(target), BuiltInProcName.Assignment));
+	return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
+}
+
+/**
+ * The class vectors S3 dispatch may see for the argument at `id`, one per definition reaching it, without the trailing `default`.
+ * `undefined` unless every value is a literal or a `structure(..., class = )` with a known class.
+ */
+export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly (readonly string[])[] | undefined {
+	const { graph, idMap } = info;
+	const node = idMap.get(id);
+	const value = RArgument.is(node) ? node.value : node;
+	const values = DfgVertex.isUse(graph.getVertex(value?.info.id ?? ''))
+		? graph.edgesFrom(value?.info.id ?? '').entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads)).map(([def]) => assignedValueOf(def, graph)).toArray()
+		: [value?.info.id];
+	const classes = values.map(v => v === undefined ? undefined : s3ClassOfValue(v, info));
+	return classes.length > 0 && classes.every(isNotUndefined) ? classes : undefined;
 }

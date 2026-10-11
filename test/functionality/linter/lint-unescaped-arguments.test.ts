@@ -105,6 +105,17 @@ describe('flowR linter', withTreeSitter(parser => {
 
 	describe('Unescaped Evaluation', () => {
 		assertLinter('constant evaluation', parser, 'eval(parse(text = "1+1"))', 'unescaped-arguments', []);
+		/* the code is the one the program spells out, a language object is no input by itself */
+		assertLinter('constant code built from a quoted expression', parser, 'code <- deparse(quote(1 + 2))\ncode <- gsub("2", "3", code)\neval(parse(text = code))', 'unescaped-arguments', []);
+		assertLinter('constant quoted expression', parser, 'eval(quote(1 + 2))', 'unescaped-arguments', []);
+		assertLinter('a captured argument is code of the caller', parser, 'f <- function(x) { e <- substitute(x); eval(e) }\nf(y)', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Certain,
+			category:  UnescapedArgumentCategory.Eval,
+			function:  'eval',
+			loc:       SourceRange.from(1, 45, 1, 45),
+			sources:   [{ id: 12, types: [InputType.Lang], trace: InputTraceType.Alias }],
+			input:     [InputType.Lang]
+		}]);
 		assertLinter('bounded evaluation', parser, 'eval(parse(text = match.arg(x, c("a", "b"))))', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup', parser, 'get("x")', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup of a known variable', parser, 'x <- 2\nget("x")', 'unescaped-arguments', []);

@@ -67,7 +67,12 @@ describe('is-strict-function', withTreeSitter(ts => {
 	testStrict('calling a parameter forces it', 'f <- function(g) g(1)', '1@function', Ternary.Always, { g: Ternary.Always });
 	testStrict('an argument reaches whatever `...` reaches', 'f <- function(...) sum(...)', '1@function', Ternary.Always);
 	testStrict('a chain carries the verdict of its end', 'h <- function(c) 1\ng <- function(b) h(b)\nf <- function(a) g(a)', '3@function', Ternary.Never, { a: Ternary.Never });
-	testStrict('mutual recursion is left open', 'g <- function(b) f(b)\nf <- function(a) g(a)', '2@function', Ternary.Maybe, { a: Ternary.Maybe });
+	/* a call of either never returns, so whenever it does it has forced its argument */
+	testStrict('mutual recursion without a way out forces vacuously', 'g <- function(b) f(b)\nf <- function(a) g(a)', '2@function', Ternary.Always, { a: Ternary.Always });
+	testStrict('recursion forcing on its way out', 'f <- function(n, x) if(n > 0) f(n - 1, x) else x', '1@function', Ternary.Always, { x: Ternary.Always });
+	testStrict('recursion never forcing on its way out', 'f <- function(n, x) if(n > 0) f(n - 1, x) else 0', '1@function', Ternary.Maybe, { x: Ternary.Maybe });
+	testStrict('branches that all force', 'f <- function(c, x) if(c) x + 1 else print(x)', '1@function', Ternary.Always, { x: Ternary.Always });
+	testStrict('branches that do not all force', 'f <- function(c, x) if(c) x', '1@function', Ternary.Maybe, { x: Ternary.Maybe });
 
 	/* dispatch: the method chosen at run time decides */
 	const s3 = 'f <- function(x, y) UseMethod("f")\nf.default <- function(x, y) x\nf.numeric <- function(x, y) y';

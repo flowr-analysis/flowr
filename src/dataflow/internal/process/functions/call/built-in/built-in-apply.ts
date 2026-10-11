@@ -31,9 +31,11 @@ export interface ResolvedFunctionArgument {
 	readonly functionName: Identifier
 	readonly anonymous:    boolean
 	readonly asString:     boolean
+	/** the name is computed by the argument (`paste0("f_", k)`), whose own vertex therefore cannot become the call */
+	readonly computed?:    boolean
 }
 
-/** Resolve the function an argument stands for: a string literal, a symbol, or an inline definition; `undefined` if none. */
+/** Resolve the function an argument stands for: a string (literal or computed), a symbol, or an inline definition; `undefined` if none. */
 export function resolveFunctionArgument<OtherInfo>(
 	val:  RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -44,6 +46,11 @@ export function resolveFunctionArgument<OtherInfo>(
 	}
 	if(RFunctionDefinition.is(val)) {
 		return { functionId: val.info.id, functionName: `${UnnamedFunctionCallPrefix}${val.info.id}`, anonymous: true, asString: false };
+	}
+	/* `do.call(paste0("f_", 1 + 2))` and `do.call(name)` with a string in `name` call the function so named */
+	const named = opts.unquoteFunction ? NodeValue.singleStringOf(val.info.id, data) : undefined;
+	if(named !== undefined) {
+		return { functionId: val.info.id, functionName: named, anonymous: false, asString: true, computed: !RSymbol.is(val) };
 	}
 	if(!RSymbol.is(val)) {
 		return undefined;
@@ -134,8 +141,17 @@ export function processApply<OtherInfo>(
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
-	const { functionName, anonymous, asString } = resolvedFn;
+	const { functionName, anonymous, asString, computed } = resolvedFn;
 	let functionId: NodeId = resolvedFn.functionId;
+	if(computed) {
+		/* the call the computed name stands for gets a vertex of its own, which reads the name */
+		const nameId = functionId;
+		functionId = `${nameId}-call`;
+		/* a use for now, made the call below like any other function handed over */
+		information.graph.addVertex({ tag: VertexType.Use, id: functionId, cds: data.cds }, data.ctx.env.cleanEnv);
+		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
+		information.graph.addEdge(functionId, nameId, EdgeType.Reads);
+	}
 	if(asString) {
 		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	}

@@ -77,7 +77,7 @@ export function processGet<OtherInfo>(
 			const synthId = `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
 			const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
 				type:    RType.Symbol,
-				info:    { ...retrieve.info, id: synthId },
+				info:    { ...retrieve.info, id: synthId, parent: retrieve.info.id },
 				content: resolvedName,
 				lexeme:  literal ? retrieve.lexeme : resolvedName,
 				location

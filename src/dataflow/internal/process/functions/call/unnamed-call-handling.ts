@@ -2,11 +2,11 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { FunctionSemantics } from '../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../info';
 import { ControlFlow } from '../../../control-flow';
-import { ExitPointType } from '../../../../info';
 import { processAllArguments } from './common';
 import type { RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
+import { Ternary } from '../../../../../util/logic';
 import { DataflowGraph } from '../../../../graph/graph';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { VertexType } from '../../../../graph/vertex';
@@ -82,14 +82,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	}, data.ctx.env.cleanEnv);
 
 	const cfgEntry = ControlFlow.inSequence(finalGraph, [calledFunction, ...processedArguments], functionRootId);
-	/* a jump within an argument is caught here, just like for a named call */
-	for(const argument of processedArguments) {
-		for(const exit of argument?.exitPoints ?? []) {
-			if(exit.type !== ExitPointType.Default) {
-				finalGraph.addEdge(exit.nodeId, functionRootId, EdgeType.FlowEdge);
-			}
-		}
-	}
+	/* what the called function forces is up to its body, just like for a named call */
+	const argumentExits = processedArguments.flatMap(a => ControlFlow.promise(finalGraph, a, Ternary.Maybe, functionRootId));
 
 	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
@@ -115,7 +109,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		entryPoint:        functionCall.info.id,
 		cfgEntry:          cfgEntry === functionRootId ? undefined : cfgEntry,
 		cfgExit:           functionRootId,
-		exitPoints:        calledFunction.exitPoints,
+		exitPoints:        argumentExits.length === 0 ? calledFunction.exitPoints : calledFunction.exitPoints.concat(argumentExits),
 		hooks:             calledFunction.hooks,
 	};
 }

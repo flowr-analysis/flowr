@@ -1,8 +1,9 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
-import type { DataflowCfgInformation } from '../info';
-import { ControlDependency, ExitPointType } from '../info';
+import type { DataflowCfgInformation, ExitPoint } from '../info';
+import { ControlDependency, ExitPointType, withCds } from '../info';
+import { Ternary } from '../../util/logic';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
@@ -62,7 +63,8 @@ export const ControlFlow = {
 	},
 	/**
 	 * Whether the subtree always jumps away instead of being left normally, i.e. whether a non-default exit
-	 * point happens in every branch.
+	 * point happens in every branch. The control dependencies the subtree stands under as a whole (`context`,
+	 * like those of a promise it sits in) are no condition within it.
 	 * @see {@link ControlFlow#canComplete|canComplete()} - for whether it can be left normally at all
 	 * @example
 	 * ```r
@@ -70,14 +72,18 @@ export const ControlFlow = {
 	 * { if(u) break }      # only maybe
 	 * ```
 	 */
-	alwaysExits(this: void, info: DataflowCfgInformation): boolean {
+	alwaysExits(this: void, info: DataflowCfgInformation, context?: readonly ControlDependency[]): boolean {
 		let cds: ControlDependency[] = [];
 		for(const exit of info.exitPoints) {
 			if(exit.type !== ExitPointType.Default) {
 				if(exit.cds === undefined) {
 					return true;
 				}
-				cds = cds.concat(exit.cds);
+				const own = context === undefined ? exit.cds : exit.cds.filter(cd => !context.some(c => ControlDependency.same(c, cd)));
+				if(own.length === 0 && exit.cds.length > 0) {
+					return true;
+				}
+				cds = cds.concat(own);
 			}
 		}
 		return ControlDependency.happensInEveryBranch(cds);
@@ -142,6 +148,50 @@ export const ControlFlow = {
 				graph.addEdge(exit.nodeId, target, EdgeType.FlowEdge);
 			}
 		}
+	},
+	/**
+	 * What is handed to `holder` runs only once `holder` forces it, so it is analyzed under that control
+	 * dependency: a definition within a promise may not happen, and what it would overwrite stays visible.
+	 * @see {@link ControlFlow#promise|promise()} - for the jumps within a promise
+	 * @example
+	 * ```r
+	 * g(x <- 2) # `x` is 2 afterwards only if `g` forces its argument
+	 * ```
+	 */
+	withinPromise<Data extends { readonly cds?: readonly ControlDependency[] }>(this: void, data: Data, holder: NodeId): Data {
+		return { ...data, cds: withCds(data.cds, [{ id: holder, when: true, byPromise: true }]) };
+	},
+	/**
+	 * The one gate for a promise: an argument or a default that R evaluates only when, and if, `holder` forces
+	 * it. A jump within it
+	 * - never runs when it is {@link Ternary#Never|never} forced, so control resumes at `holder`,
+	 * - leaves whenever it is reached when it is {@link Ternary#Always|always} forced,
+	 * - otherwise may do either: it stays an exit, under the control dependency `{ id: holder, when: true, byPromise: true }`,
+	 *   and control may resume at `holder` as well. Once the calls are linked,
+	 *   {@link FunctionSemantics.settleJumpsInPromises} decides what the receiver really does.
+	 * @returns the exit points the holder takes over from the promise
+	 * @example
+	 * ```r
+	 * g(return(1))           # whether `h` returns here is up to `g`
+	 * function(x = break) x  # the `break` runs where `x` is first used
+	 * ```
+	 */
+	promise(this: void, graph: DataflowGraph, promise: DataflowCfgInformation | undefined, forcing: Ternary, holder: NodeId): ExitPoint[] {
+		const exits: ExitPoint[] = [];
+		for(const exit of promise?.exitPoints ?? []) {
+			if(exit.type === ExitPointType.Default) {
+				continue;
+			}
+			if(forcing !== Ternary.Always) {
+				graph.addEdge(exit.nodeId, holder, EdgeType.FlowEdge);
+			}
+			if(forcing === Ternary.Always) {
+				exits.push(exit);
+			} else if(forcing === Ternary.Maybe) {
+				exits.push({ ...exit, cds: withCds(exit.cds, [{ id: holder, when: true, byPromise: true }]) });
+			}
+		}
+		return exits;
 	},
 	/**
 	 * The parts run one after the other and the last one continues with `last`, if it is given.

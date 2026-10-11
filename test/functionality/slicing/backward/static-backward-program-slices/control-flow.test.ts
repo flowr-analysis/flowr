@@ -108,7 +108,7 @@ x <- 4
    x <- 2
    print(x)
 }
-print(x)`, ['7@x'], 'x <- 2\nx');
+print(x)`, ['7@x'], '`{` <- function(...) 3\nx <- 4\n{ x <- 2 }\nx', { expectedOutput: '[1] 3\n[1] 4', expectedSliceOutput: '[1] 3\n[1] 4' });
 	});
 
 	describe('Dead Code', () => {

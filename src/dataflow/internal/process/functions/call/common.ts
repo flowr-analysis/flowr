@@ -146,11 +146,9 @@ export function processAllArguments<OtherInfo>(
 			beforeAlternatives ??= finalEnv;
 			finalEnv = beforeAlternatives;
 		}
-		data = { ...data, environment: finalEnv };
-		if(beforeAlternatives !== undefined) {
-			/* whether an alternative runs depends on what the call picks */
-			data = { ...data, cds: [...data.cds ?? [], { id: functionRootId, when: true }] };
-		}
+		/* whether an alternative runs depends on what the call picks */
+		data = beforeAlternatives === undefined ? { ...data, environment: finalEnv }
+			: { ...data, environment: finalEnv, cds: [...data.cds ?? [], { id: functionRootId, when: true }] };
 		data = patchData?.(data, i) ?? data;
 		if(RArgument.isEmpty(arg)) {
 			callArgs.push(EmptyArgument);

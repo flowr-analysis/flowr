@@ -102,7 +102,7 @@ export function processForLoop<OtherInfo>(
 
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);
 	const vector = processDataflowFor(vectorArg, data);
-	if(ControlFlow.alwaysExits(vector)) {
+	if(ControlFlow.alwaysExits(vector, data.cds)) {
 		dataflowLogger.warn(`For-Loop ${rootId} forces exit in vector, skipping rest`);
 		return vector;
 	}

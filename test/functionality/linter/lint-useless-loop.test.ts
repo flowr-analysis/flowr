@@ -27,6 +27,7 @@ describe('flowR linter', withTreeSitter(parser => {
 	});
 
 	describe('Not a Useless Loop', () => {
+		assertLinter('a vector holding a sequence', parser, 'x <- read.csv("a.csv")\nfor(j in c(1:nrow(x))) print(j)', 'useless-loop', []);
 		assertLinter('repeat with break', parser, 'repeat { x <- x + 2; if(u) { break } else {} }', 'useless-loop', []);
 	});
 }));

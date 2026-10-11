@@ -40,6 +40,11 @@ export function getArgumentStringValue(
 		const arg = vertex?.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
 		if(arg >= 0) {
 			argumentIndex = arg;
+		} else if(typeof argumentIndex === 'number' && vertex !== undefined) {
+			/* a named argument takes no position, so the parameter binds the matching unnamed one */
+			const position = argumentIndex;
+			const unnamed = vertex.args.flatMap((a, i) => a === EmptyArgument || !a.name ? [i] : []);
+			argumentIndex = unnamed[position] ?? vertex.args.length;
 		}
 	}
 

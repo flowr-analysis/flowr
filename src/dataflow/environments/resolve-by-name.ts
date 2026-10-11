@@ -80,6 +80,15 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 	return found === undefined && target === ReferenceType.NonFunction ? ownDefinitions(id, environment) : found;
 }
 
+function tailCacheOf(env: Environment, target: ReferenceType): Map<string, readonly IdentifierDefinition[] | undefined> {
+	env.tailCache ??= new Map();
+	let memo = env.tailCache.get(target);
+	if(memo === undefined) {
+		env.tailCache.set(target, memo = new Map<string, readonly IdentifierDefinition[] | undefined>());
+	}
+	return memo;
+}
+
 /** {@link resolveByName} without its two special targets, i.e. the plain walk up the environments. */
 function resolveByTargetType(id: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
 	/* read piecewise, `Identifier.toArray` would allocate a tuple per resolution */
@@ -98,12 +107,12 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 	 * walk through them is done once per name and target instead of once per resolution */
 	const flatten = ns === undefined && internal !== false && typeof id === 'string'
 		&& target !== ReferenceType.S3MethodPrefix && target !== ReferenceType.S7MethodPrefix;
-	const key = flatten ? `${target}\u0000${name}` : '';
 	let flattenAt: Environment | undefined;
 	do{
 		if(flatten && flattenAt === undefined && definitions === undefined && (current.t !== undefined || current.builtInEnv)) {
-			const cached = current.tailCache?.get(key);
-			if(cached !== undefined || current.tailCache?.has(key)) {
+			const memo = current.tailCache?.get(target);
+			const cached = memo?.get(name);
+			if(cached !== undefined || memo?.has(name)) {
 				return cached;
 			}
 			flattenAt = current;
@@ -146,7 +155,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 			}
 			if(allOk) {
 				if(flattenAt !== undefined) {
-					(flattenAt.tailCache ??= new Map()).set(key, definition);
+					tailCacheOf(flattenAt, target).set(name, definition);
 				}
 				return definition;
 			}
@@ -171,11 +180,11 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		? (builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns))
 		: (builtIns === undefined || builtIns.length > 0 ? builtIns : undefined);
 	if(flattenAt !== undefined) {
-		const memo = flattenAt.tailCache ??= new Map();
+		const memo = tailCacheOf(flattenAt, target);
 		if(memo.size >= TailCacheCap) {
 			memo.clear();
 		}
-		memo.set(key, result);
+		memo.set(name, result);
 	}
 	return result;
 }

@@ -132,17 +132,19 @@ describe('Function Call Pipe-Bind (real R engine only)', () => {
 	assertDataflow(label('Pipe-bind reads the piped value and its body reads the bound name', ['pipe-and-pipe-bind', 'pipe-bind']),
 		pipeBindShell, 'x |> y =>\n  f(y)',
 		emptyGraph()
+			.use('2@y', 'y', { cds: [{ id: 9, when: true, byPromise: true }, { id: 7, when: true, byPromise: true }] })
 			.reads('2@y', '1@y')
 			.reads('2@f', '2@y')
-			.call('2@f', 'f', [argumentInCall('2@y')]),
+			.call('2@f', 'f', [argumentInCall('2@y')], { cds: [{ id: 9, when: true, byPromise: true }] }),
 		pipeBindConfig
 	);
 	assertDataflow(label('Chained pipe into a pipe-bind', ['pipe-and-pipe-bind', 'pipe-bind']),
 		pipeBindShell, 'x |> g() |> y =>\n  f(y)',
 		emptyGraph()
+			.use('2@y', 'y', { cds: [{ id: 13, when: true, byPromise: true }, { id: 11, when: true, byPromise: true }] })
 			.reads('2@y', '1@y')
 			.reads('2@f', '2@y')
-			.call('2@f', 'f', [argumentInCall('2@y')]),
+			.call('2@f', 'f', [argumentInCall('2@y')], { cds: [{ id: 13, when: true, byPromise: true }] }),
 		pipeBindConfig
 	);
 });

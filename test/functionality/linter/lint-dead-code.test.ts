@@ -135,10 +135,17 @@ print(2)
 			]);
 		});
 
+		describe('reflective name arguments', () => {
+			assertLinter('exists', parser, 'x <- 1\nif(exists("x")) print(1)', 'dead-code', []);
+			assertLinter('get', parser, 'x <- 1\nprint(get("x"))', 'dead-code', []);
+			assertLinter('get with envir', parser, 'e <- new.env()\nassign("x", 1, envir = e)\nprint(get("x", envir = e))', 'dead-code', []);
+		});
+
 		describe('loops', () => {
 			assertLinter('after infinite repeat', parser, 'repeat{ foo }; 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 16, 1, 16] }
 			]);
+			assertLinter('a condition the loop changes for its next iteration', parser, 'run <- TRUE\ns <- FALSE\nwhile(run) {\n  if(s) run <- FALSE\n  s <- TRUE\n}\nprint("done")', 'dead-code', []);
 			assertLinter('after infinite while', parser, 'while(TRUE){ foo }; 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 21, 1, 21] }
 			]);

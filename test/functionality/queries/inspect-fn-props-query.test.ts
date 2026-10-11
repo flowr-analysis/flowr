@@ -72,7 +72,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	/* counterexamples: what the walk has to get right beyond the straightforward cases */
 	testRoles('a formal overwritten before the end is not the result', 'f <- function(x) { x <- 1; x }', { x: ArgProp.Lazy });
 	testRoles('nor is one overwritten on the way', 'f <- function(x) { y <- x; y <- 2; y }', { x: ArgProp.Forced });
-	testRoles('branches agreeing on the formal make it the result', 'f <- function(x, c) if(c) x else x', { x: ArgProp.Alias, c: ArgProp.Forced | ArgProp.Atomic });
+	testRoles('branches agreeing on the formal make it the result', 'f <- function(x, c) if(c) x else x', { x: ArgProp.Forced | ArgProp.Alias, c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('branches disagreeing do not', 'f <- function(x, y, c) if(c) x else y', { c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('a constant condition is no condition', 'f <- function(x) if(TRUE) x', { x: ArgProp.Forced | ArgProp.Alias });
 	testRoles('a quoted formal is read as written, not evaluated', 'f <- function(x) quote(x)', { x: ArgProp.Nse | ArgProp.Lazy });

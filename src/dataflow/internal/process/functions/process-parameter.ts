@@ -7,6 +7,7 @@ import { type IdentifierDefinition, ReferenceType } from '../../../environments/
 import { define } from '../../../environments/define';
 import { EdgeType } from '../../../graph/edge';
 import { ControlFlow } from '../../control-flow';
+import { Ternary } from '../../../../util/logic';
 import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 
@@ -18,7 +19,8 @@ import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nod
  */
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const name = processDataflowFor(parameter.name, data);
-	const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, data);
+	/* a default is a promise the parameter holds, forced where the parameter is first used */
+	const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, ControlFlow.withinPromise(data, parameter.name.info.id));
 	const graph = defaultValue === undefined ? name.graph : name.graph.mergeWith(defaultValue.graph);
 
 	const writtenNodes: readonly (IdentifierDefinition & { name: string })[] = name.unknownReferences.map(n => ({
@@ -50,13 +52,9 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	const boundAt = name.entryPoint;
 	if(defaultValue !== undefined) {
 		ControlFlow.continuesWith(graph, defaultValue, boundAt);
-		for(const exit of defaultValue.exitPoints) {
-			/* R only forces a default when the parameter is used, so a jump within one does not cut the binding */
-			if(exit.type !== ExitPointType.Default) {
-				graph.addEdge(exit.nodeId, boundAt, EdgeType.FlowEdge);
-			}
-		}
 	}
+	/* R only forces a default when the parameter is used, so a jump within one does not cut the binding */
+	const defaultExits = ControlFlow.promise(graph, defaultValue, Ternary.Maybe, boundAt);
 
 	return {
 		unknownReferences: [],
@@ -67,7 +65,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		entryPoint:        parameter.info.id,
 		cfgEntry:          defaultValue === undefined ? boundAt : ControlFlow.entryOf(defaultValue),
 		cfgExit:           boundAt,
-		exitPoints:        [{ nodeId: parameter.info.id, type: ExitPointType.Default, cds: data.cds }],
+		exitPoints:        [...defaultExits, { nodeId: parameter.info.id, type: ExitPointType.Default, cds: data.cds }],
 		hooks:             []
 	};
 }

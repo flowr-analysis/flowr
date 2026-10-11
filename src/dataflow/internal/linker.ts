@@ -12,7 +12,7 @@ import { NoEdges } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
-import { DfEdge, EdgeType } from '../graph/edge';
+import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../graph/vertex';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ExitPoint } from '../info';
@@ -28,6 +28,7 @@ import { Resolve } from '../environments/resolve-helper';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { BuiltInLookup } from '../fn/frame-reflection';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -679,4 +680,118 @@ export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState
 	}
 	const fieldName = accessedFieldName(unpackArg(access.access[0]), RAccess.isNamed(access));
 	linkFieldReads(graph, access.info.id, fieldName ? envState.current.memory.get(fieldName) : undefined, true);
+}
+
+/**
+ * The factory creating `closure` afresh on every call, with the names bound in its frame by the time it hands the
+ * closure back: the closure is all the factory returns, and the factory itself defines no other function, calls
+ * nothing but built-ins with known effects, and does not reflect on its frame.
+ */
+function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup): { readonly factory: NodeId, readonly locals: ReadonlySet<string> } | undefined {
+	for(const [id, factory] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		if(!factory.exitPoints.some(e => e.nodeId === closure.id)) {
+			continue;
+		}
+		if(!factory.exitPoints.every(e => e.nodeId === closure.id) || FunctionSemantics.frameReflection(factory, graph, { known }) !== 0) {
+			return undefined;
+		}
+		const locals = new Set<string>();
+		for(const node of factory.subflow.graph) {
+			const vertex = graph.getVertex(node);
+			if(node === closure.id || closure.subflow.graph.has(node)) {
+				continue;
+			} else if(DfgVertex.isFunctionDefinition(vertex) || (DfgVertex.isFunctionCall(vertex) && (!vertex.onlyBuiltin || graph.unknownSideEffects.has(NodeId.normalize(node))))
+				|| DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
+				return undefined;
+			} else if(DfgVertex.isVariableDefinition(vertex)) {
+				locals.add(NodeId.recoverName(node, graph.idMap) ?? '');
+			}
+		}
+		for(const param of Object.keys(factory.params)) {
+			locals.add(NodeId.recoverName(NodeId.normalize(param), graph.idMap) ?? '');
+		}
+		return { factory: id, locals };
+	}
+	return undefined;
+}
+
+/** The factory calls whose closure `call` may run, `undefined` if it may run one created any other way. */
+function instancesOf(call: NodeId, closure: NodeId, factory: NodeId, graph: DataflowGraph): NodeId[] | undefined {
+	if(!DfEdge.includesType(graph.outgoingEdges(call)?.get(closure) ?? NoEdge, EdgeType.Calls)) {
+		return undefined;
+	}
+	const instances: NodeId[] = [];
+	for(const [binding, edge] of graph.edgesFrom(call)) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads) || DfEdge.includesType(edge, EdgeType.Argument) || NodeId.isBuiltIn(binding)) {
+			continue;
+		}
+		/* the binding the call reads holds what one call of the factory created, and nothing else */
+		const created = DfgVertex.isVariableDefinition(graph.getVertex(binding)) ? [...graph.edgesFrom(binding)]
+			.filter(([target, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && DfgVertex.isFunctionCall(graph.getVertex(target)) && !DfgVertex.hasOrigin(graph.getVertex(target), BuiltInProcName.Assignment))
+			.map(([target]) => target) : [];
+		if(created.length !== 1 || [...graph.edgesFrom(created[0])].some(([target, e]) => DfEdge.includesType(e, EdgeType.Calls) && target !== factory)
+			|| !DfEdge.includesType(graph.outgoingEdges(created[0])?.get(factory) ?? NoEdge, EdgeType.Calls)) {
+			return undefined;
+		}
+		instances.push(created[0]);
+	}
+	return instances.length > 0 ? instances : undefined;
+}
+
+const NoEdge = { types: 0 } as const;
+
+/**
+ * Each call of a factory gives the closure it creates a frame of its own, so what the closure writes there with `<<-`
+ * only calls of a closure from the same factory call can see. Rather than having every call of any such closure
+ * perform these writes, a call depends on the other calls that may run a closure of the same factory call.
+ */
+export function separateClosureInstances(graph: DataflowGraph, known: BuiltInLookup): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	for(const [closure, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		/* only a closure writing with `<<-` can share state, which most do not */
+		const superAssignments = vertex.subflow.graph.values().filter(id => DfgVertex.hasOrigin(graph.getVertex(id), BuiltInProcName.SuperAssignment)).toArray();
+		const { factory, locals } = superAssignments.length === 0 ? {} : factoryOf(vertex, graph, known) ?? {};
+		if(factory === undefined || locals === undefined) {
+			continue;
+		}
+		const writes: NodeId[] = [];
+		for(const id of superAssignments) {
+			for(const [target, edge] of graph.edgesFrom(id)) {
+				const name = idMap.get(target);
+				if(DfEdge.includesType(edge, EdgeType.Returns) && RSymbol.is(name) && locals.has(Identifier.getName(name.content))) {
+					writes.push(target);
+				}
+			}
+		}
+		/* someone outside the closure seeing the write would see it for every instance */
+		if(writes.length === 0 || writes.some(w => [...graph.edgesTo(w)].some(([from, e]) => DfEdge.includesType(e, ~ControlFlowEdgeTypes) && !vertex.subflow.graph.has(from)))) {
+			continue;
+		}
+		const calls = new Map<NodeId, NodeId[] | undefined>();
+		for(const write of writes) {
+			for(const [call, edge] of graph.edgesFrom(write)) {
+				if(DfEdge.includesType(edge, EdgeType.SideEffectOnCall)) {
+					calls.set(call, instancesOf(call, closure, factory, graph));
+				}
+			}
+		}
+		if(new Set([...calls.values()].flatMap(i => i ?? [])).size < 2) {
+			continue;
+		}
+		for(const write of writes) {
+			for(const call of calls.keys()) {
+				graph.removeEdgeType(write, call, EdgeType.SideEffectOnCall);
+			}
+		}
+		for(const [call, instances] of calls) {
+			for(const [other, others] of calls) {
+				if(other !== call && (instances === undefined || others === undefined || instances.some(i => others.includes(i)))) {
+					graph.addEdge(call, other, EdgeType.Reads);
+				}
+			}
+		}
+	}
 }

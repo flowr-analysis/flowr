@@ -1,11 +1,15 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { VertexType } from '../../../../../graph/vertex';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { define } from '../../../../../environments/define';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
@@ -13,6 +17,7 @@ import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signaturePa
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { isPipedArgument, patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
+import type { DataflowGraph } from '../../../../../graph/graph';
 import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
 
@@ -73,7 +78,10 @@ export function processWithEnv<OtherInfo>(
 	const envirResolution = envirOf(envirRouting);
 	if(!envirResolution) {
 		const fallback = markAsMaskedFallback(name, args, rootId, data);
-		unknownIfAmbiguous(envirRouting, fallback, rootId);
+		/* only a definition within can write to a `data` we cannot pin down */
+		if(!fallback.graph.verticesOfType(VertexType.VariableDefinition).next().done && !unknownIfAmbiguous(envirRouting, fallback, rootId)) {
+			return mayWriteInto(dataArg.value, fallback, rootId, data);
+		}
 		return fallback;
 	}
 
@@ -114,10 +122,11 @@ export function processWithEnv<OtherInfo>(
 		[{ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function }]
 	);
 
-	const isWithin = Identifier.getName(name.content) === 'within';
 	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	let resultEnv = data.environment;
-	if(isWithin && dfExpr.out.length > 0) {
+	/* an environment is not copied, so the writes of `with` stay in it just like those of `within` */
+	if(dfExpr.out.length > 0) {
+		keepCallFor(dfExpr.out, merged, rootId);
 		const tempResult = { ...dfExpr, environment: data.environment, graph: merged };
 		resultEnv = routeWrittenToEnvir(tempResult, envirResolution, rootId, data.environment).environment;
 	}
@@ -134,4 +143,28 @@ export function processWithEnv<OtherInfo>(
 		out:               [],   /* writes are inside envState, not directly in outer scope */
 		unknownReferences: []
 	};
+}
+
+/**
+ * `data` may be an environment we do not track, in which `expr` writes: later reads of the variable holding it
+ * see the call as a (maybe) redefinition, which reads the previous value through its argument.
+ */
+function mayWriteInto<OtherInfo>(
+	dataNode: RNode<OtherInfo & ParentInformation>,
+	result:   DataflowInformation,
+	rootId:   NodeId,
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	keepCallFor(result.out, result.graph, rootId);
+	if(!RSymbol.is(dataNode) || Resolve.byNameAndType(dataNode.content, result.environment, ReferenceType.Variable) === undefined) {
+		return result;
+	}
+	return { ...result, environment: define({ name: dataNode.content, nodeId: rootId, definedAt: rootId, type: ReferenceType.Variable, cds: data.cds }, false, result.environment) };
+}
+
+/** a write in `expr` only happens because the call evaluates it */
+function keepCallFor(written: readonly IdentifierReference[], graph: DataflowGraph, rootId: NodeId): void {
+	for(const w of written) {
+		graph.addEdge(w.nodeId, rootId, EdgeType.Reads);
+	}
 }

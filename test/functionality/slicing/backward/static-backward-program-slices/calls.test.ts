@@ -100,9 +100,9 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	describe('Higher-order Functions', () => {
 		const code = 'a <- function() { x <- 3; i }\ni <- 4\nb <- function(f) { i <- 5; f() }\nb(a)';
 		const caps: FlowrCapabilityId[] = ['name-normal', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'formals-named', 'call-normal', 'unnamed-arguments'];
-		assertSliced(label('Only i, not bound in context', caps), shell, code, ['1@i'], 'i');
+		assertSliced(label('Only i, bound globally', caps), shell, code, ['1@i'], 'i\ni <- 4');
 		assertSliced(label('Slice of b is independent', caps), shell, code, ['3@b'], 'b <- function(f) { }');
-		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], 'a <- function() i\nb <- function(f) {\n        i <- 5\n        f()\n    }\nb(a)');
+		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], 'a <- function() i\ni <- 4\nb <- function(f) {\n        i <- 5\n        f()\n    }\nb(a)');
 		assertSliced(label('Directly call returned function', ['name-normal', 'closures', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'normal-definition', 'implicit-return', 'return', 'unnamed-arguments', 'newlines', 'numbers', 'call-normal']),
 			shell, 'm <- 12\na <- function(x) {\n  b <- function() { function() { x } }\n  return(b())\n}\nres <- a(m)()', ['6@res'], 'm <- 12\na <- function(x) {\n        b <- function() function() x\n        return(b())\n    }\nres <- a(m)()');
 		assertSliced(label('Higher order anonymous function', ['name-normal', 'resolve-arguments', 'closures', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'implicit-return', 'normal-definition', 'call-anonymous', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'newlines', 'precedence']),
@@ -293,7 +293,7 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 	describe('Redefine built-ins', () => {
 		assertSliced(label('redefining assignments should work', ['name-quoted', 'name-normal', 'precedence', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, 'redefinition-of-built-in-functions-primitives']), shell, 'x <- 1\n`<-`<-`*`\nx <- 3\ny = x', ['4@y'], 'x <- 1\ny = x');
 		assertSliced(label('redefine if', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-dot-dot-dot', 'newlines', 'unnamed-arguments']),
-			shell, '`if` <- function(...) 2\nif(1) \n   x <- 3\nprint(x)', ['4@x'], 'x <- 3\nx'/*, { expectedOutput: '[1] 2' }*/);
+			shell, '`if` <- function(...) 2\nif(1) \n   x <- 3\nprint(x)', ['4@x'], '`if` <- function(...) 2\nif(1) x <- 3\nx');
 		assertSliced(label('named argument with redefine', ['name-escaped', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'named-arguments', 'newlines', 'numbers']),
 			shell, 'x <- 2\n`<-` <- `*`\nx <- 3\nprint(y = x)', ['4@y'], 'y=x');
 		assertSliced(label('redefine in local scope', [

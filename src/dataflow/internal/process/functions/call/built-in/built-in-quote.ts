@@ -1,6 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import type { FnSig } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import { type DataflowInformation, ExitPointType } from '../../../../../info';
+import type { DataflowInformation } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -23,6 +24,7 @@ interface QuoteConfig {
 	envArgIndex?:            number
 	/** which unquote escape the function supports, {@link Unquote.None} if unset */
 	unquote?:                Unquote
+	readonly sig?:           FnSig
 }
 
 /**
@@ -38,7 +40,7 @@ export function processQuote<OtherInfo>(
 	const startEnv = data.environment;
 	let lastEnv = startEnv;
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({
-		name, args, rootId, data, origin: BuiltInProcName.Quote,
+		name, args, rootId, data, origin: BuiltInProcName.Quote, sig: config.sig,
 		patchData(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, index: number): DataflowProcessorInformation<OtherInfo & ParentInformation> {
 			if(index === config.quoteArgumentsWithIndex) {
 				lastEnv = data.environment;
@@ -67,15 +69,6 @@ export function processQuote<OtherInfo>(
 
 	const quotedProcessed = processedArguments[config.quoteArgumentsWithIndex];
 	if(quotedProcessed) {
-		/*
-		 * The expression is held on to rather than evaluated, so a `return` within it never runs and control
-		 * arrives at the call. Every other jump the call catches already.
-		 */
-		for(const exit of quotedProcessed.exitPoints) {
-			if(exit.type === ExitPointType.Return) {
-				information.graph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
-			}
-		}
 		markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [config.quoteArgumentsWithIndex], { evaluated });
 		if(evaluated) {
 			/* the argument was processed in a clean env, so the escaped reads need linking by hand */

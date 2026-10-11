@@ -5,10 +5,11 @@ import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier, ReferenceType } from '../../../../environments/identifier';
+import { Identifier, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { baseRExportOwner, isBaseRPackage } from '../../../../../util/r-base-packages';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import type { BuiltInIdentifierDefinition } from '../../../../environments/built-in';
@@ -78,6 +79,12 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvi
 	}
 }
 
+/** Whether the argument is a function: one written in place, or a name bound to one. */
+function handsOverFunction<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	const value = arg === EmptyArgument ? undefined : arg.value;
+	return RFunctionDefinition.is(value) || (RSymbol.is(value) && (Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
+}
+
 /**
  * Processes a named function call within the dataflow analysis.
  * For example, `myFunction(arg1, arg2)`, resolves against the environment.
@@ -142,7 +149,10 @@ export function processNamedCall<OtherInfo>(
 	}
 	/* a function whose body we do not see may read any option or draw on the device */
 	if(information !== undefined && (unknownBody || packageFn)) {
-		information = readsAllAmbientState(information, rootId, data, unknownBody);
+		/* a function handed in as a parameter may be anything, `runif` included, and a function handed a function may call it;
+		   otherwise a package function draws only if flowR states it does */
+		const draws = resolved.some(r => isReferenceType(r.type, ReferenceType.Parameter | ReferenceType.Argument)) || args.some(a => handsOverFunction(a, data));
+		information = readsAllAmbientState(information, rootId, data, unknownBody, draws);
 	}
 
 	// on demand: materialize the built-in vertex for any package export this call resolves to and, when we

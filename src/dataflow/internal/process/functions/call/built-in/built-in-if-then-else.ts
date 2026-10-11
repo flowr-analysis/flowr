@@ -1,23 +1,26 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
+import { onlyLiterals } from '../../../../../eval/resolve/resolve';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
+import { makeAmbientWritesMaybe } from './built-in-ambient-state';
 import { appendEnvironment } from '../../../../../environments/append';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
-import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode, RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -55,6 +58,12 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 	return { condArg, thenArg, otherwiseArg };
 }
 
+/** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
+function withinLoop(id: NodeId, idMap: AstIdMap<ParentInformation>): boolean {
+	const enclosing = RNode.findEnclosing(id, idMap, n => RFunctionDefinition.is(n) || RLoopConstructs.loopConstructTypes.has(n.type));
+	return enclosing !== undefined && !RFunctionDefinition.is(idMap.get(enclosing));
+}
+
 /**
  * Processes an if-then-else built-in function call.
  * For example, `if(cond) thenExpr else elseExpr` and `if(cond) thenExpr`.
@@ -81,7 +90,7 @@ export function processIfThenElse<OtherInfo>(
 
 	const cond = processDataflowFor(condArg, data);
 
-	if(ControlFlow.alwaysExits(cond)) {
+	if(ControlFlow.alwaysExits(cond, data.cds)) {
 		dataflowLogger.warn(`If-then-else ${rootId} forces exit in condition, skipping rest`);
 		return cond;
 	}
@@ -94,7 +103,9 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const values = NodeValue.setOf(condArg?.info.id, data);
+	/* within a loop, what the condition reads may change after it, for the next iteration */
+	const mayChange = !onlyLiterals(condArg) && withinLoop(rootId, data.completeAst.idMap);
+	const values = mayChange ? undefined : NodeValue.setOf(condArg?.info.id, data);
 	/*
 	 * `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition
 	 * says; only the `if` keyword leaves a branch unevaluated and may therefore be resolved away here.
@@ -126,7 +137,7 @@ export function processIfThenElse<OtherInfo>(
 		}
 	}
 
-	const nextGraph = cond.graph.mergeWith(then?.graph).mergeWith(otherwise?.graph);
+	const nextGraph = cond.graph.mergeWith(then?.graph, true, true).mergeWith(otherwise?.graph, true, true);
 	const thenEnvironment = then?.environment ?? cond.environment;
 
 	// if there is no "else" case, we have to recover whatever we had before as it may be not executed
@@ -144,6 +155,12 @@ export function processIfThenElse<OtherInfo>(
 	const whenFalse: ControlDependency = { id: rootId, when: false };
 	const cdTrue = [whenTrue];
 	const cdFalse = [whenFalse];
+	if(makeThenMaybe && then !== undefined) {
+		makeAmbientWritesMaybe(then.environment, cond.environment, finalEnvironment, cdTrue);
+	}
+	if(makeOtherwiseMaybe && otherwise !== undefined) {
+		makeAmbientWritesMaybe(otherwise.environment, cond.environment, finalEnvironment, cdFalse);
+	}
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = cond.in.concat(
 		makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? [],

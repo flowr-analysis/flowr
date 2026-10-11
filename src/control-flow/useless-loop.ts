@@ -1,6 +1,6 @@
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { Resolve } from '../dataflow/environments/resolve-helper';
-import { isValue } from '../dataflow/eval/values/r-value';
+import { isValue, type Lift, type Value } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
@@ -48,12 +48,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		}
 
 		const vector = NodeValue.soleOf(vectorOfLoop.nodeId, Resolve.info(dataflow, ctx));
-		const once = vector === undefined ? false
-			: vector.type === 'vector' ? isValue(vector.elements) && vector.elements.length === 1
-				: vector.type === 'interval' ? isValue(vector.start) && isValue(vector.end) && vector.startInclusive && vector.endInclusive
-					&& isValue(vector.start.value) && isValue(vector.end.value) && vector.start.value.num === vector.end.value.num
-					: vector.type === 'string' || vector.type === 'logical';
-		if(once) {
+		if(vector !== undefined && holdsOneElement(vector)) {
 			return true;
 		}
 	}
@@ -68,6 +63,17 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	});
 
 	return visitor.loopsOnlyOnce();
+}
+
+/** Whether `value` has exactly one element; an element of a vector may itself be several, like the `1:n` in `c(1:n)`. */
+function holdsOneElement(value: Lift<Value>, element = false): boolean {
+	if(!isValue(value)) {
+		return false;
+	}
+	return value.type === 'vector' ? isValue(value.elements) && value.elements.length === 1 && holdsOneElement(value.elements[0], true)
+		: value.type === 'interval' ? isValue(value.start) && isValue(value.end) && value.startInclusive && value.endInclusive
+			&& isValue(value.start.value) && isValue(value.end.value) && value.start.value.num === value.end.value.num
+			: element ? value.type !== 'set' : value.type === 'string' || value.type === 'logical';
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {

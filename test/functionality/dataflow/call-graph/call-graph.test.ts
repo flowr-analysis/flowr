@@ -108,9 +108,9 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls(22, '1@function').calls(22, 31)
 			.call(28, 'fib', [argumentInCall(26)], { omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(28, '1@function').calls(28, 31)
-			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
+			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 22, when: true, byPromise: true }, { id: 15, when: false }] })
 			.calls(20, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
+			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 28, when: true, byPromise: true }, { id: 15, when: false }] })
 			.calls(26, NodeId.mapBuiltInProc(BuiltInProcName.Default)),
 		{ context: 'call-graph', resolveIdsAsCriterion: true }
 	);

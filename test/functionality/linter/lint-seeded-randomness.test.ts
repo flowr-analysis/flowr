@@ -52,7 +52,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Uncertain }], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 1 });
 			assertLinter('unclear', parser, 'if(u) {} else { set.seed(17); }\nrunif(1);', 'seeded-randomness',
 				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Uncertain }], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 1 });
-			assertLinter('unclear after definite seed', parser, 'set.seed(17); if(u) { set.seed(17); }\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
+			assertLinter('unclear after definite seed', parser, 'set.seed(17); if(u) { set.seed(17); }\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 2, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 			assertLinter('exhaustive', parser, 'if(u) { set.seed(17); } else { set.seed(18); }\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 2, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 			assertLinter('reversed', parser, 'set.seed(17);\nif(u) { runif(1) }', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 			assertLinter('separate', parser, 'if (u) { set.seed(17) }; if (u) { runif(1) }', 'seeded-randomness',
@@ -89,8 +89,45 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('custom set.seed', parser, 'set.seed <- function(x) {}\nset.seed(17)\nrunif(1)', 'seeded-randomness',
 			[{ loc: [3, 1, 3, 8], function: 'runif', certainty: LintingResultCertainty.Certain }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 
-		assertLinter('set in function call', parser, 'runif(set.seed(17))', 'seeded-randomness',
-			[{ loc: [1, 1, 1, 19], function: 'runif', certainty: LintingResultCertainty.Certain }]);
+		describe('the generator state flows through the dataflow', () => {
+			assertLinter('draws pass the seed on', parser, 'set.seed(1)\nrunif(1)\nrnorm(1)', 'seeded-randomness', [], { consumerCalls: 2, callsWithFunctionProducers: 2, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
+			assertLinter('a draw before a conditional seed stays unseeded', parser, 'runif(1)\nif(u) set.seed(1)\nrnorm(1)', 'seeded-randomness', [
+				{ loc: [1, 1, 1, 8], function: 'runif', certainty: LintingResultCertainty.Certain },
+				{ loc: [3, 1, 3, 8], function: 'rnorm', certainty: LintingResultCertainty.Uncertain }
+			]);
+			assertLinter('a draw within a function the program calls after seeding', parser, 'f <- function() runif(1)\nset.seed(1)\nf()', 'seeded-randomness', []);
+			assertLinter('a seed at the end of a loop body does not cover the first iteration', parser, 'for(i in 1:3) {\n  runif(1)\n  set.seed(1)\n}', 'seeded-randomness', [
+				{ loc: [2, 3, 2, 10], function: 'runif', certainty: LintingResultCertainty.Uncertain }
+			]);
+			assertLinter('a seed before a loop covers every iteration', parser, 'set.seed(1)\nfor(i in 1:3) {\n  runif(1)\n}', 'seeded-randomness', []);
+			assertLinter('a draw in a closure handed to sapply after seeding', parser, 'set.seed(1)\nsapply(1:3, function(i) runif(1))\nrnorm(1)', 'seeded-randomness', []);
+			assertLinter('a draw in a recursive function the program calls after seeding', parser, 'f <- function(n) if(n > 0) { runif(1); f(n - 1) }\nset.seed(1)\nf(3)\nrnorm(1)', 'seeded-randomness', []);
+			assertLinter('a draw in a function called before seeding', parser, 'f <- function() runif(1)\nf()\nset.seed(1)\nrnorm(1)', 'seeded-randomness', [
+				{ loc: [1, 17, 1, 24], function: 'runif', certainty: LintingResultCertainty.Uncertain }
+			]);
+			assertLinter('a seed in a closure handed to a user function', parser, 'g <- function(f) f()\ng(function() set.seed(1))\nrunif(1)', 'seeded-randomness', []);
+			assertLinter('a seed in a closure handed down twice', parser, 'g <- function(f) f()\nk <- function(f) g(f)\nk(function() set.seed(1))\nrunif(1)', 'seeded-randomness', []);
+			/* the closure is only called on some paths, so the draw may see the initial state */
+			assertLinter('a seed in a closure the receiver may not call', parser, 'g <- function(f) if(runif(1) > 2) f()\ng(function() set.seed(1))\nrnorm(1)', 'seeded-randomness', [
+				{ loc: [1, 21, 1, 28], function: 'runif', certainty: LintingResultCertainty.Uncertain },
+				{ loc: [3, 1, 3, 8], function: 'rnorm', certainty: LintingResultCertainty.Uncertain }
+			]);
+			assertLinter('a seed in a closure handed to lapply', parser, 'x <- lapply(1, function(i) set.seed(1))\nrunif(1)', 'seeded-randomness', []);
+			assertLinter('a seed in a function called within a function', parser, 's <- function() set.seed(1)\nw <- function() s()\nw()\nrunif(1)', 'seeded-randomness', []);
+			assertLinter('a draw in a closure handed to a user function after seeding', parser, 'set.seed(1)\ng <- function(f) f(1)\ng(function(n) runif(n))\nrnorm(1)', 'seeded-randomness', []);
+			assertLinter('a built-in handed to a user function after seeding', parser, 'set.seed(1)\ng <- function(f) f(1)\ng(runif)\nrnorm(1)', 'seeded-randomness', []);
+			assertLinter('a built-in handed to a user function without a seed', parser, 'g <- function(f) f(1)\ng(runif)\nrnorm(1)', 'seeded-randomness', [
+				{ loc: [3, 1, 3, 8], function: 'rnorm', certainty: LintingResultCertainty.Certain }
+			]);
+			assertLinter('a seed in a closure handed to a user function only after the draw', parser, 'g <- function(f) f()\nrunif(1)\ng(function() set.seed(1))', 'seeded-randomness', [
+				{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }
+			]);
+			assertLinter('a local .Random.seed does not', parser, 'f <- function() {\n  .Random.seed <- 1\n  1\n}\nf()\nrunif(1)', 'seeded-randomness', [
+				{ loc: [6, 1, 6, 8], function: 'runif', certainty: LintingResultCertainty.Certain }
+			]);
+		});
+		/* R evaluates the argument, and with it the seed, before it draws */
+		assertLinter('set in function call', parser, 'runif(set.seed(17))', 'seeded-randomness', []);
 		assertLinter('get in function call', parser, 'runif(runif(1))', 'seeded-randomness', [
 			{ loc: [1, 7, 1, 14], function: 'runif', certainty: LintingResultCertainty.Certain },
 			{ loc: [1, 1, 1, 15], function: 'runif', certainty: LintingResultCertainty.Certain }]);

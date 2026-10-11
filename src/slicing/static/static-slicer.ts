@@ -8,6 +8,7 @@ import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfgVertex } from '../../dataflow/graph/vertex';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -108,6 +109,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 				queue.add(id, emptyEnv, basePrint, true);
 			}
 		}
+		/* a call asked about does what the functions it runs do, which includes what they print */
+		for(const id of outputWithinCallees(ids, graph)) {
+			queue.add(id, emptyEnv, basePrint, false);
+		}
 	}
 
 	do{
@@ -147,6 +152,19 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			for(const cd of currentVertex.cds.filter(({ id }) => !queue.hasId(id))) {
 				if(!topLevel || (idMap.get(cd.id)?.info.nest ?? 0) >= minNesting) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
+				}
+			}
+		}
+
+		/* a call or a definition within a promise runs only when the promise is forced, within captured code only when it is evaluated */
+		if(DfgVertex.isFunctionCall(currentVertex) || DfgVertex.isVariableDefinition(currentVertex)) {
+			const dependencies = FunctionSemantics.promiseDependencies(id, graph);
+			if(graph.isQuoted(id)) {
+				dependencies.push(...FunctionSemantics.call.quoted.evaluationDependencies(graph, id));
+			}
+			for(const dep of dependencies) {
+				if(!queue.hasId(dep)) {
+					queue.add(dep, baseEnvironment, baseEnvFingerprint, false);
 				}
 			}
 		}
@@ -202,6 +220,40 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	return { ...status, slicedFor: ids, result, freeNames: freeNamesOf(result, info.graph) };
 }
 
+
+/** The calls writing output (`cat`, `print`, ...: a side effect linked to `sink`) within the functions the call `seeds` run, transitively. */
+function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): NodeId[] {
+	const writers = new Set<NodeId>();
+	for(const effect of graph.unknownSideEffects) {
+		if(typeof effect === 'object') {
+			writers.add(effect.id);
+		}
+	}
+	if(writers.size === 0) {
+		return [];
+	}
+	const found: NodeId[] = [];
+	const seen = new Set<NodeId>();
+	const calls = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id)));
+	while(calls.length > 0) {
+		for(const [target, edge] of graph.edgesFrom(calls.pop() as NodeId)) {
+			const callee = graph.getVertex(target);
+			if(!DfEdge.includesType(edge, EdgeType.Calls) || !DfgVertex.isFunctionDefinition(callee) || seen.has(target)) {
+				continue;
+			}
+			seen.add(target);
+			for(const inner of callee.subflow.graph) {
+				if(writers.has(inner)) {
+					found.push(inner);
+				}
+				if(DfgVertex.isFunctionCall(graph.getVertex(inner))) {
+					calls.push(inner);
+				}
+			}
+		}
+	}
+	return found;
+}
 
 /**
  * The names the slice reads without defining them: a use whose definitions all stayed outside meets that name

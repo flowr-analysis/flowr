@@ -25,6 +25,8 @@ export interface ControlDependency {
 	readonly when?:        boolean
 	/** whether this control dependency was created due to iteration (e.g., a loop) */
 	readonly byIteration?: boolean
+	/** whether this control dependency is a promise's: what stands under it runs only once the call `id` forces it, see {@link ControlFlow.withinPromise} */
+	readonly byPromise?:   boolean
 	/**
 	 * any file-exist assumptions made
 	 */

@@ -29,7 +29,7 @@ function replaceDefinitions(env: Environment, key: BrandedIdentifier, toUpdate: 
  * Copy-on-write: definitions are replaced, never mutated in place, so previously cloned
  * environments (e.g., snapshots stored in the dataflow graph) keep their state.
  */
-function applyCdsToDefinitions(environments: REnvironmentInformation, name: Identifier, type: ReferenceType, definitions: readonly IdentifierDefinition[], nodeId: NodeId, defaultCd: readonly ControlDependency[] | undefined): void {
+export function applyCdsToDefinitions(environments: REnvironmentInformation, name: Identifier, type: ReferenceType, definitions: readonly IdentifierDefinition[], nodeId: NodeId, defaultCd: readonly ControlDependency[] | undefined): void {
 	const toUpdate = new Set<IdentifierDefinition>();
 	for(const definition of definitions) {
 		if(definition.nodeId === nodeId

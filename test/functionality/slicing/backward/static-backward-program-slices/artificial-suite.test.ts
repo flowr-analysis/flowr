@@ -79,11 +79,11 @@ describe('Artificial performance suite', { concurrent: false }, withShell(shell 
 		'x <- 0\nif(x == 0)\n    { if(x < 1)\n        { if(x >= 0)\n            { while(x < 5) {\n                x <- x + 1\n                if(x %% 2 == 0) { x <- x + 1 } else\n                { x <- x + 2 }\n            } } } }\nx'
 	);
 
-	// the closures write to their captured `count` via `<<-`, so the side-effecting calls are all kept
-	assertSliced(label('closure-chain: side-effecting closure calls are all kept', []),
+	// each closure writes to the `count` of its own factory call via `<<-`, so only the calls of `c1` are kept
+	assertSliced(label('closure-chain: side-effecting calls of the same closure are kept', []),
 		shell,
 		'make_counter <- function(start) {\n  count <- start\n  function() {\n    count <<- count + 1\n    count\n  }\n}\nc1 <- make_counter(0)\nc2 <- make_counter(100)\nprint(c1())\nprint(c1())\nprint(c2())',
 		['10@c1'],
-		'make_counter <- function(start) {\n        count <- start\n        function() {\n            count <<- count + 1\n            count\n        }\n    }\nc1 <- make_counter(0)\nc2 <- make_counter(100)\nc1()\nc1()\nc2()'
+		'make_counter <- function(start) {\n        count <- start\n        function() {\n            count <<- count + 1\n            count\n        }\n    }\nc1 <- make_counter(0)\nc1()\nc1()'
 	);
 }));

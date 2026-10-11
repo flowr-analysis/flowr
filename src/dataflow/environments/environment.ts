@@ -8,7 +8,8 @@ import type {
 	BrandedIdentifier,
 	BrandedNamespace,
 	IdentifierDefinition,
-	InGraphIdentifierDefinition
+	InGraphIdentifierDefinition,
+	ReferenceType
 } from './identifier';
 import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
 import { Identifier, PkgName } from './identifier';
@@ -73,7 +74,7 @@ export class Environment implements IEnvironment {
 	private frame:         Frame;
 	cache?:                Map<Identifier, IdentifierDefinition[]>;
 	/** what a resolution found below this frame, by target and name; only frames nothing writes keep one */
-	tailCache?:            Map<string, readonly IdentifierDefinition[] | undefined>;
+	tailCache?:            Map<ReferenceType, Map<string, readonly IdentifierDefinition[] | undefined>>;
 	builtInEnv?:           true;
 	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;

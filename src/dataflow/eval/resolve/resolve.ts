@@ -1,6 +1,11 @@
 import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RValue } from '../values/r-value';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environments/built-in';
@@ -17,6 +22,7 @@ import { Dataflow } from '../../graph/df-helper';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Resolve } from '../../environments/resolve-helper';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /**
@@ -44,6 +50,17 @@ function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext
 const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.ExpressionList];
 
 /**
+ * Whether the operator only combines literals (`1 + 2`): while the analysis is still running, a name may yet
+ * change its value (a loop runs again), so only these fold before it is done.
+ */
+export function onlyLiterals(node: RNode<ParentInformation>): boolean {
+	return RBinaryOp.is(node) ? onlyLiterals(node.lhs) && onlyLiterals(node.rhs)
+		: RUnaryOp.is(node) ? onlyLiterals(node.operand)
+			: RExpressionList.is(node) && node.grouping !== undefined && node.children.length === 1 ? onlyLiterals(node.children[0])
+				: RNumber.is(node) || RString.is(node) || RLogical.is(node);
+}
+
+/**
  * The name of the built-in the given node folds through, `undefined` if it is no call to one or if it may just
  * as well resolve to something else (a user redefinition, a conditional one, ...), which must not be folded.
  */
@@ -52,7 +69,8 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 		return undefined;
 	} else if(graph === undefined) {
 		const named = RExpressionList.is(node) ? RExpressionList.groupStart(node)?.content
-			: RFunctionCall.isNamed(node) ? node.functionName.content : undefined;
+			: RFunctionCall.isNamed(node) ? node.functionName.content
+				: (RBinaryOp.is(node) || RUnaryOp.is(node)) && onlyLiterals(node) ? Identifier.make(node.operator) : undefined;
 		return named !== undefined && environment !== undefined && foldsThroughBuiltIn(named, ctx)
 			&& Resolve.isBuiltIn(named, environment, ReferenceType.Function) ? named : undefined;
 	}

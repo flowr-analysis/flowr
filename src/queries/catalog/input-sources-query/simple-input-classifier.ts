@@ -334,6 +334,40 @@ class InputClassifier {
 	}
 
 	/**
+	 * Whether the code `call` yields is the one written in its arguments: no name within them is resolved to
+	 * anything outside of them (built-ins aside), as a splice like `bquote(.(y))` is, and none names a parameter
+	 * of a function around it, which `substitute(x)` would replace with what the caller wrote.
+	 */
+	private quotesOnlyWrittenCode(call: DataflowGraphVertexFunctionCall): boolean {
+		const idMap = this.dfg.idMap;
+		if(idMap === undefined) {
+			return false;
+		}
+		const parameters = new Set<string>();
+		for(let node = idMap.get(call.id); node !== undefined; node = node.info.parent === undefined ? undefined : idMap.get(node.info.parent)) {
+			if(RFunctionDefinition.is(node)) {
+				node.parameters.forEach(p => parameters.add(Identifier.getName(p.name.content)));
+			}
+		}
+		for(const arg of call.args) {
+			const ref = FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
+			const within = RNode.collectAllIds(ref === undefined ? undefined : idMap.get(ref));
+			for(const id of within) {
+				const node = idMap.get(id);
+				if(RSymbol.is(node) && parameters.has(Identifier.getName(node.content))) {
+					return false;
+				}
+				for(const [target, edge] of this.dfg.edgesFrom(id)) {
+					if(DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedByOnCall) && !within.has(target) && !NodeId.isBuiltIn(target)) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	/**
 	 * Accesses like `input$n` or `input[["n"]]` are reported as a single source of the accessed object,
 	 * carrying the accessed field as its {@link InputSource.name|name}.
 	 */
@@ -451,6 +485,10 @@ class InputClassifier {
 						break;
 					}
 				}
+			}
+			/* `quote(1 + 2)` yields code the program spells out itself, only capturing (`substitute(x)`) or splicing (`bquote(.(y))`) brings in other code */
+			if(types.includes(InputType.Lang) && this.quotesOnlyWrittenCode(call)) {
+				types.splice(types.indexOf(InputType.Lang), 1, InputType.DerivedConstant);
 			}
 			if(types.length === 0) {
 				// a call of something the code produced itself, like a shiny `reactive()`, yields what that produced
@@ -683,7 +721,8 @@ class InputClassifier {
 
 	private classifyCdsAndReturn(vtx: DataflowGraphVertexArgument, src: InputSource): InputSource {
 		if(vtx.cds) {
-			const cds = uniqueArray(vtx.cds.flatMap(c => {
+			/* running only once a call forces it is no condition on the data */
+			const cds = uniqueArray(vtx.cds.filter(c => c.byPromise !== true).flatMap(c => {
 				const cv = this.dfg.getVertex(c.id);
 				if(!cv) {
 					return undefined;

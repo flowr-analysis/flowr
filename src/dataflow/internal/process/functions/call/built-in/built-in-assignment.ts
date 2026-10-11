@@ -21,13 +21,13 @@ import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { ambientWritesOfAssignment } from './built-in-ambient-state';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
-import { ClosureRefs } from '../../../../linker';
 import { define } from '../../../../../environments/define';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -278,8 +278,8 @@ function linkSourceAsCalled<OtherInfo>(
 ): void {
 	const source = unpackArg(args[config.swapSourceAndTarget ? 0 : 1]);
 	const vertex = source ? information.graph.getVertex(source.info.id) : undefined;
+	/* the function runs when the name is read, so what it reads is resolved there and not where it is bound */
 	if(vertex && DfgVertex.isFunctionDefinition(vertex)) {
-		ClosureRefs.resolveOpenIngoing(information.graph, rootId, vertex, data.environment);
 		for(const written of information.out) {
 			information.graph.addEdge(written.nodeId, vertex.id, EdgeType.Calls);
 		}
@@ -664,6 +664,7 @@ export function markAsAssignment<OtherInfo>(
 	assignmentConfig?: AssignmentConfiguration
 ) {
 	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
+	information.environment = ambientWritesOfAssignment(information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
 	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);
 	const nid = nodeToDefine.nodeId;
 	if(!assignmentConfig?.quoteSource) {

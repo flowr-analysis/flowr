@@ -217,8 +217,12 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', types: [InputType.Ffi], trace: InputTraceType.Alias }]
 		});
 
-		testQuery('Language object source', 'x <- substitute(a)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@x', types: [InputType.Lang], trace: InputTraceType.Alias }]
+		testQuery('Language object source', 'f <- function(a) {\n  x <- substitute(a)\n  foo(x)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@x', types: [InputType.Lang], trace: InputTraceType.Alias }]
+		});
+		/* the global environment substitutes nothing, so this is the code written there */
+		testQuery('Language object of written code', 'x <- substitute(a)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant], trace: InputTraceType.Alias }]
 		});
 
 		testQuery('Options / getOption source', "x <- getOption('digits')\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {

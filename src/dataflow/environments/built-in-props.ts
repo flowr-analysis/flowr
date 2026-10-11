@@ -1,5 +1,6 @@
 import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
+import { Ternary } from '../../util/logic';
 
 /**
  * What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault}
@@ -408,6 +409,8 @@ export const FnSig = {
 	posWith: argsWith,
 	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
 	forced:  forcedArgs,
+	/** How surely a call evaluates each of the first `count` arguments; see {@link argForcing}. */
+	forcing: argForcing,
 	/** A signature saying only that the call evaluates every argument; see {@link ForcingEvery}. */
 	every:   ForcingEvery,
 	/** A signature saying only that the call evaluates one argument; see {@link forcingOnly}. */
@@ -517,6 +520,7 @@ export interface SigLayout {
 	/** the position of the {@link ArgProp.Alias} argument, handed back as the result, `-1` if there is none */
 	readonly alias: number
 	forced?:        (readonly boolean[])[]
+	forcing?:       (readonly Ternary[])[]
 }
 
 const layouts = new WeakMap<FnSig, SigLayout>();
@@ -569,6 +573,24 @@ function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly
 	}
 	const cache = layout.forced ??= [];
 	return cache[count] ??= Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
+}
+
+/**
+ * How surely a call evaluates each of the first `count` arguments: {@link ArgProp.Forced} always,
+ * {@link ArgProp.Nse} and {@link ArgProp.Presence} never, and anything the signature does not state may go either way;
+ * `undefined` without a signature, which states nothing.
+ */
+function argForcing(this: void, sig: FnSig | undefined, count: number): readonly Ternary[] | undefined {
+	if(sig === undefined) {
+		return undefined;
+	}
+	const layout = sigLayout(sig);
+	const cache = layout.forcing ??= [];
+	return cache[count] ??= Array.from({ length: count }, (_, i) => {
+		const props = argProp(layout, i);
+		return (props & ArgProp.Forced) !== 0 ? Ternary.Always
+			: (props & (ArgProp.Nse | ArgProp.Presence)) !== 0 ? Ternary.Never : Ternary.Maybe;
+	});
 }
 
 /** The positions of the first `count` arguments that carry any of `prop`. */

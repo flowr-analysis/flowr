@@ -168,10 +168,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('writeLines without con', parser, 'writeLines("x")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
 			assertLinter('cat with an unknown value where its file may go', parser, 'cat("n: ", length(x))', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
 			assertLinter('cat to a local file', parser, 'cat("hello", file = "out.txt")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
-			assertLinter('cat to a url', parser, 'cat("hello", file = "https://example.com")', 'network-functions',
-				[{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 42] }],
-				{ totalCalls: 1, totalFunctionDefinitions: 1 }
-			);
+			/* R opens urls for reading only, so writing to one fails before it reaches the network */
+			assertLinter('cat to a url', parser, 'cat("hello", file = "https://example.com")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
+			assertLinter('a device writing to a name the user gives', parser, 'name <- readline("File: ")\npdf(name)', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
 		});
 	});
 }));

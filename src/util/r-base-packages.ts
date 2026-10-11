@@ -11,6 +11,19 @@ import { RVersion } from './r-version';
  * for the version-aware view, as a release cannot attach a package it did not ship.
  */
 export const AttachedBasePackages: readonly string[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
+/** The data sets of `datasets` (R 4.6), always in scope as lazy data, which its namespace does not export. */
+export const BaseDatasets: ReadonlySet<string> = new Set([
+	'ability.cov', 'airmiles', 'AirPassengers', 'airquality', 'anscombe', 'attenu', 'attitude', 'austres', 'beaver1', 'beaver2', 'BJsales',
+	'BJsales.lead', 'BOD', 'cars', 'ChickWeight', 'chickwts', 'co2', 'CO2', 'crimtab', 'discoveries', 'DNase', 'esoph', 'euro', 'euro.cross',
+	'eurodist', 'EuStockMarkets', 'faithful', 'fdeaths', 'Formaldehyde', 'freeny', 'freeny.x', 'freeny.y', 'gait', 'HairEyeColor',
+	'Harman23.cor', 'Harman74.cor', 'Indometh', 'infert', 'InsectSprays', 'iris', 'iris3', 'islands', 'JohnsonJohnson', 'LakeHuron', 'ldeaths',
+	'lh', 'LifeCycleSavings', 'Loblolly', 'longley', 'lynx', 'mdeaths', 'morley', 'mtcars', 'nhtemp', 'Nile', 'nottem', 'npk',
+	'occupationalStatus', 'Orange', 'OrchardSprays', 'penguins', 'penguins_raw', 'PlantGrowth', 'precip', 'presidents', 'pressure', 'Puromycin',
+	'quakes', 'randu', 'rivers', 'rock', 'Seatbelts', 'sleep', 'stack.loss', 'stack.x', 'stackloss', 'state.abb', 'state.area', 'state.center',
+	'state.division', 'state.name', 'state.region', 'state.x77', 'sunspot.m2014', 'sunspot.month', 'sunspot.year', 'sunspots', 'swiss',
+	'Theoph', 'Titanic', 'ToothGrowth', 'treering', 'trees', 'UCBAdmissions', 'UKDriverDeaths', 'UKgas', 'USAccDeaths', 'USArrests',
+	'UScitiesD', 'USJudgeRatings', 'USPersonalExpenditure', 'uspop', 'VADeaths', 'volcano', 'warpbreaks', 'women', 'WorldPhones', 'WWWusage'
+]);
 /** {@link AttachedBasePackages} for membership tests, which happen far more often than iteration. */
 export const AttachedBasePackageSet: ReadonlySet<string> = new Set(AttachedBasePackages);
 

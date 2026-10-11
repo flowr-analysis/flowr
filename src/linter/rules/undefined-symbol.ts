@@ -7,7 +7,7 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
-import { AttachedBasePackages, baseRExportOwner } from '../../util/r-base-packages';
+import { AttachedBasePackages, BaseDatasets, baseRExportOwner } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -78,6 +78,9 @@ const ImplicitTestFrameworks = ['testthat', 'tinytest', 'RUnit'];
 
 /** whether name is an export of a default-attached base package (needs no library()) */
 function isAttachedBaseName(name: string): boolean {
+	if(BaseDatasets.has(name)) {
+		return true;
+	}
 	const owner = baseRExportOwner(name);
 	return owner !== undefined && AttachedBasePackages.includes(owner);
 }

@@ -63,6 +63,12 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:       SourceRange.from(1, 1, 1, 6),
 			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }]
 		}]);
+		assertLinter('pdf with a name the user gives', parser, 'name <- readline("File: ")\npdf(name)', 'problematic-inputs', [{
+			certainty: LintingResultCertainty.Certain,
+			name:      'pdf',
+			loc:       SourceRange.from(2, 1, 2, 9),
+			sources:   [{ id: 7, trace: InputTraceType.Alias, types: [InputType.User] }]
+		}]);
 		assertLinter('postscript pipe constant', parser, 'postscript("|lp")', 'problematic-inputs', [{
 			certainty:   LintingResultCertainty.Certain,
 			name:        'postscript',

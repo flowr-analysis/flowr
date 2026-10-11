@@ -66,6 +66,11 @@ function addressParam(params: readonly BuiltInParam[]): BuiltInParam {
 export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 	const resources = new Map<string, BuiltInParam[]>();
 	for(const param of index.params(ArgProp.Resource)) {
+		/* R opens a path it writes to as a local file (or a `|` pipe), never as a url */
+		const tags = index.get(param.call)?.tags;
+		if(tags?.includes(SemanticCallTag.Writes) && !tags.includes(SemanticCallTag.Reads)) {
+			continue;
+		}
 		const key = Identifier.toString(param.call);
 		resources.set(key, [...resources.get(key) ?? [], param]);
 	}

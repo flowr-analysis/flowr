@@ -87,13 +87,14 @@ function resolveFileArgId(vertex: DataflowGraphVertexFunctionCall | undefined, a
 	return FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
 }
 
-function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources): ProblematicInputsResult | undefined {
+/** A path starting with `|` runs a command, so anything but a constant path, user input included, may start one. */
+function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources, allowed: InputType[]): ProblematicInputsResult | undefined {
 	const pipeCmd = getPipeCommandValue(sources);
 	if(pipeCmd !== undefined) {
 		return { involvedId: nid, certainty: LintingResultCertainty.Certain, loc, name, sources, pipeCommand: pipeCmd };
 	}
-	if(hasUnknownSource(sources)) {
-		return { involvedId: nid, certainty: LintingResultCertainty.Uncertain, loc, name, sources };
+	if(isProblematicForAllowed(sources, allowed)) {
+		return { involvedId: nid, certainty: hasUnknownSource(sources) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, loc, name, sources };
 	}
 	return undefined;
 }
@@ -147,7 +148,7 @@ export const PROBLEMATIC_INPUTS = {
 					const criterion = SlicingCriterion.fromId(fileArgId);
 					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 					const sources   = all['input-sources']?.results?.[criterion] ?? [];
-					const r         = checkPipeInjection(nid, loc, name, sources);
+					const r         = checkPipeInjection(nid, loc, name, sources, defaultAccept);
 					if(r !== undefined) {
 						seen.add(nid);
 						results.push(r);

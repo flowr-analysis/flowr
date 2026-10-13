@@ -70,6 +70,14 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ builtin: 1, sigdb: 0 },
 			{ always: ['cat'] }
 		);
+		/* superseded or experimental functions signal no deprecation in R, so they are not reported */
+		for(const code of ['library(dplyr)\ndata.frame(a = 1:3) |> transmute(b = a)', 'library(dplyr)\nrecode(c("a", "b"), a = "A")', 'library(dplyr)\nmutate_at(data.frame(a = 1:3), vars(a), mean)',
+			'library(tidyr)\nspread(data.frame(k = "a", v = 1), k, v)', 'purrr::map_dfr(1:2, function(i) data.frame(a = i))', 'library(ggplot2)\nggplot(mtcars) + coord_flip()', 'library(dplyr)\ngroup_nest(data.frame(a = 1:3), a)']) {
+			assertLinter(code, parser, code, 'deprecated-functions', [], undefined, { noSigDb: true });
+		}
+		assertLinter('a deprecated function beside a superseded one is still reported', parser, 'library(dplyr)\nx <- recode(c("a"), a = "A")\ny <- all_equal(data.frame(a = 1), data.frame(a = 1))', 'deprecated-functions', [
+			{ certainty: LintingResultCertainty.Certain, function: 'all_equal', loc: [3, 6, 3, 52], type: 'deprecated-function' }
+		], undefined, { noSigDb: true });
 		/* Using the default linter configuration, a function such as `all_equal` should be marked as deprecated.
 		   Nothing attaches dplyr here, so the call may be any `all_equal` and the finding is a guess */
 		assertLinter('with defaults', parser, 'all_equal(foo)',

@@ -36,6 +36,13 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		}
 
+		assertLinter('a local data source of an attached package', parser, 'library(rgdal)\nx <- readOGR("coastpolygon", "coastpolygon")', 'network-functions', []);
+		assertLinter('rvest selectors work on a parsed document', parser, 'library(rvest)\nhtml_text(html_nodes(doc, "a"))', 'network-functions', []);
+		assertLinter('rvest still fetches a constant URL it is handed to parse', parser, 'library(rvest)\nhtml_text(html_nodes(read_html("https://x.org"), "a"))', 'network-functions',
+			[{ certainty: LintingResultCertainty.Certain, function: 'read_html', loc: [2, 22, 2, 47] }]);
+		assertLinter('native pipe', parser, '"https://x.org/a.csv" |> read.csv()', 'network-functions',
+			[{ certainty: LintingResultCertainty.Certain, function: 'utils::read.csv', loc: [1, 26, 1, 35] }]);
+
 		assertLinter('library call', parser, 'library(httr)\nPOST("http://example.com")',
 			'network-functions',
 			[

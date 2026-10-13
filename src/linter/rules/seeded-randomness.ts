@@ -30,7 +30,7 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Ternary } from '../../util/logic';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 
@@ -50,11 +50,6 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	 */
 	randomnessConsumers: readonly string[]
 }
-
-const RandomnessProducers: SeededRandomnessConfig['randomnessProducers'] = [
-	{ type: 'function', name: 'set.seed' },
-	{ type: 'assignment', name: '.Random.seed' }
-];
 
 export interface SeededRandomnessMeta extends MergeableRecord {
 	consumerCalls:                 number
@@ -226,7 +221,10 @@ export const SEEDED_RANDOMNESS = {
 	},
 	info: {
 		defaultConfig: ctx => ({
-			randomnessProducers: RandomnessProducers,
+			randomnessProducers: [
+				...ctx.env.deriveFromIndex(randomnessSetters).map(name => ({ type: 'function', name }) as const),
+				{ type: 'assignment', name: '.Random.seed' }
+			],
 			randomnessConsumers: [
 				...ctx.env.deriveFromIndex(randomnessConsumers),
 				'princomp', 'pointLabel', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
@@ -251,9 +249,13 @@ function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunction
 		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
 }
 
+function randomnessSetters(index: BuiltInIndex): string[] {
+	return index.withAll([SemanticCallTag.Random, CallProp.Configures]).map(Identifier.getName);
+}
+
 function randomnessConsumers(index: BuiltInIndex): string[] {
-	return index.with(SemanticCallTag.Random).map(Identifier.getName)
-		.filter(n => !RandomnessProducers.some(p => p.name === n));
+	const setters = new Set(randomnessSetters(index));
+	return index.with(SemanticCallTag.Random).map(Identifier.getName).filter(n => !setters.has(n));
 }
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {

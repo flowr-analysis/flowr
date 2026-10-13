@@ -6,6 +6,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import { FnProp, FnPropNames } from '../../project/sigdb/schema';
 
 /** kind of mismatch between the `::`/`:::` written and what the package actually exports */
 export type NamespaceAccessKind =
@@ -49,7 +50,8 @@ export const NAMESPACE_ACCESS = {
 					continue;
 				}
 				const raw = db.rawFunctionOf(node.content);
-				if(raw === undefined) {
+				/* a registered S3 method counts as exported in the database although `::` does not reach it */
+				if(raw === undefined || (internal === true && raw.props.includes(FnPropNames[FnProp.S3Method]))) {
 					unresolved++;
 					continue;
 				}

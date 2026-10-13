@@ -81,6 +81,18 @@ describe('flowR linter', withTreeSitter(parser => {
 			}
 		});
 
+		assertLinter('a built path is reported once', parser, 'read.csv(file.path("/home/me", "data.csv"))', 'absolute-file-paths', [{
+			certainty: LintingResultCertainty.Certain,
+			filePath:  '/home/me/data.csv',
+			loc:       [1, 1, 1, 43]
+		}]);
+		assertLinter('a relative built path is no absolute path', parser, 'read.csv(file.path("data", "data.csv"))', 'absolute-file-paths', []);
+		assertLinter('a report written to a resource argument', parser, 'library(stargazer)\nstargazer(m, type = "html", out = "C:/Users/a/out.html")', 'absolute-file-paths', [{
+			certainty: LintingResultCertainty.Certain,
+			filePath:  'C:/Users/a/out.html',
+			loc:       [2, 1, 2, 56]
+		}]);
+
 		/* If the script contains no function that reads a file path, we expect no issues */
 		assertLinter('none', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
 		/* If the script contains no file paths, but we include all strings, we expect no issues either */

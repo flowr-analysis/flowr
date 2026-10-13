@@ -14,7 +14,7 @@ import { narrowingFunctions } from '../../queries/catalog/input-sources-query/in
 import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputTraceType, InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RConstant, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -315,7 +315,7 @@ async function getUnescapedSources(
 				const viaParameter = isAcceptedInput(source, config)
 					&& source.types.length > 0 && source.types.every(t => t === InputType.Constant || t === InputType.DerivedConstant)
 					&& readsParameter(graph, arg, sanitizerNames);
-				if((entry.only !== undefined && !entry.only.has(arg)) || (isAcceptedInput(source, config) && !viaParameter)) {
+				if((entry.only !== undefined && !entry.only.has(arg)) || (isAcceptedInput(source, config) && !viaParameter) || RConstant.is(graph.idMap?.get(arg))) {
 					continue;
 				} else if(entry.depth < config.maxDecentDepth && (source.trace === InputTraceType.Known || viaParameter) && DfgVertex.isFunctionCall(vertex) && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
 					next.push({ target: entry.target, call: arg, only: undefined, depth: entry.depth + 1 });

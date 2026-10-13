@@ -29,6 +29,7 @@ import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -107,7 +108,7 @@ function collectPackageInfo(data: ReadonlyFlowrAnalysisProvider): PackageInfo {
 }
 
 /** Collects the names of every function call in the graph, so we can tell whether an S3 generic is dispatched anywhere. */
-function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
+export function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
 	const names = new Set<string>();
 	for(const [, vertex] of dfg.verticesOfType(VertexType.FunctionCall)) {
 		names.add(Identifier.getName(vertex.name));
@@ -151,6 +152,18 @@ function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
 	return paramIds;
 }
 
+/** Whether `name` reads as `generic.class` for a generic that is known, declared, or called, so R dispatches to it by that name. */
+export function isS3MethodName(name: string, ctx: ReadOnlyFlowrAnalyzerContext, called: ReadonlySet<string>, declared: ReadonlySet<string> = new Set()): boolean {
+	// every dot may be the one splitting method from class, as the generic may carry dots itself (`as.character.foo`)
+	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
+		const generic = name.slice(0, dot);
+		if(ctx.env.deriveFromIndex(knownS3Generics).has(generic) || declared.has(generic) || isDispatched(generic, called)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /**
  * A definition is treated as used (and hence not reported) if it is the dots parameter, a package lifecycle hook,
  * an S3 method for a dispatched generic, or - when {@link UnusedDefinitionConfig#excludeExportedDefinitions} is set -
@@ -171,12 +184,8 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 	if(PackageHookFunctions.has(name)) {
 		return true;
 	}
-	// every dot may be the one splitting method from class, as the generic may carry dots itself (`as.character.foo`)
-	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
-		const generic = name.slice(0, dot);
-		if(ctx.env.deriveFromIndex(knownS3Generics).has(generic) || pkg.s3Generics.has(generic) || isDispatched(generic, called)) {
-			return true;
-		}
+	if(isS3MethodName(name, ctx, called, pkg.s3Generics)) {
+		return true;
 	}
 	if(config.excludeExportedDefinitions && pkg.exported.has(name)) {
 		return true;
@@ -220,6 +229,10 @@ function hasContractedSignature(
 		if(RFunctionDefinition.is(parent)) {
 			/* the name the definition is bound under is what reaches it, so that is what the contract goes by */
 			const bound = parent.info.parent !== undefined ? ast.idMap.get(parent.info.parent) : undefined;
+			/* a function handed to a call is called by it, like a `tryCatch` handler or an `lapply` callback */
+			if(RArgument.is(bound)) {
+				return inParameter;
+			}
 			const name = RBinaryOp.is(bound) ? bound.lhs.lexeme
 				: RFunctionCall.is(bound) && bound.arguments[0] !== EmptyArgument ? bound.arguments[0]?.lexeme : undefined;
 			return inParameter && name !== undefined && isConsideredUsed(name, config, pkg, called, ctx);
@@ -256,6 +269,19 @@ function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): 
 		return { statement: parent, value: parent.lhs };
 	}
 	return undefined;
+}
+
+/** whether the node yields the value of the function around it, which removing it would change */
+function yieldsFunctionValue(node: RNode<ParentInformation>, ast: NormalizedAst, dfg: DataflowGraph): boolean {
+	const path = new Set<NodeId>([node.info.id]);
+	for(const up of RNode.iterateParents(node, ast.idMap)) {
+		if(RFunctionDefinition.is(up)) {
+			const fn = dfg.getVertex(up.info.id);
+			return DfgVertex.isFunctionDefinition(fn) && fn.exitPoints.some(e => path.has(e.nodeId));
+		}
+		path.add(up.info.id);
+	}
+	return false;
 }
 
 function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAst): boolean {
@@ -310,8 +336,9 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 
 	const description = `Remove unused definition of \`${variable.lexeme}\``;
 
-	if(isStandaloneStatement(assignment?.statement ?? variable, ast)) {
-		return [{ type: 'remove', loc: totalRangeToRemove, description }];
+	const statement = assignment?.statement ?? variable;
+	if(isStandaloneStatement(statement, ast)) {
+		return yieldsFunctionValue(statement, ast, dfg) ? undefined : [{ type: 'remove', loc: totalRangeToRemove, description }];
 	}
 
 	const replacement = assignment !== undefined ? assignment.value.info.fullLexeme ?? assignment.value.lexeme : undefined;

@@ -2,7 +2,7 @@ import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, 
 import { RPath } from '../../util/files';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { SourceLocation } from '../../util/range';
+import { SourceLocation, SourceRange } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isAbsolutePath, isUrl, fileUrlToPath } from '../../util/text/strings';
@@ -127,6 +127,12 @@ function resolvePathForAbsoluteCheck(value: string, ignoreUrls: boolean): string
 	return ignoreUrls && isUrl(value) ? undefined : value;
 }
 
+/** A path built within a call that already reports it, as `file.path` within `read.csv`, is one finding. */
+function withoutNested(results: readonly AbsoluteFilePathResult[]): AbsoluteFilePathResult[] {
+	return results.filter((r, i) => !results.some((o, j) => i !== j && o.filePath === r.filePath
+		&& (SourceRange.isStrictSubsetOf(r.loc, o.loc) || (j < i && SourceRange.equals(r.loc, o.loc)))));
+}
+
 export const ABSOLUTE_PATH = {
 	/* this can be done better once we have types */
 	createSearch: (config, data) => {
@@ -158,7 +164,7 @@ export const ABSOLUTE_PATH = {
 		const dataflow = await data.dataflow();
 		const ctx = data.inspectContext();
 		return {
-			results: elements.getElements().flatMap(element => {
+			results: withoutNested(elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
 				const node = element.node;
 				const wd = inferWd(node.info.file, config.useAsWd, ctx);
@@ -221,7 +227,7 @@ export const ABSOLUTE_PATH = {
 
 				metadata.totalUnknown++;
 				return undefined;
-			}).filter(isNotUndefined).map(r => compactRecord(r) as AbsoluteFilePathResult),
+			}).filter(isNotUndefined).map(r => compactRecord(r) as AbsoluteFilePathResult)),
 			'.meta': metadata
 		};
 	},

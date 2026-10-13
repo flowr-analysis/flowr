@@ -8,6 +8,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
 import { AttachedBasePackages, BaseDatasets, baseRExportOwner } from '../../util/r-base-packages';
+import { nonBaseImports } from './unused-import';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -145,11 +146,14 @@ export const UNDEFINED_SYMBOL = {
 			...AttachedBasePackages.map(n => deps.getDependency(n)).filter(isNotUndefined)
 		];
 
+		/* a package may re-export what it imports, as dplyr does tibble's `as_tibble` */
+		const src = deps.signatures().sources();
+		const importedByLoaded = new Set(loadedPackages.flatMap(p => src.isBaseR(p.name) ? [] : nonBaseImports(src, p.name, p.resolvedVersion)));
 		const exportedByLoaded = new Map<string, boolean>();
 		const isExportedByLoadedPackage = (name: string): boolean => {
 			let known = exportedByLoaded.get(name);
 			if(known === undefined) {
-				known = loadedPackages.some(p => p.has(name));
+				known = loadedPackages.some(p => p.has(name)) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p)));
 				exportedByLoaded.set(name, known);
 			}
 			return known;
@@ -217,7 +221,8 @@ export const UNDEFINED_SYMBOL = {
 				return suppress('loadedPackage');
 			}
 			// exported by a package in scope (`pkg::fn`, a loaded package, or a default-attached base package)
-			if(namespace !== undefined ? deps.getDependency(namespace)?.has(name) === true : isExportedByLoadedPackage(name)) {
+			/* the database records no data sets, so `pkg::x` read as a variable may be lazy data of a known package */
+			if(namespace !== undefined ? deps.getDependency(namespace)?.has(name) === true || (kind === 'variable' && deps.getDependency(namespace) !== undefined) : isExportedByLoadedPackage(name)) {
 				return suppress('loadedPackage');
 			}
 			// forward-referenced closure binding flowR's dataflow did not link (unconditional bindings only)

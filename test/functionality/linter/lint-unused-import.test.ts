@@ -3,6 +3,7 @@ import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { LibraryFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/library-functions';
+import { DepType } from '../../../src/project/sigdb/schema';
 
 assumeLoadedPackages('ggplot2');
 
@@ -66,6 +67,14 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		describe('what counts as a use', () => {
+			const reexporting = { ...controlledSigDb({ dplyr: ['mutate'], tibble: ['glimpse'] }), dependencies: (pkg: string) => pkg === 'dplyr' ? [{ name: 'tibble', type: DepType.Imports }] : undefined };
+			assertLinter('a script source() cannot resolve may use the import', parser, 'library(ggplot2)\nsource("plots.R")', 'unused-import',
+				[], undefined, { sigDb });
+			assertLinter('a name the package may re-export from its imports keeps the import', parser, 'library(dplyr)\nglimpse(mtcars)', 'unused-import',
+				[], undefined, { sigDb: reexporting });
+			assertLinter('an import using neither its own nor a re-exported name is unused', parser, 'library(dplyr)\nx <- 1', 'unused-import',
+				[unused('dplyr', [1, 1, 1, 14])], undefined, { sigDb: reexporting });
+
 			assertLinter('a namespaced call keeps the import', parser, 'library(ggplot2)\nggplot2::ggplot()', 'unused-import',
 				[], undefined, { sigDb });
 

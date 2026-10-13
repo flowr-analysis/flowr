@@ -29,6 +29,25 @@ describe('flowR linter', withTreeSitter(parser => {
 				replacement: 'shQuote(x)'
 			}]
 		}]);
+		assertLinter('processx passes its arguments without a shell', parser, 'f <- function(d) processx::run("ls", d)', 'unescaped-arguments', []);
+		assertLinter('system2 hands its arguments to a shell', parser, 'f <- function(d) system2("ls", d)', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Uncertain,
+			category:  UnescapedArgumentCategory.System,
+			function:  'system2',
+			loc:       SourceRange.from(1, 32, 1, 32),
+			sources:   [{ id: 6, trace: InputTraceType.Pure, types: [InputType.Parameter] }],
+			input:     [InputType.Parameter],
+			quickFix:  [{ type: 'replace', loc: SourceRange.from(1, 32, 1, 32), description: 'Escape the value with `shQuote`', replacement: 'shQuote(d)' }]
+		}]);
+		assertLinter('do.call with a constant function name', parser, 't <- lapply(1:3, function(i) data.frame(a = i))\ndo.call("rbind", t)', 'unescaped-arguments', []);
+		assertLinter('do.call with a function name from a parameter', parser, 'f <- function(fn) do.call(fn, list(1))', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Uncertain,
+			category:  UnescapedArgumentCategory.Eval,
+			function:  'do.call',
+			loc:       SourceRange.from(1, 27, 1, 28),
+			sources:   [{ id: 4, trace: InputTraceType.Unknown, types: [InputType.Parameter] }],
+			input:     [InputType.Parameter]
+		}]);
 		assertLinter('pasted parameter', parser, 'f <- function(dir) system(paste0("ls ", dir))', 'unescaped-arguments', [{
 			certainty: LintingResultCertainty.Uncertain,
 			category:  UnescapedArgumentCategory.System,

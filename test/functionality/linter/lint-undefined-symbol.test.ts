@@ -2,6 +2,7 @@ import { describe } from 'vitest';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
+import { DepType } from '../../../src/project/sigdb/schema';
 
 assumeLoadedPackages('dplyr', 'ggplot2', 'magrittr');
 
@@ -56,6 +57,17 @@ describe('flowR linter', withTreeSitter(parser => {
 				undefined, { sigDb: controlledSigDb('parallel', ['mclapply']), checkVariables: false });
 		});
 
+		describe('attached packages', () => {
+			assertLinter('an export named like a primitive keeps its semantics', parser, 'library(lubridate)\nd <- data.frame(a = 1)\nprint(d$a)',
+				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({ lubridate: ['$', 'ymd'] }) });
+			assertLinter('a namespaced read may be lazy data the database does not record', parser, 'x <- MASS::birthwt',
+				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({ MASS: ['lda'] }) });
+			assertLinter('a name the package may re-export from its imports', parser, 'library(dplyr)\nas_tibble(data.frame(a = 1))',
+				'undefined-symbol', [], undefined, { sigDb: { ...controlledSigDb({ dplyr: ['mutate'], tibble: ['as_tibble'] }), dependencies: (pkg: string) => pkg === 'dplyr' ? [{ name: 'tibble', type: DepType.Imports }] : undefined } });
+			assertLinter('a name neither the package nor its imports export is flagged', parser, 'library(dplyr)\nnot_in_dplyr(data.frame(a = 1))',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'not_in_dplyr', kind: 'function', loc: [2, 1, 2, 31] }], undefined, { sigDb: { ...controlledSigDb({ dplyr: ['mutate'], tibble: ['as_tibble'] }), dependencies: (pkg: string) => pkg === 'dplyr' ? [{ name: 'tibble', type: DepType.Imports }] : undefined } });
+		});
+
 		describe('package hints from the database', () => {
 			assertLinter('suggests loading a package that exports the symbol', parser, 'ggahh()',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'ggahh', kind: 'function', loc: [1, 1, 1, 7], availableInPackages: ['ggPkg'] }],
@@ -81,6 +93,10 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		describe('variables', () => {
+			for(const load of ['data(rat)', 'data("rat")', 'data(list = "rat")']) {
+				assertLinter(`${load} defines the data set`, parser, `${load}\nprint(rat)`, 'undefined-symbol', []);
+				assertLinter(`${load} defines no other data set`, parser, `${load}\nprint(mouse)`, 'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'mouse', kind: 'variable', loc: [2, 7, 2, 11] }]);
+			}
 			assertLinter('undefined variable read is flagged (checked by default)', parser, 'f <- function() undefinedVar',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'undefinedVar', kind: 'variable', loc: [1, 17, 1, 28] }]);
 			assertLinter('a read before the write in the same frame is flagged', parser, 'f <- function() { print(v); v <- 1 }',

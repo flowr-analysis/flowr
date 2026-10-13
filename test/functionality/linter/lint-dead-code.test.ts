@@ -80,6 +80,16 @@ print(2)
 			assertLinter('if_else constant', parser, 'if_else(TRUE, 1, 2)', 'dead-code', []);
 		});
 
+		describe('local opens an evaluation of its own', () => {
+			assertLinter('return inside local only leaves local', parser, 'f <- function() {\n  local({ return(1) })\n  2\n}\nprint(f())', 'dead-code', []);
+			assertLinter('code after the return inside local is dead', parser, 'f <- function() {\n  local({ return(1); 3 })\n  2\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 22, 2, 22] }
+			]);
+			assertLinter('a return after the local still makes the tail dead', parser, 'f <- function() {\n  local({ return(1) })\n  return(2)\n  3\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 3] }
+			]);
+		});
+
 		describe('on.exit defers its expression', () => {
 			// on.exit(expr) registers expr to run at function exit
 			assertLinter('on.exit(return) does not poison enclosing function', parser, 'f <- function() {\n  on.exit(return(3))\n  x <- 1\n  x\n}', 'dead-code', []);
@@ -92,7 +102,9 @@ print(2)
 				{ certainty: LintingResultCertainty.Certain, loc: [2, 30, 2, 35] }
 			]);
 			assertLinter('stop in the default arm keeps siblings and after live', parser, 'f <- function(k) {\n  switch(k, a = 1, b = 2, stop("x"))\n  after <- 1\n  after\n}', 'dead-code', []);
-			assertLinter('all arms return makes the tail dead', parser, 'f <- function(k) {\n  switch(k, a = return(1), b = return(2), return(3))\n  after <- 1\n  after\n}', 'dead-code', [
+			assertLinter('a numeric selector past the arms picks none', parser, 'f <- function(k) {\n  switch(k, a = return(1), b = return(2), return(3))\n  after <- 1\n  after\n}', 'dead-code', []);
+			assertLinter('numeric selector out of range falls through', parser, 'f <- function(n) {\n  switch(n, a = return(1), stop("bad"))\n  9\n}\nf(3)', 'dead-code', []);
+			assertLinter('all arms return for a string selector makes the tail dead', parser, 'f <- function() {\n  switch("c", a = return(1), return(3))\n  after <- 1\n  after\n}', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [3, 3, 3, 12] },
 				{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 7] }
 			]);

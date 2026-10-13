@@ -8,11 +8,13 @@ import type { InputClassifierConfig, InputSource, InputSources } from '../../que
 import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function defaultConsider(index: BuiltInIndex): readonly string[] {
 	return ['^eval$', ...index.with(SemanticCallTag.Process).map(n => `^${Identifier.quote(Identifier.getName(n))}$`)];
@@ -71,20 +73,12 @@ function getPipeCommandValue(sources: InputSources): string | undefined {
 	return undefined;
 }
 
-function resolveFileArgId(vertex: DataflowGraphVertexFunctionCall | undefined, argIdx: number, argName: string): NodeId | undefined {
-	const args = vertex?.args;
-	if(!args) {
+function resolveFileArgId(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall | undefined, argIdx: number, argName: string, ctx: ReadOnlyFlowrAnalyzerContext): NodeId | undefined {
+	if(!vertex?.args) {
 		return undefined;
 	}
-	let idx = args.findIndex(a => FunctionArgument.isNamed(a) && a.name === argName);
-	if(idx < 0) {
-		idx = argIdx;
-	}
-	if(idx >= args.length) {
-		return undefined;
-	}
-	const arg = args[idx];
-	return FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
+	const arg = vertex.args[boundArgumentIndex(graph, vertex, argIdx, argName, ctx)];
+	return arg === undefined || FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
 }
 
 /** A path starting with `|` runs a command, so anything but a constant path, user input included, may start one. */
@@ -143,7 +137,7 @@ export const PROBLEMATIC_INPUTS = {
 
 			if(pipeSpec !== undefined) {
 				const vertex    = df.graph.getVertex(nid) as DataflowGraphVertexFunctionCall | undefined;
-				const fileArgId = resolveFileArgId(vertex, pipeSpec.argIdx, pipeSpec.argName);
+				const fileArgId = resolveFileArgId(df.graph, vertex, pipeSpec.argIdx, pipeSpec.argName, data.inspectContext());
 				if(fileArgId !== undefined) {
 					const criterion = SlicingCriterion.fromId(fileArgId);
 					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);

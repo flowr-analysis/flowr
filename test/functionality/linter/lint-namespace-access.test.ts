@@ -59,6 +59,20 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('`::` on an exported name is fine', parser, 'stats::median',
 				'namespace-access', [], undefined, { sigDb: sigDbWithNames('stats', { median: true }) });
 
+			const withS3Method = sigDbWithNames('stats', { 'print.lm': true });
+			assertLinter('`:::` on a registered S3 method is necessary', parser, 'stats:::print.lm',
+				'namespace-access', [], undefined, { sigDb: { ...withS3Method, functionByName: (p, name, v) => {
+					const fn = withS3Method.functionByName(p, name, v);
+					return fn && { ...fn, props: ['exported', 's3-method'] };
+				} } });
+
+			const withS3MethodAndExport = sigDbWithNames('stats', { 'print.lm': true, median: true });
+			assertLinter('`:::` on an exported function that is no S3 method is still reported', parser, 'stats:::print.lm\nstats:::median',
+				'namespace-access', [{ certainty: LintingResultCertainty.Certain, pkg: 'stats', name: 'median', kind: 'unnecessary-internal', loc: [2, 1, 2, 14] }], undefined, { sigDb: { ...withS3MethodAndExport, functionByName: (p, name, v) => {
+					const fn = withS3MethodAndExport.functionByName(p, name, v);
+					return fn && { ...fn, props: name === 'print.lm' ? ['exported', 's3-method'] : ['exported'] };
+				} } });
+
 			assertLinter('`:::` on a genuinely internal name is fine', parser, 'stats:::C_cor',
 				'namespace-access', [], undefined, { sigDb: sigDbWithNames('stats', { C_cor: false }) });
 		});

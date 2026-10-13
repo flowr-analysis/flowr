@@ -17,6 +17,7 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 export interface RoxygenArgsResult extends LintingResult {
 	readonly overDocumented?:  string[]
@@ -72,7 +73,7 @@ export const ROXYGEN_ARGS = {
 						}
 						//get parameter names
 						const params = roxygen.tags[KnownRoxygenTags.Param] ?? [];
-						const functionParamNames = getParameters(element.node).map(p => p.name.content.toString());
+						const functionParamNames = getParameters(element.node).map(p => Identifier.make(Identifier.getName(p.name.content)).toString());
 						const documented = (tag: { value: { name: string } }) => tag.value.name.split(',').map(n => n.trim()).filter(n => n.length > 0);
 						const inheritedParams = params.filter(tag => tag.inherited).flatMap(documented);
 						const roxygenParamNames = params.flatMap(documented);

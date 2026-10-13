@@ -16,9 +16,45 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		/* As the script contains no file paths, we expect no issues */
 		assertLinter('none', parser, 'cat("hello")', 'file-path-validity', [], { totalReads: 0, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
-		assertLinter('a data set name is no file', parser, 'data("rat")', 'file-path-validity', []);
+		assertLinter('a data set name is no file', parser, 'data("rat")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'data/rat', loc: [1, 1, 1, 11] }
+		]);
+		assertLinter('a data set in the data directory', parser, 'data("rat")', 'file-path-validity', [], undefined, { addFiles: [new FlowrInlineTextFile('data/rat.rda', '')] });
+		assertLinter('a base data set', parser, 'data("iris")', 'file-path-validity', []);
+		assertLinter('a data set of a named package', parser, 'data("rat", package = "foo")', 'file-path-validity', []);
+		assertLinter('a data set a loaded package may provide', parser, 'library(foo)\ndata("rat")', 'file-path-validity', []);
+		assertLinter('a package attached only after the data call provides nothing to it', parser, 'data("Boston")\nlibrary(MASS)', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'data/Boston', loc: [1, 1, 1, 14] }
+		]);
+		assertLinter('a package named for one data call does not cover another', parser, 'data("Boston", package = "MASS")\ndata("mouse")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'data/mouse', loc: [2, 1, 2, 13] }
+		]);
+		assertLinter('a namespaced data call', parser, 'utils::data("rat")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'data/rat', loc: [1, 1, 1, 18] }
+		]);
+		assertLinter('every data set named', parser, 'data("iris", "rat")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'data/rat', loc: [1, 1, 1, 19] }
+		]);
+		assertLinter('a data set named by list', parser, 'data(list = "rat")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'data/rat', loc: [1, 1, 1, 18] }
+		]);
+		assertLinter('a data set after setwd', parser, 'setwd("sub")\ndata("rat")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'data/rat', loc: [2, 1, 2, 11] }
+		], undefined, { addFiles: [new FlowrInlineTextFile('data/rat.rda', '')] });
+		assertLinter('the native pipe hands the file over', parser, '"missing.csv" |> read.csv()', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Certain, filePath: 'missing.csv', loc: [1, 18, 1, 27] }
+		]);
 		assertLinter('a named argument is no positional file, the piped one is', parser, 'library(magrittr)\n"a.csv" %>% read.csv(stringsAsFactors = FALSE)', 'file-path-validity', [
 			{ certainty: LintingResultCertainty.Certain, filePath: 'a.csv', loc: [2, 13, 2, 46] }
+		]);
+		assertLinter('a read guarded by an existence check of the same file', parser, 'if(file.exists("cfg.yml")) readLines("cfg.yml")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Uncertain, filePath: 'cfg.yml', loc: [1, 28, 1, 47] }
+		]);
+		assertLinter('a check of another file is no guard', parser, 'if(file.exists("other.yml")) readLines("cfg.yml")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Certain, filePath: 'cfg.yml', loc: [1, 30, 1, 49] }
+		]);
+		assertLinter('a check whose branch does not hold the read is no guard', parser, 'if(file.exists("cfg.yml")) 1\nreadLines("cfg.yml")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Certain, filePath: 'cfg.yml', loc: [2, 1, 2, 20] }
 		]);
 		assertLinter('data built from constants reads no file', parser, 'm <- matrix(1:6, nrow = 2)\nt(m) %*% m', 'file-path-validity', []);
 		/* Assuming, that `file.csv` exists, we expect the linter to not report any issues, but to report an invalid file path for `file-missing.csv` */
@@ -41,12 +77,21 @@ describe('flowR linter', withTreeSitter(parser => {
 		const wdFiles = [new FlowrInlineTextFile('sub/only-here.csv', '')];
 		assertLinter('setwd relative valid', parser, 'setwd("sub")\nread.csv("only-here.csv")', 'file-path-validity', [],
 			{ totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 1 }, { addFiles: wdFiles });
+		assertLinter('setwd hides the old root', parser, 'setwd("sub")\nread.csv("only-here.csv")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Certain, filePath: 'only-here.csv', loc: [2, 1, 2, 25] }
+		], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 }, { addFiles: [new FlowrInlineTextFile('only-here.csv', '')] });
 		/* without the setwd the same relative path is missing (guards the case above against a false pass) */
 		assertLinter('no setwd relative missing', parser, 'read.csv("only-here.csv")', 'file-path-validity', [
 			{ certainty: LintingResultCertainty.Certain, filePath: 'only-here.csv', loc: [1, 1, 1, 25] }
 		], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 }, { addFiles: wdFiles });
 		/* If we use a relative path that is not valid, but we create a file of such a name within the script, we expect the linter to not report an issue */
 		assertLinter('write before', parser, 'write.csv("hello", "file-missing.csv")\nread.csv("file-missing.csv")', 'file-path-validity', [], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 1, totalValid: 0 }, { addFiles });
+		for(const create of ['file.create("file-missing.csv")', 'download.file("https://x.org", "file-missing.csv")', 'file.copy("file.csv", "file-missing.csv")']) {
+			assertLinter(`created by ${create}`, parser, `${create}\nread.csv("file-missing.csv")`, 'file-path-validity', [], undefined, { addFiles });
+		}
+		assertLinter('creating another file does not create the one read', parser, 'file.create("other.csv")\nread.csv("file-missing.csv")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Certain, filePath: 'file-missing.csv', loc: [2, 1, 2, 28] }
+		], undefined, { addFiles });
 		/* If we use a relative path that is not valid, but we create a file of such a name within the script, and ignore case, we expect the linter to not report an issue */
 		assertLinter('write before ignore case', parser, 'write.csv("hello", "FiLe-missing.csv")\nread.csv("file-missing.csv")', 'file-path-validity', [], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 1, totalValid: 0 }, { addFiles });
 		/* If the code that is supposed to write the file is never executed, we expect the linter to report an issue for the missing file */

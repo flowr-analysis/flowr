@@ -62,7 +62,7 @@ export const NO_LEAKED_CREDENTIALS = {
 					continue;
 				}
 				const targetNode = normalize.idMap.get(targetId);
-				if(targetNode && RString.is(targetNode) && (nameMatches || valuePattern.test(targetNode.content.str))) {
+				if(targetNode && RString.is(targetNode) && ((nameMatches && targetNode.content.str !== '') || valuePattern.test(targetNode.content.str))) {
 					return [{
 						certainty:    LintingResultCertainty.Uncertain,
 						involvedId:   element.node.info.id,

@@ -23,6 +23,10 @@ import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty
 import { LintingRuleTag } from '../linter-tags';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 export type UnclosedConnectionResult = LintingResult;
 
@@ -160,6 +164,23 @@ function unclosedCertainty(graph: DataflowGraph, open: NodeId, closes: readonly 
 	return uncovered.size > 0 && ControlDependency.happensInEveryBranchSet(uncovered) ? undefined : LintingResultCertainty.Uncertain;
 }
 
+/** Whether the call creates its connection unopened and hands it straight to a call reading or writing it, which opens and closes it. */
+function consumedInPlace(dataflow: DataflowInformation, open: NodeId, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	const { graph } = dataflow;
+	const vertex = graph.getVertex(open);
+	const node = graph.idMap?.get(open);
+	const arg = node && graph.idMap ? RNode.directParent(node, graph.idMap) : undefined;
+	const consumer = RArgument.is(arg) && graph.idMap ? RNode.directParent(arg, graph.idMap) : undefined;
+	if(!DfgVertex.isFunctionCall(vertex) || !RFunctionCall.is(consumer)) {
+		return false;
+	}
+	const mode = boundArgumentIndex(graph, vertex, undefined, 'open', ctx);
+	const stated = callFnProps(consumer.info.id, dataflow);
+	return (mode === undefined ? vertex.args.length <= 1 : mode >= vertex.args.length)
+		&& FunctionSemantics.call.props.hasAny(stated, [SemanticCallTag.Reads, SemanticCallTag.Writes])
+		&& !FunctionSemantics.call.props.hasAny(stated, SemanticCallTag.Opens);
+}
+
 /** The calls opening and the calls closing a connection, as the props state and the configuration adds. */
 function connectionCalls(elements: readonly FlowrSearchElement<ParentInformation>[], dataflow: DataflowInformation, config: UnclosedConnectionConfig) {
 	const opensByName = config.openFns.length > 0 ? Identifier.regex(...config.openFns) : undefined;
@@ -214,6 +235,9 @@ export const UNCLOSED_CONNECTION = {
 
 		const results: UnclosedConnectionResult[] = [];
 		for(const [open, loc] of opens) {
+			if(consumedInPlace(dataflow, open, data.inspectContext())) {
+				continue;
+			}
 			const certainty = unclosedCertainty(graph, open, closedBy.get(open));
 			if(certainty === undefined) {
 				continue;

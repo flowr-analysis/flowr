@@ -56,6 +56,21 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp -o landscape',
 			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
 		}]);
+		assertLinter('pdf title before the file is no pipe', parser, 'pdf(title = "|x", "out.pdf")', 'problematic-inputs', []);
+		assertLinter('pdf pipe as file with a title after it', parser, 'pdf("|lp", title = "x")', 'problematic-inputs', [{
+			certainty:   LintingResultCertainty.Certain,
+			name:        'pdf',
+			loc:         SourceRange.from(1, 1, 1, 23),
+			pipeCommand: '|lp',
+			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp' }]
+		}]);
+		assertLinter('pdf file after a named arg', parser, 'pdf(width = 7, "|lp")', 'problematic-inputs', [{
+			certainty:   LintingResultCertainty.Certain,
+			name:        'pdf',
+			loc:         SourceRange.from(1, 1, 1, 21),
+			pipeCommand: '|lp',
+			sources:     [{ id: 4, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp' }]
+		}]);
 		assertLinter('pdf non-file arg pipe not flagged', parser, 'pdf(file = "out.pdf", title = "|untrusted")', 'problematic-inputs', []);
 		assertLinter('pdf unknown input', parser, 'pdf(x)', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Uncertain,

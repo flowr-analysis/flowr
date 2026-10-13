@@ -65,7 +65,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	return visitor.loopsOnlyOnce();
 }
 
-/** Whether `value` has exactly one element; an element of a vector may itself be several, like the `1:n` in `c(1:n)`. */
+/** Whether `value` surely has exactly one element. */
 function holdsOneElement(value: Lift<Value>, element = false): boolean {
 	if(!isValue(value)) {
 		return false;
@@ -73,7 +73,7 @@ function holdsOneElement(value: Lift<Value>, element = false): boolean {
 	return value.type === 'vector' ? isValue(value.elements) && value.elements.length === 1 && holdsOneElement(value.elements[0], true)
 		: value.type === 'interval' ? isValue(value.start) && isValue(value.end) && value.startInclusive && value.endInclusive
 			&& isValue(value.start.value) && isValue(value.end.value) && value.start.value.num === value.end.value.num
-			: element ? value.type !== 'set' : value.type === 'string' || value.type === 'logical';
+			: (value.type === 'string' || value.type === 'logical' || (element && value.type === 'number')) && isValue(value.value);
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {

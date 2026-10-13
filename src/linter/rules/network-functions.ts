@@ -85,8 +85,7 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 		const address = params === undefined ? undefined : addressParam(params);
 		return {
 			name,
-			/* a parameter after `...` binds by name alone, as with `cat(..., file)` */
-			...(address === undefined ? {} : { info: { argIdx: index.get(name)?.sig?.slice(0, address.index).some(([n]) => n === '...') ? undefined : address.index, argName: address.name, resolveValue: true } }),
+			...(address === undefined ? {} : { info: { argIdx: address.index, argName: address.name, resolveValue: true } }),
 			onlyTriggerWithArgument: UrlPattern
 		};
 	});
@@ -97,10 +96,11 @@ export const NETWORK_FUNCTIONS = {
 	processSearchResult: async(e, c, d) => {
 		const df = await d.dataflow();
 		const fnPool = new Map<string, FunctionInfo>([
-			...readFunctions(d.inspectContext()).concat(SourceFunctions, writeFunctions(d.inspectContext())).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
-			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [[Identifier.toString(f.name), { name: Identifier.toString(f.name), ...f.info }] as const])
+			...writeFunctions(d.inspectContext()).concat(readFunctions(d.inspectContext()), SourceFunctions).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
+			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, { name: Identifier.toString(f.name), ...f.info }] as const))
 		]);
-		const onlyTriggerLookup = new Map(c.fns.flatMap(f => Identifier.is(f) ? [] : [[Identifier.toString(f.name), f.onlyTriggerWithArgument] as const]));
+		/* a call whose package flowR cannot name still answers to the entry for its bare name */
+		const onlyTriggerLookup = new Map(c.fns.flatMap(f => Identifier.is(f) ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, f.onlyTriggerWithArgument] as const)));
 		return functionFinderUtil.processSearchResult(e, c, d,
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];

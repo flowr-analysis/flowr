@@ -15,6 +15,14 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('none', parser, 'cat("hello")', 'seeded-randomness', [], { consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 			assertLinter('no producer', parser, 'runif(1)', 'seeded-randomness',
 				[{ loc: [1, 1, 1, 8], function: 'runif', certainty: LintingResultCertainty.Certain }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
+			assertLinter('with_seed seeds its code', parser, 'withr::with_seed(1, runif(1))', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
+			assertLinter('with_seed restores the state', parser, 'withr::with_seed(1, 1)\nrunif(1)', 'seeded-randomness',
+				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }]);
+			assertLinter('with_seed does not seed a draw after it', parser, 'withr::with_seed(1, runif(1))\nrunif(1)', 'seeded-randomness',
+				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }]);
+			assertLinter('with_seed keeps an earlier seed for a draw after it', parser, 'set.seed(1)\nwithr::with_seed(2, runif(1))\nrunif(1)', 'seeded-randomness', []);
+			assertLinter('a namespaced draw', parser, 'stats::runif(1)', 'seeded-randomness',
+				[{ loc: [1, 1, 1, 15], function: 'stats::runif', certainty: LintingResultCertainty.Certain }]);
 			assertLinter('no consumer', parser, 'set.seed(17)', 'seeded-randomness', [], { consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 			assertLinter('both', parser, 'set.seed(17)\nrunif(1)', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 			assertLinter('after', parser, 'runif(1)\nset.seed(17)', 'seeded-randomness',

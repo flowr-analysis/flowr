@@ -8,6 +8,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import { collectCalledNames, isS3MethodName } from './unused-definition';
 
 export enum CasingConvention {
 	CamelCase       = 'camelCase',
@@ -164,6 +165,12 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
 	}
 }
 
+/** Splits the quotes or backticks of a non-syntactic name off the name, as they are syntax and not part of it. */
+function unquoteName(lexeme: string): { quote: string, name: string } {
+	const quoted = /^(["'`])(.*)\1$/s.exec(lexeme);
+	return quoted ? { quote: quoted[1], name: quoted[2] } : { quote: '', name: lexeme };
+}
+
 /**
  * Creates quick fixes for renaming all references to the given node to match the provided replacement.
  */
@@ -174,7 +181,8 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 		return undefined;
 	}
 	/* the name as it is written, which is the only text a rename may overwrite */
-	const original = idMap.get(nodeId)?.lexeme;
+	const lexeme = idMap.get(nodeId)?.lexeme;
+	const original = lexeme === undefined ? undefined : unquoteName(lexeme).name;
 	if(original === undefined || original === replacement) {
 		/* a replacement equal to what is already there is no fix at all */
 		return undefined;
@@ -182,8 +190,9 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 
 	const result: LintQuickFixReplacement[] = [];
 	for(const ref of refs) {
-		const node  = idMap.get(ref);
-		if(node === undefined || node.lexeme !== original) {
+		const node = idMap.get(ref);
+		const written = node?.lexeme === undefined ? undefined : unquoteName(node.lexeme);
+		if(node?.lexeme === undefined || written?.name !== original) {
 			/* a reference reached through something else, as `myfield(x) <- v` reaches `x` through the call it
 			   names, sits at a place holding another name, and writing over it would rename that one instead */
 			continue;
@@ -197,7 +206,7 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 			result.push(
 				{
 					type:        'replace',
-					replacement: replacement,
+					replacement: `${written.quote}${replacement}${written.quote}`,
 					description: `Rename to match naming convention ${conv}`,
 					loc:         loc
 				} satisfies LintQuickFixReplacement
@@ -214,20 +223,28 @@ export const NAMING_CONVENTION = {
 	createSearch:        (_config) => Q.all().filter(VertexType.VariableDefinition),
 	processSearchResult: async(elements, config, data) =>  {
 		const dataflow = await data.dataflow();
+		const called = collectCalledNames(dataflow.graph);
 		const symbols = elements.getElements()
-			.map(m => ({
-				certainty:      LintingResultCertainty.Certain,
-				detectedCasing: detectCasing(m.node.lexeme as string, config.ignorePrefix),
-				name:           m.node.lexeme as string,
-				loc:            SourceLocation.fromNode(m.node),
-				id:             m.node.info.id
-			})).filter(e => isNotUndefined(e.loc));
-		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
+			.map(m => {
+				const name = unquoteName(m.node.lexeme as string).name;
+				return {
+					certainty:      LintingResultCertainty.Certain,
+					detectedCasing: detectCasing(name, config.ignorePrefix),
+					name,
+					loc:            SourceLocation.fromNode(m.node),
+					id:             m.node.info.id
+				};
+			})
+			/* an S3 method is named after its generic and class, renaming it breaks the dispatch */
+			.filter(e => isNotUndefined(e.loc) && !isS3MethodName(e.name, data.inspectContext(), called));
+		/* a name that reads as several conventions, like a single word, says nothing about which one is in use */
+		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols.filter(s => detectPotentialCasings(s.name, config.ignorePrefix).length === 1)) : config.caseing;
 		const taken = new Set<string | undefined>();
 		for(const [id] of dataflow.graph.vertices(true)) {
-			taken.add(dataflow.graph.idMap?.get(id)?.lexeme);
+			const lexeme = dataflow.graph.idMap?.get(id)?.lexeme;
+			taken.add(lexeme === undefined ? undefined : unquoteName(lexeme).name);
 		}
-		const results = symbols
+		const results = casing === CasingConvention.Unknown ? [] : symbols
 			/* a name that already reads as the wanted convention is no violation, whatever else it could also be
 			   read as: `f` carries no separator and no capital, so it is snake_case and camelCase at once */
 			.filter(m => !detectPotentialCasings(m.name, config.ignorePrefix).includes(casing)

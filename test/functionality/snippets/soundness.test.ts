@@ -61,7 +61,7 @@ describe('Snippets: soundness of slices', () => {
 		await TreeSitterExecutor.initTreeSitter();
 	});
 	for(const [name, code] of cases) {
-		test.concurrent(name, async() => {
+		test(name, async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
 			analyzer.addRequest(code);
 			const sliced = await analyzer.query([{ type: 'static-slice', criteria: [`${code.split('\n').length}@print` as SlicingCriterion] }]);

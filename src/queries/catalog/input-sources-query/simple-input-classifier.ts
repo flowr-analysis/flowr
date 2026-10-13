@@ -29,6 +29,7 @@ import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { hasEdgeOfType } from '../../../dataflow/fn/frame-reflection';
 
 
 /** how far a function handed to an entry point may be passed along before we give up resolving it */
@@ -358,7 +359,9 @@ class InputClassifier {
 					return false;
 				}
 				for(const [target, edge] of this.dfg.edgesFrom(id)) {
-					if(DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedByOnCall) && !within.has(target) && !NodeId.isBuiltIn(target)) {
+					/* the call evaluating the code is no input to it */
+					if(DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedByOnCall) && !within.has(target) && !NodeId.isBuiltIn(target)
+						&& !hasEdgeOfType(this.dfg, target, id, EdgeType.Returns)) {
 						return false;
 					}
 				}

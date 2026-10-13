@@ -21,7 +21,7 @@ import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { ambientWritesOfAssignment } from './built-in-ambient-state';
+import { AmbientStateName, ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
@@ -35,7 +35,9 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
-import type { FnSig } from '../../../../../environments/built-in-props';
+import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
+import { matchArgumentsToParameters } from '../../../../../../util/arg-matching';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -416,6 +418,9 @@ function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformat
 	const written: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
 	for(const refs of [target.in, target.unknownReferences]) {
 		for(const ref of refs) {
+			if(AmbientStateName.is(ref.name)) {
+				continue;
+			}
 			written.push({
 				nodeId:    ref.nodeId,
 				name:      ref.name as Identifier,
@@ -600,7 +605,13 @@ function tryRouteToCustomEnv<OtherInfo>(
 		return info;
 	}
 	if(!envirRouting) {
-		return undefined;
+		if(!data.ctx.config.solver.trackEnvironments || config.environmentArg === undefined || !suppliesArg(args, config.sig, [config.environmentArg])) {
+			return undefined;
+		}
+		/* an environment we cannot name (`sys.frame(-1)`) may be any frame, so the write stays here and is kept as well */
+		const info = processAssignment(name, args, rootId, data, { ...config, environmentArg: undefined });
+		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		return info;
 	}
 
 	/* run the normal assignment path to get the correct graph structure, the call reads the environment it writes into */
@@ -640,12 +651,30 @@ export function processDefineArgument<OtherInfo>(
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.DefineArgument });
 	const info = res.information;
-	const targetArg = res.processedArguments[0];   // the read argument, e.g. `prostate`
-	if(targetArg !== undefined) {
-		for(const node of produceWrittenNodes(rootId, targetArg, ReferenceType.Variable, data, false, undefined)) {
-			info.environment = define(node, config.superAssignment, info.environment);
-			info.graph.setDefinitionOfVertex(node, [rootId]);
-			info.graph.addEdge(node.nodeId, rootId, EdgeType.DefinedBy);   // defined by the call; the read edge is left intact
+	const formals = config.sig ?? [];
+	const bound = matchArgumentsToParameters(args.map(a => RArgument.isEmpty(a) ? undefined : a.name?.content), formals.map(([f]) => f));
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i], targetArg = res.processedArguments[i], param = bound[i];
+		if(RArgument.isEmpty(arg) || targetArg === undefined || param === undefined) {
+			continue;
+		}
+		if(param === 0 && RSymbol.is(arg.value)) {
+			for(const node of produceWrittenNodes(rootId, targetArg, ReferenceType.Variable, data, false, undefined)) {
+				info.environment = define(node, config.superAssignment, info.environment);
+				info.graph.setDefinitionOfVertex(node, [rootId]);
+				info.graph.addEdge(node.nodeId, rootId, EdgeType.DefinedBy);   // defined by the call; the read edge is left intact
+			}
+		} else if(param === 0 || (formals[param][1] & ArgProp.Value) !== 0) {
+			const at = RString.is(arg.value) ? arg.value.info.id : rootId;
+			for(const named of NodeValue.knownStringsOf(arg.value, data)) {
+				const node = { nodeId: at, name: named, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds } as const;
+				info.environment = define(node, config.superAssignment, info.environment);
+				info.out = [...info.out, node];
+				if(at !== rootId) {
+					info.graph.setDefinitionOfVertex(node, [rootId]);
+					info.graph.addEdge(at, rootId, EdgeType.DefinedBy);
+				}
+			}
 		}
 	}
 	return info;
@@ -736,6 +765,14 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			for(let i = 0; i < writeNodes.length; i++) {
 				writeNodes[i] = { ...writeNodes[i], returnsEnvState };
 			}
+		}
+	}
+
+	const forces = quoteSource ? ambientWritesBetween(sourceArg.environment, data.environment) : [];
+	if(forces.length > 0) {
+		markForcing(data.environment);
+		for(let i = 0; i < writeNodes.length; i++) {
+			writeNodes[i] = { ...writeNodes[i], forces } as typeof writeNodes[number];
 		}
 	}
 

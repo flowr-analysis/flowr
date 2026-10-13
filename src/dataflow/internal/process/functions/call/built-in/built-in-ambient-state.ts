@@ -4,12 +4,12 @@ import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bri
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { DfgVertex } from '../../../../../graph/vertex';
-import { CallProp, CallProps } from '../../../../../environments/built-in-props';
+import { ArgProp, CallProp, CallProps, type FnSig } from '../../../../../environments/built-in-props';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
+import { type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { applyCdsToDefinitions } from '../../../../../environments/reference-to-maybe';
 import { define } from '../../../../../environments/define';
 import { RConstant, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -44,10 +44,14 @@ export const AmbientStateName = {
 	otherDevicesOpenedBy: '#device:other',
 	/** the color palette, which, other than the graphics parameters, all devices share */
 	palette:              '#palette',
-	/** the files on disk, which every call writing a file adds to and every call reading one reads */
+	/** the files on disk, which every call writing a file adds to and every call reading a file we cannot name reads */
 	files:                '#files',
+	/** written by a call writing a file we cannot name, which every call reading a file reads */
+	anyFile:              '#file:*',
 	/** the state of the random number generator, which `set.seed` sets and every draw advances */
 	rng:                  '#rng',
+	/** the kind of generator, which `set.seed` keeps unless it is given one */
+	rngKind:              '#rng:kind',
 	/** the global variable R keeps that state in, so assigning it sets {@link AmbientStateName.rng} as well */
 	rngVariable:          '.Random.seed',
 	/** every option write, for readers that may read any option (`getOption(k)` with an unknown `k`, library functions) */
@@ -56,6 +60,16 @@ export const AmbientStateName = {
 	unknownOption:        '#option:*',
 	/** written along with the option `warn` when it may turn warnings into errors (`warn >= 2`), see {@link errorsOfWarnings} */
 	warnsAsErrors:        '#warn-error',
+	/** the finalizers registered (`reg.finalizer`) and the removals that may release their objects, which `gc()` may run */
+	finalizers:           '#finalizers',
+	/** marks `name` as bound to a text connection opened for writing, whose writes change it */
+	textConnection(this: void, name: string): string {
+		return `#text-connection:${name}`;
+	},
+	/** the file named `stem` (`data` for `out/data.csv`), so a read of a named file only sees writes that may hit it */
+	file(this: void, stem: string): string {
+		return `#file:${stem}`;
+	},
 	/** the pseudo variable holding the option `key`; setting the option replaces it */
 	option(this: void, key: string): string {
 		return `#option:${key}`;
@@ -66,7 +80,7 @@ export const AmbientStateName = {
 	}
 } as const;
 
-const Accumulating: ReadonlySet<string> = new Set([AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption, AmbientStateName.warnsAsErrors, AmbientStateName.files]);
+const Accumulating: ReadonlySet<string> = new Set([AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption, AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers]);
 
 /** A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` keeps what was there. */
 interface AmbientWrite {
@@ -110,7 +124,7 @@ function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds
 	for(const write of writes) {
 		const name = typeof write === 'string' ? write : write.name;
 		const mode = typeof write === 'string' ? undefined : write.mode;
-		const accumulates = Accumulating.has(name);
+		const accumulates = Accumulating.has(name) || name.startsWith(AmbientStateName.file(''));
 		const keep = mode === 'maybe' || (accumulates && mode === undefined);
 		/* an accumulating state only ever grows, its definitions are maybe so merging environments keeps them all; a reset is definite */
 		const def: InGraphIdentifierDefinition & { name: string, maybeWrite?: true } = { nodeId: rootId, name, type: ReferenceType.Variable, definedAt: rootId, cds: keep || (accumulates && mode !== 'reset') ? cds ?? [] : cds };
@@ -132,7 +146,15 @@ function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds
  * generator ({@link AmbientStateName.rng}), a local one is a plain variable R never looks at.
  */
 export function ambientWritesOfAssignment(environment: REnvironmentInformation, target: Identifier, rootId: NodeId, cds: ControlDependency[] | undefined, global: boolean): REnvironmentInformation {
-	return global && Identifier.getName(target) === AmbientStateName.rngVariable ? defineAmbient(environment, rootId, cds, [AmbientStateName.rng]) : environment;
+	environment = ambientWritesOfRelease(environment, [target], rootId, cds);
+	return global && Identifier.getName(target) === AmbientStateName.rngVariable ? defineAmbient(environment, rootId, cds, [AmbientStateName.rng, AmbientStateName.rngKind]) : environment;
+}
+
+/** Rebinding or removing the names (all of them if `undefined`) may release an object a finalizer is registered for. */
+export function ambientWritesOfRelease(environment: REnvironmentInformation, names: readonly Identifier[] | undefined, rootId: NodeId, cds: ControlDependency[] | undefined): REnvironmentInformation {
+	const holders = (Resolve.byName(AmbientStateName.finalizers, environment) ?? []).map(d => (d as { holder?: string }).holder);
+	const released = holders.some(h => h === undefined || names === undefined || names.some(n => Identifier.getName(n) === h));
+	return released ? defineAmbient(environment, rootId, cds, [AmbientStateName.finalizers]) : environment;
 }
 
 /**
@@ -161,6 +183,38 @@ export function makeAmbientWritesMaybe(after: REnvironmentInformation, before: R
 	}
 }
 
+/** The states written in `after` that `before` does not hold, as by a promise (`delayedAssign`) whose writes only happen once a read forces it. */
+export function ambientWritesBetween(after: REnvironmentInformation, before: REnvironmentInformation): string[] {
+	const names = new Set<string>();
+	for(let env: Environment | undefined = after.current; env !== undefined && !env.builtInEnv; env = env.parent) {
+		for(const [name, definitions] of env.memory.entries()) {
+			if(AmbientStateName.is(name) && !names.has(name)) {
+				const known = new Set((Resolve.byName(name, before) ?? []).map(d => d.nodeId));
+				if(definitions.some(d => !known.has(d.nodeId))) {
+					names.add(name);
+				}
+			}
+		}
+	}
+	return [...names];
+}
+
+/** Notes that a definition binds a promise or a text connection, which reads have to look for from now on. */
+export function markForcing(environment: REnvironmentInformation): void {
+	REnvironment.findBuiltIn(environment.current).forcing = true;
+}
+
+/** Whether a definition seen so far binds a promise or a text connection, see {@link markForcing}. */
+export function mayForce(environment: REnvironmentInformation): boolean {
+	return REnvironment.findBuiltIn(environment.current).forcing === true;
+}
+
+/** A read of a name bound to a promise may force it, which (maybe) writes what the promise writes. */
+export function ambientWritesOfForce<OtherInfo>(res: DataflowInformation, symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+	const forces = mayForce(data.environment) ? (Resolve.byName(symbol.content, data.environment) ?? []).flatMap(d => (d as { forces?: readonly string[] }).forces ?? []) : [];
+	return forces.length === 0 ? res : withAccess(res, symbol.info.id, data, [], forces.map(name => ({ name, mode: 'maybe' } as const)));
+}
+
 /** Binds `name` (globally) to the given definitions, in addition to what it holds with `keep`, so `#graphics` can become what another state holds. */
 function setAmbient(environment: REnvironmentInformation, name: string, definitions: readonly IdentifierDefinition[], keep = false): REnvironmentInformation {
 	if(definitions.length === 0 && !keep) {
@@ -172,8 +226,18 @@ function setAmbient(environment: REnvironmentInformation, name: string, definiti
 	return environment;
 }
 
-/** `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
-export function readsOfOptionsVariable<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): IdentifierReference[] {
+/** A variable a text connection writes reads what is written to connections, `.Random.seed` reads the generator state, `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
+export function ambientReadsOfSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): IdentifierReference[] {
+	const name = Identifier.getName(symbol.content);
+	const ref = (state: string): IdentifierReference => ({ nodeId: symbol.info.id, name: state, type: ReferenceType.Variable, cds: data.cds });
+	if(mayForce(data.environment) && Resolve.byName(AmbientStateName.textConnection(name), data.environment)?.length) {
+		/* what is written to a connection we cannot name may be written to this one */
+		return [ref(AmbientStateName.anyFile)];
+	} else if(name === AmbientStateName.rngVariable) {
+		return [AmbientStateName.rng, AmbientStateName.rngKind].map(ref);
+	} else if(name !== '.Options') {
+		return [];
+	}
 	const parent = symbol.info.parent === undefined ? undefined : data.completeAst.idMap.get(symbol.info.parent);
 	let key: string | undefined;
 	if(RAccess.is(parent) && parent.accessed.info.id === symbol.info.id && (parent.operator === '$' || parent.operator === '[[')) {
@@ -182,7 +246,7 @@ export function readsOfOptionsVariable<OtherInfo>(symbol: RSymbol<OtherInfo & Pa
 		key = RString.is(value) ? value.content.str : parent.operator === '$' && RSymbol.is(value) ? Identifier.getName(value.content) : undefined;
 	}
 	const names = key === undefined ? [AmbientStateName.allOptions] : [AmbientStateName.option(key), AmbientStateName.unknownOption];
-	return names.map(name => ({ nodeId: symbol.info.id, name, type: ReferenceType.Variable, cds: data.cds }));
+	return names.map(ref);
 }
 
 /** Options affecting calls we cannot name (`scipen` changes every number-to-string conversion), so setting one stays an unknown side effect. */
@@ -218,20 +282,34 @@ export const enum AmbientStateAccessType {
 	SwitchDevice = 'switch-device',
 	/** evaluates its unevaluated argument, like `evalq`, see {@link evaluatesCapturedCode} */
 	EvaluateQuoted = 'evaluate-quoted',
-	/** sets the state of the random number generator, like `set.seed` */
+	/** sets the state of the random number generator, like `set.seed`, and its kind from the arguments at {@link AmbientStateAccess#kindFrom} on */
 	SetRng       = 'set-rng',
 	/** draws from the random number generator, which reads its state and advances it, like `runif` */
 	DrawRng      = 'draw-rng',
 	/** reads a file, like `read.csv`, so it sees what was written to the files before */
 	ReadFiles    = 'read-files',
 	/** writes a file, like `write.csv` */
-	WriteFiles   = 'write-files'
+	WriteFiles   = 'write-files',
+	/** `textConnection(object, open)`: opened for writing, it binds the variable `object` names to what is written to it */
+	OpenTextConnection = 'open-text-connection',
+	/** `reg.finalizer(e, f)`: registers `f` to run once `e` is released */
+	RegisterFinalizer = 'register-finalizer',
+	/** `gc()`: may run every registered finalizer whose object is released */
+	RunFinalizers = 'run-finalizers'
 }
 
 export type AmbientStateAccess = {
 	readonly type: AmbientStateAccessType.SetOptions | AmbientStateAccessType.GetOption | AmbientStateAccessType.ReadGraphics
 		| AmbientStateAccessType.SetPalette | AmbientStateAccessType.OpenDevice | AmbientStateAccessType.SwitchDevice
-		| AmbientStateAccessType.SetRng | AmbientStateAccessType.DrawRng | AmbientStateAccessType.ReadFiles | AmbientStateAccessType.WriteFiles
+		| AmbientStateAccessType.DrawRng | AmbientStateAccessType.OpenTextConnection | AmbientStateAccessType.RegisterFinalizer | AmbientStateAccessType.RunFinalizers
+} | {
+	readonly type: AmbientStateAccessType.ReadFiles | AmbientStateAccessType.WriteFiles
+	/** the signature whose {@link ArgProp.Resource} arguments name the files, absent if they do not name them exactly (like a glob) */
+	readonly sig?: FnSig
+} | {
+	readonly type:      AmbientStateAccessType.SetRng
+	/** the position from which on (unnamed) arguments, and every argument named other than `seed`, set the kind of generator */
+	readonly kindFrom?: number
 } | {
 	readonly type:        AmbientStateAccessType.ReadOptions
 	readonly keys:        readonly string[]
@@ -257,9 +335,11 @@ export function applyAmbientStateAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] | UnknownArguments,
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	access: AmbientStateAccess
+	access: AmbientStateAccess | readonly AmbientStateAccess[]
 ): DataflowInformation {
-	if(args === UnknownArguments) {
+	if(!('type' in access)) {
+		return access.reduce((r, a) => applyAmbientStateAccess(r, args, rootId, data, a), res);
+	} else if(args === UnknownArguments) {
 		return applyWithUnknownArguments(res, rootId, data, access);
 	}
 	const reads: string[] = [];
@@ -311,21 +391,108 @@ export function applyAmbientStateAccess<OtherInfo>(
 			return deviceAccess(res, rootId, data, 'switch');
 		case AmbientStateAccessType.EvaluateQuoted:
 			return evaluatesCapturedCode(res, rootId, data);
-		case AmbientStateAccessType.SetRng:
-			writes.push(AmbientStateName.rng);
+		case AmbientStateAccessType.SetRng: {
+			const kindFrom = access.kindFrom ?? 1;
+			reads.push(AmbientStateName.rngKind);
+			if(kindFrom > 0) {
+				writes.push(AmbientStateName.rng);
+			}
+			if(args.some((a, i) => a !== EmptyArgument && (a.name === undefined ? i >= kindFrom : Identifier.getName(a.name.content) !== 'seed'))) {
+				writes.push(AmbientStateName.rngKind);
+			}
 			break;
+		}
 		case AmbientStateAccessType.DrawRng:
 			reads.push(AmbientStateName.rng);
 			writes.push(AmbientStateName.rng);
 			break;
-		case AmbientStateAccessType.ReadFiles:
-			reads.push(AmbientStateName.files);
+		case AmbientStateAccessType.ReadFiles: {
+			const stems = fileStems(res, rootId, data, access.sig);
+			reads.push(...stems === undefined ? [AmbientStateName.files] : [...stems.map(AmbientStateName.file), AmbientStateName.anyFile]);
 			break;
-		case AmbientStateAccessType.WriteFiles:
-			writes.push(AmbientStateName.files);
+		}
+		case AmbientStateAccessType.WriteFiles: {
+			const stems = fileStems(res, rootId, data, access.sig);
+			writes.push(...stems === undefined ? [AmbientStateName.anyFile] : stems.map(AmbientStateName.file), AmbientStateName.files);
 			break;
+		}
+		case AmbientStateAccessType.OpenTextConnection:
+			return openTextConnection(res, args, rootId, data);
+		case AmbientStateAccessType.RegisterFinalizer:
+			return registerFinalizer(res, args, rootId, data);
+		case AmbientStateAccessType.RunFinalizers: {
+			const registered = (Resolve.byName(AmbientStateName.finalizers, data.environment) ?? []) as (InGraphIdentifierDefinition & { writes?: readonly string[] })[];
+			for(const fn of registered.flatMap(d => d.value ?? [])) {
+				res.graph.addEdge(rootId, fn, EdgeType.Calls);
+			}
+			return withAccess(res, rootId, data, [AmbientStateName.finalizers], registered.flatMap(d => d.writes ?? []).map(name => ({ name, mode: 'maybe' } as const)));
+		}
 	}
 	return withAccess(res, rootId, data, reads, writes);
+}
+
+/** `reg.finalizer(e, f)` keeps the functions `f` may be, and the name holding `e`, whose release lets `gc()` run them. */
+function registerFinalizer<OtherInfo>(res: DataflowInformation, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+	const bound = MatchArgs.toNames(args, ['e', 'f', 'onexit']);
+	const fn = bound.get('f')?.value;
+	const holder = bound.get('e')?.value;
+	const value = RFunctionDefinition.is(fn) ? [fn.info.id] : RSymbol.is(fn) ? (Resolve.byName(fn.content, data.environment) ?? []).flatMap(d => (d as Partial<InGraphIdentifierDefinition>).value ?? []) : [];
+	const writes = value.flatMap(id => {
+		const definition = res.graph.getVertex(id);
+		return DfgVertex.isFunctionDefinition(definition) ? ambientWritesBetween(definition.subflow.environment, data.environment) : [];
+	});
+	const definition = { nodeId: rootId, name: AmbientStateName.finalizers, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : [], value, writes, holder: RSymbol.is(holder) ? Identifier.getName(holder.content) : undefined } as const;
+	return { ...res, environment: define(definition, true, res.environment, true) };
+}
+
+/** `textConnection(object, open, local)` opened for writing binds `object` globally, or locally with `local = TRUE`. */
+function openTextConnection<OtherInfo>(res: DataflowInformation, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+	const bound = MatchArgs.toNames(args, ['object', 'open', 'local', 'name', 'encoding']);
+	const open = bound.get('open');
+	const modes = open === undefined ? ['r'] : stringsOf(open, data);
+	if(modes?.every(m => m.startsWith('r'))) {
+		return res;
+	}
+	const names = stringsOf(bound.get('object'), data);
+	if(names === undefined) {
+		handleUnknownSideEffect(res.graph, res.environment, rootId);
+		return res;
+	}
+	const local = bound.get('local');
+	const scopes = local === undefined ? [false] : NodeValue.setOf(local.info.id, data)?.elements.map(v => v.type === 'logical' && v.value === true);
+	const cds = data.cds ? [...data.cds] : undefined;
+	let environment = res.environment;
+	for(const name of names) {
+		for(const [i, inFrame] of (scopes ?? [true, false]).entries()) {
+			environment = define({ nodeId: rootId, name, type: ReferenceType.Variable, definedAt: rootId, cds }, !inFrame, environment, i > 0 || names.length > 1);
+		}
+	}
+	markForcing(environment);
+	return withAccess({ ...res, environment }, rootId, data, [], names.map(AmbientStateName.textConnection));
+}
+
+/** The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (`plot%03d.png` or a directory may stand for others). */
+function fileStems<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sig: FnSig | undefined): string[] | undefined {
+	const call = res.graph.getVertex(rootId);
+	if(sig === undefined || !DfgVertex.isFunctionCall(call)) {
+		return undefined;
+	}
+	const named = MatchArgs.findWithProps(call.args, sig, ArgProp.Resource);
+	if(named.length === 0 || named.length < sig.filter(([n, p]) => n !== '...' && (p & ArgProp.Resource) !== 0).length) {
+		return undefined;
+	}
+	const stems: string[] = [];
+	for(const id of named) {
+		const paths = NodeValue.stringsOf(id, data);
+		for(const path of paths?.length ? paths : ['']) {
+			const [stem, ...extension] = path.split(/[/\\]/).at(-1)?.split('.') ?? [];
+			if(!stem || extension.length === 0 || /[%*?[]/.test(path)) {
+				return undefined;
+			}
+			stems.push(stem);
+		}
+	}
+	return stems;
 }
 
 /** What printing `value` reads: the printing `keys` for a plain value, all options for an unknown one (a tibble reads the pillar options). */
@@ -353,23 +520,45 @@ type UnknownArguments = typeof UnknownArguments;
 
 function applyWithUnknownArguments<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, access: AmbientStateAccess): DataflowInformation {
 	switch(access.type) {
+		case AmbientStateAccessType.CloseDevice:
+			return deviceAccess(res, rootId, data, access.all ? 'close-all' : 'switch');
+		case AmbientStateAccessType.OpenDevice:
+		case AmbientStateAccessType.SwitchDevice:
+			return applyAmbientStateAccess(res, [], rootId, data, access);
 		case AmbientStateAccessType.SetOptions:
 			/* like `options(op)`: it may set anything */
 			res.graph.markIdForUnknownSideEffects(rootId);
-			return withAccess(res, rootId, data, [AmbientStateName.allOptions], [AmbientStateName.unknownOption, AmbientStateName.allOptions]);
-		case AmbientStateAccessType.GetOption:
-			return withAccess(res, rootId, data, [AmbientStateName.allOptions], []);
-		case AmbientStateAccessType.SetGraphics:
-			return withAccess(res, rootId, data, [AmbientStateName.graphics], [AmbientStateName.graphics]);
-		case AmbientStateAccessType.SetPalette:
-			return withAccess(res, rootId, data, [AmbientStateName.palette], [AmbientStateName.palette]);
-		case AmbientStateAccessType.ReadOptions:
-			return withAccess(res, rootId, data, access.dispatchOn === undefined ? printingReads(undefined, false, access.keys, data) : [AmbientStateName.allOptions], []);
-		case AmbientStateAccessType.CloseDevice:
-			return deviceAccess(res, rootId, data, access.all ? 'close-all' : 'switch');
-		default:
-			return applyAmbientStateAccess(res, [], rootId, data, access);
 	}
+	const { reads, writes } = unknownArgumentAccess(access);
+	return withAccess(res, rootId, data, reads, writes);
+}
+
+const Devices = { reads: [], writes: [AmbientStateName.graphics, AmbientStateName.device] };
+const Quoted = { reads: [AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette], writes: [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette] };
+
+/** What a call of the given kind may read and write when its arguments are unknown, as when only linking reveals it. */
+const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientStateAccessType.ReadOptions>, { readonly reads: readonly string[], readonly writes: readonly string[] }> = {
+	[AmbientStateAccessType.SetOptions]:         { reads: [AmbientStateName.allOptions], writes: [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.warnsAsErrors] },
+	[AmbientStateAccessType.GetOption]:          { reads: [AmbientStateName.allOptions], writes: [] },
+	[AmbientStateAccessType.SetGraphics]:        { reads: [AmbientStateName.graphics], writes: [AmbientStateName.graphics] },
+	[AmbientStateAccessType.ReadGraphics]:       { reads: [AmbientStateName.graphics, AmbientStateName.palette], writes: [] },
+	[AmbientStateAccessType.SetPalette]:         { reads: [AmbientStateName.palette], writes: [AmbientStateName.palette] },
+	[AmbientStateAccessType.OpenDevice]:         Devices,
+	[AmbientStateAccessType.CloseDevice]:        Devices,
+	[AmbientStateAccessType.SwitchDevice]:       Devices,
+	[AmbientStateAccessType.EvaluateQuoted]:     Quoted,
+	[AmbientStateAccessType.SetRng]:             { reads: [AmbientStateName.rngKind], writes: [AmbientStateName.rng, AmbientStateName.rngKind] },
+	[AmbientStateAccessType.DrawRng]:            { reads: [AmbientStateName.rng], writes: [AmbientStateName.rng] },
+	[AmbientStateAccessType.ReadFiles]:          { reads: [AmbientStateName.files], writes: [] },
+	[AmbientStateAccessType.WriteFiles]:         { reads: [], writes: [AmbientStateName.anyFile, AmbientStateName.files] },
+	[AmbientStateAccessType.OpenTextConnection]: { reads: [], writes: [] },
+	[AmbientStateAccessType.RegisterFinalizer]:  { reads: [], writes: [AmbientStateName.finalizers] },
+	[AmbientStateAccessType.RunFinalizers]:      { reads: [AmbientStateName.finalizers], writes: [] }
+};
+
+function unknownArgumentAccess(access: AmbientStateAccess): { readonly reads: readonly string[], readonly writes: readonly string[] } {
+	return access.type !== AmbientStateAccessType.ReadOptions ? UnknownArgumentAccess[access.type]
+		: { reads: access.dispatchOn === undefined ? [...access.keys.map(AmbientStateName.option), AmbientStateName.unknownOption] : [AmbientStateName.allOptions], writes: [] };
 }
 
 /** Graphics parameters are per device; within a function the open devices are unknown, so a device call only adds. */
@@ -430,27 +619,26 @@ export function applyAmbientStateOfCallee<OtherInfo>(res: DataflowInformation, c
 	return unknown ? readsAllAmbientState(res, callId, data, true) : res;
 }
 
-/** What a call of the given kind may write when only linking reveals it, so its arguments are unknown (a hidden call already advances the generator, see {@link readsAllAmbientState}). */
-const HiddenWrites: Partial<Record<AmbientStateAccessType, readonly string[]>> = {
-	[AmbientStateAccessType.SetOptions]:   [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.warnsAsErrors],
-	[AmbientStateAccessType.SetGraphics]:  [AmbientStateName.graphics],
-	[AmbientStateAccessType.SetPalette]:   [AmbientStateName.palette],
-	[AmbientStateAccessType.OpenDevice]:   [AmbientStateName.graphics, AmbientStateName.device],
-	[AmbientStateAccessType.CloseDevice]:  [AmbientStateName.graphics, AmbientStateName.device],
-	[AmbientStateAccessType.SwitchDevice]: [AmbientStateName.graphics, AmbientStateName.device]
-};
+function hiddenAccess(target: IdentifierDefinition): readonly AmbientStateAccess[] {
+	const access = target.type === ReferenceType.BuiltInFunction ? (target.config as { ambient?: AmbientStateAccess | readonly AmbientStateAccess[] } | undefined)?.ambient : undefined;
+	return [access ?? []].flat();
+}
 
 /** The (maybe) writes of the call `callId` to the built-in `target` through a parameter, like `g <- function(f, ...) f(...); g(options, digits = 3)`. */
 export function writesOfHiddenBuiltIn(target: IdentifierDefinition, callId: NodeId): (InGraphIdentifierDefinition & { name: string })[] {
-	const access = target.type === ReferenceType.BuiltInFunction ? (target.config as { ambient?: AmbientStateAccess } | undefined)?.ambient : undefined;
-	return (access === undefined ? [] : HiddenWrites[access.type] ?? []).map(name => ({ nodeId: callId, name, type: ReferenceType.Variable, definedAt: callId, cds: [] }));
+	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a).writes).map(name => ({ nodeId: callId, name, type: ReferenceType.Variable, definedAt: callId, cds: [] }));
+}
+
+/** The states the call to the built-in `target` through a parameter reads, see {@link writesOfHiddenBuiltIn}. */
+export function readsOfHiddenBuiltIn(target: IdentifierDefinition): string[] {
+	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a).reads);
 }
 
 /** applies what the built-ins among `targets` state about the ambient state */
 function applyAmbientStateOfTargets<OtherInfo>(res: DataflowInformation, targets: readonly IdentifierDefinition[], args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] | UnknownArguments, callId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	for(const target of targets) {
-		const access = target.type === ReferenceType.BuiltInFunction ? (target.config as { ambient?: AmbientStateAccess } | undefined)?.ambient : undefined;
-		if(access !== undefined) {
+		const access = hiddenAccess(target);
+		if(access.length > 0) {
 			res = applyAmbientStateAccess(res, args, callId, data, access);
 		}
 	}
@@ -537,23 +725,22 @@ function resultIsUsed<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformat
 	return isLast && !data.completeAst.ast.files.some(f => f.root.info.id === parent.info.id);
 }
 
-/** Links state reads in a loop body to the body's own writes of a later iteration; the loops' circular linking only sees uses. */
-export function linkAmbientStateWithinLoop(graph: DataflowGraph, reads: readonly IdentifierReference[], body: DataflowInformation): void {
-	for(const r of reads) {
-		if(!AmbientStateName.is(r.name)) {
-			continue;
-		}
-		for(const def of Resolve.byName(r.name, body.environment) ?? []) {
+/** Links state reads in a loop body to the body's own writes of a later iteration and returns them, as the first iteration reads what is there before the loop. */
+export function linkAmbientStateWithinLoop(graph: DataflowGraph, reads: readonly IdentifierReference[], body: DataflowInformation): IdentifierReference[] {
+	const ambient = reads.filter(r => AmbientStateName.is(r.name));
+	for(const r of ambient) {
+		for(const def of Resolve.byName(r.name as string, body.environment) ?? []) {
 			if(body.graph.hasVertex(def.nodeId)) {
 				graph.addEdge(r.nodeId, def.nodeId, EdgeType.Reads);
 			}
 		}
 	}
+	return ambient;
 }
 
 /** A scoped state change (`withr`, `rlang`): `with_*` undoes it after its code, `local_*` when the calling function returns. */
 export interface AmbientScope {
-	readonly state:  'options' | 'graphics' | 'device'
+	readonly state:  'options' | 'graphics' | 'device' | 'rng'
 	/** the formals in order, used to bind the arguments */
 	readonly params: readonly string[]
 	/** the formal evaluated with the change in effect, absent for the `local_*` variants */
@@ -593,11 +780,12 @@ export function processAmbientScope<OtherInfo>(
 	/* afterward, what the scope changed is back to what it was before */
 	let environment = information.environment;
 	const restored = scope.state === 'device' ? [AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy]
-		: writes.map(w => typeof w === 'string' ? w : w.name).filter(n => n.startsWith('#option:') && n !== AmbientStateName.unknownOption);
+		: scope.state === 'rng' ? [AmbientStateName.rng]
+			: writes.map(w => typeof w === 'string' ? w : w.name).filter(n => n.startsWith('#option:') && n !== AmbientStateName.unknownOption);
 	for(const state of restored) {
 		const before = Resolve.byName(state, data.environment);
 		/* an option nothing set before keeps the scope's definition, we cannot tell R's default apart */
-		if((before !== undefined && before.length > 0) || (scope.state === 'device' && data.environment.level === 0)) {
+		if((before !== undefined && before.length > 0) || ((scope.state === 'device' || scope.state === 'rng') && data.environment.level === 0)) {
 			environment = setAmbient(environment, state, before ?? []);
 		}
 	}
@@ -612,7 +800,7 @@ export function processAmbientScope<OtherInfo>(
 /** what a scope call writes: the options it names, or the graphics state */
 function scopedWrites<OtherInfo>(scope: AmbientScope, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], bound: ReadonlyMap<string, RArgument<OtherInfo & ParentInformation>>, local: boolean): { writes: (string | AmbientWrite)[], unknown: boolean } {
 	if(scope.state !== 'options') {
-		return { writes: [AmbientStateName.graphics], unknown: false };
+		return { writes: [scope.state === 'rng' ? AmbientStateName.rng : AmbientStateName.graphics], unknown: false };
 	}
 	const keys: string[] = [];
 	let unknown = false;
@@ -658,17 +846,13 @@ function scopedWrites<OtherInfo>(scope: AmbientScope, args: readonly Potentially
 
 /** Evaluating captured code may access any state; `Quoted.finalize` drops the writes again once the code is known to change none. */
 export function evaluatesCapturedCode<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	return withAccess(res, rootId, data,
-		[AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette],
-		[AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette]);
+	return withAccess(res, rootId, data, Quoted.reads, Quoted.writes);
 }
 
-/** R prints every visible top-level value, which reads the printing options like `print` does. */
+/** R prints every visible top-level value (see {@link autoPrints}) by an implicit call of the configured `print`. */
 export function readsOfAutoPrint<OtherInfo>(processed: DataflowInformation, expression: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	if(!autoPrints(expression, processed, data)) {
-		return processed;
-	}
-	return withAccess(processed, expression.info.id, data, printingReads(expression, true, PrintingOptions, data), []);
+	const print = Resolve.byNameAndType('print', { current: REnvironment.findBuiltIn(data.environment.current), level: 0 }, ReferenceType.Function)?.slice(0, 1) ?? [];
+	return applyAmbientStateOfTargets(processed, print, [{ value: expression } as RArgument<OtherInfo & ParentInformation>], expression.info.id, data);
 }
 
 /** the processors whose calls return invisibly, although their configuration states no {@link CallProp.Invisible} */
@@ -676,7 +860,7 @@ const InvisibleProcessors: ReadonlySet<string> = new Set([BuiltInProcName.ForLoo
 	BuiltInProcName.Assignment, BuiltInProcName.SuperAssignment, BuiltInProcName.FunctionDefinition]);
 
 /** whether the value of the top-level `expression` is visible, so that R prints it, decided on its vertex */
-function autoPrints<OtherInfo>(expression: RNode<OtherInfo & ParentInformation>, processed: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+export function autoPrints<OtherInfo>(expression: RNode<OtherInfo & ParentInformation>, processed: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const vertex = processed.graph.getVertex(expression.info.id);
 	if(vertex === undefined || DfgVertex.isFunctionDefinition(vertex)) {
 		return false;

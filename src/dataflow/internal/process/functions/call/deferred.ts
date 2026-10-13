@@ -11,6 +11,7 @@ import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-
 import { firstOnSomePath, reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { linkCallToDefinitions } from '../../../linker';
+import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -57,6 +58,12 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
+				for(const [def, edge] of graph.edgesTo(inner.info.id)) {
+					const name = DfEdge.includesType(edge, EdgeType.SideEffectOnCall) ? NodeId.recoverName(def, idMap) : undefined;
+					if(name !== undefined) {
+						names.push([def, removeRQuotes(name), true]);
+					}
+				}
 			}
 			return false;
 		} else if(!RSymbol.is(inner) || callees.has(inner.info.id)) {
@@ -128,20 +135,26 @@ export const Deferred = {
 	 * expression at a point control flow can pin down (`eval`). The reads are settled by the evaluating call
 	 * itself, against the environment in effect there, so only this direction is left open.
 	 */
-	publish<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, at: NodeId, cfg?: ControlFlowGraph): void {
+	publish<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, at: NodeId, sites: readonly NodeId[], cfg?: ControlFlowGraph): void {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));
 		let reachedFromAt: ReadonlySet<NodeId> | undefined;
+		let reachedFromSites: ReadonlySet<NodeId> | undefined;
 		for(const [node, name, writes] of within) {
 			if(!writes) {
 				continue;
 			}
+			/* a write leaving the evaluating frame lands whenever a call of the closure evaluating it does */
+			const escapes = DfgVertex.hasOrigin(graph.getVertex(idMap.get(node)?.info.parent ?? ''), BuiltInProcName.SuperAssignment);
+			for(const site of escapes ? sites : []) {
+				if(site !== at) {
+					graph.addEdge(node, site, EdgeType.SideEffectOnCall);
+				}
+			}
 			for(const use of index.uses.get(name) ?? []) {
 				/* only a use the evaluation may reach can see what it wrote */
-				if(cfg !== undefined) {
-					reachedFromAt ??= reachableFrom(cfg, [at]);
-				}
-				if(own.has(use) || (reachedFromAt !== undefined && !reachedFromAt.has(use))) {
+				const reached = cfg === undefined ? undefined : escapes ? reachedFromSites ??= reachableFrom(cfg, [at, ...sites]) : reachedFromAt ??= reachableFrom(cfg, [at]);
+				if(own.has(use) || (reached !== undefined && !reached.has(use))) {
 					continue;
 				}
 				graph.addEdge(use, node, EdgeType.Reads);

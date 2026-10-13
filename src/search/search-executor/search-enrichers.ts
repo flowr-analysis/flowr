@@ -272,7 +272,7 @@ export const Enrichments = {
 						return Identifier.toString(qualified);
 					}
 				}
-				return name as string;
+				return name === undefined ? undefined : Identifier.toString(name);
 			}
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!

@@ -11,6 +11,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
+import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
@@ -133,7 +134,8 @@ export function processS3Dispatch<OtherInfo>(
 		argumentProcessResult: [dfGeneric, dfObj],
 		origin:                BuiltInProcName.Function
 	});
-
+	/* the method runs only as the dispatch does */
+	dfGeneric.graph.addEdge(generic.info.id, rootId, EdgeType.Reads);
 
 	const ingoing = dfObj.in.concat(dfGeneric.in, dfObj.unknownReferences, dfGeneric.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });

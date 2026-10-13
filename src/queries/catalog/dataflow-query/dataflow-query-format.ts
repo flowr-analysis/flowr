@@ -15,7 +15,9 @@ const MaxMermaidUrlLength = 8000;
  * Simple re-returns the dataflow graph of the analysis.
  */
 export interface DataflowQuery extends BaseQueryFormat {
-	readonly type: 'dataflow';
+	readonly type:          'dataflow';
+	/** Whether to include the environments of the vertices and function definitions (default), see {@link DataflowGraph#withoutEnvironments}. */
+	readonly environments?: boolean;
 }
 
 export interface DataflowQueryResult extends BaseQueryResult {
@@ -40,7 +42,8 @@ export const DataflowQueryDefinition = {
 		return true;
 	},
 	schema: Joi.object({
-		type: Joi.string().valid('dataflow').required().description('The type of the query.'),
+		type:         Joi.string().valid('dataflow').required().description('The type of the query.'),
+		environments: Joi.boolean().optional().description('Whether to include the environments of the vertices and function definitions (default: true). They make up most of the answer, so leave them out if only the graph itself is of interest.'),
 	}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!'),
 	flattenInvolvedNodes: queryResults => {
 		const flattened: NodeId[] = [];

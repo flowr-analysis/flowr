@@ -6,6 +6,9 @@ import { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { splitAtEscapeSensitive } from '../../util/text/args';
 import { SourceRange } from '../../util/range';
 
+/** the prefix roxygen2 reads a documentation comment by: any number of `#` followed by `'` */
+const RoxygenPrefix = /^#+'/;
+
 function prepareCommentContext(commentText: readonly string[]): string[] {
 	const contents = [];
 	for(const line of commentText) {
@@ -16,7 +19,7 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 			// we are done with the roxygen comment
 			break;
 		}
-		contents.push((trimmed.startsWith('#\'') ? trimmed.slice(2) : trimmed.slice(1)).trimEnd());
+		contents.push((RoxygenPrefix.test(trimmed) ? trimmed.replace(RoxygenPrefix, '') : trimmed.slice(1)).trimEnd());
 	}
 	return contents;
 }
@@ -32,10 +35,10 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap?: AstIdMap): RoxygenBlock | undefined {
 	let comments: RComment<ParentInformation>[] | undefined;
 	let cur: RNode<ParentInformation> | undefined = node;
-	/* only `#'` comments document, and the root of a file holds what belongs to no statement in particular */
+	/* only roxygen comments document, and the root of a file holds what belongs to no statement in particular */
 	do{
 		comments = cur?.info.parent === undefined ? undefined : cur.info.adToks
-			?.filter(RComment.is).filter(r => r.lexeme?.startsWith("#'")) as RComment<ParentInformation>[] | undefined;
+			?.filter(RComment.is).filter(r => RoxygenPrefix.test(r.lexeme ?? '')) as RComment<ParentInformation>[] | undefined;
 		cur = cur?.info.parent ? idMap?.get(cur.info.parent) : undefined;
 	} while((comments === undefined || comments.length === 0) && cur !== undefined);
 	if(comments === undefined || comments.length === 0) {
@@ -154,7 +157,12 @@ const section = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val
 });
 
 export const firstAndRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
-	const vals = splitAtEscapeSensitive(l.join('\n'));
+	const text = l.join('\n').trim();
+	const quoted = /^`([^`]*)`/.exec(text);
+	if(quoted) {
+		return { [firstName]: quoted[1], [secondName]: text.slice(quoted[0].length).trim() };
+	}
+	const vals = splitAtEscapeSensitive(text);
 	return { [firstName]: vals[0], [secondName]: vals.slice(1).join(' ').trim() };
 });
 const firstAndArrayRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {

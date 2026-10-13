@@ -1,7 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
-import { DataflowInformation } from '../../../../../info';
+import { DataflowInformation, ExitPointType } from '../../../../../info';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -95,6 +95,7 @@ export function processLocal<OtherInfo>(
 	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	const graph = dfEnv.graph.mergeWith(dfExpr.graph);
+	graph.addEdge(rootId, expr.info.id, EdgeType.Returns);
 	/* the body only runs because `local` runs it */
 	for(const [id, vertex] of dfExpr.graph.vertices(false)) {
 		if(!DfgVertex.isUse(vertex) && !DfgVertex.isValue(vertex)) {
@@ -102,10 +103,12 @@ export function processLocal<OtherInfo>(
 		}
 	}
 	const cfgEntry = ControlFlow.inSequence(graph, env ? [dfEnv, dfExpr] : [dfExpr], rootId);
+	/* `return` only leaves the evaluation that local opens */
+	ControlFlow.jumpsTo(graph, dfExpr, ExitPointType.Return, rootId);
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
 		environment:       resultEnvironment,
-		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints),
+		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints.filter(e => e.type !== ExitPointType.Return)),
 		graph,
 		entryPoint:        rootId,
 		cfgEntry,

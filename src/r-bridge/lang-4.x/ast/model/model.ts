@@ -14,7 +14,7 @@ import type { RForLoop } from './nodes/r-for-loop';
 import type { RRepeatLoop } from './nodes/r-repeat-loop';
 import type { RWhileLoop } from './nodes/r-while-loop';
 import type { RIfThenElse } from './nodes/r-if-then-else';
-import type { RFunctionDefinition } from './nodes/r-function-definition';
+import { RFunctionDefinition } from './nodes/r-function-definition';
 import type { EmptyArgument, RFunctionCall } from './nodes/r-function-call';
 import type { RParameter } from './nodes/r-parameter';
 import type { RArgument } from './nodes/r-argument';
@@ -347,6 +347,11 @@ export const RNode = {
 			node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
 		}
 		return undefined;
+	},
+	/** The function definition strictly enclosing `id`, i.e., `id` itself excluded. */
+	strictlyEnclosingFunction<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>): NodeId | undefined {
+		const parent = idMap.get(id)?.info.parent;
+		return parent === undefined ? undefined : RNode.findEnclosing(parent, idMap, RFunctionDefinition.is);
 	},
 	/**
 	 * A helper function to retrieve the type of a given node.

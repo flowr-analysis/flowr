@@ -180,7 +180,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			shell,
 			`w <- 42\nf <- function() {\n  ${parentGlobal}\n  ${getW}\n  print(r)\n}\nf()`,
 			['5@r'],
-			`${parentGlobal}\n${getW}\nr`
+			`f <- function() {\n        ${parentGlobal}\n        ${getW}\n        r\n    }`
 		);
 	});
 

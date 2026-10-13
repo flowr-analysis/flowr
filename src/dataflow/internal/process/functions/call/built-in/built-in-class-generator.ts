@@ -18,6 +18,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
 import { attachClassDeclaration } from './built-in-s-seven-new-generic';
+import { linkS4Declaration } from './built-in-s-four';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
@@ -33,6 +34,7 @@ export function processClassGenerator<OtherInfo>(
 ): DataflowInformation {
 	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ClassGenerator }).information;
 	attachClassDeclaration(info, rootId, args, config?.classDecl);
+	linkS4Declaration(info, rootId, data);
 	return info;
 }
 

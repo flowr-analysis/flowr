@@ -122,7 +122,7 @@ export function processForLoop<OtherInfo>(
 	const writtenIds = new Set<NodeId>();
 	for(const write of writtenVariable) {
 		writtenIds.add(write.nodeId);
-		headEnvironments = define({ ...write, definedAt: name.info.id, type:      ReferenceType.Variable,
+		headEnvironments = define({ ...write, definedAt: name.info.id, type:      ReferenceType.Unknown,
 			value:     [vectorArg.info.id], iterated:  true } as (IdentifierDefinition & { name: string }), false, headEnvironments);
 	}
 
@@ -155,7 +155,7 @@ export function processForLoop<OtherInfo>(
 	const outgoing = variable.out.concat(writtenVariable, body.out);
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
-	linkAmbientStateWithinLoop(nextGraph, bodyRefs, body);
+	const ambientReads = linkAmbientStateWithinLoop(nextGraph, bodyRefs, body);
 
 	/* the loop variable is bound by the head whenever the body runs, so reads of it are not ingoing */
 	const loopVariables = new Set(writtenVariable.map(w => w.name));
@@ -192,7 +192,7 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers],
+		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers, ...ambientReads],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,

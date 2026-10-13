@@ -133,12 +133,19 @@ export interface ExitPoint {
 	readonly type:   ExitPointType,
 	/** The id of the node which causes the exit point! */
 	readonly nodeId: NodeId,
+	/** The jump this exit stands for, when {@link ExitPoint#nodeId|nodeId} is a construct it leaves through */
+	readonly jump?:  NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
 	readonly cds?:   ControlDependency[]
+}
+
+/** `exit` leaving through the construct `rootId`, which keeps the jump it stands for. */
+export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
+	return { ...exit, nodeId: rootId, jump: exit.jump ?? exit.nodeId };
 }
 
 /**

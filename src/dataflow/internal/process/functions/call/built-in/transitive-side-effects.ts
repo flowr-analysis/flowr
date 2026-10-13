@@ -2,7 +2,7 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { EnvType, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
+import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachDependencyToEnvironment, attachExportVertex } from './built-in-library';
 import { define } from '../../../../../environments/define';
@@ -12,20 +12,14 @@ import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { ReferenceType } from '../../../../../environments/identifier';
-import { writesOfHiddenBuiltIn } from './built-in-ambient-state';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
+import { DefaultMap } from '../../../../../../util/collections/defaultmap';
+import { definitionsByName, edgeTargets } from '../../../../../fn/frame-reflection';
 
-/**
- * The function-definition vertices a `call` resolves to (via {@link EdgeType.Calls}).
- */
-function calledDefinitions(graph: DataflowGraph, call: NodeId): NodeId[] {
-	const targets: NodeId[] = [];
-	for(const [target, edge] of graph.edgesFrom(call)) {
-		if(DfEdge.includesType(edge, EdgeType.Calls) && DfgVertex.isFunctionDefinition(graph.getVertex(target))) {
-			targets.push(target);
-		}
-	}
-	return targets;
+/** The function-definition vertices a `call` resolves to (via {@link EdgeType.Calls}). */
+export function calledDefinitions(graph: DataflowGraph, call: NodeId): NodeId[] {
+	return edgeTargets(graph, call, EdgeType.Calls).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
 }
 
 /**
@@ -253,25 +247,56 @@ type NamedDefinition = InGraphIdentifierDefinition & { name: string };
 
 /** The ambient writes of the calls in function bodies that only linking resolved to a built-in, see {@link writesOfHiddenBuiltIn}. */
 function hiddenBuiltInWrites(graph: DataflowGraph, environment: REnvironmentInformation): Map<NodeId, NamedDefinition[]> {
-	let builtIns = environment.current;
-	while(!builtIns.builtInEnv) {
-		builtIns = builtIns.parent;
-	}
+	const builtIns = REnvironment.findBuiltIn(environment.current);
 	const writes = new Map<NodeId, NamedDefinition[]>();
+	const reads = new Map<NodeId, string[]>();
+	const writesOf = new DefaultMap<NodeId, NamedDefinition[]>(() => [], writes);
+	const readsOf = new DefaultMap<NodeId, string[]>(() => [], reads);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(graph.isRoot(id) || !DfgVertex.hasOrigin(vertex, BuiltInProcName.Function)) {
+		if(graph.isRoot(id)) {
 			continue;
 		}
+		const own = DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) ? undefined : vertex.name;
 		for(const [target, edge] of graph.edgesFrom(id)) {
-			if(NodeId.isBuiltIn(target) && DfEdge.includesType(edge, EdgeType.Calls)) {
-				const defs = (Resolve.byNameAndType(NodeId.fromBuiltIn(target), { current: builtIns, level: 0 }, ReferenceType.Function) ?? []).flatMap(d => writesOfHiddenBuiltIn(d, id));
+			if(NodeId.isBuiltIn(target) && DfEdge.includesType(edge, EdgeType.Calls) && (own === undefined || NodeId.toBuiltIn(Identifier.getName(own)) !== target)) {
+				const targets = Resolve.byNameAndType(NodeId.fromBuiltIn(target), { current: builtIns, level: 0 }, ReferenceType.Function) ?? [];
+				const defs = targets.flatMap(d => writesOfHiddenBuiltIn(d, id));
 				if(defs.length > 0) {
-					writes.set(id, [...writes.get(id) ?? [], ...defs]);
+					writesOf.get(id).push(...defs);
+				}
+				const names = targets.flatMap(readsOfHiddenBuiltIn);
+				if(names.length > 0) {
+					readsOf.get(id).push(...names);
 				}
 			}
 		}
 	}
+	linkHiddenReads(graph, reads);
 	return writes;
+}
+
+/** A hidden call reads the state where the functions running it are called. */
+function linkHiddenReads(graph: DataflowGraph, reads: ReadonlyMap<NodeId, readonly string[]>): void {
+	if(reads.size === 0) {
+		return;
+	}
+	const summary = computeCallGraphSummaries(graph, (_id, fdef) => reads.keys().filter(call => fdef.subflow.graph.has(call)));
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(vertex.environment === undefined) {
+			continue;
+		}
+		for(const target of calledDefinitions(graph, id)) {
+			for(const call of summary.get(target) ?? []) {
+				for(const name of reads.get(call) ?? []) {
+					for(const def of Resolve.byName(name, vertex.environment) ?? []) {
+						if(def.nodeId !== call && graph.hasVertex(def.nodeId)) {
+							graph.addEdge(call, def.nodeId, EdgeType.Reads);
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 /**
@@ -315,6 +340,8 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 	const summary = computeCallGraphSummaries(graph, escapedDefinitions(hidden));
 	const defs = escapedDefinitionMap(graph, hidden);
 	const names = new Set<string>();
+	let byName: DefaultMap<string, NodeId[]> | undefined;
+	const definitionsNamed = (name: string) => (byName ??= definitionsByName(graph)).get(name);
 	let grew = false;
 	for(const [id, vertex] of graph.vertices(true)) {
 		if(!DfgVertex.isFunctionCall(vertex) || !graph.isRoot(id)) {
@@ -336,7 +363,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 					continue;
 				}
 				environment = define(def, false, environment);
-				linkReadsAfter(graph, id, def, open);
+				linkReadsAfter(graph, id, def, open, definitionsNamed);
 				grew = true;
 			}
 		}
@@ -348,12 +375,9 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
  * A read that may run after `call` and sees a definition the call may replace (or nothing, as with the `open` reads) may see `def`
  * instead, as with a callee only the call binds: `g <- function(f) f(); x <- 1; g(function() x <<- 2); print(x)`, or `g(runif)`.
  */
-function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition, open: readonly IdentifierReference[]): void {
+function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition, open: readonly IdentifierReference[], definitionsNamed: (name: string) => readonly NodeId[]): void {
 	const before = graph.getVertex(call)?.environment;
-	if(before === undefined) {
-		return;
-	}
-	const replaced = new Set(Resolve.byName(def.name, before)?.map(d => d.nodeId));
+	const replaced = new Set(before === undefined ? definitionsNamed(def.name) : Resolve.byName(def.name, before)?.map(d => d.nodeId));
 	for(const [source, edge] of graph.edgesTo(call)) {
 		if(DfEdge.includesType(edge, EdgeType.SideEffectOnCall)) {
 			replaced.add(source);

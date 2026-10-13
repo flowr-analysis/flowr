@@ -341,7 +341,7 @@ export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, envi
 		tag:        VertexType.FunctionDefinition,
 		id:         builtInId,
 		environment, cds, params:     {},
-		subflow:    { graph: new Set(), unknownReferences: [], in: [], out: [], environment, entryPoint: builtInId, hooks: [] },
+		subflow:    { graph: new Set(), unknownReferences: [], in: [], out: [], environment: ctx.env.makeCleanEnv(), entryPoint: builtInId, hooks: [] },
 		exitPoints: [],
 	}, ctx.env.cleanEnv);
 }
@@ -445,7 +445,9 @@ function exportDefinition(pack: string, exp: AttachedExport, ctx: FlowrAnalyzerC
 		nodeId: NodeId.fromPkgFn(pack, exp.exported),
 		definedAt,
 	} as const;
-	const stated = ctx.env.statedFor(pack)?.get(Identifier.make(exp.exported) as unknown as BrandedIdentifier)?.[0];
+	/* an export named like a primitive is a method registered for it (lubridate's `$`), the primitive still evaluates the call */
+	const exported = Identifier.make(exp.exported) as unknown as BrandedIdentifier;
+	const stated = ctx.env.statedFor(pack)?.get(exported)?.[0] ?? ctx.env.emptyBuiltInEnvironment.memory.get(exported)?.[0];
 	if(stated === undefined) {
 		return identity;
 	}

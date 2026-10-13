@@ -19,7 +19,8 @@ import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/proc
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { Identifier } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Resolve } from '../../../../../environments/resolve-helper';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
@@ -163,11 +164,18 @@ function linkWrappedFunction<OtherInfo>(
 		return;
 	}
 	const resolved = resolveFunctionArgument(wrapped, data, {});
-	if(resolved === undefined || resolved.anonymous) {
+	if(resolved === undefined) {
 		return;
 	}
+	const body = rootId + '-s7-new-generic-fun-body';
+	/* the wrapper runs what it wraps, so a call of it does what the wrapped function does */
+	const targets = resolved.anonymous ? [resolved.functionId] : (Resolve.byNameAndType(resolved.functionName, data.environment, ReferenceType.Function) ?? [])
+		.flatMap(d => d.type === ReferenceType.BuiltInFunction ? [d.nodeId] : (d as { value?: NodeId[] }).value ?? []);
+	for(const target of targets) {
+		info.graph.addEdge(body, target, EdgeType.Calls);
+	}
 	const vertex = info.graph.getVertex(resolved.functionId);
-	if(!DfgVertex.isUse(vertex)) {
+	if(resolved.anonymous || !DfgVertex.isUse(vertex)) {
 		return;
 	}
 	info.graph.updateToFunctionCall({
@@ -180,7 +188,7 @@ function linkWrappedFunction<OtherInfo>(
 		cds:         data.cds,
 		origin:      [BuiltInProcName.Function]
 	});
-	info.graph.addEdge(rootId + '-s7-new-generic-fun-body', resolved.functionId, EdgeType.Reads | EdgeType.Calls);
+	info.graph.addEdge(body, resolved.functionId, EdgeType.Reads | EdgeType.Calls);
 }
 
 /**

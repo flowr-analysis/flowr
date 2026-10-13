@@ -136,7 +136,7 @@ export const ControlFlow = {
 		}
 	},
 	/**
-	 * Every jump of the given kind within `from` lands on `target`.
+	 * Every jump of the given kind within `from` lands on `target`, which reads a `break` as it decides how often a loop runs.
 	 * @example
 	 * ```r
 	 * while(u) { break } # the `break` lands on the loop it leaves
@@ -146,6 +146,9 @@ export const ControlFlow = {
 		for(const exit of from.exitPoints) {
 			if(exit.type === kind) {
 				graph.addEdge(exit.nodeId, target, EdgeType.FlowEdge);
+				if(kind === ExitPointType.Break) {
+					graph.addEdge(target, exit.jump ?? exit.nodeId, EdgeType.Reads);
+				}
 			}
 		}
 	},

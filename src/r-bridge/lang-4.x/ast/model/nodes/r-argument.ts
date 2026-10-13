@@ -67,6 +67,10 @@ export const RArgument = {
 	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RUnnamedArgument<Info> {
 		return node !== EmptyArgument && RArgument.is(node) && node.name === undefined && node.value !== undefined;
 	},
+	/** The value of an argument, the node itself for anything else, `undefined` for an empty argument. */
+	valueOf<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): RNode<Info> | undefined {
+		return node === EmptyArgument ? undefined : RArgument.is(node) ? node.value : node;
+	},
 	/**
 	 * Type guard for arguments with a value, i.e. arguments that are not just placeholders without a value.
 	 */

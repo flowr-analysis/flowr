@@ -92,11 +92,11 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 	}
 }
 
-/** wires what the attached {@link DataflowGraphVertexFunctionCall.classDecl|class declaration} states, S4 only: a declaration reads the classes it builds on and registers its own name; a mere relation (`setIs`, `setValidity`) reads and re-registers the class it names */
+/** wires what the attached {@link DataflowGraphVertexFunctionCall.classDecl|class declaration} states, S4 and Reference Classes only: a declaration reads the classes it builds on and registers its own name; a mere relation (`setIs`, `setValidity`) reads and re-registers the class it names */
 export function linkS4Declaration<O>(info: DataflowInformation, rootId: NodeId, data: Data<O>): void {
 	const vertex = info.graph.getVertex(rootId);
 	const decl = DfgVertex.isFunctionCall(vertex) ? vertex.classDecl : undefined;
-	if(decl === undefined || decl.system !== ClassSystem.S4) {
+	if(decl === undefined || (decl.system !== ClassSystem.S4 && decl.system !== ClassSystem.RefClass)) {
 		return;
 	}
 	const used = [...decl.contains, ...(decl.union ?? []), ...decl.members.map(m => m.type).filter(t => t !== undefined)];

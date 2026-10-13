@@ -9,14 +9,28 @@ import { Ternary } from '../../util/logic';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import { attachesPackage } from '../../queries/catalog/dependencies-query/function-info/library-functions';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
-import { DropPathsOption, type FlowrLaxSourcingOptions } from '../../config';
+import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RWhileLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { DfgVertex } from '../../dataflow/graph/vertex';
+import type { DataflowInformation } from '../../dataflow/info';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import { callFnProps } from '../../dataflow/environments/query-fn-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import { BaseDatasets } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface FilePathValidityResult extends LintingResult {
@@ -53,6 +67,12 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalValid:              number
 }
 
+const DataSetExtensions = ['R', 'r', 'RData', 'rdata', 'rda', 'tab', 'txt', 'TXT', 'tab.gz', 'tab.bz2', 'tab.xz', 'txt.gz', 'txt.bz2', 'txt.xz', 'csv', 'CSV'];
+
+function namesPackage(node: RNode<ParentInformation>): boolean {
+	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && ['package', 'lib.loc'].includes(Identifier.getName(a.name.content)));
+}
+
 async function urlExists(url: string): Promise<boolean> {
 	try {
 		const response = await fetch(url, { method: 'HEAD' });
@@ -65,7 +85,7 @@ async function urlExists(url: string): Promise<boolean> {
 export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
 		type:              'dependencies',
-		enabledCategories: ['read', 'write'],
+		enabledCategories: ['read', 'write', 'library'],
 		readFunctions:     config.additionalReadFunctions,
 		writeFunctions:    config.additionalWriteFunctions
 	}).with(Enrichment.CfgInformation),
@@ -79,16 +99,41 @@ export const FILE_PATH_VALIDITY = {
 		};
 		const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
 		const ctx = data.inspectContext();
-		const dfg = (await data.dataflow()).graph;
+		const df = await data.dataflow();
+		const dfg = df.graph;
 		const resolveSource = data.flowrConfig.solver.resolveSource;
 		const wdRootsFor = WorkingDirectory.rootsResolver(dfg, cfg, ctx);
 		/* `data("x")` names a data set, not a file */
 		const namesOnly = new Set(readFunctions(ctx).concat(config.additionalReadFunctions).filter(f => f.resolveValue === 'library').map(f => f.name));
-		const findings = await Promise.all(elements.getElements().map(async element => {
-			const matchingRead = results.read.find(r => r.nodeId === element.node.info.id);
+		const attached = (results.library ?? []).filter(attachesPackage);
+		const atTopLevel = (id: NodeId) => dfg.idMap === undefined || RNode.findEnclosing(id, dfg.idMap, RFunctionDefinition.is) === undefined;
+		const librariesLoadedBefore = (read: NodeId) => attached.some(l => l.nodeId === undefined || !atTopLevel(l.nodeId) || !atTopLevel(read)
+			|| !cfg.hasVertex(l.nodeId) || happensBefore(cfg, l.nodeId, read) !== Ternary.Never);
+		const reads = [...new Map(elements.getElements().map(e => [e.node.info.id, e])).values()].flatMap(element => results.read.filter(r => r.nodeId === element.node.info.id).map(matchingRead => ({ element, matchingRead })));
+		const findings = await Promise.all(reads.map(async({ element, matchingRead }) => {
 			/* data built from constants, like `matrix(1:6, 2)`, reads no file */
-			if(!matchingRead || matchingRead.nodeId === undefined || matchingRead.value === Constant || namesOnly.has(Identifier.getName(matchingRead.functionName))) {
+			if(!matchingRead || matchingRead.nodeId === undefined || matchingRead.value === Constant) {
 				return [];
+			}
+			if(namesOnly.has(Identifier.getName(matchingRead.functionName))) {
+				const loc = SourceLocation.fromNode(element.node);
+				if(!loc || typeof matchingRead.value !== 'string' || matchingRead.value === Unknown || librariesLoadedBefore(element.node.info.id)
+					|| BaseDatasets.has(matchingRead.value) || namesPackage(element.node)) {
+					return [];
+				}
+				metadata.totalReads++;
+				const find = finderAt(resolveSource, wdRootsFor(element.node.info.id, element.node.info.file), element.node.info.file, ctx);
+				const value = matchingRead.value;
+				if(DataSetExtensions.some(ext => find(`data/${value}.${ext}`).length)) {
+					metadata.totalValid++;
+					return [];
+				}
+				return [{
+					involvedId: matchingRead.nodeId,
+					loc,
+					filePath:   `data/${value}`,
+					certainty:  LintingResultCertainty.Uncertain
+				}];
 			}
 			metadata.totalReads++;
 			const loc = SourceLocation.fromNode(element.node);
@@ -159,21 +204,19 @@ export const FILE_PATH_VALIDITY = {
 			const value = matchingRead.value as string;
 			const referenceChain = element.node.info.file ? [element.node.info.file] : [];
 			const wdRoots = wdRootsFor(element.node.info.id, element.node.info.file);
-			const withWd = { ...resolveSource, searchPath: [...(resolveSource?.searchPath ?? []), ...wdRoots] } as FlowrLaxSourcingOptions;
-			const paths = findSource(withWd, value, { referenceChain, ctx });
-			if(paths && paths.length) {
+			if(finderAt(resolveSource, wdRoots, element.node.info.file, ctx)(value).length) {
 				metadata.totalValid++;
 				return [];
 			}
 
 			// a lax retry (drop leading dirs, ignore case) may surface a near match to offer as a quick fix
-			const near = findSource({ ...withWd, ignoreCapitalization: true, dropPaths: DropPathsOption.All }, value, { referenceChain, ctx });
+			const near = findSource({ ...searchingFrom(resolveSource, wdRoots.roots), ignoreCapitalization: true, dropPaths: DropPathsOption.All }, value, { referenceChain, ctx });
 			const quickFix = dfg.idMap && near && near.length ? buildDidYouMeanFix(dfg.idMap, matchingRead.nodeId, value, near[0]) : undefined;
 			return [{
 				involvedId: matchingRead.nodeId,
 				loc,
 				filePath:   value,
-				certainty:  writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+				certainty:  writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) || guardedByFileQuery(df, element.node.info.id, value, data) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
 				...(quickFix ? { quickFix } : {})
 			}];
 		}));
@@ -201,6 +244,40 @@ export const FILE_PATH_VALIDITY = {
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig>;
 
+/** Whether the read only runs depending on a condition that queries the same file, as in `if(file.exists(p)) readLines(p)`. */
+function guardedByFileQuery(df: DataflowInformation, read: NodeId, path: string, data: ReadonlyFlowrAnalysisProvider): boolean {
+	const dfg = df.graph;
+	for(const cd of dfg.getVertex(read)?.cds ?? []) {
+		const construct = dfg.idMap?.get(cd.id);
+		let found = false;
+		RNode.visitAst(RIfThenElse.is(construct) || RWhileLoop.is(construct) ? construct.condition : undefined, node => {
+			const call = dfg.getVertex(node.info.id);
+			found ||= DfgVertex.isFunctionCall(call) && FunctionSemantics.call.props.hasAny(callFnProps(call.id, df), SemanticCallTag.File)
+				&& (getArgumentStringValue(data.flowrConfig.solver.variables, dfg, call, 'unnamed', undefined, true, data.inspectContext())?.values().some(v => v.has(path)) ?? false);
+			return found;
+		});
+		if(found) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function searchingFrom(resolveSource: FlowrLaxSourcingOptions | undefined, roots: readonly string[]): FlowrLaxSourcingOptions {
+	return { ...resolveSource, searchPath: [...(resolveSource?.searchPath ?? []), ...roots] } as FlowrLaxSourcingOptions;
+}
+
+/** looks a path up from the working directories a `setwd` pins down, and laxly along the configured search path if none does */
+function finderAt(resolveSource: FlowrLaxSourcingOptions | undefined, { roots, pinned }: { roots: readonly string[], pinned: boolean }, file: string | undefined, ctx: ReadOnlyFlowrAnalyzerContext): (value: string) => readonly string[] {
+	const referenceChain = file ? [file] : [];
+	if(!pinned) {
+		const lax = searchingFrom(resolveSource, roots);
+		return value => findSource(lax, value, { referenceChain, ctx }) ?? [];
+	}
+	const strict = { ...resolveSource, searchPath: [], dropPaths: DropPathsOption.No, inferWorkingDirectory: InferWorkingDirectory.No } as FlowrLaxSourcingOptions;
+	return value => roots.flatMap(root => findSource(strict, WorkingDirectory.applyChange(root, value), { referenceChain, ctx }) ?? []);
+}
+
 function samePath(a: string, b: string, ignoreCapitalization: boolean | undefined): boolean {
 	if(ignoreCapitalization === true) {
 		a = a.toLowerCase();
@@ -227,8 +304,8 @@ function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RStr
 function buildDidYouMeanFix(idMap: AstIdMap, callId: NodeId, value: string, found: string): LintQuickFixReplacement[] | undefined {
 	const str = pathArgStringNode(idMap, callId, value);
 	const loc = str === undefined ? undefined : SourceLocation.fromNode(str);
-	if(!str || loc === undefined) {
-		/* a fix that names no place cannot be carried out, so none is offered */
+	if(!str || loc === undefined || found === value) {
+		/* a fix that names no place or changes nothing cannot be carried out, so none is offered */
 		return undefined;
 	}
 	return [{

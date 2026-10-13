@@ -22,6 +22,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { NodeValue } from '../eval/resolve/node-value';
 import { collectStrings } from '../eval/values/string/string-constants';
 import { isValue } from '../eval/values/r-value';
+import { hasEdgeOfType } from './frame-reflection';
 
 /** The object system a declaration belongs to. */
 export const enum ClassSystem {
@@ -385,7 +386,7 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 /** The class vector S3 dispatch sees for the value at `id`: a `structure(..., class = )` or a constant, `undefined` if not statically known. */
 function s3ClassOfValue(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly string[] | undefined {
 	const node = info.idMap.get(id);
-	if(RFunctionCall.is(node) && DfEdge.includesType(info.graph.outgoingEdges(id)?.get(NodeId.toBuiltIn('structure')) ?? { types: 0 }, EdgeType.Calls)) {
+	if(RFunctionCall.is(node) && hasEdgeOfType(info.graph, id, NodeId.toBuiltIn('structure'), EdgeType.Calls)) {
 		const cls = NodeValue.soleOf(argForImpl(node.arguments, { name: 'class' }), info);
 		const strings = cls?.type === 'string' ? collectStrings([cls]) : cls?.type === 'vector' && isValue(cls.elements) ? collectStrings(cls.elements) : undefined;
 		return strings?.length ? strings : undefined;
@@ -415,7 +416,7 @@ function assignedValueOf(def: NodeId, graph: DataflowGraph): NodeId | undefined 
 export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly (readonly string[])[] | undefined {
 	const { graph, idMap } = info;
 	const node = idMap.get(id);
-	const value = RArgument.is(node) ? node.value : node;
+	const value = RArgument.valueOf(node);
 	const values = DfgVertex.isUse(graph.getVertex(value?.info.id ?? ''))
 		? graph.edgesFrom(value?.info.id ?? '').entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads)).map(([def]) => assignedValueOf(def, graph)).toArray()
 		: [value?.info.id];

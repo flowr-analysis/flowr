@@ -22,6 +22,8 @@ import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { cleanEnvOf } from '../../../../../environments/scoping';
+import { ambientWritesOfRelease } from './built-in-ambient-state';
+import { isNotUndefined } from '../../../../../../util/assert';
 
 /** The variables an `rm` call targets for removal, and the frame it removes them from. */
 interface RmTargets<OtherInfo> {
@@ -253,5 +255,9 @@ export function processRm<OtherInfo>(
 
 	// apply to our own environment so threading reflects it, and emit the kills so a merging parent can re-apply
 	const kills = buildKills(targets, data.cds, rootId);
-	return kills.length > 0 ? { ...res, environment: applyKills(res.environment, kills), kill: kills } : res;
+	if(kills.length === 0) {
+		return res;
+	}
+	const names = kills.every(k => k.kind === 'named') ? kills.map(k => k.reference.name).filter(isNotUndefined) : undefined;
+	return { ...res, environment: ambientWritesOfRelease(applyKills(res.environment, kills), names, rootId, data.cds), kill: kills };
 }

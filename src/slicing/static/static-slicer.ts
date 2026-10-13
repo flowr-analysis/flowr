@@ -3,7 +3,7 @@ import { log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
 import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { findEnclosingFunctionDefinition, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -17,7 +17,9 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { GasOverrides } from '../../gas';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -75,6 +77,16 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	// enclosing function definitions whose callees still need to be considered, mapped to the env to enqueue them in
 	const pendingCalleeBoundaries = new Map<NodeId, [REnvironmentInformation, string]>();
 	const resolvedCalleeBoundaries = new Set<NodeId>();
+	// a body entered through a call gets its arguments from that call, so only bodies the slice starts in open their callers
+	const openedBodies = new Set<NodeId>();
+	const openBodiesAround = (from: NodeId): void => {
+		const start = idMap.get(from);
+		for(const node of start === undefined ? [] : [start, ...RNode.iterateParents(start, idMap)]) {
+			if(RFunctionDefinition.is(node)) {
+				openedBodies.add(node.info.id);
+			}
+		}
+	};
 	let graph: DataflowGraph;
 	if(sliceGraph !== undefined) {
 		graph = sliceGraph;
@@ -86,18 +98,27 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	}
 
 	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id), ctx.gas.scope(options.gas));
+	const enclosingHandled = new Set<NodeId | undefined>();
+	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
+		if(!queue.hasId(id)) {
+			queue.add(id, env, print, false);
+		}
+	};
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
+	const emptyEnv = ctx.env.makeCleanEnv();
+	const basePrint = ctx.env.getCleanEnvFingerprint();
 	// every node ships the call environment which registers the calling environment
 	{
-		const emptyEnv = ctx.env.makeCleanEnv();
-		const basePrint = ctx.env.getCleanEnvFingerprint();
 		for(const startId of ids) {
 			queue.add(startId, emptyEnv, basePrint, false);
 			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
 			minNesting = Math.min(minNesting, idMap.get(startId)?.info.nest ?? minNesting);
 			sliceSeedIds.add(startId);
+			if(trackCallees) {
+				openBodiesAround(startId);
+			}
 		}
 
 		/* additionally,
@@ -138,10 +159,16 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 
 		const [currentVertex, currentEdges] = currentInfo;
 
+		const strictlyEnclosing = RNode.strictlyEnclosingFunction(id, idMap);
+		for(const outer of enclosingHandled.has(strictlyEnclosing) ? [] : definitionWithHolders(strictlyEnclosing, idMap, graph)) {
+			enqueue(outer, emptyEnv, basePrint);
+		}
+		enclosingHandled.add(strictlyEnclosing);
+
 		// includeCallees: note the enclosing function definition (if any) so its callees can be considered once the body slice is complete
 		if(trackCallees) {
-			const enclosingFnDef = findEnclosingFunctionDefinition(id, idMap);
-			if(enclosingFnDef !== undefined && !resolvedCalleeBoundaries.has(enclosingFnDef) && !pendingCalleeBoundaries.has(enclosingFnDef)) {
+			const enclosingFnDef = RFunctionDefinition.is(idMap.get(id)) ? id : strictlyEnclosing;
+			if(enclosingFnDef !== undefined && openedBodies.has(enclosingFnDef) && !resolvedCalleeBoundaries.has(enclosingFnDef) && !pendingCalleeBoundaries.has(enclosingFnDef)) {
 				pendingCalleeBoundaries.set(enclosingFnDef, [baseEnvironment, baseEnvFingerprint]);
 			}
 		}
@@ -169,11 +196,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			}
 		}
 
+		if(DfgVertex.isFunctionCall(currentVertex)) {
+			sliceForCall(current, currentVertex, info, queue, ctx);
+		}
 		if(!onlyForSideEffects) {
-			if(DfgVertex.isFunctionCall(currentVertex)) {
-				sliceForCall(current, currentVertex, info, queue, ctx);
-			}
-
 			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);
 			if(ret) {
 				return;
@@ -210,7 +236,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			resolvedCalleeBoundaries.add(fnDefId);
 			// only continue past the boundary if the callers can actually influence the sliced result
 			if(sliceReachesFunctionInterface(fnDefId, info.graph, queue, idMap, ctx)) {
-				includeCalleesOfDefinition(fnDefId, info.graph, queue, env, fingerprint);
+				includeCalleesOfDefinition(fnDefId, info.graph, queue, env, fingerprint).forEach(openBodiesAround);
 			}
 		}
 	}
@@ -253,6 +279,24 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 		}
 	}
 	return found;
+}
+
+/** The function `definition` and what holds it, up to its statement, as a body only runs as part of its definition. */
+function definitionWithHolders(definition: NodeId | undefined, idMap: AstIdMap, graph: DataflowGraph): NodeId[] {
+	const definitionNode = definition === undefined ? undefined : idMap.get(definition);
+	if(definitionNode === undefined) {
+		return [];
+	}
+	const outer = [definitionNode.info.id];
+	for(const node of RNode.iterateParents(definitionNode, idMap)) {
+		if(RFunctionDefinition.is(node) || (RExpressionList.is(node) && node.grouping?.[0].lexeme !== '(')) {
+			break;
+		}
+		if(graph.hasVertex(node.info.id)) {
+			outer.push(node.info.id);
+		}
+	}
+	return outer;
 }
 
 /**

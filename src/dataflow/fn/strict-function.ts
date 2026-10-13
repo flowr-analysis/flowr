@@ -21,7 +21,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ArgProps, BuiltInFnInfo, FnSig } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
 import type { BuiltInLookup } from './frame-reflection';
-import { reflectiveRolesOf } from './frame-reflection';
+import { edgeTargets, reflectiveRolesOf } from './frame-reflection';
 import { BuiltInIndex, queryFnProps } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -555,15 +555,6 @@ export interface FunctionStrictnessesOptions {
 
 
 
-/** The node directly below `ancestor` on the way up from `id`, if `ancestor` is one of its ancestors. */
-function childBelow(id: NodeId, ancestor: NodeId, idMap: AstIdMap): NodeId | undefined {
-	let node = idMap.get(id);
-	while(node !== undefined && node.info.parent !== ancestor) {
-		node = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
-	}
-	return node?.info.id;
-}
-
 /**
  * Where the promises bound to the parameters may be forced: each read of them, every call of a function nested
  * in the owner of a parameter that reads it (a closure capturing the promise), and, for a read that merely hands
@@ -605,9 +596,7 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, seen: 
 
 /** The parameters an argument binds to. */
 function boundTo(argument: NodeId, idMap: AstIdMap, graph: DataflowGraph): NodeId[] {
-	return [...new Set([argument, argumentValue(argument, idMap)])].flatMap(from => [...graph.edgesFrom(from)]
-		.filter(([, e]) => DfEdge.includesType(e, EdgeType.DefinesOnCall))
-		.map(([param]) => param));
+	return [...new Set([argument, argumentValue(argument, idMap)])].flatMap(from => edgeTargets(graph, from, EdgeType.DefinesOnCall));
 }
 
 /**
@@ -629,7 +618,7 @@ export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph
 		}
 		const call = graph.getVertex(cd.id);
 		if(DfgVertex.isFunctionCall(call)) {
-			const argument = childBelow(id, cd.id, idMap);
+			const argument = RNode.findEnclosing(id, idMap, n => n.info.parent === cd.id);
 			found.push(cd.id, ...forcingPointsOf(argument === undefined ? [] : boundParameters(call, argument, idMap, graph) ?? [], graph));
 		} else {
 			found.push(...forcingPointsOf([cd.id], graph));
@@ -656,7 +645,7 @@ export function promiseForcing(this: void, graph: DataflowGraph, { ctx }: Functi
 			return strictnessOf(owner, state).parameters[holder] ?? Ternary.Maybe;
 		}
 		const call = graph.getVertex(holder);
-		const argument = DfgVertex.isFunctionCall(call) && !isBuiltInCall(call) ? childBelow(inner, holder, idMap) : undefined;
+		const argument = DfgVertex.isFunctionCall(call) && !isBuiltInCall(call) ? RNode.findEnclosing(inner, idMap, n => n.info.parent === holder) : undefined;
 		return DfgVertex.isFunctionCall(call) && argument !== undefined ? forcedByCallee(call, argument, idMap, state) : Ternary.Maybe;
 	};
 }

@@ -2,7 +2,8 @@ import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
 import { RValue } from '../values/r-value';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { MatchArgs } from '../../graph/match-args';
 import { isNotUndefined } from '../../../util/assert';
 import { DfgVertex } from '../../graph/vertex';
 import { EdgeType } from '../../graph/edge';
@@ -24,6 +25,25 @@ import { Resolve } from '../../environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
+/** The index of the argument of `vertex` that binds the formal `argumentName`, R's matching when the formals are known and the `argumentIndex`-th unnamed argument otherwise. */
+export function boundArgumentIndex<Idx extends number | 'unnamed' | undefined>(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argumentIndex: Idx, argumentName: string, ctx: ReadOnlyFlowrAnalyzerContext): Idx | number {
+	const call = graph.idMap?.get(vertex.id);
+	const formals = RFunctionCall.is(call) ? MatchArgs.formalsOf(call, graph, ctx) : undefined;
+	if(formals?.includes(argumentName)) {
+		const bound = MatchArgs.toSpec(vertex.args, Object.fromEntries(formals.map(f => [f, f]))).get(argumentName)?.[0];
+		return bound === undefined ? vertex.args.length : vertex.args.findIndex(a => a !== EmptyArgument && a.nodeId === bound);
+	}
+	const arg = vertex.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
+	if(arg >= 0) {
+		return arg;
+	} else if(typeof argumentIndex === 'number') {
+		/* a named argument takes no position, so the parameter binds the matching unnamed one */
+		const unnamed = vertex.args.flatMap((a, i) => a === EmptyArgument || !a.name ? [i] : []);
+		return unnamed[argumentIndex] ?? vertex.args.length;
+	}
+	return argumentIndex;
+}
+
 /**
  * Get the values of all arguments matching the criteria.
  */
@@ -36,34 +56,28 @@ export function getArgumentStringValue(
 	resolveValue: boolean | 'library' | undefined,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): Map<NodeId, Set<string | undefined>> | undefined {
-	if(argumentName) {
-		const arg = vertex?.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
-		if(arg >= 0) {
-			argumentIndex = arg;
-		} else if(typeof argumentIndex === 'number' && vertex !== undefined) {
-			/* a named argument takes no position, so the parameter binds the matching unnamed one */
-			const position = argumentIndex;
-			const unnamed = vertex.args.flatMap((a, i) => a === EmptyArgument || !a.name ? [i] : []);
-			argumentIndex = unnamed[position] ?? vertex.args.length;
-		}
+	if(argumentName && vertex !== undefined && argumentIndex !== 'unnamed') {
+		argumentIndex = boundArgumentIndex(graph, vertex, argumentIndex, argumentName, ctx);
 	}
 
 	if(!vertex || argumentIndex === undefined) {
 		return undefined;
 	}
 	if(argumentIndex === 'unnamed') {
-		// return all unnamed arguments
-		const references = vertex.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference).filter(isNotUndefined);
+		/* all unnamed arguments, and the one named `argumentName`, which is evaluated rather than taken as a name */
+		const references = vertex.args.filter(arg => arg !== EmptyArgument && (!arg.name || arg.name === argumentName));
 
 		const map = new Map<NodeId, Set<string | undefined>>();
-		for(const ref of references) {
-			let valueNode = graph.idMap?.get(ref);
+		for(const arg of references) {
+			const ref = FunctionArgument.getReference(arg);
+			let valueNode = ref === undefined ? undefined : graph.idMap?.get(ref);
 			if(RArgument.is(valueNode)) {
 				valueNode = valueNode.value;
 			}
-			if(valueNode) {
+			if(ref !== undefined && valueNode) {
+				const resolveAs = FunctionArgument.isNamed(arg) && resolveValue === 'library' ? true : resolveValue;
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
+				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveAs, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
 				map.set(ref, new Set(values));
 			}
 		}
@@ -71,7 +85,7 @@ export function getArgumentStringValue(
 	}
 	if(argumentIndex < vertex.args.length) {
 		const arg = FunctionArgument.getReference(vertex.args[argumentIndex]);
-		if(!arg) {
+		if(arg === undefined) {
 			return undefined;
 		}
 		let valueNode = graph.idMap?.get(arg);

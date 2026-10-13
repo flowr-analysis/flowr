@@ -189,9 +189,14 @@ function collect(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Worki
 export const WorkingDirectory = {
 	collect,
 	resolveAt,
-	/** reusable `(callId, scriptFile?) => candidate roots`, collecting the changes once for the whole graph */
-	rootsResolver(graph: DataflowGraph, cfg: ControlFlowGraph, ctx: ReadOnlyFlowrAnalyzerContext): (id: NodeId, file?: string) => readonly string[] {
+	applyChange,
+	/** reusable `(callId, scriptFile?) => candidate roots`, collecting the changes once for the whole graph; `pinned` when a `setwd` decides them */
+	rootsResolver(graph: DataflowGraph, cfg: ControlFlowGraph, ctx: ReadOnlyFlowrAnalyzerContext): (id: NodeId, file?: string) => { roots: readonly string[], pinned: boolean } {
 		const changes = collect(graph, ctx);
-		return (id, file) => resolveAt(id, graph.getVertex(id)?.cds ?? [], file ? platformDirname(file) : '.', changes, cfg).candidates;
+		return (id, file) => {
+			const base = file ? platformDirname(file) : '.';
+			const roots = resolveAt(id, graph.getVertex(id)?.cds ?? [], base, changes, cfg).candidates;
+			return { roots, pinned: roots.length > 0 && (roots.length > 1 || roots[0] !== base) };
+		};
 	}
 } as const;

@@ -4,11 +4,12 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { Dataflow } from '../graph/df-helper';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { DfgVertex } from '../graph/vertex';
+import { DfgVertex, VertexType } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId as NodeIdHelper, type NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { removeRQuotes } from '../../r-bridge/retriever';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
 /** What flowR states about the built-in a call names, see {@link BuiltInFnInfo}. */
@@ -17,6 +18,28 @@ export type BuiltInLookup = (name: Identifier) => BuiltInFnInfo | undefined;
 /** The nodes at the far end of `node`'s outgoing edges of any of `types`, shared by every walk here and in the sibling analyses that follow specific edge kinds. */
 export function edgeTargets(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
 	return [...graph.edgesFrom(node)].filter(([, edge]) => DfEdge.includesType(edge, types)).map(([target]) => target);
+}
+
+/** The nodes at the near end of `node`'s incoming edges of any of `types`, see {@link edgeTargets}. */
+export function edgeSources(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
+	return [...graph.edgesTo(node)].filter(([, edge]) => DfEdge.includesType(edge, types)).map(([source]) => source);
+}
+
+/** Every variable definition by its unquoted name, in a single pass. */
+export function definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {
+	const byName = new DefaultMap<string, NodeId[]>(() => []);
+	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
+		const name = NodeIdHelper.recoverName(id, graph.idMap);
+		if(name !== undefined) {
+			byName.get(removeRQuotes(name)).push(id);
+		}
+	}
+	return byName;
+}
+
+/** Whether an edge from `from` to `to` carries any of `types`. */
+export function hasEdgeOfType(this: void, graph: DataflowGraph, from: NodeId, to: NodeId, types: EdgeType): boolean {
+	return DfEdge.includesType(graph.outgoingEdges(from)?.get(to) ?? { types: 0 }, types);
 }
 
 /** The calls a definition's body reaches, id and vertex paired; shared by every walk here and in the sibling analyses that visit them all. */
@@ -32,9 +55,8 @@ export function* callsIn(definition: DataflowGraphVertexFunctionDefinition, grap
 /**
  * Recomputes `recompute(id)` for every node reachable from `seed` along the reverse of `successors`, so a
  * change at a node is carried on to whatever points at it, until nothing grows anymore. `recompute` updates
- * its node's value itself and reports whether it grew; shared by {@link propagateOverCalls} and
- * {@link exceptionsOfFunction}, which differ only in what "grew" means for the value they carry, and
- * by {@link carriersOf} below, which grows a set rather than a bitfield.
+ * its node's value itself and reports whether it grew; shared by {@link propagateOverCalls} and by
+ * {@link carriersOf} below, which grows a set rather than a bitfield.
  */
 export function propagateToFixpoint(seed: Iterable<NodeId>, successors: ReadonlyMap<NodeId, readonly NodeId[]>, recompute: (id: NodeId) => boolean): void {
 	const callers = new DefaultMap<NodeId, NodeId[]>(() => []);

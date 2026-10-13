@@ -511,7 +511,9 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */
 	private toResolvedPackage(name: string, info: LibraryExports): Package {
-		const exported = info.exported.slice();
+		/* what the configuration states for the package is part of its interface, even where the database misses it */
+		const stated = this.analyzerCtx?.env.statedFor(name);
+		const exported = stated === undefined ? info.exported.slice() : uniqueArray([...info.exported, ...[...stated.keys()].map(String)]);
 		const namespaceInfo: NamespaceInfo = {
 			exportedSymbols:      exported,
 			exportedFunctions:    [],

@@ -1,5 +1,5 @@
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
@@ -27,7 +27,7 @@ import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, readsOfAutoPrint } from './built-in-ambient-state';
+import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
@@ -238,6 +238,26 @@ function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean
 	return false;
 }
 
+/** Printing a visible top-level value dispatches to the `print` methods in scope, so the expression runs them like a call would. */
+function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] {
+	const methods = Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? [];
+	if(methods.length === 0) {
+		return [];
+	}
+	for(const method of methods) {
+		graph.addEdge(id, method.nodeId, EdgeType.Reads);
+	}
+	const called = [...getAllLinkedFunctionDefinitions(new Set(methods.map(m => m.nodeId)), graph)[0]];
+	for(const ref of called.flatMap(c => c.subflow.in)) {
+		for(const def of ref.name === undefined ? [] : Resolve.byNameAndType(ref.name, environment, ref.type) ?? []) {
+			if(!NodeId.isBuiltIn(def.nodeId)) {
+				graph.addEdge(ref.nodeId, def.nodeId, EdgeType.Reads);
+			}
+		}
+	}
+	return [{ functionCall: id, called, propagateExitPoints: [] }];
+}
+
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
@@ -344,7 +364,8 @@ export function processExpressionList<OtherInfo>(
 		// use the current environments for processing
 		(data as Writable<DataflowProcessorInformation<OtherInfo & ParentInformation>>).environment = environment;
 		let processed = processDataflowFor(expression, data);
-		if(autoPrint) {
+		const printed = autoPrint && autoPrints(expression, processed, data);
+		if(printed) {
 			processed = readsOfAutoPrint(processed, expression, data);
 		}
 		processedExpressions.push(processed);
@@ -379,6 +400,9 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph, activeReads.map(r => r.nodeId));
+		if(printed) {
+			calledEnvs.push(...printMethodsOf(processed.entryPoint, environment, nextGraph));
+		}
 		for(const c of calledEnvs) {
 			if(c.propagateExitPoints.length > 0 && errorEscapes(c.functionCall, expression.info.id, data.completeAst.idMap, nextGraph)) {
 				for(const exit of c.propagateExitPoints) {
@@ -474,7 +498,7 @@ export function processExpressionList<OtherInfo>(
 			nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
 			/* what a `return` hands back and what a `stop` raises stay with the node that does it */
 			if(exit.nodeId !== rootId && (exit.type === ExitPointType.Break || exit.type === ExitPointType.Next)) {
-				exitPoints[i] = { ...exit, nodeId: rootId };
+				exitPoints[i] = leaveThrough(exit, rootId);
 			}
 		}
 	}

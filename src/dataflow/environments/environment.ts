@@ -76,6 +76,8 @@ export class Environment implements IEnvironment {
 	/** what a resolution found below this frame, by target and name; only frames nothing writes keep one */
 	tailCache?:            Map<ReferenceType, Map<string, readonly IdentifierDefinition[] | undefined>>;
 	builtInEnv?:           true;
+	/** set on the built-in environment once a definition below binds a promise or a text connection, which reads then look for */
+	forcing?:              true;
 	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;
 	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */

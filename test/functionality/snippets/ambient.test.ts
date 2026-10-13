@@ -10,7 +10,7 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 const name = (s: string) => decorateLabelContext(label(s, ['function-calls', 'side-effects-in-function-call']), ['dataflow', 'slice']);
 
 /* R keeps the state across runs, so each one starts from a fresh generator, the initial options, and no device */
-const reset = 'if(exists(".Random.seed", globalenv())) rm(".Random.seed", envir = globalenv()); if(!exists(".flowr_opts")) .flowr_opts <- options(); invisible(options(.flowr_opts)); graphics.off(); palette("default")';
+const reset = 'RNGkind("default", "default", "default"); if(exists(".Random.seed", globalenv())) rm(".Random.seed", envir = globalenv()); if(!exists(".flowr_opts")) .flowr_opts <- options(); invisible(options(.flowr_opts)); graphics.off(); palette("default")';
 
 describe('Snippets: ambient state', { concurrent: false }, withShell(shell => {
 	function assertSliceRuns(title: string, code: string, lastLine: string) {
@@ -48,6 +48,7 @@ describe('Snippets: ambient state', { concurrent: false }, withShell(shell => {
 			rng('a draw on the path the callee does not take', 'f <- function(n) if(n > 1) runif(1)\nf(0)', '[1] 0.2655087');
 			rng('a reseed within a call', 'f <- function() set.seed(42)\nf()', '[1] 0.914806');
 			rng('a draw whose result is assigned', 'f <- function() runif(1)\nx <- f()', one);
+			rng('a draw in a loop within the callee', 'f <- function() for(i in 1) runif(1)\nf()', one);
 			rng('a seed restored through .Random.seed', 's <- .Random.seed\nrunif(1)\nf <- function() assign(".Random.seed", s, envir = globalenv())\nf()', '[1] 0.2655087');
 			rng('a seed restored through a super-assignment', 's <- .Random.seed\nrunif(1)\nf <- function() .Random.seed <<- s\nf()', '[1] 0.2655087');
 		});
@@ -111,6 +112,12 @@ describe('Snippets: ambient state', { concurrent: false }, withShell(shell => {
 			rng('on.exit', 'f <- function() { on.exit(runif(1)); 1 }\nf()', one);
 			rng('withr::with_seed restores the generator', 'withr::with_seed(42, runif(1))', '[1] 0.2655087');
 		});
+		describe('the state of the generator', () => {
+			assertSliceRuns('reading .Random.seed', 'set.seed(1)\nprint(.Random.seed[3])', '[1] -169270483');
+			assertSliceRuns('restoring a saved .Random.seed', 'set.seed(1)\ns <- .Random.seed\nx <- runif(1)\n.Random.seed <- s\nprint(runif(1))', '[1] 0.2655087');
+			assertSliceRuns('RNGkind before a seed', 'RNGkind("Wichmann-Hill")\nset.seed(1)\nprint(runif(1))', '[1] 0.1297134');
+			assertSliceRuns('the kind set.seed sets persists', 'set.seed(1, kind = "Wichmann-Hill")\nx <- runif(1)\nset.seed(1)\nprint(runif(1))', '[1] 0.1297134');
+		});
 	});
 
 	describe('options', () => {
@@ -149,6 +156,19 @@ describe('Snippets: ambient state', { concurrent: false }, withShell(shell => {
 	});
 
 	assertSliceRuns('a super-assignment in a closure handed down twice', 'x <- 1\ng <- function(f) f()\nk <- function(f) g(f)\nk(function() x <<- 2)\nprint(x)', '[1] 2');
+
+	describe('files', () => {
+		const file = (title: string, body: string, expected: string) => assertSliceRuns(title, `p <- tempfile()\n${body}`, expected);
+		file('a connection written and closed', 'con <- file(p, "w")\nwriteLines("c", con)\nclose(con)\nprint(readLines(p))', '[1] "c"');
+		file('a connection appended to', 'writeLines("x", p)\ncon <- file(p, "a")\nwriteLines("y", con)\nclose(con)\nprint(readLines(p)[2])', '[1] "y"');
+		file('a connection flushed', 'con <- file(p, "w")\nwriteLines("y", con)\nflush(con)\nprint(readLines(p))', '[1] "y"');
+		file('a sink to a connection', 'zz <- file(p, "w")\nsink(zz)\ncat("s\\n")\nsink()\nclose(zz)\nprint(readLines(p))', '[1] "s"');
+		file('capture.output to a file', 'capture.output(print(5), file = p)\nprint(readLines(p))', '[1] "[1] 5"');
+		file('dput and dget', 'dput(3, file = p)\nprint(dget(p))', '[1] 3');
+		file('file.size', 'writeLines("abc", p)\nprint(file.size(p))', '[1] 4');
+		file('a file sourced after a call wrote it', 'f <- function() writeLines("zz <- 3", p)\nf()\nsource(p)\nprint(zz)', '[1] 3');
+		file('cat appending in a function', 'cat("a\\n", file = p)\nw <- function(s) cat(s, "\\n", file = p, append = TRUE)\nw("b")\nprint(length(readLines(p)))', '[1] 2');
+	});
 
 	describe('graphics', () => {
 		const mar = (title: string, body: string, expected = '[1] 1 1 1 1') => assertSliceRuns(title, `${body}\nprint(par("mar"))`, expected);

@@ -23,7 +23,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, constFunction, ['3:1'], 'a <- function(x) 1\na(i)');
 		/* nothing of the function-content is required */
 		assertSliced(label('Slice function definition', constCapabilities), shell, constFunction, ['2@a'], 'a <- function(x) { }');
-		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'x <- 2');
+		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'a <- function(x) x <- 2');
 		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
 			shell, '\nfoo(x, y)\nfoo(x, 3)\n    ', ['3@foo'], 'foo(x, 3)');
 		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments', 'formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
@@ -49,7 +49,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		assertSliced(label('Include only b-definition', caps),
 			shell, code, ['3@a'], 'a <- b <- function() x\nx <- 2\na()');
 		assertSliced(label('Include only b-definition', caps),
-			shell, code, ['4@b'], 'b <- function() x\nx <- 2\nb()');
+			shell, code, ['4@b'], 'a <- b <- function() x\nx <- 2\nb()');
 	});
 	describe('Functions with named arguments', () => {
 		const code = 'a <- function(x=4) { x }\na(x = 3)';
@@ -58,7 +58,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 
 		assertSliced(label('Must work for same named arguments too', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'named-arguments', 'newlines']), shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)');
 
-		assertSliced(label('Must work for same named arguments nested', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'named-arguments', 'accessing-exported-names', 'implicit-return', 'newlines', 'strings']), shell, '\nf <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}\n    ', ['4@result'], 'function(some_variable="hello") {\n    result <- some::other(some_variable=some_variable)\n    result\n}');
+		assertSliced(label('Must work for same named arguments nested', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'named-arguments', 'accessing-exported-names', 'implicit-return', 'newlines', 'strings']), shell, '\nf <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}\n    ', ['4@result'], 'f <- function(some_variable="hello") {\n        result <- some::other(some_variable=some_variable)\n        result\n    }');
 
 		const lateCode = 'f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }\nf()\n';
 		assertSliced(label('Late bindings of parameter in body', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'call-normal', 'semicolons']),
@@ -94,15 +94,16 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, '\nx <- (function() {\n  x <- 4\n  x - 5\n  3\n })()\ncat(x)\n    ', ['7@x'], 'x <- (function() 3)()\nx');
 	});
 	describe('Criterion within a function body', () => {
-		/* slicing into the body yields the statements themselves, the definition is not required for them */
-		assertSliced(label('body without its header', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'function-calls', 'call-normal']), shell, 'f <- function() { x <- 2\nprint(x) }\nf()', ['2@x'], 'x <- 2\nx', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		/* a body only runs through its definition, so slicing into it keeps the definition and its binding */
+		assertSliced(label('body without its header', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'function-calls', 'call-normal']), shell, 'f <- function() { x <- 2\nprint(x) }\nf()', ['2@x'], 'f <- function() {\n        x <- 2\n        x\n    }', { expectedOutput: '[1] 2', expectedSliceOutput: '' });
+		assertSliced(label('a body beside a criterion outside it', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'semicolons', 'function-calls', 'call-normal']), shell, 'x <- 5\nf <- function() { x <- 2; x }\nprint(x)', ['2@x', '3@print'], 'x <- 5\nf <- function() x <- 2\nprint(x)', { expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
 	});
 	describe('Higher-order Functions', () => {
 		const code = 'a <- function() { x <- 3; i }\ni <- 4\nb <- function(f) { i <- 5; f() }\nb(a)';
 		const caps: FlowrCapabilityId[] = ['name-normal', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'formals-named', 'call-normal', 'unnamed-arguments'];
-		assertSliced(label('Only i, bound globally', caps), shell, code, ['1@i'], 'i\ni <- 4');
+		assertSliced(label('Only i, bound globally', caps), shell, code, ['1@i'], 'a <- function() i\ni <- 4');
 		assertSliced(label('Slice of b is independent', caps), shell, code, ['3@b'], 'b <- function(f) { }');
-		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], 'a <- function() i\ni <- 4\nb <- function(f) {\n        i <- 5\n        f()\n    }\nb(a)');
+		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], 'a <- function() i\ni <- 4\nb <- function(f) f()\nb(a)');
 		assertSliced(label('Directly call returned function', ['name-normal', 'closures', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'normal-definition', 'implicit-return', 'return', 'unnamed-arguments', 'newlines', 'numbers', 'call-normal']),
 			shell, 'm <- 12\na <- function(x) {\n  b <- function() { function() { x } }\n  return(b())\n}\nres <- a(m)()', ['6@res'], 'm <- 12\na <- function(x) {\n        b <- function() function() x\n        return(b())\n    }\nres <- a(m)()');
 		assertSliced(label('Higher order anonymous function', ['name-normal', 'resolve-arguments', 'closures', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'implicit-return', 'normal-definition', 'call-anonymous', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'newlines', 'precedence']),
@@ -125,6 +126,37 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	});
 	describe('Sink', () => {
 		assertSliced(label('Output written while a sink is active reaches its readers', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nprint(r)', ['6@r'], 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nr', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('Output a sink diverts into a text connection reaches the variable it writes', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\nbuf', ['6@buf'], 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\nbuf', { expectedOutput: '[1] "hi"', expectedSliceOutput: '[1] "hi"' });
+		assertSliced(label('A sink into a text connection leaves an unrelated variable alone', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'y <- 2\nrc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\ny', ['7@y'], 'y <- 2\nrc <- textConnection("buf", "w")\nsink(rc)\nsink()\ny', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		assertSliced(label('A text connection opened for reading writes no variable', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'buf <- "a"\ntc <- textConnection(buf)\ncat("hi\\n")\nbuf', ['4@buf'], 'buf <- "a"\nbuf', { expectedOutput: 'hi\n[1] "a"', expectedSliceOutput: '[1] "a"' });
+		assertSliced(label('Printing a sink diverts into a text connection reaches the variable it writes', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\nprint(1)\nsink()\nclose(rc)\nprint(buf)', ['6@print'], 'rc <- textConnection("buf", "w")\nsink(rc)\nprint(1)\nsink()\nclose(rc)\nprint(buf)', { expectedOutput: '[1] "[1] 1"', expectedSliceOutput: '[1] "[1] 1"' });
+		assertSliced(label('Printing after the sink ends does not reach the text connection', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("a\\n")\nsink()\nprint(2)\nclose(rc)\nprint(buf)', ['7@print'], 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("a\\n")\nsink()\nclose(rc)\nprint(buf)', { expectedOutput: '[1] 2\n[1] "a"', expectedSliceOutput: '[1] "a"' });
+	});
+	describe('Warnings as errors', () => {
+		assertSliced(label('A call that may raise in a body called within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\ntry(f(), silent = TRUE)\nprint(x)', ['4@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\ntry(f(), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in a body called within tryCatch aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\ntryCatch(f(), error = function(e) NULL)\nprint(x)', ['4@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\ntryCatch(f(), error = function(e) NULL)\nprint(x)', { expectedOutput: 'NULL\n[1] 1', expectedSliceOutput: 'NULL\n[1] 1' });
+		assertSliced(label('A call that may raise in a body called through another function within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\nk <- function() f()\ntry(k(), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\nk <- function() f()\ntry(k(), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in a body defined after the try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nh <- function() try(f(), silent = TRUE)\nf <- function() { g(); x <<- 2 }\nh()\nprint(x)', ['5@print'], 'x <- 1\nh <- function() try(f(), silent = TRUE)\nf <- function() {\n        g()\n        x <<- 2\n    }\nh()\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in a body passed as an argument within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings', 'formals-named']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\nh <- function(fn) fn()\ntry(h(f), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\nh <- function(fn) fn()\ntry(h(f), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in an S3 method dispatched within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings', 'oop-s3']), shell, 'x <- 1\nf <- function(o) UseMethod("f")\nf.default <- function(o) { g(); x <<- 2 }\ntry(f(1), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function(o) UseMethod("f")\nf.default <- function(o) {\n        g()\n        x <<- 2\n    }\ntry(f(1), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A body called outside of any try keeps no earlier call', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nh <- function() 3\nf <- function() { h(); x <<- 2 }\nf()\nprint(x)', ['5@print'], 'f <- function() x <<- 2\nf()\nprint(x)', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		assertSliced(label('With warn 2 set in a function never called a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() options(warn = 2)\ntry({ log(-1); x <- 5 }, silent = TRUE)\nprint(x)', ['4@print'], 'f <- function() options(warn = 2)\nx <- 5\nprint(x)', { expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
+		assertSliced(label('With warn 2 a warning aborts the assignment in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx\noptions(warn = 0)', ['4@x'], 'options(warn = 2)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('With warn 2 a warning aborts the loop in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nn <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn\noptions(warn = 0)', ['4@n'], 'options(warn = 2)\nn <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('With warn 2 a warning aborts the super-assignment of a called function', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nx <- 1\nf <- function() { log(-1); x <<- 2 }\ntry(f(), silent = TRUE)\nx\noptions(warn = 0)', ['5@x'], 'options(warn = 2)\nx <- 1\nf <- function() {\n        log(-1)\n        x <<- 2\n    }\ntry(f(), silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('With warn 2 set in a function a warning aborts the try block', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() options(warn = 2)\nf()\ntry({ log(-1); x <- 5 }, silent = TRUE)\nx\noptions(warn = 0)', ['5@x'], 'x <- 1\nf <- function() options(warn = 2)\nf()\ntry({ log(-1); x <- 5 }, silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('Without warn 2 a warning leaves the assignment in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['3@x'], 'x <- as.numeric("a")\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
+		assertSliced(label('With warn reset before the try a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\noptions(warn = 0)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['5@x'], 'options(warn = 2)\noptions(warn = 0)\nx <- as.numeric("a")\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
+		assertSliced(label('Without warn 2 a warning leaves the loop in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'n <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn', ['3@n'], 'n <- 0\nfor(i in 1:3) n <- n + 1\nn', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+	});
+	describe('Files', () => {
+		const caps = ['name-normal', 'call-normal', 'newlines', 'strings'] as const;
+		assertSliced(label('A read of a named file keeps only the writes that may reach it', [...caps]), shell, 'writeLines("a", "a.txt")\nwriteLines("b", "b.txt")\nr <- readLines("out/a.txt")\nprint(r)', ['4@r'], 'writeLines("a", "a.txt")\nr <- readLines("out/a.txt")\nr');
+		assertSliced(label('A read of a file we cannot name keeps every write', [...caps]), shell, 'p <- tempfile()\nwriteLines("b", "b.txt")\nwriteLines("a", p)\nr <- readLines(p)\nprint(r)', ['5@r'], 'p <- tempfile()\nwriteLines("b", "b.txt")\nwriteLines("a", p)\nr <- readLines(p)\nr');
+		assertSliced(label('A write to a file we cannot name reaches a read of a named one', [...caps]), shell, 'p <- tempfile()\nwriteLines("a", p)\nwriteLines("b", "b.txt")\nr <- readLines("a.txt")\nprint(r)', ['5@r'], 'p <- tempfile()\nwriteLines("a", p)\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A write to another named file within a called function is not kept', [...caps, 'normal-definition']), shell, 'f <- function() writeLines("b", "b.txt")\nwriteLines("a", "a.txt")\nf()\nr <- readLines("a.txt")\nprint(r)', ['5@r'], 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A write after the read is not kept', [...caps]), shell, 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nwriteLines("c", "a.txt")\nprint(r)', ['4@r'], 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A serialized object written to another file is not kept', [...caps, 'numbers']), shell, 'saveRDS(1, "a.rds")\nsaveRDS(2, "b.rds")\nr <- readRDS("a.rds")\nprint(r)', ['4@r'], 'saveRDS(1, "a.rds")\nr <- readRDS("a.rds")\nr');
 	});
 	describe('Early return of function', () => {
 		const code = 'x <- (function() {\n  g <- function() { y }\n  y <- 5\n  if(z)\n  \treturn(g)\n  y <- 3\n  g\n})()\nres <- x()';
@@ -133,6 +165,12 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	describe('Recursive functions', () => {
 		const code = 'f <- function() { f() }\nf()';
 		assertSliced(label('Endless recursion', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['2@f'], 'f <- function() f()\nf()');
+		assertSliced(label('A global read through mutual recursion', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines', 'if']), shell,
+			'x <- 2\nf <- function(n) if(n > 0) g(n - 1) else x\ng <- function(m) f(m)\nh <- function() f(3)\nr <- h()\nx <- 5\nprint(r)', ['7@print'],
+			'x <- 2\nf <- function(n) if(n > 0) g(n - 1) else\n    x\ng <- function(m) f(m)\nh <- function() f(3)\nr <- h()\nprint(r)');
+		assertSliced(label('A recursive read sees no write made after the top-level call', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines', 'if']), shell,
+			'x <- 2\nf <- function(n) if(n > 0) f(n - 1) else x\nr <- f(3)\nx <- 5\ny <- 7\nprint(r)', ['6@print'],
+			'x <- 2\nf <- function(n) if(n > 0) f(n - 1) else\n    x\nr <- f(3)\nprint(r)', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 	});
 	describe('Uninteresting calls', () => {
 		const code = '\na <- list(1,2,3,4)\na[3]\nprint(a[2])\n    ';
@@ -156,6 +194,11 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 
 		assertSliced(label('Must work with nested globals and maybe assignments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'if', 'call-normal', ...OperatorDatabase['>'].capabilities, 'numbers', ...OperatorDatabase['<<-'].capabilities, 'return-value-of-assignments', 'resolve-arguments', 'lexicographic-scope', 'newlines', 'unnamed-arguments', 'closures']),
 			shell, 'a <- function() { function(b) { if(runif() > .5) { x <<- b } } }\ny <- 5\nx <- 2\na()(y)\ncat(x)', ['5@x'], 'a <- function() function(b) if(runif() > .5) { x <<- b }\ny <- 5\nx <- 2\na()(y)\nx');
+		assertSliced(label('A caller local is no binding of a global function', localCaps), shell, 'v <- 5\nf <- function() { v <- 1; g() }\ng <- function() v\nr <- f()\nprint(r)', ['5@print'], 'v <- 5\nf <- function() g()\ng <- function() v\nr <- f()\nprint(r)');
+		assertSliced(label('A global read through a nested call sees the value at the call', localCaps), shell, 'x <- 1\ng <- function() x\nf <- function() g()\nr <- f()\nx <- 2\nprint(r)', ['6@print'], 'x <- 1\ng <- function() x\nf <- function() g()\nr <- f()\nprint(r)');
+		assertSliced(label('A caller local is not needed by a global function that does not read it', localCaps), shell, 'f <- function() { v <- 1; g() }\ng <- function() 3\nr <- f()\nprint(r)', ['4@print'], 'f <- function() g()\ng <- function() 3\nr <- f()\nprint(r)', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+		assertSliced(label('A global the nested call does not read is not kept', localCaps), shell, 'a <- 1\nb <- 2\ng <- function() a\nf <- function() g()\nr <- f()\nprint(r)', ['6@print'], 'a <- 1\ng <- function() a\nf <- function() g()\nr <- f()\nprint(r)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A closure reads its defining frame, neither the global nor its caller frame', [...localCaps, 'closures']), shell, 'x <- 1\nmk <- function() { x <- 10; function() x }\nh <- mk()\nk <- function() { x <- 100; h() }\nr <- k()\nprint(r)', ['6@print'], 'mk <- function() {\n        x <- 10\n        function() x\n    }\nh <- mk()\nk <- function() h()\nr <- k()\nprint(r)', { expectedOutput: '[1] 10', expectedSliceOutput: '[1] 10' });
 	});
 	describe('Using strings for definitions', () => {
 		const code = "\n'a' <- function() { x <- 3; 4 }\n'a'()\na()\na <- function() { x <- 3; 5 }\n'a'()\na()\n`a`()\n    ";
@@ -206,6 +249,10 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		s3Case('a plain call still drops the argument it never forces', plainCaps, 'p <- function(x) "FOO"\nu <- 1\nv <- p(u)\nv', '4@v', 'p <- function(x) "FOO"\nv <- p(u)\nv', '[1] "FOO"');
 		/* control: naming the object moves the dispatch to it, leaving the first formal lazy */
 		s3Case('a named object leaves the first formal lazy', s3Caps, 'p <- function(x, y) UseMethod("p", y)\np.foo <- function(x, y) "FOO"\np.default <- function(x, y) "DEF"\nw <- 7\no <- structure(1, class="foo")\nv <- p(w, o)\nv', '7@v', 'p <- function(x, y) UseMethod("p", y)\np.foo <- function(x, y) "FOO"\np.default <- function(x, y) "DEF"\no <- structure(1, class="foo")\nv <- p(w, o)\nv', '[1] "FOO"');
+		const printCounter = 'cnt <- 0\nprint.zz <- function(x, ...) { cnt <<- cnt + 1; invisible(x) }\nx <- structure(1, class = "zz")\n';
+		assertSliced(label('an invisible value at the top level runs no print method', [...s3Caps, 'side-effects-in-function-call']), shell, `${printCounter}invisible(x)\ncat(cnt, "\\n")`, ['5@cat'], 'cnt <- 0\ncat(cnt, "\\n")', { expectedOutput: /^0\s*$/, expectedSliceOutput: /^0\s*$/ });
+		assertSliced(label('an assignment at the top level runs no print method', [...s3Caps, 'side-effects-in-function-call']), shell, `${printCounter}y <- x\ncat(cnt, "\\n")`, ['5@cat'], 'cnt <- 0\ncat(cnt, "\\n")', { expectedOutput: /^0\s*$/, expectedSliceOutput: /^0\s*$/ });
+		assertSliced(label('a visible value at the top level runs its print method', [...s3Caps, 'side-effects-in-function-call']), shell, `${printCounter}x\ncat(cnt, "\\n")`, ['5@cat'], 'cnt <- 0\nprint.zz <- function(x, ...) cnt <<- cnt + 1\nx <- structure(1, class = "zz")\nx\ncat(cnt, "\\n")', { expectedOutput: /^1\s*$/, expectedSliceOutput: /^1\s*$/ });
 	});
 	describe('S3 Dispatch on Base Generics', () => {
 		const baseCaps: FlowrCapabilityId[] = ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s3', 'normal-definition', 'implicit-return', 'call-normal', 'named-arguments', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities];
@@ -521,6 +568,13 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		'seed <- 1234\nset.seed(seed)\nx <- runif(1)\nx', ['4@x'],
 		'seed <- 1234\nset.seed(seed)\nx <- runif(1)\nx'
 		);
+		const rngCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'numbers', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'];
+		assertSliced(label('A seed set after the last draw is not kept', rngCaps), shell, 'set.seed(1)\nv <- runif(1)\nset.seed(2)\nv', ['4@v'], 'set.seed(1)\nv <- runif(1)\nv', { expectedOutput: '[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
+		assertSliced(label('A generator kind with no draw after it is not kept', rngCaps), shell, 'RNGkind("Wichmann-Hill")\nu <- 3\nv <- u\nv', ['4@v'], 'u <- 3\nv <- u\nv');
+		assertSliced(label('A generator kind set after the last draw is not kept', rngCaps), shell, 'set.seed(1)\nv <- runif(1)\nRNGkind("Wichmann-Hill")\nv', ['4@v'], 'set.seed(1)\nv <- runif(1)\nv');
+		assertSliced(label('A local .Random.seed is not the state of the generator', [...rngCaps, 'normal-definition']), shell, 'f <- function() { .Random.seed <- c(1L, 2L); 1 }\nset.seed(1)\nf()\nv <- runif(1)\nv', ['5@v'], 'set.seed(1)\nv <- runif(1)\nv', { expectedOutput: '[1] 1\n[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
+		assertSliced(label('A local .Random.seed does not cut a draw in the same function from the seed', [...rngCaps, 'normal-definition']), shell, 'set.seed(1)\nf <- function() { .Random.seed <- 3; runif(1) }\nv <- f()\nv', ['4@v'], 'set.seed(1)\nf <- function() runif(1)\nv <- f()\nv', { expectedOutput: '[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
+		assertSliced(label('A data set that is not read is not loaded', rngCaps), shell, 'data("iris")\ndata("mtcars")\nv <- nrow(iris)\nv', ['4@v'], 'data("iris")\nv <- nrow(iris)\nv', { expectedOutput: '[1] 150', expectedSliceOutput: '[1] 150' });
 		assertSliced(label('Configuring options', [
 			'functions-with-global-side-effects', 'built-in-options', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'
 		]), shell,
@@ -575,7 +629,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('Options in a loop', 'for(i in 1:3) {\n\tx <- getOption("foo")\n\toptions(foo=i)\n}', '2@x', 'for(i in 1:3) {\n    x <- getOption("foo")\n    options(foo=i)\n}');
 			optionCase('Setting an option between definition and call', 'options(foo=1)\ng <- function() getOption("foo")\noptions(foo=2)\nx <- g()', '4@x', 'g <- function() getOption("foo")\noptions(foo=2)\nx <- g()');
 			optionCase('getOption in an anonymous function', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))', '2@x', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))');
-			optionCase('Setting options in an anonymous function', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")', '2@x', 'sapply(1:2, function(i) options(foo=i))\nx <- getOption("foo")');
+			optionCase('Setting options in an anonymous function', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")', '2@x', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")');
 			optionCase('Setting options in tryCatch', 'tryCatch(options(foo=1), error=function(e) 0)\nx <- getOption("foo")', '2@x', 'options(foo=1)\nx <- getOption("foo")');
 			optionCase('Namespaced access', 'base::options(foo=1)\nx <- base::getOption("foo")', '2@x', 'base::options(foo=1)\nx <- base::getOption("foo")');
 			optionCase('Calling options through do.call', 'do.call(options, list(foo=1))\nx <- getOption("foo")', '2@x', 'do.call(options, list(foo=1))\nx <- getOption("foo")');
@@ -609,7 +663,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('Printing a plain value ignores unrelated options', 'options(foo=2)\nx <- 3\nx', '3@x', 'x <- 3\nx');
 			optionCase('Printing an unknown value may read any option', 'options(foo=2)\nx <- foo()\nx', '3@x', 'options(foo=2)\nx <- foo()\nx');
 			optionCase('print of an unknown value may read any option', 'options(foo=2)\nprint(d)', '2@print', 'options(foo=2)\nprint(d)');
-			optionCase('Nothing prints within a function', 'f <- function() {\n\toptions(digits=2)\n\tx <- pi\n\tx\n}', '4@x', 'x <- pi\nx');
+			optionCase('Nothing prints within a function', 'f <- function() {\n\toptions(digits=2)\n\tx <- pi\n\tx\n}', '4@x', 'f <- function() {\n        x <- pi\n        x\n    }');
 			optionCase('options through an alias', 'o <- options\no(k=1)\ny <- getOption("k")', '3@y', 'o <- options\no(k=1)\ny <- getOption("k")');
 			optionCase('rm(list = ls()) keeps the options', 'options(k=1)\nrm(list=ls())\ny <- getOption("k")', '3@y', 'options(k=1)\ny <- getOption("k")');
 			optionCase('.Options reads the option it names', 'options(k=1)\noptions(j=2)\ny <- .Options$k', '3@y', 'options(k=1)\ny <- .Options$k');
@@ -685,14 +739,15 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 			assertSliced(label(name, capabilities), shell, code, [criterion], expected, includeCallees ? { includeCallees: true } : undefined);
 		}
 		const code = 'f <- function(x) {\n  y <- x * 2\n  print(y)\n}\nf(21)';
-		calleeCase('default stops at the function-definition boundary', code, '3@print', 'function(x) {\n    y <- x * 2\n    print(y)\n}');
+		calleeCase('default stops at the function-definition boundary', code, '3@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }');
 		calleeCase('includeCallees continues past the boundary', code, '3@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }\nf(21)', true);
 		calleeCase('includeCallees includes all call sites', 'f <- function(x) {\n  y <- x * 2\n  print(y)\n}\nf(21)\nf(99)', '3@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }\nf(21)\nf(99)', true);
+		calleeCase('includeCallees does not pull in other callers of a function the slice calls', 'f <- function(x) x + 1\nz <- f(2)\nprint(z)\nw <- f(3)', '3@print', 'f <- function(x) x + 1\nz <- f(2)\nprint(z)', true);
 		calleeCase('includeCallees does not pull in unrelated code', 'g <- 3\nf <- function(x) {\n  y <- x * 2\n  print(y)\n}\nf(21)', '4@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }\nf(21)', true);
 		// gate: a self-contained body (no parameter, no captured variable) must not pull in the callers
 		const codeSelfContained = 'f <- function(x) {\n  y <- 5\n  print(y)\n}\nf(21)';
-		calleeCase('includeCallees is a no-op when the body does not depend on the interface', codeSelfContained, '3@print', 'y <- 5\nprint(y)', true);
-		calleeCase('self-contained body slices identically without the flag', codeSelfContained, '3@print', 'y <- 5\nprint(y)');
+		calleeCase('includeCallees is a no-op when the body does not depend on the interface', codeSelfContained, '3@print', 'f <- function(x) {\n        y <- 5\n        print(y)\n    }', true);
+		calleeCase('self-contained body slices identically without the flag', codeSelfContained, '3@print', 'f <- function(x) {\n        y <- 5\n        print(y)\n    }');
 		// gate: a captured variable from the enclosing scope does let the callers (and the capture) in
 		calleeCase('includeCallees follows a captured enclosing-scope variable', 'z <- 10\nf <- function(x) {\n  y <- z\n  print(y)\n}\nf(21)', '4@print', 'z <- 10\nf <- function(x) {\n        y <- z\n        print(y)\n    }\nf(21)', true);
 	});
@@ -709,6 +764,18 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 		superCase('a closure counter still chains its calls', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nc1 <- mk()\nc1()\nv <- c1()\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nc1 <- mk()\nc1()\nv <- c1()\nv', '[1] 1\n[1] 2');
 		/* control: with no enclosing frame holding the name, the global one is still the target */
 		superCase('a super-assignment no enclosing frame catches still reaches the global one', 'x <- 1\nf <- function() { g <- function() x <<- 42; g(); x }\nv <- f()\nv', '4@v', 'x <- 1\nf <- function() {\n        g <- function() x <<- 42\n        g()\n        x\n    }\nv <- f()\nv', '[1] 42');
+		superCase('a closure calls the function its factory was handed', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n^2\nm <- memo(sq)\nv <- m(4)\nv', '5@v', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n ^ 2\nm <- memo(sq)\nv <- m(4)\nv', '[1] 16');
+		superCase('a closure created by local chains its calls', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '4@v', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '[1] 1\n[1] 2');
+		superCase('a closure taken out of a list in a loop chains its calls', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\nfor(f in L) f()\nv <- L[[1]]()\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nL <- list(mk())\nfor(f in L) f()\nv <- (L[[1]])()\nv', '[1] 2');
+		assertSliced(label('a closure taken out of a list by lapply chains its calls', superCaps), shell, 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\ninvisible(lapply(L, function(g) g()))\nv <- L[[1]]()\nv', ['5@v'], 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nL <- list(mk())\ninvisible(lapply(L, function(g) g()))\nv <- (L[[1]])()\nv', { expectedOutput: '[1] 2', expectedSliceOutput: /\[1\] 2$/ });
+		superCase('the frame of a closure is what environment(fn) reads', 'mk <- function() { n <- 0; function() { n <<- n + 1; 0 } }\nh <- mk()\nh()\nv <- environment(h)$n\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            0\n        }\n    }\nh <- mk()\nh()\nv <- environment(h)$n\nv', '[1] 0\n[1] 1');
+		assertSliced(label('an exit hook reads what the body wrote before', superCaps), shell, 'lg <- character()\nf <- function() { lg <<- c(lg, "o"); on.exit(lg <<- c(lg, "c")); 1 }\nf()\nv <- lg\nv', ['5@v'], 'lg <- character()\nf <- function() {\n        lg <<- c(lg, "o")\n        on.exit(lg <<- c(lg, "c"))\n    }\nf()\nv <- lg\nv', { expectedOutput: '[1] 1\n[1] "o" "c"', expectedSliceOutput: '[1] "o" "c"' });
+		assertSliced(label('a kept call keeps the globals its exit hook reads', superCaps), shell, 'lg <- character()\nf <- function(b) { on.exit(lg <<- c(lg, "c")); b }\nf(1)\nv <- 2\nv', ['5@v'], 'lg <- character()\nf <- function(b) on.exit(lg <<- c(lg, "c"))\nf(1)\nv <- 2\nv', { expectedOutput: '[1] 1\n[1] 2', expectedSliceOutput: '[1] 2' });
+		superCase('a method writes the environment its factory captured', 'mk <- function() { self <- new.env(); self$v <- 0; self$inc <- function(x) self$v <- self$v + x; self }\no <- mk()\no$inc(5)\nv <- o$v\nv', '5@v', 'mk <- function() {\n        self <- new.env()\n        self$v <- 0\n        self$inc <- function(x) self$v <- self$v + x\n        self\n    }\no <- mk()\no$inc(5)\nv <- o$v\nv', '[1] 5');
+		superCase('a default argument environment is written in place', 'e <- new.env()\ne$reg <- list()\nreg <- function(k, v, env = e) env$reg[[k]] <- v\nreg("a", 1)\nv <- e$reg$a\nv', '6@v', 'e <- new.env()\ne$reg <- list()\nreg <- function(k, v, env=e) env$reg[[k]] <- v\nreg("a", 1)\nv <- e$reg$a\nv', '[1] 1');
+		assertSliced(label('separate factory instances do not share their state', superCaps), shell, 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\na <- mk()\nb <- mk()\nb()\nb()\nv <- a()\nv', ['7@v'], 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\na <- mk()\nv <- a()\nv', { expectedOutput: '[1] 1\n[1] 2\n[1] 1', expectedSliceOutput: '[1] 1' });
+		superCase('a field of another environment is not needed', 'e1 <- new.env()\ne2 <- new.env()\ne1$v <- 1\ne2$v <- 2\nv <- e1$v\nv', '6@v', 'e1 <- new.env()\ne1$v <- 1\nv <- e1$v\nv', '[1] 1');
+		superCase('an assign into another environment is not needed', 'e1 <- new.env()\ne2 <- new.env()\nassign("v", 1, envir = e1)\nassign("v", 2, envir = e2)\nv <- get("v", envir = e1)\nv', '6@v', 'e1 <- new.env()\nassign("v", 1, envir = e1)\nv <- get("v", envir = e1)\nv', '[1] 1');
 	});
 	describe('User-defined replacement functions', () => {
 		const replCaps: readonly FlowrCapabilityId[] = ['name-quoted', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'replacement-functions', 'normal-definition', 'formals-named', 'implicit-return', 'numbers', 'newlines', 'call-normal', 'unnamed-arguments'];

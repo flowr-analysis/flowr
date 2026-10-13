@@ -257,6 +257,21 @@ export class DataflowGraph<
 		};
 	}
 
+	/** A view of this graph without the environments of its vertices and subflows, sharing everything else. */
+	public withoutEnvironments(): DataflowGraph<Vertex, Edge> {
+		const graph = new DataflowGraph<Vertex, Edge>(this._idMap);
+		graph.rootVertices = this.rootVertices;
+		graph.edgeInformation = this.edgeInformation;
+		graph.types = this.types;
+		graph.vertexInformation = new Map(Array.from(this.vertexInformation, ([id, vertex]) => [id, (DfgVertex.isFunctionDefinition(vertex)
+			? { ...vertex, environment: undefined, subflow: { ...vertex.subflow, environment: undefined } }
+			: { ...vertex, environment: undefined }) as Vertex]));
+		for(const unknown of this._unknownSideEffects) {
+			graph._unknownSideEffects.add(unknown);
+		}
+		return graph;
+	}
+
 	/** Gets the {@link DataflowGraphVertexInfo} attached to `id` (searching function definitions too if `includeDefinedFunctions`) and its outgoing edges. */
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices

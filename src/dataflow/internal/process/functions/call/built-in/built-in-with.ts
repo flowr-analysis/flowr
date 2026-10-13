@@ -78,8 +78,8 @@ export function processWithEnv<OtherInfo>(
 	const envirResolution = envirOf(envirRouting);
 	if(!envirResolution) {
 		const fallback = markAsMaskedFallback(name, args, rootId, data);
-		/* only a definition within can write to a `data` we cannot pin down */
-		if(!fallback.graph.verticesOfType(VertexType.VariableDefinition).next().done && !unknownIfAmbiguous(envirRouting, fallback, rootId)) {
+		/* only a definition or a call we cannot see into (a closure of `data`) can write to a `data` we cannot pin down */
+		if((!fallback.graph.verticesOfType(VertexType.VariableDefinition).next().done || callsOpaque(fallback.graph, rootId)) && !unknownIfAmbiguous(envirRouting, fallback, rootId)) {
 			return mayWriteInto(dataArg.value, fallback, rootId, data);
 		}
 		return fallback;
@@ -131,7 +131,7 @@ export function processWithEnv<OtherInfo>(
 		resultEnv = routeWrittenToEnvir(tempResult, envirResolution, rootId, data.environment).environment;
 	}
 
-	return {
+	const result: DataflowInformation = {
 		hooks:             dfDataArg.hooks.concat(dfExpr.hooks),
 		environment:       resultEnv,
 		exitPoints:        dfDataArg.exitPoints.concat(dfExpr.exitPoints),
@@ -143,6 +143,12 @@ export function processWithEnv<OtherInfo>(
 		out:               [],   /* writes are inside envState, not directly in outer scope */
 		unknownReferences: []
 	};
+	return callsOpaque(dfExpr.graph, rootId) ? mayWriteInto(dataArg.value, result, rootId, data) : result;
+}
+
+/** whether `graph` holds a call other than `rootId` that may run a closure of the data, like `with(e, inc())` */
+function callsOpaque(graph: DataflowGraph, rootId: NodeId): boolean {
+	return graph.verticesOfType(VertexType.FunctionCall).some(([id, vertex]) => id !== rootId && !vertex.onlyBuiltin);
 }
 
 /**

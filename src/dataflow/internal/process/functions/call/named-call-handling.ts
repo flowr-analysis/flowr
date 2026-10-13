@@ -5,7 +5,8 @@ import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RBinaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -85,6 +86,13 @@ function handsOverFunction<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo &
 	return RFunctionDefinition.is(value) || (RSymbol.is(value) && (Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
 }
 
+/** Whether a replacement function rewrote the value of `definition`, like `body(f) <- quote(runif(1))`, so its body is unknown. */
+function rewrittenByReplacement<OtherInfo>(definition: IdentifierDefinition, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	const at = (definition as Partial<InGraphIdentifierDefinition>).definedAt;
+	const node = definition.type === ReferenceType.Unknown && at !== undefined ? data.completeAst.idMap.get(at) : undefined;
+	return RFunctionCall.is(node) || (RBinaryOp.is(node) && RFunctionCall.is(node.lhs));
+}
+
 /**
  * Processes a named function call within the dataflow analysis.
  * For example, `myFunction(arg1, arg2)`, resolves against the environment.
@@ -124,7 +132,7 @@ export function processNamedCall<OtherInfo>(
 		if(own === undefined) {
 			defaultProcessor = true;
 			/* a user function's body states what it reads itself */
-			unknownBody ||= hidesBody(resolvedFunction);
+			unknownBody ||= hidesBody(resolvedFunction) || rewrittenByReplacement(resolvedFunction, data);
 			continue;
 		}
 		builtIn ||= isBuiltIn && own.config?.libFn !== true;
@@ -151,7 +159,7 @@ export function processNamedCall<OtherInfo>(
 	if(information !== undefined && (unknownBody || packageFn)) {
 		/* a function handed in as a parameter may be anything, `runif` included, and a function handed a function may call it;
 		   otherwise a package function draws only if flowR states it does */
-		const draws = resolved.some(r => isReferenceType(r.type, ReferenceType.Parameter | ReferenceType.Argument)) || args.some(a => handsOverFunction(a, data));
+		const draws = resolved.some(r => isReferenceType(r.type, ReferenceType.Parameter | ReferenceType.Argument) || rewrittenByReplacement(r, data)) || args.some(a => handsOverFunction(a, data));
 		information = readsAllAmbientState(information, rootId, data, unknownBody, draws);
 	}
 

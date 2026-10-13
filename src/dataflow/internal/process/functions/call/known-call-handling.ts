@@ -7,8 +7,9 @@ import { processAllArguments } from './common';
 import { applyKills } from '../../../../environments/apply-kill';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
@@ -209,9 +210,10 @@ export function processKnownFunctionCall<OtherInfo>(
 	let alwaysJumps = false;
 	/* what a function flowR does not know here forces is up to its body, see `FunctionSemantics.settleJumpsInPromises` */
 	const forcing = origin === 'default' ? undefined : FunctionSemantics.call.signature.forcing(sig, processArgs.length);
-	/* exactly one alternative runs when there is a default arm, otherwise maybe none */
+	/* exactly one alternative runs when a string selects among them with a default arm, a number past the arms picks none */
 	const alternatives = alternativeArgsFrom === undefined ? [] : processedArguments.slice(alternativeArgsFrom).filter(isNotUndefined);
-	const hasDefaultArm = alternativeArgsFrom !== undefined && processArgs.slice(alternativeArgsFrom).some(a => a !== EmptyArgument && (!RArgument.is(a) || a.name === undefined));
+	const selector = alternativeArgsFrom === undefined ? undefined : processArgs[alternativeArgsFrom - 1];
+	const hasDefaultArm = RString.is(RArgument.valueOf(selector)) && processArgs.slice(alternativeArgsFrom).some(RArgument.isUnnamed);
 	const allArmsJump = hasDefaultArm && alternatives.length > 0 && alternatives.every(a => ControlFlow.alwaysExits(a, data.cds));
 	for(let i = 0; i < processedArguments.length; i++) {
 		const p = processedArguments[i];

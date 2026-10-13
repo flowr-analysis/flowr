@@ -1,3 +1,4 @@
+import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { appendEnvironment } from '../../../../../environments/append';
 import { DataflowInformation } from '../../../../../info';
@@ -160,6 +161,7 @@ export function processSourceCall<OtherInfo>(
 		includeFunctionCall?: boolean,
 		/** should this function call be followed, even when the configuration disables it? */
 		forceFollow?:         boolean
+		ambient?:             AmbientStateAccess | readonly AmbientStateAccess[]
 	}
 ): DataflowInformation {
 	if(args.length !== 1) {
@@ -169,13 +171,14 @@ export function processSourceCall<OtherInfo>(
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
 		: DataflowInformation.initialize(rootId, data);
+	const withAmbient = (): DataflowInformation => config.ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, config.ambient);
 
 	const sourceFileArgument = args[0];
 
 	if(!config.forceFollow && data.ctx.config.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
-		return information;
+		return withAmbient();
 	}
 
 	let sourceFile: string[] | undefined;
@@ -220,8 +223,11 @@ export function processSourceCall<OtherInfo>(
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
 	handleUnknownSideEffect(information.graph, information.environment, rootId);
-	return information;
+	return withAmbient();
 }
+
+/** the files parsed for an inclusion, a requested file is not among them and its inclusions share its nodes */
+const includedFiles = new WeakSet<RProjectFile<unknown>>();
 
 /**
  * Processes a source request with the given dataflow processor information and existing dataflow information
@@ -264,18 +270,24 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		} else if(gasLevel >= GasLevel.Problematic) {
 			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
 		}
-		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
-		const normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
-			: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
-		fst = normalized.ast.files[0];
-		// this can be improved, see issue #628
-		for(const [k, v] of normalized.idMap) {
-			data.completeAst.idMap.set(k, v);
-		}
-		// add to the main ast
-		if(!data.completeAst.ast.files.some(f => f.filePath === fst.filePath)) {
-			data.completeAst.ast.files.push(fst);
+		const requested = textRequest.path === undefined || data.referenceChain.includes(textRequest.path) ? undefined : data.completeAst.ast.files.find(f => f.filePath === textRequest.path && !includedFiles.has(f));
+		if(requested) {
+			fst = requested;
+		} else {
+			const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
+			const normalized = (typeof parsed !== 'string' ?
+				normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
+				: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
+			fst = normalized.ast.files[0];
+			includedFiles.add(fst);
+			// this can be improved, see issue #628
+			for(const [k, v] of normalized.idMap) {
+				data.completeAst.idMap.set(k, v);
+			}
+			// add to the main ast
+			if(!data.completeAst.ast.files.some(f => f.filePath === fst.filePath)) {
+				data.completeAst.ast.files.push(fst);
+			}
 		}
 		filePath = textRequest.path;
 	}
@@ -353,7 +365,7 @@ export function standaloneSourceFile<OtherInfo>(
 	return sourceRequest('file-' + idx, file, {
 		...data,
 		environment:    information.environment,
-		referenceChain: [...data.referenceChain, file.filePath]
+		referenceChain: [file.filePath]
 	}, information, false);
 }
 

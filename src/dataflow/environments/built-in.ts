@@ -120,7 +120,7 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	readonly keepArgumentOut?:       boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** how the call reads or writes global state like the graphics parameters or the options, see {@link AmbientStateAccess} */
-	readonly ambient?:               AmbientStateAccess,
+	readonly ambient?:               AmbientStateAccess | readonly AmbientStateAccess[],
 	/** the call changes that state for a scope only, see {@link AmbientScope} */
 	readonly scope?:                 AmbientScope,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
@@ -165,7 +165,7 @@ function dataArgumentSymbols<OtherInfo>(
 		if(RArgument.isEmpty(arg) || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
 			continue;
 		}
-		const value: RNodeWithParent | undefined = RArgument.is(arg) ? arg.value : arg;
+		const value: RNodeWithParent | undefined = RArgument.valueOf(arg);
 		if(value !== undefined && RSymbol.is(value)) {
 			(symbols ??= new Set()).add(value.info.id);
 		}
@@ -340,14 +340,12 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	return ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, ambient);
 }
 
-/** A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk}, unless its config states otherwise. */
+/** A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk} as well. */
 function withFileAccess<Config>(config: Config): Config {
-	const { tags, ambient } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess };
-	if(ambient !== undefined || !tags?.includes(SemanticCallTag.File)) {
-		return config;
-	}
-	const type = tags.includes(SemanticCallTag.Writes) ? AmbientStateAccessType.WriteFiles : tags.includes(SemanticCallTag.Reads) ? AmbientStateAccessType.ReadFiles : undefined;
-	return type === undefined ? config : { ...config, ambient: { type } };
+	const { tags, ambient, sig } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess | readonly AmbientStateAccess[], sig?: FnSig };
+	const type = !tags?.includes(SemanticCallTag.File) ? undefined : tags.includes(SemanticCallTag.Writes) ? AmbientStateAccessType.WriteFiles : tags.includes(SemanticCallTag.Reads) ? AmbientStateAccessType.ReadFiles : undefined;
+	const stated = [ambient ?? []].flat();
+	return type === undefined || stated.some(a => a.type === type) ? config : { ...config, ambient: [...stated, { type, sig: tags?.includes(SemanticCallTag.Glob) ? undefined : sig }] };
 }
 
 export const BuiltInProcessorMapper = {

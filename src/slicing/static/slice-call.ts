@@ -22,7 +22,6 @@ import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DfgVertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
@@ -81,8 +80,9 @@ function linkCallTargets(
 	queue: VisitingQueue
 ): void {
 	for(const functionCallTarget of functionCallTargets) {
-		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
-			queue.add(exitPoint.nodeId, activeEnvironment, activeEnvironmentFingerprint(), onlyForSideEffects);
+		/* a call kept only for what it does needs what its function reads, not what it returns */
+		for(const exitPoint of onlyForSideEffects ? [] : (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
+			queue.add(exitPoint.nodeId, activeEnvironment, activeEnvironmentFingerprint(), false);
 		}
 		// handle open reads
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
@@ -125,15 +125,6 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		return;
 	}
 	linkCallTargets(current.onlyForSideEffects, functionCallTargets, activeEnvironment, activeEnvironmentFingerprint, queue);
-}
-
-/**
- * Finds the nearest enclosing function-definition node for the given id by walking up the AST parent chain.
- * Used by `includeCallees` to detect the function-definition boundary a node sits inside, as backward slicing
- * does not otherwise visit the function-definition vertex itself (nothing within the body links to it).
- */
-export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
-	return RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
 }
 
 /**
@@ -196,16 +187,15 @@ const CalleeBoundaryEdges = EdgeType.DefinedBy | EdgeType.Calls;
  * as `argument` edges are always traversed.
  * This is the reverse of what {@link sliceForCall} does for call -\> definition linking.
  */
-export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: Fingerprint): void {
-	const ingoing = graph.ingoingEdges(fnDefId);
-	if(ingoing === undefined) {
-		return;
-	}
-	for(const [source, edge] of ingoing) {
+export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: Fingerprint): NodeId[] {
+	const added: NodeId[] = [];
+	for(const [source, edge] of graph.edgesTo(fnDefId)) {
 		if(DfEdge.includesType(edge, CalleeBoundaryEdges)) {
 			queue.add(source, baseEnvironment, baseEnvFingerprint, false);
+			added.push(source);
 		}
 	}
+	return added;
 }
 
 const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument;

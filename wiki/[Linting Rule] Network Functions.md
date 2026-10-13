@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-13, 23:21:10 UTC (v2.15.10), do not edit directly._
 <h2 id="network-functions">Network Functions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule is used to detect issues that are related to the performance of the code. For example, inefficient algorithms, unnecessary computations, or unoptimized data structures."><a href='#performance'>![performance](https://img.shields.io/badge/performance-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span>
@@ -34,7 +34,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (7 ms)\
+Query: **linter** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function `utils::read.csv` at 2.1-40\
@@ -85,7 +85,7 @@ We expect the linter to report the following:
 
 * certain at 1.5-1.29: function = `'base::url'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L12) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L13) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_network_32_funcion_32_with_32_multiple_32_arguments:_32__36__123_prefix_125__96_">Test Case: `network funcion with multiple arguments: ${prefix}`</h4>
 
@@ -99,7 +99,7 @@ We expect the linter to report the following:
 
 * certain: function = `'utils::download.file'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L29) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L30) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_a_32_local_32_data_32_source_32_of_32_an_32_attached_32_package">Test Case: a local data source of an attached package</h4>
 
@@ -114,7 +114,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L39) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L40) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_rvest_32_selectors_32_work_32_on_32_a_32_parsed_32_document">Test Case: rvest selectors work on a parsed document</h4>
 
@@ -129,7 +129,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L40) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L41) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_rvest_32_still_32_fetches_32_a_32_constant_32_URL_32_it_32_is_32_handed_32_to_32_parse">Test Case: rvest still fetches a constant URL it is handed to parse</h4>
 
@@ -144,7 +144,7 @@ We expect the linter to report the following:
 
 * certain at 2.22-2.47: function = `'read_html'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L41) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L42) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_native_32_pipe">Test Case: native pipe</h4>
 
@@ -158,7 +158,7 @@ We expect the linter to report the following:
 
 * certain at 1.26-1.35: function = `'utils::read.csv'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L43) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L44) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_library_32_call">Test Case: library call</h4>
 
@@ -178,7 +178,7 @@ We expect the linter to report the following:
 
 * certain at 2.1-2.26: function = `'httr::POST'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L46) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L47) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_unloaded_32_library_32_call">Test Case: unloaded library call</h4>
 
@@ -192,7 +192,7 @@ We expect the linter to report the following:
 
 * certain at 1.1-1.26: function = `'POST'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L54) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L55) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_mismatched_32_library_32_call">Test Case: mismatched library call</h4>
 
@@ -206,7 +206,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L59) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L60) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_namespace_32_call">Test Case: namespace call</h4>
 
@@ -226,7 +226,7 @@ We expect the linter to report the following:
 
 * certain at 2.1-2.31: function = `'httr::GET'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L64) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L65) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_do_32_not_32_trigger_32_without_32_url_32_prefix">Test Case: do not trigger without url prefix</h4>
 
@@ -240,7 +240,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L73) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L74) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_trigger_32_with_32_custom_32_url_32_prefix">Test Case: trigger with custom url prefix</h4>
 
@@ -259,7 +259,7 @@ We expect the linter to report the following:
 
 * certain at 1.1-1.27: function = `'utils::read.csv'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L78) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L79) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_do_32_not_32_trigger_32_with_32_custom_32_url_32_prefix">Test Case: do not trigger with custom url prefix</h4>
 
@@ -278,7 +278,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L84) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L85) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_do_32_not_32_trigger_32_with_32_multiple_32_arguments">Test Case: do not trigger with multiple arguments</h4>
 
@@ -292,7 +292,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L91) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L92) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_not_32_in_32_list_32_test">Test Case: not in list test</h4>
 
@@ -306,7 +306,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L97) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L98) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_nor_32_in_32_list_32_but_32_prefix_32_in_32_string">Test Case: nor in list but prefix in string</h4>
 
@@ -320,7 +320,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L103) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L104) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_do_32_not_32_trigger_32_on_32_known_32_source">Test Case: do not trigger on known source</h4>
 
@@ -334,7 +334,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L109) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L110) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_trigger_32_on_32_web_32_source">Test Case: trigger on web source</h4>
 
@@ -348,7 +348,7 @@ We expect the linter to report the following:
 
 * certain at 1.1-1.25: function = `'base::source'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L115) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L116) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_Named_32_argument">Test Case: Named argument</h4>
 
@@ -362,7 +362,7 @@ We expect the linter to report the following:
 
 * certain at 1.1-1.46: function = `'utils::read.csv'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L124) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L125) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_Positional_32_argument_32_with_32_custom_32_config">Test Case: Positional argument with custom config</h4>
 
@@ -381,7 +381,7 @@ We expect the linter to report the following:
 
 * certain at 1.1-1.41: function = `'test.me'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L132) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L133) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_Named_32_argument_32_with_32_custom_32_config">Test Case: Named argument with custom config</h4>
 
@@ -400,7 +400,7 @@ We expect the linter to report the following:
 
 * certain at 1.1-1.44: function = `'test.me'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L140) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L141) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_Resolve_32_value">Test Case: Resolve value</h4>
 
@@ -414,7 +414,7 @@ We expect the linter to report the following:
 
 * certain at 1.39-1.51: function = `'utils::read.csv'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L149) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L150) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_with_32_a_32__40_controlled_41__32_package_32_database">Test Case: with a (controlled) package database</h4>
 
@@ -436,7 +436,7 @@ We expect the linter to report the following:
 
 * certain at 2.1-2.25: function = `'httr::GET'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L159) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L160) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_without_32_any_32_package_32_database">Test Case: without any package database</h4>
 
@@ -456,7 +456,7 @@ We expect the linter to report the following:
 
 * certain at 2.1-2.25: function = `'GET'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L165) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L166) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_cat_32_without_32_file">Test Case: cat without file</h4>
 
@@ -471,7 +471,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L174) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L175) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_writeLines_32_without_32_con">Test Case: writeLines without con</h4>
 
@@ -485,7 +485,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L175) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L176) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_cat_32_with_32_an_32_unknown_32_value_32_where_32_its_32_file_32_may_32_go">Test Case: cat with an unknown value where its file may go</h4>
 
@@ -499,7 +499,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L176) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L177) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_cat_32_to_32_a_32_local_32_file">Test Case: cat to a local file</h4>
 
@@ -513,7 +513,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L177) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L178) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_cat_32_to_32_a_32_url">Test Case: cat to a url</h4>
 
@@ -529,7 +529,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L179) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L180) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_a_32_device_32_writing_32_to_32_a_32_name_32_the_32_user_32_gives">Test Case: a device writing to a name the user gives</h4>
 
@@ -544,4 +544,4 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L180) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L181) for the test-case implementation.

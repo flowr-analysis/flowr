@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="problematic-inputs">Problematic inputs&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule is used to detect issues that are related to the performance of the code. For example, inefficient algorithms, unnecessary computations, or unoptimized data structures."><a href='#performance'>![performance](https://img.shields.io/badge/performance-teal) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -6,16 +6,16 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Detects uses of dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with '|' indicating a pipe command injection.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L113">src/linter/rules/problematic-inputs.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L108">src/linter/rules/problematic-inputs.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `problematic-inputs` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L108"><code>consider</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L103"><code>consider</code></a>\
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L110"><code>pipeCommandFunctions</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/problematic-inputs.ts#L105"><code>pipeCommandFunctions</code></a>\
 
 ### Examples
 
@@ -34,7 +34,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Use of configured dynamic call at 3.2-8; inputs: 5 (type: [param], trace: pure)\
@@ -190,6 +190,48 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L52) for the test-case implementation.
 		
+<h4 id="Test_32_Case:_32_pdf_32_title_32_before_32_the_32_file_32_is_32_no_32_pipe">Test Case: pdf title before the file is no pipe</h4>
+
+Given the following input:
+
+```r
+pdf(title = "|x", "out.pdf")
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L59) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_pdf_32_pipe_32_as_32_file_32_with_32_a_32_title_32_after_32_it">Test Case: pdf pipe as file with a title after it</h4>
+
+Given the following input:
+
+```r
+pdf("|lp", title = "x")
+```
+
+We expect the linter to report the following:
+
+* certain: name = `'pdf'`, pipeCommand = `'|lp'`, sources = `[{id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp'}]`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L60) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_pdf_32_file_32_after_32_a_32_named_32_arg">Test Case: pdf file after a named arg</h4>
+
+Given the following input:
+
+```r
+pdf(width = 7, "|lp")
+```
+
+We expect the linter to report the following:
+
+* certain: name = `'pdf'`, pipeCommand = `'|lp'`, sources = `[{id: 4, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp'}]`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L67) for the test-case implementation.
+		
 <h4 id="Test_32_Case:_32_pdf_32_non-file_32_arg_32_pipe_32_not_32_flagged">Test Case: pdf non-file arg pipe not flagged</h4>
 
 Given the following input:
@@ -202,7 +244,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L59) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L74) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_pdf_32_unknown_32_input">Test Case: pdf unknown input</h4>
 
@@ -216,7 +258,22 @@ We expect the linter to report the following:
 
 * uncertain: name = `'pdf'`, sources = `[{id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown]}]`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L60) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L75) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_pdf_32_with_32_a_32_name_32_the_32_user_32_gives">Test Case: pdf with a name the user gives</h4>
+
+Given the following input:
+
+```r
+name <- readline("File: ")
+pdf(name)
+```
+
+We expect the linter to report the following:
+
+* certain: name = `'pdf'`, sources = `[{id: 7, trace: InputTraceType.Alias, types: [InputType.User]}]`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L81) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_postscript_32_pipe_32_constant">Test Case: postscript pipe constant</h4>
 
@@ -230,4 +287,4 @@ We expect the linter to report the following:
 
 * certain: name = `'postscript'`, pipeCommand = `'|lp'`, sources = `[{id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp'}]`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L66) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-problematic-inputs.test.ts#L87) for the test-case implementation.

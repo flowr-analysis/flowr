@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -35,7 +35,7 @@ the following query checks whether the call to `f` calls `eval`:
 
 _Results (prettified and summarized):_
 
-Query: **does-call** (11ms)\
+Query: **does-call** (20ms)\
 &nbsp;&nbsp;- **calls-eval** found:\
 &nbsp;&nbsp;&nbsp;&nbsp;- Call with id **15** (2.1)\
 
@@ -111,7 +111,7 @@ end
 #60;#45;`"]
     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     13{{"`*#91;RString#93;* **#34;1 #43; 1#34;**
-      *2.3-9* (**id: 13**)`"}}
+      *2.3-9* (**id: 13**, 15+)`"}}
     %% Environment of 15 [level: 0]:
     %% Built-in
     %% 1----------------------------------------

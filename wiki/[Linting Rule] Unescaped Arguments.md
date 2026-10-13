@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="unescaped-arguments">Unescaped Arguments&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the shiny framework."><a href='#shiny'>![shiny](https://img.shields.io/badge/shiny-teal) </a></span>
@@ -38,7 +38,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (9 ms)\
+Query: **linter** (46 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Unescaped system argument of `system` at 2.9-26 (1 quick fix(es) available)\
@@ -124,6 +124,63 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L18) for the test-case implementation.
 		
+<h4 id="Test_32_Case:_32_processx_32_passes_32_its_32_arguments_32_without_32_a_32_shell">Test Case: processx passes its arguments without a shell</h4>
+
+Given the following input:
+
+```r
+f <- function(d) processx::run("ls", d)
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L32) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_system2_32_hands_32_its_32_arguments_32_to_32_a_32_shell">Test Case: system2 hands its arguments to a shell</h4>
+
+Given the following input:
+
+```r
+f <- function(d) system2("ls", d)
+```
+
+We expect the linter to report the following:
+
+* uncertain: category = `UnescapedArgumentCategory.System`, function = `'system2'`, sources = `[{id: 6, trace: InputTraceType.Pure, types: [InputType.Parameter]}]`, input = `[InputType.Parameter]`, 1 quick fix
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L33) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_do.call_32_with_32_a_32_constant_32_function_32_name">Test Case: do.call with a constant function name</h4>
+
+Given the following input:
+
+```r
+t <- lapply(1:3, function(i) data.frame(a = i))
+do.call("rbind", t)
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L42) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_do.call_32_with_32_a_32_function_32_name_32_from_32_a_32_parameter">Test Case: do.call with a function name from a parameter</h4>
+
+Given the following input:
+
+```r
+f <- function(fn) do.call(fn, list(1))
+```
+
+We expect the linter to report the following:
+
+* uncertain: category = `UnescapedArgumentCategory.Eval`, function = `'do.call'`, sources = `[{id: 4, trace: InputTraceType.Unknown, types: [InputType.Parameter]}]`, input = `[InputType.Parameter]`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L43) for the test-case implementation.
+		
 <h4 id="Test_32_Case:_32_pasted_32_parameter">Test Case: pasted parameter</h4>
 
 Given the following input:
@@ -136,7 +193,7 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.System`, function = `'system'`, sources = `[{id: 7, trace: InputTraceType.Pure, types: [InputType.Parameter]}]`, input = `[InputType.Parameter]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L32) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L51) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_pasted_32_parameter_32_with_32_a_32_constant_32_and_32_an_32_unknown_32_call">Test Case: pasted parameter with a constant and an unknown call</h4>
 
@@ -152,7 +209,7 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.System`, function = `'system'`, sources = `[{id: 7, trace: InputTraceType.Alias, types: [InputType.Constant, InputType.Scope, InputType.Parameter]}]`, input = `[InputType.Scope, InputType.Parameter]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L46) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L65) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_pasted_32_escaped_32_parameter">Test Case: pasted escaped parameter</h4>
 
@@ -166,7 +223,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L60) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L79) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_partly_32_escaped_32_command">Test Case: partly escaped command</h4>
 
@@ -180,7 +237,7 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.System`, function = `'system'`, sources = `[{id: 16, trace: InputTraceType.Pure, types: [InputType.Parameter]}]`, input = `[InputType.Parameter]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L61) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L80) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_user_32_input_32_as_32_command">Test Case: user input as command</h4>
 
@@ -194,7 +251,7 @@ We expect the linter to report the following:
 
 * certain: category = `UnescapedArgumentCategory.System`, function = `'system'`, sources = `[{id: 15, trace: InputTraceType.Unknown, types: [InputType.User], name: 'cmd'}]`, input = `[InputType.User]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L75) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L94) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_unknown_32_arguments">Test Case: unknown arguments</h4>
 
@@ -208,7 +265,7 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.System`, function = `'system2'`, sources = `[{id: 4, trace: InputTraceType.Unknown, types: [InputType.Unknown], name: 'args'}]`, input = `[InputType.Unknown]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L89) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L108) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_redefined_32_function">Test Case: redefined function</h4>
 
@@ -223,7 +280,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L103) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L122) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_evaluation">Test Case: constant evaluation</h4>
 
@@ -237,7 +294,54 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L107) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L126) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_constant_32_code_32_built_32_from_32_a_32_quoted_32_expression">Test Case: constant code built from a quoted expression</h4>
+
+> the code is the one the program spells out, a language object is no input by itself
+
+Given the following input:
+
+```r
+code <- deparse(quote(1 + 2))
+code <- gsub("2", "3", code)
+eval(parse(text = code))
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L128) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_constant_32_quoted_32_expression">Test Case: constant quoted expression</h4>
+
+Given the following input:
+
+```r
+eval(quote(1 + 2))
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L129) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_a_32_captured_32_argument_32_is_32_code_32_of_32_the_32_caller">Test Case: a captured argument is code of the caller</h4>
+
+Given the following input:
+
+```r
+f <- function(x) { e <- substitute(x); eval(e) }
+f(y)
+```
+
+We expect the linter to report the following:
+
+* certain: category = `UnescapedArgumentCategory.Eval`, function = `'eval'`, sources = `[{id: 12, types: [InputType.Lang], trace: InputTraceType.Alias}]`, input = `[InputType.Lang]`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L130) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_bounded_32_evaluation">Test Case: bounded evaluation</h4>
 
@@ -251,7 +355,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L108) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L138) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_symbol_32_lookup">Test Case: constant symbol lookup</h4>
 
@@ -265,7 +369,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L109) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L139) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_symbol_32_lookup_32_of_32_a_32_known_32_variable">Test Case: constant symbol lookup of a known variable</h4>
 
@@ -280,7 +384,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L110) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L140) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_symbol_32_lookup_32_with_32_a_32_folded_32_name">Test Case: constant symbol lookup with a folded name</h4>
 
@@ -295,7 +399,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L111) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L141) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_symbol_32_tests">Test Case: constant symbol tests</h4>
 
@@ -311,7 +415,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L112) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L142) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_symbol_32_lookup_32_of_32_a_32_parameter">Test Case: symbol lookup of a parameter</h4>
 
@@ -325,7 +429,7 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.Eval`, function = `'get'`, sources = `[{id: 4, trace: InputTraceType.Pure, types: [InputType.Parameter]}]`, input = `[InputType.Parameter]`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L113) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L143) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_symbol_32_lookup_32_of_32_user_32_input">Test Case: symbol lookup of user input</h4>
 
@@ -339,7 +443,7 @@ We expect the linter to report the following:
 
 * certain: category = `UnescapedArgumentCategory.Eval`, function = `'get'`, sources = `[{id: 15, trace: InputTraceType.Unknown, types: [InputType.User], name: 'n'}]`, input = `[InputType.User]`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L121) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L151) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_unknown_32_evaluation">Test Case: unknown evaluation</h4>
 
@@ -353,7 +457,7 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.Eval`, function = `'eval'`, sources = `[{id: 3, trace: InputTraceType.Unknown, types: [InputType.Unknown], name: 'text'}]`, input = `[InputType.Unknown]`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L129) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L159) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_statement">Test Case: constant statement</h4>
 
@@ -367,7 +471,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L140) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L170) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_interpolated_32_statement">Test Case: interpolated statement</h4>
 
@@ -381,7 +485,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L141) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L171) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_pasted_32_user_32_input">Test Case: pasted user input</h4>
 
@@ -395,7 +499,7 @@ We expect the linter to report the following:
 
 * certain: category = `UnescapedArgumentCategory.Database`, function = `'dbGetQuery'`, sources = `[{id: 20, trace: InputTraceType.Unknown, types: [InputType.User], name: 'x'}]`, input = `[InputType.User]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L143) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L173) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_statement_32_built_32_elsewhere">Test Case: statement built elsewhere</h4>
 
@@ -410,7 +514,7 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.Database`, function = `'dbGetQuery'`, sources = `[{id: 11, trace: InputTraceType.Alias, types: [InputType.Constant, InputType.Unknown, InputType.DerivedConstant]}]`, input = `[InputType.Unknown]`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L158) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L188) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_value">Test Case: constant value</h4>
 
@@ -424,7 +528,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L170) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L200) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_escaped_32_user_32_input">Test Case: escaped user input</h4>
 
@@ -438,7 +542,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L171) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L201) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_pasted_32_user_32_input">Test Case: pasted user input</h4>
 
@@ -452,7 +556,7 @@ We expect the linter to report the following:
 
 * certain: category = `UnescapedArgumentCategory.Html`, function = `'HTML'`, sources = `[{id: 18, trace: InputTraceType.Unknown, types: [InputType.User], name: 'name'}]`, input = `[InputType.User]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L172) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L202) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_code">Test Case: constant code</h4>
 
@@ -466,7 +570,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L189) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L219) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_serialized_32_user_32_input">Test Case: serialized user input</h4>
 
@@ -480,7 +584,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L190) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L220) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_pasted_32_user_32_input">Test Case: pasted user input</h4>
 
@@ -494,7 +598,7 @@ We expect the linter to report the following:
 
 * certain: category = `UnescapedArgumentCategory.JavaScript`, function = `'shinyjs::runjs'`, sources = `[{id: 18, trace: InputTraceType.Unknown, types: [InputType.User], name: 'name'}]`, input = `[InputType.User]`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L192) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L222) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_unknown_32_code">Test Case: unknown code</h4>
 
@@ -508,4 +612,4 @@ We expect the linter to report the following:
 
 * uncertain: category = `UnescapedArgumentCategory.JavaScript`, function = `'shinyjs::runjs'`, sources = `[{id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown]}]`, input = `[InputType.Unknown]`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L207) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L237) for the test-case implementation.

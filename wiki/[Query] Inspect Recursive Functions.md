@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="Inspect Recursive Functions Query">Inspect Recursive Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are recursive\
@@ -18,7 +18,7 @@ Using the example code `fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-recursion** (7ms)\
+Query: **inspect-recursion** (13ms)\
 &nbsp;&nbsp;- Function **21** (1.9-57) is recursive\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -70,11 +70,11 @@ subgraph "flow-21" [function 21]
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
-      *1.50* (**id: 12**)`"])
+      *1.50* (**id: 12**, 16+, 19-)`"])
     13{{"`*#91;RNumber#93;* **1**
-      *1.54* (**id: 13**)`"}}
+      *1.54* (**id: 13**, 16+, 19-)`"}}
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
-      *1.50-54* (**id: 14**, 19-)
+      *1.50-54* (**id: 14**, 16+, 19-)
     arg: (12, 13)`"]]
     built-in:-["`Built-In:
 #45;`"]
@@ -153,33 +153,32 @@ end
     linkStyle 22 stroke:gray,color:gray;
     16 -->|"calls"| 21
     16 -->|"returns"| 19
-    16 -->|"def-on-call, def-by-on-call"| 0
     17 -->|"reads, arg"| 10
     17 -->|"reads, arg"| 16
     17 -.->|"reads, calls"| built-in:_42_
-    linkStyle 28 stroke:gray;
+    linkStyle 27 stroke:gray;
     17 -.->|"flow"| 19
-    linkStyle 29 stroke:gray,color:gray;
+    linkStyle 28 stroke:gray,color:gray;
     19 -->|"returns, arg"| 8
     19 -->|"returns, arg"| 17
     19 -->|"reads, arg"| 7
     19 -.->|"reads, calls"| built-in:if
-    linkStyle 33 stroke:gray;
+    linkStyle 32 stroke:gray;
     19 -.->|"flow"| 20
-    linkStyle 34 stroke:gray,color:gray;
+    linkStyle 33 stroke:gray,color:gray;
     20 -->|"returns, arg"| 19
     20 -.->|"reads, calls"| built-in:_123_
-    linkStyle 36 stroke:gray;
+    linkStyle 35 stroke:gray;
 21 -.-|function| flow-21
 
     21 -.->|"flow"| 0
-    linkStyle 38 stroke:gray,color:gray;
+    linkStyle 37 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 22
     0 -->|"defined-by"| 21
     22 -->|"reads, arg"| 21
     22 -->|"returns, arg"| 0
     22 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 43 stroke:gray;
+    linkStyle 42 stroke:gray;
 ```
 
 </details>
@@ -203,7 +202,7 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-recursion** (4ms)\
+Query: **inspect-recursion** (12ms)\
 &nbsp;&nbsp;- Function **21** (1.9-57) is recursive\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -255,11 +254,11 @@ subgraph "flow-21" [function 21]
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
-      *1.50* (**id: 12**)`"])
+      *1.50* (**id: 12**, 16+, 19-)`"])
     13{{"`*#91;RNumber#93;* **1**
-      *1.54* (**id: 13**)`"}}
+      *1.54* (**id: 13**, 16+, 19-)`"}}
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
-      *1.50-54* (**id: 14**, 19-)
+      *1.50-54* (**id: 14**, 16+, 19-)
     arg: (12, 13)`"]]
     built-in:-["`Built-In:
 #45;`"]
@@ -338,33 +337,32 @@ end
     linkStyle 22 stroke:gray,color:gray;
     16 -->|"calls"| 21
     16 -->|"returns"| 19
-    16 -->|"def-on-call, def-by-on-call"| 0
     17 -->|"reads, arg"| 10
     17 -->|"reads, arg"| 16
     17 -.->|"reads, calls"| built-in:_42_
-    linkStyle 28 stroke:gray;
+    linkStyle 27 stroke:gray;
     17 -.->|"flow"| 19
-    linkStyle 29 stroke:gray,color:gray;
+    linkStyle 28 stroke:gray,color:gray;
     19 -->|"returns, arg"| 8
     19 -->|"returns, arg"| 17
     19 -->|"reads, arg"| 7
     19 -.->|"reads, calls"| built-in:if
-    linkStyle 33 stroke:gray;
+    linkStyle 32 stroke:gray;
     19 -.->|"flow"| 20
-    linkStyle 34 stroke:gray,color:gray;
+    linkStyle 33 stroke:gray,color:gray;
     20 -->|"returns, arg"| 19
     20 -.->|"reads, calls"| built-in:_123_
-    linkStyle 36 stroke:gray;
+    linkStyle 35 stroke:gray;
 21 -.-|function| flow-21
 
     21 -.->|"flow"| 0
-    linkStyle 38 stroke:gray,color:gray;
+    linkStyle 37 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 22
     0 -->|"defined-by"| 21
     22 -->|"reads, arg"| 21
     22 -->|"returns, arg"| 0
     22 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 43 stroke:gray;
+    linkStyle 42 stroke:gray;
 ```
 
 </details>

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="stop-call">Stop without call.=False argument&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span>
@@ -6,7 +6,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Checks whether stop calls without call. argument set to FALSE are used.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/stop-with-call-arg.ts#L31">src/linter/rules/stop-with-call-arg.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/stop-with-call-arg.ts#L45">src/linter/rules/stop-with-call-arg.ts</a>._
 
 ### Configuration
 
@@ -27,7 +27,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (0 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call): _no findings_\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -159,3 +159,73 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L26) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_a_32_condition_32_object_32_built_32_with_32_structure">Test Case: a condition object built with structure</h4>
+
+Given the following input:
+
+```r
+f <- function() stop(structure(class = c("myError", "error", "condition"), list(message = "m", call = NULL)))
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L27) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_stop_32_handed_32_to_32_do.call_32_states_32_its_32_arguments_32_there">Test Case: stop handed to do.call states its arguments there</h4>
+
+Given the following input:
+
+```r
+f <- function() { args <- list("m", call. = FALSE); do.call(stop, args) }
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L28) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_a_32_direct_32_stop_32_beside_32_one_32_handed_32_to_32_do.call_32_is_32_still_32_reported">Test Case: a direct stop beside one handed to do.call is still reported</h4>
+
+Given the following input:
+
+```r
+f <- function() { args <- list("m", call. = FALSE); do.call(stop, args); stop("y") }
+```
+
+We expect the linter to report the following:
+
+* uncertain
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L29) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_an_32_object_32_built_32_with_32_structure_32_but_32_no_32_condition_32_class_32_is_32_reported">Test Case: an object built with structure but no condition class is reported</h4>
+
+Given the following input:
+
+```r
+f <- function() stop(structure(class = "myError", list(message = "m", call = NULL)))
+```
+
+We expect the linter to report the following:
+
+* uncertain
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L32) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_a_32_qualified_32_base::stop">Test Case: a qualified base::stop</h4>
+
+Given the following input:
+
+```r
+f <- function() base::stop("x")
+```
+
+We expect the linter to report the following:
+
+* uncertain
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-stop-call.test.ts#L35) for the test-case implementation.

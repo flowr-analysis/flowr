@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
@@ -32,7 +32,7 @@ the following query returns the information for all identified function definiti
 
 _Results (prettified and summarized):_
 
-Query: **inspect-exception** (8ms)\
+Query: **inspect-exception** (19ms)\
 &nbsp;&nbsp;- Function **20** (1.12-4.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
 &nbsp;&nbsp;- Function **40** (8.13-30) does not throw exceptions.\
@@ -135,14 +135,14 @@ subgraph "flow-44" [function 44]
     23["`*#91;RSymbol#93;* **x**
       *5.22* (**id: 23**, v: )`"]
     29(["`*#91;RSymbol#93;* **x**
-      *7.13* (**id: 29**)`"])
+      *7.13* (**id: 29**, 31+)`"])
     %% Environment of 31 [level: 1]:
     %% Built-in
     %% 1----------------------------------------
     %% 2----------------------------------------
     %%   x: {**x** (id: 23, type: Parameter, def. @24)}
     31[["`*#91;RFunctionCall#93;* **mayFail**
-      *7.5-14* (**id: 31**)
+      *7.5-14* (**id: 31**, 42+)
     arg: (29)`"]]
     %% Environment of 40 [level: 1]:
     %% Built-in
@@ -254,6 +254,7 @@ end
     31 -->|"reads, arg"| 29
     31 -.->|"flow"| 40
     linkStyle 5 stroke:gray,color:gray;
+    31 -->|"reads"| 42
     31 -->|"calls"| 20
     31 -->|"returns"| 11
     31 -->|"returns"| 18
@@ -268,36 +269,36 @@ end
 40 -.-|function| flow-40
 
     40 -.->|"flow"| 41
-    linkStyle 15 stroke:gray,color:gray;
+    linkStyle 16 stroke:gray,color:gray;
     41 -->|"reads, calls"| 40
     41 -.->|"flow"| 42
-    linkStyle 17 stroke:gray,color:gray;
+    linkStyle 18 stroke:gray,color:gray;
     41 -->|"calls"| anon-40
     42 -->|"returns, arg"| 31
     42 -->|"reads, calls, arg"| 41
     42 -->|"reads, calls"| 40
     42 -->|"returns"| 38
     42 -.->|"reads, calls"| built-in:tryCatch
-    linkStyle 23 stroke:gray;
+    linkStyle 24 stroke:gray;
     42 -.->|"flow"| 43
-    linkStyle 24 stroke:gray,color:gray;
+    linkStyle 25 stroke:gray,color:gray;
     anon-40 -->|"reads, calls"| 40
-    anon-40 -.->|"reads"| built-in:_123_
-    linkStyle 26 stroke:gray;
+    anon-40 -.->|"reads, calls"| built-in:_123_
+    linkStyle 27 stroke:gray;
     anon-40 -->|"returns"| 38
     43 -->|"returns, arg"| 42
     43 -.->|"reads, calls"| built-in:_123_
-    linkStyle 29 stroke:gray;
+    linkStyle 30 stroke:gray;
 44 -.-|function| flow-44
 
     44 -.->|"flow"| 22
-    linkStyle 64 stroke:gray,color:gray;
+    linkStyle 65 stroke:gray,color:gray;
     22 -->|"defined-by, flow"| 45
     22 -->|"defined-by"| 44
     45 -->|"reads, arg"| 44
     45 -->|"returns, arg"| 22
     45 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 69 stroke:gray;
+    linkStyle 70 stroke:gray;
 ```
 
 </details>

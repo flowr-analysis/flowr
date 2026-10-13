@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="dead-code">Dead Code&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
@@ -27,7 +27,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Code at 1.17\
@@ -337,6 +337,59 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L80) for the test-case implementation.
 		
+<h4 id="Test_32_Case:_32_return_32_inside_32_local_32_only_32_leaves_32_local">Test Case: return inside local only leaves local</h4>
+
+Given the following input:
+
+```r
+f <- function() {
+  local({ return(1) })
+  2
+}
+print(f())
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L84) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_code_32_after_32_the_32_return_32_inside_32_local_32_is_32_dead">Test Case: code after the return inside local is dead</h4>
+
+Given the following input:
+
+```r
+f <- function() {
+  local({ return(1); 3 })
+  2
+}
+```
+
+We expect the linter to report the following:
+
+* certain at 2.22-2.22
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L85) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_a_32_return_32_after_32_the_32_local_32_still_32_makes_32_the_32_tail_32_dead">Test Case: a return after the local still makes the tail dead</h4>
+
+Given the following input:
+
+```r
+f <- function() {
+  local({ return(1) })
+  return(2)
+  3
+}
+```
+
+We expect the linter to report the following:
+
+* certain at 4.3-4.3
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L88) for the test-case implementation.
+		
 <h4 id="Test_32_Case:_32_on.exit_40_return_41__32_does_32_not_32_poison_32_enclosing_32_function">Test Case: on.exit(return) does not poison enclosing function</h4>
 
 > // on.exit(expr) registers expr to run at function exit
@@ -355,7 +408,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L85) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L95) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_sibling_32_arms_32_after_32_a_32_stop_32_arm_32_stay_32_live">Test Case: sibling arms after a stop arm stay live</h4>
 
@@ -373,7 +426,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L89) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L99) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_code_32_after_32_a_32_switch_32_with_32_a_32_stop_32_arm_32_stays_32_live">Test Case: code after a switch with a stop arm stays live</h4>
 
@@ -390,7 +443,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L90) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L100) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_in-arm_32_code_32_after_32_a_32_stop_32_is_32_dead">Test Case: in-arm code after a stop is dead</h4>
 
@@ -406,7 +459,7 @@ We expect the linter to report the following:
 
 * certain at 2.30-2.35
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L91) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L101) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_stop_32_in_32_the_32_default_32_arm_32_keeps_32_siblings_32_and_32_after_32_live">Test Case: stop in the default arm keeps siblings and after live</h4>
 
@@ -424,9 +477,9 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L94) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L104) for the test-case implementation.
 		
-<h4 id="Test_32_Case:_32_all_32_arms_32_return_32_makes_32_the_32_tail_32_dead">Test Case: all arms return makes the tail dead</h4>
+<h4 id="Test_32_Case:_32_a_32_numeric_32_selector_32_past_32_the_32_arms_32_picks_32_none">Test Case: a numeric selector past the arms picks none</h4>
 
 Given the following input:
 
@@ -440,10 +493,46 @@ f <- function(k) {
 
 We expect the linter to report the following:
 
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L105) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_numeric_32_selector_32_out_32_of_32_range_32_falls_32_through">Test Case: numeric selector out of range falls through</h4>
+
+Given the following input:
+
+```r
+f <- function(n) {
+  switch(n, a = return(1), stop("bad"))
+  9
+}
+f(3)
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L106) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_all_32_arms_32_return_32_for_32_a_32_string_32_selector_32_makes_32_the_32_tail_32_dead">Test Case: all arms return for a string selector makes the tail dead</h4>
+
+Given the following input:
+
+```r
+f <- function() {
+  switch("c", a = return(1), return(3))
+  after <- 1
+  after
+}
+```
+
+We expect the linter to report the following:
+
 * certain at 3.3-3.12
 * certain at 4.3-4.7
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L95) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L107) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_empty_32_fall-through_32_arms_32_are_32_not_32_dead">Test Case: empty fall-through arms are not dead</h4>
 
@@ -461,7 +550,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L99) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L111) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_selector_32_kills_32_the_32_other_32_arms">Test Case: constant selector kills the other arms</h4>
 
@@ -481,7 +570,7 @@ We expect the linter to report the following:
 * certain at 2.34-2.34
 * certain at 2.38-2.38
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L103) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L115) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_no_32_match_32_no_32_default_32_kills_32_all_32_arms">Test Case: no match no default kills all arms</h4>
 
@@ -502,7 +591,7 @@ We expect the linter to report the following:
 * certain at 2.22-2.22
 * certain at 2.26-2.26
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L109) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L121) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_no_32_match_32_selects_32_the_32_default">Test Case: no match selects the default</h4>
 
@@ -520,7 +609,7 @@ We expect the linter to report the following:
 * certain at 2.20-2.20
 * certain at 2.24-2.24
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L115) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L127) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_constant_32_selector_32_into_32_an_32_empty_32_fall-through_32_arm">Test Case: constant selector into an empty fall-through arm</h4>
 
@@ -537,7 +626,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L119) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L131) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_non-constant_32_selector_32_prunes_32_nothing">Test Case: non-constant selector prunes nothing</h4>
 
@@ -554,7 +643,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L120) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L132) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__124__124__32_return_32_guard">Test Case: || return guard</h4>
 
@@ -572,7 +661,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L124) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L136) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__38__38__32_stop_32_guard">Test Case: && stop guard</h4>
 
@@ -590,7 +679,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L125) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L137) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_code_32_after_32_an_32_early_32_return">Test Case: code after an early return</h4>
 
@@ -612,7 +701,7 @@ We expect the linter to report the following:
 
 * certain at 5.3-5.15
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L130) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L142) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_live_32_switch_32_but_32_dead_32_tail">Test Case: live switch but dead tail</h4>
 
@@ -631,7 +720,53 @@ We expect the linter to report the following:
 
 * certain at 5.3-5.24
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L133) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L145) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_exists">Test Case: exists</h4>
+
+Given the following input:
+
+```r
+x <- 1
+if(exists("x")) print(1)
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L151) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_get">Test Case: get</h4>
+
+Given the following input:
+
+```r
+x <- 1
+print(get("x"))
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L152) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_get_32_with_32_envir">Test Case: get with envir</h4>
+
+Given the following input:
+
+```r
+e <- new.env()
+assign("x", 1, envir = e)
+print(get("x", envir = e))
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L153) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_after_32_infinite_32_repeat">Test Case: after infinite repeat</h4>
 
@@ -645,7 +780,27 @@ We expect the linter to report the following:
 
 * certain at 1.16-1.16
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L139) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L157) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_a_32_condition_32_the_32_loop_32_changes_32_for_32_its_32_next_32_iteration">Test Case: a condition the loop changes for its next iteration</h4>
+
+Given the following input:
+
+```r
+run <- TRUE
+s <- FALSE
+while(run) {
+  if(s) run <- FALSE
+  s <- TRUE
+}
+print("done")
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L160) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_after_32_infinite_32_while">Test Case: after infinite while</h4>
 
@@ -659,4 +814,4 @@ We expect the linter to report the following:
 
 * certain at 1.21-1.21
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L142) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L161) for the test-case implementation.

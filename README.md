@@ -46,7 +46,7 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (10 ms)
+    Query: linter (28 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -65,7 +65,7 @@ It offers a wide variety of features, for example:
        ╰ Unclosed Connection (unclosed-connection): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈10 ms (1ms accuracy, total 10 ms)
+    All queries together required ≈28 ms (1ms accuracy, total 28 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -79,7 +79,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (11 ms)\
+    Query: **linter** (48 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -102,7 +102,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈11 ms (1ms accuracy, total 12 ms)_
+    _All queries together required ≈49 ms (1ms accuracy, total 49 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -136,7 +136,11 @@ It offers a wide variety of features, for example:
           "no-leaked-credentials": {"results":[],".meta":{"totalChecked":0}},
           "undefined-symbol": {
             "results": [],
-            ".meta": {"totalFunctionCalls":1,"totalVariableUses":0,"suppressed":{"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0}}
+            ".meta": {
+              "totalFunctionCalls": 1,
+              "totalVariableUses": 0,
+              "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0}
+            }
           },
           "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
           "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
@@ -202,7 +206,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
+    All queries together required ≈24 ms (1ms accuracy, total 24 ms)
     ```
     
     </details>

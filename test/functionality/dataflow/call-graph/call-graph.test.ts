@@ -1,6 +1,6 @@
-import { describe } from 'vitest';
+import { describe, assert, test } from 'vitest';
 import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
-import { label } from '../../_helper/label';
+import { label, decorateLabelContext } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { ExitPointType } from '../../../../src/dataflow/info';
@@ -9,6 +9,8 @@ import {
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 assumeLoadedPackages('R6');
 
@@ -387,4 +389,12 @@ f.numeric <- function(x) {
 			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true, mustNotHaveEdges: [edge] }
 		);
 	}
+
+	test(decorateLabelContext(label('domains:hof a closure handed to lapply is reachable', ['name-normal', 'function-calls']), ['dataflow']), async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addRequest('adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)');
+		const { idMap } = await analyzer.normalize();
+		const unreachable = new Set((await analyzer.query([{ type: 'call-graph', reportUnreachable: true }]))['call-graph'].unreachable);
+		assert.isFalse(unreachable.has(SlicingCriterion.parse('1:22', idMap)), 'inner function');
+	});
 }));

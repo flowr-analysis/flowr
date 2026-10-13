@@ -1,10 +1,10 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -18,7 +18,6 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { EnvirPositionFormals, resolveConstantString, resolveFirstEnvirArg, suppliesArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -35,11 +34,41 @@ function namesDenotedBy<OtherInfo>(
 	}
 	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'c'
 		&& Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function)) {
-		const parts = node.arguments.map(arg => RArgument.isEmpty(arg) ? undefined : unpackArg(arg))
-			.map(value => value !== undefined ? resolveConstantString(value, data) : undefined);
+		const parts = node.arguments.map(arg => {
+			const value = RArgument.valueOf(arg);
+			return value === undefined ? undefined : resolveConstantString(value, data);
+		});
 		return parts.every(isNotUndefined) ? parts : [];
 	}
 	return [];
+}
+
+/**
+ * Synthesizes one symbol per name the first argument of `get` denotes (a string literal, or an expression folding to
+ * constant strings), so the lookup can be processed like a plain read of these symbols.
+ */
+function synthesizeTargets<OtherInfo>(
+	retrieve: RNode<OtherInfo & ParentInformation>,
+	name: RSymbol<OtherInfo & ParentInformation>,
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): RSymbol<OtherInfo & ParentInformation>[] {
+	const literal = RString.is(retrieve);
+	const names = literal ? [removeRQuotes(retrieve.lexeme)] : namesDenotedBy(retrieve, data);
+	const location = literal ? retrieve.location : retrieve.location ?? name.location ?? SourceRange.invalid();
+	const literalLexeme = literal ? retrieve.lexeme : undefined;
+	return names.map((resolvedName, i) => {
+		const synthId = `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
+		const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
+			type:    RType.Symbol,
+			info:    { ...retrieve.info, id: synthId, parent: retrieve.info.id },
+			content: resolvedName,
+			lexeme:  literalLexeme ?? resolvedName,
+			location
+		};
+		data.completeAst.idMap.set(synthId, synthSymbol);
+		return synthSymbol;
+	});
 }
 
 /**
@@ -62,41 +91,15 @@ export function processGet<OtherInfo>(
 ): DataflowInformation {
 	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', ...EnvirPositionFormals]);
 
-	const firstArg = args.length >= 1 ? args[0] : undefined;
-	const retrieve = firstArg !== undefined && firstArg !== EmptyArgument
-		? unpackNonameArg(firstArg)
-		: undefined;
-
-	const targets: RSymbol<OtherInfo & ParentInformation>[] = [];
-	let nameExpression: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
-	if(retrieve !== undefined) {
-		const literal = RString.is(retrieve);
-		const names = literal ? [removeRQuotes(retrieve.lexeme)] : namesDenotedBy(retrieve, data);
-		const location = literal ? retrieve.location : retrieve.location ?? name.location ?? SourceRange.invalid();
-		for(const [i, resolvedName] of names.entries()) {
-			const synthId = `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
-			const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
-				type:    RType.Symbol,
-				info:    { ...retrieve.info, id: synthId, parent: retrieve.info.id },
-				content: resolvedName,
-				lexeme:  literal ? retrieve.lexeme : resolvedName,
-				location
-			};
-			data.completeAst.idMap.set(synthId, synthSymbol);
-			targets.push(synthSymbol);
-		}
-		if(!literal && targets.length > 0) {
-			nameExpression = firstArg;
-		}
-	}
-
+	const retrieve = unpackNonameArg(args[0]);
+	const targets = retrieve === undefined ? [] : synthesizeTargets(retrieve, name, rootId, data);
 	if(targets.length === 0) {
 		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has no resolvable name argument, skipping`);
 		// dynamic, unresolvable name: reached-but-unknown rather than dropped
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
 	}
-
-	const remainingArgs = args.slice(1);
+	/* a computed name is an expression the call evaluates and reads */
+	const nameExpression = RString.is(retrieve) ? undefined : args[0];
 
 	/* resolve in the custom environment if one was found, else the global one.
 	 * Pass remaining original args (e.g. envir=e) so they appear as Use vertices in the graph. */
@@ -105,7 +108,7 @@ export function processGet<OtherInfo>(
 		args: [
 			...wrapArgumentsUnnamed(targets, data.completeAst.idMap),
 			...(nameExpression !== undefined ? [nameExpression] : []),
-			...remainingArgs
+			...args.slice(1)
 		],
 		rootId,
 		data:   resolution ? resolution.envirData : data,
@@ -124,7 +127,7 @@ export function processGet<OtherInfo>(
 		}
 	}
 
-	const nameExpressionProcessed = nameExpression !== undefined ? processedArguments[targets.length] : undefined;
+	const nameExpressionProcessed = nameExpression === undefined ? undefined : processedArguments[targets.length];
 	if(nameExpressionProcessed) {
 		information.graph.addEdge(rootId, nameExpressionProcessed.entryPoint, EdgeType.Reads);
 	}

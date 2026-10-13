@@ -3,10 +3,9 @@
  * fetched on the first run: R is about 30 MB and most visits never execute anything. Packages the
  * script loads are fetched from the webR repository right before the run that needs them.
  */
-import { WebRVersion } from './webr-version';
+import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
 
-const WebRUrl = `https://webr.r-wasm.org/v${WebRVersion}/webr.mjs`;
 
 /**
  * Installs the service worker that checks every file of webR against the release pinned at build time, and
@@ -72,10 +71,7 @@ function showTrust(refusal?: string): void {
 		: '');
 }
 
-/**
- * What the page waits for while it downloads: the transfers that count towards it and, when known up front, how
- * many bytes they take together. Once they are all there, `then` says what still takes a moment.
- */
+/** a download the page waits for: which transfers count, their total bytes if known, and what follows them */
 interface Step {
 	readonly counts: (url: string) => boolean
 	readonly total?: number
@@ -83,12 +79,11 @@ interface Step {
 }
 
 let step: Step | undefined;
-/** the bytes that arrived so far for each transfer of the {@link step}, as the guard reports them */
+/** the bytes that arrived so far for each transfer of the {@link step} */
 const transfers = new Map<string, number>();
 
 const megabytes = (bytes: number) => (bytes / 1_000_000).toFixed(1);
 
-/** the bar is exact while the step knows its size, and waits without a value once it does not or is done downloading */
 function showProgress(): void {
 	const bar = document.getElementById('runrprogress') as HTMLProgressElement | null;
 	const bytes = document.getElementById('runrbytes');
@@ -114,8 +109,7 @@ function beginStep(next?: Step): void {
 	showProgress();
 }
 
-/** where webR comes from, and how much every start of it downloads outside its lazily mounted file system */
-const WebRBase = `https://webr.r-wasm.org/v${WebRVersion}/`;
+/** how much every start of webR downloads outside its lazily mounted file system */
 const startBytes = Number(document.getElementById('runr')?.dataset.webrStartBytes) || undefined;
 
 /** rejects once the guard refuses a file of webR */
@@ -140,7 +134,7 @@ function refused(): Promise<never> {
 function start(): Promise<Session> {
 	session ??= (async() => {
 		await guard();
-		const { WebR } = await import(WebRUrl) as { WebR: new () => WebR };
+		const { WebR } = await import(`${WebRBase}webr.mjs`) as { WebR: new () => WebR };
 		const r = new WebR();
 		await Promise.race([r.init(), refused()]);
 		return { r, installed: new Set(await r.evalRRaw('.packages(all.available = TRUE)', 'string[]')) };
@@ -155,21 +149,15 @@ function start(): Promise<Session> {
 /** the packages a piece of R code loads, or without code the whole project, the page answers with flowR's dependencies query */
 export type PackageFinder = (code?: string) => Promise<readonly string[]>;
 
-/**
- * What a run executes, and the files of the project it finds next to it, by their names relative to the working directory.
- * A `fresh` run starts from an empty workspace, like a new `Rscript`; otherwise it continues what ran before, like a notebook cell.
- */
+/** what a run executes next to the project files, `fresh` from an empty workspace like `Rscript`, otherwise like a notebook cell */
 export interface RunInput {
 	readonly code:  string
 	readonly files: readonly (readonly [string, string])[]
 	readonly fresh: boolean
 }
 
-/**
- * Writes `files` where R finds them: into a new, empty working directory for a fresh run, so nothing an earlier
- * run left behind is found, otherwise into the one the session already works in, so a cell sees the current files.
- */
-async function provideFiles(s: Session, files: RunInput['files'], fresh: boolean): Promise<void> {
+/** writes `files` into a new working directory for a fresh run, otherwise into the current one */
+async function provideFiles(s: Session, { files, fresh }: RunInput): Promise<void> {
 	const [dir] = await s.r.evalRRaw(fresh ? 'local({ d <- tempfile("project"); dir.create(d); setwd(d); d })' : 'getwd()', 'string[]');
 	for(const [name, text] of files) {
 		const parts = name.split('/');
@@ -180,14 +168,10 @@ async function provideFiles(s: Session, files: RunInput['files'], fresh: boolean
 	}
 }
 
-/** where webR installs packages from */
 const Packages = 'https://repo.r-wasm.org/';
 const fileName = (url: string) => url.slice(url.lastIndexOf('/') + 1);
 
-/**
- * The archives installing `packages` downloads: them and everything they need that is not there yet, looked up in
- * the index of the repository webR installs from, at the place of R's version in it.
- */
+/** the archives installing `packages` downloads, with every dependency not installed yet */
 async function packageArchives(s: Session, packages: readonly string[]): Promise<string[]> {
 	return await s.r.evalRRaw(`local({
 		contrib <- file.path(getOption("webr_pkg_repos")[1], "bin", "emscripten", "contrib", paste(R.version$major, sub("[.].*", "", R.version$minor), sep = "."))
@@ -266,9 +250,8 @@ function canvasOf(image: ImageBitmap): HTMLCanvasElement {
 }
 
 /**
- * Evaluates `code` in the one R session of the page, after fetching the packages `wanted` names. With a `project`,
- * its files are written first, and for a fresh run the workspace is emptied. Gives up silently once `current` says a
- * newer evaluation took over. Returns whether R said or drew anything.
+ * Evaluates `code` in the one R session of the page, after fetching the packages `wanted` names and writing the `project`.
+ * Gives up silently once `current` says a newer evaluation took over. Returns whether R said or drew anything.
  */
 async function evaluate(code: string, wanted: () => Promise<readonly string[]>, sink: Sink, plot: PlotSize, current: () => boolean, project?: RunInput): Promise<boolean> {
 	if(session === undefined) {
@@ -289,7 +272,7 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 			await shelter.captureR('rm(list = ls(all.names = TRUE))', { captureGraphics: false });
 		}
 		if(project !== undefined) {
-			await provideFiles(s, project.files, project.fresh);
+			await provideFiles(s, project);
 		}
 		const result = await shelter.captureR(code, { withAutoprint: true, throwJsException: false, captureGraphics: plot });
 		if(!current()) {
@@ -344,8 +327,7 @@ export type Runner = (prepare: () => Promise<RunInput>, title: string) => void;
 
 /**
  * Wires the run button and the output card: runs what `prepare` returns and shows its output and plots.
- * `packagesOf` tells which packages the project loads, so they can be installed before it runs.
- * Returns how else to run something there, as the cells of a notebook do.
+ * `packagesOf` tells which packages the project loads. Returns how else to run something there, as notebook cells do.
  */
 export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageFinder): Runner {
 	const go = document.getElementById('runrgo') as HTMLButtonElement | null;
@@ -424,16 +406,17 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 			}
 		}
 	};
-	go.addEventListener('click', () => void runScript(prepare, 'R output'));
-	document.addEventListener('keydown', event => {
-		if((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !go.disabled) {
-			event.preventDefault();
-			void runScript(prepare, 'R output');
-		}
-	});
-	return (what, named) => {
+	const runner: Runner = (what, named) => {
 		if(!go.disabled) {
 			void runScript(what, named);
 		}
 	};
+	go.addEventListener('click', () => runner(prepare, 'R output'));
+	document.addEventListener('keydown', event => {
+		if((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !go.disabled) {
+			event.preventDefault();
+			runner(prepare, 'R output');
+		}
+	});
+	return runner;
 }

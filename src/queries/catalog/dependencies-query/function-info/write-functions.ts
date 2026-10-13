@@ -11,7 +11,6 @@ const OutputRedirects = [
 	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
 ] as const satisfies DependencyInfoLink[];
 
-
 const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'save.image',  argIdx: 0, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'utils', name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
@@ -85,9 +84,6 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'png',        name: 'writePNG',   argIdx: 1, argName: 'target',    resolveValue: true, ignoreIf: 'arg-missing' },
 	/* audio / video */
 	{ package: 'seewave', name: 'savewav',               argName: 'filename', resolveValue: true, defaultValue: '<wave-name>' },
-	/* geospatial */
-	/* array / binary science formats */
-	/* phylogeny / sequence */
 ] as const;
 
 /** The write entries the given built-in definitions imply, together with the ones written down here. */

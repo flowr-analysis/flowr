@@ -156,39 +156,12 @@ interface CriticalTargetEntry {
 
 /** Get the critical calls of every category that is not disabled */
 function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltInIndex): CriticalCallEntry[] {
-	const result: CriticalCallEntry[] = [];
-
-	for(const category of UnescapedArgumentCategories) {
-		const criticalCallProps = config.categories[category].criticalCalls;
-		const criticalArgProps = config.categories[category].criticalArgs;
-
-		if(config.disabledCategories.includes(category)) {
-			continue;
-		}
-		for(const entry of index.entries) {
-			if(FunctionSemantics.call.props.hasAny(entry, criticalCallProps) && entry.sig?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
-				result.push({ category, name: entry.name, signature: entry.sig });
-			}
-		}
-	}
-	return result;
-}
-
-/** Index the critical calls of the enabled categories by function name */
-function indexCriticalCalls(config: UnescapedArgumentsConfig, builtIns: BuiltInIndex): Map<string, CriticalCallEntry[]> {
-	const index = new Map<string, CriticalCallEntry[]>();
-
-	for(const call of getEnabledCriticalCalls(config, builtIns)) {
-		const name = Identifier.getName(call.name);
-		const known = index.get(name);
-
-		if(known !== undefined) {
-			known.push(call);
-		} else {
-			index.set(name, [call]);
-		}
-	}
-	return index;
+	return UnescapedArgumentCategories.filter(category => !config.disabledCategories.includes(category)).flatMap(category => {
+		const { criticalCalls, criticalArgs } = config.categories[category];
+		const hasCriticalArg = (sig: FnSig | undefined) => sig?.some(([, prop]) => (prop & criticalArgs) !== 0) ?? false;
+		return index.entries.filter(entry => FunctionSemantics.call.props.hasAny(entry, criticalCalls) && hasCriticalArg(entry.sig))
+			.map(entry => ({ category, name: entry.name, signature: entry.sig as FnSig }));
+	});
 }
 
 /** Gets all critical arguments of critical function calls in the data flow graph */
@@ -198,13 +171,12 @@ function getCriticalTargets(
 	config: UnescapedArgumentsConfig,
 	builtIns: BuiltInIndex
 ): CriticalTarget[] {
-	const criticalCalls = indexCriticalCalls(config, builtIns);
+	/* index the critical calls of the enabled categories by function name */
+	const criticalCalls = Map.groupBy(getEnabledCriticalCalls(config, builtIns), call => Identifier.getName(call.name));
 	const targets: CriticalTarget[] = [];
 	const seen = new Set<string>();
-
 	for(const { node } of elements) {
 		const call = graph.getVertex(node.info.id);
-
 		if(!DfgVertex.isFunctionCall(call)) {
 			continue;
 		}
@@ -215,10 +187,9 @@ function getCriticalTargets(
 			for(const arg of FunctionSemantics.call.match.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
 				const location = SourceLocation.fromNode(graph.idMap?.get(arg));
 				const key = `${category}-${call.id}-${arg}`;
-
 				if(location !== undefined && !seen.has(key)) {
 					seen.add(key);
-					targets.push({ category, call: call, signature, arg, location });
+					targets.push({ category, call, signature, arg, location });
 				}
 			}
 		}
@@ -228,16 +199,10 @@ function getCriticalTargets(
 
 function mapInputSourceToArgs(call: DataflowGraphVertexFunctionCall, sources: InputSources): [NodeId, InputSource][] {
 	const args = call.args.map(FunctionArgument.getReference).filter(isNotUndefined);
-	const result: [NodeId, InputSource][] = [];
-
-	for(let i = 0; i < args.length; i++) {
-		const source = sources.find(source => source.id === args[i]) ?? (sources.length === args.length ? sources[i] : undefined);
-
-		if(source !== undefined) {
-			result.push([args[i], source]);
-		}
-	}
-	return result;
+	return args.flatMap((arg, i): [NodeId, InputSource][] => {
+		const source = sources.find(source => source.id === arg) ?? (sources.length === args.length ? sources[i] : undefined);
+		return source === undefined ? [] : [[arg, source]];
+	});
 }
 
 /**
@@ -289,9 +254,10 @@ async function getUnescapedSources(
 	data: ReadonlyFlowrAnalysisProvider,
 	graph: DataflowGraph
 ): Promise<Map<CriticalTarget, InputSource[]>> {
-	const sanitizerNames = new Set((config.categories[category].sanitizers ?? []).map(call => Identifier.getName(call)));
-	const sanitizers = (config.categories[category].sanitizers ?? []).map(call => ({ call }));
-	const queryConfig = { narrowing: [...narrowingFunctions(data.inspectContext().env.builtInIndex), ...sanitizers] };
+	const sanitizers = config.categories[category].sanitizers ?? [];
+	const sanitizerNames = new Set(sanitizers.map(call => Identifier.getName(call)));
+	const narrowing = [...narrowingFunctions(data.inspectContext().env.builtInIndex), ...sanitizers.map(call => ({ call }))];
+	const queryConfig = { narrowing };
 	const found = new Map<CriticalTarget, InputSource[]>();
 	let entries: CriticalTargetEntry[] = targets.map(target => ({ target, call: target.call.id, only: new Set([target.arg]), depth: 0 }));
 
@@ -300,20 +266,17 @@ async function getUnescapedSources(
 		const queryResult = await data.query([{ type: 'input-sources', criterion: criteria, config: queryConfig }]);
 		const classified = queryResult['input-sources']?.results ?? {};
 		const next: CriticalTargetEntry[] = [];
-
 		for(const entry of entries) {
 			const call = graph.getVertex(entry.call);
-
 			if(!DfgVertex.isFunctionCall(call)) {
 				continue;
 			}
 			for(const [arg, source] of mapInputSourceToArgs(call, classified[SlicingCriterion.fromId(entry.call)] ?? [])) {
 				const vertex = graph.getVertex(arg);
-
 				/* a call passing a constant today makes the argument constant, but the function still escapes its
 				   parameter, and it is one call away from being handed anything */
 				const viaParameter = isAcceptedInput(source, config)
-					&& source.types.length > 0 && source.types.every(t => t === InputType.Constant || t === InputType.DerivedConstant)
+					&& source.types.length > 0 && source.types.every(t => AcceptedInputs.includes(t))
 					&& readsParameter(graph, arg, sanitizerNames);
 				if((entry.only !== undefined && !entry.only.has(arg)) || (isAcceptedInput(source, config) && !viaParameter) || RConstant.is(graph.idMap?.get(arg))) {
 					continue;
@@ -334,23 +297,19 @@ async function getUnescapedSources(
 function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSource, idMap: AstIdMap): LintQuickFix | undefined {
 	const location = SourceLocation.fromNode(idMap.get(source.id));
 	const lexeme = RNode.lexeme(idMap.get(source.id));
-
 	if(location === undefined || lexeme === undefined || (fix.partsOnly && source.id === target.arg)) {
 		return undefined;
 	}
 	let leading = '';
-
 	if(fix.firstArg !== undefined) {
 		const [arg] = FunctionSemantics.call.match.findWithProps(target.call.args, target.signature, fix.firstArg);
 		const first = arg === undefined || arg === target.arg ? undefined : RNode.lexeme(idMap.get(arg));
-
 		if(first === undefined) {
 			return undefined;
 		}
 		leading = `${first}, `;
 	}
 	const call = Identifier.toString(fix.call);
-
 	return {
 		type:        'replace',
 		loc:         location,
@@ -362,7 +321,6 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 function createResult(target: CriticalTarget, sources: InputSource[], config: UnescapedArgumentsConfig, idMap: AstIdMap): UnescapedArgumentsResult {
 	const fix = config.categories[target.category].quickFix;
 	const quickFix = fix === undefined ? [] : sources.map(source => escapeFix(fix, target, source, idMap)).filter(isNotUndefined);
-
 	return {
 		certainty:  sources.some(source => isCertainlyCritical(source, config)) ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain,
 		involvedId: [target.call.id, target.arg],
@@ -385,21 +343,16 @@ export const UNESCAPED_ARGUMENTS = {
 		const idMap = (await data.normalize()).idMap;
 		const graph = (await data.dataflow()).graph;
 		const targets = getCriticalTargets(elements.getElements(), graph, config, data.inspectContext().env.builtInIndex);
-
 		const results: UnescapedArgumentsResult[] = [];
 		let escaped = 0;
-
 		for(const category of UnescapedArgumentCategories) {
 			const categoryTargets = targets.filter(target => target.category === category);
-
 			if(categoryTargets.length === 0) {
 				continue;
 			}
 			const unescaped = await getUnescapedSources(category, categoryTargets, config, data, graph);
-
 			for(const target of categoryTargets) {
 				const sources = unescaped.get(target);
-
 				if(sources === undefined) {
 					escaped++;
 				} else {

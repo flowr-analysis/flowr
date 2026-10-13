@@ -182,10 +182,9 @@ async function main(): Promise<void> {
 	const exports = await packageExports();
 	/* the script the page opens with, kept as an R file so the documentation links to the same one */
 	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
-	/* the examples one can switch to, each as the files it opens with, read from where `examples/index.json` points */
 	const examples = (JSON.parse(fs.readFileSync(path.join('scripts', 'playground', 'examples', 'index.json'), 'utf8')) as { label: string, title: string, files: Record<string, string> }[])
 		.map(e => ({ ...e, files: Object.entries(e.files).map(([name, from]) => [name, fs.readFileSync(path.join('scripts', 'playground', from), 'utf8').trim()]) }));
-	/* webR's own files, each pinned to its hash; what lies outside `vfs/` is what every start of R downloads */
+	/* what lies outside `vfs/` is what every start of R downloads */
 	const manifest = await webRManifest().catch((e: unknown) => {
 		console.warn(`  could not pin webR, the playground cannot run R: ${e instanceof Error ? e.message : String(e)}`);
 		return undefined;

@@ -7,7 +7,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RNa, RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
-import { ambientReadsOfSymbol, ambientWritesOfForce } from './functions/call/built-in/built-in-ambient-state';
+import { ambientAccessOfSymbol } from './functions/call/built-in/built-in-ambient-state';
 
 /**
  * Process a symbol node in the AST for dataflow analysis.
@@ -19,10 +19,8 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		return processValue(symbol, data);
 	}
 	const sid = symbol.info.id;
-	const read = { nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown };
-
-	return ambientWritesOfForce({
-		unknownReferences: [read, ...ambientReadsOfSymbol(symbol, data as DataflowProcessorInformation<OtherInfo & ParentInformation>)],
+	return ambientAccessOfSymbol({
+		unknownReferences: [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }],
 		in:                [],
 		out:               [],
 		environment:       data.environment,

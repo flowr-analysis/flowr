@@ -6,6 +6,7 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { Ternary } from '../../../../src/util/logic';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
+import { decorateLabelContext, label } from '../../_helper/label';
 
 
 describe('is-strict-function', withTreeSitter(ts => {
@@ -118,4 +119,26 @@ describe('is-strict-function', withTreeSitter(ts => {
 		return `g${i} <- function(x, y) { if(runif(1) > .5) { ${others} }; x + y }`;
 	}).join('\n');
 	testStrict('mutually recursive functions answer quickly', ring, '1@function', Ternary.Always, { x: Ternary.Always, y: Ternary.Always });
+
+	describe('domains:promise', () => {
+		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+		const strictOf = async(code: string, fn: SlicingCriterion) => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addRequest(code);
+			const { idMap } = await analyzer.normalize();
+			const id = SlicingCriterion.parse(fn, idMap);
+			const strictness = FunctionSemantics.strictness([id], (await analyzer.dataflow()).graph, { ctx: analyzer.inspectContext() })[id];
+			const byName = (p: string) => Object.entries(strictness.parameters).find(([k]) => idMap.get(Number(k))?.lexeme === p)?.[1];
+			return { a: byName('a'), b: byName('b') };
+		};
+		test(sec('domains:promise a branch on a constant forces only one argument'), async() => {
+			assert.deepEqual(await strictOf('f <- function(a, b) if(TRUE) a else b', '1@function'), { a: Ternary.Always, b: Ternary.Never });
+		});
+		test(sec('domains:promise a branch on a global constant forces only one argument'), async() => {
+			assert.deepEqual(await strictOf('note <- function(x) {\n  cat("used\\n")\n  x\n}\ncond <- TRUE\nf <- function(a, b) if(cond) a else b\nf(note(1), note(2))', '6@function'), { a: Ternary.Always, b: Ternary.Never });
+		});
+		test(sec('domains:promise a branch on an unknown global may force either'), async() => {
+			assert.deepEqual(await strictOf('f <- function(a, b) if(cond) a else b', '1@function'), { a: Ternary.Maybe, b: Ternary.Maybe });
+		});
+	});
 }));

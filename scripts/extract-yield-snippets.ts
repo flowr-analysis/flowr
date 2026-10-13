@@ -1,12 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-/**
- * Extracts the R snippets of LaTeX sources (`minted` blocks) that state what they yield
- * (`# :yields: <R value>`, on the statement's line or on a line of its own after it), together with the
- * `mrprefix` they run after and the `mrlibrary` packages they attach, so the tests can check them in R and flowR.
- * Usage: `ts-node scripts/extract-yield-snippets.ts <dir with .tex files> <out.json>`
- */
+/* `ts-node scripts/extract-yield-snippets.ts <dir with .tex files> <out.json>` collects the `# :yields:` checks of minted R blocks */
+
+/** a `# :yields: <R value>` comment, on the statement's line or on a comment line after it */
 export interface YieldSnippetCheck {
 	/** the 0-based line of the statement within `code` */
 	readonly line:   number
@@ -69,7 +66,6 @@ export function extractYieldSnippets(dir: string): YieldSnippet[] {
 				if(yields === undefined || yields === '') {
 					continue;
 				}
-				/* a comment line of its own speaks about the statement before it */
 				let line = at;
 				while(line >= 0 && code[line].trim().startsWith('#')) {
 					line--;

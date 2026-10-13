@@ -12,13 +12,12 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
-import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { attachesPackage } from '../../queries/catalog/dependencies-query/function-info/library-functions';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import { DepType } from '../../project/sigdb/schema';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
@@ -72,18 +71,13 @@ function isUnbound(graph: DataflowGraph, id: NodeId): boolean {
 
 /** whether removing the call would empty a slot the syntax requires, as in an unbraced `if(c) library(x)` */
 function removalWouldBreakSyntax(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
-	const parent = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+	const parent = RNode.directParent(node, idMap);
 	return RExpressionList.isImplicit(parent) && parent.children.length === 1 && parent.info.role !== RoleInParent.Root;
 }
 
 /** whether anything reads out of the attach itself */
 function isReadFrom(graph: DataflowGraph, id: NodeId): boolean {
-	for(const edge of (graph.edgesTo(id)).values()) {
-		if(DfEdge.includesType(edge, EdgeType.Reads)) {
-			return true;
-		}
-	}
-	return false;
+	return graph.edgesTo(id).values().some(edge => DfEdge.includesType(edge, EdgeType.Reads));
 }
 
 /**
@@ -113,14 +107,9 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 		}
 	}
 	for(const { name, callable, imports } of attachments) {
-		if(!pending.has(name)) {
-			continue;
-		}
-		for(const call of unbound) {
-			if(callable.has(call) || src.packagesExporting(call).some(p => imports.has(p))) {
-				pending.delete(name);
-				break;
-			}
+		const usesPackage = (call: string) => callable.has(call) || src.packagesExporting(call).some(p => imports.has(p));
+		if(pending.has(name) && unbound.values().some(usesPackage)) {
+			pending.delete(name);
 		}
 	}
 	return pending;
@@ -144,19 +133,9 @@ export const UNUSED_IMPORT = {
 		}
 		const whitelist = new Set(config.whitelist);
 		const src = deps.signatures().sources();
-		// one call may name more than one package, so the query can report it several times under the same id
-		const attachedBy = new Map<NodeId, DependencyInfo[]>();
-		for(const info of elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library) {
-			if(info.nodeId === undefined) {
-				continue;
-			}
-			const known = attachedBy.get(info.nodeId);
-			if(known === undefined) {
-				attachedBy.set(info.nodeId, [info]);
-			} else {
-				known.push(info);
-			}
-		}
+		/* one call may name more than one package, so the query can report it several times under the same id */
+		const libraryInfos = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library;
+		const attachedBy = Map.groupBy(libraryInfos.filter(info => info.nodeId !== undefined), info => info.nodeId as NodeId);
 		const attachments: Attachment[] = [];
 		const seen = new Set<NodeId>();
 		for(const { node } of elements.getElements()) {
@@ -167,7 +146,7 @@ export const UNUSED_IMPORT = {
 			seen.add(node.info.id);
 			metadata.totalConsidered++;
 			if(infos.length > 1) {
-				// a dynamic attach, e.g. `for(p in pkgs) library(p, character.only = TRUE)`; naming one of them would be a guess
+				/* a dynamic attach, e.g. `for(p in pkgs) library(p, character.only = TRUE)`; naming one of them would be a guess */
 				metadata.totalMultiPackage++;
 				continue;
 			}

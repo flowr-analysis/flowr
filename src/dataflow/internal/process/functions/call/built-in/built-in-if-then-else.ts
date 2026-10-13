@@ -36,31 +36,26 @@ export interface IfThenElseConfig {
 	}
 }
 
-function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
-	let condArg: RNode<OtherInfo & ParentInformation> | undefined;
-	let thenArg: RNode<OtherInfo & ParentInformation> | undefined;
-	let otherwiseArg: RNode<OtherInfo & ParentInformation> | undefined;
-
-	if(config?.args) {
-		const params = {
-			[config.args.cond]: 'cond',
-			[config.args.yes]:  'yes',
-			[config.args.no]:   'no',
-			'...':              '...'
-		};
-		const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
-		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
-		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
-		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));
-	} else {
-		[condArg, thenArg, otherwiseArg] = args.map(e => unpackArg(e));
+function getArguments<OtherInfo>(
+	config: IfThenElseConfig | undefined,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]
+): (RNode<OtherInfo & ParentInformation> | undefined)[] {
+	if(!config?.args) {
+		return args.map(e => unpackArg(e));
 	}
-	return { condArg, thenArg, otherwiseArg };
+	const params = {
+		[config.args.cond]: 'cond',
+		[config.args.yes]:  'yes',
+		[config.args.no]:   'no',
+		'...':              '...'
+	};
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
+	return (['cond', 'yes', 'no'] as const).map(k => unpackArg(RArgument.getWithId(args, argMaps.get(k)?.[0])));
 }
 
 /** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
 function withinLoop(id: NodeId, idMap: AstIdMap<ParentInformation>): boolean {
-	const enclosing = RNode.findEnclosing(id, idMap, n => RFunctionDefinition.is(n) || RLoopConstructs.loopConstructTypes.has(n.type));
+	const enclosing = RNode.findEnclosing(id, idMap, n => RFunctionDefinition.is(n) || RLoopConstructs.is(n));
 	return enclosing !== undefined && !RFunctionDefinition.is(idMap.get(enclosing));
 }
 
@@ -81,108 +76,90 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const { condArg, thenArg, otherwiseArg } = getArguments(config, args);
-
+	const [condArg, thenArg, otherwiseArg] = getArguments(config, args);
 	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${Identifier.toString(name.content)} has empty condition or then case in ${JSON.stringify(args)}, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const cond = processDataflowFor(condArg, data);
-
 	if(ControlFlow.alwaysExits(cond, data.cds)) {
 		dataflowLogger.warn(`If-then-else ${rootId} forces exit in condition, skipping rest`);
 		return cond;
 	}
 
 	const originalDependency = data.cds?.slice();
-	// currently we update the cd afterward :sweat:
 	data = { ...data, environment: cond.environment };
 
-	let then: DataflowInformation | undefined;
-	let makeThenMaybe = false;
-
-	// we should defer this to the abstract interpretation
 	/* within a loop, what the condition reads may change after it, for the next iteration */
 	const mayChange = !onlyLiterals(condArg) && withinLoop(rootId, data.completeAst.idMap);
-	const values = mayChange ? undefined : NodeValue.setOf(condArg?.info.id, data);
+	const values = mayChange ? undefined : NodeValue.setOf(condArg.info.id, data);
 	/*
 	 * `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition
 	 * says; only the `if` keyword leaves a branch unevaluated and may therefore be resolved away here.
 	 */
 	const branchesAreLazy = config?.args === undefined;
-	const conditionIsAlwaysFalse = branchesAreLazy && (values?.elements.every(d => d.type === 'logical' && d.value === false) ?? false);
-	const conditionIsAlwaysTrue = branchesAreLazy && (values?.elements.every(d => d.type === 'logical' && d.value === true) ?? false);
+	const conditionIsAlways = (value: boolean) => branchesAreLazy && (values?.elements.every(d => d.type === 'logical' && d.value === value) ?? false);
+	const alwaysFalse = conditionIsAlways(false);
+	const alwaysTrue = conditionIsAlways(true);
+	const uncertain = !alwaysFalse && !alwaysTrue;
 
-	if(!conditionIsAlwaysFalse) {
-		then = processDataflowFor(thenArg, data);
-		if(then.entryPoint) {
-			then.graph.addEdge(rootId, then.entryPoint, EdgeType.Returns);
-		}
-		if(!conditionIsAlwaysTrue) {
-			makeThenMaybe = true;
-		}
+	const then = alwaysFalse ? undefined : processDataflowFor(thenArg, data);
+	if(then?.entryPoint) {
+		then.graph.addEdge(rootId, then.entryPoint, EdgeType.Returns);
 	}
-
 	let otherwise: DataflowInformation | undefined;
-	let makeOtherwiseMaybe = false;
-	if(otherwiseArg !== undefined && !conditionIsAlwaysTrue) {
+	if(otherwiseArg !== undefined && !alwaysTrue) {
 		data = { ...data, cds: originalDependency?.slice() };
 		otherwise = processDataflowFor(otherwiseArg, data);
 		if(otherwise.entryPoint) {
 			otherwise.graph.addEdge(rootId, otherwise.entryPoint, EdgeType.Returns);
 		}
-		if(!conditionIsAlwaysFalse) {
-			makeOtherwiseMaybe = true;
-		}
 	}
 
 	const nextGraph = cond.graph.mergeWith(then?.graph, true, true).mergeWith(otherwise?.graph, true, true);
-	const thenEnvironment = then?.environment ?? cond.environment;
-
+	const thenEnvironment = (then ?? cond).environment;
+	const otherwiseEnvironment = (otherwise ?? cond).environment;
 	// if there is no "else" case, we have to recover whatever we had before as it may be not executed
 	let finalEnvironment: REnvironmentInformation;
-
-	if(conditionIsAlwaysFalse) {
-		finalEnvironment = otherwise ? otherwise.environment : cond.environment;
-	} else if(conditionIsAlwaysTrue) {
+	if(alwaysFalse) {
+		finalEnvironment = otherwiseEnvironment;
+	} else if(alwaysTrue) {
 		finalEnvironment = thenEnvironment;
 	} else {
-		finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment);
+		finalEnvironment = appendEnvironment(thenEnvironment, otherwiseEnvironment);
 	}
 
 	const whenTrue: ControlDependency = { id: rootId, when: true };
 	const whenFalse: ControlDependency = { id: rootId, when: false };
 	const cdTrue = [whenTrue];
 	const cdFalse = [whenFalse];
-	if(makeThenMaybe && then !== undefined) {
+	if(uncertain && then !== undefined) {
 		makeAmbientWritesMaybe(then.environment, cond.environment, finalEnvironment, cdTrue);
 	}
-	if(makeOtherwiseMaybe && otherwise !== undefined) {
+	if(uncertain && otherwise !== undefined) {
 		makeAmbientWritesMaybe(otherwise.environment, cond.environment, finalEnvironment, cdFalse);
 	}
-	// again within an if-then-else we consider all actives to be read
+	/*
+	 * we assign all branch references with a maybe marker; we do not merge even if they appear in both branches
+	 * because the maybe links will refer to different ids
+	 */
+	const maybe = (refs: readonly IdentifierReference[] | undefined, cds: ControlDependency[], includeDefs = false) =>
+		uncertain ? makeAllMaybe(refs, nextGraph, finalEnvironment, includeDefs, cds) : refs ?? [];
 	const ingoing: IdentifierReference[] = cond.in.concat(
-		makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? [],
-		makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.in ?? [],
+		maybe(then?.in, cdTrue),
+		maybe(otherwise?.in, cdFalse),
 		cond.unknownReferences,
-		makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, cdTrue) : then?.unknownReferences ?? [],
-		makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.unknownReferences ?? [],
+		maybe(then?.unknownReferences, cdTrue),
+		maybe(otherwise?.unknownReferences, cdFalse),
 	);
-
-	// we assign all with a maybe marker
-	// we do not merge even if they appear in both branches because the maybe links will refer to different ids
-	const outgoing =
-		cond.out.concat(
-			(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, cdTrue) : then?.out ?? []),
-			(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
-		);
+	const outgoing = cond.out.concat(maybe(then?.out, cdTrue, true), maybe(otherwise?.out, cdFalse, true));
 
 	// a branch-local removal only happens maybe; apply it here since the branch-environment merge cannot represent it
 	let killed: KillReference[] | undefined;
 	if(then?.kill?.length || otherwise?.kill?.length) {
-		killed = (makeThenMaybe ? makeKillsMaybe(then?.kill, cdTrue) : then?.kill ?? [])
-			.concat(makeOtherwiseMaybe ? makeKillsMaybe(otherwise?.kill, cdFalse) : otherwise?.kill ?? []);
+		killed = (uncertain ? makeKillsMaybe(then?.kill, cdTrue) : then?.kill ?? [])
+			.concat(uncertain ? makeKillsMaybe(otherwise?.kill, cdFalse) : otherwise?.kill ?? []);
 		finalEnvironment = applyKills(finalEnvironment, killed);
 	}
 
@@ -198,25 +175,25 @@ export function processIfThenElse<OtherInfo>(
 	// as an if always evaluates its condition, we add a 'reads'-edge
 	nextGraph.addEdge(rootId, cond.entryPoint, EdgeType.Reads);
 
-	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, cds: makeThenMaybe ? [...data.cds ?? [], { id: rootId, when: true }] : e.cds }))
-		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: makeOtherwiseMaybe ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
+	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, cds: uncertain ? [...data.cds ?? [], { id: rootId, when: true }] : e.cds }))
+		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: uncertain ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
 
+	const entryOrJoin = (branch: DataflowInformation | undefined) => branch ? ControlFlow.entryOf(branch) : rootId;
 	const reachesJoin = then === undefined || otherwise === undefined
 		|| ControlFlow.canComplete(then) || ControlFlow.canComplete(otherwise);
-	if(conditionIsAlwaysTrue) {
+	if(alwaysTrue) {
 		/* the condition is known, so there is no decision left to make and only one way to go */
-		ControlFlow.continuesWith(nextGraph, cond, then ? ControlFlow.entryOf(then) : rootId);
-	} else if(conditionIsAlwaysFalse) {
-		ControlFlow.continuesWith(nextGraph, cond, otherwise ? ControlFlow.entryOf(otherwise) : rootId);
+		ControlFlow.continuesWith(nextGraph, cond, entryOrJoin(then));
+	} else if(alwaysFalse) {
+		ControlFlow.continuesWith(nextGraph, cond, entryOrJoin(otherwise));
 	} else {
-		ControlFlow.branchesTo(nextGraph, cond, then ? ControlFlow.entryOf(then) : rootId, whenTrue);
-		ControlFlow.branchesTo(nextGraph, cond, otherwise ? ControlFlow.entryOf(otherwise) : rootId, whenFalse);
+		ControlFlow.branchesTo(nextGraph, cond, entryOrJoin(then), whenTrue);
+		ControlFlow.branchesTo(nextGraph, cond, entryOrJoin(otherwise), whenFalse);
 	}
-	if(then !== undefined) {
-		ControlFlow.continuesWith(nextGraph, then, rootId);
-	}
-	if(otherwise !== undefined) {
-		ControlFlow.continuesWith(nextGraph, otherwise, rootId);
+	for(const branch of [then, otherwise]) {
+		if(branch !== undefined) {
+			ControlFlow.continuesWith(nextGraph, branch, rootId);
+		}
 	}
 
 	return {

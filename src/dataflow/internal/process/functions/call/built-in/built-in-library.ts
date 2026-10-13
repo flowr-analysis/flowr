@@ -139,44 +139,23 @@ export function processLibrary<OtherInfo>(
 			isCharacterOnly = seenMaybe || seenTrue === seenFalse ? 'maybe' : seenTrue;
 		}
 	}
-	const packetName: string[] = [];
-	if(isCharacterOnly) {
-		for(const nameToLoad of namesToLoad) {
-			const values = NodeValue.setOf(nameToLoad.info.id, data);
-			if(values?.type === 'set' && values.elements.length !== 0) {
-				for(const elem of values.elements) {
-					const name = RValue.stringOf(elem);
-					if(name !== undefined) {
-						packetName.push(name);
-					}
-				}
-			}
-		}
-	}
+	const packetName: string[] = isCharacterOnly ? namesToLoad.flatMap(nameToLoad => {
+		const values = NodeValue.setOf(nameToLoad.info.id, data);
+		return values?.type === 'set' ? values.elements.map(elem => RValue.stringOf(elem)).filter(isNotUndefined) : [];
+	}) : [];
 	if(!isCharacterOnly || isCharacterOnly === 'maybe') {
 		// treat as a function call but convert the argument(s) to a string; a quoted literal carries its name in `content.str`, not `lexeme`
-		const newArgs: RString<OtherInfo & ParentInformation>[] = [];
-		for(const nameToLoad of namesToLoad) {
-			const packageName = RString.is(nameToLoad) ? nameToLoad.content.str : nameToLoad.lexeme;
-			if(isNotUndefined(packageName)) {
-				packetName.push(packageName);
-			}
-			newArgs.push(RString.is(nameToLoad) ? nameToLoad : {
-				type:     RType.String,
-				info:     nameToLoad.info,
-				lexeme:   nameToLoad.lexeme,
-				location: nameToLoad.location,
-				content:  { quotes: 'none', str: Identifier.getName(nameToLoad.content) }
-			});
-		}
+		packetName.push(...namesToLoad.map(n => RString.is(n) ? n.content.str : n.lexeme).filter(isNotUndefined));
+		const newArgs = namesToLoad.map((n): RString<OtherInfo & ParentInformation> => RString.is(n) ? n : {
+			type:     RType.String,
+			info:     n.info,
+			lexeme:   n.lexeme,
+			location: n.location,
+			content:  { quotes: 'none', str: Identifier.getName(n.content) }
+		});
 		args = wrapArgumentsUnnamed([...newArgs, ...args.slice(1)], data.completeAst.idMap);
 	}
-	const info = processKnownFunctionCall({
-		name,
-		args, rootId, data,
-		hasUnknownSideEffect: false,
-		origin:               BuiltInProcName.Library
-	}).information;
+	const info = processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: false, origin: BuiltInProcName.Library }).information;
 
 	for(const p of packetName) {
 		const dependency = data.ctx.deps.loadDependency(p);
@@ -204,8 +183,7 @@ export function processLibrary<OtherInfo>(
 function symbolOrStringName<Info>(node: RNode<Info> | undefined): string | undefined {
 	if(RSymbol.is(node)) {
 		return Identifier.getName(node.content);
-	}
-	if(RString.is(node)) {
+	} else if(RString.is(node)) {
 		return node.content.str;
 	}
 	return undefined;
@@ -216,10 +194,9 @@ function stringLiterals<Info>(node: RNode<Info>): string[] {
 	if(RString.is(node)) {
 		return [node.content.str];
 	}
-	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'c') {
-		return node.arguments.flatMap(a => a !== EmptyArgument && RString.is(a.value) ? [a.value.content.str] : []);
-	}
-	return [];
+	return RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'c'
+		? node.arguments.flatMap(a => a !== EmptyArgument && RString.is(a.value) ? [a.value.content.str] : [])
+		: [];
 }
 
 /** Parse `import::from(pkg, a, keep = filter, .all = TRUE, .except = c(...))` into which exports to attach. */
@@ -227,41 +204,30 @@ function parseFromSpec<Info>(args: readonly PotentiallyEmptyRArgument<Info>[]): 
 	const include = new Map<string, string>();
 	const exclude = new Set<string>();
 	let all = false;
-	for(let i = 1; i < args.length; i++) {
-		const arg = args[i];
+	for(const arg of args.slice(1)) {
 		if(RArgument.isEmpty(arg) || arg.value === undefined) {
 			continue;
 		}
 		const argName = arg.name?.lexeme;
 		if(argName === '.all') {
 			all ||= RLogical.isTrue(arg.value);
-			continue;
-		}
-		if(argName === '.except') {
-			for(const s of stringLiterals(arg.value)) {
-				exclude.add(s);
-			}
+		} else if(argName === '.except') {
+			stringLiterals(arg.value).forEach(s => exclude.add(s));
 			all = true;
-			continue;
-		}
-		if(argName?.startsWith('.')) {
-			continue; // other control args (.into, .library, ...) do not affect which exports resolve
-		}
-		const exported = symbolOrStringName(arg.value);
-		if(exported !== undefined) {
-			include.set(argName ?? exported, exported);
+		} else if(!argName?.startsWith('.')) {
+			/* other control args (.into, .library, ...) do not affect which exports resolve */
+			const exported = symbolOrStringName(arg.value);
+			if(exported !== undefined) {
+				include.set(argName ?? exported, exported);
+			}
 		}
 	}
-	return {
-		include: include.size > 0 ? include : undefined,
-		exclude: exclude.size > 0 ? exclude : undefined,
-		all:     all || exclude.size > 0
-	};
+	return { include: include.size > 0 ? include : undefined, exclude: exclude.size > 0 ? exclude : undefined, all };
 }
 
 /** Parse a `box::use` bracket argument (`pkg[a, b]` or `pkg[...]`) into a package and its attach spec; `undefined` if not a bracket. */
 function parseBoxSpec<Info>(first: RNode<Info> | undefined): { pack: string, spec: AttachSpec } | undefined {
-	if(first === undefined || !RAccess.isIndex(first)) {
+	if(!RAccess.isIndex(first)) {
 		return undefined;
 	}
 	const pack = symbolOrStringName(first.accessed);
@@ -271,16 +237,16 @@ function parseBoxSpec<Info>(first: RNode<Info> | undefined): { pack: string, spe
 	const include = new Map<string, string>();
 	let all = false;
 	for(const el of first.access) {
-		if(RArgument.isEmpty(el) || el.value === undefined) {
+		if(RArgument.isEmpty(el)) {
 			continue;
-		}
-		if(RSymbol.is(el.value) && Identifier.getName(el.value.content) === '...') {
-			all = true; // use(pkg[...]) attaches every export
-			continue;
-		}
-		const exported = symbolOrStringName(el.value);
-		if(exported !== undefined) {
-			include.set(el.name?.lexeme ?? exported, exported);
+		} else if(RSymbol.is(el.value) && Identifier.getName(el.value.content) === '...') {
+			/* use(pkg[...]) attaches every export */
+			all = true;
+		} else {
+			const exported = symbolOrStringName(el.value);
+			if(exported !== undefined) {
+				include.set(el.name?.lexeme ?? exported, exported);
+			}
 		}
 	}
 	return { pack, spec: { include: include.size > 0 ? include : undefined, all } };
@@ -297,8 +263,7 @@ function processUse<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	const info = processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: false, origin: BuiltInProcName.Library }).information;
-	const first = RArgument.isEmpty(args[0]) ? undefined : args[0]?.value;
-	const parsed = parseUseSpec(name, first, args, data);
+	const parsed = parseUseSpec(name, RArgument.valueOf(args[0]), args, data);
 	const dependency = parsed && data.ctx.deps.getDependency(parsed.pack);
 	if(parsed && dependency) {
 		linkLibrary(dependency, info, rootId, data, parsed.spec);
@@ -350,17 +315,19 @@ export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, envi
 const libraryLoadMarker = ' library-load' as BrandedIdentifier;
 
 /**
+ * The {@link libraryLoadMarker} binding of the load of `pack` at `loadedAt`,
+ * so an explicit `pack::fn` links back via {@link loadNodesForNamespace}.
+ */
+function loadMarkerOf(pack: string, loadedAt: NodeId, cds?: readonly ControlDependency[]): InGraphIdentifierDefinition & { name: Identifier } {
+	return { name: Identifier.make(libraryLoadMarker, pack), type: ReferenceType.Function, nodeId: loadedAt, definedAt: loadedAt, cds: cds?.slice() };
+}
+
+/**
  * Record a syntactically known but database-unresolved package load: a bare {@link EnvType.LoadedNamespace} layer
  * carrying only the reserved {@link libraryLoadMarker}, so an explicit `pack::fn` still links back via {@link loadNodesForNamespace}.
  */
 function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: string, rootId: NodeId, pos?: number, cds?: readonly ControlDependency[]): REnvironmentInformation {
-	const layer = new Environment(envInfo.current).asLibrary(pack, EnvType.LoadedNamespace).define({
-		name:      Identifier.make(libraryLoadMarker, pack),
-		type:      ReferenceType.Function,
-		nodeId:    rootId,
-		definedAt: rootId,
-		cds:       cds?.slice()
-	});
+	const layer = new Environment(envInfo.current).asLibrary(pack, EnvType.LoadedNamespace).define(loadMarkerOf(pack, rootId, cds));
 	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, pos) };
 }
 
@@ -427,10 +394,7 @@ function selectExports(callables: readonly string[], spec: AttachSpec): Attached
  * and a script mentions a few dozen, so the definitions are only made for the ones something asks about.
  */
 function lazyExports(pack: string, exports: readonly AttachedExport[], ctx: FlowrAnalyzerContext, definedAt: NodeId | undefined): LazyBindings {
-	const byName = new Map<BrandedIdentifier, AttachedExport>();
-	for(const exp of exports) {
-		byName.set(Identifier.getName(Identifier.make(exp.as, pack)), exp);
-	}
+	const byName = new Map(exports.map(exp => [Identifier.getName(Identifier.make(exp.as, pack)), exp] as const));
 	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt)]);
 }
 
@@ -575,11 +539,10 @@ export function attachBaseRNamespaces(env: REnvironmentInformation, ctx: FlowrAn
 	let builtinNames: ReadonlySet<string> | undefined;
 	for(const pkg of basePackages) {
 		const dependency = ctx.deps.getDependency(pkg);
-		if(dependency?.namespaceInfo === undefined) {
-			continue;
+		if(dependency?.namespaceInfo !== undefined) {
+			builtinNames ??= new Set([...ctx.env.builtInEnvironment.memory.keys()].map(String));
+			built = attachDependencyToEnvironment(dependency, built, ctx, { exclude: builtinNames }, NodeId.toBuiltIn(pkg));
 		}
-		builtinNames ??= new Set([...ctx.env.builtInEnvironment.memory.keys()].map(String));
-		built = attachDependencyToEnvironment(dependency, built, ctx, { exclude: builtinNames }, NodeId.toBuiltIn(pkg));
 	}
 	if(built.current.parent !== env.current.parent) {
 		baseNamespaceLayerCache.set(key, built.current.parent);
@@ -597,12 +560,11 @@ export function attachDeclaredDependencies(env: REnvironmentInformation, ctx: Fl
 	}
 	let built = env;
 	for(const declared of ctx.deps.getDependencies()) {
-		// getDependency triggers lazy export resolution the raw declared record may still be missing
+		/* getDependency triggers lazy export resolution the raw declared record may still be missing */
 		const dependency = ctx.deps.getDependency(declared.name);
-		if(dependency?.namespaceInfo === undefined) {
-			continue;
+		if(dependency?.namespaceInfo !== undefined) {
+			built = attachDependencyToEnvironment(dependency, built, ctx, {}, NodeId.toBuiltIn(dependency.name));
 		}
-		built = attachDependencyToEnvironment(dependency, built, ctx, {}, NodeId.toBuiltIn(dependency.name));
 	}
 	return built;
 }
@@ -627,14 +589,12 @@ export function attachProjectImports(env: REnvironmentInformation, ctx: FlowrAna
 		} else {
 			names = funcs;
 		}
-		for(const fn of names) {
-			toDefine.push({
-				name:      Identifier.make(fn, layerNamespace),
-				type:      ReferenceType.Function,
-				nodeId:    NodeId.fromPkgFn(pkg, fn),
-				definedAt: NodeId.toBuiltIn(pkg)
-			});
-		}
+		toDefine.push(...names.map((fn): InGraphIdentifierDefinition & { name: Identifier } => ({
+			name:      Identifier.make(fn, layerNamespace),
+			type:      ReferenceType.Function,
+			nodeId:    NodeId.fromPkgFn(pkg, fn),
+			definedAt: NodeId.toBuiltIn(pkg)
+		})));
 	}
 	if(toDefine.length === 0) {
 		return env;
@@ -659,13 +619,7 @@ function attachStatedDefinitions(pack: string, envInfo: REnvironmentInformation,
 		: [...stated].filter(([key]) => (spec.all || spec.include === undefined || spec.include.has(key)) && !spec.exclude?.has(key)));
 	if(loadedAt !== undefined) {
 		/* the marker an unresolved load leaves behind, so a call links back to the `library()` that made it resolve */
-		memory.set(libraryLoadMarker, [{
-			name:      Identifier.make(libraryLoadMarker, pack),
-			type:      ReferenceType.Function,
-			nodeId:    loadedAt,
-			definedAt: loadedAt,
-			cds:       cds?.slice()
-		}]);
+		memory.set(libraryLoadMarker, [loadMarkerOf(pack, loadedAt, cds)]);
 	}
 	const layer = new Environment(envInfo.current)
 		.asLibrary(pack, as ?? (spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace));
@@ -693,11 +647,9 @@ export function attachAssumedPackages(env: REnvironmentInformation, ctx: FlowrAn
 	for(let i = assumed.length - 1; i >= 0; i--) {
 		const pkg = assumed[i];
 		const dependency = ctx.deps.getDependency(pkg);
-		if(dependency?.namespaceInfo !== undefined) {
-			built = attachDependencyToEnvironment(dependency, built, ctx, {}, NodeId.toBuiltIn(pkg));
-			continue;
-		}
-		built = attachStatedDefinitions(pkg, built, ctx, { pos: AssumedAttachPosition }, EnvType.AssumedNamespace);
+		built = dependency?.namespaceInfo !== undefined
+			? attachDependencyToEnvironment(dependency, built, ctx, {}, NodeId.toBuiltIn(pkg))
+			: attachStatedDefinitions(pkg, built, ctx, { pos: AssumedAttachPosition }, EnvType.AssumedNamespace);
 	}
 	return built;
 }
@@ -732,23 +684,17 @@ export function attachProject(env: REnvironmentInformation, ctx: FlowrAnalyzerCo
 }
 
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>) {
-	for(const imp of namespaceInfo.importedPackages) {
-		const importedDependency = ctx.deps.getDependency(imp[0]);
-		if(isUndefined(importedDependency)) {
-			continue;
-		}
-		const importedNs = importedDependency.namespaceInfo;
-		const funcToImport: string[] | undefined = importedNs === undefined ? undefined
-			: imp[1] === 'all' ? getCallables(importedNs) : getCallables(importedNs).filter(v => (imp[1] as string[]).includes(v));
-		if(isUndefined(funcToImport)) {
-			continue;
-		}
-		if(alreadyImportedAll.has(importedDependency.name)) {
+	for(const [pkg, imported] of namespaceInfo.importedPackages) {
+		const importedDependency = ctx.deps.getDependency(pkg);
+		const importedNs = importedDependency?.namespaceInfo;
+		if(importedDependency === undefined || importedNs === undefined || alreadyImportedAll.has(importedDependency.name)) {
 			continue;
 		}
 		/* collect first and define in one go, as defining one by one copies the (growing) memory every time */
 		const toDefine: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
 		const queued = new Set<string>();
+		const callables = getCallables(importedNs);
+		const funcToImport = imported === 'all' ? callables : callables.filter(v => imported.includes(v));
 		for(const func of funcToImport) {
 			const identifier = Package.functionIdentifier(importedDependency.name, func);
 			if(importsEnv.memory.has(identifier) || queued.has(identifier)) {
@@ -765,12 +711,10 @@ function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: 
 		if(toDefine.length > 0) {
 			importsEnv = importsEnv.defineAll(toDefine);
 		}
-		if(imp[1] === 'all') {
+		/* only importing everything has to recurse */
+		if(imported === 'all') {
 			alreadyImportedAll.add(importedDependency.name);
-		}
-		//if only importFrom() we don't have to recursively import
-		if(imp[1] === 'all' && importedDependency?.namespaceInfo) {
-			importsEnv = recImports(importsEnv, importedDependency.namespaceInfo, ctx, alreadyImportedAll);
+			importsEnv = recImports(importsEnv, importedNs, ctx, alreadyImportedAll);
 		}
 	}
 	return importsEnv;

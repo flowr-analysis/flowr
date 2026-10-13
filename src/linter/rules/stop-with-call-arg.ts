@@ -62,34 +62,22 @@ export const STOP_WITH_CALL_ARG = {
 						if(idMap !== undefined && RNode.findEnclosing(element.node.info.id, idMap, RFunctionDefinition.is) === undefined) {
 							return false;
 						}
-						//only built-in functions
-						const origins = Dataflow.origin(dataflow.graph, element.node.info.id);
-						if(isNotUndefined(origins)) {
-							const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
-							if(!builtIn) {
-								return false;
-							}
+						// only built-in functions
+						if(Dataflow.origin(dataflow.graph, element.node.info.id)?.some(e => e.type !== OriginType.BuiltInFunctionOrigin)) {
+							return false;
 						}
-
-						//filter out function calls with argument "call." set to false
-						const stopParamMap = {
-							'...':    '...',
-							'call.':  'call.',
-							'domain': 'domain'
-						} as const;
+						// filter out function calls with argument "call." set to false
+						const stopParamMap = { '...': '...', 'call.': 'call.', 'domain': 'domain' } as const;
 						const mapping = FunctionSemantics.call.match.toSpec(fCall.args, stopParamMap);
 						const signaled = idMap?.get(mapping.get('...')?.[0] as NodeId);
 						if(RFunctionCall.isNamed(signaled) && isConditionObject(signaled, dataflow.graph, data)) {
 							return false;
 						}
-						const mappedToStop = mapping.get('call.') ?? [];
-						for(const argId of mappedToStop) {
+						for(const argId of mapping.get('call.') ?? []) {
 							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
 							const values = valueSetGuard(res);
-							if(values?.type === 'set' && values.elements.length !== 0) {
-								if(values.elements[0].type === 'logical') {
-									return values.elements[0].value;
-								}
+							if(values?.type === 'set' && values.elements.length !== 0 && values.elements[0].type === 'logical') {
+								return values.elements[0].value;
 							}
 						}
 						return true;

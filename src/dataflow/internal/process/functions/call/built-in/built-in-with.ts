@@ -64,7 +64,8 @@ export function processWithEnv<OtherInfo>(
 
 	// prefer R's real `base::with` signature from the database, falling back to the known formals when it is absent
 	// use the call's own name (`with` or `within`) qualified to base, so each gets its real signature
-	const bound = FunctionSemantics.call.match.toNames(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
+	const qualifiedName = Identifier.make(Identifier.getName(name.content), PkgName.Base);
+	const bound = FunctionSemantics.call.match.toNames(args, signatureParamNames(data, qualifiedName, withParamsFallback));
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 
@@ -87,12 +88,8 @@ export function processWithEnv<OtherInfo>(
 
 	const pipedData = isPipedArgument(dataArg, rootId, data);
 	const dfDataArg = pipedData ? DataflowInformation.initialize(rootId, data) : processDataflowFor(dataArg.value, data);
-
 	/* evaluate expr in the resolved env's scope so variable lookup uses envState */
-	const dfExpr = processDataflowFor(exprArg.value, {
-		...data,
-		environment: envirResolution.envirData.environment
-	});
+	const dfExpr = processDataflowFor(exprArg.value, { ...data, environment: envirResolution.envirData.environment });
 
 	/*
 	 * processSymbol puts symbol uses in unknownReferences without creating reads edges.

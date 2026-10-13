@@ -9,8 +9,6 @@ import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
-import { isNotUndefined } from '../../util/assert';
-import type { Writable } from 'ts-essentials';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { KnownRoxygenTags } from '../../r-bridge/roxygen2/roxygen-ast';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -29,27 +27,19 @@ export type RoxygenArgsConfig = MergeableRecord;
 export type RoxygenArgsMetadata = MergeableRecord;
 
 function calculateArgumentDiff(inheritedParams: readonly string[], functionParam: readonly string[], roxygenParam: readonly string[]): false | { under: string[], over: string[] } {
-
 	//match documented against existing params
-	let underDocumented = new Set(functionParam);
-	const notOverDocumented = underDocumented.has('...');
-	let overDocumented = new Set(roxygenParam);
-	const commonParams = underDocumented.intersection(overDocumented);
-	underDocumented = underDocumented.difference(commonParams);
-	overDocumented = overDocumented.difference(commonParams);
-
+	const underDocumented = new Set(functionParam).difference(new Set(roxygenParam));
+	let overDocumented = new Set(roxygenParam).difference(new Set(functionParam));
 	//case: '...', overdocumentation not possible
-	if(notOverDocumented) {
+	if(functionParam.includes('...')) {
 		//if still remaining overdocumented parameters, "..." doesn't need to be documented
 		if(overDocumented.size > 0) {
 			underDocumented.delete('...');
 		}
-		//can't be overdocumented
-		overDocumented.clear();
+		overDocumented = new Set();
 	}
 	//inherited params removed from list of overdocumented params
 	overDocumented = overDocumented.difference(new Set(inheritedParams));
-
 	return underDocumented.size === 0 && overDocumented.size === 0 ? false : { under: Array.from(underDocumented), over: Array.from(overDocumented) };
 }
 
@@ -57,45 +47,31 @@ export const ROXYGEN_ARGS = {
 	createSearch: () => Q.all()
 		.filter(VertexType.FunctionDefinition)
 		.with(Enrichment.Roxygen),
-	processSearchResult: (elements, _config) => {
-		return {
-			results:
-				elements.getElements()
-					.map(element => ({
-						element,
-						underDocumented: [] as string[],
-						overDocumented:  [] as string[]
-					}))
-					.filter(({ element, underDocumented, overDocumented }) => {
-						const roxygen = enrichmentContent(element, Enrichment.Roxygen);
-						if(!roxygen.documentation.length) {
-							return false;
-						}
-						//get parameter names
-						const params = roxygen.tags[KnownRoxygenTags.Param] ?? [];
-						const functionParamNames = getParameters(element.node).map(p => Identifier.make(Identifier.getName(p.name.content)).toString());
-						const documented = (tag: { value: { name: string } }) => tag.value.name.split(',').map(n => n.trim()).filter(n => n.length > 0);
-						const inheritedParams = params.filter(tag => tag.inherited).flatMap(documented);
-						const roxygenParamNames = params.flatMap(documented);
-						const result = calculateArgumentDiff(inheritedParams ?? [], functionParamNames, roxygenParamNames);
-						if(result === false) {
-							return false;
-						}
-						underDocumented.push(...result.under);
-						overDocumented.push(...result.over);
-						return true;
-					})
-					.map(({ element, overDocumented, underDocumented }) => ({
-						certainty:       LintingResultCertainty.Uncertain,
-						involvedId:      element.node.info.id,
-						loc:             SourceLocation.fromNode(element.node),
-						underDocumented: underDocumented,
-						overDocumented:  overDocumented
-					}))
-					.filter(element => isNotUndefined(element.loc)) as Writable<RoxygenArgsResult>[],
-			'.meta': {}
-		};
-	},
+	processSearchResult: elements => ({
+		results: elements.getElements().flatMap(element => {
+			const node = element.node;
+			const roxygen = enrichmentContent(element, Enrichment.Roxygen);
+			if(!roxygen.documentation.length) {
+				return [];
+			}
+			//get parameter names
+			const params = roxygen.tags[KnownRoxygenTags.Param] ?? [];
+			const functionParamNames = getParameters(node).map(p => Identifier.make(Identifier.getName(p.name.content)).toString());
+			/* one `@param a,b` documents several parameters */
+			const documented = (tag: { value: { name: string } }) => tag.value.name.split(',').map(n => n.trim()).filter(n => n.length > 0);
+			const inheritedParams = params.filter(tag => tag.inherited).flatMap(documented);
+			const diff = calculateArgumentDiff(inheritedParams, functionParamNames, params.flatMap(documented));
+			const loc = SourceLocation.fromNode(node);
+			return diff === false || loc === undefined ? [] : [{
+				certainty:       LintingResultCertainty.Uncertain,
+				involvedId:      node.info.id,
+				loc,
+				underDocumented: diff.under,
+				overDocumented:  diff.over
+			}];
+		}),
+		'.meta': {}
+	}),
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Function at ${SourceLocation.format(result.loc)} has ${describeArgumentDiff(result)}`,
 		[LintingPrettyPrintContext.Full]:  result => `Function at ${SourceLocation.format(result.loc)} has ${describeArgumentDiff(result)}`
@@ -109,7 +85,7 @@ export const ROXYGEN_ARGS = {
 	}
 } as const satisfies LintingRule<RoxygenArgsResult, RoxygenArgsMetadata, RoxygenArgsConfig>;
 
-function getParameters(node: RNode): RParameter[] {
+function getParameters(node: RNode): readonly RParameter[] {
 	return RFunctionDefinition.is(node) ? node.parameters : [];
 }
 

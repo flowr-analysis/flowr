@@ -14,6 +14,7 @@ import { ArgProp, SemanticCallTag, type FnSig } from '../../dataflow/environment
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { edgeSources } from '../../dataflow/fn/frame-reflection';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation, SourceRange } from '../../util/range';
@@ -78,25 +79,16 @@ function openCallsReaching(graph: DataflowGraph, start: NodeId, opens: ReadonlyS
 
 /** The variable definition the opened connection is bound to, if it is bound to one. */
 function bindingOf(graph: DataflowGraph, open: NodeId): NodeId | undefined {
-	for(const [source, edge] of graph.edgesTo(open)) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isVariableDefinition(graph.getVertex(source))) {
-			return source;
-		}
-	}
-	return undefined;
+	return edgeSources(graph, open, EdgeType.DefinedBy).find(source => DfgVertex.isVariableDefinition(graph.getVertex(source)));
 }
 
 /** The statement `id` belongs to, i.e. the ancestor that is an element of an expression list. */
 function enclosingStatement(idMap: AstIdMap, id: NodeId): RNode<ParentInformation> | undefined {
-	let node = idMap.get(id);
-	while(node !== undefined) {
-		const parent = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
-		if(parent === undefined || RExpressionList.is(parent)) {
-			return node;
-		}
-		node = parent;
-	}
-	return undefined;
+	const statement = RNode.findEnclosing(id, idMap, n => {
+		const parent = RNode.directParent(n, idMap);
+		return parent === undefined || RExpressionList.is(parent);
+	});
+	return statement === undefined ? undefined : idMap.get(statement);
 }
 
 function liftedOutOfLoops(idMap: AstIdMap, id: NodeId, definition: NodeId): NodeId {
@@ -117,8 +109,7 @@ function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefine
 	if(idMap === undefined || definition === undefined || name === undefined) {
 		return undefined;
 	}
-	const reads = (graph.edgesTo(definition)).entries()
-		.filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Reads)).map(([source]) => source);
+	const reads = edgeSources(graph, definition, EdgeType.Reads);
 	const statements = [definition, ...reads]
 		.map(id => SourceLocation.fromNode(enclosingStatement(idMap, liftedOutOfLoops(idMap, id, definition))))
 		.filter(isNotUndefined);
@@ -212,7 +203,6 @@ export const UNCLOSED_CONNECTION = {
 		const dataflow = await data.dataflow();
 		const graph = dataflow.graph;
 		const { opens, closes } = connectionCalls(elements.getElements(), dataflow, config);
-
 		const openIds = new Set(opens.keys());
 		const closedBy = new Map<NodeId, NodeId[]>();
 		for(const [close, sig] of opens.size > 0 ? closes : []) {
@@ -224,15 +214,9 @@ export const UNCLOSED_CONNECTION = {
 				}
 			}
 			for(const open of reached) {
-				const known = closedBy.get(open);
-				if(known) {
-					known.push(close.id);
-				} else {
-					closedBy.set(open, [close.id]);
-				}
+				closedBy.set(open, [...(closedBy.get(open) ?? []), close.id]);
 			}
 		}
-
 		const results: UnclosedConnectionResult[] = [];
 		for(const [open, loc] of opens) {
 			if(consumedInPlace(dataflow, open, data.inspectContext())) {

@@ -31,19 +31,19 @@ import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-ex
  * by a user definition or its built-in declares no handler.
  */
 function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | undefined, ctx: ReadOnlyFlowrAnalyzerContext): BuiltInEvalHandler | undefined {
-	const defs = environment ?
-		Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction)
-		/* without an environment the search path is unknown, so what a package states about the name has its say */
-		: ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
-			?? ctx.env.statedDefinitionsOf(name);
+	/* without an environment the search path is unknown, so what a package states about the name has its say */
+	const defs = environment ? Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction) : builtInDefinitionsOf(name, ctx);
 	const def = defs?.length === 1 ? defs[0] : undefined;
 	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
 }
 
-function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	const defs = ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
+function builtInDefinitionsOf(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): readonly IdentifierDefinition[] | undefined {
+	return ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
 		?? ctx.env.statedDefinitionsOf(name);
-	return defs?.some(d => d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined) ?? false;
+}
+
+function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	return builtInDefinitionsOf(name, ctx)?.some(d => d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined) ?? false;
 }
 
 /** the node types that may fold through a built-in: calls, operators, and the `(`/`{` groupings */
@@ -134,12 +134,8 @@ export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<Val
 	}
 	const leftValue = unliftRValue(Resolve.toValue(operator.lhs, args));
 	const rightValue = unliftRValue(Resolve.toValue(operator.rhs, args));
-
-	if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
-		const sequence = createNumberSequence(leftValue, rightValue);
-		return sequence === undefined ? Top : vectorFrom(sequence.map(liftScalar));
-	}
-	return Top;
+	const sequence = isRNumberValue(leftValue) && isRNumberValue(rightValue) ? createNumberSequence(leftValue, rightValue) : undefined;
+	return sequence === undefined ? Top : vectorFrom(sequence.map(liftScalar));
 }
 
 /**

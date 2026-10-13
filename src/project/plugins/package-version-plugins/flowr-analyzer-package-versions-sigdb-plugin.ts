@@ -21,15 +21,8 @@ import { uniqueArray } from '../../../util/collections/arrays';
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
 
-/** map a resolved source's compressed extension to a codec name for display (`undefined` extension is a plain file) */
-function codecNameOf(ext: string | undefined): string {
-	switch(ext) {
-		case '.zst': return 'zstd';
-		case '.br':  return 'brotli';
-		case '.gz':  return 'gzip';
-		default:     return 'plain';
-	}
-}
+/** a resolved source's compressed extension as a codec name for display, a file without one is `plain` */
+const CodecNames: Readonly<Record<string, string>> = { '.zst': 'zstd', '.br': 'brotli', '.gz': 'gzip' };
 
 /** the codec name of a manifest's resolved shard + dict sources, or `mixed` when they do not all agree */
 function manifestFormat(set: SigDatabaseSet): string {
@@ -37,7 +30,7 @@ function manifestFormat(set: SigDatabaseSet): string {
 		...set.manifest.shards.map(s => s.path),
 		...(set.manifest.dicts?.map(d => d.path) ?? [])
 	];
-	const codecs = uniqueArray(paths.map(p => codecNameOf(compressedExtOf(resolveSource(set.baseDir, p)))));
+	const codecs = uniqueArray(paths.map(p => CodecNames[compressedExtOf(resolveSource(set.baseDir, p)) ?? ''] ?? 'plain'));
 	return codecs.length === 1 ? codecs[0] : 'mixed';
 }
 
@@ -275,16 +268,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		/* the historical bundle is not asked: a name is hinted so a `library()` can be added for it, and a package
 		   only that bundle carries is one nothing can attach today */
 		const sources = this.loadSources().filter(s => describeLoadedDatabase(s).scope !== 'history');
-		const seen = new Set<string>();
-		const owners: string[] = [];
-		for(const src of sources) {
-			for(const pkg of exportOwners(src, name)) {
-				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
-					seen.add(pkg);
-					owners.push(pkg);
-				}
-			}
-		}
+		const owners = uniqueArray(sources.flatMap(src => exportOwners(src, name))).filter(pkg => !this.isSelfPackage(pkg));
 		// each source's list is already sorted; a merge of several needs one more pass to be globally ordered
 		if(owners.length > 1 && sources.length > 1) {
 			/* the comparator runs O(n log n) times, so each package is counted once up front */
@@ -391,12 +375,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			return undefined;
 		}
 		const target = this.analyzerCtx?.resolvedRVersion ?? resolveAssumedRVersion(undefined);
-		let chosen: RVersion | undefined;   // versions are ascending; keep the newest core release <= target
-		for(const v of versions) {
-			if(RVersion.compare(v.str, target) <= 0) {
-				chosen = v;
-			}
-		}
+		// versions are ascending; keep the newest core release <= target
+		let chosen = versions.findLast(v => RVersion.compare(v.str, target) <= 0);
 		if(chosen === undefined) {
 			// the assumed R version is older than the earliest recorded core release: fall back to the closest one
 			chosen = versions[0];
@@ -480,25 +460,18 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(info && (range === undefined || RRange.satisfies(info.version, range))) {
 			return info;
 		}
-		if(range !== undefined) {
-			const versions = this.availableVersions(src, name);
-			for(let i = versions.length - 1; i >= 0; i--) {
-				if(RRange.satisfies(versions[i], range)) {
-					return src.lookup(name, versions[i]);
-				}
-			}
+		if(range === undefined) {
+			return undefined;
 		}
-		return undefined;
+		const satisfying = this.availableVersions(src, name).findLast(version => RRange.satisfies(version, range));
+		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/** Lowest stored version satisfying the constraint (using the store's actual R-form version strings). */
 	private oldestSatisfying(src: PackageSignatureSource, name: string, range: Range | undefined): LibraryExports | undefined {
-		for(const version of this.availableVersions(src, name)) {   // ascending
-			if(range === undefined || RRange.satisfies(version, range)) {
-				return src.lookup(name, version);
-			}
-		}
-		return undefined;
+		// versions are ascending, so the first satisfying one is the oldest
+		const satisfying = this.availableVersions(src, name).find(version => range === undefined || RRange.satisfies(version, range));
+		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/**

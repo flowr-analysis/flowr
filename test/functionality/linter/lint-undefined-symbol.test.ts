@@ -1,8 +1,9 @@
 import { describe } from 'vitest';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledSigDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { DepType } from '../../../src/project/sigdb/schema';
+import { decorateLabelContext, label } from '../_helper/label';
 
 assumeLoadedPackages('dplyr', 'ggplot2', 'magrittr');
 
@@ -187,5 +188,11 @@ describe('flowR linter', withTreeSitter(parser => {
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'notARealFunction', kind: 'function', loc: [1, 1, 1, 18, 'R/foo.R'] }],
 				undefined, { useAsFilePath: 'R/foo.R' });
 		});
+	});
+	describe('counterexamples', () => {
+		/* R: data("rat") and data(list = "rat") define rat just like data(rat) */
+		assertLinterFields(parser, 'data("rat")\nprint(rat)', 'undefined-symbol', [], ['data/rat.R'], []);
+		assertLinterFields(parser, 'data(list = "rat")\nprint(rat)', 'undefined-symbol', [], ['data/rat.R'], []);
+		assertLintedLines(decorateLabelContext(label('io: iris is a data set of datasets', ['name-normal', 'function-calls']), ['dataflow']), parser, 'write.csv(iris, "data.csv")\ndf <- read.csv("data.csv")', 'undefined-symbol', []);
 	});
 }));

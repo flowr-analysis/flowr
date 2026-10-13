@@ -1,8 +1,8 @@
 import { type DataflowInformation, ExitPointType } from '../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor';
-import { expensiveTrace, log } from '../../../../util/log';
 import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type IdentifierDefinition, ReferenceType } from '../../../environments/identifier';
 import { define } from '../../../environments/define';
 import { EdgeType } from '../../../graph/edge';
@@ -10,6 +10,16 @@ import { ControlFlow } from '../../control-flow';
 import { Ternary } from '../../../../util/logic';
 import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
+/** What the parameter is defined by: a function given as its default, or else whatever its default reads. */
+function definedByDefault<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, defaultValue: DataflowInformation | undefined): NodeId[] {
+	if(defaultValue === undefined) {
+		return [];
+	}
+	if(RFunctionDefinition.is(parameter.defaultValue)) {
+		return [parameter.defaultValue.info.id];
+	}
+	return defaultValue.in.concat(defaultValue.unknownReferences).map(r => r.nodeId);
+}
 
 /**
  * The dataflow of one function parameter: its name becomes a definition in the function's frame, and its
@@ -22,30 +32,16 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	/* a default is a promise the parameter holds, forced where the parameter is first used */
 	const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, ControlFlow.withinPromise(data, parameter.name.info.id));
 	const graph = defaultValue === undefined ? name.graph : name.graph.mergeWith(defaultValue.graph);
+	const definedBy = definedByDefault(parameter, defaultValue);
 
-	const writtenNodes: readonly (IdentifierDefinition & { name: string })[] = name.unknownReferences.map(n => ({
-		...n,
-		type:      ReferenceType.Parameter,
-		definedAt: parameter.info.id
-	}) as IdentifierDefinition & { name: string });
-
-	// keep the default's environment so its escaping (`<<-`) writes are carried on
+	/* keep the default's environment so its escaping (`<<-`) writes are carried on */
 	let environment = defaultValue?.environment ?? name.environment;
-	for(const writtenNode of writtenNodes) {
-		const wid = writtenNode.nodeId;
-		expensiveTrace(log, () => `parameter ${writtenNode.name} (${wid}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
-		graph.setDefinitionOfVertex(writtenNode, defaultValue?.entryPoint ? [defaultValue?.entryPoint] : []);
-		environment = define(writtenNode, false, environment);
-
-		if(defaultValue !== undefined) {
-			if(RFunctionDefinition.is(parameter.defaultValue)) {
-				graph.addEdge(wid, parameter.defaultValue.info.id, EdgeType.DefinedBy);
-			} else {
-				const definedBy = defaultValue.in.concat(defaultValue.unknownReferences);
-				for(const node of definedBy) {
-					graph.addEdge(wid, node.nodeId, EdgeType.DefinedBy);
-				}
-			}
+	for(const reference of name.unknownReferences) {
+		const written = { ...reference, type: ReferenceType.Parameter, definedAt: parameter.info.id } as IdentifierDefinition & { name: string };
+		graph.setDefinitionOfVertex(written, defaultValue === undefined ? [] : [defaultValue.entryPoint]);
+		environment = define(written, false, environment);
+		for(const node of definedBy) {
+			graph.addEdge(written.nodeId, node, EdgeType.DefinedBy);
 		}
 	}
 
@@ -60,8 +56,8 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		unknownReferences: [],
 		in:                defaultValue === undefined ? [] : defaultValue.in.concat(defaultValue.unknownReferences, name.in),
 		out:               (defaultValue?.out ?? []).concat(name.out, name.unknownReferences),
-		graph:             graph,
-		environment:       environment,
+		graph,
+		environment,
 		entryPoint:        parameter.info.id,
 		cfgEntry:          defaultValue === undefined ? boundAt : ControlFlow.entryOf(defaultValue),
 		cfgExit:           boundAt,

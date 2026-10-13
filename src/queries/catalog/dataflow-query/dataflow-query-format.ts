@@ -35,7 +35,7 @@ export const DataflowQueryDefinition = {
 		if(url.length <= MaxMermaidUrlLength) {
 			result.push(`   ╰ [Dataflow Graph](${url})`);
 		} else {
-			const vertices = Array.from(out.graph.vertices(true)).length;
+			const vertices = out.graph.vertices(true).toArray().length;
 			const edges = Array.from(out.graph.edges()).length;
 			result.push(`   ╰ Dataflow Graph too large to link (${vertices} vertices, ${edges} edges, url would be ${url.length} chars); use ':df#' for more detail.`);
 		}
@@ -45,12 +45,8 @@ export const DataflowQueryDefinition = {
 		type:         Joi.string().valid('dataflow').required().description('The type of the query.'),
 		environments: Joi.boolean().optional().description('Whether to include the environments of the vertices and function definitions (default: true). They make up most of the answer, so leave them out if only the graph itself is of interest.'),
 	}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!'),
-	flattenInvolvedNodes: queryResults => {
-		const flattened: NodeId[] = [];
+	flattenInvolvedNodes: (queryResults): NodeId[] => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-		for(const id of out.graph.idMap?.keys() ?? []) {
-			flattened.push(id);
-		}
-		return flattened;
+		return [...out.graph.idMap?.keys() ?? []];
 	}
 } as const satisfies SupportedQuery<'dataflow'>;

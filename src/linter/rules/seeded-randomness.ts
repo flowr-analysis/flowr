@@ -5,7 +5,7 @@ import {
 	type LintingRule,
 	LintingRuleCertainty
 } from '../linter-format';
-import { SourceLocation } from '../../util/range';
+import { SourceLocation, SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
@@ -25,7 +25,8 @@ import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ControlDependency, happensInEveryBranch } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { EdgeType } from '../../dataflow/graph/edge';
+import { edgeSources, edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Ternary } from '../../util/logic';
@@ -60,7 +61,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 }
 
 export const SEEDED_RANDOMNESS = {
-	createSearch: (config, _data) => Q.all().filter(VertexType.FunctionCall)
+	createSearch: config => Q.all().filter(VertexType.FunctionCall)
 		.with(Enrichment.CallTargets, {
 			onlyBuiltin:  true,
 			qualifyNames: false // we don't use qualified names for this rule yet
@@ -69,19 +70,16 @@ export const SEEDED_RANDOMNESS = {
 			name: FlowrFilter.MatchesEnrichment,
 			args: {
 				enrichment: Enrichment.CallTargets,
-				test:       {
-					targets: Identifier.regex(...config.randomnessConsumers)
-				}
+				test:       { targets: Identifier.regex(...config.randomnessConsumers) }
 			}
 		}),
 	processSearchResult: async(elements, config, data) => {
-		const dataflow = await data.dataflow();
-		const graph = dataflow.graph;
+		const { graph } = await data.dataflow();
 		const ctx = data.inspectContext();
 		const functionProducers = new Set(config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name));
 		const assignmentProducers = new Set(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
 		const consumers = new Set(config.randomnessConsumers);
-		const assignmentArgIndexes = new Map<string, number>(ctx.env.deriveFromDefinitions(getDefaultAssignments).flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
+		const assignmentArgIndexes = ctx.env.deriveFromDefinitions(assignmentTargetIndexes);
 		const metadata: SeededRandomnessMeta = {
 			consumerCalls:                 0,
 			callsWithFunctionProducers:    0,
@@ -97,27 +95,28 @@ export const SEEDED_RANDOMNESS = {
 				return { kind: 'function', constant: isConstantArgument(graph, vertex, 0, ctx) };
 			}
 			const argIdx = assignmentArgIndexes.get(name);
-			if(argIdx !== undefined) {
-				const dest = FunctionArgument.getReference(vertex.args[argIdx]);
-				if(dest !== undefined && assignmentProducers.has(NodeId.recoverName(dest, graph.idMap) as string)) {
-					/* we either have arg index 0 or 1 for the destination, so the value is at 1-argIdx */
-					return { kind: 'assignment', constant: isConstantArgument(graph, vertex, 1 - argIdx, ctx) };
-				}
+			if(argIdx === undefined) {
+				return consumers.has(name) ? 'draw' : undefined;
+			}
+			const dest = FunctionArgument.getReference(vertex.args[argIdx]);
+			if(dest === undefined || !assignmentProducers.has(NodeId.recoverName(dest, graph.idMap) as string)) {
 				return undefined;
 			}
-			return consumers.has(name) ? 'draw' : undefined;
+			/* we either have arg index 0 or 1 for the destination, so the value is at 1-argIdx */
+			return { kind: 'assignment', constant: isConstantArgument(graph, vertex, 1 - argIdx, ctx) };
 		};
 
 		const idMap = graph.idMap;
 		const forcing = FunctionSemantics.promiseForcing(graph, { ctx });
+		const at = (n: NodeId) => idMap?.get(n)?.location ?? [0, 0, 0, 0];
 		/** whether `writer` follows `reader` within a loop both run under, so it reaches the reader from the second iteration on */
 		const loopCarried = (reader: NodeId, writer: NodeId): boolean => {
+			if(SourceRange.compare(at(writer), at(reader)) <= 0) {
+				return false;
+			}
+			const writerCds = graph.getVertex(writer)?.cds;
 			const loops = graph.getVertex(reader)?.cds?.filter(cd => ControlDependency.isIterated(cd, idMap)) ?? [];
-			const shared = loops.some(loop => graph.getVertex(writer)?.cds?.some(cd => ControlDependency.same(cd, loop)));
-			const at = (n: NodeId) => idMap?.get(n)?.location ?? [0, 0];
-			const [rLine, rCol] = at(reader);
-			const [wLine, wCol] = at(writer);
-			return shared && (wLine > rLine || (wLine === rLine && wCol > rCol));
+			return loops.some(loop => writerCds?.some(cd => ControlDependency.same(cd, loop)));
 		};
 
 		interface Seeding {
@@ -130,23 +129,22 @@ export const SEEDED_RANDOMNESS = {
 			/** whether the call may see a state no constant seed set: the initial one, or a non-constant seed */
 			unseeded:       boolean
 		}
-		/** the edges a draw reads the generator state by: its own, and those of the calls running the function it sits in, which link what was written before them */
-		const statesReadBy = (id: NodeId): [NodeId, DfEdge][] => {
+		/** the writes a draw reads the generator state from: its own, and those of the calls running the function it sits in, which link what was written before them */
+		const statesReadBy = (id: NodeId): NodeId[] => {
 			const within = idMap === undefined ? undefined : RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
-			const callers = within === undefined ? [] : [...graph.edgesTo(within)].filter(([, e]) => DfEdge.includesType(e, EdgeType.Calls)).map(([caller]) => caller);
-			return [...graph.edgesFrom(id), ...callers.flatMap(caller => [...graph.edgesFrom(caller)].filter(([, e]) => DfEdge.includesType(e, EdgeType.DefinedByOnCall)))];
+			const callers = within === undefined ? [] : edgeSources(graph, within, EdgeType.Calls);
+			const ownReads = edgeTargets(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall);
+			return [...ownReads, ...callers.flatMap(c => edgeTargets(graph, c, EdgeType.DefinedByOnCall))];
 		};
-		/** how the generator state a call reads came about, following the draws back to where it was seeded */
-		const seedingOf = (id: NodeId, visiting: ReadonlySet<NodeId>): Seeding => {
-			const seeding: Seeding = { seeds: { function: new Set(), assignment: new Set() }, nonConstant: false, otherBranch: false, unseeded: false };
+		/** collects into `seeding` how the generator state a call reads came about, following the draws back to where it was seeded */
+		const collectSeeding = (id: NodeId, visiting: ReadonlySet<NodeId>, seeding: Seeding): Seeding => {
 			const own = new Set(graph.getVertex(id)?.cds);
 			const cds: ControlDependency[] = [];
 			let written = false;
 			let always = false;
-			for(const [target, edge] of statesReadBy(id)) {
+			for(const target of statesReadBy(id)) {
 				const writer = graph.getVertex(target);
-				/* a draw within a function reads the state at its calls, which links it to what was written there */
-				const kind = DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedByOnCall) && DfgVertex.isFunctionCall(writer) && !visiting.has(target) ? writerKind(writer) : undefined;
+				const kind = DfgVertex.isFunctionCall(writer) && !visiting.has(target) ? writerKind(writer) : undefined;
 				if(kind === undefined) {
 					continue;
 				}
@@ -161,12 +159,7 @@ export const SEEDED_RANDOMNESS = {
 				always ||= conditions.size === 0;
 				cds.push(...conditions);
 				if(kind === 'draw') {
-					const before = seedingOf(target, new Set([...visiting, id]));
-					before.seeds.function.forEach(s => seeding.seeds.function.add(s));
-					before.seeds.assignment.forEach(s => seeding.seeds.assignment.add(s));
-					seeding.nonConstant ||= before.nonConstant;
-					seeding.otherBranch ||= before.otherBranch;
-					seeding.unseeded ||= before.unseeded;
+					collectSeeding(target, new Set([...visiting, id]), seeding);
 				} else if(kind.constant) {
 					seeding.seeds[kind.kind].add(target);
 				} else {
@@ -183,39 +176,38 @@ export const SEEDED_RANDOMNESS = {
 		};
 
 		return {
-			results: elements.getElements()
-				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
-					metadata.consumerCalls++;
-					return {
-						involvedId: element.node.info.id,
-						loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-						target:     target as BrandedIdentifier
-					};
-				}))
-				.flatMap(element => {
-					const seeding = seedingOf(element.involvedId, new Set());
-					metadata.callsWithFunctionProducers += seeding.seeds.function.size;
-					metadata.callsWithAssignmentProducers += seeding.seeds.assignment.size;
-					if(!seeding.unseeded) {
-						return [];
-					}
-					if(seeding.nonConstant) {
-						metadata.callsWithNonConstantProducers++;
-					}
-					if(seeding.otherBranch) {
-						metadata.callsWithOtherBranchProducers++;
-					}
-					/* a call within a function body is seeded by whatever its callers did first, which the control
-					   flow of this body does not show: `set.seed(1); sapply(1:3, function(i) runif(1))` is seeded.
-					   Only a call the program itself reaches can be stated as unseeded for certain. */
-					const nested = !graph.isRoot(element.involvedId);
-					return [{
-						involvedId: element.involvedId,
-						certainty:  seeding.seeds.function.size + seeding.seeds.assignment.size > 0 || nested ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
-						function:   element.target,
-						loc:        element.loc
-					}];
-				}),
+			results: elements.getElements().flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.flatMap(target => {
+				metadata.consumerCalls++;
+				const id = element.node.info.id;
+				const seeding = collectSeeding(id, new Set(), {
+					seeds:       { function: new Set(), assignment: new Set() },
+					nonConstant: false,
+					otherBranch: false,
+					unseeded:    false
+				});
+				metadata.callsWithFunctionProducers += seeding.seeds.function.size;
+				metadata.callsWithAssignmentProducers += seeding.seeds.assignment.size;
+				if(!seeding.unseeded) {
+					return [];
+				}
+				if(seeding.nonConstant) {
+					metadata.callsWithNonConstantProducers++;
+				}
+				if(seeding.otherBranch) {
+					metadata.callsWithOtherBranchProducers++;
+				}
+				/* a call within a function body is seeded by whatever its callers did first, which the control
+				   flow of this body does not show: `set.seed(1); sapply(1:3, function(i) runif(1))` is seeded.
+				   Only a call the program itself reaches can be stated as unseeded for certain. */
+				const nested = !graph.isRoot(id);
+				const someSeed = seeding.seeds.function.size + seeding.seeds.assignment.size > 0;
+				return [{
+					involvedId: id,
+					certainty:  someSeed || nested ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+					function:   target as BrandedIdentifier,
+					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid()
+				}];
+			})),
 			'.meta': metadata
 		};
 	},
@@ -247,6 +239,14 @@ export const SEEDED_RANDOMNESS = {
 function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
 	return definitions.filter((b): b is BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike> =>
 		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
+}
+
+/** maps each assignment function name to the index of the argument it assigns to */
+function assignmentTargetIndexes(definitions: BuiltInDefinitions): Map<string, number> {
+	return new Map(getDefaultAssignments(definitions).flatMap(a => {
+		const targetIndex = a.config?.swapSourceAndTarget ? 1 : 0;
+		return a.names.map(n => [Identifier.getName(n), targetIndex] as const);
+	}));
 }
 
 function randomnessSetters(index: BuiltInIndex): string[] {

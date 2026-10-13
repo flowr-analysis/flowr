@@ -155,7 +155,6 @@ const highlight = HighlightStyle.define([
 	{ tag: [tags.number, tags.bool, tags.null, tags.atom], color: '#0072b2' },
 	{ tag: tags.comment, color: 'var(--muted)', fontStyle: 'italic' },
 	{ tag: [tags.operator, tags.punctuation, tags.bracket], color: 'var(--muted)' },
-	/* the prose of R Markdown, Quarto, and notebook text cells */
 	{ tag: tags.heading, color: 'var(--fg)', fontWeight: '700' },
 	{ tag: tags.strong, fontWeight: '700' },
 	{ tag: tags.emphasis, fontStyle: 'italic' },
@@ -796,7 +795,6 @@ const shared = (() => {
 	   written before that spelled the unit out and still read as they did */
 	const sized = (value: string, unit: string) => value.length === 0 ? undefined : /^[\d.]+$/.test(value) ? value + unit : value;
 	const code = read('c');
-	/* the other files of a project, loaded before the one the link opens on */
 	const others = (() => {
 		try {
 			return JSON.parse(read('o') ?? '[]') as [string, string][];
@@ -808,7 +806,6 @@ const shared = (() => {
 		code,
 		name:       params.get('n') ?? Playground.MainFile,
 		others,
-		/* where among the others the file the link opens on sits, after all of them unless it says otherwise */
 		position:   /^\d+$/.test(params.get('p') ?? '') ? Math.min(Number(params.get('p')), others.length) : others.length,
 		cut,
 		config:     changed.length === 0 ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
@@ -876,7 +873,7 @@ function shareFields(): [string, string][] {
 		fields.push(['n', files[active].name]);
 	}
 	if(files.length > 1) {
-		fields.push(['o', packForUrl(JSON.stringify(files.flatMap((f, at) => at === active ? [] : [[f.name, textOf(at)]])))]);
+		fields.push(['o', packForUrl(JSON.stringify(projectFiles().filter((_, at) => at !== active)))]);
 		if(active < files.length - 1) {
 			fields.push(['p', String(active)]);
 		}
@@ -987,15 +984,9 @@ let onConfig = false;
 /** shows the configuration, or the file that is open */
 function showTab(config: boolean): void {
 	onConfig = config;
-	(document.getElementById('editor') as HTMLElement).hidden = config;
-	(document.getElementById('config') as HTMLElement).hidden = !config;
 	configTab.setAttribute('aria-selected', String(config));
-	/* the link and the reset only make sense next to the configuration */
-	for(const id of ['confighelp', 'configreset']) {
-		const at = document.getElementById(id);
-		if(at !== null) {
-			at.hidden = !config;
-		}
+	for(const id of ['editor', 'config', 'confighelp', 'configreset']) {
+		document.getElementById(id)?.toggleAttribute('hidden', config === (id === 'editor'));
 	}
 	showFiles();
 }
@@ -1014,32 +1005,31 @@ const editorExtensions = [
 	})
 ];
 
-/** how a file reads, which follows its name: prose around chunks for R Markdown and Quarto, cells for a notebook */
+/** how a file reads, which follows its name */
 const fileKind = new Compartment();
 const kindOf = (name: string) => [languageOf(name), notebookCells(name, (code, title) => runCell(code, title))];
 const fileState = (name: string, text: string) => EditorState.create({ doc: text, extensions: [editorExtensions, fileKind.of(kindOf(name))] });
-/** The project flowR analyzes, one editor state per file to keep its undo history; the editor holds the one at {@link active}. */
+/** the project flowR analyzes, one editor state per file, the editor holds the one at {@link active} */
 const files = [...shared.others.slice(0, shared.position), [shared.name, shared.code ?? Sample], ...shared.others.slice(shared.position)].map(([name, text]) => ({ name, state: fileState(name, text) }));
 let active = shared.position;
 const editor = new EditorView({ state: files[active].state, parent: document.getElementById('editor') as HTMLElement });
 const textOf = (at: number): string => (at === active ? editor.state : files[at].state).doc.toString();
+const projectFiles = () => files.map((f, at) => [f.name, textOf(at)] as const);
 
-/** opens the file at `at`, once `change` has done to the list what it is about */
-function openFile(at: number, change?: () => void): void {
+/** opens the file at `at`, or of that name, once `change` has done to the list what it is about */
+function openFile(at: number | string, change?: () => void): void {
 	files[active].state = editor.state;
 	change?.();
-	active = Math.min(Math.max(0, at), files.length - 1);
+	active = Math.min(Math.max(0, typeof at === 'string' ? files.findIndex(f => f.name === at) : at), files.length - 1);
 	editor.setState(files[active].state);
 	showFiles();
 	remember();
 	schedule(0);
 }
 
-function addFile(name: string, text: string): void {
+function putFile(name: string, text: string): void {
 	const known = files.findIndex(f => f.name === name);
-	const at = known < 0 ? files.length : known;
-	openFile(at, () => files.splice(at, 1, { name, state: fileState(name, text) }));
-	showTab(false);
+	files.splice(known < 0 ? files.length : known, 1, { name, state: fileState(name, text) });
 }
 
 /** the regex flowR restricts a criterion to the shown file with, needed only once there are others */
@@ -1047,7 +1037,6 @@ function scoped(criterion: string): string {
 	return files.length < 2 ? criterion : `${criterion}(^${files[active].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$)`;
 }
 
-/* a mark the link leaves unqualified points into the file it opens on */
 marks.splice(0, marks.length, ...marks.map(mark => /^\d/.test(mark) ? scoped(mark) as Mark : mark));
 
 /** the file a node stems from, when that is not the one the editor shows */
@@ -1095,7 +1084,7 @@ async function unzip(blob: Blob): Promise<[string, Blob][]> {
 	return found;
 }
 
-/** a Jupyter notebook comes in as an R script of cells, everything else as it is */
+/** a Jupyter notebook comes in as an R script of cells */
 function asProjectFile(name: string, text: string): [string, string] {
 	return /\.ipynb$/i.test(name) ? [`${name}.R`, notebookAsScript(text)] : [name, text];
 }
@@ -1104,7 +1093,7 @@ async function readable(found: readonly [string, Blob][], failed: string[]): Pro
 	const read: [string, string][] = [];
 	for(const [name, blob] of found.filter(([name]) => Wanted(name))) {
 		try {
-			const clean = name.replace(/^(\.?\/)+/, '');
+			const clean = name.replace(Leading, '');
 			if(nameProblem(clean) !== undefined) {
 				failed.push(name);
 			} else if(/\.zip$/i.test(clean)) {
@@ -1122,24 +1111,22 @@ async function readable(found: readonly [string, Blob][], failed: string[]): Pro
 function load(found: Promise<[string, Blob][]> | [string, Blob][]): void {
 	const failed: string[] = [];
 	void Promise.resolve(found).then(f => readable(f, failed)).then(read => {
-		if(read.length === 0) {
-			showTook(failed.length > 0 ? `could not open ${failed.join(', ')}` : 'nothing to open: flowR reads R scripts, R Markdown, Quarto, Jupyter notebooks, and zips of them');
-			return;
+		if(read.length > 0) {
+			const pristine = files.length === 1 && files[0].name === Playground.MainFile && textOf(0) === Sample;
+			openFile(read[0][0], () => {
+				if(pristine) {
+					files.length = 0;
+				}
+				for(const [name, text] of read) {
+					putFile(name, text);
+				}
+			});
+			showTab(false);
 		}
-		const pristine = files.length === 1 && files[0].name === Playground.MainFile && textOf(0) === Sample;
-		openFile(0, () => {
-			if(pristine) {
-				files.length = 0;
-			}
-			for(const [name, text] of read) {
-				const known = files.findIndex(f => f.name === name);
-				files.splice(known < 0 ? files.length : known, 1, { name, state: fileState(name, text) });
-			}
-		});
-		openFile(files.findIndex(f => f.name === read[0][0]));
-		showTab(false);
 		if(failed.length > 0) {
 			showTook(`could not open ${failed.join(', ')}`);
+		} else if(read.length === 0) {
+			showTook('nothing to open: flowR reads R scripts, R Markdown, Quarto, Jupyter notebooks, and zips of them');
 		}
 	}).catch((e: unknown) => showTook(`could not open that: ${String(e)}`));
 }
@@ -1153,6 +1140,23 @@ function nameProblem(name: string, except?: number): string | undefined {
 		return `${name} would lie outside the project, name it relative to it instead`;
 	}
 	return files.some((f, at) => at !== except && f.name === name) ? `there already is a ${name}` : undefined;
+}
+
+const Leading = /^(\.?\/)+/;
+
+function nameAccepted(name: string, except?: number): boolean {
+	const problem = nameProblem(name, except);
+	if(problem !== undefined) {
+		alert(problem);
+	}
+	return problem === undefined;
+}
+
+function roleButton(className: string | undefined, text: string, role: string): HTMLButtonElement {
+	const button = el('button', className, text);
+	button.type = 'button';
+	button.setAttribute('role', role);
+	return button;
 }
 
 function picker(folder: boolean): HTMLInputElement {
@@ -1170,9 +1174,7 @@ const fileBar = document.getElementById('files') as HTMLElement;
 function showFiles(): void {
 	fileBar.replaceChildren(...files.map((file, at) => {
 		const open = !onConfig && at === active;
-		const button = el('button', 'tab file', file.name);
-		button.type = 'button';
-		button.setAttribute('role', 'tab');
+		const button = roleButton('tab file', file.name, 'tab');
 		button.setAttribute('aria-selected', String(open));
 		button.title = open ? 'rename or remove this file, or open an example' : `open ${file.name}`;
 		if(open) {
@@ -1180,7 +1182,7 @@ function showFiles(): void {
 			button.append(el('span', 'caret'));
 		}
 		button.addEventListener('click', () => {
-			if(at === active && !onConfig) {
+			if(open) {
 				openMenu(button, fileMenu(at));
 				return;
 			}
@@ -1210,13 +1212,8 @@ function removeFile(at: number): void {
 }
 
 function renameFile(at: number): void {
-	const name = prompt('rename to', files[at].name)?.trim().replace(/^(\.?\/)+/, '');
-	if(name === undefined || name === files[at].name) {
-		return;
-	}
-	const problem = nameProblem(name, at);
-	if(problem !== undefined) {
-		alert(problem);
+	const name = prompt('rename to', files[at].name)?.trim().replace(Leading, '');
+	if(name === undefined || name === files[at].name || !nameAccepted(name, at)) {
 		return;
 	}
 	openFile(active, () => {
@@ -1230,26 +1227,16 @@ function newFile(): void {
 	while(files.some(f => f.name === `script${at}.R`)) {
 		at++;
 	}
-	const name = prompt('name of the new file', `script${at}.R`)?.trim().replace(/^(\.?\/)+/, '');
-	if(name === undefined) {
+	const name = prompt('name of the new file', `script${at}.R`)?.trim().replace(Leading, '');
+	const known = files.findIndex(f => f.name === name);
+	if(name === undefined || !nameAccepted(name, known) || (known >= 0 && !confirm(`replace ${name} with an empty file?`))) {
 		return;
 	}
-	const problem = nameProblem(name);
-	if(problem !== undefined && !(problem.startsWith('there already') && confirm(`replace ${name} with an empty file?`))) {
-		if(!problem.startsWith('there already')) {
-			alert(problem);
-		}
-		return;
-	}
-	addFile(name, '');
+	openFile(name, () => putFile(name, ''));
+	showTab(false);
 }
 
-interface Example {
-	readonly label: string
-	readonly title: string
-	readonly files: readonly [string, string][]
-}
-const Examples = JSON.parse(document.getElementById('examples')?.textContent ?? '[]') as readonly Example[];
+const Examples = JSON.parse(document.getElementById('examples')?.textContent ?? '[]') as readonly { label: string, title: string, files: [string, string][] }[];
 
 function fileMenu(at: number): readonly MenuEntry[] {
 	return [
@@ -1281,12 +1268,8 @@ function openMenu(anchor: HTMLElement, entries: readonly MenuEntry[]): void {
 		if(typeof entry === 'string') {
 			return entry === '' ? document.createElement('hr') : el('div', 'heading', entry);
 		}
-		const item = el('button', undefined, entry.label);
-		item.type = 'button';
-		item.setAttribute('role', 'menuitem');
-		if(entry.title !== undefined) {
-			item.title = entry.title;
-		}
+		const item = roleButton(undefined, entry.label, 'menuitem');
+		item.title = entry.title ?? '';
 		item.addEventListener('click', () => {
 			closeMenu();
 			entry.run();
@@ -1368,12 +1351,12 @@ async function toRun(): Promise<RunInput> {
 	const code = Analyzed.test(name) && !/\.r$/i.test(name)
 		? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
 		: textOf(active);
-	return { code, files: files.map((f, at) => [f.name, textOf(at)] as const), fresh: true };
+	return { code, files: projectFiles(), fresh: true };
 }
 const runner = setupRunR(toRun, packagesOf);
 /** a cell runs where the cells before it ran, next to the files of the project as they are now */
 function runCell(code: string, title: string): void {
-	runner(() => Promise.resolve({ code, files: files.map((f, at) => [f.name, textOf(at)] as const), fresh: false }), title);
+	runner(() => Promise.resolve({ code, files: projectFiles(), fresh: false }), title);
 }
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
@@ -1713,7 +1696,7 @@ async function analyzer(code?: string) {
 	if(code !== undefined) {
 		built.addRequest({ request: 'text', content: code });
 	} else {
-		built.addFile(...files.map((f, at) => new FlowrInlineTextFile(f.name, textOf(at))));
+		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, text)));
 		built.addRequest(...files.filter(f => Analyzed.test(f.name)).map(f => ({ request: 'file' as const, content: f.name })));
 	}
 	return built;
@@ -1884,7 +1867,7 @@ async function jumpToDefinition(): Promise<void> {
 		return;
 	}
 	if(target.file !== undefined) {
-		openFile(files.findIndex(f => f.name === target.file));
+		openFile(target.file);
 	}
 	const line = editor.state.doc.line(Math.min(target.line, editor.state.doc.lines));
 	editor.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
@@ -2126,7 +2109,7 @@ async function analyze(): Promise<number> {
 			line.title = 'slice for this';
 			line.addEventListener('click', () => {
 				if(d.file !== undefined) {
-					openFile(files.findIndex(f => f.name === d.file));
+					openFile(d.file);
 				}
 				const at = d.from?.[0] ?? 0;
 				if(at < 1 || at > editor.state.doc.lines) {
@@ -2288,8 +2271,7 @@ document.getElementById('clearmarks')?.addEventListener('click', () => {
 
 /** opens `project` with the configuration and the view the page starts with, its main file first */
 function showExample(project: readonly [string, string][], note: string): void {
-	const main = Math.max(0, project.findIndex(([name]) => name === Playground.MainFile));
-	openFile(main, () => files.splice(0, files.length, ...project.map(([name, text]) => ({ name, state: fileState(name, text) }))));
+	openFile(Playground.MainFile, () => files.splice(0, files.length, ...project.map(([name, text]) => ({ name, state: fileState(name, text) }))));
 	showTab(false);
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
 	/* an example is the script together with everything a link says about it, so what was folded away,

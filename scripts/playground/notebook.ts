@@ -1,15 +1,15 @@
 /**
- * Notebooks in the editor: R Markdown and Quarto documents as prose around R chunks, Jupyter notebooks as R
- * scripts in the percent format (`# %%` opens a code cell, `# %% [markdown]` a text cell) that Jupytext,
- * VS Code, and RStudio read as well. Both keep every line where flowR sees it, so marks, slices, and lints
- * land on the lines they name.
+ * Notebooks in the editor: R Markdown and Quarto as prose around R chunks, Jupyter notebooks as R scripts in the
+ * percent format (`# %%` opens a code cell, `# %% [markdown]` a text cell), both keeping every line where flowR sees it.
  */
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { Prec, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { StreamLanguage, type StreamParser, type StringStream } from '@codemirror/language';
 import { r } from '@codemirror/legacy-modes/mode/r';
 import { yaml } from '@codemirror/legacy-modes/mode/yaml';
+import type { INotebookContent } from '@jupyterlab/nbformat';
 import { globalChunkOptions, isExecutableCell, parseRMarkdownFile, RTagRegex } from '../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
+import { el } from '../page-lib/dom';
 
 /** whether flowR reads `name` as a document of prose and R chunks */
 export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
@@ -17,6 +17,7 @@ export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|q
 const CellMarker = /^#\s?%%/;
 const MarkdownCellMarker = /^#\s?%%.*\[markdown\]/i;
 const Fence = /^\s*(`{3,}|~{3,})/;
+const LineBreak = /\r\n|\r|\n/;
 
 /** the inline markdown of a line of prose: headings, code, emphasis, and links; `opens` says the text of the line starts here */
 function prose(stream: StringStream, opens: boolean): string | null {
@@ -160,9 +161,8 @@ interface Cell {
 /** knitr names a chunk by the first, unnamed option of its header, as in `{r setup, include = FALSE}` */
 const chunkName = (header: string) => /^\{r[\s,]+([^\s,=}]+)\s*(?:[,}]|$)/i.exec(header)?.[1] ?? '';
 
-function documentCells(text: string, lines: number): Cell[] {
+function documentCells(text: string, rows: readonly string[]): Cell[] {
 	const cells: Cell[] = [];
-	const rows = text.split(/\r\n|\r|\n/);
 	if(/^---\s*$/.test(rows[0] ?? '')) {
 		const close = rows.findIndex((row, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(row));
 		if(close > 0) {
@@ -176,9 +176,8 @@ function documentCells(text: string, lines: number): Cell[] {
 			continue;
 		}
 		const from = block.startpos.line;
-		const to = from + block.code.split(/\r\n|\r|\n/).length - 2;
-		const closed = to + 1 <= lines && Fence.test(rows[to] ?? '');
-		cells.push({ kind: 'code', head: from - 1, from, to, tail: closed ? to + 1 : undefined, runs: isExecutableCell(block, defaults), label: block.options.get('label') ?? chunkName(block.header) });
+		const to = from + block.code.split(LineBreak).length - 2;
+		cells.push({ kind: 'code', head: from - 1, from, to, tail: Fence.test(rows[to] ?? '') ? to + 1 : undefined, runs: isExecutableCell(block, defaults), label: block.options.get('label') ?? chunkName(block.header) });
 	}
 	return cells;
 }
@@ -199,7 +198,8 @@ const lineDeco = (classes: string, note?: string) => Decoration.line({ class: cl
 
 function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 	const text = state.doc.toString();
-	return markdown ? documentCells(text, state.doc.lines) : scriptCells(text.split(/\r\n|\r|\n/));
+	const rows = text.split(LineBreak);
+	return markdown ? documentCells(text, rows) : scriptCells(rows);
 }
 
 /** runs the code of a cell in the R session the cells share, saying which cell it was */
@@ -221,19 +221,13 @@ class RunButton extends WidgetType {
 		return other.cell.from === this.cell.from && other.cell.to === this.cell.to && other.cell.label === this.cell.label && other.cell.runs === this.cell.runs;
 	}
 	toDOM(view: EditorView): HTMLElement {
-		const tools = document.createElement('span');
-		tools.className = 'cm-cell-tools';
+		const tools = el('span', 'cm-cell-tools');
 		const note = this.cell.runs ? this.cell.label : 'not run';
 		if(note !== '') {
-			const said = document.createElement('span');
-			said.className = 'cm-cell-note';
-			said.textContent = note;
-			tools.append(said);
+			tools.append(el('span', 'cm-cell-note', note));
 		}
-		const button = document.createElement('button');
+		const button = el('button', 'cm-cell-run', 'run');
 		button.type = 'button';
-		button.className = 'cm-cell-run';
-		button.textContent = 'run';
 		button.title = 'run this cell in the R session the cells share (shift+enter)';
 		button.addEventListener('mousedown', event => event.preventDefault());
 		button.addEventListener('click', () => {
@@ -261,7 +255,6 @@ function decorate(view: EditorView, markdown: boolean, run: CellRunner): Decorat
 	const inCell = new Set<number>();
 	for(const cell of cells) {
 		const kind = `cm-cell cm-cell-${cell.kind}${cell.runs ? '' : ' cm-cell-off'}`;
-		/* a code cell says what it is next to its run button, the others in the corner of their head */
 		const note = cell.kind === 'meta' ? cell.label : cell.kind === 'text' ? 'markdown' : undefined;
 		if(cell.head !== undefined) {
 			at(cell.head, lineDeco(`${kind} cm-cell-head`, note));
@@ -310,7 +303,6 @@ export function notebookCells(name: string, run: CellRunner): Extension {
 				const line = view.state.doc.lineAt(view.state.selection.main.head).number;
 				const cells = cellsOf(view.state, markdown);
 				const cell = cells.find(c => c.kind === 'code' && (c.head ?? c.from) <= line && line <= (c.tail ?? c.to));
-				/* in a notebook the key runs cells and nothing else, so it never splits the line it is pressed on */
 				if(cell === undefined) {
 					return markdown || cells.length > 0;
 				}
@@ -333,7 +325,6 @@ const cellLook = EditorView.theme({
 	'.cm-cell-head':                                  { borderTop: '1px solid var(--border)', fontSize: '.85em' },
 	'.cm-cell-tail':                                  { fontSize: '.85em' },
 	'.cm-cell-end':                                   { borderBottom: '1px solid var(--border)' },
-	/* what a head says about its cell, and for a code cell the button running it, in the corner of the head */
 	'.cm-cell-tools':                                 { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', marginRight: '.5rem' },
 	'.cm-cell-note, .cm-cell-head[data-note]::after': {
 		fontFamily:    'system-ui, sans-serif',
@@ -362,23 +353,18 @@ const cellLook = EditorView.theme({
 	'.cm-prose, .cm-cell-text:not(.cm-cell-head)': { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' }
 });
 
-interface NotebookCell {
-	readonly cell_type: string
-	readonly source:    string | readonly string[]
-}
-
 /** a Jupyter notebook as an R script in the percent format, its text cells as comments so R reads past them */
 export function notebookAsScript(json: string): string {
-	const { cells } = JSON.parse(json) as { cells?: unknown };
+	const { cells } = JSON.parse(json) as Partial<INotebookContent>;
 	if(!Array.isArray(cells)) {
 		throw new Error('not a Jupyter notebook, it has no cells');
 	}
-	return (cells as readonly NotebookCell[]).map(cell => {
+	return cells.map(cell => {
 		const source = (typeof cell.source === 'string' ? cell.source : cell.source.join('')).replace(/\n$/, '');
 		if(cell.cell_type === 'code') {
 			return `# %%\n${source}`;
 		}
-		const text = source.split(/\r\n|\r|\n/).map(line => line === '' ? '#' : `# ${line}`).join('\n');
+		const text = source.split(LineBreak).map(line => line === '' ? '#' : `# ${line}`).join('\n');
 		return `# %% [${cell.cell_type === 'markdown' ? 'markdown' : 'raw'}]\n${text}`;
 	}).join('\n\n') + '\n';
 }

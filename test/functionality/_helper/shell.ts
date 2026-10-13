@@ -54,6 +54,13 @@ import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 import type { DeepWritable } from 'ts-essentials';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { EdgeType } from '../../../src/dataflow/graph/edge';
+import { edgeTargets } from '../../../src/dataflow/fn/frame-reflection';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -762,6 +769,96 @@ export function assertDiced(
 		}
 		for(const id of SlicingCriterion.convertAll(opts.lacksNodes ?? [], ast.idMap)) {
 			assert.isFalse(slice.result.has(id), `expected node id ${id} NOT to be in dice result`);
+		}
+	});
+}
+
+/** the code the static-slice query of a fresh analyzer reconstructs for `criterion` */
+export async function sliceOf(parser: KnownParser, code: string, criterion: SlicingCriterion): Promise<string> {
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+	analyzer.addRequest(code);
+	const sliced = await analyzer.query([{ type: 'static-slice', criteria: [criterion] }]);
+	return (Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code;
+}
+
+/** asserts that the slice for `criterion` keeps each of `has` and none of `lacks` */
+export function assertSliceKeeps(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, { has = [], lacks = [] }: { has?: readonly string[], lacks?: readonly string[] }) {
+	test(name, async() => {
+		const sliced = await sliceOf(parser, code, criterion);
+		for(const s of has) {
+			assert.include(sliced, s, `slice should keep ${s}:\n${sliced}`);
+		}
+		for(const s of lacks) {
+			assert.notInclude(sliced, s, `slice should drop ${s}:\n${sliced}`);
+		}
+	});
+}
+
+/** asserts which of the given definitions the call at `criterion` reaches with a calls edge */
+export function assertCallTargets(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, { reaches = [], misses = [] }: { reaches?: readonly SlicingCriterion[], misses?: readonly SlicingCriterion[] }) {
+	test(name, async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+		analyzer.addRequest(code);
+		const { idMap } = await analyzer.normalize();
+		const targets = new Set(edgeTargets((await analyzer.dataflow()).graph, SlicingCriterion.parse(criterion, idMap), EdgeType.Calls));
+		for(const r of reaches) {
+			assert.isTrue(targets.has(SlicingCriterion.parse(r, idMap)), `${criterion} should call ${r}`);
+		}
+		for(const r of misses) {
+			assert.isFalse(targets.has(SlicingCriterion.parse(r, idMap)), `${criterion} should not call ${r}`);
+		}
+	});
+}
+
+/** asserts that the slice for `criterion`, run in `shell` after `reset`, prints `lastLine` last, just as the whole program does */
+export function assertSliceRunsInShell(name: string, shell: RShell, code: string, criterion: SlicingCriterion, lastLine: string, reset?: string) {
+	test(name, async() => {
+		const slice = await sliceOf(shell, code, criterion);
+		const run = async(c: string) => {
+			shell.clearEnvironment();
+			if(reset !== undefined) {
+				await shell.sendCommandWithOutput(reset);
+			}
+			return (await shell.sendCommandWithOutput(c)).at(-1);
+		};
+		assert.strictEqual(await run(code), lastLine, 'the program itself');
+		assert.strictEqual(await run(slice), lastLine, `the slice:\n${slice}`);
+		shell.clearEnvironment();
+	});
+}
+
+const execFileAsync = promisify(execFile);
+
+/** what `Rscript` prints for `code` in a fresh directory, failing on an error or after 20 seconds */
+export async function printedByR(code: string): Promise<string> {
+	const cwd = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'flowr-r-'));
+	try {
+		return (await execFileAsync('Rscript', ['--vanilla', '-e', code], { cwd, timeout: 20_000, killSignal: 'SIGKILL', maxBuffer: 1 << 24 })).stdout.trimEnd();
+	} finally {
+		await fs.promises.rm(cwd, { recursive: true, force: true });
+	}
+}
+
+/**
+ * Asserts that the slice for `criterion` (default: the call on the last line), run by `Rscript`, prints what the program
+ * prints last (all of it with `whole`) and lacks `absent`; `sigdb` turns the shipped signature database on.
+ */
+export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, absent, whole, sigdb }: { criterion?: SlicingCriterion, absent?: string, whole?: boolean, sigdb?: boolean } = {}) {
+	test(name, async() => {
+		const lines = code.split('\n');
+		const disabled = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		if(sigdb) {
+			delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		}
+		const slice = await sliceOf(parser, code, criterion ?? `${lines.length}@${/^(\w+)\(/.exec(lines[lines.length - 1])?.[1] ?? 'print'}`).finally(() => {
+			if(disabled !== undefined) {
+				process.env.FLOWR_DISABLE_DEFAULT_SIGDB = disabled;
+			}
+		});
+		const [all, part] = (await Promise.all([printedByR(code), printedByR(slice)])).map(out => whole ? out : out.split('\n').at(-1));
+		assert.strictEqual(part, all, `the slice:\n${slice}`);
+		if(absent !== undefined) {
+			assert.notInclude(slice, absent, `the slice:\n${slice}`);
 		}
 	});
 }

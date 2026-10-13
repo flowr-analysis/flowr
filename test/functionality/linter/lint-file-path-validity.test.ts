@@ -1,10 +1,11 @@
 import { describe } from 'vitest';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import { getPlatform } from '../../../src/util/os';
+import { decorateLabelContext, label } from '../_helper/label';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('file path validity', () => {
@@ -138,5 +139,20 @@ describe('flowR linter', withTreeSitter(parser => {
 				], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
 			});
 		});
+	});
+	describe('counterexamples', () => {
+		/* R: the native pipe reads missing.csv and warns "cannot open file" */
+		assertLinterFields(parser, '"missing.csv" |> read.csv()', 'file-path-validity', [{ filePath: 'missing.csv' }]);
+		/* R: after setwd("sub") the relative a.csv resolves to sub/a.csv, which does not exist */
+		assertLinterFields(parser, 'setwd("sub")\nread.csv("a.csv")', 'file-path-validity', [{ filePath: 'a.csv' }], ['a.csv']);
+		assertLinterFields(parser, 'setwd("sub")\ndata("rat")', 'file-path-validity', [{ filePath: 'data/rat' }], ['data/rat.rda']);
+		/* R: "data set 'rat' not found", the namespaced call and the second data set are checked just the same */
+		assertLinterFields(parser, 'utils::data("rat")', 'file-path-validity', [{ filePath: 'data/rat' }]);
+		assertLinterFields(parser, 'data("iris", "rat")', 'file-path-validity', [{ filePath: 'data/rat' }]);
+		/* R: these calls create the file, so the read succeeds */
+		assertLinterFields(parser, 'file.create("o.txt")\nreadLines("o.txt")', 'file-path-validity', []);
+		assertLinterFields(parser, 'download.file("https://x.org", "o.csv")\nread.csv("o.csv")', 'file-path-validity', []);
+		assertLinterFields(parser, 'file.copy("a.csv", "o.csv")\nread.csv("o.csv")', 'file-path-validity', [], ['a.csv']);
+		assertLintedLines(decorateLabelContext(label('matrix: constant data is no file', ['name-normal', 'function-calls']), ['dataflow']), parser, 'm <- matrix(1:6, nrow = 2)\nr <- t(m) %*% m\nprint(r)', 'file-path-validity', []);
 	});
 }));

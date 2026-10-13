@@ -8,9 +8,9 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
-import { WebRVersion } from './webr-version';
+import { WebRBase, WebRVersion } from './webr-version';
 
-export { WebRVersion };
+export { WebRBase, WebRVersion };
 
 const Integrity = 'sha512-M2b8m3/ZBk7XMIR7LD97s5k/9jUla83Z0Hl4b+WnrK7XmSMpZdajCiP3XkSzHKHDUgscHKe+lVUvk3aym8q0bw==';
 /* https://registry.npmjs.org/-/npm/v1/keys, the key npm signs packages with */
@@ -19,8 +19,6 @@ const NpmKey = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEY6Ya7W++7aUPzvMTrezH6Ycx3c+H
 
 const Registry = `https://registry.npmjs.org/webr/${WebRVersion}`;
 const Cache = path.join('node_modules', '.cache', 'flowr-playground', `webr-${WebRVersion}.tgz`);
-
-export const WebRBase = `https://webr.r-wasm.org/v${WebRVersion}/`;
 
 /* what the page loads at runtime: the rest of the package (types, maps, tests, its own repl) is never fetched */
 const Wanted = /^package\/dist\/(?:webr\.js|webr-worker\.js|R\.js|R\.wasm|libRblas\.so|libRlapack\.so|vfs\/.+)$/;

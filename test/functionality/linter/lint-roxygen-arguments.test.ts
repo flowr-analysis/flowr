@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, assertLinterFields } from '../_helper/linter';
 import { SourceRange } from '../../../src/util/range';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
@@ -123,5 +123,11 @@ f = function(a, b){return a;}`, 'roxygen-arguments', [
 		assertLinter('comma-separated @param documents each name', parser, `#' This is a function.
 #' @param x,y numeric values
 add <- function(x, y) x + y`, 'roxygen-arguments', []);
+	});
+	describe('counterexamples', () => {
+		/* roxygen2::parse_text gives the param name `a b` */
+		assertLinter('backticked param', parser, '#\' @param `a b` x\nf <- function(`a b`) 1', 'roxygen-arguments', []);
+		/* roxygen2 reads ##' blocks as well */
+		assertLinterFields(parser, '##\' @param b x\nf <- function(a) a', 'roxygen-arguments', [{ underDocumented: ['a'], overDocumented: ['b'] }]);
 	});
 }));

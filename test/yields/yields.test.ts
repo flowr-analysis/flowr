@@ -4,12 +4,12 @@ import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { assert, beforeAll, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { SlicingCriterion } from '../../src/slicing/criterion/parse';
 import type { YieldSnippet } from '../../scripts/extract-yield-snippets';
 import { sigDbCacheDir } from '../../src/project/sigdb/decompress';
 import snippets from './snippets.json';
+import { sliceOf } from '../functionality/_helper/shell';
 
 /*
  * Every snippet that states what it yields (refresh with
@@ -75,14 +75,11 @@ describe('Snippets that state what they yield', () => {
 				if(missing.length > 0) {
 					ctx.skip(`R lacks ${missing.join(', ')}, and installing into ${packageLibrary} did not work`);
 				}
-				const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
-				analyzer.addRequest(program.join('\n'));
-				const [expected, whole, sliced] = await Promise.all([
+				const [expected, whole, slice] = await Promise.all([
 					printed([...libraries, `print(${check.yields})`].join('\n')).catch(() => undefined),
 					printed(program.join('\n')),
-					analyzer.query([{ type: 'static-slice', criteria: [`${program.length}@print` as SlicingCriterion] }])
+					sliceOf(new TreeSitterExecutor(), program.join('\n'), `${program.length}@print` as SlicingCriterion)
 				]);
-				const slice = (Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code;
 				const part = await printed(slice);
 				for(const [what, output] of [['R itself', whole], [`the slice:\n${slice}`, part]] as const) {
 					assert.isTrue(yieldsAsStated(output, expected, check.yields), `${what} prints ${JSON.stringify(output)}`);

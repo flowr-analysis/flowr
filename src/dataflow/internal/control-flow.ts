@@ -6,6 +6,7 @@ import { ControlDependency, ExitPointType, withCds } from '../info';
 import { Ternary } from '../../util/logic';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { isNotUndefined } from '../../util/assert';
 
 /** Where `from` completes: its single CFG exit when it has one, else each of its default exit points. */
 function completionsOf(from: DataflowCfgInformation): readonly NodeId[] {
@@ -72,18 +73,18 @@ export const ControlFlow = {
 	 * { if(u) break }      # only maybe
 	 * ```
 	 */
-	alwaysExits(this: void, info: DataflowCfgInformation, context?: readonly ControlDependency[]): boolean {
-		let cds: ControlDependency[] = [];
+	alwaysExits(this: void, info: DataflowCfgInformation, context: readonly ControlDependency[] = []): boolean {
+		const cds: ControlDependency[] = [];
 		for(const exit of info.exitPoints) {
 			if(exit.type !== ExitPointType.Default) {
 				if(exit.cds === undefined) {
 					return true;
 				}
-				const own = context === undefined ? exit.cds : exit.cds.filter(cd => !context.some(c => ControlDependency.same(c, cd)));
+				const own = ControlDependency.minus(exit.cds, context);
 				if(own.length === 0 && exit.cds.length > 0) {
 					return true;
 				}
-				cds = cds.concat(own);
+				cds.push(...own);
 			}
 		}
 		return ControlDependency.happensInEveryBranch(cds);
@@ -98,15 +99,7 @@ export const ControlFlow = {
 	 * ```
 	 */
 	canComplete(this: void, info: DataflowCfgInformation): boolean {
-		if(info.cfgExit !== undefined) {
-			return true;
-		}
-		for(const exit of info.exitPoints) {
-			if(exit.type === ExitPointType.Default) {
-				return true;
-			}
-		}
-		return false;
+		return info.cfgExit !== undefined || info.exitPoints.some(e => e.type === ExitPointType.Default);
 	},
 	/**
 	 * Whatever `from` completes at continues with `next`.
@@ -180,21 +173,14 @@ export const ControlFlow = {
 	 * ```
 	 */
 	promise(this: void, graph: DataflowGraph, promise: DataflowCfgInformation | undefined, forcing: Ternary, holder: NodeId): ExitPoint[] {
-		const exits: ExitPoint[] = [];
-		for(const exit of promise?.exitPoints ?? []) {
-			if(exit.type === ExitPointType.Default) {
-				continue;
-			}
-			if(forcing !== Ternary.Always) {
-				graph.addEdge(exit.nodeId, holder, EdgeType.FlowEdge);
-			}
-			if(forcing === Ternary.Always) {
-				exits.push(exit);
-			} else if(forcing === Ternary.Maybe) {
-				exits.push({ ...exit, cds: withCds(exit.cds, [{ id: holder, when: true, byPromise: true }]) });
-			}
+		const exits = promise?.exitPoints.filter(e => e.type !== ExitPointType.Default) ?? [];
+		if(forcing === Ternary.Always) {
+			return exits;
 		}
-		return exits;
+		for(const exit of exits) {
+			graph.addEdge(exit.nodeId, holder, EdgeType.FlowEdge);
+		}
+		return forcing === Ternary.Never ? [] : exits.map(e => ControlFlow.withinPromise(e, holder));
 	},
 	/**
 	 * The parts run one after the other and the last one continues with `last`, if it is given.
@@ -212,10 +198,10 @@ export const ControlFlow = {
 			if(part === undefined) {
 				continue;
 			}
+			const next = ControlFlow.entryOf(part);
 			if(previous === undefined) {
-				entry = ControlFlow.entryOf(part);
+				entry = next;
 			} else {
-				const next = ControlFlow.entryOf(part);
 				ControlFlow.continuesWith(graph, previous, next);
 				/*
 				 * R promises the parts are evaluated in this order, not that one jumping away keeps the next
@@ -249,29 +235,16 @@ export const ControlFlow = {
 	 * ```
 	 */
 	picksOneOf(this: void, graph: DataflowGraph, parts: readonly (DataflowCfgInformation | undefined)[], from: number, joinsAt: NodeId, hasDefault: boolean): NodeId | undefined {
-		let entry: NodeId | undefined = undefined;
-		let selector: DataflowCfgInformation | undefined = undefined;
-		for(let i = 0; i < from; i++) {
-			const part = parts[i];
-			if(part === undefined) {
-				continue;
+		const selectors = parts.slice(0, from).filter(isNotUndefined);
+		const selector = selectors.at(-1);
+		const entry = ControlFlow.inSequence(graph, selectors);
+		for(const alternative of parts.slice(from)) {
+			if(alternative !== undefined) {
+				if(selector !== undefined) {
+					ControlFlow.branchesTo(graph, selector, ControlFlow.entryOf(alternative), { id: joinsAt, when: true });
+				}
+				ControlFlow.continuesWith(graph, alternative, joinsAt);
 			}
-			if(selector === undefined) {
-				entry = ControlFlow.entryOf(part);
-			} else {
-				ControlFlow.continuesWith(graph, selector, ControlFlow.entryOf(part));
-			}
-			selector = part;
-		}
-		for(let i = from; i < parts.length; i++) {
-			const alternative = parts[i];
-			if(alternative === undefined) {
-				continue;
-			}
-			if(selector !== undefined) {
-				ControlFlow.branchesTo(graph, selector, ControlFlow.entryOf(alternative), { id: joinsAt, when: true });
-			}
-			ControlFlow.continuesWith(graph, alternative, joinsAt);
 		}
 		if(selector !== undefined && !hasDefault) {
 			ControlFlow.branchesTo(graph, selector, joinsAt, { id: joinsAt, when: false });

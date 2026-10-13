@@ -33,7 +33,7 @@ import type { LibraryExports } from '../../../src/project/sigdb/schema';
 import { applyAssumedPackages, assumedPackagesOf } from './shell';
 
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
-export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean };
+export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean, assumeLoaded?: readonly string[] };
 
 /** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
 export function controlledSigDb(pkgs: Record<string, readonly string[]>): PackageSignatureSource;
@@ -113,6 +113,32 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 		}).sort()
 	}) as LintingRuleResult<Name>);
 }
+/** Asserts the linting results, comparing only the fields the expected results state */
+export function assertLinterFields<Name extends LintingRuleNames>(
+	parser: KnownParser,
+	code: string,
+	ruleName: Name,
+	expected: Record<string, unknown>[],
+	emptyFiles: readonly string[] = [],
+	assumeLoaded?: readonly string[]
+) {
+	const keys = new Set(expected.flatMap(e => Object.keys(e)));
+	const setup: LinterTestSetup = { addFiles: emptyFiles.map(f => new FlowrInlineTextFile(f, '')), assumeLoaded };
+	assertLinterWithCleanup(`${ruleName}: ${JSON.stringify(code)}`, parser, code, ruleName, expected, undefined, setup as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
+		r => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k))));
+}
+
+/** Asserts the lines the findings of `rule` start at, as the linter query of a fresh analyzer reports them */
+export function assertLintedLines(name: string, parser: KnownParser, code: string, rule: LintingRuleNames, lines: readonly number[]) {
+	test(name, async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+		analyzer.addRequest(code);
+		const linted = await analyzer.query([{ type: 'linter', rules: [rule] }]);
+		const results = (linted.linter.results[rule] as unknown as { results?: { loc: readonly number[] }[] } | undefined)?.results ?? [];
+		assert.deepStrictEqual(results.map(r => r.loc[0]), lines, `${rule} should report the lines ${JSON.stringify(lines)}`);
+	});
+}
+
 /**
  * Asserts correct linting results, allowing for a custom cleanup function that determines what information from the linting result will be kept for comparison.
  */
@@ -126,7 +152,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
 	cleanup: (result: LintingRuleResult<Name> | Result, ast: NormalizedAst) => LintingRuleResult<Name> | Result = (r => r),
 ) {
-	const assumed = assumedPackagesOf(undefined);
+	const assumed = assumedPackagesOf(lintingRuleConfig);
 	test(decorateLabelContext(name, ['linter']), async() => {
 		let builder = applyAssumedPackages(new FlowrAnalyzerBuilder()
 			.setInput({

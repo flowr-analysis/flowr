@@ -13,8 +13,8 @@ import { ArgProp } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { BuiltInLookup } from './frame-reflection';
 import { namesAnErrorHandler } from './condition-handlers';
+import { memoize } from '../../util/collections/defaultmap';
 
-const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {
 	id:   NodeId;
 	cds?: readonly ControlDependency[];
@@ -38,7 +38,7 @@ export type ExceptionsByFunction = Record<NodeId, ExceptionPoint[]>;
  * (`tryCatch`) catches only what the names written for it say.
  */
 function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGraph, info: BuiltInLookup): boolean {
-	if(!DfgVertex.isFunctionCall(vertex) || vertex.origin === 'unnamed' || !vertex.origin.some(c => CatchHandlers.has(c))) {
+	if(!DfgVertex.isFunctionCall(vertex) || !DfgVertex.hasOrigin(vertex, BuiltInProcName.Try)) {
 		return false;
 	}
 	const sig = info(vertex.name)?.sig;
@@ -57,9 +57,9 @@ function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGra
  */
 function guarded(id: NodeId, graph: CallGraph, info: BuiltInLookup): boolean {
 	const idMap = graph.idMap;
-	let node = idMap === undefined ? undefined : idMap.get(id);
-	while(node !== undefined && !RFunctionDefinition.is(node)) {
-		const parent = RNode.directParent(node, idMap as NonNullable<typeof idMap>);
+	let node = idMap?.get(id);
+	while(idMap !== undefined && node !== undefined && !RFunctionDefinition.is(node)) {
+		const parent = RNode.directParent(node, idMap);
 		if(RArgument.isUnnamed(node) && RFunctionCall.is(parent) && catches(graph.getVertex(parent.info.id), graph, info)) {
 			return true;
 		}
@@ -70,12 +70,11 @@ function guarded(id: NodeId, graph: CallGraph, info: BuiltInLookup): boolean {
 
 function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction): ReachedFunctions {
 	const info = builtInLookup();
-	const isGuarded = new Map<NodeId, boolean>();
+	const isGuarded = memoize((n: NodeId) => guarded(n, graph, info));
 	const calls = new Map<NodeId, readonly NodeId[]>();
 	const own = new Map<NodeId, readonly ExceptionPoint[]>();
 	const defs = new Set<NodeId>();
 	const toVisit: NodeId[] = [id];
-
 	while(toVisit.length > 0) {
 		const current = toVisit.pop() as NodeId;
 		if(calls.has(current)) {
@@ -97,20 +96,9 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 			own.set(current, vertex.exitPoints.filter(e => e.type === ExitPointType.Error).map(e => ({ id: e.nodeId, cds: e.cds })));
 		}
 		/* a guarded call is only ever reached through the construct guarding it, which ends the walk of its own */
-		const next = [...(graph.edgesFrom(current)).keys()].filter(n => {
-			let known = isGuarded.get(n);
-			if(known === undefined) {
-				known = guarded(n, graph, info);
-				isGuarded.set(n, known);
-			}
-			return !known;
-		});
+		const next = [...graph.edgesFrom(current).keys()].filter(n => !isGuarded(n));
 		calls.set(current, next);
-		for(const n of next) {
-			if(!calls.has(n)) {
-				toVisit.push(n);
-			}
-		}
+		toVisit.push(...next);
 	}
 	return { calls, own, defs };
 }
@@ -124,63 +112,56 @@ function raisedPerNode(calls: ReadonlyMap<NodeId, readonly NodeId[]>, own: Reado
 	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
 	const index = new Map<NodeId, number>();
 	const low = new Map<NodeId, number>();
-	const onStack = new Set<NodeId>();
 	const stack: NodeId[] = [];
-	let counter = 0;
+	const onStack = new Set<NodeId>();
+	const lower = (node: NodeId, to: number) => low.set(node, Math.min(low.get(node) as number, to));
 	for(const root of calls.keys()) {
 		if(index.has(root)) {
 			continue;
 		}
-		/* each frame is a node and how far its callees have been looked at */
+		/* each frame is a node and how many of its callees have been looked at */
 		const frames: [NodeId, number][] = [[root, 0]];
 		while(frames.length > 0) {
 			const frame = frames[frames.length - 1];
 			const [node, at] = frame;
 			if(at === 0) {
-				index.set(node, counter);
-				low.set(node, counter++);
+				low.set(node, index.size);
+				index.set(node, index.size);
 				stack.push(node);
 				onStack.add(node);
 			}
-			const next = calls.get(node) ?? [];
-			if(at < next.length) {
+			const callee = calls.get(node)?.[at];
+			if(callee !== undefined) {
 				frame[1]++;
-				const callee = next[at];
 				if(!index.has(callee)) {
 					frames.push([callee, 0]);
 				} else if(onStack.has(callee)) {
-					low.set(node, Math.min(low.get(node) as number, index.get(callee) as number));
+					lower(node, index.get(callee) as number);
 				}
 				continue;
 			}
 			frames.pop();
 			if(frames.length > 0) {
-				const parent = frames[frames.length - 1][0];
-				low.set(parent, Math.min(low.get(parent) as number, low.get(node) as number));
+				lower(frames[frames.length - 1][0], low.get(node) as number);
 			}
-			if(low.get(node) !== index.get(node)) {
-				continue;
-			}
-			const members: NodeId[] = [];
-			let member: NodeId;
-			do{
-				member = stack.pop() as NodeId;
-				onStack.delete(member);
-				members.push(member);
-			} while(member !== node);
-			const points = new Map<NodeId, ExceptionPoint>();
-			for(const m of members) {
-				for(const e of own.get(m) ?? []) {
-					points.set(e.id, e);
-				}
-				for(const callee of calls.get(m) ?? []) {
-					for(const [at, point] of raised.get(callee) ?? NoPoints) {
-						points.set(at, point);
+			if(low.get(node) === index.get(node)) {
+				/* the node roots a component: its members are what lies on the stack above it, taken off top first */
+				const members = stack.splice(stack.lastIndexOf(node)).reverse();
+				const points = new Map<NodeId, ExceptionPoint>();
+				for(const m of members) {
+					for(const e of own.get(m) ?? []) {
+						points.set(e.id, e);
+					}
+					for(const callee of calls.get(m) ?? []) {
+						for(const [at, point] of raised.get(callee) ?? []) {
+							points.set(at, point);
+						}
 					}
 				}
-			}
-			for(const m of members) {
-				raised.set(m, points);
+				for(const m of members) {
+					onStack.delete(m);
+					raised.set(m, points);
+				}
 			}
 		}
 	}
@@ -200,17 +181,11 @@ export interface FunctionExceptionsOptions {
  */
 export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);
-
-	const raised = raisedPerNode(calls, own);
-
 	const result: ExceptionsByFunction = {};
-	for(const [node, points] of raised) {
+	for(const [node, points] of raisedPerNode(calls, own)) {
 		if(defs.has(node) || node === id) {
 			result[node] = [...points.values()];
 		}
 	}
 	return result;
 }
-
-
-const NoPoints: ReadonlyMap<NodeId, ExceptionPoint> = new Map();

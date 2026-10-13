@@ -2,16 +2,9 @@ import type { FunctionInfo } from './function-info';
 import type { DependencyInfo } from '../dependencies-query-format';
 import { Identifier } from '../../../../dataflow/environments/identifier';
 
-/**
- * A loader of the `library` category, together with whether it attaches the package it names.
- * @see {@link LibraryFunctions}
- */
+/** A loader of the {@link LibraryFunctions|`library` category}, together with whether it attaches the package it names. */
 export interface LibraryFunctionInfo extends FunctionInfo {
-	/**
-	 * Whether the call makes the package's exports reachable by their bare name, which is what tells a package
-	 * that is loaded and used apart from one that is loaded and never touched. `false` for a loader that only
-	 * readies a namespace to reach as `pkg::fn`, and for one whose argument is not a package at all.
-	 */
+	/** Whether the call makes the package's exports reachable by their bare name, not only as `pkg::fn`. */
 	attaches: boolean
 }
 
@@ -44,12 +37,7 @@ export const LibraryFunctions: LibraryFunctionInfo[] = [
 	{ package: 'rlang',        name: 'on_package_load',   argIdx: 0,         argName: 'pkg',     resolveValue: true,      attaches: false }
 ] as const;
 
-/**
- * Whether the loader a `library`-category finding came from attaches the package, taken from the one place that
- * says so. A call this does not know attaches nothing either: `pkg::fn` is reported as a loader of `pkg` and is no
- * import of its own, and neither is whatever else may come to be reported here. Matching ignores the loader's own
- * namespace, so `base::require` is caught just as well as a bare `require`.
- */
+/** Whether the known loader a `library`-category finding came from attaches the package (`base::require` as well as `require`). */
 export function attachesPackage(info: DependencyInfo): boolean {
 	return LibraryFunctions.some(loader => loader.attaches && Identifier.matches(loader.name, info.functionName));
 }

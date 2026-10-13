@@ -4,13 +4,14 @@ import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../../environments/identifier';
 import { removeRQuotes } from '../../../../../r-bridge/retriever';
-import { EdgeType, DfEdge } from '../../../../graph/edge';
+import { EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { firstOnSomePath, reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { linkCallToDefinitions } from '../../../linker';
+import { edgeSources } from '../../../../fn/frame-reflection';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
@@ -23,11 +24,6 @@ export interface ForceSites {
 	readonly reach?:  { before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean> }
 }
 
-/** Drops the read of `target` from `use`, for a binding another write has replaced. */
-function dropRead(graph: DataflowGraph, use: NodeId, target: NodeId): void {
-	graph.removeEdgeType(use, target, EdgeType.Reads);
-}
-
 /** Where a name is bound and where it is read, so that a deferred expression can reach either. */
 export
 interface NameIndex {
@@ -35,31 +31,24 @@ interface NameIndex {
 	readonly uses:        ReadonlyMap<string, NodeId[]>
 }
 
-function add(index: Map<string, NodeId[]>, name: string, id: NodeId): void {
-	const known = index.get(name);
-	if(known) {
-		known.push(id);
-	} else {
-		index.set(name, [id]);
-	}
+/** The vertices of `type` by their unquoted name. */
+export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idMap: AstIdMap<Info & ParentInformation>): Map<string, NodeId[]> {
+	const named = graph.vertexIdsOfType(type).filter(id => NodeId.recoverName(id, idMap) !== undefined);
+	return Map.groupBy(named, id => removeRQuotes(NodeId.recoverName(id, idMap) as string));
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
 function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, string, boolean])[] {
-	const node = idMap.get(expr);
 	const names: (readonly [NodeId, string, boolean])[] = [];
-	if(node === undefined) {
-		return names;
-	}
 	const callees = new Set<NodeId>();
-	RNode.visitAst<Info & ParentInformation>(node, inner => {
+	RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
 		if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
 			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
-				for(const [def, edge] of graph.edgesTo(inner.info.id)) {
-					const name = DfEdge.includesType(edge, EdgeType.SideEffectOnCall) ? NodeId.recoverName(def, idMap) : undefined;
+				for(const def of edgeSources(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
+					const name = NodeId.recoverName(def, idMap);
 					if(name !== undefined) {
 						names.push([def, removeRQuotes(name), true]);
 					}
@@ -90,17 +79,10 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 export const Deferred = {
 	/** Where each name is bound and read, built once and shared by every deferred expression in the graph. */
 	indexOf<Info>(this: void, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): NameIndex {
-		const definitions = new Map<string, NodeId[]>();
-		const uses = new Map<string, NodeId[]>();
-		for(const [type, index] of [[VertexType.VariableDefinition, definitions], [VertexType.Use, uses]] as const) {
-			for(const [id] of graph.verticesOfType(type)) {
-				const name = NodeId.recoverName(id, idMap);
-				if(name !== undefined) {
-					add(index, removeRQuotes(name), id);
-				}
-			}
-		}
-		return { definitions, uses };
+		return {
+			definitions: verticesByName(graph, VertexType.VariableDefinition, idMap),
+			uses:        verticesByName(graph, VertexType.Use, idMap)
+		};
 	},
 
 	/**
@@ -109,20 +91,15 @@ export const Deferred = {
 	 * its own (`delayedAssign`), a closure reading it forces it when called.
 	 */
 	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph, viaClosures = false): readonly NodeId[] {
-		const reads: NodeId[] = [];
+		const reads = edgeSources(graph, binding, EdgeType.Reads);
+		const readSet = new Set(reads);
 		/* a closure reading it and the call of that closure may skip the read, so they never rule out a later force */
-		const calls: NodeId[] = [];
-		for(const [reader, edge] of graph.edgesTo(binding)) {
-			if(DfEdge.includesType(edge, EdgeType.Reads)) {
-				reads.push(reader);
-			} else if(viaClosures && DfEdge.includesType(edge, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall)) {
-				calls.push(reader);
-			}
-		}
+		const calls = viaClosures
+			? edgeSources(graph, binding, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall).filter(r => !readSet.has(r))
+			: [];
 		if(reads.length < 2) {
 			return reads.concat(calls);
 		}
-		const readSet = new Set(reads);
 		/* the reads of a parameter all sit in its function, which is where the walk can stay */
 		const parameter = graph.idMap?.get(binding)?.info.parent;
 		const owner = graph.getVertex(graph.idMap?.get(parameter ?? '')?.info.parent ?? '');
@@ -140,10 +117,7 @@ export const Deferred = {
 		const own = new Set(within.map(([id]) => id));
 		let reachedFromAt: ReadonlySet<NodeId> | undefined;
 		let reachedFromSites: ReadonlySet<NodeId> | undefined;
-		for(const [node, name, writes] of within) {
-			if(!writes) {
-				continue;
-			}
+		for(const [node, name] of within.filter(([, , writes]) => writes)) {
 			/* a write leaving the evaluating frame lands whenever a call of the closure evaluating it does */
 			const escapes = DfgVertex.hasOrigin(graph.getVertex(idMap.get(node)?.info.parent ?? ''), BuiltInProcName.SuperAssignment);
 			for(const site of escapes ? sites : []) {
@@ -154,10 +128,9 @@ export const Deferred = {
 			for(const use of index.uses.get(name) ?? []) {
 				/* only a use the evaluation may reach can see what it wrote */
 				const reached = cfg === undefined ? undefined : escapes ? reachedFromSites ??= reachableFrom(cfg, [at, ...sites]) : reachedFromAt ??= reachableFrom(cfg, [at]);
-				if(own.has(use) || (reached !== undefined && !reached.has(use))) {
-					continue;
+				if(!own.has(use) && (reached === undefined || reached.has(use))) {
+					graph.addEdge(use, node, EdgeType.Reads);
 				}
-				graph.addEdge(use, node, EdgeType.Reads);
 			}
 		}
 	},
@@ -197,15 +170,16 @@ export const Deferred = {
 				/* a write of the bound name replaces the binding, so a read it definitely reaches sees only it */
 				const shadows = forces !== undefined && name === bindingName && graph.getVertex(node)?.cds === undefined;
 				for(const use of index.uses.get(name) ?? []) {
-					if(!own.has(use) && reachedByAForce(use)) {
-						graph.addEdge(use, node, EdgeType.Reads);
-						/* the write only happens because a force runs it */
-						for(const site of forces?.sites ?? []) {
-							graph.addEdge(node, site, EdgeType.Reads);
-						}
-						if(shadows && alwaysAfterAForce(use)) {
-							dropRead(graph, use, forces.binding);
-						}
+					if(own.has(use) || !reachedByAForce(use)) {
+						continue;
+					}
+					graph.addEdge(use, node, EdgeType.Reads);
+					/* the write only happens because a force runs it */
+					for(const site of forces?.sites ?? []) {
+						graph.addEdge(node, site, EdgeType.Reads);
+					}
+					if(shadows && alwaysAfterAForce(use)) {
+						graph.removeEdgeType(use, forces.binding, EdgeType.Reads);
 					}
 				}
 			} else {

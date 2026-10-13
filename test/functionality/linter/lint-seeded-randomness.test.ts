@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { assertLinter, controlledSigDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty, LintingResults } from '../../../src/linter/linter-format';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -8,6 +8,7 @@ import type { BuiltInDefinitions } from '../../../src/dataflow/environments/buil
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
 import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { decorateLabelContext, label } from '../_helper/label';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('R3 seeded randomness', () => {
@@ -171,5 +172,14 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('some is not a randomness consumer', parser, 'some(1:3, is.numeric)', 'seeded-randomness', [],
 				{ consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 		});
+	});
+	describe('counterexamples', () => {
+		/* R: withr::with_seed(1, runif(1)) yields the same value every time */
+		assertLinter('with_seed seeds', parser, 'withr::with_seed(1, runif(1))', 'seeded-randomness', []);
+		assertLinterFields(parser, 'stats::runif(1)', 'seeded-randomness', [{ certainty: 'certain' }]);
+		assertLinterFields(parser, 'base::sample(3)', 'seeded-randomness', [{ certainty: 'certain' }]);
+		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+		assertLintedLines(sec('state: only the draw before the call is unseeded, the promise is forced after set.seed'), parser, 'noisy <- function(x) {\n  set.seed(1)\n  x + rnorm(1)\n}\nr <- runif(1)\na <- noisy(r)\nb <- noisy(runif(1))', 'seeded-randomness', [5]);
+		assertLintedLines(sec('validity: both samples are unseeded'), parser, 'x <- rnorm(20)\ny <- rnorm(20)\nt.test(x, y)', 'seeded-randomness', [1, 2]);
 	});
 }));

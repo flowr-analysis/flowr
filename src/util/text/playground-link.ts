@@ -152,27 +152,6 @@ export const Playground = {
 	link(this: void, parts: PlaygroundLinkParts): string {
 		const { code, name, files = [], marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
 		const base = parts.base ?? Playground.BaseRef;
-		const fields: [string, string][] = [];
-		if(code !== undefined && code.length > 0) {
-			fields.push(['c', packForUrl(code)]);
-		}
-		if(name !== undefined && name !== Playground.MainFile) {
-			fields.push(['n', name]);
-		}
-		if(files.length > 0) {
-			fields.push(['o', packForUrl(JSON.stringify(files.map(f => [f.name, f.code])))]);
-		}
-		if(config.length > 0) {
-			fields.push(['k', Playground.packConfig(config)]);
-		}
-		const kept = Mark.compress(marks);
-		if(kept.length > 0) {
-			fields.push(['h', kept.join(',')]);
-		}
-		const folded = uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box));
-		if(folded.length > 0) {
-			fields.push(['f', folded.join(',')]);
-		}
 		/* one field for everything about the layout, with the trailing empty parts dropped */
 		const view = [
 			split === undefined ? '' : String(split),
@@ -182,15 +161,19 @@ export const Playground = {
 		while(view.length > 0 && view[view.length - 1].length === 0) {
 			view.pop();
 		}
-		if(view.length > 0) {
-			fields.push(['v', view.join(',')]);
-		}
 		const position = at === undefined ? undefined
 			: code === undefined ? (/^\d+:\d+$/.test(at) ? at : undefined) : Playground.positionOf(code, at);
-		if(position !== undefined) {
-			fields.push(['p', position]);
-		}
-		const hash = Playground.hash(fields);
+		/* an empty field is left out of the link */
+		const hash = Playground.hash([
+			['c', code ? packForUrl(code) : ''],
+			['n', name !== undefined && name !== Playground.MainFile ? name : ''],
+			['o', files.length > 0 ? packForUrl(JSON.stringify(files.map(f => [f.name, f.code]))) : ''],
+			['k', config.length > 0 ? Playground.packConfig(config) : ''],
+			['h', Mark.compress(marks).join(',')],
+			['f', uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box)).join(',')],
+			['v', view.join(',')],
+			['p', position ?? '']
+		]);
 		return hash.length > 0 ? `${base}#${hash}` : base;
 	},
 	/**
@@ -210,8 +193,8 @@ export const Playground = {
 		return text.split(';').filter(key => key.length > 0);
 	},
 	/**
-	 * Everything a fragment does not carry as itself is escaped, so a configuration's brackets, braces and
-	 * quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
+	 * The non-empty fields as a fragment. Everything a fragment does not carry as itself is escaped, so a
+	 * configuration's brackets, braces and quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
 	 * a terminal cuts the address at. What is left is what {@link FragmentSafe} lists: a fragment is not a
 	 * query, so `,`, `:` and `;` stand in it as they are and keep a link readable. `&` and `+` are escaped
 	 * beyond that, the first because it separates the fields here and the second because a reader takes it

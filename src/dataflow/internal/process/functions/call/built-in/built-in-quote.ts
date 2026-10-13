@@ -27,9 +27,7 @@ interface QuoteConfig {
 	readonly sig?:           FnSig
 }
 
-/**
- * Process a call to `quote` or similar nse/substitution functions.
- */
+/** Process a call to `quote` or similar nse/substitution functions. */
 export function processQuote<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -51,22 +49,10 @@ export function processQuote<OtherInfo>(
 		}
 	});
 
-	const inRefs: IdentifierReference[] = [fnRef];
-	const outRefs: IdentifierReference[] = [];
-	const unknownRefs: IdentifierReference[] = [];
-
+	const others = processedArguments.filter((p, i) => p !== undefined && i !== config.quoteArgumentsWithIndex) as DataflowInformation[];
+	const inRefs: IdentifierReference[] = [fnRef, ...others.flatMap(p => p.in)];
 	const quotedArg = args[config.quoteArgumentsWithIndex];
 	const evaluated = FunctionSemantics.call.nse.unquoted(RArgument.isEmpty(quotedArg) ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
-
-	for(let i = 0; i < args.length; i++) {
-		const processedArg = processedArguments[i];
-		if(processedArg && i !== config.quoteArgumentsWithIndex) {
-			inRefs.push(...processedArg.in);
-			outRefs.push(...processedArg.out);
-			unknownRefs.push(...processedArg.unknownReferences);
-		}
-	}
-
 	const quotedProcessed = processedArguments[config.quoteArgumentsWithIndex];
 	if(quotedProcessed) {
 		markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [config.quoteArgumentsWithIndex], { evaluated });
@@ -77,20 +63,17 @@ export function processQuote<OtherInfo>(
 		}
 	}
 
-	if(config.envArgIndex !== undefined) {
-		const envProcessed = processedArguments[config.envArgIndex];
-		const exprProcessed = processedArguments[config.quoteArgumentsWithIndex];
-		if(envProcessed && exprProcessed) {
-			applyEnvListReplacement(information, envProcessed, exprProcessed);
-		}
+	const envProcessed = config.envArgIndex === undefined ? undefined : processedArguments[config.envArgIndex];
+	if(envProcessed && quotedProcessed) {
+		applyEnvListReplacement(information, envProcessed, quotedProcessed);
 	}
 
 	return {
 		...information,
 		environment:       startEnv,
 		in:                inRefs,
-		out:               outRefs,
-		unknownReferences: unknownRefs
+		out:               others.flatMap(p => p.out),
+		unknownReferences: others.flatMap(p => p.unknownReferences)
 	};
 }
 
@@ -126,10 +109,6 @@ function applyEnvListReplacement(information: DataflowInformation, env: Dataflow
 				return true;
 			}
 			useMap ??= usesByName(expr);
-			if(useMap.size === 0) {
-				return true;
-			}
-
 			for(const field of vtx.args.filter(FunctionArgument.isNamed)) {
 				for(const useId of useMap.get(field.name) ?? []) {
 					information.graph.addEdge(useId, field.nodeId, EdgeType.Reads);

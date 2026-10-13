@@ -80,12 +80,28 @@ export const AmbientStateName = {
 	}
 } as const;
 
-const Accumulating: ReadonlySet<string> = new Set([AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption, AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers]);
+/** the states of the open devices, which a device call moves between the active device and the others */
+const DeviceStates = [AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy];
+
+const Accumulating: ReadonlySet<string> = new Set([
+	...DeviceStates, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption,
+	AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers
+]);
 
 /** A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` keeps what was there. */
 interface AmbientWrite {
 	readonly name: string
 	readonly mode: 'local' | 'reset' | 'maybe'
+}
+
+/** a write that keeps what was there, as the call may not happen to write */
+function maybe(name: string): AmbientWrite {
+	return { name, mode: 'maybe' };
+}
+
+/** what reading the options `keys` reads, every option if the keys are unknown */
+function optionReads(keys: readonly string[] | undefined): string[] {
+	return keys === undefined ? [AmbientStateName.allOptions] : [...keys.map(AmbientStateName.option), AmbientStateName.unknownOption];
 }
 
 /** Whether calling `definition` runs a body flowR cannot see: a library function's, or whatever a parameter is bound to. */
@@ -95,7 +111,11 @@ export function hidesBody(definition: IdentifierDefinition): boolean {
 
 /** A call into code flowR cannot see may read any option, draw random numbers (with `draws` advancing the generator), and with `graphics` draw on the device. */
 export function readsAllAmbientState<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, graphics: boolean, draws = true): DataflowInformation {
-	return withAccess(res, rootId, data, graphics ? [AmbientStateName.allOptions, AmbientStateName.rng, AmbientStateName.graphics, AmbientStateName.palette] : [AmbientStateName.allOptions, AmbientStateName.rng], draws ? [{ name: AmbientStateName.rng, mode: 'maybe' }] : []);
+	const reads: string[] = [AmbientStateName.allOptions, AmbientStateName.rng];
+	if(graphics) {
+		reads.push(AmbientStateName.graphics, AmbientStateName.palette);
+	}
+	return withAccess(res, rootId, data, reads, draws ? [maybe(AmbientStateName.rng)] : []);
 }
 
 /** Adds the reads and writes of the ambient state to what a call does, see {@link AmbientStateName}. */
@@ -104,7 +124,7 @@ function withAccess<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	reads: readonly string[],
-	writes: readonly (string | AmbientWrite)[]
+	writes: readonly (string | AmbientWrite)[] = []
 ): DataflowInformation {
 	if(reads.length === 0 && writes.length === 0) {
 		return res;
@@ -122,12 +142,18 @@ function withAccess<OtherInfo>(
 /** Applies the writes of the call `rootId` to the environment, see {@link withAccess}. */
 function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds: ControlDependency[] | undefined, writes: readonly (string | AmbientWrite)[]): REnvironmentInformation {
 	for(const write of writes) {
-		const name = typeof write === 'string' ? write : write.name;
-		const mode = typeof write === 'string' ? undefined : write.mode;
+		const { name, mode } = typeof write === 'string' ? { name: write, mode: undefined } : write;
 		const accumulates = Accumulating.has(name) || name.startsWith(AmbientStateName.file(''));
 		const keep = mode === 'maybe' || (accumulates && mode === undefined);
 		/* an accumulating state only ever grows, its definitions are maybe so merging environments keeps them all; a reset is definite */
-		const def: InGraphIdentifierDefinition & { name: string, maybeWrite?: true } = { nodeId: rootId, name, type: ReferenceType.Variable, definedAt: rootId, cds: keep || (accumulates && mode !== 'reset') ? cds ?? [] : cds };
+		const isMaybe = keep || (accumulates && mode !== 'reset');
+		const def: InGraphIdentifierDefinition & { name: string, maybeWrite?: true } = {
+			nodeId:    rootId,
+			name,
+			type:      ReferenceType.Variable,
+			definedAt: rootId,
+			cds:       isMaybe ? cds ?? [] : cds
+		};
 		if(mode === 'maybe') {
 			/* a call that may write reads what was there, so the maybe-writes before it stay reachable through it alone */
 			def.maybeWrite = true;
@@ -157,16 +183,12 @@ export function ambientWritesOfRelease(environment: REnvironmentInformation, nam
 	return released ? defineAmbient(environment, rootId, cds, [AmbientStateName.finalizers]) : environment;
 }
 
-/**
- * The ambient writes {@link withAccess} makes stay out of `out`, so a part that only maybe runs (a branch, a
- * loop body) marks them as maybe in `target` here, as it does with `out` for every other definition: what
- * `after` (the environment after that part) holds for the state that `before` does not came from that part.
- */
-export function makeAmbientWritesMaybe(after: REnvironmentInformation, before: REnvironmentInformation, target: REnvironmentInformation, cds: readonly ControlDependency[]): void {
+/** The definitions of the ambient states in `after` that `before` does not hold, as the state and the node that defines it. */
+function* ambientDefinitionsBetween(after: REnvironmentInformation, before: REnvironmentInformation, skipUnchanged: boolean): Generator<[string, NodeId]> {
 	let unchanged: Environment | undefined = before.current;
 	for(let env: Environment | undefined = after.current; env !== undefined && !env.builtInEnv; env = env.parent, unchanged = unchanged?.parent) {
 		/* a frame the part did not write to shares its memory with the one before */
-		if(env === unchanged || env.memory === unchanged?.memory) {
+		if(skipUnchanged && (env === unchanged || env.memory === unchanged?.memory)) {
 			continue;
 		}
 		for(const [name, definitions] of env.memory.entries()) {
@@ -176,25 +198,29 @@ export function makeAmbientWritesMaybe(after: REnvironmentInformation, before: R
 			const known = new Set((Resolve.byName(name, before) ?? []).map(d => d.nodeId));
 			for(const { nodeId } of definitions) {
 				if(!known.has(nodeId)) {
-					applyCdsToDefinitions(target, name, ReferenceType.Variable, Resolve.byName(name, target) ?? [], nodeId, cds);
+					yield [name, nodeId];
 				}
 			}
 		}
 	}
 }
 
+/**
+ * The ambient writes {@link withAccess} makes stay out of `out`, so a part that only maybe runs (a branch, a
+ * loop body) marks them as maybe in `target` here, as it does with `out` for every other definition: what
+ * `after` (the environment after that part) holds for the state that `before` does not came from that part.
+ */
+export function makeAmbientWritesMaybe(after: REnvironmentInformation, before: REnvironmentInformation, target: REnvironmentInformation, cds: readonly ControlDependency[]): void {
+	for(const [name, nodeId] of ambientDefinitionsBetween(after, before, true)) {
+		applyCdsToDefinitions(target, name, ReferenceType.Variable, Resolve.byName(name, target) ?? [], nodeId, cds);
+	}
+}
+
 /** The states written in `after` that `before` does not hold, as by a promise (`delayedAssign`) whose writes only happen once a read forces it. */
 export function ambientWritesBetween(after: REnvironmentInformation, before: REnvironmentInformation): string[] {
 	const names = new Set<string>();
-	for(let env: Environment | undefined = after.current; env !== undefined && !env.builtInEnv; env = env.parent) {
-		for(const [name, definitions] of env.memory.entries()) {
-			if(AmbientStateName.is(name) && !names.has(name)) {
-				const known = new Set((Resolve.byName(name, before) ?? []).map(d => d.nodeId));
-				if(definitions.some(d => !known.has(d.nodeId))) {
-					names.add(name);
-				}
-			}
-		}
+	for(const [name] of ambientDefinitionsBetween(after, before, false)) {
+		names.add(name);
 	}
 	return [...names];
 }
@@ -209,10 +235,15 @@ export function mayForce(environment: REnvironmentInformation): boolean {
 	return REnvironment.findBuiltIn(environment.current).forcing === true;
 }
 
-/** A read of a name bound to a promise may force it, which (maybe) writes what the promise writes. */
-export function ambientWritesOfForce<OtherInfo>(res: DataflowInformation, symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	const forces = mayForce(data.environment) ? (Resolve.byName(symbol.content, data.environment) ?? []).flatMap(d => (d as { forces?: readonly string[] }).forces ?? []) : [];
-	return forces.length === 0 ? res : withAccess(res, symbol.info.id, data, [], forces.map(name => ({ name, mode: 'maybe' } as const)));
+/**
+ * The state a symbol reads (see {@link ambientReadsOfSymbol}), and the writes of a read of a name bound to a
+ * promise, which may force it and so (maybe) writes what the promise writes.
+ */
+export function ambientAccessOfSymbol<OtherInfo>(res: DataflowInformation, symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+	const forcing = mayForce(data.environment);
+	const definitions = forcing ? Resolve.byName(symbol.content, data.environment) ?? [] : [];
+	const forces = definitions.flatMap(d => (d as { forces?: readonly string[] }).forces ?? []);
+	return withAccess(res, symbol.info.id, data, ambientReadsOfSymbol(symbol, data, forcing), forces.map(maybe));
 }
 
 /** Binds `name` (globally) to the given definitions, in addition to what it holds with `keep`, so `#graphics` can become what another state holds. */
@@ -226,27 +257,38 @@ function setAmbient(environment: REnvironmentInformation, name: string, definiti
 	return environment;
 }
 
-/** A variable a text connection writes reads what is written to connections, `.Random.seed` reads the generator state, `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
-export function ambientReadsOfSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): IdentifierReference[] {
+/** A variable a text connection writes reads what is written to connections, `.Random.seed` reads the generator state, and `.Options` the options, see {@link optionsVariableReads}. */
+function ambientReadsOfSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, forcing: boolean): string[] {
 	const name = Identifier.getName(symbol.content);
-	const ref = (state: string): IdentifierReference => ({ nodeId: symbol.info.id, name: state, type: ReferenceType.Variable, cds: data.cds });
-	if(mayForce(data.environment) && Resolve.byName(AmbientStateName.textConnection(name), data.environment)?.length) {
+	if(forcing && Resolve.byName(AmbientStateName.textConnection(name), data.environment)?.length) {
 		/* what is written to a connection we cannot name may be written to this one */
-		return [ref(AmbientStateName.anyFile)];
+		return [AmbientStateName.anyFile];
 	} else if(name === AmbientStateName.rngVariable) {
-		return [AmbientStateName.rng, AmbientStateName.rngKind].map(ref);
+		return [AmbientStateName.rng, AmbientStateName.rngKind];
 	} else if(name !== '.Options') {
 		return [];
 	}
-	const parent = symbol.info.parent === undefined ? undefined : data.completeAst.idMap.get(symbol.info.parent);
-	let key: string | undefined;
-	if(RAccess.is(parent) && parent.accessed.info.id === symbol.info.id && (parent.operator === '$' || parent.operator === '[[')) {
-		const first = parent.access[0];
-		const value = first === EmptyArgument ? undefined : first.value;
-		key = RString.is(value) ? value.content.str : parent.operator === '$' && RSymbol.is(value) ? Identifier.getName(value.content) : undefined;
+	return optionsVariableReads(symbol, data);
+}
+
+/** `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
+function optionsVariableReads<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] {
+	const parent = RNode.directParent(symbol, data.completeAst.idMap);
+	if(!RAccess.is(parent) || parent.accessed.info.id !== symbol.info.id || (parent.operator !== '$' && parent.operator !== '[[')) {
+		return optionReads(undefined);
 	}
-	const names = key === undefined ? [AmbientStateName.allOptions] : [AmbientStateName.option(key), AmbientStateName.unknownOption];
-	return names.map(ref);
+	const value = RArgument.valueOf(parent.access[0]);
+	if(RString.is(value)) {
+		return optionReads([value.content.str]);
+	} else if(parent.operator === '$' && RSymbol.is(value)) {
+		return optionReads([Identifier.getName(value.content)]);
+	}
+	return optionReads(undefined);
+}
+
+/** `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
+export function readsOfOptionsVariable<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): IdentifierReference[] {
+	return optionsVariableReads(symbol, data).map(name => ({ nodeId: symbol.info.id, name, type: ReferenceType.Variable, cds: data.cds }));
 }
 
 /** Options affecting calls we cannot name (`scipen` changes every number-to-string conversion), so setting one stays an unknown side effect. */
@@ -298,6 +340,7 @@ export const enum AmbientStateAccessType {
 	RunFinalizers = 'run-finalizers'
 }
 
+/** An {@link AmbientStateAccessType} together with what refines it for some of the types. */
 export type AmbientStateAccess = {
 	readonly type: AmbientStateAccessType.SetOptions | AmbientStateAccessType.GetOption | AmbientStateAccessType.ReadGraphics
 		| AmbientStateAccessType.SetPalette | AmbientStateAccessType.OpenDevice | AmbientStateAccessType.SwitchDevice
@@ -366,18 +409,13 @@ export function applyAmbientStateAccess<OtherInfo>(
 			}
 			break;
 		case AmbientStateAccessType.ReadOptions: {
-			const dispatched = access.dispatchOn === undefined ? undefined : args[access.dispatchOn];
-			reads.push(...printingReads(dispatched === undefined || dispatched === EmptyArgument ? undefined : dispatched.value, access.dispatchOn !== undefined, access.keys, data));
+			const dispatched = access.dispatchOn === undefined ? undefined : RArgument.valueOf(args[access.dispatchOn]);
+			reads.push(...printingReads(dispatched, access.dispatchOn !== undefined, access.keys, data));
 			break;
 		}
 		case AmbientStateAccessType.GetOption: {
 			const first = args.find(a => a !== EmptyArgument && (a.name === undefined || Identifier.getName(a.name.content) === 'x'));
-			const keys = first === undefined || first === EmptyArgument ? undefined : stringsOf(first.value, data);
-			if(keys === undefined) {
-				reads.push(AmbientStateName.allOptions);
-			} else {
-				reads.push(...keys.map(AmbientStateName.option), AmbientStateName.unknownOption);
-			}
+			reads.push(...optionReads(first === undefined || first === EmptyArgument ? undefined : stringsOf(first.value, data)));
 			break;
 		}
 		case AmbientStateAccessType.SetOptions:
@@ -425,7 +463,7 @@ export function applyAmbientStateAccess<OtherInfo>(
 			for(const fn of registered.flatMap(d => d.value ?? [])) {
 				res.graph.addEdge(rootId, fn, EdgeType.Calls);
 			}
-			return withAccess(res, rootId, data, [AmbientStateName.finalizers], registered.flatMap(d => d.writes ?? []).map(name => ({ name, mode: 'maybe' } as const)));
+			return withAccess(res, rootId, data, [AmbientStateName.finalizers], registered.flatMap(d => d.writes ?? []).map(maybe));
 		}
 	}
 	return withAccess(res, rootId, data, reads, writes);
@@ -497,10 +535,8 @@ function fileStems<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: Da
 
 /** What printing `value` reads: the printing `keys` for a plain value, all options for an unknown one (a tibble reads the pillar options). */
 function printingReads<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, dispatches: boolean, keys: readonly string[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] {
-	if(dispatches && (value === undefined || !isPlainValue(value, data))) {
-		return [AmbientStateName.allOptions];
-	}
-	return [...keys.map(AmbientStateName.option), AmbientStateName.unknownOption];
+	const anyOption = dispatches && (value === undefined || !isPlainValue(value, data));
+	return optionReads(anyOption ? undefined : keys);
 }
 
 const PlainValueTypes: ReadonlySet<string> = new Set(['number', 'string', 'logical', 'interval']);
@@ -557,8 +593,10 @@ const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientState
 };
 
 function unknownArgumentAccess(access: AmbientStateAccess): { readonly reads: readonly string[], readonly writes: readonly string[] } {
-	return access.type !== AmbientStateAccessType.ReadOptions ? UnknownArgumentAccess[access.type]
-		: { reads: access.dispatchOn === undefined ? [...access.keys.map(AmbientStateName.option), AmbientStateName.unknownOption] : [AmbientStateName.allOptions], writes: [] };
+	if(access.type !== AmbientStateAccessType.ReadOptions) {
+		return UnknownArgumentAccess[access.type];
+	}
+	return { reads: optionReads(access.dispatchOn === undefined ? access.keys : undefined), writes: [] };
 }
 
 /** Graphics parameters are per device; within a function the open devices are unknown, so a device call only adds. */
@@ -596,7 +634,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 			break;
 		case 'close-all':
 			closes([...opener, ...otherOpeners]);
-			for(const name of [AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy]) {
+			for(const name of DeviceStates) {
 				environment = setAmbient(environment, name, []);
 			}
 			break;
@@ -614,7 +652,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 /** A call to `fn` made on our behalf (`do.call(fn, args)`, `sapply(x, fn)`): it accesses the state as `fn` does, or reads all of it if `fn` is opaque. */
 export function applyAmbientStateOfCallee<OtherInfo>(res: DataflowInformation, callId: NodeId, fn: Identifier, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const targets = Resolve.byNameAndType(fn, data.environment, ReferenceType.Function) ?? [];
-	res = applyAmbientStateOfTargets(res, targets, UnknownArguments, callId, data);
+	res = applyAmbientStateAccess(res, UnknownArguments, callId, data, targets.flatMap(hiddenAccess));
 	const unknown = (targets.length === 0 && data.environment.level === 0) || targets.some(t => t.type !== ReferenceType.BuiltInFunction && hidesBody(t));
 	return unknown ? readsAllAmbientState(res, callId, data, true) : res;
 }
@@ -632,17 +670,6 @@ export function writesOfHiddenBuiltIn(target: IdentifierDefinition, callId: Node
 /** The states the call to the built-in `target` through a parameter reads, see {@link writesOfHiddenBuiltIn}. */
 export function readsOfHiddenBuiltIn(target: IdentifierDefinition): string[] {
 	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a).reads);
-}
-
-/** applies what the built-ins among `targets` state about the ambient state */
-function applyAmbientStateOfTargets<OtherInfo>(res: DataflowInformation, targets: readonly IdentifierDefinition[], args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] | UnknownArguments, callId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	for(const target of targets) {
-		const access = hiddenAccess(target);
-		if(access.length > 0) {
-			res = applyAmbientStateAccess(res, args, callId, data, access);
-		}
-	}
-	return res;
 }
 
 function setOptions<OtherInfo>(
@@ -716,9 +743,9 @@ function stringsOf<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, dat
 
 /** Whether the call's value may be used: anything but a non-final statement or the script's last statement (the last of a block is its value). */
 function resultIsUsed<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	const parentId = data.completeAst.idMap.get(rootId)?.info.parent;
-	const parent = parentId === undefined ? undefined : data.completeAst.idMap.get(parentId);
-	if(parent === undefined || !RExpressionList.is(parent)) {
+	const node = data.completeAst.idMap.get(rootId);
+	const parent = node === undefined ? undefined : RNode.directParent(node, data.completeAst.idMap);
+	if(!RExpressionList.is(parent)) {
 		return parent !== undefined;
 	}
 	const isLast = parent.children.at(-1)?.info.id === rootId;
@@ -779,7 +806,7 @@ export function processAmbientScope<OtherInfo>(
 	}
 	/* afterward, what the scope changed is back to what it was before */
 	let environment = information.environment;
-	const restored = scope.state === 'device' ? [AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy]
+	const restored = scope.state === 'device' ? DeviceStates
 		: scope.state === 'rng' ? [AmbientStateName.rng]
 			: writes.map(w => typeof w === 'string' ? w : w.name).filter(n => n.startsWith('#option:') && n !== AmbientStateName.unknownOption);
 	for(const state of restored) {
@@ -849,10 +876,12 @@ export function evaluatesCapturedCode<OtherInfo>(res: DataflowInformation, rootI
 	return withAccess(res, rootId, data, Quoted.reads, Quoted.writes);
 }
 
-/** R prints every visible top-level value (see {@link autoPrints}) by an implicit call of the configured `print`. */
+/** R prints every visible top-level value (see {@link autoPrints}) by an implicit `print`, which reads the options the configured `print` reads for that value. */
 export function readsOfAutoPrint<OtherInfo>(processed: DataflowInformation, expression: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const print = Resolve.byNameAndType('print', { current: REnvironment.findBuiltIn(data.environment.current), level: 0 }, ReferenceType.Function)?.slice(0, 1) ?? [];
-	return applyAmbientStateOfTargets(processed, print, [{ value: expression } as RArgument<OtherInfo & ParentInformation>], expression.info.id, data);
+	const reads = print.flatMap(hiddenAccess).flatMap(access => access.type === AmbientStateAccessType.ReadOptions
+		? printingReads(expression, access.dispatchOn !== undefined, access.keys, data) : []);
+	return withAccess(processed, expression.info.id, data, reads, []);
 }
 
 /** the processors whose calls return invisibly, although their configuration states no {@link CallProp.Invisible} */
@@ -882,8 +911,8 @@ export function applyAmbientStateOfCalledBuiltIns<OtherInfo>(res: DataflowInform
 	}
 	const known = res.unknownReferences.length;
 	for(const builtIn of builtIns) {
-		const targets = NodeId.isBuiltIn(builtIn) ? Resolve.byNameAndType(NodeId.fromBuiltIn(builtIn), before, ReferenceType.Function) : undefined;
-		res = applyAmbientStateOfTargets(res, targets ?? [], call.arguments, callId, data);
+		const targets = NodeId.isBuiltIn(builtIn) ? Resolve.byNameAndType(NodeId.fromBuiltIn(builtIn), before, ReferenceType.Function) ?? [] : [];
+		res = applyAmbientStateAccess(res, call.arguments, callId, data, targets.flatMap(hiddenAccess));
 	}
 	for(const read of res.unknownReferences.slice(known)) {
 		for(const def of Resolve.byName(read.name as Identifier, before) ?? []) {
@@ -966,13 +995,13 @@ function muffledHandlers<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInform
 		return undefined;
 	}
 	const handlers = MatchArgs.toSpec(vertex.args, { expr: 'expr', '...': '...' }).get('...') ?? [];
-	const [first] = vertex.args.filter(a => a !== EmptyArgument && handlers.includes(a.nodeId));
-	const handler = first !== undefined && first !== EmptyArgument && first.name === 'warning' ? data.completeAst.idMap.get(first.nodeId) : undefined;
+	const first = vertex.args.filter(RArgument.isNotEmpty).find(a => handlers.includes(a.nodeId));
+	const handler = first?.name === 'warning' ? data.completeAst.idMap.get(first.nodeId) : undefined;
 	const fn = RArgument.is(handler) ? handler.value : undefined;
 	const body = RFunctionDefinition.is(fn) ? fn.body : undefined;
 	const start = RExpressionList.is(body) ? body.children[0] : body;
 	const restart = RFunctionCall.is(start) && resolvesTo(start, 'invokeRestart', BuiltInProcName.Default, graph, data) && start.arguments.length === 1 ? start.arguments[0] : undefined;
-	const muffles = restart !== undefined && restart !== EmptyArgument && NodeValue.stringsOf(restart.value?.info.id, data)?.join() === 'muffleWarning';
+	const muffles = NodeValue.stringsOf(RArgument.valueOf(restart)?.info.id, data)?.join() === 'muffleWarning';
 	return muffles ? handlers.map(h => data.completeAst.idMap.get(h)).filter(isNotUndefined) : undefined;
 }
 
@@ -985,6 +1014,7 @@ function resolvesTo<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInformation
 	return targets !== undefined && targets.length > 0 && targets.every(t => t.nodeId === NodeId.toBuiltIn(name));
 }
 
+/** what may warn in the body of the closure `definition`, cached in `bodies` */
 function bodySites<OtherInfo>(definition: RFunctionDefinition<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>): readonly NodeId[] {
 	let sites = bodies.get(definition.info.id);
 	if(sites === undefined) {

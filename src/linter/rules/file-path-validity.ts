@@ -18,6 +18,7 @@ import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } 
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -75,15 +76,14 @@ function namesPackage(node: RNode<ParentInformation>): boolean {
 
 async function urlExists(url: string): Promise<boolean> {
 	try {
-		const response = await fetch(url, { method: 'HEAD' });
-		return response.ok;
+		return (await fetch(url, { method: 'HEAD' })).ok;
 	} catch{
 		return false;
 	}
 }
 
 export const FILE_PATH_VALIDITY = {
-	createSearch: (config) => Q.fromQuery({
+	createSearch: config => Q.fromQuery({
 		type:              'dependencies',
 		enabledCategories: ['read', 'write', 'library'],
 		readFunctions:     config.additionalReadFunctions,
@@ -101,7 +101,7 @@ export const FILE_PATH_VALIDITY = {
 		const ctx = data.inspectContext();
 		const df = await data.dataflow();
 		const dfg = df.graph;
-		const resolveSource = data.flowrConfig.solver.resolveSource;
+		const { resolveSource } = data.flowrConfig.solver;
 		const wdRootsFor = WorkingDirectory.rootsResolver(dfg, cfg, ctx);
 		/* `data("x")` names a data set, not a file */
 		const namesOnly = new Set(readFunctions(ctx).concat(config.additionalReadFunctions).filter(f => f.resolveValue === 'library').map(f => f.name));
@@ -109,116 +109,80 @@ export const FILE_PATH_VALIDITY = {
 		const atTopLevel = (id: NodeId) => dfg.idMap === undefined || RNode.findEnclosing(id, dfg.idMap, RFunctionDefinition.is) === undefined;
 		const librariesLoadedBefore = (read: NodeId) => attached.some(l => l.nodeId === undefined || !atTopLevel(l.nodeId) || !atTopLevel(read)
 			|| !cfg.hasVertex(l.nodeId) || happensBefore(cfg, l.nodeId, read) !== Ternary.Never);
-		const reads = [...new Map(elements.getElements().map(e => [e.node.info.id, e])).values()].flatMap(element => results.read.filter(r => r.nodeId === element.node.info.id).map(matchingRead => ({ element, matchingRead })));
-		const findings = await Promise.all(reads.map(async({ element, matchingRead }) => {
+		const uniqueElements = [...new Map(elements.getElements().map(e => [e.node.info.id, e])).values()];
+		const reads = uniqueElements.flatMap(element => results.read
+			.filter(r => r.nodeId === element.node.info.id)
+			.map(matchingRead => ({ element, matchingRead })));
+		const findings = await Promise.all(reads.map(async({ element, matchingRead }): Promise<FilePathValidityResult[]> => {
+			const { nodeId, value } = matchingRead;
 			/* data built from constants, like `matrix(1:6, 2)`, reads no file */
-			if(!matchingRead || matchingRead.nodeId === undefined || matchingRead.value === Constant) {
+			if(nodeId === undefined || value === Constant) {
 				return [];
 			}
-			if(namesOnly.has(Identifier.getName(matchingRead.functionName))) {
-				const loc = SourceLocation.fromNode(element.node);
-				if(!loc || typeof matchingRead.value !== 'string' || matchingRead.value === Unknown || librariesLoadedBefore(element.node.info.id)
-					|| BaseDatasets.has(matchingRead.value) || namesPackage(element.node)) {
-					return [];
-				}
-				metadata.totalReads++;
-				const find = finderAt(resolveSource, wdRootsFor(element.node.info.id, element.node.info.file), element.node.info.file, ctx);
-				const value = matchingRead.value;
-				if(DataSetExtensions.some(ext => find(`data/${value}.${ext}`).length)) {
+			const { id, file } = element.node.info;
+			const loc = SourceLocation.fromNode(element.node);
+			const referenceChain = file ? [file] : [];
+			const verdict = (valid: boolean, filePath: string, certainty: LintingResultCertainty, quickFix?: LintQuickFixReplacement[]): FilePathValidityResult[] => {
+				if(valid) {
 					metadata.totalValid++;
 					return [];
 				}
-				return [{
-					involvedId: matchingRead.nodeId,
-					loc,
-					filePath:   `data/${value}`,
-					certainty:  LintingResultCertainty.Uncertain
-				}];
+				return [{ involvedId: nodeId, loc: loc as SourceLocation, filePath, certainty, ...(quickFix ? { quickFix } : {}) }];
+			};
+			if(namesOnly.has(Identifier.getName(matchingRead.functionName))) {
+				if(!loc || typeof value !== 'string' || value === Unknown
+					|| librariesLoadedBefore(id) || BaseDatasets.has(value) || namesPackage(element.node)) {
+					return [];
+				}
+				metadata.totalReads++;
+				const find = finderAt(resolveSource, wdRootsFor(id, file), file, ctx);
+				const exists = DataSetExtensions.some(ext => find(`data/${value}.${ext}`).length);
+				return verdict(exists, `data/${value}`, LintingResultCertainty.Uncertain);
 			}
 			metadata.totalReads++;
-			const loc = SourceLocation.fromNode(element.node);
 			if(!loc) {
 				return [];
 			}
 			// check if we can't parse the file path statically
-			if(matchingRead.value === Unknown) {
+			if(value === Unknown) {
 				metadata.totalUnknown++;
-				if(config.includeUnknown) {
-					return [{
-						involvedId: matchingRead.nodeId,
-						loc,
-						filePath:   Unknown,
-						certainty:  LintingResultCertainty.Uncertain
-					}];
-				} else {
-					return [];
-				}
+				return config.includeUnknown ? [{ involvedId: nodeId, loc, filePath: Unknown, certainty: LintingResultCertainty.Uncertain }] : [];
 			}
-
+			const path = value as string;
 			// file:// URIs are local paths; resolve and check existence directly
-			const localFromFileUrl = fileUrlToPath(matchingRead.value as string);
+			const localFromFileUrl = fileUrlToPath(path);
 			if(localFromFileUrl !== undefined) {
-				const paths = findSource(data.flowrConfig.solver.resolveSource, localFromFileUrl, {
-					referenceChain: element.node.info.file ? [element.node.info.file] : [],
-					ctx:            data.inspectContext()
-				});
-				if(paths && paths.length) {
-					metadata.totalValid++;
-					return [];
-				}
-				return [{
-					involvedId: matchingRead.nodeId,
-					loc,
-					filePath:   localFromFileUrl,
-					certainty:  LintingResultCertainty.Certain
-				}];
+				const exists = !!findSource(resolveSource, localFromFileUrl, { referenceChain, ctx })?.length;
+				return verdict(exists, localFromFileUrl, LintingResultCertainty.Certain);
 			}
-
 			// handle remote URLs separately from file paths
-			if(isUrl(matchingRead.value as string)) {
-				if(!config.checkUrls) {
-					return [];
-				}
-				const exists = await urlExists(matchingRead.value as string);
-				if(exists) {
-					metadata.totalValid++;
-					return [];
-				}
-				return [{
-					involvedId: matchingRead.nodeId,
-					loc,
-					filePath:   matchingRead.value as string,
-					certainty:  LintingResultCertainty.Uncertain
-				}];
+			if(isUrl(path)) {
+				return config.checkUrls ? verdict(await urlExists(path), path, LintingResultCertainty.Uncertain) : [];
 			}
-
 			// check if any write to the same file happens before the read, and exclude this case if so
-			const writesToFile = results.write.filter((r): r is typeof r & { nodeId: NodeId } => r.nodeId !== undefined && samePath(r.value as string, matchingRead.value as string, data.flowrConfig.solver.resolveSource?.ignoreCapitalization));
-			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
+			const writesToFile = results.write.filter((r): r is typeof r & { nodeId: NodeId } =>
+				r.nodeId !== undefined && samePath(r.value as string, path, resolveSource?.ignoreCapitalization));
+			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, id));
 			if(writesBefore.includes(Ternary.Always)) {
 				metadata.totalWritesBeforeAlways++;
 				return [];
 			}
-
 			// check if the file exists, resolving relative paths against the effective working directory
-			const value = matchingRead.value as string;
-			const referenceChain = element.node.info.file ? [element.node.info.file] : [];
-			const wdRoots = wdRootsFor(element.node.info.id, element.node.info.file);
-			if(finderAt(resolveSource, wdRoots, element.node.info.file, ctx)(value).length) {
-				metadata.totalValid++;
-				return [];
+			const wdRoots = wdRootsFor(id, file);
+			if(finderAt(resolveSource, wdRoots, file, ctx)(path).length) {
+				return verdict(true, path, LintingResultCertainty.Certain);
 			}
-
-			// a lax retry (drop leading dirs, ignore case) may surface a near match to offer as a quick fix
-			const near = findSource({ ...searchingFrom(resolveSource, wdRoots.roots), ignoreCapitalization: true, dropPaths: DropPathsOption.All }, value, { referenceChain, ctx });
-			const quickFix = dfg.idMap && near && near.length ? buildDidYouMeanFix(dfg.idMap, matchingRead.nodeId, value, near[0]) : undefined;
-			return [{
-				involvedId: matchingRead.nodeId,
-				loc,
-				filePath:   value,
-				certainty:  writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) || guardedByFileQuery(df, element.node.info.id, value, data) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
-				...(quickFix ? { quickFix } : {})
-			}];
+			/* a lax retry (drop leading dirs, ignore case) may surface a near match to offer as a quick fix */
+			const laxOptions: FlowrLaxSourcingOptions = {
+				...searchingFrom(resolveSource, wdRoots.roots),
+				ignoreCapitalization: true,
+				dropPaths:            DropPathsOption.All
+			};
+			const near = findSource(laxOptions, path, { referenceChain, ctx });
+			const quickFix = dfg.idMap && near?.length ? buildDidYouMeanFix(dfg.idMap, nodeId, path, near[0]) : undefined;
+			const maybeWrittenBefore = writesBefore.length > 0 && writesBefore.every(w => w === Ternary.Maybe);
+			const uncertain = maybeWrittenBefore || guardedByFileQuery(df, id, path, data);
+			return verdict(false, path, uncertain ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, quickFix);
 		}));
 		return {
 			results: findings.flat(),
@@ -247,27 +211,25 @@ export const FILE_PATH_VALIDITY = {
 /** Whether the read only runs depending on a condition that queries the same file, as in `if(file.exists(p)) readLines(p)`. */
 function guardedByFileQuery(df: DataflowInformation, read: NodeId, path: string, data: ReadonlyFlowrAnalysisProvider): boolean {
 	const dfg = df.graph;
-	for(const cd of dfg.getVertex(read)?.cds ?? []) {
+	return (dfg.getVertex(read)?.cds ?? []).some(cd => {
 		const construct = dfg.idMap?.get(cd.id);
-		let found = false;
-		RNode.visitAst(RIfThenElse.is(construct) || RWhileLoop.is(construct) ? construct.condition : undefined, node => {
-			const call = dfg.getVertex(node.info.id);
-			found ||= DfgVertex.isFunctionCall(call) && FunctionSemantics.call.props.hasAny(callFnProps(call.id, df), SemanticCallTag.File)
-				&& (getArgumentStringValue(data.flowrConfig.solver.variables, dfg, call, 'unnamed', undefined, true, data.inspectContext())?.values().some(v => v.has(path)) ?? false);
-			return found;
+		const condition = RIfThenElse.is(construct) || RWhileLoop.is(construct) ? construct.condition : undefined;
+		return [...RNode.collectAllIds(condition)].some(id => {
+			const call = dfg.getVertex(id);
+			if(!DfgVertex.isFunctionCall(call) || !FunctionSemantics.call.props.hasAny(callFnProps(call.id, df), SemanticCallTag.File)) {
+				return false;
+			}
+			const args = getArgumentStringValue(data.flowrConfig.solver.variables, dfg, call, 'unnamed', undefined, true, data.inspectContext());
+			return args?.values().some(v => v.has(path)) ?? false;
 		});
-		if(found) {
-			return true;
-		}
-	}
-	return false;
+	});
 }
 
 function searchingFrom(resolveSource: FlowrLaxSourcingOptions | undefined, roots: readonly string[]): FlowrLaxSourcingOptions {
 	return { ...resolveSource, searchPath: [...(resolveSource?.searchPath ?? []), ...roots] } as FlowrLaxSourcingOptions;
 }
 
-/** looks a path up from the working directories a `setwd` pins down, and laxly along the configured search path if none does */
+/** looks a path up from the working directories a `setwd` pins down, and laxly along the configured search path if none does. */
 function finderAt(resolveSource: FlowrLaxSourcingOptions | undefined, { roots, pinned }: { roots: readonly string[], pinned: boolean }, file: string | undefined, ctx: ReadOnlyFlowrAnalyzerContext): (value: string) => readonly string[] {
 	const referenceChain = file ? [file] : [];
 	if(!pinned) {
@@ -292,12 +254,7 @@ function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RStr
 	if(!RFunctionCall.is(call)) {
 		return undefined;
 	}
-	for(const arg of call.arguments) {
-		if(arg !== EmptyArgument && arg.value && RString.is(arg.value) && arg.value.content.str === value) {
-			return arg.value;
-		}
-	}
-	return undefined;
+	return call.arguments.map(RArgument.valueOf).find(v => RString.is(v) && v.content.str === value) as RString | undefined;
 }
 
 /** rewrite the read path to `found`, an existing file surfaced by the lax retry */

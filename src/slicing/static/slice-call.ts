@@ -3,11 +3,7 @@ import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
 import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
-import type {
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo
-} from '../../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { type DataflowGraph, FunctionArgument, type OutgoingEdges } from '../../dataflow/graph/graph';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
@@ -21,55 +17,28 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DfgVertex } from '../../dataflow/graph/vertex';
+import { edgeSources, edgeTargets, hasEdgeOfType } from '../../dataflow/fn/frame-reflection';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
+
+/** The function definitions linked to the given definitions, memoized in the queue under their joined ids. */
+function linkedDefinitions(defs: readonly NodeId[], graph: DataflowGraph, queue: VisitingQueue): ReadonlySet<DataflowGraphVertexInfo> {
+	return queue.memoizeCallTargets(defs.join(';'), () => getAllLinkedFunctionDefinitions(new Set(defs), graph)[0]);
+}
 
 /**
  * Returns the function call targets (definitions) by the given caller
  */
 export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
+	guard(dataflowGraph.hasVertex(callerInfo.id), () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 	// bind with call-local environments during slicing
-	const outgoingEdges = dataflowGraph.get(callerInfo.id, true);
-	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
-
-	// lift baseEnv on the same level
-
 	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
-
-	const name = callerInfo.name;
-	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
-	const functionCallDefs: NodeId[] = [];
-	for(const d of Resolve.byName(name, activeEnvironment) ?? []) {
-		if(!NodeId.isBuiltIn(d.definedAt)) {
-			functionCallDefs.push(d.nodeId);
-		}
-	}
-
-	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
-		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
-			functionCallDefs.push(target);
-		}
-	}
-
-	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets :
-		queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)[0]);
+	const resolved = (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
+	const functionCallDefs = [...resolved.map(d => d.nodeId), ...edgeTargets(dataflowGraph, callerInfo.id, EdgeType.Calls)];
+	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets : linkedDefinitions(functionCallDefs, dataflowGraph, queue);
 	return [functionCallTargets, activeEnvironment];
-}
-
-function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnvironment: REnvironmentInformation, activeEnvironmentFingerprint: () => Fingerprint, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
-	const valueRoot = FunctionArgument.getReference(arg);
-	if(!valueRoot) {
-		return;
-	}
-	const callTargets = queue.memoizeCallTargets(valueRoot, () => getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph)[0]);
-	linkCallTargets(
-		false,
-		callTargets,
-		activeEnvironment,
-		activeEnvironmentFingerprint,
-		queue
-	);
 }
 
 function linkCallTargets(
@@ -79,52 +48,54 @@ function linkCallTargets(
 	activeEnvironmentFingerprint: () => Fingerprint,
 	queue: VisitingQueue
 ): void {
-	for(const functionCallTarget of functionCallTargets) {
+	for(const functionCallTarget of functionCallTargets as ReadonlySet<DataflowGraphVertexFunctionDefinition>) {
 		/* a call kept only for what it does needs what its function reads, not what it returns */
-		for(const exitPoint of onlyForSideEffects ? [] : (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
+		for(const exitPoint of onlyForSideEffects ? [] : functionCallTarget.exitPoints) {
 			queue.add(exitPoint.nodeId, activeEnvironment, activeEnvironmentFingerprint(), false);
 		}
-		// handle open reads
-		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
-			// resolve them in the active env
-			if(openIn.name) {
-				const resolved = Resolve.byName(openIn.name, activeEnvironment);
-				for(const res of resolved ?? []) {
-					updatePotentialAddition(queue, functionCallTarget.id, res.nodeId, activeEnvironment, activeEnvironmentFingerprint());
-				}
+		// handle open reads, resolving them in the active env
+		for(const openIn of functionCallTarget.subflow.in) {
+			for(const res of openIn.name ? Resolve.byName(openIn.name, activeEnvironment) ?? [] : []) {
+				updatePotentialAddition(queue, functionCallTarget.id, res.nodeId, activeEnvironment, activeEnvironmentFingerprint());
 			}
 		}
 	}
 }
 
-/** returns the new threshold hit count */
+/** Links the call `callerInfo` to the definitions it resolves to, or to the closures of its arguments if it resolves to none. */
 export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
 	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, queue, ctx);
 	/* hashing the environment is expensive, so only a call that links something pays for it */
 	let fingerprint: Fingerprint | undefined;
 	const activeEnvironmentFingerprint = () => fingerprint ??= activeEnvironment === current.baseEnvironment ? current.envFingerprint : envFingerprint(activeEnvironment);
-
-	if(functionCallTargets.size === 0) {
-		/*
-		 * if we do not have any call to resolve this function, we have to assume that every function passed is actually called!
-		 * hence, we add a new flag and add all argument values to the queue causing directly
-		 * (an assignment only stores the function, and a call handing an argument back unchanged, like `return(f)`,
-		 * did not call it either: what it is bound to is called later, or never)
-		 */
-		if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment)) {
-			return;
-		}
-		const outgoing = graph.outgoingEdges(callerInfo.id);
-		for(const arg of callerInfo.args) {
-			const reference = FunctionArgument.getReference(arg);
-			const edge = reference === undefined ? undefined : outgoing?.get(reference);
-			if(edge === undefined || !DfEdge.includesType(edge, EdgeType.Returns)) {
-				includeArgumentFunctionCallClosure(arg, activeEnvironment, activeEnvironmentFingerprint, queue, graph);
-			}
-		}
+	if(functionCallTargets.size > 0) {
+		linkCallTargets(current.onlyForSideEffects, functionCallTargets, activeEnvironment, activeEnvironmentFingerprint, queue);
 		return;
 	}
-	linkCallTargets(current.onlyForSideEffects, functionCallTargets, activeEnvironment, activeEnvironmentFingerprint, queue);
+	/*
+	 * if we do not have any call to resolve this function, we have to assume that every function passed is actually called!
+	 * hence, we add all argument values to the queue causing directly
+	 * (an assignment only stores the function, and a call handing an argument back unchanged, like `return(f)`,
+	 * did not call it either: what it is bound to is called later, or never)
+	 */
+	if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment)) {
+		return;
+	}
+	for(const arg of callerInfo.args) {
+		const reference = FunctionArgument.getReference(arg);
+		if(reference && !hasEdgeOfType(graph, callerInfo.id, reference, EdgeType.Returns)) {
+			linkCallTargets(false, linkedDefinitions([reference], graph, queue), activeEnvironment, activeEnvironmentFingerprint, queue);
+		}
+	}
+}
+
+/**
+ * Finds the nearest enclosing function-definition node for the given id by walking up the AST parent chain.
+ * Used by `includeCallees` to detect the function-definition boundary a node sits inside, as backward slicing
+ * does not otherwise visit the function-definition vertex itself (nothing within the body links to it).
+ */
+export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
+	return RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
 }
 
 /**
@@ -136,31 +107,23 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
  */
 export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const vertex = graph.getVertex(fnDefId);
-	if(vertex === undefined || !DfgVertex.isFunctionDefinition(vertex)) {
+	if(!DfgVertex.isFunctionDefinition(vertex)) {
 		return false;
 	}
 	// (a) the slice reaches a parameter of this definition
-	for(const paramId of Object.keys(vertex.params)) {
-		if(queue.hasId(NodeId.normalize(paramId))) {
-			return true;
-		}
+	if(Object.keys(vertex.params).some(paramId => queue.hasId(NodeId.normalize(paramId)))) {
+		return true;
 	}
 	// (b) a sliced body node captures a variable from the enclosing scope: it links (via `defined-by-on-call`, the
 	// closure/argument binding resolved at the call site) to a non-builtin definition that lives outside this body.
-	const fnNode = idMap.get(fnDefId);
-	const bodyIds = fnNode ? new Set(RNode.collectAllIds(fnNode)) : new Set<NodeId>();
+	const bodyIds = RNode.collectAllIds(idMap.get(fnDefId));
 	for(const bodyId of bodyIds) {
 		if(!queue.hasId(bodyId)) {
 			continue;
 		}
-		const outgoing = graph.outgoingEdges(bodyId);
-		if(outgoing === undefined) {
-			continue;
-		}
-		for(const [target, edge] of outgoing) {
-			if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall) && !NodeId.isBuiltIn(target) && !bodyIds.has(target)) {
-				return true;
-			}
+		const captures = edgeTargets(graph, bodyId, EdgeType.DefinedByOnCall);
+		if(captures.some(target => !NodeId.isBuiltIn(target) && !bodyIds.has(target))) {
+			return true;
 		}
 	}
 	// (c) fallback for captures that could not be resolved at definition time: an open in-reference that is in the
@@ -186,14 +149,12 @@ const CalleeBoundaryEdges = EdgeType.DefinedBy | EdgeType.Calls;
  * `calls` edges). Call site arguments are picked up automatically once the call vertex is processed normally,
  * as `argument` edges are always traversed.
  * This is the reverse of what {@link sliceForCall} does for call -\> definition linking.
+ * @returns the enqueued ids
  */
 export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: Fingerprint): NodeId[] {
-	const added: NodeId[] = [];
-	for(const [source, edge] of graph.edgesTo(fnDefId)) {
-		if(DfEdge.includesType(edge, CalleeBoundaryEdges)) {
-			queue.add(source, baseEnvironment, baseEnvFingerprint, false);
-			added.push(source);
-		}
+	const added = edgeSources(graph, fnDefId, CalleeBoundaryEdges);
+	for(const source of added) {
+		queue.add(source, baseEnvironment, baseEnvFingerprint, false);
 	}
 	return added;
 }
@@ -201,14 +162,7 @@ export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph
 const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument;
 /** Returns true if we found at least one return edge */
 export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
-	let returns = false;
-	for(const edge of currentEdges.values()) {
-		if(DfEdge.includesType(edge, EdgeType.Returns)) {
-			returns = true;
-			break;
-		}
-	}
-	if(!returns) {
+	if(![...currentEdges.values()].some(edge => DfEdge.includesType(edge, EdgeType.Returns))) {
 		return false;
 	}
 	for(const [target, edge] of currentEdges) {

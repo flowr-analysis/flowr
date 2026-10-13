@@ -1,7 +1,7 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { FnSig } from '../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
-import type { ExitPoint, DataflowInformation, KillReference } from '../../../../info';
+import type { ExitPoint, DataflowInformation } from '../../../../info';
 import { ExitPointType, withCds } from '../../../../info';
 import { processAllArguments } from './common';
 import { applyKills } from '../../../../environments/apply-kill';
@@ -69,7 +69,7 @@ export interface ProcessKnownFunctionCallResult {
 	readonly fnRef:              IdentifierReference
 	/**
 	 * The arguments as recorded on the function call vertex.
-	 * They are also part of the information via the function call vertex adde, but sometimes useful separately.
+	 * They are also part of the information via the function call vertex added, but sometimes useful separately.
 	 * For example, together with {@link FunctionSemantics.call.match.toSpec} to do custom parameter matching.
 	 */
 	readonly callArgs:           readonly FunctionArgument[]
@@ -107,6 +107,18 @@ export interface NseMarkOptions {
 	readonly evaluated?: ReadonlySet<NodeId>
 }
 
+/** The positions of the arguments `which` names among `count` arguments. */
+export function nseArgumentPositions(which: NseArguments | readonly number[] | undefined, count: number): readonly number[] {
+	if(typeof which !== 'string') {
+		return which ?? [];
+	}
+	const all = Array.from({ length: count }, (_, i) => i);
+	if(which === NseArguments.First) {
+		return all.slice(0, 1);
+	}
+	return which === NseArguments.AllButFirst ? all.slice(1) : all;
+}
+
 /**
  * Marks the selected arguments as {@link EdgeType.NonStandardEvaluation}: a {@link NseKind.Quoted|quoted} one
  * entirely, a {@link NseKind.DataMasked|data-masked} one only where {@link FunctionSemantics.call.nse.suppliedByMask} holds, and a
@@ -119,23 +131,12 @@ export function markArgumentsAsNonStandardEvaluation(
 	which:              NseArguments | readonly number[] | undefined,
 	{ kind = NseKind.Quoted, evaluated }: NseMarkOptions = {}
 ): void {
-	if(which === undefined) {
-		return;
-	}
-
-	if(typeof which !== 'string') {
-		for(const i of which) {
-			if(i < processedArguments.length) {
-				markArgument(graph, rootId, processedArguments[i], kind, evaluated);
-			} else {
-				dataflowLogger.warn(`Trying to mark argument ${i} as non-standard-evaluation, but only ${processedArguments.length} arguments are available`);
-			}
+	for(const i of nseArgumentPositions(which, processedArguments.length)) {
+		if(i < processedArguments.length) {
+			markArgument(graph, rootId, processedArguments[i], kind, evaluated);
+		} else {
+			dataflowLogger.warn(`Trying to mark argument ${i} as non-standard-evaluation, but only ${processedArguments.length} arguments are available`);
 		}
-		return;
-	}
-	const end = which === NseArguments.First ? 1 : processedArguments.length;
-	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
-		markArgument(graph, rootId, processedArguments[i], kind, evaluated);
 	}
 }
 
@@ -180,7 +181,17 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data: origin === 'default' ? ControlFlow.withinPromise(data, rootId) : data, finalGraph, functionRootId: rootId, patchData, forced, nonFunction, alternativesFrom: reverseOrder ? undefined : alternativeArgsFrom });
+	} = processAllArguments<OtherInfo>({
+		functionName,
+		args:             processArgs,
+		data:             origin === 'default' ? ControlFlow.withinPromise(data, rootId) : data,
+		finalGraph,
+		functionRootId:   rootId,
+		patchData,
+		forced,
+		nonFunction,
+		alternativesFrom: reverseOrder ? undefined : alternativeArgsFrom
+	});
 	markArgumentsAsNonStandardEvaluation(finalGraph, rootId, processedArguments, markAsNSE, { kind: NseKind.Reevaluated });
 
 	const onlyBuiltin = data.builtInNoEnv === rootId;
@@ -200,41 +211,36 @@ export function processKnownFunctionCall<OtherInfo>(
 		handleUnknownSideEffect(finalGraph, data.environment, rootId);
 	}
 
-	const inIds = remainingReadInArgs;
 	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function };
-	inIds.push(fnRef);
+	remainingReadInArgs.push(fnRef);
 
 	/* each argument is a promise, and how surely the call forces it decides what a jump within it does */
 	let exitPoints: ExitPoint[] | undefined = undefined;
-	/* a jump that only happens under a condition still lets the call complete, so its default exit has to stay */
-	let alwaysJumps = false;
 	/* what a function flowR does not know here forces is up to its body, see `FunctionSemantics.settleJumpsInPromises` */
 	const forcing = origin === 'default' ? undefined : FunctionSemantics.call.signature.forcing(sig, processArgs.length);
 	/* exactly one alternative runs when a string selects among them with a default arm, a number past the arms picks none */
-	const alternatives = alternativeArgsFrom === undefined ? [] : processedArguments.slice(alternativeArgsFrom).filter(isNotUndefined);
 	const selector = alternativeArgsFrom === undefined ? undefined : processArgs[alternativeArgsFrom - 1];
 	const hasDefaultArm = RString.is(RArgument.valueOf(selector)) && processArgs.slice(alternativeArgsFrom).some(RArgument.isUnnamed);
-	const allArmsJump = hasDefaultArm && alternatives.length > 0 && alternatives.every(a => ControlFlow.alwaysExits(a, data.cds));
-	for(let i = 0; i < processedArguments.length; i++) {
-		const p = processedArguments[i];
-		/* only a jump needs the gate, most arguments just complete */
-		if(p === undefined || p.exitPoints.every(e => e.type === ExitPointType.Default)) {
-			continue;
-		}
+	const alternatives = hasDefaultArm ? processedArguments.slice(alternativeArgsFrom).filter(isNotUndefined) : [];
+	const allArmsJump = alternatives.length > 0 && alternatives.every(a => ControlFlow.alwaysExits(a, data.cds));
+	/* a jump that only happens under a condition still lets the call complete, so its default exit has to stay */
+	let alwaysJumps = allArmsJump;
+	for(const [i, p] of processedArguments.entries()) {
 		const isAlternative = alternativeArgsFrom !== undefined && i >= alternativeArgsFrom;
 		/* the alternative that is picked runs for sure, the others not at all */
 		const f = isAlternative ? Ternary.Always : forcing?.[i] ?? Ternary.Maybe;
 		/* a call with its own control flow wires up what it does not surely force itself */
-		if(customControlFlow && f !== Ternary.Always) {
+		if(p === undefined || (customControlFlow && f !== Ternary.Always)) {
 			continue;
 		}
 		const exits = ControlFlow.promise(finalGraph, p, f, rootId);
 		if(exits.length > 0) {
-			(exitPoints ??= []).push(...isAlternative && !allArmsJump ? exits.map(e => ({ ...e, cds: withCds(e.cds, [{ id: rootId, when: true }]) })) : exits);
+			/* an arm that is not the only way out leaves only when it is picked */
+			const conditional = isAlternative && !allArmsJump;
+			(exitPoints ??= []).push(...conditional ? exits.map(e => ({ ...e, cds: withCds(e.cds, [{ id: rootId, when: true }]) })) : exits);
 			alwaysJumps ||= f === Ternary.Always && !isAlternative && ControlFlow.alwaysExits(p, data.cds);
 		}
 	}
-	alwaysJumps ||= allArmsJump;
 	if(exitPoints !== undefined && !alwaysJumps) {
 		exitPoints.push({ nodeId: rootId, type: ExitPointType.Default, cds: data.cds });
 	}
@@ -243,23 +249,17 @@ export function processKnownFunctionCall<OtherInfo>(
 		: alternativeArgsFrom === undefined ? ControlFlow.inSequence(finalGraph, processedArguments, rootId)
 			: ControlFlow.picksOneOf(finalGraph, processedArguments, alternativeArgsFrom, rootId, hasDefaultArm);
 
-	let kill: KillReference[] | undefined = undefined;
-	for(const p of processedArguments) {
-		const kills = p?.kill;
-		if(kills !== undefined && kills.length > 0) {
-			kill = kill === undefined ? kills.slice() : kill.concat(kills);
-		}
-	}
-	const environment = kill ? applyKills(finalEnv, kill) : finalEnv;
+	const kills = processedArguments.flatMap(p => p?.kill ?? []);
+	const kill = kills.length > 0 ? kills : undefined;
 
 	return {
 		information: {
 			unknownReferences: [],
-			in:                inIds,
+			in:                remainingReadInArgs,
 			/* we do not keep the argument out as it has been linked by the function */
 			out:               functionName.out,
 			graph:             finalGraph,
-			environment,
+			environment:       kill ? applyKills(finalEnv, kill) : finalEnv,
 			entryPoint:        rootId,
 			cfgEntry:          cfgEntry === rootId ? undefined : cfgEntry,
 			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],

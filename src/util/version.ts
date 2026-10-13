@@ -34,7 +34,6 @@ export interface VersionInformation {
 
 const versionRegex = /^\d+\.\d+\.\d+/m;
 
-
 /**
  * Retrieves the version information for flowR and the given parser or analysis provider.
  */
@@ -57,7 +56,6 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 
 	return { flowr: flowr as Version, r: r as Version, engine: name };
 }
-
 
 /**
  * Displays the version information to the given output.
@@ -106,13 +104,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		// plugin/dataflow graph) into `util/version`, which `util/assert` depends on
 		const { BuiltInPlugins } = await import('../project/plugins/plugin-registry');
 		const keyByClass = new Map<string, string>(BuiltInPlugins.map(([key, producer]) => [producer.name, key]));
-		const activated = new Set<string>();
-		for(const cls of ctx.activatedPlugins) {
-			const key = keyByClass.get(cls);
-			if(key !== undefined) {
-				activated.add(key);
-			}
-		}
+		const activated = new Set(ctx.activatedPlugins.values().map(cls => keyByClass.get(cls)));
 		const render = (full: string, suffix: string): string => trace && !activated.has(full) ? dim(suffix) : suffix;
 		const labelWidth = Math.max(...[...byPrefix.keys()].map(p => p.length));
 		const header = `registered plugins (${names.length})`;

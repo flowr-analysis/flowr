@@ -46,7 +46,7 @@ export const FunctionSemantics = {
 	/** How surely the holder of a promise forces it. */
 	promiseForcing,
 	/** Whether one definition is higher-order, i.e. whether it calls what it is handed. */
-	isHigherOrder:   isHigherOrder,
+	isHigherOrder,
 	/** The roles of several definitions' formals, sharing the built-in lookups. */
 	argumentRoles:   argumentRolesOfFunctions,
 	/** The reflective argument bits of one definition. */

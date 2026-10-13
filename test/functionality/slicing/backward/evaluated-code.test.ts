@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, sliceOf, withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import type { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
@@ -13,11 +13,7 @@ assumeLoadedPackages('glue');
 describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 	function testSlice(name: string, code: string, criterion: SlicingCriterion, expected: string) {
 		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const sliced = await analyzer.query([{ type: 'static-slice', criteria: [criterion] }]);
-			const result = Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } };
-			assert.strictEqual(result.reconstruct.code, expected);
+			assert.strictEqual(await sliceOf(parser, code, criterion), expected);
 		});
 	}
 

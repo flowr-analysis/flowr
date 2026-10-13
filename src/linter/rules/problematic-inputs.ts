@@ -4,17 +4,17 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import type { InputClassifierConfig, InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import type { InputClassifierConfig, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexInfo, DfgVertex } from '../../dataflow/graph/vertex';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function defaultConsider(index: BuiltInIndex): readonly string[] {
 	return ['^eval$', ...index.with(SemanticCallTag.Process).map(n => `^${Identifier.quote(Identifier.getName(n))}$`)];
@@ -39,21 +39,17 @@ function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | readonly PipeCommandF
 	const raw = cfg === undefined ? defaultPipeCommandFunctions
 		: isArray<PipeCommandFunctionSpec>(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
 			: [cfg];
-	return raw.map(s => ({ pattern: new RegExp(s.pattern), argIdx: s.argIdx, argName: s.argName }));
+	return raw.map(s => ({ ...s, pattern: new RegExp(s.pattern) }));
 }
 
-function formatInputSources(inputs: InputSources, inline = true): string | string[] {
-	if(!inputs || inputs.length === 0) {
-		return inline ? '' : [];
-	}
-	const fmt = (s: InputSource) => {
+function formatInputSources(inputs: InputSources, inline: boolean): string[] {
+	return inputs.map(s => {
 		const t = '[' + s.types.join(',') + ']';
 		const c = s.cds ? ', cds: [' + s.cds.join(',') + ']' : '';
 		return inline
 			? `${s.id} (type: ${t}, trace: ${s.trace}${c})`
 			: `- ${s.id}: type=${t}, trace=${s.trace}${c}`;
-	};
-	return inline ? inputs.map(fmt).join('; ') : inputs.map(fmt);
+	});
 }
 
 function hasUnknownSource(sources: InputSources): boolean {
@@ -64,6 +60,7 @@ function isProblematicForAllowed(sources: InputSources, allowed: InputType[]): b
 	return sources.some(s => s.types.some(t => !allowed.includes(t)));
 }
 
+/** A path starting with `|` runs a command, so anything but a constant path, user input included, may start one. */
 function getPipeCommandValue(sources: InputSources): string | undefined {
 	for(const s of sources) {
 		if(typeof s.value === 'string' && s.value.startsWith('|')) {
@@ -73,24 +70,12 @@ function getPipeCommandValue(sources: InputSources): string | undefined {
 	return undefined;
 }
 
-function resolveFileArgId(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall | undefined, argIdx: number, argName: string, ctx: ReadOnlyFlowrAnalyzerContext): NodeId | undefined {
-	if(!vertex?.args) {
+function resolveFileArgId(graph: DataflowGraph, vertex: DataflowGraphVertexInfo | undefined, argIdx: number, argName: string, ctx: ReadOnlyFlowrAnalyzerContext): NodeId | undefined {
+	if(!DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
 	const arg = vertex.args[boundArgumentIndex(graph, vertex, argIdx, argName, ctx)];
-	return arg === undefined || FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
-}
-
-/** A path starting with `|` runs a command, so anything but a constant path, user input included, may start one. */
-function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources, allowed: InputType[]): ProblematicInputsResult | undefined {
-	const pipeCmd = getPipeCommandValue(sources);
-	if(pipeCmd !== undefined) {
-		return { involvedId: nid, certainty: LintingResultCertainty.Certain, loc, name, sources, pipeCommand: pipeCmd };
-	}
-	if(isProblematicForAllowed(sources, allowed)) {
-		return { involvedId: nid, certainty: hasUnknownSource(sources) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, loc, name, sources };
-	}
-	return undefined;
+	return arg === undefined ? undefined : FunctionArgument.getReference(arg);
 }
 
 export interface ProblematicInputsResult extends LintingResult {
@@ -106,11 +91,11 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 }
 
 export const PROBLEMATIC_INPUTS = {
-	createSearch: (config) => {
+	createSearch: config => {
 		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
 		return Q.fromQuery([
 			...normalizePatternList(config.consider).map((n, i) => toQ(n, `fn-${i}`)),
-			...normalizePipeSpecs(config?.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
+			...normalizePipeSpecs(config.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
 		]);
 	},
 	processSearchResult: async(elements, config, data) => {
@@ -119,46 +104,41 @@ export const PROBLEMATIC_INPUTS = {
 		const seen          = new Set<NodeId>();
 		const defaultAccept = [InputType.Constant, InputType.DerivedConstant];
 		const considerPats  = normalizePatternList(config.consider);
-		const pipePats      = normalizePipeSpecs(config?.pipeCommandFunctions);
-
+		const pipePats      = normalizePipeSpecs(config.pipeCommandFunctions);
 		for(const element of elements.getElements()) {
 			const nid  = element.node.info.id;
 			if(seen.has(nid)) {
 				continue;
 			}
-			const name       = element.node.lexeme ?? '';
-			const pipeSpec   = pipePats.find(s => s.pattern.test(name));
-			const isConsider = pipeSpec === undefined && considerPats.some(p => p.test(name));
-			if(pipeSpec === undefined && !isConsider) {
+			const name = element.node.lexeme ?? '';
+			const pipeSpec = pipePats.find(s => s.pattern.test(name));
+			/* a pipe spec checks the file argument of the call, a considered call the call itself */
+			let target: NodeId | undefined;
+			if(pipeSpec !== undefined) {
+				target = resolveFileArgId(df.graph, df.graph.getVertex(nid), pipeSpec.argIdx, pipeSpec.argName, data.inspectContext());
+			} else if(considerPats.some(p => p.test(name))) {
+				target = nid;
+			}
+			if(target === undefined) {
 				continue;
 			}
-
-			const loc = SourceLocation.fromNode(element.node) ?? SourceLocation.invalid();
-
-			if(pipeSpec !== undefined) {
-				const vertex    = df.graph.getVertex(nid) as DataflowGraphVertexFunctionCall | undefined;
-				const fileArgId = resolveFileArgId(df.graph, vertex, pipeSpec.argIdx, pipeSpec.argName, data.inspectContext());
-				if(fileArgId !== undefined) {
-					const criterion = SlicingCriterion.fromId(fileArgId);
-					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
-					const sources   = all['input-sources']?.results?.[criterion] ?? [];
-					const r         = checkPipeInjection(nid, loc, name, sources, defaultAccept);
-					if(r !== undefined) {
-						seen.add(nid);
-						results.push(r);
-					}
-				}
-			} else {
-				const criterion = SlicingCriterion.fromId(nid);
-				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
-				const sources   = all['input-sources']?.results?.[criterion] ?? [];
-				if(isProblematicForAllowed(sources, defaultAccept)) {
-					seen.add(nid);
-					results.push({ involvedId: nid, certainty: hasUnknownSource(sources) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, loc, name, sources });
-				}
+			const criterion = SlicingCriterion.fromId(target);
+			const all = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
+			const sources = all['input-sources']?.results?.[criterion] ?? [];
+			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue(sources);
+			if(pipeCommand !== undefined || isProblematicForAllowed(sources, defaultAccept)) {
+				seen.add(nid);
+				const uncertain = pipeCommand === undefined && hasUnknownSource(sources);
+				results.push({
+					involvedId: nid,
+					certainty:  uncertain ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
+					name,
+					sources,
+					...(pipeCommand === undefined ? {} : { pipeCommand })
+				});
 			}
 		}
-
 		return { results };
 	},
 	prettyPrint: {
@@ -166,11 +146,11 @@ export const PROBLEMATIC_INPUTS = {
 			if(result.pipeCommand !== undefined) {
 				return `Pipe command injection via '${result.pipeCommand}' in call to ${result.name} at ${SourceLocation.format(result.loc)}`;
 			}
-			const src = formatInputSources(result.sources ?? [], true) as string;
+			const src = formatInputSources(result.sources ?? [], true).join('; ');
 			return 'Use of configured dynamic call at ' + SourceLocation.format(result.loc) + (src ? '; inputs: ' + src : '');
 		},
 		[LintingPrettyPrintContext.Full]: result => {
-			const lines = formatInputSources(result.sources ?? [], false) as string[];
+			const lines = formatInputSources(result.sources ?? [], false);
 			const tail  = lines.length ? '\nInputs:\n' + lines.join('\n') : '';
 			return result.pipeCommand !== undefined
 				? `Pipe command injection: '${result.pipeCommand}' passed as filename to ${result.name} at ${SourceLocation.format(result.loc)}${tail}`

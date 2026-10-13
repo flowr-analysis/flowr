@@ -1,6 +1,7 @@
 import { RBasePackageStore } from '../data/r-base-packages.generated';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { RVersion } from './r-version';
+import { memoize } from './collections/defaultmap';
 
 /**
  * The base packages R attaches to the search path on startup, so their exports are usable without a `library` call.
@@ -32,8 +33,13 @@ function effective(rVersion: string): string {
 	return RVersion.compare(rVersion, RBasePackageStore.newestRVersion) > 0 ? RBasePackageStore.newestRVersion : rVersion;
 }
 
-/** memoized results per assumed R version, so the list is computed at most once per version (never per lookup) */
-const cache = new Map<string, readonly string[]>();
+/** memoized per assumed R version, so the list is computed at most once per version (never per lookup) */
+const basePackagesAt = memoize((rVersion: string): readonly string[] => {
+	const eff = effective(rVersion);
+	return Object.entries(RBasePackageStore.packages)
+		.filter(([, [first, last]]) => RVersion.compare(first, eff) <= 0 && RVersion.compare(last, eff) >= 0)
+		.map(([name]) => name);
+});
 
 /**
  * The base packages available at the assumed R version (all of them if omitted). A package counts as
@@ -48,16 +54,7 @@ export function baseRPackages(rVersion?: string): readonly string[] {
 	if(rVersion === undefined || rVersion === RBasePackageStore.newestRVersion || RVersion.compare(rVersion, RBasePackageStore.newestRVersion) >= 0) {
 		return RBasePackageStore.current;   // the current base set, precomputed at bundle time
 	}
-	const cached = cache.get(rVersion);
-	if(cached !== undefined) {
-		return cached;
-	}
-	const eff = effective(rVersion);
-	const result = Object.entries(RBasePackageStore.packages)
-		.filter(([, [first, last]]) => RVersion.compare(first, eff) <= 0 && RVersion.compare(last, eff) >= 0)
-		.map(([name]) => name);
-	cache.set(rVersion, result);
-	return result;
+	return basePackagesAt(rVersion);
 }
 
 /**

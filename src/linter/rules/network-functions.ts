@@ -92,7 +92,7 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 }
 
 export const NETWORK_FUNCTIONS = {
-	createSearch:        (config) => functionFinderUtil.createSearch(config.fns.map(f => Identifier.is(f) ? f : f.name)),
+	createSearch:        config => functionFinderUtil.createSearch(config.fns.map(f => Identifier.is(f) ? f : f.name)),
 	processSearchResult: async(e, c, d) => {
 		const df = await d.dataflow();
 		const fnPool = new Map<string, FunctionInfo>([
@@ -115,11 +115,7 @@ export const NETWORK_FUNCTIONS = {
 					if(val === Ternary.Never) {
 						continue;
 					}
-					const x = e as unknown as FlowrSearchElement<ParentInformation> & {
-						certainty: LintingResultCertainty
-					};
-					x.certainty = val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
-					res.push(x);
+					res.push(Object.assign(e, { certainty: val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain }));
 				}
 				return res;
 			}

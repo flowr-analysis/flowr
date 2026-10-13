@@ -7,9 +7,10 @@ import { handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFu
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../dataflow/graph/vertex';
+import { calledDefinitions, callsIn, edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
-import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import { EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -70,34 +71,21 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const { ctx, info, ids, cache, sliceGraph } = options;
 	const { idMap } = options.ast;
 	const direction = options.direction ?? SliceDirection.Backward;
-	const threshold = options.threshold ?? 75;
 	guard(ids.length > 0, 'must have at least one seed id to calculate slice');
 	// includeCallees only makes sense on the original (non-reduced) graph, backward
 	const trackCallees = (options.includeCallees ?? false) && direction === SliceDirection.Backward && sliceGraph === undefined;
 	// enclosing function definitions whose callees still need to be considered, mapped to the env to enqueue them in
 	const pendingCalleeBoundaries = new Map<NodeId, [REnvironmentInformation, string]>();
 	const resolvedCalleeBoundaries = new Set<NodeId>();
-	// a body entered through a call gets its arguments from that call, so only bodies the slice starts in open their callers
+	/* a body entered through a call gets its arguments from that call, so only bodies the slice starts in open their callers */
 	const openedBodies = new Set<NodeId>();
 	const openBodiesAround = (from: NodeId): void => {
-		const start = idMap.get(from);
-		for(const node of start === undefined ? [] : [start, ...RNode.iterateParents(start, idMap)]) {
-			if(RFunctionDefinition.is(node)) {
-				openedBodies.add(node.info.id);
-			}
+		for(let fn = RNode.findEnclosing(from, idMap, RFunctionDefinition.is); fn !== undefined; fn = RNode.strictlyEnclosingFunction(fn, idMap)) {
+			openedBodies.add(fn);
 		}
 	};
-	let graph: DataflowGraph;
-	if(sliceGraph !== undefined) {
-		graph = sliceGraph;
-	} else {
-		graph = info.graph;
-		if(direction === SliceDirection.Forward) {
-			graph = Dataflow.invertGraph(graph, ctx.env.makeCleanEnv());
-		}
-	}
-
-	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id), ctx.gas.scope(options.gas));
+	const graph = sliceGraph ?? (direction === SliceDirection.Forward ? Dataflow.invertGraph(info.graph, ctx.env.makeCleanEnv()) : info.graph);
+	const queue = new VisitingQueue(options.threshold ?? 75, cache, id => graph.hasVertex(id), ctx.gas.scope(options.gas));
 	const enclosingHandled = new Set<NodeId | undefined>();
 	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
 		if(!queue.hasId(id)) {
@@ -109,62 +97,49 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const sliceSeedIds = new Set<NodeId>();
 	const emptyEnv = ctx.env.makeCleanEnv();
 	const basePrint = ctx.env.getCleanEnvFingerprint();
-	// every node ships the call environment which registers the calling environment
-	{
-		for(const startId of ids) {
-			queue.add(startId, emptyEnv, basePrint, false);
-			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
-			minNesting = Math.min(minNesting, idMap.get(startId)?.info.nest ?? minNesting);
-			sliceSeedIds.add(startId);
-			if(trackCallees) {
-				openBodiesAround(startId);
-			}
-		}
-
-		/* additionally,
-		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
-		 */
-		for(const id of graph.unknownSideEffects) {
-			if(typeof id !== 'object') {
-				/* otherwise, their target is just missing */
-				queue.add(id, emptyEnv, basePrint, true);
-			}
-		}
-		/* a call asked about does what the functions it runs do, which includes what they print */
-		for(const id of outputWithinCallees(ids, graph)) {
-			queue.add(id, emptyEnv, basePrint, false);
+	for(const startId of ids) {
+		queue.add(startId, emptyEnv, basePrint, false);
+		// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
+		minNesting = Math.min(minNesting, idMap.get(startId)?.info.nest ?? minNesting);
+		sliceSeedIds.add(startId);
+		if(trackCallees) {
+			openBodiesAround(startId);
 		}
 	}
+	/* include all the implicit side effects that we have to consider as we are unable to narrow them down */
+	for(const id of graph.unknownSideEffects) {
+		/* a linked side effect is no vertex of its own, its target is just missing */
+		if(typeof id !== 'object') {
+			queue.add(id, emptyEnv, basePrint, true);
+		}
+	}
+	/* a call asked about does what the functions it runs do, which includes what they print */
+	for(const id of outputWithinCallees(ids, graph)) {
+		queue.add(id, emptyEnv, basePrint, false);
+	}
 
+	/* a drained queue completes the body slice, only then can a boundary decide whether its callers matter */
 	do{
 		while(queue.nonEmpty()) {
 			processNode();
 		}
-		// the queue drained: only now do we know the full body slice, so decide per boundary whether the callers
-		// can actually influence the result (i.e., the slice reaches a parameter or a captured scope variable).
-		// resolving a boundary may enqueue new nodes, hence the surrounding do-while re-enters the traversal.
 		resolveCalleeBoundaries();
 	} while(queue.nonEmpty());
 
 	function processNode(): void {
 		const current = queue.next();
-
 		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
-
 		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
 			slicerLogger.warn(`id: ${id} must be in graph but can not be found, keep in slice to be sure`);
 			return;
 		}
-
 		const [currentVertex, currentEdges] = currentInfo;
-
 		const strictlyEnclosing = RNode.strictlyEnclosingFunction(id, idMap);
-		for(const outer of enclosingHandled.has(strictlyEnclosing) ? [] : definitionWithHolders(strictlyEnclosing, idMap, graph)) {
-			enqueue(outer, emptyEnv, basePrint);
+		if(!enclosingHandled.has(strictlyEnclosing)) {
+			enclosingHandled.add(strictlyEnclosing);
+			definitionWithHolders(strictlyEnclosing, idMap, graph).forEach(outer => enqueue(outer, emptyEnv, basePrint));
 		}
-		enclosingHandled.add(strictlyEnclosing);
-
 		// includeCallees: note the enclosing function definition (if any) so its callees can be considered once the body slice is complete
 		if(trackCallees) {
 			const enclosingFnDef = RFunctionDefinition.is(idMap.get(id)) ? id : strictlyEnclosing;
@@ -172,17 +147,13 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 				pendingCalleeBoundaries.set(enclosingFnDef, [baseEnvironment, baseEnvFingerprint]);
 			}
 		}
-
-		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same nesting as the slicing seed
-		if(currentVertex.cds && currentVertex.cds.length > 0) {
-			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
-			for(const cd of currentVertex.cds.filter(({ id }) => !queue.hasId(id))) {
-				if(!topLevel || (idMap.get(cd.id)?.info.nest ?? 0) >= minNesting) {
-					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
-				}
+		/* control dependencies count only in a different call or at least at the nesting of the seeds */
+		const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
+		for(const cd of currentVertex.cds?.filter(({ id }) => !queue.hasId(id)) ?? []) {
+			if(!topLevel || (idMap.get(cd.id)?.info.nest ?? 0) >= minNesting) {
+				queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
 			}
 		}
-
 		/* a call or a definition within a promise runs only when the promise is forced, within captured code only when it is evaluated */
 		if(DfgVertex.isFunctionCall(currentVertex) || DfgVertex.isVariableDefinition(currentVertex)) {
 			const dependencies = FunctionSemantics.promiseDependencies(id, graph);
@@ -190,22 +161,15 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 				dependencies.push(...FunctionSemantics.call.quoted.evaluationDependencies(graph, id));
 			}
 			for(const dep of dependencies) {
-				if(!queue.hasId(dep)) {
-					queue.add(dep, baseEnvironment, baseEnvFingerprint, false);
-				}
+				enqueue(dep, baseEnvironment, baseEnvFingerprint);
 			}
 		}
-
 		if(DfgVertex.isFunctionCall(currentVertex)) {
 			sliceForCall(current, currentVertex, info, queue, ctx);
 		}
-		if(!onlyForSideEffects) {
-			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);
-			if(ret) {
-				return;
-			}
+		if(!onlyForSideEffects && handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment)) {
+			return;
 		}
-
 		for(const [target, e] of currentEdges) {
 			const t = shouldTraverseEdge(e);
 			switch(t) {
@@ -227,9 +191,6 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	}
 
 	function resolveCalleeBoundaries(): void {
-		if(pendingCalleeBoundaries.size === 0) {
-			return;
-		}
 		const boundaries = [...pendingCalleeBoundaries];
 		pendingCalleeBoundaries.clear();
 		for(const [fnDefId, [env, fingerprint]] of boundaries) {
@@ -246,7 +207,6 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	return { ...status, slicedFor: ids, result, freeNames: freeNamesOf(result, info.graph) };
 }
 
-
 /** The calls writing output (`cat`, `print`, ...: a side effect linked to `sink`) within the functions the call `seeds` run, transitively. */
 function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): NodeId[] {
 	const writers = new Set<NodeId>();
@@ -262,20 +222,11 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 	const seen = new Set<NodeId>();
 	const calls = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id)));
 	while(calls.length > 0) {
-		for(const [target, edge] of graph.edgesFrom(calls.pop() as NodeId)) {
-			const callee = graph.getVertex(target);
-			if(!DfEdge.includesType(edge, EdgeType.Calls) || !DfgVertex.isFunctionDefinition(callee) || seen.has(target)) {
-				continue;
-			}
+		for(const target of calledDefinitions(graph, calls.pop() as NodeId).filter(t => !seen.has(t))) {
 			seen.add(target);
-			for(const inner of callee.subflow.graph) {
-				if(writers.has(inner)) {
-					found.push(inner);
-				}
-				if(DfgVertex.isFunctionCall(graph.getVertex(inner))) {
-					calls.push(inner);
-				}
-			}
+			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
+			found.push(...[...callee.subflow.graph].filter(inner => writers.has(inner)));
+			calls.push(...[...callsIn(callee, graph)].map(([inner]) => inner));
 		}
 	}
 	return found;
@@ -310,13 +261,7 @@ function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly
 		if(!DfgVertex.isUse(graph.getVertex(id))) {
 			continue;
 		}
-		let defined = false;
-		for(const [target, edge] of graph.edgesFrom(id)) {
-			if(DfEdge.includesType(edge, EdgeType.Reads) && (slice.has(target) || NodeId.isBuiltIn(target))) {
-				defined = true;
-				break;
-			}
-		}
+		const defined = edgeTargets(graph, id, EdgeType.Reads).some(t => slice.has(t) || NodeId.isBuiltIn(t));
 		const name = defined ? undefined : NodeId.recoverName(id, graph.idMap);
 		if(name !== undefined) {
 			free.add(name);
@@ -346,18 +291,12 @@ export function staticDice(
 	guard(startIds.length > 0 && endIds.length > 0, 'must have at least one start and one end id for dicing');
 	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold, includeCallees, gas });
 	// reduce to backward result and invert edges in one pass; original info kept for sliceForCall
-	const invertedReduced = Dataflow.reduceAndInvertGraph(info.graph, backward.result, ctx.env.makeCleanEnv());
-	const forward = staticSlice({ ctx, info, ast, ids: startIds, direction: SliceDirection.Backward, threshold, sliceGraph: invertedReduced, gas });
-	// explicit intersection handles seed nodes that landed outside the reduced graph
-	const result = new Set<NodeId>();
-	for(const id of forward.result) {
-		if(backward.result.has(id)) {
-			result.add(id);
-		}
-	}
+	const sliceGraph = Dataflow.reduceAndInvertGraph(info.graph, backward.result, ctx.env.makeCleanEnv());
+	const forward = staticSlice({ ctx, info, ast, ids: startIds, direction: SliceDirection.Backward, threshold, sliceGraph, gas });
 	return {
 		timesHitThreshold: forward.timesHitThreshold + backward.timesHitThreshold,
-		result,
+		// explicit intersection handles seed nodes that landed outside the reduced graph
+		result:            new Set([...forward.result].filter(id => backward.result.has(id))),
 		slicedFor:         [...startIds, ...endIds],
 		...(forward.stoppedEarly || backward.stoppedEarly ? {
 			stoppedEarly: true,
@@ -369,23 +308,13 @@ export function staticDice(
 	};
 }
 
-function extendSlices(
-	results: ReadonlySet<NodeId>,
-	ast: AstIdMap,
-): Set<NodeId> {
-	const res = new Set<NodeId>();
+function extendSlices(results: ReadonlySet<NodeId>, ast: AstIdMap): Set<NodeId> {
+	const res = new Set(results);
 	for(const id of results) {
-		res.add(id);
-		let parent = ast.get(id);
-
-		while(parent && parent.info.role !== RoleInParent.Root && parent.info.role !== RoleInParent.ExpressionListChild) {
-			parent = parent.info.parent ? ast.get(parent.info.parent) : undefined;
-		}
-		if(!parent) {
-			continue; // no parent, no need to extend
-		}
-		for(const id of RNode.collectAllIds(parent)) {
-			res.add(id);
+		/* extend to the whole statement the node is part of */
+		const statement = RNode.findEnclosing(id, ast, n => n.info.role === RoleInParent.Root || n.info.role === RoleInParent.ExpressionListChild);
+		for(const inner of statement === undefined ? [] : RNode.collectAllIds(ast.get(statement))) {
+			res.add(inner);
 		}
 	}
 	return res;

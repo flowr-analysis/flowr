@@ -1,8 +1,9 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledSigDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { decorateLabelContext, label } from '../_helper/label';
 
 const urlPrefix = ['https://', 'ftp://', 'ftps://'];
 
@@ -180,4 +181,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('a device writing to a name the user gives', parser, 'name <- readline("File: ")\npdf(name)', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
 		});
 	});
+	assertLinterFields(parser, '"https://x.org/a.csv" |> read.csv()', 'network-functions', [{ function: 'utils::read.csv' }]);
+	assertLintedLines(decorateLabelContext(label('security: a device file is no network address', ['name-normal', 'function-calls']), ['dataflow']), parser, 'name <- readline("File for the plot: ")\npdf(name)\nplot(1:10)\ndev.off()', 'network-functions', []);
 }));

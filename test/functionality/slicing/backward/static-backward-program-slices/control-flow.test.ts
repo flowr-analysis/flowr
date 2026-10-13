@@ -1,4 +1,4 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, withShell, assertSliceMatchesR, withTreeSitter } from '../../../_helper/shell';
 import type { TestConfigurationWithOutput } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
@@ -209,4 +209,21 @@ print(y)`, ['7@y'], 'y <- TRUE\ny');
 			shell, 'f <- function() { z <<- 1; stop("e") }\nx <- 1\ntryCatch(f(), error = function(e) NULL)\nv <- x\nv', ['5@v'], 'x <- 1\nv <- x\nv', { expectedOutput: 'NULL\n[1] 1', expectedSliceOutput: '[1] 1' });
 	});
 
+}));
+
+describe('Control flow checked against R', withTreeSitter(parser => {
+	const cases: readonly (readonly [string, string])[] = [
+		['unconditional break dropped', 'for(i in 1:3) { x <- i\n  break\n}\nprint(x)'],
+		['unconditional break dropped: nontermination', 'while(TRUE) { x <- 1; break }\nprint(x)'],
+		['unconditional break dropped: realistic search', 'data(mtcars)\ncars <- mtcars[order(-mtcars$hp), ]\ntarget_hp <- 150\nfirst_match <- NA\nfor (i in seq_len(nrow(cars))) {\n  if (cars$hp[i] > target_hp) next\n  first_match <- rownames(cars)[i]\n  break\n}\nattempt <- 0\nrepeat {\n  attempt <- attempt + 1\n  converged <- attempt >= 1\n  break\n}\ncat("@@", capture.output(print(first_match)), sep = "\\n")'],
+		['tryCatch dropped around kept call', 'lg <- character()\nf <- function(b) { lg <<- c(lg, "o"); b }\nr <- tryCatch(f(stop("x")), error = function(e) -1)\nprint(lg)'],
+		['tryCatch dropped: realistic resource log', 'attempts <- 0\nflaky <- function(fail_until = 3) {\n  attempts <<- attempts + 1\n  if (attempts < fail_until) stop("transient failure ", attempts)\n  "ok"\n}\nretry <- function(f, times = 5, ...) {\n  last_err <- NULL\n  for (i in seq_len(times)) {\n    res <- tryCatch(f(...), error = function(e) { last_err <<- e; NULL })\n    if (!is.null(res)) return(list(value = res, tries = i))\n  }\n  stop(last_err)\n}\nr1 <- retry(flaky)\ncleanup_log <- character()\nwith_resource <- function(name, body) {\n  cleanup_log <<- c(cleanup_log, paste("open", name))\n  on.exit(cleanup_log <<- c(cleanup_log, paste("close", name)), add = TRUE)\n  body\n}\nv1 <- with_resource("db", 42)\nv2 <- tryCatch(with_resource("file", stop("boom")), error = function(e) -1)\ncat("@@", capture.output(print(cleanup_log)), sep = "\\n")'],
+		['unconditional break dropped (for)', 'for(i in 1:3) { g <- i; break }\nprint(g)'],
+		['unconditional break dropped (repeat, slice never terminates)', 'repeat { g <- 5; break }\nprint(g)'],
+		['constant-true break dropped (repeat, slice never terminates)', 'repeat { g <- 5; if(TRUE) break }\nprint(g)'],
+		['return in tryCatch handler escapes the caller', 'f <- function() { tryCatch(stop("a"), error = function(e) return(1)); 2 }\nprint(f())'],
+	];
+	for(const [name, code] of cases) {
+		assertSliceMatchesR(parser, name, code);
+	}
 }));

@@ -1,4 +1,5 @@
-import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { EdgeType } from '../../dataflow/graph/edge';
+import { edgeSources } from '../../dataflow/fn/frame-reflection';
 import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
@@ -158,15 +159,13 @@ export function getFunctionArguments(
 	dfg: DataflowGraph
 ): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	const vertex = dfg.getVertex(node.info.id);
-
-	if(DfgVertex.isFunctionCall(vertex) && dfg.idMap !== undefined) {
-		const idMap = dfg.idMap;
-
-		return vertex.args
-			.map(arg => FunctionArgument.isEmpty(arg) ? arg : idMap.get(arg.nodeId))
-			.map(arg => RArgument.isEmpty(arg) || RArgument.is(arg) ? arg : toUnnamedArgument(arg, idMap));
+	const idMap = dfg.idMap;
+	if(!DfgVertex.isFunctionCall(vertex) || idMap === undefined) {
+		return node.arguments;
 	}
-	return node.arguments;
+	return vertex.args
+		.map(arg => FunctionArgument.isEmpty(arg) ? arg : idMap.get(arg.nodeId))
+		.map(arg => RArgument.isEmpty(arg) || RArgument.is(arg) ? arg : toUnnamedArgument(arg, idMap));
 }
 
 /**
@@ -192,7 +191,7 @@ export function getUnresolvedSymbolsInExpression(
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
 			/* a masked name a call runs, like the function in `across(everything(), as.character)`, falls back to the function without such a column */
-			const masked = FunctionSemantics.call.nse.maskedName(dfg, node.info.id) && !dfg.ingoingEdges(node.info.id)?.values().some(e => DfEdge.includesType(e, EdgeType.Calls));
+			const masked = FunctionSemantics.call.nse.maskedName(dfg, node.info.id) && edgeSources(dfg, node.info.id, EdgeType.Calls).length === 0;
 			if(DfgVertex.isUse(vertex) && (edges?.size === 0 || masked) && symbolNamespace === undefined && symbolName !== '.') {
 				unresolvedSymbols.push(symbolName);
 			}

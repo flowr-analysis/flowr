@@ -25,7 +25,6 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 	if(info === undefined) {
 		return newInfo;
 	}
-
 	return {
 		unknownReferences: info.unknownReferences.concat(newInfo.unknownReferences),
 		in:                info.in.concat(newInfo.in),
@@ -67,9 +66,7 @@ function builtInBehindExport<OtherInfo>(
 	return typeof attached.processor === 'function' ? attached as BuiltInIdentifierDefinition : undefined;
 }
 
-/**
- * Marks the given function call node as only calling built-in functions.
- */
+/** Marks the given function call node as only calling built-in functions. */
 export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvironment = false): void {
 	const v = graph.getVertex(rootId);
 	if(DfgVertex.isFunctionCall(v)) {
@@ -110,14 +107,14 @@ export function processNamedCall<OtherInfo>(
 	/* a call whose meaning a later pass looks up in its environment has to keep it */
 	const keepEnvironment = resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.keepEnvironment === true);
 
-	/* if this call will be marked as built-in only (see below), its vertex needs no environment snapshot */
+	/* a call marked as built-in only (see below) needs no environment snapshot */
 	if(resolved.length > 0 && !keepEnvironment
 		&& resolved.every(r => r.type === ReferenceType.BuiltInFunction && typeof r.processor === 'function')
 		&& resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.libFn !== true)) {
 		data = { ...data, builtInNoEnv: rootId };
 	}
 
-	let information: DataflowInformation | undefined = undefined;
+	let information: DataflowInformation | undefined;
 	let builtIn = false;
 	/* a set, because an export and the built-in behind it are two ways to the same definition */
 	const toRun = new Set<BuiltInIdentifierDefinition>();
@@ -126,8 +123,7 @@ export function processNamedCall<OtherInfo>(
 	let unknownBody = resolved.length === 0 && data.environment.level === 0;
 	for(const resolvedFunction of resolved) {
 		const isBuiltIn = resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function';
-		/* the call goes through the attached export, so it is not built-in only, but flowR's own
-		   definition of that export is what knows how to process it */
+		/* a call through an attached export is not built-in only, but flowR's definition of it processes it */
 		const own = isBuiltIn ? resolvedFunction : builtInBehindExport(data, resolvedFunction);
 		if(own === undefined) {
 			defaultProcessor = true;
@@ -149,10 +145,10 @@ export function processNamedCall<OtherInfo>(
 
 	if(defaultProcessor) {
 		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
-		const call = processKnownFunctionCall({ name, args, rootId, data, sig: resolved.length > 0 ? undefined : FunctionSemantics.call.signature.every, origin: 'default' });
+		const sig = resolved.length > 0 ? undefined : FunctionSemantics.call.signature.every;
+		const call = processKnownFunctionCall({ name, args, rootId, data, sig, origin: 'default' });
 		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
-		// mark the function call as built in only
 		markAsOnlyBuiltIn(information.graph, rootId, keepEnvironment);
 	}
 	/* a function whose body we do not see may read any option or draw on the device */
@@ -163,9 +159,9 @@ export function processNamedCall<OtherInfo>(
 		information = readsAllAmbientState(information, rootId, data, unknownBody, draws);
 	}
 
-	// on demand: materialize the built-in vertex for any package export this call resolves to and, when we
-	// already know the loading call here, link to it (a function-local export is invisible to the later
-	// top-level linkMaterializedExportsToLoaders pass, so we must catch it at the call site)
+	/* on demand: materialize the built-in vertex for any package export this call resolves to and, when we
+	   already know the loading call here, link to it (a function-local export is invisible to the later
+	   top-level linkMaterializedExportsToLoaders pass, so we must catch it at the call site) */
 	if(information) {
 		const sigdb = data.ctx.config.solver.sigdb;
 		for(const r of resolved) {
@@ -174,19 +170,19 @@ export function processNamedCall<OtherInfo>(
 				const definedAt = (r as Partial<InGraphIdentifierDefinition>).definedAt;
 				if(definedAt !== undefined && !NodeId.isBuiltIn(definedAt)) {
 					information.graph.addEdge(r.nodeId, definedAt, EdgeType.Reads | EdgeType.Calls);
-					// the call itself reads the library() load that made this export resolvable
+					/* the call itself reads the library() load that made this export resolvable */
 					information.graph.addEdge(rootId, definedAt, EdgeType.Reads);
 				}
-				// opt-in: a lightweight ref edge from the call to its sigdb-backed package function vertex
+				/* opt-in: a lightweight ref edge from the call to its sigdb-backed package function vertex */
 				if(sigdb.linkPackageCalls && NodeId.toPkgFn(r.nodeId) !== undefined) {
 					information.graph.addEdge(rootId, r.nodeId, EdgeType.Reads);
 				}
 			}
 		}
 		const ns = Identifier.getNamespace(name.content);
-		// a call links to a database-unresolved `library(pkg)` recorded below the global env: `pkg::fn` names
-		// its package, a bare call takes it from what flowR resolved it to, which is what ties
-		// `filter(df, id > 2)` to the `library(dplyr)` that made it dplyr's
+		/* a call links to a database-unresolved `library(pkg)` recorded below the global env: `pkg::fn` names
+		   its package, a bare call takes it from what flowR resolved it to, which is what ties
+		   `filter(df, id > 2)` to the `library(dplyr)` that made it dplyr's */
 		const owners = ns !== undefined ? [ns] : resolved
 			.map(r => r.type === ReferenceType.BuiltInFunction && r.name !== undefined ? Identifier.getNamespace(r.name) : undefined)
 			.filter(isNotUndefined);
@@ -195,8 +191,8 @@ export function processNamedCall<OtherInfo>(
 				information.graph.addEdge(rootId, loadNode, EdgeType.Reads);
 			}
 		}
-		// opt-in: link a bare base-R call to its sigdb function vertex (base-R qualification is edge-free otherwise);
-		// same guards as Identifier.toQualified -- not namespaced, not resolving to a user definition
+		/* opt-in: link a bare base-R call to its sigdb function vertex (base-R qualification is edge-free otherwise);
+		   same guards as Identifier.toQualified: not namespaced, not resolving to a user definition */
 		if(sigdb.linkBaseRCalls && ns === undefined && !resolved.some(r => r.nodeId !== undefined && !NodeId.isBuiltIn(r.nodeId))) {
 			const bare = Identifier.getName(name.content);
 			const owner = baseRExportOwner(bare);

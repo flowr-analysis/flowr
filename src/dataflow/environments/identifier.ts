@@ -57,11 +57,7 @@ export const Identifier = {
 		if(startAndEndsWith(name, '`')) {
 			name = name.slice(1, -1);
 		}
-		if(namespace) {
-			return [name, namespace, internal];
-		} else {
-			return name;
-		}
+		return namespace ? [name, namespace, internal] : name;
 	},
 	/**
 	 * Fast-path factory: returns the tuple as-is with no allocation or runtime checks.
@@ -99,13 +95,7 @@ export const Identifier = {
 	 * ```
 	 */
 	fromAllIn(this: void, namespaces: readonly BrandedNamespace[], names: readonly BrandedIdentifier[]): Identifier[] {
-		const ids: Identifier[] = [];
-		for(const namespace of namespaces) {
-			for(const name of names) {
-				ids.push([name, namespace]);
-			}
-		}
-		return ids;
+		return namespaces.flatMap(namespace => names.map((name): Identifier => [name, namespace]));
 	},
 	/**
 	 * Verify whether an unknown element has a valid identifier shape!
@@ -114,14 +104,10 @@ export const Identifier = {
 		if(typeof id === 'string') {
 			return true;
 		}
-		if(Array.isArray(id)) {
-			if(id.length === 2) {
-				return typeof id[0] === 'string' && typeof id[1] === 'string';
-			} else if(id.length === 3) {
-				return typeof id[0] === 'string' && typeof id[1] === 'string' && typeof id[2] === 'boolean';
-			}
+		if(!Array.isArray(id) || typeof id[0] !== 'string' || typeof id[1] !== 'string') {
+			return false;
 		}
-		return false;
+		return id.length === 2 || (id.length === 3 && typeof id[2] === 'boolean');
 	},
 	/**
 	 * Parse an identifier from its string representation,
@@ -167,16 +153,9 @@ export const Identifier = {
 		if(id === undefined) {
 			return undefined;
 		} else if(Array.isArray(id)) {
-			if(id[1].includes('::')) {
-				return `${JSON.stringify(id[1])}${id[2] ? ':::' : '::'}${id[0]}`;
-			}
-			return `${id[1]}${id[2] ? ':::' : '::'}${id[0]}`;
-		} else {
-			if(id.includes('::')) {
-				return JSON.stringify(id);
-			}
-			return id;
+			return `${id[1].includes('::') ? JSON.stringify(id[1]) : id[1]}${id[2] ? ':::' : '::'}${id[0]}`;
 		}
+		return id.includes('::') ? JSON.stringify(id) : id;
 	}) as Accessor<Identifier, string>,
 	/**
 	 * Check if two identifiers match.
@@ -189,22 +168,20 @@ export const Identifier = {
 		const idName = Identifier.getName(id);
 		const targetName = Identifier.getName(target);
 		if(idName !== targetName) {
-			return s3 ? targetName.startsWith(idName + '.') : false;
+			return s3 && targetName.startsWith(idName + '.');
 		}
 		const idNs = Identifier.getNamespace(id);
 		if(idNs === undefined) {
 			return true;
 		}
-		const targetNs = Identifier.getNamespace(target);
-		if(idNs !== targetNs) {
+		if(idNs !== Identifier.getNamespace(target)) {
 			return false;
 		}
-		const idInternal = Identifier.accessesInternal(id);
-		if(idInternal === true) {
+		if(Identifier.accessesInternal(id) === true) {
 			return true;
 		}
 		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
-		return (idInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
+		return Identifier.accessesInternal(target) !== true;
 	},
 	/** The text as a regex matches it literally: `[`, `$` and `.` name functions in R, they are not pattern syntax. */
 	quote(this: void, text: string): string {
@@ -235,31 +212,19 @@ export const Identifier = {
 	 * Functor over the name of the identifier
 	 */
 	mapName(this: void, id: Identifier, fn: (name: BrandedIdentifier) => BrandedIdentifier): Identifier {
-		if(Array.isArray(id)) {
-			return [fn(id[0]), id[1], id[2]];
-		} else {
-			return fn(id);
-		}
+		return Array.isArray(id) ? [fn(id[0]), id[1], id[2]] : fn(id);
 	},
 	/**
 	 * Functor over the namespace of the identifier
 	 */
 	mapNamespace(this: void, id: Identifier, fn: (ns: BrandedNamespace) => BrandedNamespace): Identifier {
-		if(Array.isArray(id)) {
-			return [id[0], fn(id[1]), id[2]];
-		} else {
-			return id;
-		}
+		return Array.isArray(id) ? [id[0], fn(id[1]), id[2]] : id;
 	},
 	/**
 	 * Convert the identifier to its array representation
 	 */
 	toArray(this: void, id: Identifier): [BrandedIdentifier, BrandedNamespace | undefined, boolean | undefined] {
-		if(Array.isArray(id)) {
-			return [id[0], id[1], id[2]];
-		} else {
-			return [id, undefined, undefined];
-		}
+		return Array.isArray(id) ? [id[0], id[1], id[2]] : [id, undefined, undefined];
 	},
 	/**
 	 * The package-qualified identifier of a call, resolved in order of decreasing certainty:
@@ -290,20 +255,15 @@ export const Identifier = {
 				sawUserDefinition = true;
 			}
 		}
-		if(name === undefined) {
-			return undefined;
-		}
-		if(Identifier.getNamespace(name) !== undefined) {
+		if(name === undefined || Identifier.getNamespace(name) !== undefined) {
 			return name;
 		}
-		if(qualifyBaseR && !sawUserDefinition) {
-			const bare = Identifier.getName(name);
-			const owner = baseRExportOwner(bare);
-			if(owner !== undefined) {
-				return Identifier.make(bare, owner);
-			}
+		if(!qualifyBaseR || sawUserDefinition) {
+			return undefined;
 		}
-		return undefined;
+		const bare = Identifier.getName(name);
+		const owner = baseRExportOwner(bare);
+		return owner === undefined ? undefined : Identifier.make(bare, owner);
 	},
 	/**
 	 * Wraps the identifier in an {@link IdentifierView|view} offering property access (`id.name`, `id.namespace`)
@@ -328,12 +288,8 @@ export const Identifier = {
  * ```
  */
 export class IdentifierView {
-	/** The underlying identifier; use it whenever you need the plain representation back. */
-	readonly raw: Identifier;
-
-	constructor(id: Identifier) {
-		this.raw = id;
-	}
+	/** @param raw - the underlying identifier; use it whenever you need the plain representation back */
+	constructor(readonly raw: Identifier) {}
 
 	/** the name part, so the `fn` of a `pkg::fn` */
 	get name(): BrandedIdentifier {

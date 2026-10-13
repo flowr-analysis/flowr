@@ -29,9 +29,7 @@ export interface LocalFunctionConfiguration {
 	}
 }
 
-/**
- * Processes a built-in 'local' function call.
- */
+/** Processes a built-in 'local' function call. */
 export function processLocal<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -42,12 +40,11 @@ export function processLocal<OtherInfo>(
 	if(args.length === 0) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const params = {
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), {
 		[config.args.expr]: 'expr',
 		[config.args.env]:  'env',
 		'...':              '...'
-	};
-	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
+	});
 	const envArg = RArgument.getWithId(args, argMaps.get('env')?.[0]);
 	const env = unpackArg(envArg);
 	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
@@ -58,7 +55,6 @@ export function processLocal<OtherInfo>(
 	/* when envir resolves to a tracked environment, evaluate expr inside it */
 	const envirRouting = envArg ? resolveArgToEnvirOrAmbiguous(envArg, data) : undefined;
 	const envirResolution = envirOf(envirRouting);
-
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
 	if(ControlFlow.alwaysExits(dfEnv, data.cds)) {
 		patchFunctionCall({
@@ -92,8 +88,6 @@ export function processLocal<OtherInfo>(
 		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
 	);
 
-	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
-	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	const graph = dfEnv.graph.mergeWith(dfExpr.graph);
 	graph.addEdge(rootId, expr.info.id, EdgeType.Returns);
 	/* the body only runs because `local` runs it */
@@ -105,6 +99,8 @@ export function processLocal<OtherInfo>(
 	const cfgEntry = ControlFlow.inSequence(graph, env ? [dfEnv, dfExpr] : [dfExpr], rootId);
 	/* `return` only leaves the evaluation that local opens */
 	ControlFlow.jumpsTo(graph, dfExpr, ExitPointType.Return, rootId);
+	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
+	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
 		environment:       resultEnvironment,

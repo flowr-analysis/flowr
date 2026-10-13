@@ -78,18 +78,7 @@ export const RArgument = {
 		return RArgument.is(node) && node.value !== undefined;
 	},
 	getWithId<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): Exclude<PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, typeof EmptyArgument> | undefined {
-		if(id === undefined) {
-			return undefined;
-		}
-		for(const arg of args) {
-			if(RArgument.isEmpty(arg)) {
-				continue;
-			}
-			if(arg.info.id === id) {
-				return arg;
-			}
-		}
-		return undefined;
+		return id === undefined ? undefined : args.filter(RArgument.isNotEmpty).find(arg => arg.info.id === id);
 	},
 	/**
 	 * Retrieve the value of the argument with the given id from the list of arguments.

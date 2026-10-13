@@ -39,40 +39,26 @@ export const NAMESPACE_ACCESS = {
 		const db = data.inspectContext().deps.signatures();
 		const results: NamespaceAccessResult[] = [];
 		let unresolved = 0;
-		if(db.available()) {
-			for(const element of elements.getElements()) {
-				const node = element.node;
-				if(!RSymbol.is(node)) {
-					continue;
-				}
-				const [name, pkg, internal] = Identifier.toArray(node.content);
-				if(pkg === undefined) {
-					continue;
-				}
-				const raw = db.rawFunctionOf(node.content);
-				/* a registered S3 method counts as exported in the database although `::` does not reach it */
-				if(raw === undefined || (internal === true && raw.props.includes(FnPropNames[FnProp.S3Method]))) {
-					unresolved++;
-					continue;
-				}
-				const kind: NamespaceAccessKind | undefined = internal === true
-					? (raw.exported ? 'unnecessary-internal' : undefined)
-					: (raw.exported ? undefined : 'not-exported');
-				if(kind === undefined) {
-					continue;
-				}
-				const loc = SourceLocation.fromNode(node);
-				if(loc === undefined) {
-					continue;
-				}
-				results.push({
-					certainty:  LintingResultCertainty.Certain,
-					involvedId: node.info.id,
-					loc,
-					pkg,
-					name,
-					kind
-				});
+		for(const { node } of db.available() ? elements.getElements() : []) {
+			if(!RSymbol.is(node)) {
+				continue;
+			}
+			const [name, pkg, internal] = Identifier.toArray(node.content);
+			if(pkg === undefined) {
+				continue;
+			}
+			const raw = db.rawFunctionOf(node.content);
+			/* a registered S3 method counts as exported in the database although `::` does not reach it */
+			if(raw === undefined || (internal === true && raw.props.includes(FnPropNames[FnProp.S3Method]))) {
+				unresolved++;
+				continue;
+			}
+			const kind: NamespaceAccessKind | undefined = internal === true
+				? (raw.exported ? 'unnecessary-internal' : undefined)
+				: (raw.exported ? undefined : 'not-exported');
+			const loc = SourceLocation.fromNode(node);
+			if(kind !== undefined && loc !== undefined) {
+				results.push({ certainty: LintingResultCertainty.Certain, involvedId: node.info.id, loc, pkg, name, kind });
 			}
 		}
 		return { results, '.meta': { unresolved } };

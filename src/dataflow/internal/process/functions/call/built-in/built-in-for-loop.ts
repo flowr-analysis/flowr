@@ -34,19 +34,11 @@ import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { DfgVertex } from '../../../../../graph/vertex';
 
 
+const ScalarTypes: ReadonlySet<Value['type']> = new Set(['interval', 'number', 'string', 'logical']);
+
 /** a value R iterates over at least once, `NULL` and empty vectors are the ones it does not */
 function hasElement(value: Value): boolean {
-	switch(value.type) {
-		case 'interval':
-		case 'number':
-		case 'string':
-		case 'logical':
-			return true;
-		case 'vector':
-			return Array.isArray(value.elements) && value.elements.length > 0;
-		default:
-			return false;
-	}
+	return value.type === 'vector' ? Array.isArray(value.elements) && value.elements.length > 0 : ScalarTypes.has(value.type);
 }
 
 /** whether the node certainly holds a value and every value it may hold satisfies `holds` */
@@ -60,8 +52,7 @@ function isNonEmptyRange<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>
 	if(!RBinaryOp.is(vector) || vector.operator !== ':') {
 		return false;
 	}
-	const call = entry.graph.getVertex(vector.info.id);
-	if(!DfgVertex.isFunctionCall(call) || !call.origin.includes(BuiltInProcName.Default)) {
+	if(!DfgVertex.hasOrigin(entry.graph.getVertex(vector.info.id), BuiltInProcName.Default)) {
 		return false;
 	}
 	return [vector.lhs, vector.rhs].some(side => alwaysHolds(side, data, v => v.type !== 'vector' && hasElement(v)));
@@ -70,11 +61,6 @@ function isNonEmptyRange<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>
 /** whether a for-loop over `vector` certainly runs its body at least once */
 function iteratesAtLeastOnce<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>, entry: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	return isNonEmptyRange(vector, entry, data) || alwaysHolds(vector, data, hasElement);
-}
-
-/** a `break` or `next` may cut the first iteration short */
-function mayCutIterationShort(body: DataflowInformation): boolean {
-	return body.exitPoints.some(e => e.type === ExitPointType.Break || e.type === ExitPointType.Next);
 }
 
 /**
@@ -96,13 +82,11 @@ export function processForLoop<OtherInfo>(
 	}
 
 	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackNonameArg(e));
-
-	// we store the original environment here, as we merge it back lter in case the for-loop never executes
+	/* merged back in case the loop never runs */
 	const origEnv = data.environment;
-
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);
 	const vector = processDataflowFor(vectorArg, data);
-	if(ControlFlow.alwaysExits(vector)) {
+	if(ControlFlow.alwaysExits(vector, data.cds)) {
 		dataflowLogger.warn(`For-Loop ${rootId} forces exit in vector, skipping rest`);
 		return vector;
 	}
@@ -110,44 +94,40 @@ export function processForLoop<OtherInfo>(
 	/* resolved before the loop variable is bound, as it may share the name of what the vector reads */
 	const nonEmpty = iteratesAtLeastOnce(vectorArg, vector, data);
 	const variable = processDataflowFor(variableArg, data);
-	// this should not be able to exit always!
-
-	const originalDependency = data.cds;
-
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment);
 	/* only the vector's references and entry point are read past this, its graph is not */
 	const headGraph = variable.graph.mergeWith(vector.graph, true, true);
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
-	const writtenIds = new Set<NodeId>();
 	for(const write of writtenVariable) {
-		writtenIds.add(write.nodeId);
-		headEnvironments = define({ ...write, definedAt: name.info.id, type:      ReferenceType.Variable,
-			value:     [vectorArg.info.id], iterated:  true } as (IdentifierDefinition & { name: string }), false, headEnvironments);
+		const definition = {
+			...write,
+			definedAt: name.info.id,
+			type:      ReferenceType.Unknown,
+			value:     [vectorArg.info.id],
+			iterated:  true
+		} as IdentifierDefinition & { name: string };
+		headEnvironments = define(definition, false, headEnvironments);
 	}
-
 	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
 
 	const body = processDataflowFor(bodyArg, data);
-
 	const cd = [{ id: name.info.id, when: true }];
-
-
 	const bodyRefs = body.in.concat(body.unknownReferences);
 	applyCdsToAllInGraphButConstants(body.graph, bodyRefs, cd);
 	/* likewise the body's, what is taken from it afterwards are its references, exit points and hooks */
 	const nextGraph = headGraph.mergeWith(body.graph, true, true);
 
-	// now we have to identify all reads that may be effected by a circular redefinition
-	// for this, we search for all reads with a non-local read resolve!
-	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph, writtenIds));
+	/* the reads with a non-local resolve may be affected by a circular redefinition */
+	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph, new Set(writtenVariable.map(w => w.nodeId))));
 
 	for(const write of writtenVariable) {
 		nextGraph.addEdge(write.nodeId, vector.entryPoint, EdgeType.DefinedBy);
 		nextGraph.setDefinitionOfVertex(write, [vector.entryPoint]);
 	}
 
-	const once = nonEmpty && !mayCutIterationShort(body);
+	/* a `break` or `next` may cut the first iteration short */
+	const once = nonEmpty && !body.exitPoints.some(e => e.type === ExitPointType.Break || e.type === ExitPointType.Next);
 	/* a body that certainly runs defines as definitely as the code around the loop */
 	if(!once) {
 		applyCdToReferences(body.out, cd);
@@ -155,7 +135,7 @@ export function processForLoop<OtherInfo>(
 	const outgoing = variable.out.concat(writtenVariable, body.out);
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
-	linkAmbientStateWithinLoop(nextGraph, bodyRefs, body);
+	const ambientReads = linkAmbientStateWithinLoop(nextGraph, bodyRefs, body);
 
 	/* the loop variable is bound by the head whenever the body runs, so reads of it are not ingoing */
 	const loopVariables = new Set(writtenVariable.map(w => w.name));
@@ -167,19 +147,16 @@ export function processForLoop<OtherInfo>(
 		nextGraph,
 		rootId,
 		name,
-		data:                  { ...data, cds: originalDependency },
+		data,
 		argumentProcessResult: [variable, vector, body],
 		origin:                BuiltInProcName.ForLoop
 	});
-	/* mark the last argument as nse */
 	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);
-	// as the for-loop always evaluates its condition
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
-	const bodyEntry = ControlFlow.entryOf(body);
 	const variableEntry = ControlFlow.entryOf(variable);
 	ControlFlow.continuesWith(nextGraph, vector, variableEntry);
-	ControlFlow.branchesTo(nextGraph, variable, bodyEntry, cd[0]);
+	ControlFlow.branchesTo(nextGraph, variable, ControlFlow.entryOf(body), cd[0]);
 	ControlFlow.branchesTo(nextGraph, variable, rootId, { id: cd[0].id, when: false });
 	ControlFlow.continuesWith(nextGraph, body, variableEntry);
 	ControlFlow.jumpsTo(nextGraph, body, ExitPointType.Next, variableEntry);
@@ -191,8 +168,8 @@ export function processForLoop<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers],
+		/* we only want those not bound by a local variable */
+		in:                [{ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers, ...ambientReads],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,

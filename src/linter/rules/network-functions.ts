@@ -66,6 +66,11 @@ function addressParam(params: readonly BuiltInParam[]): BuiltInParam {
 export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 	const resources = new Map<string, BuiltInParam[]>();
 	for(const param of index.params(ArgProp.Resource)) {
+		/* R opens a path it writes to as a local file (or a `|` pipe), never as a url */
+		const tags = index.get(param.call)?.tags;
+		if(tags?.includes(SemanticCallTag.Writes) && !tags.includes(SemanticCallTag.Reads)) {
+			continue;
+		}
 		const key = Identifier.toString(param.call);
 		resources.set(key, [...resources.get(key) ?? [], param]);
 	}
@@ -87,14 +92,15 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 }
 
 export const NETWORK_FUNCTIONS = {
-	createSearch:        (config) => functionFinderUtil.createSearch(config.fns.map(f => Identifier.is(f) ? f : f.name)),
+	createSearch:        config => functionFinderUtil.createSearch(config.fns.map(f => Identifier.is(f) ? f : f.name)),
 	processSearchResult: async(e, c, d) => {
 		const df = await d.dataflow();
 		const fnPool = new Map<string, FunctionInfo>([
-			...readFunctions(d.inspectContext()).concat(SourceFunctions, writeFunctions(d.inspectContext())).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
-			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [[Identifier.toString(f.name), { name: Identifier.toString(f.name), ...f.info }] as const])
+			...writeFunctions(d.inspectContext()).concat(readFunctions(d.inspectContext()), SourceFunctions).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
+			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, { name: Identifier.toString(f.name), ...f.info }] as const))
 		]);
-		const onlyTriggerLookup = new Map(c.fns.flatMap(f => Identifier.is(f) ? [] : [[Identifier.toString(f.name), f.onlyTriggerWithArgument] as const]));
+		/* a call whose package flowR cannot name still answers to the entry for its bare name */
+		const onlyTriggerLookup = new Map(c.fns.flatMap(f => Identifier.is(f) ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, f.onlyTriggerWithArgument] as const)));
 		return functionFinderUtil.processSearchResult(e, c, d,
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
@@ -109,11 +115,7 @@ export const NETWORK_FUNCTIONS = {
 					if(val === Ternary.Never) {
 						continue;
 					}
-					const x = e as unknown as FlowrSearchElement<ParentInformation> & {
-						certainty: LintingResultCertainty
-					};
-					x.certainty = val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
-					res.push(x);
+					res.push(Object.assign(e, { certainty: val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain }));
 				}
 				return res;
 			}

@@ -23,11 +23,11 @@ export enum PlaygroundBox {
  * - a {@link PlaygroundBox} is one of the boxes of the page itself
  * @see {@link Mark.isValid} to check one, {@link Mark.compress} to shorten a list
  */
-export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}`
+export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}` | `${number}(${string})`
 	| `lint:${string}` | `dep:${string}` | PlaygroundBox;
 
-/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line */
-const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?$/;
+/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line, in another file with a `(file-regex)` */
+const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?(\(.+\))?$/;
 /** a mark that stands for what an analysis found: `lint:<rule>[@<line>]`, `dep:<kind>[@<line>]` */
 const FoundMarkPattern = /^(lint|dep):[^@,]+(@\d+)?$/;
 /** how many lines one range may stand for, so a hand-written link cannot ask for a million marks */
@@ -99,6 +99,10 @@ const Mark = {
 export interface PlaygroundLinkParts {
 	/** the script the page opens with; left out, the page keeps its own sample */
 	readonly code?:       string;
+	/** the file name of that script, `main.R` when left out */
+	readonly name?:       string;
+	/** the other files of the project, in the order flowR loads them, all before the opened one */
+	readonly files?:      readonly { name: string, code: string }[];
 	/** what the page marks when it opens, and what alt-click toggles from there on */
 	readonly marks?:      readonly PlaygroundMark[];
 	/** the boxes that open folded away, for whatever the example is not about */
@@ -132,35 +136,22 @@ export interface PlaygroundLinkParts {
  * ```
  */
 export const Playground = {
-	name:    'Playground',
+	name:     'Playground',
 	/** where the page these links point at is served from */
-	BaseRef: 'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	BaseRef:  'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	/** the name of the file a link opens on when it names none */
+	MainFile: 'main.R',
 	/** what a link can point at */
 	Mark,
 	/** the boxes of the page a mark can point at */
-	Box:     PlaygroundBox,
+	Box:      PlaygroundBox,
 	/**
 	 * The link that opens the playground on exactly this: a script, what it points at, where its cursor
 	 * sits, and how the page is laid out.
 	 */
 	link(this: void, parts: PlaygroundLinkParts): string {
-		const { code, marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
+		const { code, name, files = [], marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
 		const base = parts.base ?? Playground.BaseRef;
-		const fields: [string, string][] = [];
-		if(code !== undefined && code.length > 0) {
-			fields.push(['c', packForUrl(code)]);
-		}
-		if(config.length > 0) {
-			fields.push(['k', Playground.packConfig(config)]);
-		}
-		const kept = Mark.compress(marks);
-		if(kept.length > 0) {
-			fields.push(['h', kept.join(',')]);
-		}
-		const folded = uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box));
-		if(folded.length > 0) {
-			fields.push(['f', folded.join(',')]);
-		}
 		/* one field for everything about the layout, with the trailing empty parts dropped */
 		const view = [
 			split === undefined ? '' : String(split),
@@ -170,15 +161,19 @@ export const Playground = {
 		while(view.length > 0 && view[view.length - 1].length === 0) {
 			view.pop();
 		}
-		if(view.length > 0) {
-			fields.push(['v', view.join(',')]);
-		}
 		const position = at === undefined ? undefined
 			: code === undefined ? (/^\d+:\d+$/.test(at) ? at : undefined) : Playground.positionOf(code, at);
-		if(position !== undefined) {
-			fields.push(['p', position]);
-		}
-		const hash = Playground.hash(fields);
+		/* an empty field is left out of the link */
+		const hash = Playground.hash([
+			['c', code ? packForUrl(code) : ''],
+			['n', name !== undefined && name !== Playground.MainFile ? name : ''],
+			['o', files.length > 0 ? packForUrl(JSON.stringify(files.map(f => [f.name, f.code]))) : ''],
+			['k', config.length > 0 ? Playground.packConfig(config) : ''],
+			['h', Mark.compress(marks).join(',')],
+			['f', uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box)).join(',')],
+			['v', view.join(',')],
+			['p', position ?? '']
+		]);
 		return hash.length > 0 ? `${base}#${hash}` : base;
 	},
 	/**
@@ -198,8 +193,8 @@ export const Playground = {
 		return text.split(';').filter(key => key.length > 0);
 	},
 	/**
-	 * Everything a fragment does not carry as itself is escaped, so a configuration's brackets, braces and
-	 * quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
+	 * The non-empty fields as a fragment. Everything a fragment does not carry as itself is escaped, so a
+	 * configuration's brackets, braces and quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
 	 * a terminal cuts the address at. What is left is what {@link FragmentSafe} lists: a fragment is not a
 	 * query, so `,`, `:` and `;` stand in it as they are and keep a link readable. `&` and `+` are escaped
 	 * beyond that, the first because it separates the fields here and the second because a reader takes it

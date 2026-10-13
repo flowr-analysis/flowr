@@ -24,5 +24,16 @@ describe('flowR linter', withTreeSitter(parser => {
 		]);
 		assertLinter('resolve flag in stop', parser, 'f <- function(y) { x <- FALSE; stop(y, call.=x) }', 'stop-call', []);
 		assertLinter('a condition object carries its own call', parser, 'f <- function() stop(simpleError("x"))', 'stop-call', []);
+		assertLinter('a condition object built with structure', parser, 'f <- function() stop(structure(class = c("myError", "error", "condition"), list(message = "m", call = NULL)))', 'stop-call', []);
+		assertLinter('stop handed to do.call states its arguments there', parser, 'f <- function() { args <- list("m", call. = FALSE); do.call(stop, args) }', 'stop-call', []);
+		assertLinter('a direct stop beside one handed to do.call is still reported', parser, 'f <- function() { args <- list("m", call. = FALSE); do.call(stop, args); stop("y") }', 'stop-call', [
+			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 74, 1, 82) }
+		]);
+		assertLinter('an object built with structure but no condition class is reported', parser, 'f <- function() stop(structure(class = "myError", list(message = "m", call = NULL)))', 'stop-call', [
+			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 17, 1, 84) }
+		]);
+		assertLinter('a qualified base::stop', parser, 'f <- function() base::stop("x")', 'stop-call', [
+			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 17, 1, 31) }
+		]);
 	});
 }));

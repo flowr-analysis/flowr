@@ -1,24 +1,22 @@
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
-import { guard, isNotUndefined } from '../../../../../../util/assert';
+import { isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import { DfEdge, EdgeType } from '../../../../../graph/edge';
+import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
-import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { dataflowLogger } from '../../../../../logger';
-import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { removalsOf, cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
@@ -26,57 +24,48 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, readsOfAutoPrint } from './built-in-ambient-state';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RWhileLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { DefaultMap } from '../../../../../../util/collections/defaultmap';
+import { compactRecord } from '../../../../../../util/objects';
+import { callsIn, edgeTargets } from '../../../../../fn/frame-reflection';
+import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
  * Only then the read is resolved here and must not bubble up as an ingoing reference.
  */
 function coveredByListDefinitions(targets: readonly IdentifierDefinition[], listEnvironments: Set<NodeId>): boolean {
-	let cds: ControlDependency[] | undefined;
-	for(const target of targets) {
-		if(!listEnvironments.has(target.nodeId)) {
-			continue;
-		} else if(target.cds === undefined) {
-			return true;
-		}
-		(cds ??= []).push(...target.cds);
+	const own = targets.filter(t => listEnvironments.has(t.nodeId));
+	if(own.some(t => t.cds === undefined)) {
+		return true;
 	}
-	return cds !== undefined && happensInEveryBranch(cds);
+	return own.length > 0 && happensInEveryBranch(own.flatMap(t => t.cds ?? []));
 }
 
+/** Whether reading the variable defined at `id` calls a function, as for an active binding. */
 function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
-	if(!DfgVertex.isVariableDefinition(graph.getVertex(id))) {
-		return false;
-	}
-	for(const e of graph.edgesFrom(id).values()) {
-		if(DfEdge.includesType(e, EdgeType.Calls)) {
-			return true;
-		}
-	}
-	return false;
+	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && edgeTargets(graph, id, EdgeType.Calls).length > 0;
 }
 
-function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]) {
+/** @returns whether `read` sees a definition */
+function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: DefaultMap<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]): boolean {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
 	const probableTarget = readName ? Resolve.byNameAndType(readName, environments, read.type) : undefined;
 
+	/* without a target the read stays ingoing (read-ids are unique within the same fold), a later fold may still resolve it */
 	if(probableTarget === undefined || !coveredByListDefinitions(probableTarget, listEnvironments)) {
-		const readId = readName ? Identifier.getName(readName) : undefined;
-		const has = remainingRead.get(readId);
-		if(has) {
-			if(!has.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
-				has.push(read);
-			}
-		} else {
-			remainingRead.set(readId, [read]);
+		const has = remainingRead.get(readName ? Identifier.getName(readName) : undefined);
+		if(!has.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
+			has.push(read);
 		}
 	}
-
-	// no target: keep it as an ingoing read (read-ids are unique within the same fold); a later fold may still resolve and drop it
 	if(probableTarget === undefined) {
-		return;
+		return false;
 	}
 
 	const rid = read.nodeId;
@@ -101,29 +90,32 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 				tag:   VertexType.Value,
 				id:    tid,
 				cds:   undefined,
-				value: valueFromTsValue((target).value)
+				value: valueFromTsValue(target.value)
 			}, environments, false);
 		}
 	}
+	return true;
 }
 
-/**
- * Expands `direct`'s directly-called functions with everything they transitively call (via `resolveEnv`): a sibling/outer
- * callee's escaped globals otherwise never fold into the caller, so a `<<-` escaping several call levels would go unlinked.
- */
-function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<{ fn: DataflowGraphVertexInfo, direct: boolean }> {
+interface TransitiveCallee<Fn = DataflowGraphVertexInfo> {
+	readonly fn:     Fn
+	readonly direct: boolean
+	readonly cds?:   readonly ControlDependency[]
+}
+
+/** Expands `initial` with everything it transitively calls, so a `<<-` escaping several call levels still folds into the caller. */
+function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<TransitiveCallee<DataflowGraphVertexFunctionDefinition>> {
 	const seen = new Set<NodeId>();
-	const stack = initial.map(fn => ({ fn, direct: true }));
+	const stack: TransitiveCallee[] = initial.map(fn => ({ fn, direct: true }));
 	while(stack.length > 0) {
-		const { fn, direct } = stack.pop() as { fn: DataflowGraphVertexInfo, direct: boolean };
+		const { fn, direct, cds } = stack.pop() as TransitiveCallee;
 		if(!DfgVertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
 		seen.add(fn.id);
-		yield { fn, direct };
-		for(const nodeId of fn.subflow.graph) {
-			const call = graph.getVertex(nodeId);
-			if(!DfgVertex.isFunctionCall(call) || call.onlyBuiltin || call.name === undefined) {
+		yield { fn, direct, cds };
+		for(const [, call] of callsIn(fn, graph)) {
+			if(call.onlyBuiltin || call.name === undefined) {
 				continue;
 			}
 			const resolved = Resolve.byNameAndType(call.name, resolveEnv, ReferenceType.Function);
@@ -132,9 +124,8 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 			}
 			const [targets] = getAllLinkedFunctionDefinitions(new Set(resolved.map(r => r.nodeId)), graph);
 			for(const target of targets) {
-				if(!seen.has(target.id)) {
-					stack.push({ fn: target, direct: false });
-				}
+				/* a callee reached only on some paths writes only maybe */
+				stack.push({ fn: target, direct: false, cds: call.cds === undefined ? cds : [...cds ?? [], ...call.cds] });
 			}
 		}
 	}
@@ -179,64 +170,64 @@ function foldFrameIntoParent({ current, level }: REnvironmentInformation): REnvi
  * written at that spot would have done, since we only learn a callee always throws after linking it here.
  */
 function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
-	let node = idMap.get(from);
-	while(node !== undefined && node.info.id !== expression) {
-		const parent = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+	for(let node = idMap.get(from); node !== undefined && node.info.id !== expression;) {
+		const parent = RNode.directParent(node, idMap);
 		if(parent === undefined) {
 			return true;
 		}
-		switch(parent.type) {
-			case RType.Argument:
-			case RType.ExpressionList:
-				break;
-			case RType.FunctionCall:
-				/* a handler catches the error instead of passing it on */
-				if(DfgVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try)) {
-					return false;
-				}
-				break;
-			case RType.IfThenElse:
-			case RType.WhileLoop:
-				/* only the condition is guaranteed to be evaluated */
-				if(parent.condition.info.id !== node.info.id) {
-					return false;
-				}
-				break;
-			case RType.ForLoop:
-				if(parent.vector.info.id !== node.info.id) {
-					return false;
-				}
-				break;
-			default:
-				return false;
+		if(!errorPassesThrough(parent, node.info.id, graph)) {
+			return false;
 		}
 		node = parent;
 	}
 	return true;
 }
 
-function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean {
-	if(!idMap.has(call)) {
+/** Whether an error raised within the child `child` of `parent` is sure to be raised by `parent` as well. */
+function errorPassesThrough(parent: RNode<ParentInformation>, child: NodeId, graph: DataflowGraph): boolean {
+	if(RArgument.is(parent) || RExpressionList.is(parent)) {
 		return true;
-	}
-	let current = idMap.get(node);
-	while(current !== undefined) {
-		if(current.info.id === call) {
-			return true;
-		}
-		current = current.info.parent !== undefined ? idMap.get(current.info.parent) : undefined;
+	} else if(RFunctionCall.is(parent)) {
+		/* a handler catches the error instead of passing it on */
+		return !DfgVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try);
+	} else if(RIfThenElse.is(parent) || RWhileLoop.is(parent)) {
+		/* only the condition is guaranteed to be evaluated */
+		return parent.condition.info.id === child;
+	} else if(RForLoop.is(parent)) {
+		return parent.vector.info.id === child;
 	}
 	return false;
 }
 
-function updateSideEffectsForCalledFunctions(calledEnvs: {
-	functionCall: NodeId;
-	called:       readonly DataflowGraphVertexInfo[]
-}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap) {
+/** Whether `node` is written within the call `call` (or the call is not part of the AST). */
+function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean {
+	return !idMap.has(call) || RNode.findEnclosing(node, idMap, n => n.info.id === call) !== undefined;
+}
+
+/** Printing a visible top-level value dispatches to the `print` methods in scope, so the expression runs them like a call would. */
+function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph): ReturnType<typeof linkFunctionCalls> {
+	const methods = Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? [];
+	if(methods.length === 0) {
+		return [];
+	}
+	for(const method of methods) {
+		graph.addEdge(id, method.nodeId, EdgeType.Reads);
+	}
+	const called = [...getAllLinkedFunctionDefinitions(new Set(methods.map(m => m.nodeId)), graph)[0]];
+	for(const ref of called.flatMap(c => c.subflow.in)) {
+		for(const def of ref.name === undefined ? [] : Resolve.byNameAndType(ref.name, environment, ref.type) ?? []) {
+			if(!NodeId.isBuiltIn(def.nodeId)) {
+				graph.addEdge(ref.nodeId, def.nodeId, EdgeType.Reads);
+			}
+		}
+	}
+	return [{ functionCall: id, called, propagateExitPoints: [] }];
+}
+
+function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap) {
 	for(const { functionCall, called } of calledEnvs) {
-		let callDependencies: ControlDependency[] | null | undefined = null;
-		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
-			guard(DfgVertex.isFunctionDefinition(calledFn), 'called function must be a function definition');
+		const callDependencies = nextGraph.getVertex(functionCall)?.cds;
+		for(const { fn: calledFn, direct, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
 			/* walk the smaller of the two, a script may hold many unknown side effects and a function many vertices */
 			const inside = calledFn.subflow.graph;
 			const effects = nextGraph.unknownSideEffects;
@@ -255,15 +246,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 					environment = foldFrameIntoParent(environment);
 				}
 			}
-			// update alle definitions to be defined at this function call
-			let current: Environment | undefined = environment.current;
-
 			let hasUpdate = false;
-			while(!current?.builtInEnv) {
-				// a package attached inside the body (library()) must propagate to the caller, like R attaching globally
-				if(current.t !== undefined) {
-					hasUpdate = true;
-				}
+			for(let current = environment.current; !current.builtInEnv; current = current.parent) {
+				/* a package attached inside the body (library()) propagates to the caller, like R attaching globally */
+				hasUpdate ||= current.t !== undefined;
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!NodeId.isBuiltIn(def.definedAt)) {
@@ -272,21 +258,19 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 						}
 					}
 				}
-				current = current.parent;
 			}
-			if(hasUpdate) {
-				const shadowing = localDefs.filter(d => isNotUndefined(d.name) && !writtenWithinCall(functionCall, d.nodeId, idMap));
-				if(shadowing.length > 0) {
-					environment = {
-						current: environment.current.removeAll(shadowing as { name: string }[]),
-						level:   environment.level
-					};
-				}
-				if(callDependencies === null) {
-					callDependencies = nextGraph.getVertex(functionCall)?.cds;
-				}
-				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
+			if(!hasUpdate) {
+				continue;
 			}
+			const shadowing = localDefs.filter(d => isNotUndefined(d.name) && !writtenWithinCall(functionCall, d.nodeId, idMap));
+			if(shadowing.length > 0) {
+				environment = {
+					current: environment.current.removeAll(shadowing as { name: string }[]),
+					level:   environment.level
+				};
+			}
+			const dependencies = cds === undefined ? callDependencies : [...callDependencies ?? [], ...cds];
+			inputEnvironment = overwriteEnvironment(inputEnvironment, environment, dependencies);
 		}
 	}
 	return inputEnvironment;
@@ -301,27 +285,26 @@ export function processExpressionList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	expensiveTrace(dataflowLogger, () => `[expr list] with ${args.length} expressions`);
-
 	let { environment } = data;
-	// used to detect if a "write" happens within the same expression list
-	const listEnvironments: Set<NodeId> = new Set<NodeId>();
-
-	const remainingRead = new Map<string, IdentifierReference[]>();
-
-	const nextGraph = new DataflowGraph(data.completeAst.idMap);
+	const idMap = data.completeAst.idMap;
+	/* the writes of this list, to detect whether a read sees one of them */
+	const listEnvironments = new Set<NodeId>();
+	const remainingRead = new DefaultMap<string | undefined, IdentifierReference[]>(() => []);
+	const nextGraph = new DataflowGraph(idMap);
 	const out: IdentifierReference[] = [];
 	/* lazily created - `rm` is rare, so rm-free lists never allocate this */
 	let killed: KillReference[] | undefined;
 	const exitPoints: ExitPoint[] = [];
-	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
+	/* what the list stands under as a whole, copied since the vertices share and extend that array */
+	const context = data.cds?.slice();
 	const invertExitCds: ControlDependency[] = [];
 
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
-	let defaultReturnExpr: undefined | DataflowInformation = undefined;
+	let defaultReturnExpr: DataflowInformation | undefined;
 	/* R prints what the top level of the analyzed script leaves visible, but not what a sourced file does */
 	const autoPrint = data.referenceChain.length <= 1 && data.environment.level === 0 && data.completeAst.ast.files.some(f => f.root.info.id === rootId);
-	let hooks: DataflowInformation['hooks'] | undefined;
+	let initialState: Set<IdentifierReference> | undefined;
+	const hooks: DataflowInformation['hooks'] = [];
 
 	for(const arg of args) {
 		const expression = unpackNonameArg(arg);
@@ -329,58 +312,54 @@ export function processExpressionList<OtherInfo>(
 			processedExpressions.push(undefined);
 			continue;
 		}
-		// use the current environments for processing
 		(data as Writable<DataflowProcessorInformation<OtherInfo & ParentInformation>>).environment = environment;
 		let processed = processDataflowFor(expression, data);
-		if(autoPrint) {
+		const printed = autoPrint && autoPrints(expression, processed, data);
+		if(printed) {
 			processed = readsOfAutoPrint(processed, expression, data);
 		}
 		processedExpressions.push(processed);
 		/* the expression's graph dies here, what is kept of it afterward is its entry point and its references */
 		nextGraph.mergeWith(processed.graph, true, true);
 		defaultReturnExpr = processed;
-		// a prior next/break means we do not know if the rest executes, so later environments append rather than overwrite
+		/* a prior next/break means we do not know if the rest executes, so later environments append rather than overwrite */
 		if(exitPoints.length > 0) {
 			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true, invertExitCds);
 			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false, invertExitCds);
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
-
-		if(processed.hooks.length > 0) {
-			(hooks ??= []).push(...processed.hooks);
-		}
+		hooks.push(...processed.hooks);
 
 		// all inputs that have not been written until now are read!
 		const activeReads: IdentifierReference[] = [];
-		for(const read of processed.in) {
-			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads);
-		}
-		for(const read of processed.unknownReferences) {
-			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads);
+		for(const read of processed.in.concat(processed.unknownReferences)) {
+			if(!linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph, activeReads) && autoPrint && AmbientStateName.is(read.name)) {
+				(initialState ??= new Set()).add(read);
+			}
 		}
 		for(const read of activeReads) {
 			nextGraph.updateToFunctionCall({ tag: VertexType.FunctionCall, id: read.nodeId, name: read.name as Identifier, args: [], environment, onlyBuiltin: false, cds: read.cds, origin: [BuiltInProcName.Function] });
 		}
 
-		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph, activeReads.map(r => r.nodeId));
+		const calledEnvs = linkFunctionCalls(nextGraph, idMap, processed.graph, activeReads.map(r => r.nodeId));
+		if(printed) {
+			calledEnvs.push(...printMethodsOf(processed.entryPoint, environment, nextGraph));
+		}
 		for(const c of calledEnvs) {
-			if(c.propagateExitPoints.length > 0 && errorEscapes(c.functionCall, expression.info.id, data.completeAst.idMap, nextGraph)) {
-				for(const exit of c.propagateExitPoints) {
-					(processed.exitPoints as Writable<ExitPoint[]>).push(exit);
-				}
+			if(c.propagateExitPoints.length > 0 && errorEscapes(c.functionCall, expression.info.id, idMap, nextGraph)) {
+				(processed.exitPoints as Writable<ExitPoint[]>).push(...c.propagateExitPoints);
 			}
 		}
-
 		for(const c of calledEnvs) {
 			if(c.calledBuiltIns !== undefined) {
 				processed = applyAmbientStateOfCalledBuiltIns(processed, c.functionCall, c.calledBuiltIns, environment, nextGraph, data);
 			}
 		}
 
-		addNonDefaultExitPoints(exitPoints, invertExitCds, activeCdsAtStart, processed.exitPoints);
+		addNonDefaultExitPoints(exitPoints, invertExitCds, data.cds, processed.exitPoints);
 		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, data.completeAst.idMap);
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, idMap);
 
 		// removals are already reflected in the threaded environment; we only bubble them (net of later writes)
 		if(killed && processed.out.length > 0) {
@@ -398,7 +377,7 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		/* if at least one exit point encountered happens unconditionally, we exit here (dead code) */
-		if(ControlFlow.alwaysExits(processed)) {
+		if(ControlFlow.alwaysExits(processed, context)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
 			break;
@@ -406,20 +385,11 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	if(defaultReturnExpr) {
-		exitPoints.push(data.cds ? {
-			type:   ExitPointType.Default,
-			nodeId: defaultReturnExpr.entryPoint,
-			cds:    data.cds
-		} : {
-			type:   ExitPointType.Default,
-			nodeId: defaultReturnExpr.entryPoint
-		});
+		exitPoints.push(compactRecord({ type: ExitPointType.Default, nodeId: defaultReturnExpr.entryPoint, cds: data.cds }));
 	}
 
 	const ingoing: IdentifierReference[] = [...remainingRead.values()].flat();
-
-	const rootNode = data.completeAst.idMap.get(rootId);
-	const withGroup = rootNode?.grouping;
+	const withGroup = idMap.get(rootId)?.grouping;
 
 	if(withGroup) {
 		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
@@ -431,10 +401,7 @@ export function processExpressionList<OtherInfo>(
 			argumentProcessResult: processedExpressions,
 			origin:                BuiltInProcName.ExpressionList
 		});
-
 		nextGraph.addEdge(rootId, NodeId.toBuiltIn('{'), EdgeType.Reads | EdgeType.Calls);
-
-		// process all exit points as potential returns:
 		for(const exit of exitPoints) {
 			if(exit.type === ExitPointType.Return || exit.type === ExitPointType.Default) {
 				nextGraph.addEdge(rootId, exit.nodeId, EdgeType.Returns);
@@ -443,7 +410,6 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
-
 	/* an empty group completes on the spot, otherwise the last expression has to be able to reach the end */
 	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
 	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
@@ -458,7 +424,7 @@ export function processExpressionList<OtherInfo>(
 			nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
 			/* what a `return` hands back and what a `stop` raises stay with the node that does it */
 			if(exit.nodeId !== rootId && (exit.type === ExitPointType.Break || exit.type === ExitPointType.Next)) {
-				exitPoints[i] = { ...exit, nodeId: rootId };
+				exitPoints[i] = leaveThrough(exit, rootId);
 			}
 		}
 	}
@@ -466,18 +432,19 @@ export function processExpressionList<OtherInfo>(
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
-		/* at the top of the script, a read of the options or graphics state nothing set reads the state R starts with */
-		in:                autoPrint ? ingoing.filter(r => !AmbientStateName.is(r.name)) : ingoing,
+		/* at the top of the script, only a read of the options or graphics state nothing set reads the state R starts with,
+		   which a write escaping a higher-order call may still replace, see the extractor */
+		in:                autoPrint ? ingoing.filter(r => !AmbientStateName.is(r.name) || initialState?.has(r) === true) : ingoing,
 		/* a definition that a still-effective removal undid is no longer visible to the outside */
 		out:               dropKilledWrites(out, killed),
-		environment:       environment,
+		environment,
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
 		cfgEntry:          cfgEntry === meId ? undefined : cfgEntry,
 		cfgExit:           reachesEnd ? rootId : undefined,
-		exitPoints:        exitPoints,
-		hooks:             hooks ?? [],
+		exitPoints,
+		hooks,
 		kill:              killed,
 	};
 }

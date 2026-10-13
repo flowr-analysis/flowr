@@ -1,6 +1,6 @@
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { Resolve } from '../dataflow/environments/resolve-helper';
-import { isValue } from '../dataflow/eval/values/r-value';
+import { isValue, type Lift, type Value } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
@@ -25,7 +25,7 @@ export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop,
  * @param controlflow - control flow graph
  * @param ast         - normalized ast
  * @param ctx         - current flowr analyzer context
- * @returns           true if the given loop only iterates once
+ * @returns           true if the given loop only iterates once, `undefined` if we cannot tell
  */
 export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {
 	const vertex = dataflow.getVertex(loop);
@@ -36,51 +36,45 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	guard(DfgVertex.isFunctionCall(vertex), 'invalid vertex type for onlyLoopsOnce');
 	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
-	// 1. In case of for loop, check if vector has only one element
+	/* a for loop over a vector of one element */
 	if(vertex.origin[0] === BuiltInProcName.ForLoop) {
-		if(vertex.args.length < 2) {
-			return undefined;
-		}
-
 		const vectorOfLoop = vertex.args[1];
-		if(vectorOfLoop === EmptyArgument) {
+		if(vectorOfLoop === undefined || vectorOfLoop === EmptyArgument) {
 			return undefined;
 		}
-
 		const vector = NodeValue.soleOf(vectorOfLoop.nodeId, Resolve.info(dataflow, ctx));
-		const once = vector === undefined ? false
-			: vector.type === 'vector' ? isValue(vector.elements) && vector.elements.length === 1
-				: vector.type === 'interval' ? isValue(vector.start) && isValue(vector.end) && vector.startInclusive && vector.endInclusive
-					&& isValue(vector.start.value) && isValue(vector.end.value) && vector.start.value.num === vector.end.value.num
-					: vector.type === 'string' || vector.type === 'logical';
-		if(once) {
+		if(vector !== undefined && holdsOneElement(vector)) {
 			return true;
 		}
 	}
 
-	// 2. Use CFG Visitor to determine if loop always exits after the first iteration
-	const visitor = new CfgSingleIterationLoopDetector(loop, {
+	/* or a loop always left after the first iteration */
+	return new CfgSingleIterationLoopDetector(loop, {
 		controlFlow:          controlflow,
 		normalizedAst:        ast,
 		dfg:                  dataflow,
-		ctx:                  ctx,
+		ctx,
 		defaultVisitingOrder: 'forward'
-	});
+	}).loopsOnlyOnce();
+}
 
-	return visitor.loopsOnlyOnce();
+function holdsOneElement(value: Lift<Value>, element = false): boolean {
+	if(!isValue(value)) {
+		return false;
+	}
+	return value.type === 'vector' ? isValue(value.elements) && value.elements.length === 1 && holdsOneElement(value.elements[0], true)
+		: value.type === 'interval' ? isValue(value.start) && isValue(value.end) && value.startInclusive && value.endInclusive
+			&& isValue(value.start.value) && isValue(value.end.value) && value.start.value.num === value.end.value.num
+			: (value.type === 'string' || value.type === 'logical' || (element && value.type === 'number')) && isValue(value.value);
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
-
 	private loopCds: ControlDependency[] | undefined = undefined;
 	private encounteredLoopBreaker = false;
 	private onlyLoopyOnce = false;
 
-	private loopToCheck: NodeId;
-
-	constructor(loop: NodeId, config: SemanticCfgGuidedVisitorConfiguration) {
+	constructor(private readonly loopToCheck: NodeId, config: SemanticCfgGuidedVisitorConfiguration) {
 		super(config);
-		this.loopToCheck = loop;
 	}
 
 	protected startVisitor(_: readonly NodeId[]): void {
@@ -110,41 +104,29 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 	}
 
-	private app(cds: ControlDependency[] | undefined): void {
-		if(cds === undefined) {
-			return;
-		}
-		const filtered = cds.filter(c => c.id !== this.loopToCheck);
+	private breaks({ call }: OnCall): void {
+		this.encounteredLoopBreaker = true;
+		const filtered = call.cds?.filter(c => c.id !== this.loopToCheck) ?? [];
 		if(filtered.length > 0) {
-			if(this.loopCds === undefined) {
-				this.loopCds = filtered;
-			} else {
-				this.loopCds = this.loopCds.concat(filtered);
-			}
+			this.loopCds = (this.loopCds ?? []).concat(filtered);
 		}
 	}
 
 	protected onBreakCall(data: OnCall): void {
-		this.encounteredLoopBreaker = true;
-		this.app(data.call.cds);
+		this.breaks(data);
 	}
 
 	protected onReturnCall(data: OnCall): void {
-		this.encounteredLoopBreaker = true;
-		this.app(data.call.cds);
+		this.breaks(data);
 	}
 
 	protected onStopCall(data: OnCall): void {
-		this.encounteredLoopBreaker = true;
-		this.app(data.call.cds);
+		this.breaks(data);
 	}
 
 	protected onStopIfNotCall(data: OnCall): void {
-		const arg = this.getBoolArgValue(data);
-		if(arg === false) {
-			this.encounteredLoopBreaker = true;
-			this.app(data.call.cds);
-			return;
+		if(this.getBoolArgValue(data) === false) {
+			this.breaks(data);
 		}
 	}
 

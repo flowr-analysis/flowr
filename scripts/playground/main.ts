@@ -4,7 +4,7 @@
  */
 import { EditorView, basicSetup } from 'codemirror';
 import { Decoration, hoverTooltip, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import { StateEffect, StateField, type EditorState, type StateEffectType, type Transaction } from '@codemirror/state';
+import { Compartment, EditorState, StateEffect, StateField, type StateEffectType, type Transaction } from '@codemirror/state';
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { HighlightStyle, StreamLanguage, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { highlightCode, tags } from '@lezer/highlight';
@@ -40,7 +40,9 @@ import treeSitterWasm from '../../node_modules/web-tree-sitter/tree-sitter.wasm'
 import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
 import { blank, el } from '../page-lib/dom';
 import { explain } from '../page-lib/lint-text';
-import { evalInR, setupRunR } from './run-r';
+import { evalInR, type RunInput, setupRunR } from './run-r';
+import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
+import { languageOf, notebookAsScript, notebookCells } from './notebook';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -152,7 +154,13 @@ const highlight = HighlightStyle.define([
 	{ tag: [tags.function(tags.variableName), tags.standard(tags.variableName), tags.labelName], color: 'var(--fg)', fontWeight: '600' },
 	{ tag: [tags.number, tags.bool, tags.null, tags.atom], color: '#0072b2' },
 	{ tag: tags.comment, color: 'var(--muted)', fontStyle: 'italic' },
-	{ tag: [tags.operator, tags.punctuation, tags.bracket], color: 'var(--muted)' }
+	{ tag: [tags.operator, tags.punctuation, tags.bracket], color: 'var(--muted)' },
+	{ tag: tags.heading, color: 'var(--fg)', fontWeight: '700' },
+	{ tag: tags.strong, fontWeight: '700' },
+	{ tag: tags.emphasis, fontStyle: 'italic' },
+	{ tag: tags.link, color: 'var(--accent)', textDecoration: 'underline' },
+	{ tag: tags.monospace, color: '#0f766e', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
+	{ tag: tags.meta, color: 'var(--muted)' }
 ]);
 
 const rLanguage = StreamLanguage.define(r);
@@ -307,8 +315,7 @@ const valueTips = hoverTooltip(async(view, pos) => {
 	if(spelledOut(view.state, pos)) {
 		return null;
 	}
-	const criterion = found.criterion;
-	const about = await describe(criterion);
+	const about = await describe(scoped(found.criterion));
 	const said = about.said;
 	const known = about.local ? undefined : signatureOf(found.name, ownerOf(found.name, about.pkg));
 	const complaints = lintsOver(line.from + found.from, line.from + found.to);
@@ -788,8 +795,18 @@ const shared = (() => {
 	   written before that spelled the unit out and still read as they did */
 	const sized = (value: string, unit: string) => value.length === 0 ? undefined : /^[\d.]+$/.test(value) ? value + unit : value;
 	const code = read('c');
+	const others = (() => {
+		try {
+			return JSON.parse(read('o') ?? '[]') as [string, string][];
+		} catch{
+			return [];
+		}
+	})();
 	return {
 		code,
+		name:       params.get('n') ?? Playground.MainFile,
+		others,
+		position:   /^\d+$/.test(params.get('p') ?? '') ? Math.min(Number(params.get('p')), others.length) : others.length,
 		cut,
 		config:     changed.length === 0 ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
 		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
@@ -852,6 +869,15 @@ function shareFields(): [string, string][] {
 	if(written !== Sample) {
 		fields.push(['c', packForUrl(written)]);
 	}
+	if(files[active].name !== Playground.MainFile) {
+		fields.push(['n', files[active].name]);
+	}
+	if(files.length > 1) {
+		fields.push(['o', packForUrl(JSON.stringify(projectFiles().filter((_, at) => at !== active)))]);
+		if(active < files.length - 1) {
+			fields.push(['p', String(active)]);
+		}
+	}
 	const configured = config.state.doc.toString();
 	/* the configuration travels only when it is not the one the page opens with */
 	const settings = configured.trim() === Defaults.trim() ? undefined : FlowrConfig.parse(configured);
@@ -873,7 +899,8 @@ function shareFields(): [string, string][] {
 	if(view.length > 0) {
 		fields.push(['v', view.join(',')]);
 	}
-	const shortened = Playground.Mark.compress(marks);
+	const here = scoped('');
+	const shortened = Playground.Mark.compress(marks.map(mark => here.length > 0 && mark.endsWith(here) ? mark.slice(0, -here.length) as Mark : mark));
 	if(shortened.length > 0) {
 		fields.push(['h', shortened.join(',')]);
 	}
@@ -952,51 +979,372 @@ document.getElementById('configreset')?.addEventListener('click', () => {
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
 });
 
-for(const tab of document.querySelectorAll<HTMLElement>('.tab')) {
-	tab.addEventListener('click', () => {
-		for(const other of document.querySelectorAll<HTMLElement>('.tab')) {
-			const wanted = other === tab;
-			other.setAttribute('aria-selected', String(wanted));
-			const pane = document.getElementById(other.dataset.tab ?? '');
-			if(pane !== null) {
-				pane.hidden = !wanted;
-			}
-			if(other.dataset.tab === 'config') {
-				/* the link and the reset only make sense next to the configuration */
-				for(const id of ['confighelp', 'configreset']) {
-					const at = document.getElementById(id);
-					if(at !== null) {
-						at.hidden = !wanted;
-					}
-				}
-			}
+const configTab = document.getElementById('configtab') as HTMLElement;
+let onConfig = false;
+function showTab(config: boolean): void {
+	onConfig = config;
+	configTab.setAttribute('aria-selected', String(config));
+	for(const id of ['editor', 'config', 'confighelp', 'configreset']) {
+		document.getElementById(id)?.toggleAttribute('hidden', config === (id === 'editor'));
+	}
+	showFiles();
+}
+configTab.addEventListener('click', () => showTab(true));
+
+const editorExtensions = [
+	basicSetup, look, syntaxHighlighting(highlight), callMarks,
+	lintMarks, sliceMarks, linkMarks, shownMarks, valueTips, autocompletion({ override: [complete] }),
+	EditorView.updateListener.of(update => {
+		if(update.docChanged) {
+			schedule();
+			remember();
+		} else if(update.selectionSet) {
+			schedule(400);
 		}
+	})
+];
+
+const fileKind = new Compartment();
+const kindOf = (name: string) => [languageOf(name), notebookCells(name, (code, title) => runCell(code, title))];
+const fileState = (name: string, text: string) => EditorState.create({ doc: text, extensions: [editorExtensions, fileKind.of(kindOf(name))] });
+/** one editor state per file, the editor holds the live one at {@link active} */
+const files = [...shared.others.slice(0, shared.position), [shared.name, shared.code ?? Sample], ...shared.others.slice(shared.position)].map(([name, text]) => ({ name, state: fileState(name, text) }));
+let active = shared.position;
+const editor = new EditorView({ state: files[active].state, parent: document.getElementById('editor') as HTMLElement });
+const textOf = (at: number): string => (at === active ? editor.state : files[at].state).doc.toString();
+const projectFiles = () => files.map((f, at) => [f.name, textOf(at)] as const);
+
+function openFile(at: number | string, change?: () => void): void {
+	files[active].state = editor.state;
+	change?.();
+	active = Math.min(Math.max(0, typeof at === 'string' ? files.findIndex(f => f.name === at) : at), files.length - 1);
+	editor.setState(files[active].state);
+	showFiles();
+	remember();
+	schedule(0);
+}
+
+function putFile(name: string, text: string): void {
+	const known = files.findIndex(f => f.name === name);
+	files.splice(known < 0 ? files.length : known, 1, { name, state: fileState(name, text) });
+}
+
+function scoped(criterion: string): string {
+	return files.length < 2 ? criterion : `${criterion}(^${files[active].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$)`;
+}
+
+marks.splice(0, marks.length, ...marks.map(mark => /^\d/.test(mark) ? scoped(mark) as Mark : mark));
+
+function elsewhere(node: { info: { file?: string } } | undefined): string | undefined {
+	const file = node?.info.file;
+	return file === files[active].name ? undefined : file;
+}
+
+const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb)$/i;
+const Wanted = (name: string) => (Analyzed.test(name) || /\.zip$|(^|\/)DESCRIPTION$/i.test(name)) && !/(^|\/)(__MACOSX|\.)/.test(name);
+
+async function entryFiles(entry: FileSystemEntry): Promise<[string, Blob][]> {
+	if(entry.isFile) {
+		return [[entry.fullPath.replace(/^\//, ''), await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject))]];
+	}
+	const reader = (entry as FileSystemDirectoryEntry).createReader();
+	const found: [string, Blob][] = [];
+	for(let batch: FileSystemEntry[]; (batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject))).length > 0;) {
+		found.push(...(await Promise.all(batch.map(entryFiles))).flat());
+	}
+	return found;
+}
+
+async function unzip(blob: Blob): Promise<[string, Blob][]> {
+	const bytes = new Uint8Array(await blob.arrayBuffer());
+	const view = new DataView(bytes.buffer);
+	let end = bytes.length - 22;
+	while(end > 0 && view.getUint32(end, true) !== 0x06054b50) {
+		end--;
+	}
+	const found: [string, Blob][] = [];
+	for(let at = view.getUint32(end + 16, true), left = end > 0 ? view.getUint16(end + 10, true) : 0; left > 0; left--) {
+		const method = view.getUint16(at + 10, true), size = view.getUint32(at + 20, true), length = view.getUint16(at + 28, true);
+		const name = new TextDecoder().decode(bytes.subarray(at + 46, at + 46 + length));
+		const local = view.getUint32(at + 42, true);
+		const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+		const data = new Blob([bytes.subarray(start, start + size)]);
+		if(Wanted(name) && (method === 0 || method === 8)) {
+			found.push([name, method === 0 ? data : await new Response(data.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob()]);
+		}
+		at += 46 + length + view.getUint16(at + 30, true) + view.getUint16(at + 32, true);
+	}
+	return found;
+}
+
+function asProjectFile(name: string, text: string): [string, string] {
+	return /\.ipynb$/i.test(name) ? [`${name}.R`, notebookAsScript(text)] : [name, text];
+}
+async function readable(found: readonly [string, Blob][], failed: string[]): Promise<[string, string][]> {
+	const read: [string, string][] = [];
+	for(const [name, blob] of found.filter(([name]) => Wanted(name))) {
+		try {
+			const clean = name.replace(Leading, '');
+			if(nameProblem(clean) !== undefined) {
+				failed.push(name);
+			} else if(/\.zip$/i.test(clean)) {
+				read.push(...await readable(await unzip(blob), failed));
+			} else {
+				read.push(asProjectFile(clean, await blob.text()));
+			}
+		} catch{
+			failed.push(name);
+		}
+	}
+	return read;
+}
+/** adds what `found` holds to the project, in place of the untouched example and of files of the same name */
+function load(found: Promise<[string, Blob][]> | [string, Blob][]): void {
+	const failed: string[] = [];
+	void Promise.resolve(found).then(f => readable(f, failed)).then(read => {
+		if(read.length > 0) {
+			const pristine = files.length === 1 && files[0].name === Playground.MainFile && textOf(0) === Sample;
+			openFile(read[0][0], () => {
+				if(pristine) {
+					files.length = 0;
+				}
+				for(const [name, text] of read) {
+					putFile(name, text);
+				}
+			});
+			showTab(false);
+		}
+		if(failed.length > 0) {
+			showTook(`could not open ${failed.join(', ')}`);
+		} else if(read.length === 0) {
+			showTook('nothing to open: flowR reads R scripts, R Markdown, Quarto, Jupyter notebooks, and zips of them');
+		}
+	}).catch((e: unknown) => showTook(`could not open that: ${String(e)}`));
+}
+
+function nameProblem(name: string, except?: number): string | undefined {
+	if(name.length === 0 || name.endsWith('/')) {
+		return 'a file needs a name';
+	}
+	if(name.startsWith('/') || /(^|\/)\.\.?(\/|$)/.test(name)) {
+		return `${name} would lie outside the project, name it relative to it instead`;
+	}
+	return files.some((f, at) => at !== except && f.name === name) ? `there already is a ${name}` : undefined;
+}
+
+const Leading = /^(\.?\/)+/;
+
+function nameAccepted(name: string, except?: number): boolean {
+	const problem = nameProblem(name, except);
+	if(problem !== undefined) {
+		alert(problem);
+	}
+	return problem === undefined;
+}
+
+function roleButton(className: string | undefined, text: string, role: string): HTMLButtonElement {
+	const button = el('button', className, text);
+	button.type = 'button';
+	button.setAttribute('role', role);
+	return button;
+}
+
+function picker(folder: boolean): HTMLInputElement {
+	const input = Object.assign(document.createElement('input'), { type: 'file', multiple: true, webkitdirectory: folder, accept: '.R,.r,.Rmd,.Rmarkdown,.qmd,.ipynb,.zip' });
+	input.addEventListener('change', () => {
+		load([...input.files ?? []].map(f => [f.webkitRelativePath || f.name, f]));
+		input.value = '';
+	});
+	return input;
+}
+const pickers = [picker(false), picker(true)];
+
+const fileBar = document.getElementById('files') as HTMLElement;
+function showFiles(): void {
+	fileBar.replaceChildren(...files.map((file, at) => {
+		const open = !onConfig && at === active;
+		const button = roleButton('tab file', file.name, 'tab');
+		button.setAttribute('aria-selected', String(open));
+		button.title = open ? 'rename or remove this file, or open an example' : `open ${file.name}`;
+		if(open) {
+			button.setAttribute('aria-haspopup', 'menu');
+			button.append(el('span', 'caret'));
+		}
+		button.addEventListener('click', () => {
+			if(open) {
+				openMenu(button, fileMenu(at));
+				return;
+			}
+			if(at !== active) {
+				openFile(at);
+			}
+			showTab(false);
+		});
+		if(files.length > 1) {
+			const x = el('span', 'x', 'x');
+			x.title = `remove ${file.name}`;
+			x.addEventListener('click', event => {
+				event.stopPropagation();
+				removeFile(at);
+			});
+			button.append(x);
+		}
+		return button;
+	}));
+	fileBar.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function removeFile(at: number): void {
+	if(files.length > 1 && (textOf(at).trim() === '' || confirm(`remove ${files[at].name}?`))) {
+		openFile(at < active ? active - 1 : active, () => files.splice(at, 1));
+	}
+}
+
+function renameFile(at: number): void {
+	const name = prompt('rename to', files[at].name)?.trim().replace(Leading, '');
+	if(name === undefined || name === files[at].name || !nameAccepted(name, at)) {
+		return;
+	}
+	openFile(active, () => {
+		files[at].name = name;
+		files[at].state = files[at].state.update({ effects: fileKind.reconfigure(kindOf(name)) }).state;
 	});
 }
 
-const editor = new EditorView({
-	doc:        shared.code ?? Sample,
-	extensions: [
-		basicSetup, rLanguage, look, syntaxHighlighting(highlight), callMarks,
-		lintMarks, sliceMarks, linkMarks, shownMarks, valueTips, autocompletion({ override: [complete] }),
-		EditorView.updateListener.of(update => {
-			if(update.docChanged) {
-				schedule();
-				remember();
-			} else if(update.selectionSet) {
-				schedule(400);
-			}
-		})
-	],
-	parent: document.getElementById('editor') as HTMLElement
+function newFile(): void {
+	let at = files.length + 1;
+	while(files.some(f => f.name === `script${at}.R`)) {
+		at++;
+	}
+	const name = prompt('name of the new file', `script${at}.R`)?.trim().replace(Leading, '');
+	const known = files.findIndex(f => f.name === name);
+	if(name === undefined || !nameAccepted(name, known) || (known >= 0 && !confirm(`replace ${name} with an empty file?`))) {
+		return;
+	}
+	openFile(name, () => putFile(name, ''));
+	showTab(false);
+}
+
+const Examples = JSON.parse(document.getElementById('examples')?.textContent ?? '[]') as readonly { label: string, title: string, files: [string, string][] }[];
+
+function fileMenu(at: number): readonly MenuEntry[] {
+	return [
+		{ label: 'Rename...', run: () => renameFile(at) },
+		...files.length > 1 ? [{ label: 'Remove', run: () => removeFile(at) }] : [],
+		'',
+		'Examples, in place of all files',
+		...Examples.map(example => ({ label: example.label, title: example.title, run: () => showExample(example.files.map(([name, text]) => asProjectFile(name, text)), `the ${example.label} example is open`) }))
+	];
+}
+
+/** a string is a heading, `''` a separator */
+type MenuEntry = { readonly label: string, readonly title?: string, readonly run: () => void } | string;
+const menu = document.getElementById('menu') as HTMLElement;
+let menuAnchor: HTMLElement | undefined;
+function closeMenu(): void {
+	menu.hidden = true;
+	menuAnchor?.setAttribute('aria-expanded', 'false');
+	menuAnchor = undefined;
+}
+function openMenu(anchor: HTMLElement, entries: readonly MenuEntry[]): void {
+	if(menuAnchor === anchor && !menu.hidden) {
+		closeMenu();
+		return;
+	}
+	closeMenu();
+	menu.replaceChildren(...entries.map(entry => {
+		if(typeof entry === 'string') {
+			return entry === '' ? document.createElement('hr') : el('div', 'heading', entry);
+		}
+		const item = roleButton(undefined, entry.label, 'menuitem');
+		item.title = entry.title ?? '';
+		item.addEventListener('click', () => {
+			closeMenu();
+			entry.run();
+		});
+		return item;
+	}));
+	menuAnchor = anchor;
+	anchor.setAttribute('aria-expanded', 'true');
+	menu.hidden = false;
+	const at = anchor.getBoundingClientRect();
+	menu.style.setProperty('--top', `${at.bottom}px`);
+	menu.style.setProperty('--left', `${Math.min(at.left, document.documentElement.clientWidth - menu.offsetWidth)}px`);
+	menu.querySelector('button')?.focus();
+}
+document.addEventListener('click', event => {
+	const target = event.target as Node;
+	if(!menu.hidden && !menu.contains(target) && menuAnchor?.contains(target) !== true) {
+		closeMenu();
+	}
 });
+menu.addEventListener('keydown', event => {
+	const items = [...menu.querySelectorAll('button')];
+	const at = items.indexOf(document.activeElement as HTMLButtonElement);
+	if(event.key === 'Escape' || event.key === 'Tab') {
+		event.preventDefault();
+		const anchor = menuAnchor;
+		closeMenu();
+		anchor?.focus();
+	} else if(event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+		event.preventDefault();
+		items[(at + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+	}
+});
+window.addEventListener('resize', closeMenu);
+fileBar.addEventListener('scroll', closeMenu);
+fileBar.addEventListener('wheel', event => {
+	if(event.deltaX === 0 && fileBar.scrollWidth > fileBar.clientWidth) {
+		event.preventDefault();
+		fileBar.scrollLeft += event.deltaY;
+	}
+}, { passive: false });
+
+const addButton = document.getElementById('addfile') as HTMLElement;
+addButton.addEventListener('click', () => openMenu(addButton, [
+	{ label: 'New file...', run: newFile },
+	{ label: 'Upload files...', title: 'R scripts, R Markdown, Quarto, Jupyter notebooks, or a zip of them', run: () => pickers[0].click() },
+	{ label: 'Upload folder...', title: 'every R script and notebook below a folder', run: () => pickers[1].click() }
+]));
+showFiles();
+
+const pane = fileBar.closest('.pane') as HTMLElement;
+const carriesFiles = (event: DragEvent) => event.dataTransfer?.types.includes('Files') === true;
+pane.addEventListener('dragover', event => {
+	if(carriesFiles(event)) {
+		event.preventDefault();
+		pane.classList.add('dropping');
+	}
+});
+pane.addEventListener('dragleave', () => pane.classList.remove('dropping'));
+/* captured, so a dropped file joins the project rather than being pasted into the editor */
+pane.addEventListener('drop', event => {
+	pane.classList.remove('dropping');
+	if(carriesFiles(event)) {
+		event.preventDefault();
+		event.stopPropagation();
+		const entries = [...event.dataTransfer?.items ?? []].map(item => item.webkitGetAsEntry()).filter(entry => entry !== null);
+		load(Promise.all(entries.map(entryFiles)).then(found => found.flat()));
+	}
+}, true);
 /** the packages R code loads, outside of base R, as flowR's dependencies query finds them */
-async function packagesOf(code: string): Promise<readonly string[]> {
+async function packagesOf(code?: string): Promise<readonly string[]> {
 	const answer = await (await analyzer(code)).query([{ type: 'dependencies' }] as never) as unknown as { dependencies?: { library?: readonly Dependency[] } };
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
 	return [...new Set(found)].filter(p => !BaseRPackages.has(p));
 }
-setupRunR(() => editor.state.doc.toString(), packagesOf);
+async function toRun(): Promise<RunInput> {
+	const name = files[active].name;
+	const code = Analyzed.test(name) && !/\.r$/i.test(name)
+		? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
+		: textOf(active);
+	return { code, files: projectFiles(), fresh: true };
+}
+const runner = setupRunR(toRun, packagesOf);
+/** cells share one R session, next to the project files as they are now */
+function runCell(code: string, title: string): void {
+	runner(() => Promise.resolve({ code, files: projectFiles(), fresh: false }), title);
+}
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
 function markRanges(mark: Mark): readonly ShownRange[] {
@@ -1013,6 +1361,15 @@ function markRanges(mark: Mark): readonly ShownRange[] {
 				from: one.from, to: one.to, line: false,
 			}));
 	}
+	const file = /\((.+)\)$/.exec(mark);
+	try {
+		if(file !== null && !new RegExp(file[1]).test(files[active].name)) {
+			return [];
+		}
+	} catch{
+		return [];
+	}
+	mark = (file === null ? mark : mark.slice(0, file.index)) as Mark;
 	/* a name may carry an `@` itself, as `object@slot` does, so only the first one separates */
 	const cut = mark.indexOf('@');
 	const [lineText, columnText] = (cut < 0 ? mark : mark.slice(0, cut)).split(':');
@@ -1124,6 +1481,7 @@ function clearMarks(): void {
  * It does not pile mark upon mark: holding shift as well is what adds one to those already there.
  */
 function toggleMark(mark: string | undefined, add = false): void {
+	mark = mark !== undefined && /^\d+[:@]?[^(]*$/.test(mark) ? scoped(mark) : mark;
 	if(!Playground.Mark.isValid(mark)) {
 		return;
 	}
@@ -1152,10 +1510,10 @@ function cursorCriterion(): string | undefined {
 	const line = editor.state.doc.lineAt(at);
 	const found = targetAt(line.text, line.number, at - line.from);
 	if(found !== undefined) {
-		return found.criterion;
+		return scoped(found.criterion);
 	}
 	const first = /[A-Za-z.][\w._]*/.exec(line.text);
-	return first ? `${line.number}@${first[0]}` : undefined;
+	return first ? scoped(`${line.number}@${first[0]}`) : undefined;
 }
 
 /** what the cursor is on, as a reader would write it: `clean$scaled` rather than `13:11` */
@@ -1310,7 +1668,7 @@ function packageSource(): FlowrAnalyzerPackageVersionsSigDbPlugin | undefined {
 const packages = packageSource();
 
 let ready: Promise<void> | undefined;
-async function analyzer(code = editor.state.doc.toString()) {
+async function analyzer(code?: string) {
 	ready ??= TreeSitterExecutor.initTreeSitter(undefined, rWasm, treeSitterWasm);
 	await ready;
 	const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
@@ -1322,7 +1680,12 @@ async function analyzer(code = editor.state.doc.toString()) {
 		builder.setConfig(settings);
 	}
 	const built = await builder.build();
-	built.addRequest({ request: 'text', content: code });
+	if(code !== undefined) {
+		built.addRequest({ request: 'text', content: code });
+	} else {
+		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, text)));
+		built.addRequest(...files.filter(f => Analyzed.test(f.name)).map(f => ({ request: 'file' as const, content: f.name })));
+	}
 	return built;
 }
 
@@ -1351,12 +1714,13 @@ interface DepRow {
 	call?:     string,
 	value?:    string,
 	line?:     number,
+	file?:     string,
 	from?:     readonly number[],
 	id?:       string | number,
 	onto:      readonly (string | number)[],
 	parts:     DepRow[]
 }
-interface Finding { loc?: number[], quickFix?: LintQuickFix[] }
+interface Finding { loc?: number[], quickFix?: LintQuickFix[], involvedId?: string | number | (string | number)[] }
 
 /** the first tag of a rule that says what kind of problem it is, which is what colours the chip */
 function category(rule: string): string {
@@ -1447,7 +1811,7 @@ async function describe(criterion: string): Promise<Known> {
 			: undefined;
 		/* a value is the most useful answer, but every name has an origin, so that is the fallback */
 		const origins = answers.origin?.results?.[criterion] ?? [];
-		const from = [...new Set(await originLines(criterion, origins))];
+		const from = [...new Set((await originLines(origins)).map(o => o.file === undefined ? String(o.line) : `${o.file}:${o.line}`))];
 		/* `filter` is dplyr's once dplyr is attached, and flowR says so: `built-in:dplyr:filter` */
 		const attached = origins.map(o => /^built-in:([^:]+):/.exec(o.proc ?? '')?.[1]).find(p => p !== undefined);
 		answer = {
@@ -1461,14 +1825,16 @@ async function describe(criterion: string): Promise<Known> {
 	return answer;
 }
 
-/** the lines an origin answer points at */
-async function originLines(criterion: string, origins: { id: string | number }[] | undefined): Promise<number[]> {
+async function originLines(origins: { id: string | number }[] | undefined): Promise<{ line: number, file?: string }[]> {
 	if(origins === undefined || origins.length === 0) {
 		return [];
 	}
-	const idMap = (await analyzer()).normalize().then(n => n.idMap);
-	const map = await idMap;
-	return origins.map(o => map?.get(o.id as never)?.location?.[0]).filter((l): l is number => typeof l === 'number');
+	const map = (await (await analyzer()).normalize()).idMap;
+	return origins.flatMap(o => {
+		const node = map.get(o.id as never);
+		const line = node?.location?.[0];
+		return line === undefined ? [] : [{ line, file: elsewhere(node) }];
+	});
 }
 
 /** jumps to where the name under the cursor was defined */
@@ -1480,13 +1846,16 @@ async function jumpToDefinition(): Promise<void> {
 	const built = await analyzer();
 	const answers = await built.query([{ type: 'origin', criterion }] as never) as unknown as
 		{ origin?: { results?: Record<string, { id: string | number }[] | undefined> } };
-	const lines = await originLines(criterion, answers.origin?.results?.[criterion]);
-	const target = lines.find(l => l !== Number(/^\d+/.exec(criterion)?.[0]));
+	const lines = await originLines(answers.origin?.results?.[criterion]);
+	const target = lines.find(l => l.file !== undefined || l.line !== Number(/^\d+/.exec(criterion)?.[0]));
 	if(target === undefined) {
 		showTook(`no definition found for ${criterion}`);
 		return;
 	}
-	const line = editor.state.doc.line(target);
+	if(target.file !== undefined) {
+		openFile(target.file);
+	}
+	const line = editor.state.doc.line(Math.min(target.line, editor.state.doc.lines));
 	editor.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
 	editor.focus();
 }
@@ -1547,7 +1916,7 @@ async function analyze(): Promise<number> {
 	const answers = await built.query([
 		{ type: 'dependencies' },
 		{ type: 'linter' },
-		...(criterion ? [{ type: 'static-slice', criteria: [criterion], includeCallees: true, direction }] : [])
+		...(criterion ? [{ type: 'static-slice', criteria: [criterion], includeCallees: true, direction, inlineFull: files.length > 1 && 'banner' }] : [])
 	] as never) as unknown as {
 		dependencies?:   Record<string, readonly Dependency[]>,
 		linter?:         { results?: Record<string, { results?: Finding[], '.meta'?: object }> },
@@ -1560,7 +1929,7 @@ async function analyze(): Promise<number> {
 	const sliced = Object.values(answers['static-slice']?.results ?? {})[0];
 	const code = sliced?.reconstruct?.code;
 	const keptLines = [...new Set([...(sliced?.slice?.result ?? [])]
-		.map(id => idMap?.get(id as never)?.location?.[0])
+		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => node?.location?.[0])
 		.filter((l): l is number => typeof l === 'number'))];
 	lastKept = keptLines;
 	editor.dispatch({ effects: setSlice.of(dimOutside && keptLines.length > 0 ? keptLines : undefined) });
@@ -1651,10 +2020,11 @@ async function analyze(): Promise<number> {
 	/* whatever the dependencies query answers with, so a new category shows up here without a second list */
 	const kinds = [...DefaultDependencyCategoryNames];
 	const deps: DepRow[] = kinds.flatMap(kind => (answers.dependencies?.[kind] ?? []).map(entry => {
-		const at = idMap?.get(entry.nodeId as never)?.location;
+		const node = idMap?.get(entry.nodeId as never);
+		const at = node?.location, file = elsewhere(node);
 		const call = entry.functionName === undefined ? undefined : String(Identifier.getName(entry.functionName));
 		const value = entry.value === undefined || entry.value === 'unknown' ? undefined : entry.value;
-		return { kind, call, value, implicit: entry.implicit, line: at?.[0], from: at, id: entry.nodeId, onto: entry.linkedIds ?? [], parts: [] };
+		return { kind, call, value, implicit: entry.implicit, line: file === undefined ? at?.[0] : undefined, file, from: at, id: entry.nodeId, onto: entry.linkedIds ?? [], parts: [] };
 	}));
 	/* `points()` draws onto the `plot()` above it, and the query says so: such an entry belongs to that
 	   plot rather than next to it */
@@ -1688,7 +2058,7 @@ async function analyze(): Promise<number> {
 	}
 	shownDeps = deps.flatMap(d => {
 		const [startLine, startCol, endLine, endCol] = d.from ?? [];
-		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined
+		if(d.file !== undefined || startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined
 			|| startLine < 1 || startLine > editor.state.doc.lines) {
 			return [];
 		}
@@ -1714,7 +2084,7 @@ async function analyze(): Promise<number> {
 		}
 		/* a category says its name once: every further row of it lines up under that one word */
 		const kind = part ? tag('draws onto', 'kind part') : repeat ? tag('', 'kind ditto') : tag(d.kind, 'kind');
-		const line = row(kind, what, tag(d.line ? `L${d.line}` : '', 'at'));
+		const line = row(kind, what, tag(d.line ? `L${d.line}` : d.file ?? '', 'at'));
 		/* alt-click highlights this one dependency, the way it does a finding */
 		line.dataset.mark = d.line === undefined ? `dep:${d.kind}` : `dep:${d.kind}@${d.line}`;
 		if(part) {
@@ -1724,6 +2094,9 @@ async function analyze(): Promise<number> {
 		if(d.from !== undefined) {
 			line.title = 'slice for this';
 			line.addEventListener('click', () => {
+				if(d.file !== undefined) {
+					openFile(d.file);
+				}
 				const at = d.from?.[0] ?? 0;
 				if(at < 1 || at > editor.state.doc.lines) {
 					return;   // a dependency of another file in the project
@@ -1762,9 +2135,11 @@ async function analyze(): Promise<number> {
 	}
 
 	const found = Object.entries(answers.linter?.results ?? {}).flatMap(([rule, per]) =>
-		(per?.results ?? []).map(f => ({
-			rule, line: f.loc?.[0], loc: f.loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta'])
-		})));
+		(per?.results ?? []).map(f => {
+			const file = elsewhere(idMap?.get([f.involvedId ?? []].flat()[0] as never));
+			const loc = file === undefined ? f.loc : undefined;
+			return { rule, file, line: loc?.[0], loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta']) };
+		}));
 	const marked = found.flatMap(f => {
 		const [startLine, startCol, endLine, endCol] = f.loc ?? [];
 		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined) {
@@ -1824,7 +2199,7 @@ async function analyze(): Promise<number> {
 		/* alt-click makes a link out of this one finding, which is how a new rule gets shown off */
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'alt-click to highlight this finding in the link';
-		line.append(chip, said, tag(f.line ? `L${f.line}` : '', 'at'));
+		line.append(chip, said, tag(f.line ? `L${f.line}` : f.file ?? '', 'at'));
 		lints.append(...linkRow([line], [f.line]));
 	}
 	lintBody.append(lints);
@@ -1880,8 +2255,9 @@ document.getElementById('clearmarks')?.addEventListener('click', () => {
 	showShared('the highlights are cleared');
 });
 
-document.querySelector('[data-sample]')?.addEventListener('click', () => {
-	editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: Sample } });
+function showExample(project: readonly [string, string][], note: string): void {
+	openFile(Playground.MainFile, () => files.splice(0, files.length, ...project.map(([name, text]) => ({ name, state: fileState(name, text) }))));
+	showTab(false);
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
 	/* an example is the script together with everything a link says about it, so what was folded away,
 	   highlighted, or sliced the other way comes back as well. The pane sizes and the repl stay as they
@@ -1895,8 +2271,9 @@ document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	showMarks();
 	showFolds();
 	remember();
-	showShared('the example is back');
-});
+	showShared(note);
+}
+document.querySelector('[data-sample]')?.addEventListener('click', () => showExample([[Playground.MainFile, Sample]], 'the example is back'));
 
 /**
  * Copies the link that brings this playground back, which the button and `ctrl+s` both ask for.

@@ -1,8 +1,10 @@
 import { assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
 
 describe('source', { concurrent: false }, withShell(shell => {
 	const addFiles = [
@@ -25,4 +27,22 @@ describe('source', { concurrent: false }, withShell(shell => {
 		shell, 'source("simple")\nsource("closure1")\ncat(N + f())', ['3@cat'], 'source("simple")\nsource("closure1")\ncat(N + f())', { addFiles });
 	assertSliced(label('Include unresolved sources', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']),
 		shell, 'source("unknown")\ncat(N)', ['2@cat'], 'source("unknown")\ncat(N)', { addFiles });
+
+	describe('a requested file that is also sourced', () => {
+		const project = { 'lib.R': 'f <- function(x) x + 1', 'main.R': 'source("lib.R")\nz <- f(2)\nprint(z)', 'other.R': 'w <- f(3)' };
+		async function sliceProject(includeCallees: boolean) {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+			analyzer.addFile(...Object.entries(project).map(([name, content]) => new FlowrInlineTextFile(name, content)));
+			analyzer.addRequest(Object.keys(project).map(content => ({ request: 'file' as const, content })));
+			const out = await executeStaticSliceQuery({ analyzer }, [{ type: 'static-slice', criteria: ['3@print(^main\\.R$)'], perFile: true, includeCallees }]);
+			const [entry] = Object.values(out.results);
+			assert.ok(entry && 'reconstruct' in entry);
+			return entry.reconstruct.files?.map(f => f.code);
+		}
+		for(const includeCallees of [false, true]) {
+			test(`the sourced definition is used and no unrelated caller is kept (includeCallees: ${includeCallees})`, async() => {
+				assert.deepStrictEqual(await sliceProject(includeCallees), ['f <- function(x) x + 1', 'source("lib.R")\nz <- f(2)\nprint(z)', '']);
+			});
+		}
+	});
 }));

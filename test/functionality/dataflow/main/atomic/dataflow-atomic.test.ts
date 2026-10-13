@@ -566,16 +566,16 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('define call with multiple args should only be defined by the call-return', ['name-normal', 'numbers', 'unnamed-arguments', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'a <- foo(x=3,y,z)',  emptyGraph()
 					.reads(4, 3)
-					.use(5, 'y')
-					.use(7, 'z')
-					.call(9, 'foo', [argumentInCall(4, { name: 'x' }), argumentInCall(5), argumentInCall(7)], { returns: [], reads: [] })
+					.use(5, 'y', { cds: [{ id: 9, when: true, byPromise: true }] })
+					.use(7, 'z', { cds: [{ id: 9, when: true, byPromise: true }] })
+					.call(9, 'foo', [argumentInCall(4, { name: 'x', cds: [{ id: 9, when: true, byPromise: true }] }), argumentInCall(5), argumentInCall(7)], { returns: [], reads: [] })
 					.argument(10, 9)
 					.reads(9, 5)
 					.reads(9, 7)
 					.call(10, '<-', [argumentInCall(0), argumentInCall(9)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 9], onlyBuiltIn: true })
 					.calls(10, NodeId.toBuiltIn('<-'))
 					.argument(10, 0)
-					.constant(3)
+					.constant(3, { cds: [{ id: 9, when: true, byPromise: true }] })
 					.defineVariable(0, 'a', { definedBy: [9, 10] })
 			);
 			assertDataflow(label('setNames hands back a renamed copy and leaves its argument alone', ['name-normal', 'strings', 'unnamed-arguments', 'call-normal', 'newlines']),
@@ -657,8 +657,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('Multi-Parameter function', ['pipe-and-pipe-bind', 'call-normal', 'pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']),
 				shell, 'x |> f(y,z)',  emptyGraph()
 					.use(0, 'x')
-					.use(3, 'y')
-					.use(5, 'z')
+					.use(3, 'y', { cds: [{ id: 7, when: true, byPromise: true }] })
+					.use(5, 'z', { cds: [{ id: 7, when: true, byPromise: true }] })
 					.argument(7, 0).reads(7, 0)
 					.argument(7, 3)
 					.argument(7, 5)

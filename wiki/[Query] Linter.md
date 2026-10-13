@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
 <h2 id="Linter Query">Linter Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Lints a given R script for common issues.\
@@ -17,7 +17,7 @@ For a script reading `read.csv("i_do_not_exist.csv")`, the following query retur
 
 _Results (prettified and summarized):_
 
-Query: **linter** (141 ms)\
+Query: **linter** (192 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -71,7 +71,11 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       "no-leaked-credentials": {"results":[],".meta":{"totalChecked":0}},
       "undefined-symbol": {
         "results": [],
-        ".meta": {"totalFunctionCalls":1,"totalVariableUses":0,"suppressed":{"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0}}
+        ".meta": {
+          "totalFunctionCalls": 1,
+          "totalVariableUses": 0,
+          "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0}
+        }
       },
       "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
       "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
@@ -96,7 +100,7 @@ You can also configure which rules to apply and what settings to use for these r
 
 _Results (prettified and summarized):_
 
-Query: **linter** (13 ms)\
+Query: **linter** (10 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30\

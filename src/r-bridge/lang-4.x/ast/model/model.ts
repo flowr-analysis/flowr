@@ -14,7 +14,7 @@ import type { RForLoop } from './nodes/r-for-loop';
 import type { RRepeatLoop } from './nodes/r-repeat-loop';
 import type { RWhileLoop } from './nodes/r-while-loop';
 import type { RIfThenElse } from './nodes/r-if-then-else';
-import type { RFunctionDefinition } from './nodes/r-function-definition';
+import { RFunctionDefinition } from './nodes/r-function-definition';
 import type { EmptyArgument, RFunctionCall } from './nodes/r-function-call';
 import type { RParameter } from './nodes/r-parameter';
 import type { RArgument } from './nodes/r-argument';
@@ -128,11 +128,7 @@ export const RConstant = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RNumber.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstant<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.Number || t === RType.String || t === RType.Logical;
+		return node !== undefined && RConstant.constantTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of constants in the normalized AST, i.e. number, string, and logical constants.
@@ -154,11 +150,7 @@ export const RSingleNode = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RComment.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RSingleNode<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.Comment || t === RType.Symbol || RConstant.constantTypes.has(t) || t === RType.Break || t === RType.Next || t === RType.LineDirective;
+		return node !== undefined && RSingleNode.singleNodeTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of single nodes in the normalized AST, i.e. comment, symbol, constant, break, next, and line directive nodes.
@@ -176,11 +168,7 @@ export const RLoopConstructs = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RForLoop.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RLoopConstructs<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.ForLoop || t === RType.RepeatLoop || t === RType.WhileLoop;
+		return node !== undefined && RLoopConstructs.loopConstructTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of loop constructs in the normalized AST, i.e. for, repeat and while loops.
@@ -199,11 +187,7 @@ export const RConstructs = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RForLoop.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstructs<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return RLoopConstructs.loopConstructTypes.has(t) || t === RType.IfThenElse;
+		return node !== undefined && RConstructs.constructTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of constructs in the normalized AST, i.e. for, repeat and while loops and if-then-else constructs.
@@ -222,11 +206,7 @@ export const RFunctions = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RFunctionDefinition.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctions<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.FunctionDefinition || t === RType.FunctionCall || t === RType.Parameter || t === RType.Argument;
+		return node !== undefined && RFunctions.functionTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of function-related nodes in the normalized AST, i.e. function definitions, function calls, parameters, and arguments.
@@ -339,14 +319,17 @@ export const RNode = {
 	 * which `isTarget` holds, `undefined` if the walk reaches the root of the file without a match.
 	 */
 	findEnclosing<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>, isTarget: (node: RNode<OtherInfo & ParentInformation>) => boolean): NodeId | undefined {
-		let node = idMap.get(id);
-		while(node !== undefined) {
+		for(let node = idMap.get(id); node !== undefined; node = RNode.directParent(node, idMap)) {
 			if(isTarget(node)) {
 				return node.info.id;
 			}
-			node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
 		}
 		return undefined;
+	},
+	/** The function definition strictly enclosing `id`, i.e., `id` itself excluded. */
+	strictlyEnclosingFunction<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>): NodeId | undefined {
+		const parent = idMap.get(id)?.info.parent;
+		return parent === undefined ? undefined : RNode.findEnclosing(parent, idMap, RFunctionDefinition.is);
 	},
 	/**
 	 * A helper function to retrieve the type of a given node.
@@ -409,22 +392,16 @@ export const RNode = {
 	 * @see {@link iterateParents} - to get all parents of a node
 	 */
 	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: AstIdMap<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
-		const parentId = node.info.parent;
-		if(parentId === undefined) {
-			return undefined;
-		}
-		return idMap.get(parentId);
+		return node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
 	},
 	/**
 	 * Returns an iterable of all parents of a node, starting with the direct parent and ending with the root node.
 	 */
 	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: AstIdMap<OtherInfo & ParentInformation>): Generator<RNode<OtherInfo & ParentInformation>> {
-		let currentNode: RNode<OtherInfo & ParentInformation> | undefined = node;
-		while(currentNode) {
-			currentNode = RNode.directParent(currentNode, idMap);
-			if(currentNode) {
-				yield currentNode;
-			}
+		let current = node === undefined ? undefined : RNode.directParent(node, idMap);
+		while(current !== undefined) {
+			yield current;
+			current = RNode.directParent(current, idMap);
 		}
 	},
 	/**
@@ -432,10 +409,8 @@ export const RNode = {
 	 * this function calculates the depth of a node by counting the number of parents until the root node is reached.
 	 */
 	depth(this: void, node: RNode<ParentInformation>, idMap: AstIdMap<ParentInformation>): number {
-		let depth = 0;
-		let currentNode: RNode | undefined = node;
-		while(currentNode) {
-			currentNode = RNode.directParent(currentNode as RNode<ParentInformation>, idMap);
+		let depth = 1;
+		for(const _ of RNode.iterateParents(node, idMap)) {
 			depth++;
 		}
 		return depth;

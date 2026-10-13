@@ -1,10 +1,18 @@
-import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
-import { label } from '../../../_helper/label';
+import { assertSliced, assumeLoadedPackages, withShell, assertCallTargets, assertDataflow, assertSliceKeeps, assertSliceMatchesR, assertSliceRunsInR, withTreeSitter } from '../../../_helper/shell';
+import { label, decorateLabelContext } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
-import { describe } from 'vitest';
+import { describe, afterAll, assert, test } from 'vitest';
+import { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { assertHappensBefore, controlReaches } from '../../../_helper/controlflow/happens-before';
+import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
+import { Ternary } from '../../../../../src/util/logic';
+import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { canReach } from '../../../../../src/control-flow/simple-visitor';
+import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
+import { extractCfg } from '../../../../../src/control-flow/control-flow-graph';
+import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 
 assumeLoadedPackages('dplyr', 'magrittr', 'maps', 'plyr', 'inferference');
 
@@ -23,7 +31,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, constFunction, ['3:1'], 'a <- function(x) 1\na(i)');
 		/* nothing of the function-content is required */
 		assertSliced(label('Slice function definition', constCapabilities), shell, constFunction, ['2@a'], 'a <- function(x) { }');
-		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'x <- 2');
+		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'a <- function(x) x <- 2');
 		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
 			shell, '\nfoo(x, y)\nfoo(x, 3)\n    ', ['3@foo'], 'foo(x, 3)');
 		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments', 'formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
@@ -49,7 +57,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		assertSliced(label('Include only b-definition', caps),
 			shell, code, ['3@a'], 'a <- b <- function() x\nx <- 2\na()');
 		assertSliced(label('Include only b-definition', caps),
-			shell, code, ['4@b'], 'b <- function() x\nx <- 2\nb()');
+			shell, code, ['4@b'], 'a <- b <- function() x\nx <- 2\nb()');
 	});
 	describe('Functions with named arguments', () => {
 		const code = 'a <- function(x=4) { x }\na(x = 3)';
@@ -58,7 +66,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 
 		assertSliced(label('Must work for same named arguments too', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'named-arguments', 'newlines']), shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)');
 
-		assertSliced(label('Must work for same named arguments nested', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'named-arguments', 'accessing-exported-names', 'implicit-return', 'newlines', 'strings']), shell, '\nf <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}\n    ', ['4@result'], 'function(some_variable="hello") {\n    result <- some::other(some_variable=some_variable)\n    result\n}');
+		assertSliced(label('Must work for same named arguments nested', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'named-arguments', 'accessing-exported-names', 'implicit-return', 'newlines', 'strings']), shell, '\nf <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}\n    ', ['4@result'], 'f <- function(some_variable="hello") {\n        result <- some::other(some_variable=some_variable)\n        result\n    }');
 
 		const lateCode = 'f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }\nf()\n';
 		assertSliced(label('Late bindings of parameter in body', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'call-normal', 'semicolons']),
@@ -94,15 +102,16 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, '\nx <- (function() {\n  x <- 4\n  x - 5\n  3\n })()\ncat(x)\n    ', ['7@x'], 'x <- (function() 3)()\nx');
 	});
 	describe('Criterion within a function body', () => {
-		/* slicing into the body yields the statements themselves, the definition is not required for them */
-		assertSliced(label('body without its header', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'function-calls', 'call-normal']), shell, 'f <- function() { x <- 2\nprint(x) }\nf()', ['2@x'], 'x <- 2\nx', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		/* a body only runs through its definition, so slicing into it keeps the definition and its binding */
+		assertSliced(label('body without its header', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'function-calls', 'call-normal']), shell, 'f <- function() { x <- 2\nprint(x) }\nf()', ['2@x'], 'f <- function() {\n        x <- 2\n        x\n    }', { expectedOutput: '[1] 2', expectedSliceOutput: '' });
+		assertSliced(label('a body beside a criterion outside it', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'semicolons', 'function-calls', 'call-normal']), shell, 'x <- 5\nf <- function() { x <- 2; x }\nprint(x)', ['2@x', '3@print'], 'x <- 5\nf <- function() x <- 2\nprint(x)', { expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
 	});
 	describe('Higher-order Functions', () => {
 		const code = 'a <- function() { x <- 3; i }\ni <- 4\nb <- function(f) { i <- 5; f() }\nb(a)';
 		const caps: FlowrCapabilityId[] = ['name-normal', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'formals-named', 'call-normal', 'unnamed-arguments'];
-		assertSliced(label('Only i, not bound in context', caps), shell, code, ['1@i'], 'i');
+		assertSliced(label('Only i, bound globally', caps), shell, code, ['1@i'], 'a <- function() i\ni <- 4');
 		assertSliced(label('Slice of b is independent', caps), shell, code, ['3@b'], 'b <- function(f) { }');
-		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], 'a <- function() i\nb <- function(f) {\n        i <- 5\n        f()\n    }\nb(a)');
+		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], 'a <- function() i\ni <- 4\nb <- function(f) f()\nb(a)');
 		assertSliced(label('Directly call returned function', ['name-normal', 'closures', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'normal-definition', 'implicit-return', 'return', 'unnamed-arguments', 'newlines', 'numbers', 'call-normal']),
 			shell, 'm <- 12\na <- function(x) {\n  b <- function() { function() { x } }\n  return(b())\n}\nres <- a(m)()', ['6@res'], 'm <- 12\na <- function(x) {\n        b <- function() function() x\n        return(b())\n    }\nres <- a(m)()');
 		assertSliced(label('Higher order anonymous function', ['name-normal', 'resolve-arguments', 'closures', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'implicit-return', 'normal-definition', 'call-anonymous', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'newlines', 'precedence']),
@@ -125,6 +134,37 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	});
 	describe('Sink', () => {
 		assertSliced(label('Output written while a sink is active reaches its readers', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nprint(r)', ['6@r'], 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nr', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('Output a sink diverts into a text connection reaches the variable it writes', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\nbuf', ['6@buf'], 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\nbuf', { expectedOutput: '[1] "hi"', expectedSliceOutput: '[1] "hi"' });
+		assertSliced(label('A sink into a text connection leaves an unrelated variable alone', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'y <- 2\nrc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\ny', ['7@y'], 'y <- 2\nrc <- textConnection("buf", "w")\nsink(rc)\nsink()\ny', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		assertSliced(label('A text connection opened for reading writes no variable', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'buf <- "a"\ntc <- textConnection(buf)\ncat("hi\\n")\nbuf', ['4@buf'], 'buf <- "a"\nbuf', { expectedOutput: 'hi\n[1] "a"', expectedSliceOutput: '[1] "a"' });
+		assertSliced(label('Printing a sink diverts into a text connection reaches the variable it writes', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\nprint(1)\nsink()\nclose(rc)\nprint(buf)', ['6@print'], 'rc <- textConnection("buf", "w")\nsink(rc)\nprint(1)\nsink()\nclose(rc)\nprint(buf)', { expectedOutput: '[1] "[1] 1"', expectedSliceOutput: '[1] "[1] 1"' });
+		assertSliced(label('Printing after the sink ends does not reach the text connection', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("a\\n")\nsink()\nprint(2)\nclose(rc)\nprint(buf)', ['7@print'], 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("a\\n")\nsink()\nclose(rc)\nprint(buf)', { expectedOutput: '[1] 2\n[1] "a"', expectedSliceOutput: '[1] "a"' });
+	});
+	describe('Warnings as errors', () => {
+		assertSliced(label('A call that may raise in a body called within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\ntry(f(), silent = TRUE)\nprint(x)', ['4@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\ntry(f(), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in a body called within tryCatch aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\ntryCatch(f(), error = function(e) NULL)\nprint(x)', ['4@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\ntryCatch(f(), error = function(e) NULL)\nprint(x)', { expectedOutput: 'NULL\n[1] 1', expectedSliceOutput: 'NULL\n[1] 1' });
+		assertSliced(label('A call that may raise in a body called through another function within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\nk <- function() f()\ntry(k(), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\nk <- function() f()\ntry(k(), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in a body defined after the try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nh <- function() try(f(), silent = TRUE)\nf <- function() { g(); x <<- 2 }\nh()\nprint(x)', ['5@print'], 'x <- 1\nh <- function() try(f(), silent = TRUE)\nf <- function() {\n        g()\n        x <<- 2\n    }\nh()\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in a body passed as an argument within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings', 'formals-named']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\nh <- function(fn) fn()\ntry(h(f), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\nh <- function(fn) fn()\ntry(h(f), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A call that may raise in an S3 method dispatched within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings', 'oop-s3']), shell, 'x <- 1\nf <- function(o) UseMethod("f")\nf.default <- function(o) { g(); x <<- 2 }\ntry(f(1), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function(o) UseMethod("f")\nf.default <- function(o) {\n        g()\n        x <<- 2\n    }\ntry(f(1), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A body called outside of any try keeps no earlier call', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nh <- function() 3\nf <- function() { h(); x <<- 2 }\nf()\nprint(x)', ['5@print'], 'f <- function() x <<- 2\nf()\nprint(x)', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		assertSliced(label('With warn 2 set in a function never called a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() options(warn = 2)\ntry({ log(-1); x <- 5 }, silent = TRUE)\nprint(x)', ['4@print'], 'f <- function() options(warn = 2)\nx <- 5\nprint(x)', { expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
+		assertSliced(label('With warn 2 a warning aborts the assignment in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx\noptions(warn = 0)', ['4@x'], 'options(warn = 2)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('With warn 2 a warning aborts the loop in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nn <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn\noptions(warn = 0)', ['4@n'], 'options(warn = 2)\nn <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('With warn 2 a warning aborts the super-assignment of a called function', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nx <- 1\nf <- function() { log(-1); x <<- 2 }\ntry(f(), silent = TRUE)\nx\noptions(warn = 0)', ['5@x'], 'options(warn = 2)\nx <- 1\nf <- function() {\n        log(-1)\n        x <<- 2\n    }\ntry(f(), silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('With warn 2 set in a function a warning aborts the try block', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() options(warn = 2)\nf()\ntry({ log(-1); x <- 5 }, silent = TRUE)\nx\noptions(warn = 0)', ['5@x'], 'x <- 1\nf <- function() options(warn = 2)\nf()\ntry({ log(-1); x <- 5 }, silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('Without warn 2 a warning leaves the assignment in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['3@x'], 'x <- as.numeric("a")\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
+		assertSliced(label('With warn reset before the try a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\noptions(warn = 0)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['5@x'], 'options(warn = 2)\noptions(warn = 0)\nx <- as.numeric("a")\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
+		assertSliced(label('Without warn 2 a warning leaves the loop in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'n <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn', ['3@n'], 'n <- 0\nfor(i in 1:3) n <- n + 1\nn', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+	});
+	describe('Files', () => {
+		const caps = ['name-normal', 'call-normal', 'newlines', 'strings'] as const;
+		assertSliced(label('A read of a named file keeps only the writes that may reach it', [...caps]), shell, 'writeLines("a", "a.txt")\nwriteLines("b", "b.txt")\nr <- readLines("out/a.txt")\nprint(r)', ['4@r'], 'writeLines("a", "a.txt")\nr <- readLines("out/a.txt")\nr');
+		assertSliced(label('A read of a file we cannot name keeps every write', [...caps]), shell, 'p <- tempfile()\nwriteLines("b", "b.txt")\nwriteLines("a", p)\nr <- readLines(p)\nprint(r)', ['5@r'], 'p <- tempfile()\nwriteLines("b", "b.txt")\nwriteLines("a", p)\nr <- readLines(p)\nr');
+		assertSliced(label('A write to a file we cannot name reaches a read of a named one', [...caps]), shell, 'p <- tempfile()\nwriteLines("a", p)\nwriteLines("b", "b.txt")\nr <- readLines("a.txt")\nprint(r)', ['5@r'], 'p <- tempfile()\nwriteLines("a", p)\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A write to another named file within a called function is not kept', [...caps, 'normal-definition']), shell, 'f <- function() writeLines("b", "b.txt")\nwriteLines("a", "a.txt")\nf()\nr <- readLines("a.txt")\nprint(r)', ['5@r'], 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A write after the read is not kept', [...caps]), shell, 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nwriteLines("c", "a.txt")\nprint(r)', ['4@r'], 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A serialized object written to another file is not kept', [...caps, 'numbers']), shell, 'saveRDS(1, "a.rds")\nsaveRDS(2, "b.rds")\nr <- readRDS("a.rds")\nprint(r)', ['4@r'], 'saveRDS(1, "a.rds")\nr <- readRDS("a.rds")\nr');
 	});
 	describe('Early return of function', () => {
 		const code = 'x <- (function() {\n  g <- function() { y }\n  y <- 5\n  if(z)\n  \treturn(g)\n  y <- 3\n  g\n})()\nres <- x()';
@@ -133,6 +173,12 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	describe('Recursive functions', () => {
 		const code = 'f <- function() { f() }\nf()';
 		assertSliced(label('Endless recursion', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['2@f'], 'f <- function() f()\nf()');
+		assertSliced(label('A global read through mutual recursion', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines', 'if']), shell,
+			'x <- 2\nf <- function(n) if(n > 0) g(n - 1) else x\ng <- function(m) f(m)\nh <- function() f(3)\nr <- h()\nx <- 5\nprint(r)', ['7@print'],
+			'x <- 2\nf <- function(n) if(n > 0) g(n - 1) else\n    x\ng <- function(m) f(m)\nh <- function() f(3)\nr <- h()\nprint(r)');
+		assertSliced(label('A recursive read sees no write made after the top-level call', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines', 'if']), shell,
+			'x <- 2\nf <- function(n) if(n > 0) f(n - 1) else x\nr <- f(3)\nx <- 5\ny <- 7\nprint(r)', ['6@print'],
+			'x <- 2\nf <- function(n) if(n > 0) f(n - 1) else\n    x\nr <- f(3)\nprint(r)', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 	});
 	describe('Uninteresting calls', () => {
 		const code = '\na <- list(1,2,3,4)\na[3]\nprint(a[2])\n    ';
@@ -156,6 +202,11 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 
 		assertSliced(label('Must work with nested globals and maybe assignments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'if', 'call-normal', ...OperatorDatabase['>'].capabilities, 'numbers', ...OperatorDatabase['<<-'].capabilities, 'return-value-of-assignments', 'resolve-arguments', 'lexicographic-scope', 'newlines', 'unnamed-arguments', 'closures']),
 			shell, 'a <- function() { function(b) { if(runif() > .5) { x <<- b } } }\ny <- 5\nx <- 2\na()(y)\ncat(x)', ['5@x'], 'a <- function() function(b) if(runif() > .5) { x <<- b }\ny <- 5\nx <- 2\na()(y)\nx');
+		assertSliced(label('A caller local is no binding of a global function', localCaps), shell, 'v <- 5\nf <- function() { v <- 1; g() }\ng <- function() v\nr <- f()\nprint(r)', ['5@print'], 'v <- 5\nf <- function() g()\ng <- function() v\nr <- f()\nprint(r)');
+		assertSliced(label('A global read through a nested call sees the value at the call', localCaps), shell, 'x <- 1\ng <- function() x\nf <- function() g()\nr <- f()\nx <- 2\nprint(r)', ['6@print'], 'x <- 1\ng <- function() x\nf <- function() g()\nr <- f()\nprint(r)');
+		assertSliced(label('A caller local is not needed by a global function that does not read it', localCaps), shell, 'f <- function() { v <- 1; g() }\ng <- function() 3\nr <- f()\nprint(r)', ['4@print'], 'f <- function() g()\ng <- function() 3\nr <- f()\nprint(r)', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+		assertSliced(label('A global the nested call does not read is not kept', localCaps), shell, 'a <- 1\nb <- 2\ng <- function() a\nf <- function() g()\nr <- f()\nprint(r)', ['6@print'], 'a <- 1\ng <- function() a\nf <- function() g()\nr <- f()\nprint(r)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('A closure reads its defining frame, neither the global nor its caller frame', [...localCaps, 'closures']), shell, 'x <- 1\nmk <- function() { x <- 10; function() x }\nh <- mk()\nk <- function() { x <- 100; h() }\nr <- k()\nprint(r)', ['6@print'], 'mk <- function() {\n        x <- 10\n        function() x\n    }\nh <- mk()\nk <- function() h()\nr <- k()\nprint(r)', { expectedOutput: '[1] 10', expectedSliceOutput: '[1] 10' });
 	});
 	describe('Using strings for definitions', () => {
 		const code = "\n'a' <- function() { x <- 3; 4 }\n'a'()\na()\na <- function() { x <- 3; 5 }\n'a'()\na()\n`a`()\n    ";
@@ -168,6 +219,19 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		strCase('Must link with no-string/string', '6@\'a\'', 'a <- function() 5\n\'a\'()');
 		strCase('Must link with no-string/no-string', '7@a', 'a <- function() 5\na()'); // the common case
 		strCase('Try with special backticks', '8@`a`', 'a <- function() 5\n`a`()');
+		const dyn = (s: string) => label(s, ['name-normal', 'function-calls', 'strings']);
+		const ran = { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1', assumeLoaded: [] };
+		function assertCalls(title: string, call: string) {
+			const code = `f_123 <- function() 1\nx <- ${call}\nprint(x)`;
+			assertSliced(dyn(title), shell, code, ['3@print'], code, ran);
+		}
+		assertCalls('get with a name pasted from arithmetic', 'get(paste0("f_12", 1 + 2))()');
+		assertCalls('get with a name pasted with a separator', 'get(paste("f", 120 + 3, sep = "_"))()');
+		assertCalls('get with nested arithmetic', 'get(paste0("f_", 100 + 20 + 3))()');
+		assertCalls('match.fun with a unary minus', 'match.fun(paste0("f_12", -(-3)))()');
+		assertCalls('do.call with a computed name', 'do.call(paste0("f_", 2 * 61 + 1), list())');
+		assertSliced(dyn('do.call with a name held in a variable'), shell, 'f_123 <- function() 1\nnm <- "f_123"\nx <- do.call(nm, list())\nprint(x)', ['4@print'],
+			'f_123 <- function() 1\nnm <- "f_123"\nx <- do.call(nm, list())\nprint(x)', ran);
 	});
 	describe('Using own infix operators', () => {
 		const code = "\n`%a%` <- function(x, y) { x + y }\n`%a%`(3, 4)\n\n'%b%' <- function(x, y) { x * y }\n'%b%'(3, 4)\n\ncat(3 %a% 4)\ncat(4 %b% 5)\n      ";
@@ -206,6 +270,10 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		s3Case('a plain call still drops the argument it never forces', plainCaps, 'p <- function(x) "FOO"\nu <- 1\nv <- p(u)\nv', '4@v', 'p <- function(x) "FOO"\nv <- p(u)\nv', '[1] "FOO"');
 		/* control: naming the object moves the dispatch to it, leaving the first formal lazy */
 		s3Case('a named object leaves the first formal lazy', s3Caps, 'p <- function(x, y) UseMethod("p", y)\np.foo <- function(x, y) "FOO"\np.default <- function(x, y) "DEF"\nw <- 7\no <- structure(1, class="foo")\nv <- p(w, o)\nv', '7@v', 'p <- function(x, y) UseMethod("p", y)\np.foo <- function(x, y) "FOO"\np.default <- function(x, y) "DEF"\no <- structure(1, class="foo")\nv <- p(w, o)\nv', '[1] "FOO"');
+		const printCounter = 'cnt <- 0\nprint.zz <- function(x, ...) { cnt <<- cnt + 1; invisible(x) }\nx <- structure(1, class = "zz")\n';
+		assertSliced(label('an invisible value at the top level runs no print method', [...s3Caps, 'side-effects-in-function-call']), shell, `${printCounter}invisible(x)\ncat(cnt, "\\n")`, ['5@cat'], 'cnt <- 0\ncat(cnt, "\\n")', { expectedOutput: /^0\s*$/, expectedSliceOutput: /^0\s*$/ });
+		assertSliced(label('an assignment at the top level runs no print method', [...s3Caps, 'side-effects-in-function-call']), shell, `${printCounter}y <- x\ncat(cnt, "\\n")`, ['5@cat'], 'cnt <- 0\ncat(cnt, "\\n")', { expectedOutput: /^0\s*$/, expectedSliceOutput: /^0\s*$/ });
+		assertSliced(label('a visible value at the top level runs its print method', [...s3Caps, 'side-effects-in-function-call']), shell, `${printCounter}x\ncat(cnt, "\\n")`, ['5@cat'], 'cnt <- 0\nprint.zz <- function(x, ...) cnt <<- cnt + 1\nx <- structure(1, class = "zz")\nx\ncat(cnt, "\\n")', { expectedOutput: /^1\s*$/, expectedSliceOutput: /^1\s*$/ });
 	});
 	describe('S3 Dispatch on Base Generics', () => {
 		const baseCaps: FlowrCapabilityId[] = ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s3', 'normal-definition', 'implicit-return', 'call-normal', 'named-arguments', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities];
@@ -293,7 +361,7 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 	describe('Redefine built-ins', () => {
 		assertSliced(label('redefining assignments should work', ['name-quoted', 'name-normal', 'precedence', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, 'redefinition-of-built-in-functions-primitives']), shell, 'x <- 1\n`<-`<-`*`\nx <- 3\ny = x', ['4@y'], 'x <- 1\ny = x');
 		assertSliced(label('redefine if', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-dot-dot-dot', 'newlines', 'unnamed-arguments']),
-			shell, '`if` <- function(...) 2\nif(1) \n   x <- 3\nprint(x)', ['4@x'], 'x <- 3\nx'/*, { expectedOutput: '[1] 2' }*/);
+			shell, '`if` <- function(...) 2\nif(1) \n   x <- 3\nprint(x)', ['4@x'], '`if` <- function(...) 2\nif(1) x <- 3\nx');
 		assertSliced(label('named argument with redefine', ['name-escaped', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'named-arguments', 'newlines', 'numbers']),
 			shell, 'x <- 2\n`<-` <- `*`\nx <- 3\nprint(y = x)', ['4@y'], 'y=x');
 		assertSliced(label('redefine in local scope', [
@@ -513,8 +581,21 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'
 		]), shell,
 		'seed <- 1234\nset.seed(seed)\nx', ['3@x'],
-		'seed <- 1234\nset.seed(seed)\nx'
+		'x'
 		);
+		assertSliced(label('A draw after a fixed seed', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'
+		]), shell,
+		'seed <- 1234\nset.seed(seed)\nx <- runif(1)\nx', ['4@x'],
+		'seed <- 1234\nset.seed(seed)\nx <- runif(1)\nx'
+		);
+		const rngCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'numbers', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'];
+		assertSliced(label('A seed set after the last draw is not kept', rngCaps), shell, 'set.seed(1)\nv <- runif(1)\nset.seed(2)\nv', ['4@v'], 'set.seed(1)\nv <- runif(1)\nv', { expectedOutput: '[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
+		assertSliced(label('A generator kind with no draw after it is not kept', rngCaps), shell, 'RNGkind("Wichmann-Hill")\nu <- 3\nv <- u\nv', ['4@v'], 'u <- 3\nv <- u\nv');
+		assertSliced(label('A generator kind set after the last draw is not kept', rngCaps), shell, 'set.seed(1)\nv <- runif(1)\nRNGkind("Wichmann-Hill")\nv', ['4@v'], 'set.seed(1)\nv <- runif(1)\nv');
+		assertSliced(label('A local .Random.seed is not the state of the generator', [...rngCaps, 'normal-definition']), shell, 'f <- function() { .Random.seed <- c(1L, 2L); 1 }\nset.seed(1)\nf()\nv <- runif(1)\nv', ['5@v'], 'set.seed(1)\nv <- runif(1)\nv', { expectedOutput: '[1] 1\n[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
+		assertSliced(label('A local .Random.seed does not cut a draw in the same function from the seed', [...rngCaps, 'normal-definition']), shell, 'set.seed(1)\nf <- function() { .Random.seed <- 3; runif(1) }\nv <- f()\nv', ['4@v'], 'set.seed(1)\nf <- function() runif(1)\nv <- f()\nv', { expectedOutput: '[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
+		assertSliced(label('A data set that is not read is not loaded', rngCaps), shell, 'data("iris")\ndata("mtcars")\nv <- nrow(iris)\nv', ['4@v'], 'data("iris")\nv <- nrow(iris)\nv', { expectedOutput: '[1] 150', expectedSliceOutput: '[1] 150' });
 		assertSliced(label('Configuring options', [
 			'functions-with-global-side-effects', 'built-in-options', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'
 		]), shell,
@@ -569,7 +650,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('Options in a loop', 'for(i in 1:3) {\n\tx <- getOption("foo")\n\toptions(foo=i)\n}', '2@x', 'for(i in 1:3) {\n    x <- getOption("foo")\n    options(foo=i)\n}');
 			optionCase('Setting an option between definition and call', 'options(foo=1)\ng <- function() getOption("foo")\noptions(foo=2)\nx <- g()', '4@x', 'g <- function() getOption("foo")\noptions(foo=2)\nx <- g()');
 			optionCase('getOption in an anonymous function', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))', '2@x', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))');
-			optionCase('Setting options in an anonymous function', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")', '2@x', 'sapply(1:2, function(i) options(foo=i))\nx <- getOption("foo")');
+			optionCase('Setting options in an anonymous function', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")', '2@x', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")');
 			optionCase('Setting options in tryCatch', 'tryCatch(options(foo=1), error=function(e) 0)\nx <- getOption("foo")', '2@x', 'options(foo=1)\nx <- getOption("foo")');
 			optionCase('Namespaced access', 'base::options(foo=1)\nx <- base::getOption("foo")', '2@x', 'base::options(foo=1)\nx <- base::getOption("foo")');
 			optionCase('Calling options through do.call', 'do.call(options, list(foo=1))\nx <- getOption("foo")', '2@x', 'do.call(options, list(foo=1))\nx <- getOption("foo")');
@@ -603,7 +684,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('Printing a plain value ignores unrelated options', 'options(foo=2)\nx <- 3\nx', '3@x', 'x <- 3\nx');
 			optionCase('Printing an unknown value may read any option', 'options(foo=2)\nx <- foo()\nx', '3@x', 'options(foo=2)\nx <- foo()\nx');
 			optionCase('print of an unknown value may read any option', 'options(foo=2)\nprint(d)', '2@print', 'options(foo=2)\nprint(d)');
-			optionCase('Nothing prints within a function', 'f <- function() {\n\toptions(digits=2)\n\tx <- pi\n\tx\n}', '4@x', 'x <- pi\nx');
+			optionCase('Nothing prints within a function', 'f <- function() {\n\toptions(digits=2)\n\tx <- pi\n\tx\n}', '4@x', 'f <- function() {\n        x <- pi\n        x\n    }');
 			optionCase('options through an alias', 'o <- options\no(k=1)\ny <- getOption("k")', '3@y', 'o <- options\no(k=1)\ny <- getOption("k")');
 			optionCase('rm(list = ls()) keeps the options', 'options(k=1)\nrm(list=ls())\ny <- getOption("k")', '3@y', 'options(k=1)\ny <- getOption("k")');
 			optionCase('.Options reads the option it names', 'options(k=1)\noptions(j=2)\ny <- .Options$k', '3@y', 'options(k=1)\ny <- .Options$k');
@@ -679,14 +760,15 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 			assertSliced(label(name, capabilities), shell, code, [criterion], expected, includeCallees ? { includeCallees: true } : undefined);
 		}
 		const code = 'f <- function(x) {\n  y <- x * 2\n  print(y)\n}\nf(21)';
-		calleeCase('default stops at the function-definition boundary', code, '3@print', 'function(x) {\n    y <- x * 2\n    print(y)\n}');
+		calleeCase('default stops at the function-definition boundary', code, '3@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }');
 		calleeCase('includeCallees continues past the boundary', code, '3@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }\nf(21)', true);
 		calleeCase('includeCallees includes all call sites', 'f <- function(x) {\n  y <- x * 2\n  print(y)\n}\nf(21)\nf(99)', '3@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }\nf(21)\nf(99)', true);
+		calleeCase('includeCallees does not pull in other callers of a function the slice calls', 'f <- function(x) x + 1\nz <- f(2)\nprint(z)\nw <- f(3)', '3@print', 'f <- function(x) x + 1\nz <- f(2)\nprint(z)', true);
 		calleeCase('includeCallees does not pull in unrelated code', 'g <- 3\nf <- function(x) {\n  y <- x * 2\n  print(y)\n}\nf(21)', '4@print', 'f <- function(x) {\n        y <- x * 2\n        print(y)\n    }\nf(21)', true);
 		// gate: a self-contained body (no parameter, no captured variable) must not pull in the callers
 		const codeSelfContained = 'f <- function(x) {\n  y <- 5\n  print(y)\n}\nf(21)';
-		calleeCase('includeCallees is a no-op when the body does not depend on the interface', codeSelfContained, '3@print', 'y <- 5\nprint(y)', true);
-		calleeCase('self-contained body slices identically without the flag', codeSelfContained, '3@print', 'y <- 5\nprint(y)');
+		calleeCase('includeCallees is a no-op when the body does not depend on the interface', codeSelfContained, '3@print', 'f <- function(x) {\n        y <- 5\n        print(y)\n    }', true);
+		calleeCase('self-contained body slices identically without the flag', codeSelfContained, '3@print', 'f <- function(x) {\n        y <- 5\n        print(y)\n    }');
 		// gate: a captured variable from the enclosing scope does let the callers (and the capture) in
 		calleeCase('includeCallees follows a captured enclosing-scope variable', 'z <- 10\nf <- function(x) {\n  y <- z\n  print(y)\n}\nf(21)', '4@print', 'z <- 10\nf <- function(x) {\n        y <- z\n        print(y)\n    }\nf(21)', true);
 	});
@@ -703,6 +785,18 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 		superCase('a closure counter still chains its calls', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nc1 <- mk()\nc1()\nv <- c1()\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nc1 <- mk()\nc1()\nv <- c1()\nv', '[1] 1\n[1] 2');
 		/* control: with no enclosing frame holding the name, the global one is still the target */
 		superCase('a super-assignment no enclosing frame catches still reaches the global one', 'x <- 1\nf <- function() { g <- function() x <<- 42; g(); x }\nv <- f()\nv', '4@v', 'x <- 1\nf <- function() {\n        g <- function() x <<- 42\n        g()\n        x\n    }\nv <- f()\nv', '[1] 42');
+		superCase('a closure calls the function its factory was handed', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n^2\nm <- memo(sq)\nv <- m(4)\nv', '5@v', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n ^ 2\nm <- memo(sq)\nv <- m(4)\nv', '[1] 16');
+		superCase('a closure created by local chains its calls', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '4@v', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '[1] 1\n[1] 2');
+		superCase('a closure taken out of a list in a loop chains its calls', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\nfor(f in L) f()\nv <- L[[1]]()\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nL <- list(mk())\nfor(f in L) f()\nv <- (L[[1]])()\nv', '[1] 2');
+		assertSliced(label('a closure taken out of a list by lapply chains its calls', superCaps), shell, 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\ninvisible(lapply(L, function(g) g()))\nv <- L[[1]]()\nv', ['5@v'], 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nL <- list(mk())\ninvisible(lapply(L, function(g) g()))\nv <- (L[[1]])()\nv', { expectedOutput: '[1] 2', expectedSliceOutput: /\[1\] 2$/ });
+		superCase('the frame of a closure is what environment(fn) reads', 'mk <- function() { n <- 0; function() { n <<- n + 1; 0 } }\nh <- mk()\nh()\nv <- environment(h)$n\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            0\n        }\n    }\nh <- mk()\nh()\nv <- environment(h)$n\nv', '[1] 0\n[1] 1');
+		assertSliced(label('an exit hook reads what the body wrote before', superCaps), shell, 'lg <- character()\nf <- function() { lg <<- c(lg, "o"); on.exit(lg <<- c(lg, "c")); 1 }\nf()\nv <- lg\nv', ['5@v'], 'lg <- character()\nf <- function() {\n        lg <<- c(lg, "o")\n        on.exit(lg <<- c(lg, "c"))\n    }\nf()\nv <- lg\nv', { expectedOutput: '[1] 1\n[1] "o" "c"', expectedSliceOutput: '[1] "o" "c"' });
+		assertSliced(label('a kept call keeps the globals its exit hook reads', superCaps), shell, 'lg <- character()\nf <- function(b) { on.exit(lg <<- c(lg, "c")); b }\nf(1)\nv <- 2\nv', ['5@v'], 'lg <- character()\nf <- function(b) on.exit(lg <<- c(lg, "c"))\nf(1)\nv <- 2\nv', { expectedOutput: '[1] 1\n[1] 2', expectedSliceOutput: '[1] 2' });
+		superCase('a method writes the environment its factory captured', 'mk <- function() { self <- new.env(); self$v <- 0; self$inc <- function(x) self$v <- self$v + x; self }\no <- mk()\no$inc(5)\nv <- o$v\nv', '5@v', 'mk <- function() {\n        self <- new.env()\n        self$v <- 0\n        self$inc <- function(x) self$v <- self$v + x\n        self\n    }\no <- mk()\no$inc(5)\nv <- o$v\nv', '[1] 5');
+		superCase('a default argument environment is written in place', 'e <- new.env()\ne$reg <- list()\nreg <- function(k, v, env = e) env$reg[[k]] <- v\nreg("a", 1)\nv <- e$reg$a\nv', '6@v', 'e <- new.env()\ne$reg <- list()\nreg <- function(k, v, env=e) env$reg[[k]] <- v\nreg("a", 1)\nv <- e$reg$a\nv', '[1] 1');
+		assertSliced(label('separate factory instances do not share their state', superCaps), shell, 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\na <- mk()\nb <- mk()\nb()\nb()\nv <- a()\nv', ['7@v'], 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\na <- mk()\nv <- a()\nv', { expectedOutput: '[1] 1\n[1] 2\n[1] 1', expectedSliceOutput: '[1] 1' });
+		superCase('a field of another environment is not needed', 'e1 <- new.env()\ne2 <- new.env()\ne1$v <- 1\ne2$v <- 2\nv <- e1$v\nv', '6@v', 'e1 <- new.env()\ne1$v <- 1\nv <- e1$v\nv', '[1] 1');
+		superCase('an assign into another environment is not needed', 'e1 <- new.env()\ne2 <- new.env()\nassign("v", 1, envir = e1)\nassign("v", 2, envir = e2)\nv <- get("v", envir = e1)\nv', '6@v', 'e1 <- new.env()\nassign("v", 1, envir = e1)\nv <- get("v", envir = e1)\nv', '[1] 1');
 	});
 	describe('User-defined replacement functions', () => {
 		const replCaps: readonly FlowrCapabilityId[] = ['name-quoted', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'replacement-functions', 'normal-definition', 'formals-named', 'implicit-return', 'numbers', 'newlines', 'call-normal', 'unnamed-arguments'];
@@ -719,5 +813,565 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 		replCase('setting an attribute rebinds the object', ['user-defined', 'strings'], 'x <- 1\nattr(x, "unit") <- "cm"\nv <- attr(x, "unit")\nv', '4@v', '[1] "cm"');
 		/* the super-assigning form binds outside the frame it is called in */
 		assertSliced(label('a super-assigning user replacement binds outside the frame', [...replCaps, ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call']), shell, '`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() { s(y) <<- 5 }\nf()\nv <- y\nv', ['6@v'], '`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() s(y) <<- 5\nf()\nv <- y\nv', { expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
+	});
+}));
+
+describe('Calls run in R', withShell(shell => {
+	describe('Redefined primitives, environments and promises bound by name, run in R', () => {
+		const name = (s: string) => decorateLabelContext(label(s, ['redefinition-of-built-in-functions-primitives']), ['dataflow']);
+		const assertSliceRuns = (title: string, code: string, criterion: SlicingCriterion, lastLine: string) => assertSliceRunsInR(name(title), shell, code, criterion, lastLine);
+		describe('redefined grouping', () => {
+			assertSliceRuns('a redefined parenthesis', '`(` <- function(x) x * 2\ny <- (3)\nprint(y)', '3@print', '[1] 6');
+			assertSliceRuns('a redefined parenthesis in a function', 'f <- function() {\n  `(` <- function(x) x + 1\n  (1)\n}\nprint(f())', '5@print', '[1] 2');
+			assertSliceRuns('a redefined bracket', '`[` <- function(x, i) i\nv <- c(1, 2)\nprint(v[7])', '3@print', '[1] 7');
+			assertSliceRuns('a redefined dollar', '`$` <- function(x, n) 42\nl <- list(a = 1)\nprint(l$a)', '3@print', '[1] 42');
+		});
+		describe('with on environments', () => {
+			const assigned = 'e <- new.env()\nwith(e, x <- 5)\nx <- 1\n';
+			assertSliceRuns('get in the environment', assigned + 'print(get("x", envir = e))', '4@print', '[1] 5');
+			assertSliceRuns('dollar on the environment', assigned + 'print(e$x)', '4@print', '[1] 5');
+			assertSliceRuns('with reading the environment', assigned + 'print(with(e, x))', '4@print', '[1] 5');
+			assertSliceRuns('the global variable stays', 'x <- 1\ne <- new.env()\nwith(e, x <- 5)\nprint(x)', '4@print', '[1] 1');
+			assertSliceRuns('an unknown environment', 'mk <- function() new.env()\ne <- mk()\nwith(e, x <- 5)\nprint(e$x)', '4@print', '[1] 5');
+			assertSliceRuns('assign into an unknown environment', 'mk <- function() new.env()\ne <- mk()\nassign("x", 5, envir = e)\nprint(e$x)', '4@print', '[1] 5');
+			assertSliceRuns('a parameter environment', 'f <- function(e) with(e, x <- 5)\ne <- new.env()\nf(e)\nprint(e$x)', '4@print', '[1] 5');
+			assertSliceRuns('within on an environment', 'e <- new.env()\nlocal(x <- 5, envir = e)\nprint(e$x)', '3@print', '[1] 5');
+		});
+		describe('promises bound by name', () => {
+			assertSliceRuns('delayedAssign reads at forcing time', 'y <- 1\ndelayedAssign("x", y * 10)\ny <- 2\nprint(x)', '4@print', '[1] 20');
+			assertSliceRuns('delayedAssign side effects happen when forced', 'delayedAssign("x", {z <- 3; 4})\nz <- 1\nx\nprint(z)', '4@print', '[1] 3');
+			assertSliceRuns('delayedAssign in a function', 'f <- function() {\n  delayedAssign("x", y)\n  y <- 7\n  x\n}\ny <- 1\nprint(f())', '7@print', '[1] 7');
+			assertSliceRuns('delayedAssign into an environment', 'e <- new.env()\ndelayedAssign("x", 3, assign.env = e)\nx <- 1\nprint(e$x)', '4@print', '[1] 3');
+			assertSliceRuns('delayedAssign evaluated in another environment', 'e <- new.env()\nassign("y", 9, envir = e)\ny <- 1\ndelayedAssign("x", y, eval.env = e)\nprint(x)', '5@print', '[1] 9');
+			assertSliceRuns('delayedAssign forced through get', 'y <- 2\ndelayedAssign("x", y + 1)\nprint(get("x"))', '3@print', '[1] 3');
+			assertSliceRuns('delayedAssign forced in a function', 'delayedAssign("x", {z <<- 3; 4})\nf <- function() x\nz <- 1\nf()\nprint(z)', '5@print', '[1] 3');
+			assertSliceRuns('delayedAssign is forced once', 'y <- 1\ndelayedAssign("x", y)\ny <- 2\nx\ny <- 3\nprint(x)', '6@print', '[1] 2');
+			assertSliceRuns('delayedAssign not forced by a call that skips it', 'y <- 1\ndelayedAssign("x", {y <<- 5; 0})\nf <- function(b) if(b) x\nf(FALSE)\nx\nprint(y)', '6@print', '[1] 5');
+			assertSliceRuns('delayedAssign forced after a call wrote what it reads', 'k <- 1\ndelayedAssign("v", k + 1)\nf <- function() {\n  k <<- 9\n  v\n}\nprint(f())', '7@print', '[1] 10');
+			assertSliceRuns('makeActiveBinding reads on every access', 'makeActiveBinding("x", function() y + 1, environment())\ny <- 4\nprint(x)', '3@print', '[1] 5');
+		});
+	});
+	describe('Promises with higher-order functions, recursion and loops, run in R', () => {
+		const name = (s: string) => decorateLabelContext(label(s, ['function-calls', 'formals-promises']), ['dataflow']);
+		const assertSliceRuns = (title: string, code: string, criterion: SlicingCriterion, lastLine: string) => assertSliceRunsInR(name(title), shell, code, criterion, lastLine);
+		function assertReaches(title: string, code: string, target: SlicingCriterion, expected: boolean) {
+			test.each([shell, new TreeSitterExecutor()])(name(`${title} (%s)`), async parser => {
+				assert.strictEqual(await controlReaches(parser, code, target), expected);
+			});
+		}
+		describe('higher-order functions', () => {
+			const applyF = 'apply_f <- function(f, x) f(x)\n';
+			assertReaches('a promise handed through to a function that never forces it', applyF + 'g <- function(a) 1\nh <- function() {\n  apply_f(g, return(5))\n  "alive"\n}\nh()', '5@"alive"', true);
+			assertSliceRuns('the lazy callee decides the result', applyF + 'g <- function(a) 1\nh <- function() {\n  apply_f(g, return(5))\n  "alive"\n}\nprint(h())', '7@print', '[1] "alive"');
+			assertReaches('a promise handed through to a function that forces it', applyF + 'g <- function(a) a\nh <- function() {\n  apply_f(g, return(5))\n  "alive"\n}\nh()', '5@"alive"', false);
+			assertSliceRuns('the forcing callee decides the result', applyF + 'g <- function(a) a\nh <- function() {\n  apply_f(g, return(5))\n  "alive"\n}\nprint(h())', '7@print', '[1] 5');
+			assertSliceRuns('a closure handed to sapply returns from the closure only', 'h <- function() {\n  r <- sapply(1:3, function(i) if(i == 2) return("x") else i)\n  "end"\n}\nprint(h())', '5@print', '[1] "end"');
+			assertReaches('a closure handed to sapply returns from the closure only', 'h <- function() {\n  r <- sapply(1:3, function(i) if(i == 2) return("x") else i)\n  "end"\n}\nh()', '3@"end"', true);
+			assertSliceRuns('a closure handed to a function that calls it writes globally', 'x <- 1\ns <- function() x <<- 2\ng <- function(f) f()\ng(s)\ny <- 0\nprint(x)', '6@print', '[1] 2');
+			assertSliceRuns('an anonymous closure handed to a function that calls it writes globally', 'x <- 1\ng <- function(f) f()\ng(function() x <<- 2)\nprint(x)', '4@print', '[1] 2');
+			assertSliceRuns('a promise captured by a closure is forced when the closure runs', 'mk <- function(x) function() x\nh <- function() {\n  k <- mk(return(1))\n  k()\n  "end"\n}\nprint(h())', '7@print', '[1] 1');
+		});
+		describe('recursion (fixpoint)', () => {
+			assertSliceRuns('a promise handed down until it is forced', 'f <- function(n, x) if(n > 0) f(n - 1, x) else x\nh <- function() {\n  f(3, return(1))\n  "alive"\n}\nprint(h())', '6@print', '[1] 1');
+			assertSliceRuns('a promise handed down but never forced', 'rec <- function(n, a) if(n == 0) 0 else rec(n - 1, a)\nh <- function() {\n  rec(3, return(1))\n  "alive"\n}\nprint(h())', '6@print', '[1] "alive"');
+			assertReaches('a promise handed down until it is forced', 'f <- function(n, x) if(n > 0) f(n - 1, x) else x\nh <- function() {\n  f(3, return(1))\n  "alive"\n}\nh()', '4@"alive"', false);
+			assertReaches('a promise handed down but never forced', 'rec <- function(n, a) if(n == 0) 0 else rec(n - 1, a)\nh <- function() {\n  rec(3, return(1))\n  "alive"\n}\nh()', '4@"alive"', true);
+		});
+		describe('evaluation order', () => {
+			assertSliceRuns('the callee forces its arguments in its own order', 'f <- function(a, b) { b; a }\nf(x <- 1, x <- 2)\nprint(x)', '3@print', '[1] 1');
+			assertSliceRuns('a definition in a promise nobody forces does not happen', 'x <- 1\nf <- function(a) if(FALSE) a\nf(x <- 2)\nprint(x)', '4@print', '[1] 1');
+			assertSliceRuns('a default sees the body it is forced in', 'f <- function(x = y) { y <- 2; x }\nprint(f())', '2@print', '[1] 2');
+			assertSliceRuns('a jump within a default leaves the function using it', 'cond <- TRUE\nf <- function(x = return("early")) { if(cond) x; "late" }\nprint(f())', '3@print', '[1] "early"');
+		});
+		describe('nested calls', () => {
+			const forwarding = 'outer <- function(y) inner(y)\ninner <- function(z) z\nh <- function() {\n  outer(return(1))\n  "alive"\n}\n';
+			assertReaches('a promise forwarded to a function that forces it', forwarding + 'h()', '5@"alive"', false);
+			assertSliceRuns('a promise forwarded to a function that forces it', forwarding + 'print(h())', '7@print', '[1] 1');
+			const dropping = 'outer <- function(y) inner(y)\ninner <- function(z) 0\nh <- function() {\n  outer(return(1))\n  "alive"\n}\n';
+			assertReaches('a promise forwarded to a function that drops it', dropping + 'h()', '5@"alive"', true);
+			assertSliceRuns('a promise forwarded to a function that drops it', dropping + 'print(h())', '7@print', '[1] "alive"');
+			const composed = 'compose <- function(f, g) function(x) f(g(x))\nid <- function(v) v\nk <- compose(id, id)\nh <- function() {\n  k(return(2))\n  "alive"\n}\n';
+			assertSliceRuns('a promise handed to a composed closure', composed + 'print(h())', '8@print', '[1] 2');
+			const conditional = 'w <- function(a, b) { if(a > 0) b else 0 }\nv <- function(n, q) w(n, q)\nh <- function() {\n  v(0, return("early"))\n  "late"\n}\n';
+			assertReaches('a promise forwarded to a function forcing it only on one branch', conditional + 'h()', '5@"late"', true);
+			assertSliceRuns('a promise forwarded to a function forcing it only on one branch', conditional + 'print(h())', '7@print', '[1] "late"');
+			assertSliceRuns('a definition forwarded to a function that drops it', 'x <- 1\no <- function(a) i(a)\ni <- function(b) if(FALSE) b\no(x <- 2)\nprint(x)', '5@print', '[1] 1');
+			assertSliceRuns('a definition forwarded to a function that forces it', 'x <- 1\no <- function(a) i(a)\ni <- function(b) b\no(x <- 2)\nprint(x)', '5@print', '[1] 2');
+			assertSliceRuns('a nested call reads what its own global write replaces', 'counter <- 0\ninc <- function() counter <<- counter + 1\nf <- function() inc()\nf()\nprint(counter)', '5@print', '[1] 1');
+			assertSliceRuns('a nested call made on some paths only writes maybe', 'counter <- 0\ninc <- function() counter <<- 5\nf <- function(n) if(n > 0) inc()\nf(0)\nprint(counter)', '5@print', '[1] 0');
+			assertSliceRuns('draws within nested calls advance the state', 'set.seed(1)\nf <- function() g()\ng <- function() runif(1)\nf()\nr <- runif(1)\nprint(r)', '6@print', '[1] 0.3721239');
+		});
+		describe('rewriting a closure handed in', () => {
+			/* `body<-` on the global binding changes what the promise `f` already refers to, as it is the same closure */
+			assertSliceRuns('a body rewritten through the global binding changes the handed-in closure', 'adder <- function(n) function(x) x + n; add1 <- adder(1)\ntwice <- function(f, x) {\n  body(add1) <<- quote(x - n)\n  y <- f(f(x))\n  paste(deparse(body(f)), "=", y)\n}\nprint(twice(add1, 5))', '7@print', '[1] "x - n = 3"');
+		});
+		describe('the random number generator', () => {
+			assertSliceRuns('draws within a higher-order function advance the state', 'set.seed(1)\nxs <- sapply(1:3, function(i) runif(1))\nr <- runif(1)\nprint(r)', '4@print', '[1] 0.9082078');
+			assertSliceRuns('draws within evaluated code advance the state', 'set.seed(1)\ne <- quote(runif(1))\neval(e)\nr <- runif(1)\nprint(r)', '5@print', '[1] 0.3721239');
+			assertSliceRuns('draws within a loop advance the state', 'set.seed(1)\nf <- function() runif(1)\nfor(i in 1:2) f()\nr <- runif(1)\nprint(r)', '5@print', '[1] 0.5728534');
+		});
+	});
+	describe('Ambient state through every way of calling a function, run in R', () => {
+		const name = (s: string) => decorateLabelContext(label(s, ['function-calls', 'side-effects-in-function-call']), ['dataflow', 'slice']);
+		const assertSliceRuns = (title: string, code: string, lastLine: string) => assertSliceRunsInR(name(title), shell, code, `${code.split('\n').length}@print`, lastLine);
+		describe('random numbers', () => {
+			const rng = (title: string, body: string, expected: string) => assertSliceRuns(title, `set.seed(1)\n${body}\nr <- runif(1)\nprint(r)`, expected);
+			const one = '[1] 0.3721239';
+			const two = '[1] 0.5728534';
+			describe('user functions', () => {
+				rng('a direct call', 'f <- function() runif(1)\nf()', one);
+				rng('a nested call', 'g <- function() runif(1)\nf <- function() g()\nf()', one);
+				rng('a nested call defined later', 'f <- function() g()\ng <- function() runif(1)\nf()', one);
+				rng('a recursive call', 'f <- function(n) if(n > 0) { runif(1); f(n - 1) }\nf(2)', two);
+				rng('mutually recursive calls', 'a <- function(n) if(n > 0) b(n - 1)\nb <- function(n) { runif(1); a(n) }\na(2)', two);
+				rng('a call on a true condition', 'f <- function() runif(1)\nc <- TRUE\nif(c) f()', one);
+				rng('a call on a false condition', 'f <- function() runif(1)\nc <- FALSE\nif(c) f()', '[1] 0.2655087');
+				rng('a call in a for loop', 'f <- function() runif(1)\nfor(i in 1:2) f()', two);
+				rng('a call in a while loop', 'f <- function() runif(1)\ni <- 0\nwhile(i < 2) { f(); i <- i + 1 }', two);
+				rng('a draw on the taken path of the callee', 'f <- function(n) if(n > 1) runif(1)\nf(2)', one);
+				rng('a draw on the path the callee does not take', 'f <- function(n) if(n > 1) runif(1)\nf(0)', '[1] 0.2655087');
+				rng('a reseed within a call', 'f <- function() set.seed(42)\nf()', '[1] 0.914806');
+				rng('a draw whose result is assigned', 'f <- function() runif(1)\nx <- f()', one);
+				rng('a draw in a loop within the callee', 'f <- function() for(i in 1) runif(1)\nf()', one);
+				rng('a seed restored through .Random.seed', 's <- .Random.seed\nrunif(1)\nf <- function() assign(".Random.seed", s, envir = globalenv())\nf()', '[1] 0.2655087');
+				rng('a seed restored through a super-assignment', 's <- .Random.seed\nrunif(1)\nf <- function() .Random.seed <<- s\nf()', '[1] 0.2655087');
+			});
+			describe('higher-order functions', () => {
+				const g = 'g <- function(f) f(1)\n';
+				rng('a built-in handed to a user function', g + 'g(runif)', one);
+				rng('a built-in handed down twice', g + 'k <- function(f) g(f)\nk(runif)', one);
+				rng('a sampler handed to a user function', 'g <- function(f) f(10)\ng(sample)', '[1] 0.2059746');
+				rng('an anonymous closure handed to a user function', g + 'g(function(n) runif(n))', one);
+				rng('a named closure handed to a user function', g + 'h <- function(n) runif(n)\ng(h)', one);
+				rng('a closure handed down twice', g + 'k <- function(f) g(f)\nk(function(n) runif(n))', one);
+				rng('a reseeding closure handed to a user function', 'g <- function(f) f()\ng(function() set.seed(42))', '[1] 0.914806');
+				rng('a draw after the callback within the caller', 'g <- function(f) { f(1); runif(1) }\ng(runif)', two);
+				rng('a closure from a factory', 'mk <- function() function() runif(1)\nk <- mk()\nk()', one);
+				rng('a closure in a list', 'l <- list(f = function() runif(1))\nl$f()', one);
+				rng('a closure in a list by index', 'l <- list(function() runif(1))\nl[[1]]()', one);
+				rng('a built-in stored in a variable', 'h <- runif\nh(1)', one);
+				rng('lapply', 'x <- lapply(1:2, function(i) runif(1))', two);
+				rng('sapply with a built-in', 'x <- sapply(1:2, runif)', '[1] 0.9082078');
+				rng('vapply', 'x <- vapply(1:2, function(i) runif(1), numeric(1))', two);
+				rng('Map', 'x <- Map(function(i) runif(1), 1:2)', two);
+				rng('mapply', 'x <- mapply(function(i) runif(1), 1:2)', two);
+				rng('Filter', 'x <- Filter(function(i) runif(1) > 0.5, 1:2)', two);
+				rng('Reduce', 'x <- Reduce(function(a, b) a + runif(1), 1:3)', two);
+				rng('do.call with a built-in', 'x <- do.call(runif, list(2))', two);
+				rng('do.call with a name', 'x <- do.call("runif", list(2))', two);
+				rng('do.call with a closure', 'x <- do.call(function(n) runif(n), list(2))', two);
+				rng('lapply reseeding', 'x <- lapply(1, function(i) set.seed(42))', '[1] 0.914806');
+				rng('purrr::map', 'x <- purrr::map(1:2, function(i) runif(1))', two);
+				rng('Map with a built-in', 'x <- Map(runif, 1:2)', '[1] 0.9082078');
+				rng('mapply with a built-in', 'x <- mapply(runif, 1:2)', '[1] 0.9082078');
+				rng('a user function handed to sapply', g + 'x <- sapply(1:2, function(i) g(runif))', two);
+				rng('do.call of a user function', g + 'x <- do.call(g, list(runif))', one);
+				rng('a higher-order call within a function', g + 'w <- function() g(runif)\nw()', one);
+				rng('a higher-order call in a loop', g + 'for(i in 1:2) g(runif)', two);
+				rng('a higher-order call on a condition', g + 'c <- TRUE\nif(c) g(runif)', one);
+				rng('a higher-order call within local', g + 'local(g(runif))', one);
+				rng('a recursive higher-order call', 'g <- function(f, n) if(n > 0) { f(1); g(f, n - 1) }\ng(runif, 2)', two);
+				rng('a promise within a handed closure', g + 'h <- function(x) x\ng(function(n) h(runif(n)))', one);
+				rng('a callback seeding before a draw of the caller', 'g <- function(f) { f(); runif(1) }\nx <- g(function() set.seed(42))', '[1] 0.9370754');
+				assertSliceRuns('a draw in a function called after a higher-order call', 'set.seed(1)\ng <- function(f) f(1)\ng(runif)\nk <- function() runif(1)\nr <- k()\nprint(r)', one);
+				assertSliceRuns('the value of a higher-order call', 'set.seed(1)\ng <- function(f) { f(1); runif(1) }\nprint(g(runif))', one);
+			});
+			describe('promises', () => {
+				rng('a draw forced by the callee', 'h <- function(x) x\nh(runif(1))', one);
+				rng('a draw the callee never forces', 'h <- function(x) 1\nh(runif(1))', '[1] 0.2655087');
+				rng('a draw forced twice', 'h <- function(x) { x; x }\nh(runif(1))', one);
+				rng('a draw forced within a nested callee', 'i <- function(y) y\nh <- function(x) i(x)\nh(runif(1))', one);
+				rng('a default forced', 'f <- function(x = runif(1)) x\nf()', one);
+				rng('a default never forced', 'f <- function(x = runif(1)) 1\nf()', '[1] 0.2655087');
+				rng('a draw handed to a user function that forces it later', 'h <- function(x) { y <- 1; x + y }\nh(runif(1))', one);
+			});
+			describe('evaluation contexts', () => {
+				rng('local', 'local(runif(1))', one);
+				rng('a call within local', 'local({ f <- function() runif(1); f() })', one);
+				rng('eval of a quote', 'eval(quote(runif(1)))', one);
+				rng('eval of a stored quote', 'e <- quote(runif(1))\neval(e)', one);
+				rng('tryCatch code', 'tryCatch(runif(1), error = function(e) 0)', one);
+				rng('tryCatch handler', 'tryCatch(stop("x"), error = function(e) runif(1))', one);
+				rng('tryCatch finally', 'tryCatch(1, finally = runif(1))', one);
+				rng('on.exit', 'f <- function() { on.exit(runif(1)); 1 }\nf()', one);
+				rng('withr::with_seed restores the generator', 'withr::with_seed(42, runif(1))', '[1] 0.2655087');
+			});
+			describe('the state of the generator', () => {
+				assertSliceRuns('reading .Random.seed', 'set.seed(1)\nprint(.Random.seed[3])', '[1] -169270483');
+				assertSliceRuns('restoring a saved .Random.seed', 'set.seed(1)\ns <- .Random.seed\nx <- runif(1)\n.Random.seed <- s\nprint(runif(1))', '[1] 0.2655087');
+				assertSliceRuns('RNGkind before a seed', 'RNGkind("Wichmann-Hill")\nset.seed(1)\nprint(runif(1))', '[1] 0.1297134');
+				assertSliceRuns('the kind set.seed sets persists', 'set.seed(1, kind = "Wichmann-Hill")\nx <- runif(1)\nset.seed(1)\nprint(runif(1))', '[1] 0.1297134');
+			});
+		});
+		describe('options', () => {
+			const digits = (title: string, body: string, expected = '[1] 3.14') => assertSliceRuns(title, `${body}\nprint(pi)`, expected);
+			const set = 'function() options(digits = 3)';
+			digits('a direct call', `f <- ${set}\nf()`);
+			digits('a nested call', `f <- ${set}\nk <- function() f()\nk()`);
+			digits('a recursive call', 'f <- function(n) if(n > 0) f(n - 1) else options(digits = 3)\nf(2)');
+			digits('a call on a condition', `f <- ${set}\nc <- TRUE\nif(c) f()`);
+			digits('a call in a loop', `f <- ${set}\nfor(i in 1:2) f()`);
+			digits('a call on the path not taken', 'f <- function(n) if(n > 1) options(digits = 3)\nf(0)', '[1] 3.141593');
+			digits('a closure handed to a user function', `g <- function(f) f()\ng(${set})`);
+			digits('a named closure handed to a user function', `g <- function(f) f()\nh <- ${set}\ng(h)`);
+			digits('options handed to a user function', 'g <- function(f, ...) f(...)\ng(options, digits = 3)');
+			digits('lapply', 'x <- lapply(1, function(i) options(digits = 3))');
+			digits('do.call', 'do.call(options, list(digits = 3))');
+			digits('a closure from a factory', `mk <- function() ${set}\nk <- mk()\nk()`);
+			digits('a promise forced by the callee', 'h <- function(x) x\nh(options(digits = 3))');
+			digits('a promise the callee never forces', 'h <- function(x) 1\nh(options(digits = 3))', '[1] 3.141593');
+			digits('local', 'local(options(digits = 3))');
+			digits('withr::local_options in a function', 'f <- function() withr::local_options(digits = 3)\nf()', '[1] 3.141593');
+			digits('tryCatch', 'tryCatch(options(digits = 3), error = function(e) 0)');
+			digits('a higher-order call within a function', `g <- function(f) f()\nw <- function() g(${set})\nw()`);
+			digits('a higher-order call on a condition', `g <- function(f) f()\nc <- TRUE\nif(c) g(${set})`);
+			digits('a closure handed down twice', `g <- function(f) f()\nk <- function(f) g(f)\nk(${set})`);
+			digits('options handed to sapply', 'x <- sapply(1, function(i) options(digits = 3))');
+			assertSliceRuns('printing in a function called after a higher-order call', `g <- function(f) f()\ng(${set})\nk <- function() format(pi)\nprint(k())`, '[1] "3.14"');
+			assertSliceRuns('getOption after a closure handed to a user function', 'g <- function(f) f()\ng(function() options(myopt = 5))\nprint(getOption("myopt"))', '[1] 5');
+			const warns = 'r <- tryCatch({ warning("w"); "no" }, error = function(e) "error")\nprint(r)';
+			assertSliceRuns('warn set in a called function', `f <- function() options(warn = 2)\nf()\n${warns}`, '[1] "error"');
+			assertSliceRuns('warn set in a closure handed to a user function', `g <- function(f) f()\ng(function() options(warn = 2))\n${warns}`, '[1] "error"');
+			assertSliceRuns('warn set in lapply', `x <- lapply(1, function(i) options(warn = 2))\n${warns}`, '[1] "error"');
+			assertSliceRuns('warn set by options handed to a user function', `g <- function(f, ...) f(...)\ng(options, warn = 2)\n${warns}`, '[1] "error"');
+			assertSliceRuns('warn set before a warning within a function', 'g <- function(f) f()\ng(function() options(warn = 2))\nk <- function() tryCatch({ warning("w"); "no" }, error = function(e) "error")\nprint(k())', '[1] "error"');
+			assertSliceRuns('warn kept below two', `f <- function() options(warn = 1)\nf()\n${warns}`, '[1] "no"');
+		});
+		assertSliceRuns('a super-assignment in a closure handed down twice', 'x <- 1\ng <- function(f) f()\nk <- function(f) g(f)\nk(function() x <<- 2)\nprint(x)', '[1] 2');
+		describe('files', () => {
+			const file = (title: string, body: string, expected: string) => assertSliceRuns(title, `p <- tempfile()\n${body}`, expected);
+			file('a connection written and closed', 'con <- file(p, "w")\nwriteLines("c", con)\nclose(con)\nprint(readLines(p))', '[1] "c"');
+			file('a connection appended to', 'writeLines("x", p)\ncon <- file(p, "a")\nwriteLines("y", con)\nclose(con)\nprint(readLines(p)[2])', '[1] "y"');
+			file('a connection flushed', 'con <- file(p, "w")\nwriteLines("y", con)\nflush(con)\nprint(readLines(p))', '[1] "y"');
+			file('a sink to a connection', 'zz <- file(p, "w")\nsink(zz)\ncat("s\\n")\nsink()\nclose(zz)\nprint(readLines(p))', '[1] "s"');
+			file('capture.output to a file', 'capture.output(print(5), file = p)\nprint(readLines(p))', '[1] "[1] 5"');
+			file('dput and dget', 'dput(3, file = p)\nprint(dget(p))', '[1] 3');
+			file('file.size', 'writeLines("abc", p)\nprint(file.size(p))', '[1] 4');
+			file('a file sourced after a call wrote it', 'f <- function() writeLines("zz <- 3", p)\nf()\nsource(p)\nprint(zz)', '[1] 3');
+			file('cat appending in a function', 'cat("a\\n", file = p)\nw <- function(s) cat(s, "\\n", file = p, append = TRUE)\nw("b")\nprint(length(readLines(p)))', '[1] 2');
+		});
+		describe('graphics', () => {
+			const mar = (title: string, body: string, expected = '[1] 1 1 1 1') => assertSliceRuns(title, `${body}\nprint(par("mar"))`, expected);
+			const set = 'function() par(mar = c(1, 1, 1, 1))';
+			mar('a direct call', `f <- ${set}\nf()`);
+			mar('a nested call', `f <- ${set}\nk <- function() f()\nk()`);
+			mar('a call in a loop', `f <- ${set}\nfor(i in 1:2) f()`);
+			mar('a closure handed to a user function', `g <- function(f) f()\ng(${set})`);
+			mar('par handed to a user function', 'g <- function(f, ...) f(...)\ng(par, mar = c(1, 1, 1, 1))');
+			mar('lapply', 'x <- lapply(1, function(i) par(mar = c(1, 1, 1, 1)))');
+			mar('a promise forced by the callee', 'h <- function(x) x\nh(par(mar = c(1, 1, 1, 1)))');
+			mar('a plot after the call', `f <- ${set}\nf()\nplot(1)`);
+			mar('a higher-order call within a function', `g <- function(f) f()\nw <- function() g(${set})\nw()`);
+			mar('do.call with par', 'do.call(par, list(mar = c(1, 1, 1, 1)))');
+			mar('palette handed to a user function does not touch the parameters', 'g <- function(f, ...) f(...)\ng(palette, "R3")', '[1] 5.1 4.1 4.1 2.1');
+			assertSliceRuns('palette handed to a user function', 'g <- function(f, ...) f(...)\ng(palette, "R3")\nprint(palette()[2])', '[1] "red"');
+			assertSliceRuns('palette set in a closure handed to a user function', 'g <- function(f) f()\ng(function() palette("R3"))\nprint(palette()[2])', '[1] "red"');
+		});
+	});
+}));
+
+describe('Calls checked against R', withTreeSitter(parser => {
+	const check = (cases: readonly (readonly [string, string, string?])[]) => {
+		for(const [name, code, absent] of cases) {
+			assertSliceMatchesR(parser, name, code, { absent });
+		}
+	};
+	describe('soundness of slices', () => check([
+		['R5 only', 'Counter <- function() { self <- environment(); n <- 0; inc <- function() n <<- n + 1; self }\nc1 <- Counter()\nc1$inc()\nprint(c1$n)'],
+		['local env', 'x <- 1\nlocal({ x <<- 2 })\nprint(x)'],
+		['closure in list', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nfs <- list(mk(), mk())\nfs[[1]]()\nr <- fs[[1]]()\nprint(r)'],
+		['Reduce closure', 'acc <- 0\nReduce(function(a, b) { acc <<- acc + b; a + b }, 1:3)\nprint(acc)'],
+		['on.exit', 'x <- 1\nf <- function() { on.exit(x <<- 5); 2 }\nf()\nprint(x)'],
+		['repeat break promise', 'f <- function(a) { repeat { if(a > 0) break }; 3 }\nx <- 0\nr <- f(x <- 1)\nprint(x)'],
+		['recursion global', 'cnt <- 0\nf <- function(n) { cnt <<- cnt + 1; if(n > 0) f(n - 1) }\nf(3)\nprint(cnt)'],
+		['assign dynamic', 'nm <- paste0("v", 1)\nassign(nm, 42)\nprint(v1)'],
+		['get dynamic', 'v2 <- 7\nnm <- "v2"\nprint(get(nm))'],
+		['environment(fn)$var', 'mk <- function() { s <- 1; function() s }\nf <- mk()\nenvironment(f)$s <- 9\nprint(f())'],
+		['replacement user fn', '`second<-` <- function(x, value) { x[2] <- value; x }\nv <- c(1, 2, 3)\nsecond(v) <- 10\nprint(v)'],
+		['names<-', 'v <- 1:2\nnames(v) <- c("a", "b")\nprint(names(v))'],
+		['attr<-', 'v <- 1\nattr(v, "u") <- "m"\nprint(attr(v, "u"))'],
+		['switch fallthrough', 'k <- "b"\nr <- switch(k, a = , b = 2, 3)\nprint(r)'],
+		['do.call list args', 'f <- function(a, b) a - b\nargs <- list(b = 1, a = 5)\nprint(do.call(f, args))'],
+		['Map closure global', 'tot <- 0\nMap(function(x, y) tot <<- tot + x * y, 1:2, 3:4)\nprint(tot)'],
+		['vapply side effect', 'cnt <- 0\nvapply(1:3, function(i) { cnt <<- cnt + i; 0 }, numeric(1))\nprint(cnt)'],
+		['tryCatch finally', 'x <- 1\ntryCatch(stop("e"), error = function(e) x <<- 2, finally = x <<- x * 10)\nprint(x)'],
+		['Recall', 'f <- function(n) if(n <= 1) 1 else n * Recall(n - 1)\nprint(f(4))'],
+		['sys.function', 'f <- function(n) if(n <= 1) 1 else n * sys.function()(n - 1)\nprint(f(4))'],
+		['eval in env', 'e <- new.env()\neval(quote(z <- 3), e)\nprint(e$z)'],
+		['evalq local', 'z <- 1\nevalq(z <- 4, globalenv())\nprint(z)'],
+		['lazy default uses later local', 'f <- function(a = b) { b <- 5; a }\nprint(f())'],
+		['promise forced once', 'cnt <- 0\nf <- function(x) { x; x; x }\nf({ cnt <<- cnt + 1 })\nprint(cnt)'],
+		['missing arg', 'f <- function(a) if(missing(a)) "none" else a\nprint(f())'],
+		['ellipsis forward', 'g <- function(...) h(...)\nh <- function(a, b) a * b\nprint(g(b = 3, a = 2))'],
+		['nargs', 'f <- function(...) nargs()\nprint(f(1, 2, 3))'],
+		['match.arg', 'f <- function(t = c("x", "y")) match.arg(t)\nprint(f())'],
+		['seed in tryCatch', 'tryCatch(set.seed(2), error = function(e) NULL)\nprint(runif(1))'],
+		['options restore', 'op <- options(digits = 3)\noptions(op)\nprint(pi)'],
+		['global via assign envir', 'f <- function() assign("g1", 8, envir = globalenv())\nf()\nprint(g1)'],
+		['sapply closure draws', 'set.seed(4)\ninvisible(sapply(1:2, function(i) runif(1)))\nprint(runif(1))'],
+		['conditional seed in fn', 'f <- function(s) if(s) set.seed(1)\nf(TRUE)\nprint(runif(1))'],
+		['while counter', 'i <- 0\nwhile(i < 3) i <- i + 1\nprint(i)'],
+		['for over list modify', 'l <- list(1, 2)\nfor(j in seq_along(l)) l[[j]] <- l[[j]] * 2\nprint(l[[2]])'],
+		['S3 NextMethod', 'print.a <- function(x, ...) { cat("a "); NextMethod() }\nprint.b <- function(x, ...) cat("b\\n")\nobj <- structure(1, class = c("a", "b"))\nprint(obj)'],
+		['R5 like env obj', 'Counter <- function() { self <- environment(); n <- 0; inc <- function() n <<- n + 1; self }\nc1 <- Counter()\nc1$inc()\nprint(c1$n)'],
+	]));
+	describe('ambient state', () => check([
+		['reading .Random.seed', 'set.seed(1)\nprint(.Random.seed[3])'],
+		['exists .Random.seed after a draw', 'x <- runif(1)\nprint(exists(".Random.seed"))'],
+		['restoring a saved .Random.seed', 'set.seed(1)\ns <- .Random.seed\nx <- runif(1)\n.Random.seed <- s\nprint(runif(1))'],
+		['restoring a saved .Random.seed via assign', 'set.seed(1)\ns <- .Random.seed\nx <- runif(1)\nassign(".Random.seed", s, envir = globalenv())\nprint(runif(1))'],
+		['RNGkind', 'RNGkind("Wichmann-Hill")\nset.seed(1)\nprint(runif(1))'],
+		['RNGkind sample.kind', 'RNGkind(sample.kind = "Rounding")\nset.seed(1)\nprint(sample(10, 1))'],
+		['set.seed kind persists', 'set.seed(1, kind = "Marsaglia-Multicarry")\nx <- runif(1)\nset.seed(1)\nprint(runif(1))'],
+		['Vectorize', 'set.seed(1)\ng <- Vectorize(runif)\ng(1)\nprint(runif(1))'],
+		['Vectorize of a function without effects', 'set.seed(1)\ng <- Vectorize(function(x) x + 1)\ng(1)\nprint(runif(1))', 'g(1)'],
+		['Negate', 'set.seed(1)\ng <- Negate(function(x) runif(1) > 2)\ng(1)\nprint(runif(1))'],
+		['Negate of a built-in without effects', 'set.seed(1)\ng <- Negate(is.null)\ng(1)\nprint(runif(1))', 'g(1)'],
+		['factory over a built-in parameter', 'set.seed(1)\nmk <- function(f) function() f(1)\nh <- mk(runif)\nh()\nprint(runif(1))'],
+		['factory over a built-in without effects', 'set.seed(1)\nmk <- function(f) function() f(1)\nh <- mk(sqrt)\nh()\nprint(runif(1))', 'h()'],
+		['factory over a closure parameter', 'set.seed(1)\nmk <- function(f) function() f()\nh <- mk(function() runif(1))\nh()\nprint(runif(1))'],
+		['factory over options', 'mk <- function(f) function() f(digits = 3)\nh <- mk(options)\nh()\nprint(pi)'],
+		['factory over writeLines', 'p <- tempfile()\nmk <- function(f) function() f("w", p)\nh <- mk(writeLines)\nh()\nprint(readLines(p))'],
+		['factory over a built-in writing no file', 'p <- tempfile()\nwriteLines("a", p)\nmk <- function(f) function() f("w")\nh <- mk(nchar)\nh()\nprint(readLines(p))', 'h()'],
+		['withr::local_seed in a function', 'f <- function() { withr::local_seed(3); runif(1) }\nset.seed(1)\nf()\nprint(runif(1))'],
+		['delayedAssign draw', 'set.seed(1)\ndelayedAssign("dd", runif(1))\ndd\nprint(runif(1))'],
+		['delayedAssign never forced', 'set.seed(1)\ndelayedAssign("dd", runif(1))\nee <- 2\nee\nprint(runif(1))', 'delayedAssign'],
+		['delayedAssign options', 'delayedAssign("dd", options(digits = 3))\ndd\nprint(pi)'],
+		['delayedAssign options never forced', 'delayedAssign("dd", options(digits = 3))\nprint(pi)', 'delayedAssign'],
+		['body<-', 'set.seed(1)\nf <- function() 1\nbody(f) <- quote(runif(1))\nf()\nprint(runif(1))'],
+		['S3 method draws', 'set.seed(1)\nfoo <- function(x) UseMethod("foo")\nfoo.default <- function(x) runif(1)\nfoo(1)\nprint(runif(1))'],
+		['S3 method sets options', 'foo <- function(x) UseMethod("foo")\nfoo.default <- function(x) options(digits = 3)\nfoo(1)\nprint(pi)'],
+		['auto-printing method draws', 'set.seed(1)\nprint.zz <- function(x, ...) { runif(1); invisible(x) }\nx <- structure(1, class = "zz")\nx\nprint(runif(1))'],
+		['finalizer draws', 'set.seed(1)\ne <- new.env()\nreg.finalizer(e, function(e) runif(1))\nrm(e)\ninvisible(gc())\nprint(runif(1))'],
+		['finalizer never registered', 'set.seed(1)\ne <- new.env()\nf <- function(e) runif(1)\nrm(e)\ninvisible(gc())\nprint(runif(1))', 'gc'],
+		['writeLines to a connection then close', 'p <- tempfile()\ncon <- file(p, "w")\nwriteLines("c", con)\nclose(con)\nprint(readLines(p))'],
+		['append connection', 'p <- tempfile()\nwriteLines("x", p)\ncon <- file(p, "a")\nwriteLines("y", con)\nclose(con)\nprint(readLines(p)[2])'],
+		['flush connection', 'p <- tempfile()\ncon <- file(p, "w")\nwriteLines("y", con)\nflush(con)\nprint(readLines(p))'],
+		['sink to a connection', 'p <- tempfile()\nzz <- file(p, "w")\nsink(zz)\ncat("s\\n")\nsink()\nclose(zz)\nprint(readLines(p))'],
+		['capture.output to a file', 'p <- tempfile()\ncapture.output(print(5), file = p)\nprint(readLines(p))'],
+		['dput dget', 'p <- tempfile()\ndput(3, file = p)\nprint(dget(p))'],
+		['file.exists after a write', 'p <- file.path(tempdir(), "e.txt")\nwriteLines("x", p)\nprint(file.exists(p))'],
+		['file.size after a write', 'p <- tempfile()\nwriteLines("abc", p)\nprint(file.size(p))'],
+		['file.info after a write', 'p <- tempfile()\nwriteLines("abc", p)\nprint(file.info(p)$size)'],
+		['source of a file written in a function', 'p <- tempfile()\nf <- function() writeLines("zz <- 3", p)\nf()\nsource(p)\nprint(zz)'],
+		['warn 2 aborts an assignment in try', 'options(warn = 2)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nprint(x)'],
+		['warn 2 aborts a loop in try', 'options(warn = 2)\nn <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nprint(n)'],
+		['warn 2 aborts a super-assignment', 'options(warn = 2)\nx <- 1\nf <- function() { log(-1); x <<- 2 }\ntry(f(), silent = TRUE)\nprint(x)'],
+		['warn 2 set in a function aborts', 'x <- 1\nf <- function() options(warn = 2)\nf()\ntry({ log(-1); x <- 5 }, silent = TRUE)\nprint(x)'],
+		['stop in a called function aborts try', 'x <- 1\nf <- function() stop("s")\ntry({ f(); x <- 2 }, silent = TRUE)\nprint(x)'],
+	]));
+	describe('realistic scripts', () => check([
+		['seed lost: rng in loop in fn', 'set.seed(1)\nf <- function() { for(i in 1) y <- runif(1); 0 }\nf()\nprint(runif(1))'],
+		['seed lost: realistic markov chain', 'states <- c("sunny", "cloudy", "rainy")\nP <- matrix(c(0.7, 0.2, 0.1,\n              0.3, 0.4, 0.3,\n              0.2, 0.3, 0.5), nrow = 3, byrow = TRUE, dimnames = list(states, states))\nsimulate_chain <- function(P, start, n_steps) {\n  path <- character(n_steps)\n  path[1] <- start\n  for (t in 2:n_steps) {\n    path[t] <- sample(colnames(P), 1, prob = P[path[t - 1], ])\n  }\n  path\n}\nset.seed(123)\nchain <- simulate_chain(P, "sunny", 200)\ncat("@@", capture.output(print(table(chain))), sep = "\\n")'],
+		['kept call misses its global read', 'lg <- character()\nf <- function(b) { on.exit(lg <<- c(lg, "c")); b }\nf(1)\nprint(2)'],
+		['kept call misses its global read: realistic', 'attempts <- 0\nflaky <- function(fail_until = 3) {\n  attempts <<- attempts + 1\n  if (attempts < fail_until) stop("transient failure ", attempts)\n  "ok"\n}\nretry <- function(f, times = 5, ...) {\n  last_err <- NULL\n  for (i in seq_len(times)) {\n    res <- tryCatch(f(...), error = function(e) { last_err <<- e; NULL })\n    if (!is.null(res)) return(list(value = res, tries = i))\n  }\n  stop(last_err)\n}\nr1 <- retry(flaky)\ncleanup_log <- character()\nwith_resource <- function(name, body) {\n  cleanup_log <<- c(cleanup_log, paste("open", name))\n  on.exit(cleanup_log <<- c(cleanup_log, paste("close", name)), add = TRUE)\n  body\n}\nv1 <- with_resource("db", 42)\nv2 <- tryCatch(with_resource("file", stop("boom")), error = function(e) -1)\ncat("@@", capture.output(print(v2)), sep = "\\n")'],
+		['cat append in fn', 'tf <- tempfile()\ncat("a\\n", file = tf)\nw <- function(s) cat(s, "\\n", file = tf, append = TRUE)\nw("b")\nprint(length(readLines(tf)))'],
+		['writeLines to connection', 'tf <- tempfile()\ncon <- file(tf, open = "w")\nwriteLines("x", con)\nclose(con)\nprint(readLines(tf))'],
+		['sink to textConnection', 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\nprint(buf)'],
+		['file report: realistic', 'out_dir <- tempfile("report")\ndir.create(out_dir)\nreport <- file.path(out_dir, "report.txt")\ndata(mtcars)\ncat("# Report\\n", file = report)\nwrite_section <- function(title, lines, file = report) {\n  cat("##", title, "\\n", file = file, append = TRUE)\n  for (l in lines) cat("-", l, "\\n", file = file, append = TRUE)\n}\nwrite_section("Overview", c(paste("rows:", nrow(mtcars)), paste("cols:", ncol(mtcars))))\nby_cyl <- tapply(mtcars$mpg, mtcars$cyl, mean)\nwrite_section("MPG by cyl", sprintf("%s: %.2f", names(by_cyl), by_cyl))\nlog_file <- file.path(out_dir, "log.txt")\nsink(log_file)\nprint(summary(mtcars$hp))\ncat("done\\n")\nsink()\ncon <- file(file.path(out_dir, "stream.txt"), open = "w")\nfor (g in sort(unique(mtcars$gear))) {\n  writeLines(sprintf("gear=%d n=%d", g, sum(mtcars$gear == g)), con)\n}\nclose(con)\nstream <- readLines(file.path(out_dir, "stream.txt"))\ncon2 <- file(file.path(out_dir, "stream.txt"), open = "a")\nwriteLines("gear=99 n=0", con2)\nclose(con2)\ntxt <- readLines(report)\nheaders <- grep("^##", txt, value = TRUE)\ncat("@@", capture.output(print(headers)), sep = "\\n")'],
+		['env object method mutation', 'mk <- function() { self <- new.env(); self$v <- 0; self$inc <- function(x) self$v <- self$v + x; self }\no <- mk()\no$inc(5)\nprint(o$v)'],
+		['env object method mutation: realistic account', 'Account <- function(owner, balance = 0) {\n  self <- new.env()\n  self$owner <- owner\n  self$balance <- balance\n  self$history <- numeric()\n  self$deposit <- function(x) {\n    self$balance <- self$balance + x\n    self$history <- c(self$history, x)\n    invisible(self)\n  }\n  self$withdraw <- function(x) {\n    if (x > self$balance) stop("insufficient funds")\n    self$balance <- self$balance - x\n    self$history <- c(self$history, -x)\n    invisible(self)\n  }\n  class(self) <- "Account"\n  self\n}\nacc <- Account("ana", 100)\nacc$deposit(50)\nacc$withdraw(30)\ncat("@@", capture.output(print(acc$balance)), sep = "\\n")'],
+		['env param default mutation', 'e <- new.env()\ne$reg <- list()\nreg <- function(k, v, env = e) env$reg[[k]] <- v\nreg("a", 1)\nprint(e$reg$a)'],
+		['env param default mutation: realistic registry', 'pkg_env <- new.env()\npkg_env$registry <- list()\npkg_env$calls <- 0L\nregister <- function(name, fun, env = pkg_env) {\n  env$registry[[name]] <- fun\n  invisible(name)\n}\ndispatch <- function(name, ...) {\n  pkg_env$calls <- pkg_env$calls + 1L\n  f <- pkg_env$registry[[name]]\n  if (is.null(f)) stop("no handler: ", name)\n  f(...)\n}\nregister("sum", function(...) sum(...))\nregister("cat", function(..., sep = "") paste(..., sep = sep))\ncat("@@", capture.output(print(dispatch("sum", 1, 2, 3))), sep = "\\n")'],
+		['closure state via environment(fn)', 'mk <- function() { n <- 0; function() { n <<- n + 1; 0 } }\nh <- mk()\nh()\nprint(environment(h)$n)'],
+		['closure state via environment(fn): realistic hook', 'pkg_env <- new.env()\npkg_env$registry <- list()\npkg_env$calls <- 0L\nregister <- function(name, fun, env = pkg_env) {\n  env$registry[[name]] <- fun\n  invisible(name)\n}\ndispatch <- function(name, ...) {\n  pkg_env$calls <- pkg_env$calls + 1L\n  f <- pkg_env$registry[[name]]\n  if (is.null(f)) stop("no handler: ", name)\n  f(...)\n}\nregister("sum", function(...) sum(...))\nregister("cat", function(..., sep = "") paste(..., sep = sep))\nmake_hook <- function() {\n  calls <- 0\n  hook <- function() { calls <<- calls + 1; sys.function() }\n  hook\n}\nh <- make_hook()\nh2 <- h()\nh2()\ncat("@@", capture.output(print(environment(h)$calls)), sep = "\\n")'],
+		['closure state via environment(fn): hook handed out but not called', 'make_hook <- function() {\n  calls <- 0\n  hook <- function() { calls <<- calls + 1; sys.function() }\n  hook\n}\nh <- make_hook()\nh2 <- h()\ncat("@@", capture.output(print(environment(h)$calls)), sep = "\\n")', 'h2'],
+		['function passed to factory loses body', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n^2\nm <- memo(sq)\nprint(m(4))'],
+		['function passed to factory loses body: realistic memo', 'make_memo <- function(f) {\n  cache <- new.env(parent = emptyenv())\n  hits <- 0\n  function(n) {\n    key <- as.character(n)\n    if (exists(key, envir = cache, inherits = FALSE)) {\n      hits <<- hits + 1\n      return(get(key, envir = cache))\n    }\n    val <- f(n)\n    assign(key, val, envir = cache)\n    val\n  }\n}\nslow_sq <- function(n) { Sys.sleep(0); n^2 }\nmsq <- make_memo(slow_sq)\na <- msq(4)\nb <- msq(4)\nc3 <- msq(5)\ncat("@@", capture.output(print(c(a, b, c3))), sep = "\\n")'],
+		['S3 validation in tryCatch: realistic', 'new_money <- function(amount = double(), currency = "EUR") {\n  stopifnot(is.double(amount))\n  structure(list(amount = amount, currency = currency), class = "money")\n}\nvalidate_money <- function(x) {\n  if (any(x$amount < 0)) stop("negative amount", call. = FALSE)\n  if (!x$currency %in% c("EUR", "USD")) stop("unknown currency")\n  x\n}\nmoney <- function(amount, currency = "EUR") {\n  validate_money(new_money(as.double(amount), currency))\n}\nformat.money <- function(x, digits = 2, ...) {\n  paste(formatC(x$amount, format = "f", digits = digits), x$currency)\n}\nprint.money <- function(x, ...) {\n  cat("<money>", format(x, ...), "\\n")\n  invisible(x)\n}\nsummary.money <- function(object, ...) {\n  structure(list(total = sum(object$amount), n = length(object$amount), currency = object$currency),\n            class = "summary.money")\n}\nprint.summary.money <- function(x, ...) {\n  cat("Total:", x$total, x$currency, "over", x$n, "\\n")\n}\n"+.money" <- function(e1, e2) {\n  if (e1$currency != e2$currency) stop("currency mismatch")\n  money(e1$amount + e2$amount, e1$currency)\n}\nlength.money <- function(x) length(x$amount)\nwallet <- money(c(1.5, 2.25, 10))\nmore <- money(c(1, 1, 1))\nboth <- wallet + more\nbad <- tryCatch(money(-1), error = function(e) conditionMessage(e))\nmixed <- tryCatch(wallet + money(1, "USD"), error = function(e) "mismatch")\ncat("@@", capture.output(print(mixed)), sep = "\\n")'],
+	]));
+	describe('counterexamples', () => check([
+		['UseMethod reconstructed as its argument', 'gen <- function(x) UseMethod("gen")\ngen.default <- function(x) cnt <<- 1\ngen(1)\nprint(cnt)'],
+		['S3 method redefined after the call', 'gen <- function(x) UseMethod("gen")\ngen.a <- function(x) "1"\nr <- gen(structure(1, class = "a"))\ngen.a <- function(x) "2"\nprint(r)'],
+		['user method of a built-in generic', 'summary.zz <- function(object, ...) { cnt <<- 1; 0 }\nsummary(structure(1, class = "zz"))\nprint(cnt)'],
+		['user format method with prior value', 'cnt <- 0\nformat.zz <- function(x, ...) { cnt <<- cnt + 1; "zz" }\nformat(structure(1, class = "zz"))\nprint(cnt)'],
+		['closure from local', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nprint(counter())'],
+		['closures in a list called in a for loop', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\nfor(f in L) f()\nprint(L[[1]]())'],
+		['closures in a list called via lapply', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\ninvisible(lapply(L, function(g) g()))\nprint(L[[1]]())'],
+		['with calls a closure of the environment', 'o <- local({ n <- 0; inc <- function() n <<- 1; environment() })\nwith(o, inc())\nprint(o$n)'],
+		['with calls a built-in only', 'o <- local({ n <- 0; environment() })\nwith(o, sum(1))\nprint(o$n)', 'with'],
+		['active binding setter', 'v <- 0\nmakeActiveBinding("ab", function(val) v <<- val, environment())\nab <- 4\nprint(v)'],
+		['assignment to another name than the active binding', 'v <- 0\nmakeActiveBinding("ab", function(val) v <<- val, environment())\ncd <- 4\nprint(v)', 'cd <- 4'],
+		['assign into sys.frame(-1)', 'f <- function() { v <- 1; g <- function() assign("v", 2, envir = sys.frame(-1)); g(); v }\nprint(f())'],
+		['assign into the own frame leaves the global one', 'v <- 1\nf <- function() { v <- 5; assign("v", 2, envir = environment()); v }\nx <- f()\nprint(v)', 'x <-'],
+		['delayedAssign writes a variable when forced', 'delayedAssign("p", {x <<- 2})\nx <- 1\np\nprint(x)'],
+		['delayedAssign forces a closure writing a variable', 'f <- function() { x <<- 2; 0 }\ndelayedAssign("p", f())\nx <- 1\np\nprint(x)'],
+		['delayedAssign forces a closure writing another variable', 'f <- function() { y <<- 2; 0 }\ndelayedAssign("p", f())\nx <- 1\np\nprint(x)', 'delayedAssign'],
+		['closure returned by sys.function called within a function', 'make_hook <- function() {\n  calls <- 0\n  hook <- function() { calls <<- calls + 1; sys.function() }\n  hook\n}\nh <- make_hook()\nrun <- function() { h2 <- h(); h2(); 0 }\nrun()\nprint(environment(h)$calls)'],
+		['closure returned by a call of a factory result within a function', 'n <- 0\nmk <- function() { f <- function() { n <<- n + 1; sys.function() }; f }\nrun <- function() { g <- mk()(); g() }\nrun()\nprint(n)'],
+		['closure returned within a function but not called', 'n <- 0\nmk <- function() { f <- function() { n <<- n + 1; sys.function() }; f }\nrun <- function() { g <- mk()(); 0 }\nrun()\nprint(n)', 'g <-'],
+	]));
+	/* the last element states whether the shipped signature database is on, as it is outside the tests */
+	describe.sequential('real-world scripts', () => {
+		for(const [name, code, criterion, sigdb] of [
+			['setRefClass contains a class registered by name', 'setRefClass("A", fields = list(a = "numeric"))\nB <- setRefClass("B", contains = "A")\nprint(B$className)', '3@print', false],
+			['setRefClass new of a subclass', 'A <- setRefClass("A", fields = list(a = "numeric"))\nB <- setRefClass("B", contains = "A")\nb <- B$new(a = 3)\nprint(b$a)', '4@print', false],
+			['uncalled ggplot body and a later library', 'f <- 1\ng <- function() ggplot()\nprint(f)\nlibrary(ggplot2)', '3@print', true],
+			['uncalled theme body and a later library', 'f <- 1\ng <- function() theme_classic()\ncat(f, "\\n")\nlibrary(ggplot2)', '3@cat', true],
+		] as const) {
+			assertSliceMatchesR(parser, name, code, { criterion, whole: true, sigdb });
+		}
+	});
+	describe('domains', () => {
+		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+		const keeps = (name: string, code: string, criterion: SlicingCriterion, expected: { has?: readonly string[], lacks?: readonly string[] }) => assertSliceKeeps(sec(name), parser, code, criterion, expected);
+		const adder = 'adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)';
+		keeps('domains:hof the closure argument and its factory call are kept', adder, '4@print', { has: ['adder <- function(n) function(x) x + n', 'add1 <- adder(1)', 'lapply(1:3, add1)'] });
+		keeps('domains:hof a second closure of the factory is not needed', 'adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nadd2 <- adder(2)\nprint(add1(5))', '4@print', { has: ['add1 <- adder(1)'], lacks: ['add2'] });
+		keeps('domains:hof the promise of the factory argument sees the later value', 'adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\nk <- 100\nprint(add(1))', '5@print', { has: ['k <- 100', 'add <- adder(k)'] });
+		keeps('domains:hof the promise of the factory argument does not see the overwritten value', 'adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\nk <- 100\nprint(add(1))', '5@print', { lacks: ['k <- 1\n'] });
+		const factoryOf = (between: string, use = 'print(add(1))') => `adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\n${between}\n${use}`;
+		keeps('domains:hof a promise forced before the overwrite keeps the old value', factoryOf('add(1)\nk <- 100'), '6@print', { has: ['k <- 1\n'] });
+		keeps('domains:hof a conditional overwrite keeps the old value', factoryOf('if(runif(1) > 2) k <- 100'), '5@print', { has: ['k <- 1\n'] });
+		keeps('domains:hof a closure called through an earlier function stays conservative', factoryOf('g <- function() add(1)\nk <- 100', 'print(g())'), '6@print', { has: ['k <- 1\n'] });
+		keeps('domains:hof a closure aliased before the overwrite stays conservative', factoryOf('h <- add\nk <- 100', 'print(h(1))'), '6@print', { has: ['k <- 1\n'] });
+		const plus = 'assign("+", function(a, b) a - b)\n2 + 3';
+		assertCallTargets(sec('domains:reflection a rebound plus calls the new function'), parser, plus, '2@+', { reaches: ['1@function'] });
+		keeps('domains:reflection the rebinding is part of the slice', plus, '2@+', { has: ['assign("+"'] });
+		keeps('domains:reflection an unrelated rebinding is not', 'assign("-", function(a, b) a + b)\n2 + 3', '2@+', { lacks: ['assign'] });
+		keeps('domains:reflection a rebinding through eval is part of the slice', 'eval(parse(text = "`+` <- function(a, b) a - b"))\n2 + 3', '2@+', { has: ['eval(parse'] });
+		keeps('domains:reflection body replacement is part of the slice', 'f <- function(a, b) a + b\nbody(f) <- quote(a - b)\nf(2, 3)', '3@f', { has: ['body(f) <- quote(a - b)'] });
+		keeps('domains:reflection a rebinding in a function body stays there', 'g <- function() {\n  assign("+", function(a, b) a - b)\n  2 + 3\n}\nprint(2 + 3)', '5@print', { lacks: ['assign'] });
+		keeps('vector: the length bound is part of the slice', 'n <- 4L\nx <- 1:n\nprint(x)', '3@print', { has: ['n <- 4L'] });
+		const attr = 'x <- 1:6\ndim(x) <- c(2, 3)\nclass(x) <- "myclass"\ne <- structure(1:6, dim = c(2, 3), class = "myclass")\nprint(dim(x))\nprint(e)';
+		keeps('attr: the replacement sets the attribute', attr, '5@print', { has: ['x <- 1 : 6', 'dim(x) <- c(2, 3)'], lacks: ['structure'] });
+		keeps('attr: structure sets them in one call', attr, '6@print', { has: ['structure'], lacks: ['dim(x) <-', 'class(x) <-'] });
+		const shape = 'df <- data.frame(id = 2:3, points = c(4, 6))\nscore <- 42\nwith(df, {\n  print(score)\n})';
+		keeps('shape: a name in with may be a column or the variable', shape, '4@print', { has: ['df <- data.frame', 'score <- 42'] });
+		const matrix = 'm <- matrix(1:6, nrow = 2)\nr <- t(m) %*% m\nprint(r)';
+		keeps('matrix: the product reads the matrix', matrix, '3@print', { has: ['m <- matrix(1:6, nrow = 2)'] });
+		keeps('order: a cell run again reads the run before', 'x <- 1\nx <- x * 2\nprint(x)', '3@print', { has: ['x <- 1', 'x <- x * 2'] });
+		const graphics = 'df <- data.frame(age = 20:59, income = 2 * (20:59), name = paste0("p", 1:40))\nplot(df$age, df$income)\nw <- par("pin")[1]\nn <- floor(w / strwidth("label", "inches"))\ntext(df$age[1:n], df$income[1:n], df$name[1:n])';
+		keeps('state: the width depends on the device the plot opened', graphics, '4@n', { has: ['plot(df$age, df$income)', 'w <- par("pin")[1]'] });
+		const noisy = 'noisy <- function(x) {\n  set.seed(1)\n  x + rnorm(1)\n}\nr <- runif(1)\na <- noisy(r)\nb <- noisy(runif(1))';
+		keeps('state: the seed set in the function is part of the slice', noisy, '7@b', { has: ['set.seed(1)', 'rnorm(1)'] });
+		const io = 'write.csv(iris, "data.csv")\ndf <- read.csv("data.csv")';
+		keeps('io: reading a file reads what was written to it', io, '2@df', { has: ['write.csv(iris, "data.csv")'] });
+		keeps('io: a file written later is not read', 'df <- read.csv("data.csv")\nwrite.csv(iris, "data.csv")', '1@df', { lacks: ['write.csv'] });
+		const validity = 'x <- rnorm(20)\ny <- rnorm(20)\nt.test(x, y)';
+		keeps('validity: the test reads both samples', validity, '3@t.test', { has: ['x <- rnorm(20)', 'y <- rnorm(20)'] });
+		const pdf = 'name <- readline("File for the plot: ")\npdf(name)\nplot(1:10)\ndev.off()';
+		keeps('security: closing the device keeps the plot on it', pdf, '4@dev.off', { has: ['pdf(name)', 'plot(1:10)'] });
+	});
+}));
+
+describe('Primer', { concurrent: false }, withShell(shell => {
+	assumeLoadedPackages('dplyr');
+	const sec = (s: string) => label(s, ['name-normal', 'function-calls']);
+	function assertReaches(code: string, target: SlicingCriterion, expected: boolean) {
+		describe(code, () => {
+			test.each([shell, new TreeSitterExecutor()])('reaches %s', async parser => {
+				const result = await createDataflowPipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
+				const cfg = extractCfg(result.dataflow);
+				assert.strictEqual(canReach(cfg.graph, cfg.entryPoints, SlicingCriterion.parse(target, result.normalize.idMap)), expected);
+			});
+		});
+	}
+	describe('values: growing vectors', () => {
+		assertSliced(sec('primer:values x[5] <- 1'), shell, 'x <- 1\nx[5] <- 1\nprint(x)', ['3@print'], 'x <- 1\nx[5] <- 1\nprint(x)');
+		assertSliced(sec('primer:values NULL turns into vector'), shell, 'g <- NULL\ng[1] <- 1\nprint(g)', ['3@print'], 'g <- NULL\ng[1] <- 1\nprint(g)');
+	});
+	describe('promises: default argument side effects', () => {
+		const f = 'f <- function(x = {\n  x <- 1\n  2\n}) { x * 2 }\n';
+		const g = 'g <- function(x = {\n  x <- 1\n  2\n}) { x + x }\n';
+		assertSliced(sec('primer:promises f()'), shell, f + 'r <- f()\nprint(r)', ['6@print'], 'f <- function(x={x <- 1; 2}) x * 2\nr <- f()\nprint(r)', { expectedOutput: '[1] 4', expectedSliceOutput: '[1] 4' });
+		assertSliced(sec('primer:promises g()'), shell, g + 'r <- g()\nprint(r)', ['6@print'], 'g <- function(x={x <- 1; 2}) x + x\nr <- g()\nprint(r)', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+		assertSliced(sec('primer:promises unforced default is not needed'), shell, 'k <- function(x = {\n  x <- 1\n  2\n}) { 3 }\nr <- k()\nprint(r)', ['6@print'], 'k <- function(x={x <- 1; 2}) 3\nr <- k()\nprint(r)', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+	});
+	describe('env: assign into the caller', () => {
+		const code = 'f <- function() {\n    var_name <- "x"\n    assign(var_name, 42, envir = parent.frame())\n}\nf()\nprint(x)';
+		assertSliced(sec('primer:env assign parent.frame'), shell, code, ['6@print'], 'f <- function() {\n        var_name <- "x"\n        assign(var_name, 42, envir = parent.frame())\n    }\nf()\nprint(x)', { expectedOutput: '[1] 42', expectedSliceOutput: '[1] 42' });
+		assertDataflow(sec('primer:env use of x reads the assign'), shell, code, emptyGraph().reads('6@x', '3@var_name'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true });
+	});
+	describe('nse', () => {
+		assertSliced(sec('primer:nse subset and with'), shell, 'df <- data.frame(x = c(-1, 2))\nsubset(df, x > 0)\nwith(df, mean(x))', ['3@with'], 'df <- data.frame(x = c(-1, 2))\nwith(df, mean(x))');
+		assertSliced(sec('primer:nse subset'), shell, 'df <- data.frame(x = c(-1, 2))\nsubset(df, x > 0)\nwith(df, mean(x))', ['2@subset'], 'df <- data.frame(x = c(-1, 2))\nsubset(df, x > 0)');
+	});
+	describe('reflection', () => {
+		const code = 'f <- function(x = {\n  x <- 2\n  1\n}) x + x\nf()\nformals(f) <- alist(x = 5)\nbody(f)    <- quote(x <<- x + x)\nf()\neval(parse(text = "`<-` <- `*`"))\nx <- 2\nprint(x)';
+		/* after `eval(parse(...))`, `x <- 2` multiplies instead of assigning, so only the call of the rewritten `f` sets `x` */
+		assertSliced(sec('primer:reflection session'), shell, code, ['11@print'],
+			'f <- function(x={x <- 2; 1}) x + x\nformals(f) <- alist(x = 5)\nbody(f) <- quote(x <<- x + x)\nf()\nprint(x)',
+			{ expectedOutput: '[1] 3\n[1] 20\n[1] 10', expectedSliceOutput: '[1] 10' });
+	});
+	describe('redefining control flow', () => {
+		const code = '`if` <- function(cond, true, false) {\n  force(true)\n  force(false)\n}\nif(x > 0) { print("positive")\n} else { print("non-positive") }';
+		assertDataflow(sec('primer:reflection redefined if is a call of the user function'), shell, code,
+			emptyGraph().calls('5@if', '1@function'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true });
+		/* reading `true` forces the promise just as `force(true)` does */
+		assertSliced(sec('primer:reflection redefined if keeps the definition'), shell, code, ['6@print'],
+			'`if` <- function(cond, true, false) {\n        true\n        force(false)\n    }\nif(x > 0) { print("positive") } else\n{ print("non-positive") }',
+			{ expectedOutput: '[1] "positive"\n[1] "non-positive"', expectedSliceOutput: '[1] "positive"\n[1] "non-positive"' });
+	});
+	describe('oop', () => {
+		const code = 'x <- "hello"\nprint(x)\nprint.character <- function(...) 42\nprint(x)';
+		assertSliced(sec('primer:oop S3 method added later'), shell, code, ['4@print'], 'x <- "hello"\nprint.character <- function(...) 42\nprint(x)', { expectedOutput: '[1] "hello"\n[1] 42', expectedSliceOutput: '[1] 42' });
+		assertSliced(sec('primer:oop S3 method not yet defined'), shell, code, ['2@print'], 'x <- "hello"\nprint(x)');
+	});
+	describe('control: warn option', () => {
+		/* running the slices sets the option in the shared session */
+		afterAll(() => shell.sendCommand('options(warn = 0)'));
+		const code = 'f <- function() {\n  n <- as.integer("a")\n  "after"\n}\nf()\noptions(warn = 2)\nr <- tryCatch(f(), error = function(e) "aborted")\nprint(r)';
+		assertSliced(sec('primer:control warn option'), shell, code, ['8@print'],
+			'f <- function() {\n        as.integer("a")\n        "after"\n    }\noptions(warn = 2)\nr <- tryCatch(f(), error = function(e) "aborted")\nprint(r)',
+			{ expectedOutput: '[1] "after"\n[1] "aborted"', expectedSliceOutput: '[1] "aborted"' });
+		const f = 'f <- function() {\n  n <- as.integer("a")\n  "after"\n}\n';
+		const fn = 'f <- function() {\n        as.integer("a")\n        "after"\n    }\n';
+		const tc = (block = 'f()') => `r <- tryCatch(${block}, error = function(e) "aborted")\nprint(r)`;
+		/* the slice keeps what may warn exactly when `warn` may be 2 or more */
+		for(const [label, setup, criterion, sliced, block, output] of [
+			['warn 1', 'options(warn = 1)\n', '7@print', 'f <- function() "after"\noptions(warn = 1)\n', 'f()', '[1] "after"'],
+			['suppressWarnings', 'options(warn = 2)\n', '7@print', 'f <- function() "after"\noptions(warn = 2)\n', 'suppressWarnings(f())', '[1] "after"'],
+			['muffled', 'options(warn = 2)\n', '7@print', 'f <- function() "after"\noptions(warn = 2)\n', 'withCallingHandlers(f(), warning = function(w) invokeRestart("muffleWarning"))', '[1] "after"'],
+			['muffled in braces', 'options(warn = 2)\n', '7@print', 'f <- function() "after"\noptions(warn = 2)\n', 'withCallingHandlers(f(), warning = function(w) { invokeRestart("muffleWarning") })', '[1] "after"'],
+			['not muffled', 'options(warn = 2)\n', '7@print', fn + 'options(warn = 2)\n', 'withCallingHandlers(f(), warning = function(w) 1)', '[1] "aborted"'],
+			['muffled messages only', 'options(warn = 2)\n', '7@print', fn + 'options(warn = 2)\n', 'withCallingHandlers(f(), message = function(m) invokeRestart("muffleMessage"))', '[1] "aborted"'],
+			['branch', 'if(runif(1) < 2) options(warn = 2)\n', '7@print', fn + 'if(runif(1) < 2) options(warn = 2)\n', 'f()', '[1] "aborted"'],
+			['in function', 'g <- function() options(warn = 2)\ng()\n', '8@print', fn + 'g <- function() options(warn = 2)\ng()\n', 'f()', '[1] "aborted"'],
+			['restore', 'options(warn = 0)\nop <- options(warn = 2)\noptions(op)\n', '9@print', fn + 'options(warn = 0)\nop <- options(warn = 2)\noptions(op)\n', 'f()', '[1] "after"'],
+		] as const) {
+			assertSliced(sec(`primer:control warn option ${label}`), shell, f + setup + tc(block), [criterion], sliced + tc(block), { expectedSliceOutput: output });
+		}
+		assertSliced(sec('primer:control warn option warning'), shell, 'options(warn = 2)\nr <- tryCatch(warning("w"), error = function(e) "aborted")\nprint(r)', ['3@print'], 'options(warn = 2)\nr <- tryCatch(warning("w"), error = function(e) "aborted")\nprint(r)', { expectedSliceOutput: '[1] "aborted"' });
+		assertSliced(sec('primer:control warn option try'), shell, f + 'options(warn = 2)\nr <- try(f(), silent = TRUE)\nprint(class(r))', ['7@print'], fn + 'options(warn = 2)\nr <- try(f(), silent = TRUE)\nprint(class(r))', { expectedSliceOutput: '[1] "try-error"' });
+	});
+	describe('control: return in a promise', () => {
+		const h = 'h <- function() {\n  g(return("h early"))\n  "h end"\n}\n';
+		const forcing = 'g <- function(a) {\n  a\n  "g end"\n}\n' + h + 'r <- h()\nprint(r)';
+		const lazy = 'g <- function(a) {\n  "g end"\n}\n' + h + 'r <- h()\nprint(r)';
+		/* the `a` that forces the promise is what makes `h` return early, so the slice keeps it */
+		assertSliced(sec('primer:control forcing return'), shell, forcing, ['10@print'], 'g <- function(a) {\n        a\n        "g end"\n    }\nh <- function() {\n        g(return("h early"))\n        "h end"\n    }\nr <- h()\nprint(r)', { expectedOutput: '[1] "h early"', expectedSliceOutput: '[1] "h early"' });
+		assertSliced(sec('primer:control not forcing return'), shell, lazy, ['9@print'],
+			'g <- function(a) "g end"\nh <- function() {\n        g(return("h early"))\n        "h end"\n    }\nr <- h()\nprint(r)',
+			{ expectedOutput: '[1] "h end"', expectedSliceOutput: '[1] "h end"' });
+		assertReaches(forcing, '7@"h end"', false);
+		assertReaches(lazy, '6@"h end"', true);
+		assertHappensBefore(shell, lazy, '5@g', '6@"h end"', Ternary.Always, false);
+	});
+	describe('state', () => {
+		assertSliced(sec('primer:state set.seed'), shell, 'set.seed(1)\nrunif(1)\nr <- runif(1)\nprint(r)', ['4@print'], 'set.seed(1)\nrunif(1)\nr <- runif(1)\nprint(r)', { expectedOutput: '[1] 0.2655087\n[1] 0.3721239', expectedSliceOutput: '[1] 0.2655087\n[1] 0.3721239' });
+		assertSliced(sec('primer:state graphics device'), shell, 'plot(1:10)\npoints(10:1)', ['2@points'], 'plot(1:10)\npoints(10:1)');
+	});
+	describe('intertwine', () => {
+		const factor = 'x <- 1:3\nclass(x)  <- "factor"\nlevels(x) <- c("a", "b", "c")\nprint(typeof(x))\nprint(class(x))';
+		assertSliced(sec('intertwine factor class'), shell, factor, ['5@print'], 'x <- 1 : 3\nclass(x) <- "factor"\nlevels(x) <- c("a", "b", "c")\nprint(class(x))');
+		assertSliced(sec('intertwine factor typeof'), shell, factor, ['4@print'], 'x <- 1 : 3\nclass(x) <- "factor"\nlevels(x) <- c("a", "b", "c")\nprint(typeof(x))');
+		const col = 'df <- data.frame(a = 1, b = 2)\nflag <- runif(1) > 0.5\ncol <- if(flag) "a" else "b"\nr <- df[[col]]';
+		assertSliced(sec('intertwine dynamic column'), shell, col, ['4@r'], 'df <- data.frame(a = 1, b = 2)\nflag <- runif(1) > 0.5\ncol <- if(flag) "a" else\n    "b"\nr <- df[[col]]');
+		const fn = 'flag <- runif(1) > 0.5\nmethod <- if(flag) "sum" else "max"\nfn <- get(method)\nfn(1)';
+		assertSliced(sec('intertwine dynamic function'), shell, fn, ['3@fn'], 'flag <- runif(1) > 0.5\nmethod <- if(flag) "sum" else\n    "max"\nfn <- get(method)');
+	});
+	describe('abstract interpretation: pipeline', () => {
+		const code = 'df <- data.frame(id = 1:4, score = 1:4)\ndf2 <- df |> filter(score > 2) |>\n  mutate(lvl = score^2) |> select(-score)\ndf2$lvl';
+		assertSliced(sec('ai:shape pipeline'), shell, code, ['4@df2'], 'df <- data.frame(id = 1:4, score = 1:4)\ndf2 <- df |> filter(score > 2) |> mutate(lvl = score^2) |> select(-score)\ndf2');
+	});
+	describe('cycle figure', () => {
+		const code = 'avg <- function(df, col, n = nrow(df)) {\n  if(anyNA(df))\n    df <- na.omit(df)\n  sum(df[[col]]) / n\n}\ndf <- data.frame(a = c(1, NA, 3))\nr <- avg(df, "a")\nprint(r)';
+		assertSliced(sec('cycle:avg'), shell, code, ['8@print'], 'avg <- function(df, col, n=nrow(df)) {\n        if(anyNA(df)) df <- na.omit(df)\n        sum(df[[col]]) / n\n    }\ndf <- data.frame(a = c(1, NA, 3))\nr <- avg(df, "a")\nprint(r)', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		assertDataflow(sec('cycle:avg lazy n sees na.omit definition'), shell, code,
+			emptyGraph().reads('1@[2]df', '1@[1]df').reads('1@[2]df', '3@[1]df'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true });
 	});
 }));

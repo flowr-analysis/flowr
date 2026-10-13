@@ -10,11 +10,11 @@ export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries
 		log.warn('Dataflow query expects only up to one query, but got', queries.length);
 	}
 	const startTime = Date.now();
-	const graph = (await analyzer.dataflow()).graph;
+	const { graph } = await analyzer.dataflow();
 	return {
 		'.meta': {
 			timing: Date.now() - startTime
 		},
-		graph
+		graph: queries.every(q => q.environments === false) ? graph.withoutEnvironments() : graph
 	};
 }

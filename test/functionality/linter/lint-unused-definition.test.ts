@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
@@ -7,6 +7,8 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
 import { SourceLocation, SourceRange } from '../../../src/util/range';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-executor';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unused definitions', () => {
@@ -49,6 +51,9 @@ print(x)`,
 				'Math.foo <- function(x, ...) { x }\nx <- structure(1, class = "foo")\nprint(round(x, 2))',
 				/* S3 method for a project-local generic that is dispatched somewhere - not unused */
 				'myg <- function(x) UseMethod("myg")\nmyg.foo <- function(x) x\nz <- structure(1, class = "foo")\nmyg(z)',
+				/* the caller fixes the signature of a function it is handed, removing `w` breaks the handler call */
+				'res <- tryCatch(log(-1), warning = function(w) NA)\nprint(res)',
+				'print(sapply(1:3, function(i) 0))',
 				/* R package lifecycle hook called by package machinery - not unused */
 				'.onAttach <- function(libname, pkgname) { cat(libname, pkgname) }',
 				/* S4/S7 generic dispatcher passed to setGeneric - runs on every dispatch, so not unused */
@@ -63,6 +68,15 @@ print(x)`,
 			assertLinter('exported package function is not unused', parser,
 				'arma <- function(x) { x + 1 }', 'unused-definitions', [], undefined,
 				{ addFiles: [new FlowrInlineTextFile('NAMESPACE', 'export("arma")')] });
+			test('a definition of a requested file is used through another file sourcing it', async() => {
+				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+				analyzer.addFile(new FlowrInlineTextFile('lib.R', 'f <- function(x) x + 1'), new FlowrInlineTextFile('main.R', 'source("lib.R")\nz <- f(2)\nprint(z)'));
+				analyzer.addRequest([{ request: 'file', content: 'lib.R' }, { request: 'file', content: 'main.R' }]);
+				const result = await executeLinterQuery({ analyzer }, [{ type: 'linter', rules: ['unused-definitions'] }]);
+				const unused = result.results['unused-definitions'];
+				assert.ok(unused && 'results' in unused);
+				assert.deepStrictEqual(unused.results, []);
+			});
 		});
 		describe('With unused definitions', () => {
 			for(const [program, criteria, removableRange] of [
@@ -72,9 +86,14 @@ print(x)`,
 				['x <- 4\ny <- foo(42)\nprint(y)', '1@x', SourceRange.from(1, 1, 1, 6)],
 				['for(i in 1:10) 42;', '1@i', undefined],
 				['f <- function(x) { x + 1 }\nprint(2)', '1@f', SourceRange.from(1, 1, 1, 26)], // ;1@function is included in f
-				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', SourceRange.from(1, 20, 1, 30)],
+				/* the super-assignment is the value `f` returns, so removing it changes what `f(2)` gives */
+				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', undefined],
 				['function() { 42 }', '1@function', SourceRange.from(1, 1, 1, 17)],
-				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', SourceRange.from(2, 2, 2, 18)],
+				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', undefined],
+				['f <- function(i) { tmp <- i * 2 }\nprint(f(2))', '1@tmp', undefined],
+				['f <- function(v) { x <<- v * 2; 1 }\nf(2)', '1@x', SourceRange.from(1, 20, 1, 30)],
+				['f <- function(i) { tmp <- i * 2; 1 }\nprint(f(2))', '1@tmp', SourceRange.from(1, 20, 1, 31)],
+				['res <- tryCatch(log(-1), warning = function(w) { z <- 1; NA })\nprint(res)', '1@z', SourceRange.from(1, 50, 1, 55)],
 				[`f <- function() {
    x <- 42
    function() {
@@ -82,7 +101,7 @@ print(x)`,
    }
 }
 
-print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
+print(f()())`, '4@x', undefined]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {

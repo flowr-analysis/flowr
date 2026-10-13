@@ -7,18 +7,32 @@ import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, type RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../dataflow/environments/identifier';
 
 const ConditionConstructors: ReadonlySet<string> = new Set(['simpleCondition', 'simpleError', 'simpleWarning', 'simpleMessage', 'errorCondition', 'warningCondition']);
+
+/** whether the call builds a condition object, for which `stop` ignores `call.`: a constructor, or a class naming `condition` */
+function isConditionObject(signaled: RNamedFunctionCall<ParentInformation>, graph: DataflowGraph, data: ReadonlyFlowrAnalysisProvider): boolean {
+	if(ConditionConstructors.has(Identifier.getName(signaled.functionName.content))) {
+		return true;
+	}
+	const vertex = graph.getVertex(signaled.info.id);
+	const classes = DfgVertex.isFunctionCall(vertex) ? getArgumentStringValue(data.flowrConfig.solver.variables, graph, vertex, undefined, 'class', true, data.inspectContext()) : undefined;
+	return classes?.values().some(c => c.has('condition')) ?? false;
+}
 
 export type StopWithCallResult = LintingResult;
 
@@ -29,7 +43,7 @@ export interface StopWithCallMetadata extends MergeableRecord {
 }
 
 export const STOP_WITH_CALL_ARG = {
-	createSearch:        () => Q.var('stop').filter(VertexType.FunctionCall),
+	createSearch:        () => Q.all().filter(VertexType.FunctionCall),
 	processSearchResult: async(elements, _config, data) => {
 		const dataflow = await data.dataflow();
 		const meta: StopWithCallMetadata = {
@@ -40,39 +54,30 @@ export const STOP_WITH_CALL_ARG = {
 				elements.getElements()
 					.filter(element => {
 						const idMap = dataflow.graph.idMap;
+						const fCall = dataflow.graph.getVertex(element.node.info.id) as DataflowGraphVertexFunctionCall;
+						/* a call that hands over `stop` itself, like `do.call(stop, args)`, states its arguments elsewhere */
+						if(!RFunctionCall.is(element.node) || Identifier.getName(fCall.name) !== 'stop') {
+							return false;
+						}
 						if(idMap !== undefined && RNode.findEnclosing(element.node.info.id, idMap, RFunctionDefinition.is) === undefined) {
 							return false;
 						}
-						//only built-in functions
-						const origins = Dataflow.origin(dataflow.graph, element.node.info.id);
-						if(isNotUndefined(origins)) {
-							const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
-							if(!builtIn) {
-								return false;
-							}
-						}
-
-						const fCall = dataflow.graph.getVertex(element.node.info.id) as DataflowGraphVertexFunctionCall;
-
-						//filter out function calls with argument "call." set to false
-						const stopParamMap = {
-							'...':    '...',
-							'call.':  'call.',
-							'domain': 'domain'
-						} as const;
-						const mapping = FunctionSemantics.call.match.toSpec(fCall.args, stopParamMap);
-						const signaled = idMap?.get(mapping.get('...')?.[0] as NodeId);
-						if(RFunctionCall.isNamed(signaled) && ConditionConstructors.has(Identifier.getName(signaled.functionName.content))) {
+						// only built-in functions
+						if(Dataflow.origin(dataflow.graph, element.node.info.id)?.some(e => e.type !== OriginType.BuiltInFunctionOrigin)) {
 							return false;
 						}
-						const mappedToStop = mapping.get('call.') ?? [];
-						for(const argId of mappedToStop) {
+						// filter out function calls with argument "call." set to false
+						const stopParamMap = { '...': '...', 'call.': 'call.', 'domain': 'domain' } as const;
+						const mapping = FunctionSemantics.call.match.toSpec(fCall.args, stopParamMap);
+						const signaled = idMap?.get(mapping.get('...')?.[0] as NodeId);
+						if(RFunctionCall.isNamed(signaled) && isConditionObject(signaled, dataflow.graph, data)) {
+							return false;
+						}
+						for(const argId of mapping.get('call.') ?? []) {
 							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
 							const values = valueSetGuard(res);
-							if(values?.type === 'set' && values.elements.length !== 0) {
-								if(values.elements[0].type === 'logical') {
-									return values.elements[0].value;
-								}
+							if(values?.type === 'set' && values.elements.length !== 0 && values.elements[0].type === 'logical') {
+								return values.elements[0].value;
 							}
 						}
 						return true;

@@ -8,6 +8,18 @@ import { extractCfg } from '../../../../src/control-flow/control-flow-graph';
 import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import type { KnownParser } from '../../../../src/r-bridge/parser';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { canReach } from '../../../../src/control-flow/simple-visitor';
+
+/** whether control reaches `target` from the start, on the control flow graph of a fresh analyzer */
+export async function controlReaches(parser: KnownParser, code: string, target: SlicingCriterion): Promise<boolean> {
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+	analyzer.addRequest(code);
+	const { idMap } = await analyzer.normalize();
+	const cfg = await analyzer.controlflow(undefined, true);
+	return canReach(cfg.graph, cfg.entryPoints, SlicingCriterion.parse(target, idMap));
+}
 
 /**
  * Asserts that in the given code, criterion `a` happens before criterion `b` according to the expected Ternary value.
@@ -16,8 +28,9 @@ import { contextFromInput } from '../../../../src/project/context/flowr-analyzer
  * @param a        - The first slicing criterion.
  * @param b        - The second slicing criterion that is compared against the first.
  * @param expected - The expected Ternary result indicating the happens-before relationship.
+ * @param reversed - Whether to check the reversed relationship as well, which fails where the end of a function is unreachable.
  */
-export function assertHappensBefore(shell: RShell, code: string, a: SlicingCriterion, b: SlicingCriterion, expected: Ternary) {
+export function assertHappensBefore(shell: RShell, code: string, a: SlicingCriterion, b: SlicingCriterion, expected: Ternary, reversed = true) {
 	// shallow copy is important to avoid killing the CFG :c
 	return describe(code, () => {
 		test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
@@ -30,7 +43,9 @@ export function assertHappensBefore(shell: RShell, code: string, a: SlicingCrite
 			const bResolved = SlicingCriterion.parse(b, result.normalize.idMap);
 			try {
 				assert.strictEqual(happensBefore(cfg.graph, aResolved, bResolved), expected, `expected ${a} (resolved to ${aResolved}) to ${expected} happen before ${b} (resolved to ${bResolved})`);
-				if(expected === Ternary.Always) {
+				if(!reversed) {
+					return;
+				} else if(expected === Ternary.Always) {
 					assert.strictEqual(happensBefore(cfg.graph, bResolved, aResolved), Ternary.Never, 'reversed');
 				} else if(expected === Ternary.Never) {
 					assert.strictEqual(happensBefore(cfg.graph, bResolved, aResolved), Ternary.Always, 'reversed');

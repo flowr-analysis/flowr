@@ -1,6 +1,11 @@
 import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RValue } from '../values/r-value';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environments/built-in';
@@ -17,6 +22,7 @@ import { Dataflow } from '../../graph/df-helper';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Resolve } from '../../environments/resolve-helper';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /**
@@ -25,23 +31,31 @@ import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-ex
  * by a user definition or its built-in declares no handler.
  */
 function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | undefined, ctx: ReadOnlyFlowrAnalyzerContext): BuiltInEvalHandler | undefined {
-	const defs = environment ?
-		Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction)
-		/* without an environment the search path is unknown, so what a package states about the name has its say */
-		: ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
-			?? ctx.env.statedDefinitionsOf(name);
+	/* without an environment the search path is unknown, so what a package states about the name has its say */
+	const defs = environment ? Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction) : builtInDefinitionsOf(name, ctx);
 	const def = defs?.length === 1 ? defs[0] : undefined;
 	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
 }
 
-function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	const defs = ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
+function builtInDefinitionsOf(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): readonly IdentifierDefinition[] | undefined {
+	return ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
 		?? ctx.env.statedDefinitionsOf(name);
-	return defs?.some(d => d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined) ?? false;
+}
+
+function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	return builtInDefinitionsOf(name, ctx)?.some(d => d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined) ?? false;
 }
 
 /** the node types that may fold through a built-in: calls, operators, and the `(`/`{` groupings */
 const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.ExpressionList];
+
+/** Whether the operator only combines literals (`1 + 2`), which alone fold while the analysis runs, as a name may still change its value. */
+export function onlyLiterals(node: RNode<ParentInformation>): boolean {
+	return RBinaryOp.is(node) ? onlyLiterals(node.lhs) && onlyLiterals(node.rhs)
+		: RUnaryOp.is(node) ? onlyLiterals(node.operand)
+			: RExpressionList.is(node) && node.grouping !== undefined && node.children.length === 1 ? onlyLiterals(node.children[0])
+				: RNumber.is(node) || RString.is(node) || RLogical.is(node);
+}
 
 /**
  * The name of the built-in the given node folds through, `undefined` if it is no call to one or if it may just
@@ -52,7 +66,8 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 		return undefined;
 	} else if(graph === undefined) {
 		const named = RExpressionList.is(node) ? RExpressionList.groupStart(node)?.content
-			: RFunctionCall.isNamed(node) ? node.functionName.content : undefined;
+			: RFunctionCall.isNamed(node) ? node.functionName.content
+				: (RBinaryOp.is(node) || RUnaryOp.is(node)) && onlyLiterals(node) ? Identifier.make(node.operator) : undefined;
 		return named !== undefined && environment !== undefined && foldsThroughBuiltIn(named, ctx)
 			&& Resolve.isBuiltIn(named, environment, ReferenceType.Function) ? named : undefined;
 	}
@@ -116,12 +131,8 @@ export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<Val
 	}
 	const leftValue = unliftRValue(Resolve.toValue(operator.lhs, args));
 	const rightValue = unliftRValue(Resolve.toValue(operator.rhs, args));
-
-	if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
-		const sequence = createNumberSequence(leftValue, rightValue);
-		return sequence === undefined ? Top : vectorFrom(sequence.map(liftScalar));
-	}
-	return Top;
+	const sequence = isRNumberValue(leftValue) && isRNumberValue(rightValue) ? createNumberSequence(leftValue, rightValue) : undefined;
+	return sequence === undefined ? Top : vectorFrom(sequence.map(liftScalar));
 }
 
 /**

@@ -19,7 +19,7 @@ import { AmbientStateName } from './built-in/built-in-ambient-state';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { processFunctionArgument } from '../process-argument';
-import { type DataflowGraphVertexAstLink, type DataflowGraphVertexFunctionDefinition, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
+import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -56,7 +56,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	if(!valueVertex) {
 		return;
 	}
-	// link read if it is function definition directly and reference the exit point
+	/* link read if it is function definition directly and reference the exit point */
 	if(DfgVertex.isFunctionDefinition(valueVertex)) {
 		for(const exit of valueVertex.exitPoints) {
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
@@ -66,19 +66,11 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
 	}
-	const containedSubflowIn = graph.verticesOfType(VertexType.FunctionDefinition)
-		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition).subflow.in);
-
-	// try to resolve them against the current environment
-	for(const l of [value.in, containedSubflowIn]) {
-		for(const ref of l) {
-			if(ref.name) {
-				const refId = ref.nodeId;
-				const resolved = resolveByName(ref.name, env, ref.type) ?? [];
-				for(const resolve of resolved) {
-					graph.addEdge(refId, resolve.nodeId, EdgeType.Reads);
-				}
-			}
+	const containedSubflowIn = graph.verticesOfType(VertexType.FunctionDefinition).flatMap(([, info]) => info.subflow.in);
+	/* try to resolve them against the current environment */
+	for(const ref of [...value.in, ...containedSubflowIn]) {
+		for(const resolved of ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : []) {
+			graph.addEdge(ref.nodeId, resolved.nodeId, EdgeType.Reads);
 		}
 	}
 }
@@ -102,15 +94,8 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
 		return EmptyArgument;
 	} else if(!arg.name || !RArgument.is(arg)) {
 		return { nodeId: arg.info.id, cds: undefined, type: ReferenceType.Argument };
-	} else {
-		return {
-			nodeId:  arg.info.id,
-			valueId: arg.value?.info.id,
-			name:    arg.name.content,
-			cds:     undefined,
-			type:    ReferenceType.Argument
-		};
 	}
+	return { nodeId: arg.info.id, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument };
 }
 
 /**
@@ -118,17 +103,11 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
  * spliced into its arguments. The pipe processes and links that value itself, so processing it here again
  * would duplicate it.
  */
-export function isPipedArgument<OtherInfo>(
-	arg:            unknown,
-	functionRootId: NodeId,
-	data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
-): boolean {
+export function isPipedArgument<OtherInfo>(arg: unknown, functionRootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	return data.pipedArgument?.rootId === functionRootId && data.pipedArgument.argument === arg;
 }
 
-/**
- * Processes all arguments for a function call, updating the given final graph and environment.
- */
+/** Processes all arguments for a function call, updating the given final graph and environment. */
 export function processAllArguments<OtherInfo>(
 	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
@@ -136,41 +115,30 @@ export function processAllArguments<OtherInfo>(
 	const callArgs: FunctionArgument[] = [];
 	const processedArguments: (DataflowInformation | undefined)[] = [];
 	const remainingReadInArgs = [];
-	let i = -1;
 	/* each alternative starts from what holds before all of them, and what one of them defines only may hold afterward */
 	let beforeAlternatives: REnvironmentInformation | undefined;
 	let afterAlternatives: REnvironmentInformation | undefined;
-	for(const arg of args) {
-		i++;
+	for(const [i, arg] of args.entries()) {
 		if(alternativesFrom !== undefined && i >= alternativesFrom) {
 			beforeAlternatives ??= finalEnv;
 			finalEnv = beforeAlternatives;
 		}
-		data = { ...data, environment: finalEnv };
-		if(beforeAlternatives !== undefined) {
-			/* whether an alternative runs depends on what the call picks */
-			data = { ...data, cds: [...data.cds ?? [], { id: functionRootId, when: true }] };
-		}
+		/* whether an alternative runs depends on what the call picks */
+		data = beforeAlternatives === undefined ? { ...data, environment: finalEnv }
+			: { ...data, environment: finalEnv, cds: [...data.cds ?? [], { id: functionRootId, when: true }] };
 		data = patchData?.(data, i) ?? data;
 		if(RArgument.isEmpty(arg)) {
 			callArgs.push(EmptyArgument);
 			processedArguments.push(undefined);
 			continue;
-		}
-		if(isPipedArgument(arg, functionRootId, data)) {
+		} else if(isPipedArgument(arg, functionRootId, data)) {
 			processedArguments.push(undefined);
 			continue;
 		}
 
-		let processed: DataflowInformation;
-		/* a precomputed argument is handed in from elsewhere and stays alive there, only a freshly built one dies here */
-		let ownsGraph = true;
-		if(i === 0 && data.precomputedFirstArg?.rootId === functionRootId) {
-			processed = data.precomputedFirstArg.info;
-			ownsGraph = false;
-		} else {
-			processed = RArgument.is(arg) ? processFunctionArgument(arg, data) : processDataflowFor(arg, data);
-		}
+		/* a precomputed argument stays alive where it was handed in from, only a freshly built one dies here */
+		const precomputed = i === 0 && data.precomputedFirstArg?.rootId === functionRootId ? data.precomputedFirstArg.info : undefined;
+		const processed = precomputed ?? (RArgument.is(arg) ? processFunctionArgument(arg, data) : processDataflowFor(arg, data));
 		if(RArgument.isWithValue(arg) && forced[i] && !RConstant.is(arg.value)) {
 			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, data.environment);
 		}
@@ -181,39 +149,28 @@ export function processAllArguments<OtherInfo>(
 			afterAlternatives = appendEnvironment(afterAlternatives ?? beforeAlternatives, finalEnv);
 		}
 		/* nothing reads the argument's own graph past this point, only its entry point and references */
-		finalGraph.mergeWith(processed.graph, true, ownsGraph);
+		finalGraph.mergeWith(processed.graph, true, precomputed === undefined);
 
-		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
-		for(const l of [processed.in, processed.unknownReferences]) {
-			for(const original of l) {
-				// check if it is called directly
-				const inId = original.nodeId;
-				/* a data argument holds a value, so a function of that name is not what it reads; the narrowed
-				   type stays on the reference as it bubbles through the enclosing calls */
-				const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
-				/* a call reading the options or graphics state (`#...`, see AmbientStateName) reads a variable, not itself */
-				const refType = AmbientStateName.is(ingoing.name) ? ReferenceType.Variable
-					: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
-						: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
-
-				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
-				if(tryToResolve === undefined) {
-					remainingReadInArgs.push(ingoing);
-				} else {
-					/* maybe all targets are not definitely of the current scope and should be still kept */
-					let assumeItMayHaveAHigherTarget = true;
-					for(const resolved of tryToResolve) {
-						if(isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
-							continue;
-						} else if(happensInEveryBranch(resolved.cds)) {
-							assumeItMayHaveAHigherTarget = false;
-						}
-						finalGraph.addEdge(inId, resolved.nodeId, EdgeType.Reads);
-					}
-					if(assumeItMayHaveAHigherTarget) {
-						remainingReadInArgs.push(ingoing);
-					}
+		/* resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies */
+		for(const original of [...processed.in, ...processed.unknownReferences]) {
+			const inId = original.nodeId;
+			/* a data argument holds a value, so a function of that name is not what it reads; the narrowed type stays on the reference */
+			const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
+			/* a call reading the options or graphics state (`#...`, see AmbientStateName) reads a variable, not itself */
+			const refType = AmbientStateName.is(ingoing.name) ? ReferenceType.Variable
+				: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
+					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
+			/* unless one target is certainly of the current scope, a higher one may still be meant */
+			let mayHaveHigherTarget = true;
+			for(const resolved of tryToResolve ?? []) {
+				if(!isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
+					mayHaveHigherTarget &&= !happensInEveryBranch(resolved.cds);
+					finalGraph.addEdge(inId, resolved.nodeId, EdgeType.Reads);
 				}
+			}
+			if(mayHaveHigherTarget) {
+				remainingReadInArgs.push(ingoing);
 			}
 		}
 		if(!RArgument.is(arg) || !arg.name) {
@@ -221,7 +178,6 @@ export function processAllArguments<OtherInfo>(
 		} else {
 			callArgs.push({ nodeId: processed.entryPoint, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
 		}
-
 		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);
 	}
 	return { finalEnv: afterAlternatives ?? finalEnv, callArgs, remainingReadInArgs, processedArguments };

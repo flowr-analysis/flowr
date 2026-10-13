@@ -52,6 +52,7 @@
     "test:coverage": "npm run test -- --coverage",
     "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
+    "test:yields": "vitest --config test/yields/vitest.config.mts",
     "test:mutations": "vitest --config test/mutations/vitest.config.mts",
     "test:bench": "vitest bench --config test/vitest.config.mts",
     "test:performance": "func() { cd test/performance/ && bash run-all-suites.sh \"$@\"; }; func",
@@ -167,39 +168,26 @@
         "npm run test:full"
       ],
       "after:bump": [
+        "npx ts-node --transpile-only scripts/bump-version.ts ${version}",
         "npm run build:dev",
         "npm run sigdb:sync",
         "npx ts-node --transpile-only scripts/gen-capabilities.ts"
       ],
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
-    },
-    "plugins": {
-      "@j-ulrich/release-it-regex-bumper": {
-        "out": [
-          {
-            "file": "src/util/version.ts",
-            "search": "const version = '[\\d.]+'",
-            "replace": "const version = '{{version}}'"
-          },
-          {
-            "file": "src/util/version.ts",
-            "search": "const versionDate = '[^']*'",
-            "replace": "const versionDate = '{{now}}'"
-          }
-        ]
-      }
     }
   },
   "overrides": {
-    "lodash.isequal": "npm:fast-deep-equal@^3.1.3"
+    "lodash.isequal": "npm:fast-deep-equal@^3.1.3",
+    "get-uri": {
+      "basic-ftp": "6.2.3"
+    }
   },
   "devDependencies": {
     "@codemirror/legacy-modes": "^6.5.3",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
-    "@eagleoutice/eslint-config-flowr": "^2.1.7",
-    "@j-ulrich/release-it-regex-bumper": "^5.6.0",
+    "@eagleoutice/eslint-config-flowr": "^2.1.8",
     "@jupyterlab/nbformat": "^4.5.4",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
@@ -216,7 +204,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^10.8.0",
     "license-checker-rseidelsohn": "^5.0.1",
-    "release-it": "^21.0.2",
+    "release-it": "^21.1.1",
     "seedrandom": "^3.0.5",
     "ts-node": "^10.9.2",
     "typedoc": "^0.28.17",

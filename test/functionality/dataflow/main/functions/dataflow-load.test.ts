@@ -364,9 +364,9 @@ describe('no resolvable file argument', withTreeSitter(parser => {
 	);
 
 	assertDataflow(label('load with only envir argument is unknown side effect', ['unnamed-arguments', 'name-normal']), parser, 'e <- new.env()\nload(envir = e)', emptyGraph()
-		.use('6', 'e')
+		.use('6', 'e', { cds: [{ id: '8', when: true, byPromise: true }] })
 		.reads('6', '0')
-		.use('7', 'envir')
+		.use('7', 'envir', { cds: [{ id: '8', when: true, byPromise: true }] })
 		.reads('7', '6')
 		.call('2', 'new.env', [], { returns: [], reads: [NodeId.toBuiltIn('new.env')] })
 		.calls('2', NodeId.toBuiltIn('new.env'))

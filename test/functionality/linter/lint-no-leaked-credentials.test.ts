@@ -35,6 +35,18 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ totalChecked: 1 }
 		);
 
+		assertLinter('an empty password holds no credential', parser, 'password <- ""',
+			'no-leaked-credentials',
+			[],
+			{ totalChecked: 1 }
+		);
+
+		assertLinter('a one-character password is still flagged', parser, 'password <- "a"',
+			'no-leaked-credentials',
+			[{ certainty: LintingResultCertainty.Uncertain, variableName: 'password', loc: [1, 1, 1, 8] }],
+			{ totalChecked: 1 }
+		);
+
 		assertLinter('non-string value not flagged', parser, 'password <- getPass()',
 			'no-leaked-credentials',
 			[],

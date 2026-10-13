@@ -13,7 +13,7 @@ import type {
 import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
+import { EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { isNotUndefined } from '../../../util/assert';
@@ -29,7 +29,7 @@ import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-
+import { edgeTargets, hasEdgeOfType } from '../../../dataflow/fn/frame-reflection';
 
 /** how far a function handed to an entry point may be passed along before we give up resolving it */
 const MaxFunctionResolveDepth = 4;
@@ -38,22 +38,8 @@ function isConstantLike(type: InputType): boolean {
 	return type === InputType.Constant || type === InputType.DerivedConstant;
 }
 
-/** Returns the common value shared by all defined entries, or `undefined` if they disagree or all are `undefined`. */
-function singleValue(values: (ConstantValue | undefined)[]): ConstantValue | undefined {
-	let result: ConstantValue | undefined;
-	let seen = false;
-	for(const v of values) {
-		if(v === undefined) {
-			return undefined;
-		}
-		if(!seen) {
-			result = v;
-			seen = true;
-		} else if(v !== result) {
-			return undefined;
-		}
-	}
-	return result;
+function sourceOf(id: NodeId, type: InputType): InputSource {
+	return { id, types: [type], trace: InputTraceType.Unknown };
 }
 
 /**
@@ -66,65 +52,67 @@ class ClassificationAccumulator {
 	readonly values: (ConstantValue | undefined)[] = [];
 	allPure = true;
 
-	merge(c: InputSource): void {
+	merge(c: InputSource | undefined): void {
+		if(c === undefined) {
+			this.push(InputType.Unknown);
+			return;
+		}
 		this.types.push(...c.types);
 		this.values.push(c.value);
-		if(c.cds) {
-			this.cds.push(...c.cds);
-		}
-		if(c.trace !== InputTraceType.Pure) {
-			this.allPure = false;
-		}
+		this.cds.push(...c.cds ?? []);
+		this.allPure &&= c.trace === InputTraceType.Pure;
 	}
 
-	pushUnknown(): void {
-		this.types.push(InputType.Unknown);
-		this.values.push(undefined);
+	push(type: InputType, value?: ConstantValue): void {
+		this.types.push(type);
+		this.values.push(value);
 	}
 
 	build(id: NodeId): InputSource {
 		const types = this.types.length === 0 ? [InputType.Unknown] : uniqueArray(this.types);
-		const trace = this.allPure ? InputTraceType.Pure : InputTraceType.Alias;
-		const src: InputSource = { id, types, trace };
-		const cds = this.cds.length === 0 ? undefined : uniqueArray(this.cds);
-		if(cds) {
-			src.cds = cds;
-		}
-		if(types.every(isConstantLike)) {
-			const v = singleValue(this.values);
-			if(v !== undefined) {
-				src.value = v;
-			}
-		}
-		return src;
+		const first = this.values[0];
+		const agreed = first !== undefined && this.values.every(v => v === first);
+		const value = agreed && types.every(isConstantLike) ? first : undefined;
+		return compactRecord({
+			id,
+			types,
+			trace: this.allPure ? InputTraceType.Pure : InputTraceType.Alias,
+			cds:   this.cds.length === 0 ? undefined : uniqueArray(this.cds),
+			value
+		});
 	}
 }
 
 class InputClassifier {
-	private readonly dfg:      DataflowGraph;
-	private readonly config:   InputClassifierConfig<InputClassifierFunctionIdentifiers>;
 	private readonly cache = new Map<NodeId, InputSource>();
-	private readonly fullDfg:  DataflowGraph | undefined;
-	/** the packages attached in the analyzed program, `undefined` if that is not known (then everything may match) */
-	private readonly packages: ReadonlySet<string> | undefined;
-	private fullClassifier:    InputClassifier | undefined;
-	private declarationIndex:  Map<string, NodeId[]> | undefined;
-	private entryPointIndex:   Map<NodeId, readonly (string | undefined)[]> | undefined;
+	private fullClassifier:   InputClassifier | undefined;
+	private declarationIndex: Map<string, NodeId[]> | undefined;
+	private entryPointIndex:  Map<NodeId, readonly (string | undefined)[]> | undefined;
 
-	constructor(dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph, packages?: ReadonlySet<string>) {
-		this.dfg = dfg;
-		this.config = config;
-		this.fullDfg = fullDfg;
-		this.packages = packages;
+	/** `packages` are the packages attached in the analyzed program, `undefined` if that is not known (then everything may match) */
+	constructor(
+		private readonly dfg: DataflowGraph,
+		private readonly config: InputClassifierConfig<InputClassifierFunctionIdentifiers>,
+		private readonly fullDfg?: DataflowGraph,
+		private readonly packages?: ReadonlySet<string>
+	) {}
+
+	private get whole(): DataflowGraph {
+		return this.fullDfg ?? this.dfg;
 	}
 
 	private matches(call: DataflowGraphVertexFunctionCall, list: InputClassifierFunctionIdentifiers | undefined): boolean {
-		return matchesList(call, list, this.packages);
+		return list?.some(id => call.id === id || (Identifier.is(id) && callMeans(call.name, id, this.packages))) ?? false;
 	}
 
 	/** whether the package the given entry needs is attached (unknown package information lets everything through) */
 	private hasPackage(name: string | undefined): boolean {
 		return name === undefined || this.packages === undefined || this.packages.has(name);
+	}
+
+	public classifyAt(ref: NodeId | undefined, graph = this.dfg): InputSource | undefined {
+		const vtx = ref === undefined ? undefined : graph.getVertex(ref);
+		return vtx ? this.classifyEntry(vtx) : undefined;
 	}
 
 	/**
@@ -137,12 +125,8 @@ class InputClassifier {
 		if(idMap === undefined || !RSymbol.is(node)) {
 			return undefined;
 		}
-		// the framework may bind the object by position, in a function it is handed (`shinyApp(ui, server)`)
-		const positional = this.boundByEntryPoint(node, idMap);
-		if(positional !== undefined) {
-			return positional;
-		}
-		return this.config.linkedObjects?.find(o =>
+		/* the framework may bind the object by position, in a function it is handed (`shinyApp(ui, server)`) */
+		return this.boundByEntryPoint(node, idMap) ?? this.config.linkedObjects?.find(o =>
 			o.name === node.content && this.hasPackage(o.requires) && isBoundAsLinkedObject(node, o, idMap));
 	}
 
@@ -173,7 +157,7 @@ class InputClassifier {
 		}
 		const index = new Map<NodeId, readonly (string | undefined)[]>();
 		this.entryPointIndex = index;
-		for(const [, call] of (this.fullDfg ?? this.dfg).verticesOfType(VertexType.FunctionCall)) {
+		for(const [, call] of this.whole.verticesOfType(VertexType.FunctionCall)) {
 			for(const entry of this.config.linkedEntryPoints ?? []) {
 				if(!this.matches(call, [entry.call])) {
 					continue;
@@ -189,18 +173,15 @@ class InputClassifier {
 
 	/** the function definitions the given id may hold, be it one directly or a variable a definition was assigned to */
 	private *functionDefinitionsAt(id: NodeId | undefined, depth = 0): Generator<NodeId> {
-		const graph = this.fullDfg ?? this.dfg;
-		const vtx = id === undefined || depth > MaxFunctionResolveDepth ? undefined : graph.getVertex(id);
-		if(vtx === undefined) {
-			return;
-		} else if(DfgVertex.isFunctionDefinition(vtx)) {
+		const vtx = id === undefined || depth > MaxFunctionResolveDepth ? undefined : this.whole.getVertex(id);
+		if(DfgVertex.isFunctionDefinition(vtx)) {
 			yield vtx.id;
 		} else if(DfgVertex.isVariableDefinition(vtx)) {
 			for(const source of vtx.source ?? []) {
 				yield* this.functionDefinitionsAt(source, depth + 1);
 			}
-		} else {
-			for(const origin of Dataflow.origin(graph, vtx.id) ?? []) {
+		} else if(vtx !== undefined) {
+			for(const origin of Dataflow.origin(this.whole, vtx.id) ?? []) {
 				if(origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin || origin.type === OriginType.FunctionCallOrigin) {
 					yield* this.functionDefinitionsAt(origin.id, depth + 1);
 				}
@@ -210,9 +191,9 @@ class InputClassifier {
 
 	/** the id of the argument named `argName`, or of the one at `argIdx` if it is passed positionally */
 	private argumentReference(call: DataflowGraphVertexFunctionCall, argIdx: number, argName: string): NodeId | undefined {
-		const named = call.args.find(a => FunctionArgument.isNamed(a) && FunctionArgument.getName(a) === argName);
+		const named = call.args.find(a => FunctionArgument.hasName(a, argName));
 		const arg = named ?? call.args[argIdx];
-		if(arg === undefined || FunctionArgument.isEmpty(arg) || (named === undefined && FunctionArgument.isNamed(arg))) {
+		if(arg === undefined || (named === undefined && FunctionArgument.isNamed(arg))) {
 			return undefined;
 		}
 		return FunctionArgument.getReference(arg);
@@ -226,7 +207,7 @@ class InputClassifier {
 
 	/**
 	 * All declarations of framework entries in the program, keyed by object and entry name, built once on first use.
-	 * This is what links a read of `input$n` back to the `textInput("n", …)` defining it.
+	 * This is what links a read of `input$n` back to the `textInput("n", ...)` defining it.
 	 */
 	private declarations(): Map<string, NodeId[]> {
 		if(this.declarationIndex !== undefined) {
@@ -238,13 +219,13 @@ class InputClassifier {
 		if(specs.length === 0) {
 			return index;
 		}
-		for(const [, call] of (this.fullDfg ?? this.dfg).verticesOfType(VertexType.FunctionCall)) {
+		for(const [, call] of this.whole.verticesOfType(VertexType.FunctionCall)) {
 			for(const obj of specs) {
 				const spec = obj.declaredBy as LinkedInputDeclaration;
 				if(!this.matches(call, spec.calls)) {
 					continue;
 				}
-				const name = this.argumentValue(call, spec.argIdx, spec.argName);
+				const name = this.classifyAt(this.argumentReference(call, spec.argIdx, spec.argName), this.whole)?.value;
 				if(typeof name === 'string') {
 					const key = declarationKey(obj.name, name);
 					index.set(key, [...(index.get(key) ?? []), call.id]);
@@ -252,23 +233,6 @@ class InputClassifier {
 			}
 		}
 		return index;
-	}
-
-	/** the value of the argument named `argName`, or of the one at `argIdx` if it is passed positionally */
-	private argumentValue(call: DataflowGraphVertexFunctionCall, argIdx: number, argName: string): ConstantValue | undefined {
-		const ref = this.argumentReference(call, argIdx, argName);
-		const vtx = ref === undefined ? undefined : (this.fullDfg ?? this.dfg).getVertex(ref);
-		return vtx === undefined ? undefined : this.classifyEntry(vtx).value;
-	}
-
-	private isDefinedByOnCall(id: NodeId): boolean {
-		return this.definedByOnCallTargets(id).length > 0;
-	}
-
-	/** the ids the given one is linked to by {@link EdgeType.DefinedByOnCall}, e.g. a parameter to the arguments it is bound to */
-	private definedByOnCallTargets(id: NodeId): NodeId[] {
-		const out = (this.fullDfg ?? this.dfg).outgoingEdges(id) ?? new Map<NodeId, DfEdge>();
-		return out.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.DefinedByOnCall)).map(([to]) => to).toArray();
 	}
 
 	/**
@@ -280,25 +244,18 @@ class InputClassifier {
 			return undefined;
 		}
 		this.fullClassifier ??= new InputClassifier(this.fullDfg, this.config, undefined, this.packages);
-		const vtx = this.fullDfg.getVertex(id);
-		return vtx ? this.fullClassifier.classifyEntry(vtx) : undefined;
+		return this.fullClassifier.classifyAt(id);
 	}
 
 	private extractConstantValue(id: NodeId): ConstantValue | undefined {
 		const node = this.dfg.idMap?.get(id);
-		if(node === undefined) {
-			return undefined;
-		}
-		if(RNumber.is(node))  {
+		if(RNumber.is(node)) {
 			return node.content.num;
-		}
-		if(RString.is(node))  {
+		} else if(RString.is(node)) {
 			return node.content.str;
-		}
-		if(RLogical.is(node)) {
+		} else if(RLogical.is(node)) {
 			return node.content;
-		}
-		if(RSymbol.is(node) && node.content === RNull) {
+		} else if(RSymbol.is(node) && node.content === RNull) {
 			return null;
 		}
 		return undefined;
@@ -309,18 +266,12 @@ class InputClassifier {
 		if(cached) {
 			return cached;
 		}
-
-		// insert temporary unknown to break cycles
-		this.cache.set(vertex.id, { id: vertex.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
-
+		/* a temporary unknown breaks cycles */
+		this.cache.set(vertex.id, sourceOf(vertex.id, InputType.Unknown));
 		switch(vertex.tag) {
 			case VertexType.Value: {
-				const src: InputSource = { id: vertex.id, types: [InputType.Constant], trace: InputTraceType.Unknown };
-				const v = this.extractConstantValue(vertex.id);
-				if(v !== undefined) {
-					src.value = v;
-				}
-				return this.classifyCdsAndReturn(vertex, src);
+				const value = this.extractConstantValue(vertex.id);
+				return this.classifyCdsAndReturn(vertex, compactRecord({ ...sourceOf(vertex.id, InputType.Constant), value }));
 			}
 			case VertexType.FunctionCall:
 				return this.classifyFunctionCall(vertex);
@@ -329,8 +280,38 @@ class InputClassifier {
 			case VertexType.Use:
 				return this.classifyVariable(vertex);
 			default:
-				return this.classifyCdsAndReturn(vertex, { id: vertex.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(vertex, sourceOf(vertex.id, InputType.Unknown));
 		}
+	}
+
+	/**
+	 * Whether `call` quotes only the code written in its arguments: no name in them resolves outside of them
+	 * (built-ins aside), as a `bquote(.(y))` splice would, and none names an enclosing parameter `substitute` would replace.
+	 */
+	private quotesOnlyWrittenCode(call: DataflowGraphVertexFunctionCall): boolean {
+		const idMap = this.dfg.idMap;
+		if(idMap === undefined) {
+			return false;
+		}
+		const enclosing = enclosingFunctions(idMap.get(call.id), idMap);
+		const parameters = new Set(enclosing.flatMap(fn => fn.parameters.map(p => Identifier.getName(p.name.content))));
+		for(const arg of call.args) {
+			const ref = FunctionArgument.getReference(arg);
+			const within = RNode.collectAllIds(ref === undefined ? undefined : idMap.get(ref));
+			for(const id of within) {
+				const node = idMap.get(id);
+				if(RSymbol.is(node) && parameters.has(Identifier.getName(node.content))) {
+					return false;
+				}
+				for(const target of edgeTargets(this.dfg, id, EdgeType.Reads | EdgeType.DefinedByOnCall)) {
+					/* the call evaluating the code is no input to it */
+					if(!within.has(target) && !NodeId.isBuiltIn(target) && !hasEdgeOfType(this.dfg, target, id, EdgeType.Returns)) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -341,29 +322,21 @@ class InputClassifier {
 		if(!call.origin.includes(BuiltInProcName.Access)) {
 			return undefined;
 		}
-		const accessed = FunctionArgument.isEmpty(call.args[0]) ? undefined : FunctionArgument.getReference(call.args[0]);
+		const accessed = FunctionArgument.getReference(call.args[0]);
 		const linked = accessed === undefined ? undefined : this.matchLinkedObject(accessed);
 		const field = this.accessedField(call);
 		if(linked === undefined || !fieldIsInput(linked, field)) {
 			return undefined;
 		}
-		const src: InputSource = { id: call.id, types: [linked.type], trace: InputTraceType.Unknown };
-		if(field !== undefined) {
-			src.name = field;
-			const declaredAt = linked.declaredBy && this.declarations().get(declarationKey(linked.name, field));
-			if(declaredAt) {
-				src.declaredAt = declaredAt;
-			}
-		}
-		return src;
+		return compactRecord({
+			...sourceOf(call.id, linked.type),
+			name:       field,
+			declaredAt: field !== undefined && linked.declaredBy ? this.declarations().get(declarationKey(linked.name, field)) : undefined
+		});
 	}
 
 	private accessedField(call: DataflowGraphVertexFunctionCall): string | undefined {
-		const arg = call.args[1];
-		if(arg === undefined || FunctionArgument.isEmpty(arg)) {
-			return undefined;
-		}
-		const ref = FunctionArgument.getReference(arg);
+		const ref = call.args[1] === undefined ? undefined : FunctionArgument.getReference(call.args[1]);
 		const node = ref === undefined ? undefined : this.dfg.idMap?.get(ref);
 		if(RString.is(node)) {
 			return node.content.str;
@@ -373,42 +346,31 @@ class InputClassifier {
 		return undefined;
 	}
 
+	/** the argument a built-in hands on: the value of a block or `get` (then `renamed`), the condition of a branch or loop */
+	private passedOn(call: DataflowGraphVertexFunctionCall): { via: FunctionArgument | undefined, renamed: boolean } | undefined {
+		if(call.origin.includes(BuiltInProcName.ExpressionList)) {
+			// `{ a; b }` evaluates to its last expression, just like in R
+			return { via: call.args.findLast(a => !FunctionArgument.isEmpty(a)), renamed: true };
+		} else if(call.origin.includes(BuiltInProcName.IfThenElse) || call.origin.includes(BuiltInProcName.WhileLoop)) {
+			return { via: call.args[0], renamed: false };
+		} else if(call.origin.includes(BuiltInProcName.ForLoop)) {
+			return { via: call.args[1], renamed: false };
+		} else if(call.origin.includes(BuiltInProcName.Get) && !this.whole.unknownSideEffects.has(NodeId.normalize(call.id))) {
+			// a statically resolved `get("x")` yields the value of the retrieved variable, read via its first argument
+			return { via: call.args[0], renamed: true };
+		}
+		return undefined;
+	}
+
 	private classifyFunctionCall(call: DataflowGraphVertexFunctionCall): InputSource {
 		const linkedAccess = this.classifyLinkedObjectAccess(call);
 		if(linkedAccess) {
 			return this.classifyCdsAndReturn(call, linkedAccess);
 		}
-		if(call.origin.includes(BuiltInProcName.ExpressionList)) {
-			// `{ a; b }` evaluates to its last expression, just like in R
-			const last = call.args.findLast(a => !FunctionArgument.isEmpty(a));
-			const value = last === undefined ? undefined : FunctionArgument.getReference(last);
-			const vtx = value === undefined ? undefined : this.dfg.getVertex(value);
-			if(vtx) {
-				return this.classifyCdsAndReturn(call, { ...this.classifyEntry(vtx), id: call.id });
-			}
-		} else if(call.origin.includes(BuiltInProcName.IfThenElse) || call.origin.includes(BuiltInProcName.WhileLoop)) {
-			const condition = FunctionArgument.getReference(call.args[0]);
-			if(condition) {
-				const vtx = this.dfg.getVertex(condition);
-				if(vtx) {
-					return this.classifyCdsAndReturn(call, this.classifyEntry(vtx));
-				}
-			}
-		} else if(call.origin.includes(BuiltInProcName.ForLoop)) {
-			const condition = FunctionArgument.getReference(call.args[1]);
-			if(condition) {
-				const vtx = this.dfg.getVertex(condition);
-				if(vtx) {
-					return this.classifyCdsAndReturn(call, this.classifyEntry(vtx));
-				}
-			}
-		} else if(call.origin.includes(BuiltInProcName.Get) && !(this.fullDfg ?? this.dfg).unknownSideEffects.has(NodeId.normalize(call.id))) {
-			// a statically resolved `get("x")` yields the value of the retrieved variable, read via its first argument
-			const ref = FunctionArgument.getReference(call.args[0]);
-			const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref);
-			if(vtx) {
-				return this.classifyCdsAndReturn(call, { ...this.classifyEntry(vtx), id: call.id });
-			}
+		const handed = this.passedOn(call);
+		const passed = this.classifyAt(handed?.via === undefined ? undefined : FunctionArgument.getReference(handed.via));
+		if(passed) {
+			return this.classifyCdsAndReturn(call, handed?.renamed ? { ...passed, id: call.id } : passed);
 		}
 		// a narrowing function returns a bounded value: either one of a specific argument's values (e.g. `match.arg`
 		// -> its `choices`), or - with no bounding argument - a content-independent value like a count/index/logical
@@ -417,51 +379,31 @@ class InputClassifier {
 				continue;
 			}
 			if(narrow.argIdx === undefined) {
-				return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: [InputType.DerivedConstant], trace: InputTraceType.Pure }));
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.DerivedConstant], trace: InputTraceType.Pure });
 			}
-			const ref = this.argumentReference(call, narrow.argIdx, narrow.argName ?? '');
-			const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref);
-			if(vtx) {
-				return this.classifyCdsAndReturn(call, { ...this.classifyEntry(vtx), id: call.id });
+			const narrowed = this.classifyAt(this.argumentReference(call, narrow.argIdx, narrow.argName ?? ''));
+			if(narrowed) {
+				return this.classifyCdsAndReturn(call, { ...narrowed, id: call.id });
 			}
 		}
 
 		if(!this.matches(call, this.config.pure)) {
-			const types: InputType[] = [];
-
-			for(const type of Record.values(InputType)) {
-				if(this.matches(call, this.config[type])) {
-					types.push(type);
-				}
-			}
+			const types = Record.values(InputType).filter(type => this.matches(call, this.config[type]));
 			// if a File-typed call reads from a temp path, replace File with TempFile
-			if(types.includes(InputType.File) && !types.includes(InputType.TempFile)) {
-				for(const arg of call.args) {
-					if(FunctionArgument.isEmpty(arg)) {
-						continue;
-					}
-					const ref = FunctionArgument.getReference(arg);
-					if(ref === undefined) {
-						continue;
-					}
-					const argVtx = this.dfg.getVertex(ref);
-					if(argVtx && this.classifyEntry(argVtx).types.includes(InputType.TempFile)) {
-						types.splice(types.indexOf(InputType.File), 1);
-						types.push(InputType.TempFile);
-						break;
-					}
-				}
+			const readsFile = types.includes(InputType.File) && !types.includes(InputType.TempFile);
+			if(readsFile && call.args.some(arg => this.classifyAt(FunctionArgument.getReference(arg))?.types.includes(InputType.TempFile))) {
+				types.splice(types.indexOf(InputType.File), 1);
+				types.push(InputType.TempFile);
+			}
+			/* `quote` yields written code, only capturing (`substitute(x)`) or splicing (`bquote(.(y))`) brings in other code */
+			if(types.includes(InputType.Lang) && this.quotesOnlyWrittenCode(call)) {
+				types.splice(types.indexOf(InputType.Lang), 1, InputType.DerivedConstant);
 			}
 			if(types.length === 0) {
-				// a call of something the code produced itself, like a shiny `reactive()`, yields what that produced
-				const callee = this.classifyCallee(call);
-				if(callee !== undefined) {
-					return this.classifyCdsAndReturn(call, { ...callee, id: call.id });
-				}
-				// a call of a function the code defines yields whatever that function returns
-				const returned = this.classifyDefinitionResult(call);
-				if(returned !== undefined) {
-					return this.classifyCdsAndReturn(call, returned);
+				/* a call of something the code produced (a shiny `reactive()`) or defines yields what that produced or returns */
+				const produced = this.classifyCallee(call) ?? this.classifyDefinitionResult(call);
+				if(produced !== undefined) {
+					return this.classifyCdsAndReturn(call, { ...produced, id: call.id });
 				}
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
 				types.push(InputType.Unknown);
@@ -469,41 +411,21 @@ class InputClassifier {
 			return this.classifyCdsAndReturn(call, { id: call.id, types, trace: InputTraceType.Unknown });
 		}
 
-
-		// Otherwise, classify by arguments; pure functions get Known/Pure handling
 		const argTypes: InputType[] = [];
 		const cdTypes: InputType[] = [];
-		for(const arg of call.args) {
-			if(FunctionArgument.isEmpty(arg)) {
-				continue;
-			}
-			const ref = FunctionArgument.getReference(arg);
-			if(ref === undefined) {
-				argTypes.push(InputType.Unknown);
-				continue;
-			}
-			const argVtx = this.dfg.getVertex(ref);
-			if(!argVtx) {
-				argTypes.push(InputType.Unknown);
-				continue;
-			}
-			const classified = this.classifyEntry(argVtx);
-			// collect all observed types from this argument
-			argTypes.push(...classified.types);
-			if(classified.cds) {
-				cdTypes.push(...classified.cds);
-			}
+		for(const arg of call.args.filter(FunctionArgument.isNotEmpty)) {
+			const classified = this.classifyAt(FunctionArgument.getReference(arg));
+			argTypes.push(...classified?.types ?? [InputType.Unknown]);
+			cdTypes.push(...classified?.cds ?? []);
 		}
-		const cds = cdTypes.length > 0 ? uniqueArray(cdTypes) : undefined;
-
 		// all arguments only contain constant-like types -> derived constant
-		const allConstLike = argTypes.length > 0 && argTypes.every(isConstantLike);
-		if(allConstLike) {
-			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds }));
-		}
-
-		argTypes.push(InputType.DerivedConstant);
-		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: uniqueArray(argTypes), trace: InputTraceType.Known, cds }));
+		const constLike = argTypes.length > 0 && argTypes.every(isConstantLike);
+		return this.classifyCdsAndReturn(call, compactRecord({
+			id:    call.id,
+			types: constLike ? [InputType.DerivedConstant] : uniqueArray([...argTypes, InputType.DerivedConstant]),
+			trace: constLike ? InputTraceType.Pure : InputTraceType.Known,
+			cds:   cdTypes.length > 0 ? uniqueArray(cdTypes) : undefined
+		}));
 	}
 
 	/**
@@ -512,28 +434,22 @@ class InputClassifier {
 	 * when the call names no definition here or when none of them says anything about what it returns.
 	 */
 	private classifyDefinitionResult(call: DataflowGraphVertexFunctionCall): InputSource | undefined {
-		const graph = this.fullDfg ?? this.dfg;
 		const acc = new ClassificationAccumulator();
-		let known = false;
 		for(const fn of this.functionDefinitionsAt(call.id)) {
-			const definition = graph.getVertex(fn);
-			if(!DfgVertex.isFunctionDefinition(definition)) {
-				continue;
-			}
-			for(const { nodeId } of definition.exitPoints) {
+			const definition = this.whole.getVertex(fn);
+			for(const { nodeId } of DfgVertex.isFunctionDefinition(definition) ? definition.exitPoints : []) {
 				for(const value of this.exitValues(nodeId)) {
-					const vtx = value === undefined ? undefined : this.dfg.getVertex(value) ?? graph.getVertex(value);
-					const classified = vtx ? this.classifyEntry(vtx) : undefined;
-					if(classified === undefined) {
+					const vtx = value === undefined ? undefined : this.dfg.getVertex(value) ?? this.whole.getVertex(value);
+					if(vtx === undefined) {
 						/* an exit flowR cannot place says nothing about the call, so neither can the others */
 						return undefined;
 					}
-					known = true;
-					acc.merge(classified);
+					acc.merge(this.classifyEntry(vtx));
 				}
 			}
 		}
-		if(!known) {
+		/* every merge records one value, so none means no exit point was found */
+		if(acc.values.length === 0) {
 			return undefined;
 		}
 		const built = acc.build(call.id);
@@ -546,16 +462,18 @@ class InputClassifier {
 	 * value flowR cannot name, a loop above all, so the caller stops rather than answers with the branches alone.
 	 */
 	private *exitValues(id: NodeId, depth = 0): Generator<NodeId | undefined> {
-		const vtx = (this.dfg.getVertex(id) ?? (this.fullDfg ?? this.dfg).getVertex(id));
-		if(vtx === undefined || !DfgVertex.isFunctionCall(vtx)) {
+		const vtx = this.dfg.getVertex(id) ?? this.whole.getVertex(id);
+		if(!DfgVertex.isFunctionCall(vtx)) {
 			yield id;
 			return;
 		}
-		if(vtx.origin.includes(BuiltInProcName.WhileLoop) || vtx.origin.includes(BuiltInProcName.ForLoop) || vtx.origin.includes(BuiltInProcName.RepeatLoop)) {
+		const isLoop = vtx.origin.includes(BuiltInProcName.WhileLoop) || vtx.origin.includes(BuiltInProcName.ForLoop)
+			|| vtx.origin.includes(BuiltInProcName.RepeatLoop);
+		if(isLoop) {
 			yield undefined;
 		} else if(vtx.origin.includes(BuiltInProcName.IfThenElse) && depth <= MaxFunctionResolveDepth) {
 			for(const branch of vtx.args.slice(1)) {
-				const ref = FunctionArgument.isEmpty(branch) ? undefined : FunctionArgument.getReference(branch);
+				const ref = FunctionArgument.getReference(branch);
 				if(ref === undefined) {
 					yield undefined;
 				} else {
@@ -573,8 +491,7 @@ class InputClassifier {
 			if(o.type !== OriginType.ReadVariableOrigin && o.type !== OriginType.WriteVariableOrigin) {
 				continue;
 			}
-			const vtx = this.dfg.getVertex(o.id);
-			const classified = vtx ? this.classifyEntry(vtx) : this.classifyInFullGraph(o.id);
+			const classified = this.classifyAt(o.id) ?? this.classifyInFullGraph(o.id);
 			if(classified !== undefined && !classified.types.includes(InputType.Unknown)) {
 				return classified;
 			}
@@ -585,33 +502,37 @@ class InputClassifier {
 	private classifyVariable(vtx: DataflowGraphVertexInfo): InputSource {
 		const linked = this.matchWholeLinkedObject(vtx.id);
 		if(linked) {
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: [linked.type], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, sourceOf(vtx.id, linked.type));
 		}
 		const origins = Dataflow.origin(this.dfg, vtx.id);
-
 		if(origins === undefined || origins.length === 0) {
-			if(this.isDefinedByOnCall(vtx.id)) {
-				return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: [InputType.Scope], trace: InputTraceType.Unknown });
+			if(edgeTargets(this.whole, vtx.id, EdgeType.DefinedByOnCall).length > 0) {
+				return this.classifyCdsAndReturn(vtx, sourceOf(vtx.id, InputType.Scope));
 			}
 			// the definition is not part of the criterion's function, so it has to come from an enclosing scope
 			const outer = this.classifyInFullGraph(vtx.id);
-			return this.classifyCdsAndReturn(vtx, outer ? { ...outer, id: vtx.id } : { id: vtx.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, outer ? { ...outer, id: vtx.id } : sourceOf(vtx.id, InputType.Unknown));
 		}
-
 		const acc = new ClassificationAccumulator();
 		for(const o of origins) {
 			if(o.type === OriginType.ConstantOrigin) {
-				acc.types.push(InputType.DerivedConstant);
-				acc.values.push(this.extractConstantValue(o.id));
+				acc.push(InputType.DerivedConstant, this.extractConstantValue(o.id));
 			} else if(o.type === OriginType.ReadVariableOrigin || o.type === OriginType.WriteVariableOrigin) {
 				this.classifyVariableOrigin(o.id, acc);
 			} else if(o.type === OriginType.FunctionCallOrigin || o.type === OriginType.BuiltInFunctionOrigin) {
-				this.classifyByVertex(o.id, acc);
+				acc.merge(this.classifyAt(o.id));
 			} else {
-				acc.pushUnknown();
+				acc.merge(undefined);
 			}
 		}
 		return this.classifyCdsAndReturn(vtx, acc.build(vtx.id));
+	}
+
+	private parameterType(id: NodeId): InputType | undefined {
+		if(this.dfg.idMap?.get(id)?.info.role !== RoleInParent.ParameterName) {
+			return undefined;
+		}
+		return this.matchWholeLinkedObject(id)?.type ?? InputType.Parameter;
 	}
 
 	/**
@@ -621,12 +542,12 @@ class InputClassifier {
 	private classifyVariableOrigin(definitionId: NodeId, acc: ClassificationAccumulator): void {
 		const v = this.dfg.getVertex(definitionId);
 		if(!v) {
-			acc.pushUnknown();
+			acc.merge(undefined);
 			return;
 		}
 		// if the referenced definition is linked via defined-by-on-call to another id (e.g., a parameter linked to a
 		// caller argument), follow it into the caller; only if that leads nowhere is it an opaque Scope origin
-		const onCall = this.definedByOnCallTargets(v.id);
+		const onCall = edgeTargets(this.whole, v.id, EdgeType.DefinedByOnCall);
 		if(onCall.length > 0) {
 			const callers = onCall.map(t => this.classifyInFullGraph(t)).filter(isNotUndefined);
 			const known = callers.filter(c => !c.types.includes(InputType.Unknown));
@@ -634,63 +555,37 @@ class InputClassifier {
 			if(known.length > 0 && known.length === callers.length) {
 				return;
 			}
-			acc.types.push(InputType.Scope);
-			acc.values.push(undefined);
+			acc.push(InputType.Scope);
 			acc.allPure = false;
 		}
-		// if this is a variable definition that is a parameter, classify as Parameter
-		if(DfgVertex.isVariableDefinition(v) && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
-			acc.types.push(this.matchWholeLinkedObject(v.id)?.type ?? InputType.Parameter);
-			acc.values.push(undefined);
-			return;
-		}
-		acc.merge(this.classifyEntry(v));
-	}
-
-	private classifyByVertex(id: NodeId, acc: ClassificationAccumulator): void {
-		const v = this.dfg.getVertex(id);
-		if(v) {
+		const parameter = DfgVertex.isVariableDefinition(v) ? this.parameterType(v.id) : undefined;
+		if(parameter !== undefined) {
+			acc.push(parameter);
+		} else {
 			acc.merge(this.classifyEntry(v));
-		} else  {
-			acc.pushUnknown();
 		}
 	}
 
 	private classifyVariableDefinition(vtx: DataflowGraphVertexVariableDefinition): InputSource {
-		// parameter definitions are classified as Parameter
-		if(this.dfg.idMap?.get(vtx.id)?.info.role === RoleInParent.ParameterName) {
-			const types = [this.matchWholeLinkedObject(vtx.id)?.type ?? InputType.Parameter];
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types, trace: InputTraceType.Unknown });
-		}
-
-		const sources = vtx.source;
-		if(sources === undefined || sources.length === 0) {
+		const parameter = this.parameterType(vtx.id);
+		if(parameter !== undefined) {
+			return this.classifyCdsAndReturn(vtx, sourceOf(vtx.id, parameter));
+		} else if(!vtx.source?.length) {
 			// fallback to unknown if we cannot find the value
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, sourceOf(vtx.id, InputType.Unknown));
 		}
-
 		const acc = new ClassificationAccumulator();
-		for(const tid of sources) {
-			const tv = this.dfg.getVertex(tid);
-			if(tv) {
-				acc.merge(this.classifyEntry(tv));
-			} else   {
-				acc.pushUnknown();
-			}
-		}
+		vtx.source.forEach(tid => acc.merge(this.classifyAt(tid)));
 		return this.classifyCdsAndReturn(vtx, acc.build(vtx.id));
 	}
 
 	private classifyCdsAndReturn(vtx: DataflowGraphVertexArgument, src: InputSource): InputSource {
 		if(vtx.cds) {
-			const cds = uniqueArray(vtx.cds.flatMap(c => {
-				const cv = this.dfg.getVertex(c.id);
-				if(!cv) {
-					return undefined;
-				}
-				const e = this.classifyEntry(cv);
-				return e.cds ? [...e.types, ...e.cds] : [...e.types];
-			}).filter(isNotUndefined).concat(src.cds ?? []));
+			/* running only once a call forces it is no condition on the data */
+			const cds = uniqueArray(vtx.cds.filter(c => c.byPromise !== true).flatMap(c => {
+				const e = this.classifyAt(c.id);
+				return e ? [...e.types, ...e.cds ?? []] : [];
+			}).concat(src.cds ?? []));
 			if(cds.length > 0) {
 				src.cds = cds;
 			}
@@ -722,13 +617,13 @@ export interface LinkedInputObject {
 	readonly requires?:   string,
 	/** if given, only these fields are inputs (`session$clientData` is, `session$userData` is not) and the object itself is none */
 	readonly fields?:     readonly string[],
-	/** how the framework declares the entries of this object, so a read of `input$n` links to the `textInput("n", …)` defining it */
+	/** how the framework declares the entries of this object, so a read of `input$n` links to the `textInput("n", ...)` defining it */
 	readonly declaredBy?: LinkedInputDeclaration
 }
 
 /** The calls that declare the entries of a {@link LinkedInputObject}, and where they carry the entry's name. */
 export interface LinkedInputDeclaration {
-	/** the declaring calls, e.g. shiny's `textInput`, `selectInput`, … */
+	/** the declaring calls, e.g. shiny's `textInput`, `selectInput`, ... */
 	readonly calls:   readonly Identifier[],
 	/** the name of the argument holding the entry's name */
 	readonly argName: string,
@@ -761,7 +656,7 @@ export interface NarrowingFunction {
 }
 
 /** the function definitions the given node is nested in, innermost first */
-function* enclosingFunctions(node: RNode<ParentInformation>, idMap: AstIdMap): Generator<RFunctionDefinition<ParentInformation>> {
+function* enclosingFunctions(node: RNode<ParentInformation> | undefined, idMap: AstIdMap): Generator<RFunctionDefinition<ParentInformation>> {
 	for(const parent of RNode.iterateParents(node, idMap)) {
 		if(RFunctionDefinition.is(parent)) {
 			yield parent;
@@ -816,13 +711,12 @@ export interface InputSource extends MergeableRecord {
 	name?:       string,
 	/** the concrete scalar value when the source is a constant or a pure alias of one */
 	value?:      ConstantValue,
-	/** where the framework entry this source reads is declared, e.g. the `textInput("n", …)` behind an `input$n` */
+	/** where the framework entry this source reads is declared, e.g. the `textInput("n", ...)` behind an `input$n` */
 	declaredAt?: NodeId[]
 }
 
-
 /**
- * Map of input sources, keyed by the node id of the input source. Each input source is classified with an {@link InputSource} object.
+ * The input sources of a criterion, each classified with an {@link InputSource} object.
  */
 export type InputSources = InputSource[];
 
@@ -844,10 +738,6 @@ function callMeans(called: Identifier, id: Identifier, packages?: ReadonlySet<st
 	const namespace = Identifier.getNamespace(id);
 	return Identifier.getNamespace(called) === undefined && Identifier.matches(called, id)
 		&& (namespace === undefined || packages === undefined || packages.has(namespace));
-}
-
-function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierFunctionIdentifiers | undefined, packages?: ReadonlySet<string>): boolean {
-	return list?.some(id => fn.id === id || (Identifier.is(id) && callMeans(fn.name, id, packages))) ?? false;
 }
 
 /**
@@ -886,34 +776,18 @@ export interface InputClassifierConfig<Functions extends InputClassifierFunction
  */
 export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph, packages?: ReadonlySet<string>): InputSources {
 	const vtx = dfg.getVertex(id);
-	if(!vtx) {
-		return [];
-	}
 	const c = new InputClassifier(dfg, config, fullDfg, packages);
-
-	if(DfgVertex.isFunctionCall(vtx)) {
-		const ret: InputSources = [];
-		const args = vtx.args;
-		for(const arg of args) {
-			if(FunctionArgument.isEmpty(arg)) {
-				continue;
-			}
-			const ref = FunctionArgument.getReference(arg);
-			if(ref === undefined) {
-				continue;
-			}
-			const argVtx = dfg.getVertex(ref);
-			if(argVtx === undefined) {
-				continue;
-			}
-			const entry = c.classifyEntry(argVtx);
-			const argName = FunctionArgument.getName(arg);
-			ret.push(argName !== undefined ? { ...entry, name: argName } : entry);
-		}
-		return ret;
-	} else {
-		return [
-			c.classifyEntry(vtx)
-		];
+	if(!DfgVertex.isFunctionCall(vtx)) {
+		return vtx ? [c.classifyEntry(vtx)] : [];
 	}
+	const ret: InputSources = [];
+	for(const arg of vtx.args) {
+		const entry = c.classifyAt(FunctionArgument.getReference(arg));
+		if(entry === undefined) {
+			continue;
+		}
+		const name = FunctionArgument.getName(arg);
+		ret.push(name !== undefined ? { ...entry, name } : entry);
+	}
+	return ret;
 }

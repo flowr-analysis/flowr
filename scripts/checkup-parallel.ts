@@ -35,6 +35,7 @@ const allJobs: Job[] = [
 	{ id: 'lint',      label: 'lint',                 argv: [npm, 'run', 'lint'] },
 	{ id: 'tests',     label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'], summary: true },
 	{ id: 'system',    label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'] },
+	{ id: 'yields',    label: 'yield snippets',       argv: [npm, 'run', 'test:yields', '--', '--run'] },
 	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'], summary: true },
 	{ id: 'wiki',      label: 'wiki generation',      argv: [npm, 'run', 'wiki'] },
 	{ id: 'labels',    label: 'generic labels',       argv: [npm, 'run', 'check:generic-labels'] },

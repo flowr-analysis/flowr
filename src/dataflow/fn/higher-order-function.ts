@@ -14,7 +14,6 @@ import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Resolve } from '../environments/resolve-helper';
-import type { FunctionArgumentRoles } from './argument-roles';
 import { argumentRolesOfFunctions } from './argument-roles';
 import { ArgProp } from '../environments/built-in-props';
 
@@ -30,19 +29,12 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 		if(DfgVertex.isFunctionDefinition(current)) {
 			return true;
 		}
-		const next = graph.edgesFrom(current.id);
-		const isCall = DfgVertex.isFunctionCall(current);
-		for(const [t, e] of next) {
-			/* a call hands back what its callee returns, which its `returns` edges name, and never the callee itself */
-			if(isCall && !DfEdge.includesType(e, EdgeType.Returns)) {
-				continue;
-			}
-			/* a returned name is followed to what it holds, as `g <- function() 1; g` hands back that function */
-			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy) && !NodeId.isBuiltIn(t)) {
-				const v = graph.getVertex(t);
-				if(v) {
-					workingQueue.push(v);
-				}
+		/* a call hands back what its callee returns, never the callee; a returned name is followed to what it holds */
+		const follow = DfgVertex.isFunctionCall(current) ? EdgeType.Returns : EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy;
+		for(const [t, e] of graph.edgesFrom(current.id)) {
+			const v = DfEdge.includesType(e, follow) && !NodeId.isBuiltIn(t) ? graph.getVertex(t) : undefined;
+			if(v) {
+				workingQueue.push(v);
 			}
 		}
 	}
@@ -74,12 +66,15 @@ function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId
 			continue;
 		}
 		seen.add(current);
-		if(DfgVertex.isFunctionDefinition(graph.getVertex(current))) {
+		const vertex = graph.getVertex(current);
+		if(DfgVertex.isFunctionDefinition(vertex)) {
 			found.add(current);
 			continue;
 		}
+		/* what a call reads beyond its arguments (state it depends on, writes it follows) is no value it hands back */
+		const isCall = DfgVertex.isFunctionCall(vertex);
 		for(const [t, e] of graph.edgesFrom(current)) {
-			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy)) {
+			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.DefinedBy) || (DfEdge.includesType(e, EdgeType.Reads) && (!isCall || DfEdge.includesType(e, EdgeType.Argument)))) {
 				workingQueue.push(t);
 			}
 		}
@@ -96,13 +91,12 @@ export interface ArgumentFacts {
 
 function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph, facts?: Map<NodeId, ArgumentFacts>): boolean {
 	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
-
 	for(const [callerId, e] of callSites ?? []) {
 		if(!DfEdge.includesType(e, EdgeType.Calls)) {
 			continue;
 		}
 		const caller = graph.getVertex(callerId);
-		if(!caller || !DfgVertex.isFunctionCall(caller)) {
+		if(!DfgVertex.isFunctionCall(caller)) {
 			continue;
 		}
 		for(const arg of caller.args) {
@@ -132,7 +126,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 
 /** Whether the body uses a formal as a function ({@link ArgProp.Callee}), which no call site has to show. */
 function callsAFormal(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	const roles: FunctionArgumentRoles = argumentRolesOfFunctions([id], graph, { ctx })[id] ?? {};
+	const roles = argumentRolesOfFunctions([id], graph, { ctx })[id] ?? {};
 	return Object.values(roles).some(props => (props & ArgProp.Callee) !== 0);
 }
 
@@ -153,11 +147,9 @@ export interface HigherOrderFunctionsOptions {
  */
 export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph, argumentFacts }: HigherOrderFunctionsOptions): boolean {
 	const vert = graph.getVertex(id);
-	if(!vert || !DfgVertex.isFunctionDefinition(vert)) {
+	if(!DfgVertex.isFunctionDefinition(vert)) {
 		return false;
 	}
-
 	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph, argumentFacts);
 }
-
 

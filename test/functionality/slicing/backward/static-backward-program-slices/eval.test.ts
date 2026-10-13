@@ -1,4 +1,4 @@
-import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell, assertSliceMatchesR, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
@@ -67,4 +67,15 @@ t <- evalText("1+y")
 print(y)`, ['8@print'], `for(i in 1:4) y <- 4
 if(u >= 4) y <- 2
 print(y)`);
+}));
+
+describe('eval checked against R', withTreeSitter(parser => {
+	const cases: readonly (readonly [string, string])[] = [
+		['second eval of the same quote', 'w <- 1\ne <- quote(w <- w + 1)\neval(e)\neval(e)\nprint(w)'],
+		['eval of a global quote inside a function', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function() eval(e)\nf()\nf()\nprint(w)'],
+		['eval of a quote in a loop', 'e <- quote(w <- w + 1)\nw <- 1\nfor(i in 1:3) eval(e)\nprint(w)'],
+	];
+	for(const [name, code] of cases) {
+		assertSliceMatchesR(parser, name, code);
+	}
 }));

@@ -22,6 +22,7 @@ import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { cleanEnvOf } from '../../../../../environments/scoping';
+import { ambientWritesOfRelease } from './built-in-ambient-state';
 
 /** The variables an `rm` call targets for removal, and the frame it removes them from. */
 interface RmTargets<OtherInfo> {
@@ -43,7 +44,7 @@ interface RmFrameArg<OtherInfo> {
 
 /** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope */
 function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	if(!RFunctionCall.is(value) || !value.named) {
+	if(!RFunctionCall.isNamed(value)) {
 		return false;
 	}
 	const [fn, ns] = Identifier.toArray(value.functionName.content);
@@ -51,7 +52,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 		return false;
 	}
 	// a `pattern`/`envir` argument restricts the listing, so only a plain listing clears everything
-	const listsEverything = value.arguments.every(a => a !== EmptyArgument && a.name !== undefined && (Identifier.getName(a.name.content) === 'all.names' || Identifier.getName(a.name.content) === 'sorted'));
+	const listsEverything = value.arguments.every(a => RArgument.isNamed(a) && ['all.names', 'sorted'].includes(Identifier.getName(a.name.content)));
 	if(!listsEverything) {
 		return false;
 	}
@@ -91,7 +92,7 @@ function targetsCurrentFrame<OtherInfo>(
 }
 
 /** The role R's argument matching gives `arg`; anything but an exactly named formal belongs to `...`. */
-function roleOf<OtherInfo>(arg: Exclude<PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, typeof EmptyArgument>): RmFormalRole | 'dots' {
+function roleOf<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation>): RmFormalRole | 'dots' {
 	return (arg.name === undefined ? undefined : RmFormals[arg.name.content]) ?? 'dots';
 }
 
@@ -253,5 +254,9 @@ export function processRm<OtherInfo>(
 
 	// apply to our own environment so threading reflects it, and emit the kills so a merging parent can re-apply
 	const kills = buildKills(targets, data.cds, rootId);
-	return kills.length > 0 ? { ...res, environment: applyKills(res.environment, kills), kill: kills } : res;
+	if(kills.length === 0) {
+		return res;
+	}
+	const names = targets.all || targets.unknown ? undefined : targets.names.map(n => n.name);
+	return { ...res, environment: ambientWritesOfRelease(applyKills(res.environment, kills), names, rootId, data.cds), kill: kills };
 }

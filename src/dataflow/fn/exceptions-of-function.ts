@@ -13,9 +13,8 @@ import { ArgProp } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { BuiltInLookup } from './frame-reflection';
 import { namesAnErrorHandler } from './condition-handlers';
-import { propagateToFixpoint } from './function-props';
+import { memoize } from '../../util/collections/defaultmap';
 
-const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {
 	id:   NodeId;
 	cds?: readonly ControlDependency[];
@@ -39,7 +38,7 @@ export type ExceptionsByFunction = Record<NodeId, ExceptionPoint[]>;
  * (`tryCatch`) catches only what the names written for it say.
  */
 function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGraph, info: BuiltInLookup): boolean {
-	if(!DfgVertex.isFunctionCall(vertex) || vertex.origin === 'unnamed' || !vertex.origin.some(c => CatchHandlers.has(c))) {
+	if(!DfgVertex.isFunctionCall(vertex) || !DfgVertex.hasOrigin(vertex, BuiltInProcName.Try)) {
 		return false;
 	}
 	const sig = info(vertex.name)?.sig;
@@ -58,9 +57,9 @@ function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGra
  */
 function guarded(id: NodeId, graph: CallGraph, info: BuiltInLookup): boolean {
 	const idMap = graph.idMap;
-	let node = idMap === undefined ? undefined : idMap.get(id);
-	while(node !== undefined && !RFunctionDefinition.is(node)) {
-		const parent = RNode.directParent(node, idMap as NonNullable<typeof idMap>);
+	let node = idMap?.get(id);
+	while(idMap !== undefined && node !== undefined && !RFunctionDefinition.is(node)) {
+		const parent = RNode.directParent(node, idMap);
 		if(RArgument.isUnnamed(node) && RFunctionCall.is(parent) && catches(graph.getVertex(parent.info.id), graph, info)) {
 			return true;
 		}
@@ -71,12 +70,11 @@ function guarded(id: NodeId, graph: CallGraph, info: BuiltInLookup): boolean {
 
 function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction): ReachedFunctions {
 	const info = builtInLookup();
-	const isGuarded = new Map<NodeId, boolean>();
+	const isGuarded = memoize((n: NodeId) => guarded(n, graph, info));
 	const calls = new Map<NodeId, readonly NodeId[]>();
 	const own = new Map<NodeId, readonly ExceptionPoint[]>();
 	const defs = new Set<NodeId>();
 	const toVisit: NodeId[] = [id];
-
 	while(toVisit.length > 0) {
 		const current = toVisit.pop() as NodeId;
 		if(calls.has(current)) {
@@ -98,22 +96,72 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 			own.set(current, vertex.exitPoints.filter(e => e.type === ExitPointType.Error).map(e => ({ id: e.nodeId, cds: e.cds })));
 		}
 		/* a guarded call is only ever reached through the construct guarding it, which ends the walk of its own */
-		const next = [...(graph.edgesFrom(current)).keys()].filter(n => {
-			let known = isGuarded.get(n);
-			if(known === undefined) {
-				known = guarded(n, graph, info);
-				isGuarded.set(n, known);
-			}
-			return !known;
-		});
+		const next = [...graph.edgesFrom(current).keys()].filter(n => !isGuarded(n));
 		calls.set(current, next);
-		for(const n of next) {
-			if(!calls.has(n)) {
-				toVisit.push(n);
+		toVisit.push(...next);
+	}
+	return { calls, own, defs };
+}
+
+/** What each node may raise, its callees included; Tarjan yields the call cycles callees first, so each is settled once. */
+function raisedPerNode(calls: ReadonlyMap<NodeId, readonly NodeId[]>, own: ReadonlyMap<NodeId, readonly ExceptionPoint[]>): ReadonlyMap<NodeId, ReadonlyMap<NodeId, ExceptionPoint>> {
+	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
+	const index = new Map<NodeId, number>();
+	const low = new Map<NodeId, number>();
+	const stack: NodeId[] = [];
+	const onStack = new Set<NodeId>();
+	const lower = (node: NodeId, to: number) => low.set(node, Math.min(low.get(node) as number, to));
+	for(const root of calls.keys()) {
+		if(index.has(root)) {
+			continue;
+		}
+		/* each frame is a node and how many of its callees have been looked at */
+		const frames: [NodeId, number][] = [[root, 0]];
+		while(frames.length > 0) {
+			const frame = frames[frames.length - 1];
+			const [node, at] = frame;
+			if(at === 0) {
+				low.set(node, index.size);
+				index.set(node, index.size);
+				stack.push(node);
+				onStack.add(node);
+			}
+			const callee = calls.get(node)?.[at];
+			if(callee !== undefined) {
+				frame[1]++;
+				if(!index.has(callee)) {
+					frames.push([callee, 0]);
+				} else if(onStack.has(callee)) {
+					lower(node, index.get(callee) as number);
+				}
+				continue;
+			}
+			frames.pop();
+			if(frames.length > 0) {
+				lower(frames[frames.length - 1][0], low.get(node) as number);
+			}
+			if(low.get(node) === index.get(node)) {
+				/* the node roots a component: its members are what lies on the stack above it, taken off top first */
+				const members = stack.splice(stack.lastIndexOf(node)).reverse();
+				const points = new Map<NodeId, ExceptionPoint>();
+				for(const m of members) {
+					for(const e of own.get(m) ?? []) {
+						points.set(e.id, e);
+					}
+					for(const callee of calls.get(m) ?? []) {
+						for(const [at, point] of raised.get(callee) ?? []) {
+							points.set(at, point);
+						}
+					}
+				}
+				for(const m of members) {
+					onStack.delete(m);
+					raised.set(m, points);
+				}
 			}
 		}
 	}
-	return { calls, own, defs };
+	return raised;
 }
 
 /** What to ask for beyond the definition itself, see {@link exceptionsOfFunction}. */
@@ -129,33 +177,11 @@ export interface FunctionExceptionsOptions {
  */
 export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);
-
-	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
-	for(const node of calls.keys()) {
-		raised.set(node, new Map((own.get(node) ?? []).map(e => [e.id, e])));
-	}
-	propagateToFixpoint(calls.keys(), calls, node => {
-		const into = raised.get(node) as Map<NodeId, ExceptionPoint>;
-		let grew = false;
-		for(const call of calls.get(node) ?? []) {
-			for(const [at, point] of raised.get(call) ?? NoPoints) {
-				if(!into.has(at)) {
-					into.set(at, point);
-					grew = true;
-				}
-			}
-		}
-		return grew;
-	});
-
 	const result: ExceptionsByFunction = {};
-	for(const [node, points] of raised) {
+	for(const [node, points] of raisedPerNode(calls, own)) {
 		if(defs.has(node) || node === id) {
 			result[node] = [...points.values()];
 		}
 	}
 	return result;
 }
-
-
-const NoPoints: ReadonlyMap<NodeId, ExceptionPoint> = new Map();

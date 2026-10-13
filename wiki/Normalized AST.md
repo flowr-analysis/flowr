@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10, R v4.6.1), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -1427,7 +1427,7 @@ The following segments intend to give you an overview of how to work with the no
 
 > [!TIP]
 > If you want to get more information on roxygen comments attached to AST nodes,
-> check out <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/roxygen2/roxygen-parse.ts#L33"><code><span title="Parses the roxygen comments attached to a node into a RoxygenBlock AST node. Will return undefined if there are no valid roxygen comments attached to the node. Please note that this does *not* do any clever mapping of parameters or requests. For a higher-level function that also traverses up the AST to find comments attached to parent nodes, see RNode.documentation .">parseRoxygenCommentsOfNode</span></code></a>.
+> check out <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/roxygen2/roxygen-parse.ts#L35"><code><span title="Parses the roxygen comments attached to a node into a RoxygenBlock AST node. Will return undefined if there are no valid roxygen comments attached to the node. Please note that this does *not* do any clever mapping of parameters or requests. For a higher-level function that also traverses up the AST to find comments attached to parent nodes, see RNode.documentation .">parseRoxygenCommentsOfNode</span></code></a>.
 
 ## How to Get a Normalized AST
 
@@ -1555,11 +1555,11 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang
 
 ### Visitors
 
-If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L364"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
+If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L369"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
 For example, if you want to collect all the `id`s present within a normalized (sub-)AST,
-as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L373"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L452"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L54"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
+as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L378"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L457"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L54"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
 
 ```ts
 

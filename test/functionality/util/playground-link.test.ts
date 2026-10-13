@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { assert, describe, test } from 'vitest';
 import { label } from '../_helper/label';
 import { Playground, type PlaygroundMark } from '../../../src/util/text/playground-link';
@@ -24,6 +25,14 @@ describe('Playground links', () => {
 	test(label('the marks ride along, lines first', ['name-normal'], ['other']), () => {
 		assert.strictEqual(fields(Playground.link({ code, marks: ['3@sum', '1', 'lint:absolute-file-paths@1'] })).h,
 			'1,3@sum,lint:absolute-file-paths@1');
+	});
+
+	test(label('a project travels as the opened file, its name, and the files loaded before it', ['name-normal'], ['other']), () => {
+		const link = fields(Playground.link({ code, name: 'b.Rmd', files: [{ name: 'lib/a.R', code: 'f <- 1' }], marks: ['3@f(^lib/a\\.R$)', '2'] }));
+		assert.strictEqual(link.n, 'b.Rmd');
+		assert.deepStrictEqual(JSON.parse(unpackFromUrl(link.o) ?? ''), [['lib/a.R', 'f <- 1']]);
+		assert.strictEqual(link.h, '2,3@f(^lib/a\\.R$)');
+		assert.isUndefined(fields(Playground.link({ code, name: Playground.MainFile })).n);
 	});
 
 	test(label('a run of lines travels as one range, and back', ['name-normal'], ['other']), () => {
@@ -123,6 +132,17 @@ describe('Playground links', () => {
 		}
 		for(const mark of ['', 'sum', '@sum', 'twelve', '1,2']) {
 			assert.isFalse(Playground.Mark.isValid(mark), mark);
+		}
+	});
+
+	/* links already printed, here those of the STTT 26(4) article, have to open on what they were written with */
+	test(label('published links still read back', ['name-normal'], ['other']), () => {
+		for(const link of fs.readFileSync('test/testfiles/playground/sttt-26-4-links.txt', 'utf8').trim().split('\n')) {
+			const { c, h } = fields(link);
+			assert.isNotEmpty(unpackFromUrl(c), link);
+			if(h !== undefined) {
+				assert.isNotEmpty(Playground.Mark.expand(h.split(',')), link);
+			}
 		}
 	});
 });

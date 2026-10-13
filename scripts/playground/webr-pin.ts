@@ -8,9 +8,9 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
-import { WebRVersion } from './webr-version';
+import { WebRBase, WebRVersion } from './webr-version';
 
-export { WebRVersion };
+export { WebRBase, WebRVersion };
 
 const Integrity = 'sha512-M2b8m3/ZBk7XMIR7LD97s5k/9jUla83Z0Hl4b+WnrK7XmSMpZdajCiP3XkSzHKHDUgscHKe+lVUvk3aym8q0bw==';
 /* https://registry.npmjs.org/-/npm/v1/keys, the key npm signs packages with */
@@ -19,8 +19,6 @@ const NpmKey = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEY6Ya7W++7aUPzvMTrezH6Ycx3c+H
 
 const Registry = `https://registry.npmjs.org/webr/${WebRVersion}`;
 const Cache = path.join('node_modules', '.cache', 'flowr-playground', `webr-${WebRVersion}.tgz`);
-
-export const WebRBase = `https://webr.r-wasm.org/v${WebRVersion}/`;
 
 /* what the page loads at runtime: the rest of the package (types, maps, tests, its own repl) is never fetched */
 const Wanted = /^package\/dist\/(?:webr\.js|webr-worker\.js|R\.js|R\.wasm|libRblas\.so|libRlapack\.so|vfs\/.+)$/;
@@ -88,15 +86,21 @@ function* entries(tar: Buffer): Generator<{ name: string, data: Buffer }> {
 	}
 }
 
+/** the hash and size a file of webR must have */
+export interface PinnedFile {
+	readonly sha256: string
+	readonly size:   number
+}
+
 /**
- * The SHA-256 (base64) of every file the page loads from {@link WebRBase}, keyed by its path below it.
+ * The SHA-256 (base64) and size of every file the page loads from {@link WebRBase}, keyed by its path below it.
  * Throws when the package cannot be fetched or does not verify.
  */
-export async function webRManifest(): Promise<Record<string, string>> {
-	const manifest: Record<string, string> = {};
+export async function webRManifest(): Promise<Record<string, PinnedFile>> {
+	const manifest: Record<string, PinnedFile> = {};
 	for(const { name, data } of entries(zlib.gunzipSync(await tarball()))) {
 		if(Wanted.test(name)) {
-			manifest[CdnName(name.slice('package/dist/'.length))] = crypto.createHash('sha256').update(data).digest('base64');
+			manifest[CdnName(name.slice('package/dist/'.length))] = { sha256: crypto.createHash('sha256').update(data).digest('base64'), size: data.length };
 		}
 	}
 	return manifest;

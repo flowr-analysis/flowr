@@ -32,7 +32,7 @@ print(x + y)
 	}
 f()
 print(x + y)
-		`, ['2@x'], '{ x <<- 2 }\nf()\nprint(x + y)');
+		`, ['2@x'], 'f <- function() { x <<- 2 }\nf()\nprint(x + y)');
 	});
 	describe('Function definitions', () => {
 		/* the slice keeps the binding of `f`, so the body must not be reconstructed without its header */

@@ -2,7 +2,8 @@ import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
 import { RValue } from '../values/r-value';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { MatchArgs } from '../../graph/match-args';
 import { isNotUndefined } from '../../../util/assert';
 import { DfgVertex } from '../../graph/vertex';
 import { EdgeType } from '../../graph/edge';
@@ -11,9 +12,7 @@ import { callFnProps } from '../../environments/query-fn-props';
 import { ArgProp, SemanticCallTag } from '../../environments/built-in-props';
 import { FunctionSemantics } from '../../fn/function-semantics';
 import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { REnvironmentInformation } from '../../environments/environment';
 import { valueSetGuard } from '../values/general';
 import { isValue, type Value } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
@@ -24,8 +23,27 @@ import { Resolve } from '../../environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
+/** The index of the argument of `vertex` that binds the formal `argumentName`, R's matching when the formals are known and the `argumentIndex`-th unnamed argument otherwise. */
+export function boundArgumentIndex<Idx extends number | 'unnamed' | undefined>(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argumentIndex: Idx, argumentName: string, ctx: ReadOnlyFlowrAnalyzerContext): Idx | number {
+	const call = graph.idMap?.get(vertex.id);
+	const formals = RFunctionCall.is(call) ? MatchArgs.formalsOf(call, graph, ctx) : undefined;
+	if(formals?.includes(argumentName)) {
+		const bound = MatchArgs.toSpec(vertex.args, Object.fromEntries(formals.map(f => [f, f]))).get(argumentName)?.[0];
+		return bound === undefined ? vertex.args.length : vertex.args.findIndex(a => a !== EmptyArgument && a.nodeId === bound);
+	}
+	const arg = vertex.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
+	if(arg >= 0) {
+		return arg;
+	} else if(typeof argumentIndex === 'number') {
+		/* a named argument takes no position, so the parameter binds the matching unnamed one */
+		const unnamed = vertex.args.flatMap((a, i) => a === EmptyArgument || !a.name ? [i] : []);
+		return unnamed[argumentIndex] ?? vertex.args.length;
+	}
+	return argumentIndex;
+}
+
 /**
- * Get the values of all arguments matching the criteria.
+ * Get the values of all arguments matching the criteria, keyed by the id of the argument.
  */
 export function getArgumentStringValue(
 	variableResolve: VariableResolve,
@@ -36,50 +54,43 @@ export function getArgumentStringValue(
 	resolveValue: boolean | 'library' | undefined,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): Map<NodeId, Set<string | undefined>> | undefined {
-	if(argumentName) {
-		const arg = vertex?.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
-		if(arg >= 0) {
-			argumentIndex = arg;
-		}
+	if(argumentName && argumentIndex !== 'unnamed') {
+		argumentIndex = boundArgumentIndex(graph, vertex, argumentIndex, argumentName, ctx);
 	}
-
-	if(!vertex || argumentIndex === undefined) {
+	if(argumentIndex === undefined) {
 		return undefined;
 	}
 	if(argumentIndex === 'unnamed') {
-		// return all unnamed arguments
-		const references = vertex.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference).filter(isNotUndefined);
-
 		const map = new Map<NodeId, Set<string | undefined>>();
-		for(const ref of references) {
-			let valueNode = graph.idMap?.get(ref);
-			if(RArgument.is(valueNode)) {
-				valueNode = valueNode.value;
+		/* all unnamed arguments, and the one named `argumentName`, which is evaluated rather than taken as a name */
+		for(const arg of vertex.args) {
+			if(arg === EmptyArgument || (arg.name && arg.name !== argumentName)) {
+				continue;
 			}
-			if(valueNode) {
-				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
-				map.set(ref, new Set(values));
+			const ref = FunctionArgument.getReference(arg);
+			const resolveAs = FunctionArgument.isNamed(arg) && resolveValue === 'library' ? true : resolveValue;
+			const values = argumentValues(variableResolve, graph, vertex, ref, resolveAs, ctx);
+			if(ref !== undefined && values !== undefined) {
+				map.set(ref, values);
 			}
 		}
 		return map;
 	}
-	if(argumentIndex < vertex.args.length) {
-		const arg = FunctionArgument.getReference(vertex.args[argumentIndex]);
-		if(!arg) {
-			return undefined;
-		}
-		let valueNode = graph.idMap?.get(arg);
-		if(RArgument.is(valueNode)) {
-			valueNode = valueNode.value;
-		}
+	const ref = argumentIndex < vertex.args.length ? FunctionArgument.getReference(vertex.args[argumentIndex]) : undefined;
+	const values = argumentValues(variableResolve, graph, vertex, ref, resolveValue, ctx);
+	return ref === undefined || values === undefined ? undefined : new Map([[ref, values]]);
+}
 
-		if(valueNode) {
-			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx) ?? [Unknown];
-			return new Map([[arg, new Set(values)]]);
-		}
+/** The values of the argument `ref` passes to `vertex`, falling back to the resource a call it reads from opens, and to {@link Unknown}. */
+function argumentValues(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, ref: NodeId | undefined, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext): Set<string | undefined> | undefined {
+	const valueNode = ref === undefined ? undefined : RArgument.valueOf(graph.idMap?.get(ref));
+	if(valueNode === undefined) {
+		return undefined;
 	}
-	return undefined;
+	const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, resolveValue, ctx)
+		?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx)
+		?? [Unknown];
+	return new Set(values);
 }
 
 function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph, argument: NodeId, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
@@ -96,9 +107,8 @@ function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph
 	return undefined;
 }
 
-
-function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, idMap: Map<NodeId, RNode> | undefined, ctx: ReadOnlyFlowrAnalyzerContext): boolean | 'maybe' {
-	if(!vertex.args || vertex.args.length === 0 || !idMap) {
+function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): boolean | 'maybe' {
+	if(vertex.args.length === 0 || !graph.idMap) {
 		return false;
 	}
 	const treatAsChar = getArgumentStringValue(variableResolve, graph, vertex, 5, 'character.only', true, ctx);
@@ -106,42 +116,22 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 		return false;
 	}
 	const hasTrue = treatAsChar.values().some(set => set?.has('TRUE'));
-	const hasFalse = hasTrue ? treatAsChar.values().some(set => set === undefined || set.has('FALSE')) : false;
-	if(hasTrue && hasFalse) {
-		return 'maybe';
-	} else {
-		return hasTrue;
-	}
+	const hasFalse = hasTrue && treatAsChar.values().some(set => set === undefined || set.has('FALSE'));
+	return hasTrue && hasFalse ? 'maybe' : hasTrue;
 }
 
-function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
-	let full = true;
-	if(!resolveValue) {
+function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+	let full = !!resolveValue;
+	if(resolveValue === 'library' && hasCharacterOnly(variableResolve, graph, vertex, ctx) === false) {
+		if(RSymbol.is(argument)) {
+			return [argument.lexeme];
+		}
 		full = false;
 	}
-
-	if(resolveValue === 'library') {
-		const hasChar = hasCharacterOnly(variableResolve, graph, vertex, idMap, ctx);
-		if(hasChar === false) {
-			if(RSymbol.is(argument)) {
-				return [argument.lexeme];
-			}
-			full = false;
-		}
-	}
-
-	const resolved = valueSetGuard(Resolve.toValue(argument, { environment, graph, full, resolve: variableResolve, ctx }));
-	if(resolved) {
-		const values: string[] = [];
-		for(const value of resolved.elements) {
-			const strings = isValue(value) ? stringsOfValue(value, full) : undefined;
-			if(strings === undefined) {
-				return undefined;
-			}
-			values.push(...strings);
-		}
-		return values;
-	}
+	// this should be evaluated in the callee-context
+	const resolved = valueSetGuard(Resolve.toValue(argument, { environment: vertex.environment, graph, full, resolve: variableResolve, ctx }));
+	const strings = resolved?.elements.map(value => isValue(value) ? stringsOfValue(value, full) : undefined);
+	return strings?.every(isNotUndefined) ? strings.flat() : undefined;
 }
 
 /**

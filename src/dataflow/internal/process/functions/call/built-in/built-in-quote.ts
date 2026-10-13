@@ -1,6 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import type { FnSig } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import { type DataflowInformation, ExitPointType } from '../../../../../info';
+import type { DataflowInformation } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -23,11 +24,10 @@ interface QuoteConfig {
 	envArgIndex?:            number
 	/** which unquote escape the function supports, {@link Unquote.None} if unset */
 	unquote?:                Unquote
+	readonly sig?:           FnSig
 }
 
-/**
- * Process a call to `quote` or similar nse/substitution functions.
- */
+/** Process a call to `quote` or similar nse/substitution functions. */
 export function processQuote<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -38,7 +38,7 @@ export function processQuote<OtherInfo>(
 	const startEnv = data.environment;
 	let lastEnv = startEnv;
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({
-		name, args, rootId, data, origin: BuiltInProcName.Quote,
+		name, args, rootId, data, origin: BuiltInProcName.Quote, sig: config.sig,
 		patchData(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, index: number): DataflowProcessorInformation<OtherInfo & ParentInformation> {
 			if(index === config.quoteArgumentsWithIndex) {
 				lastEnv = data.environment;
@@ -49,33 +49,12 @@ export function processQuote<OtherInfo>(
 		}
 	});
 
-	const inRefs: IdentifierReference[] = [fnRef];
-	const outRefs: IdentifierReference[] = [];
-	const unknownRefs: IdentifierReference[] = [];
-
+	const others = processedArguments.filter((p, i) => p !== undefined && i !== config.quoteArgumentsWithIndex) as DataflowInformation[];
+	const inRefs: IdentifierReference[] = [fnRef, ...others.flatMap(p => p.in)];
 	const quotedArg = args[config.quoteArgumentsWithIndex];
 	const evaluated = FunctionSemantics.call.nse.unquoted(RArgument.isEmpty(quotedArg) ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
-
-	for(let i = 0; i < args.length; i++) {
-		const processedArg = processedArguments[i];
-		if(processedArg && i !== config.quoteArgumentsWithIndex) {
-			inRefs.push(...processedArg.in);
-			outRefs.push(...processedArg.out);
-			unknownRefs.push(...processedArg.unknownReferences);
-		}
-	}
-
 	const quotedProcessed = processedArguments[config.quoteArgumentsWithIndex];
 	if(quotedProcessed) {
-		/*
-		 * The expression is held on to rather than evaluated, so a `return` within it never runs and control
-		 * arrives at the call. Every other jump the call catches already.
-		 */
-		for(const exit of quotedProcessed.exitPoints) {
-			if(exit.type === ExitPointType.Return) {
-				information.graph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
-			}
-		}
 		markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [config.quoteArgumentsWithIndex], { evaluated });
 		if(evaluated) {
 			/* the argument was processed in a clean env, so the escaped reads need linking by hand */
@@ -84,20 +63,17 @@ export function processQuote<OtherInfo>(
 		}
 	}
 
-	if(config.envArgIndex !== undefined) {
-		const envProcessed = processedArguments[config.envArgIndex];
-		const exprProcessed = processedArguments[config.quoteArgumentsWithIndex];
-		if(envProcessed && exprProcessed) {
-			applyEnvListReplacement(information, envProcessed, exprProcessed);
-		}
+	const envProcessed = config.envArgIndex === undefined ? undefined : processedArguments[config.envArgIndex];
+	if(envProcessed && quotedProcessed) {
+		applyEnvListReplacement(information, envProcessed, quotedProcessed);
 	}
 
 	return {
 		...information,
 		environment:       startEnv,
 		in:                inRefs,
-		out:               outRefs,
-		unknownReferences: unknownRefs
+		out:               others.flatMap(p => p.out),
+		unknownReferences: others.flatMap(p => p.unknownReferences)
 	};
 }
 
@@ -133,10 +109,6 @@ function applyEnvListReplacement(information: DataflowInformation, env: Dataflow
 				return true;
 			}
 			useMap ??= usesByName(expr);
-			if(useMap.size === 0) {
-				return true;
-			}
-
 			for(const field of vtx.args.filter(FunctionArgument.isNamed)) {
 				for(const useId of useMap.get(field.name) ?? []) {
 					information.graph.addEdge(useId, field.nodeId, EdgeType.Reads);

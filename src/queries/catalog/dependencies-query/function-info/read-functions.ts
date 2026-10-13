@@ -22,7 +22,7 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'fifo',                argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'unz',                 argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'matrix',              argIdx: 0, argName: 'data', resolveValue: true },
-	{ package: 'utils', name: 'data',               argIdx: 0, resolveValue: 'library', ignoreIf: 'arg-missing' },
+	{ package: 'utils', name: 'data',               argIdx: 'unnamed', argName: 'list', resolveValue: 'library', ignoreIf: 'arg-missing' },
 	{ package: 'readr', name: 'clipboard'                                                          },
 	{ package: 'sourcetools', name: 'tokenize',                    argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'ape', name: 'read.tree', argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },

@@ -4,7 +4,8 @@ import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
-import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { EdgeType } from '../../dataflow/graph/edge';
+import { edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 const defaultCredentialNamePattern =
@@ -48,32 +49,26 @@ export const NO_LEAKED_CREDENTIALS = {
 		const normalize = await data.normalize();
 		const dfg = (await data.dataflow()).graph;
 		let totalChecked = 0;
-
 		const results = elements.getElements().flatMap(element => {
 			totalChecked++;
-			const name   = element.node.lexeme ?? '';
-			const vertex = dfg.getVertex(element.node.info.id);
-			if(!DfgVertex.isVariableDefinition(vertex)) {
+			const id = element.node.info.id;
+			if(!DfgVertex.isVariableDefinition(dfg.getVertex(id))) {
 				return [];
 			}
+			const name = element.node.lexeme ?? '';
 			const nameMatches = namePattern.test(name);
-			for(const [targetId, edge] of dfg.edgesFrom(element.node.info.id)) {
-				if(!DfEdge.includesType(edge, EdgeType.DefinedBy)) {
-					continue;
-				}
-				const targetNode = normalize.idMap.get(targetId);
-				if(targetNode && RString.is(targetNode) && (nameMatches || valuePattern.test(targetNode.content.str))) {
-					return [{
-						certainty:    LintingResultCertainty.Uncertain,
-						involvedId:   element.node.info.id,
-						variableName: name,
-						loc:          SourceLocation.fromNode(element.node) ?? SourceLocation.invalid()
-					}];
-				}
-			}
-			return [];
+			/* a credential-like name only leaks a non-empty string, a credential-like value leaks under any name */
+			const leaks = edgeTargets(dfg, id, EdgeType.DefinedBy).some(target => {
+				const value = normalize.idMap.get(target);
+				return RString.is(value) && ((nameMatches && value.content.str !== '') || valuePattern.test(value.content.str));
+			});
+			return leaks ? [{
+				certainty:    LintingResultCertainty.Uncertain,
+				involvedId:   id,
+				variableName: name,
+				loc:          SourceLocation.fromNode(element.node) ?? SourceLocation.invalid()
+			}] : [];
 		});
-
 		return { results, '.meta': { totalChecked } };
 	},
 	prettyPrint: {

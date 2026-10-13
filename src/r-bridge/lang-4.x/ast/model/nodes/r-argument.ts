@@ -67,6 +67,10 @@ export const RArgument = {
 	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RUnnamedArgument<Info> {
 		return node !== EmptyArgument && RArgument.is(node) && node.name === undefined && node.value !== undefined;
 	},
+	/** The value of an argument, the node itself for anything else, `undefined` for an empty argument. */
+	valueOf<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): RNode<Info> | undefined {
+		return node === EmptyArgument ? undefined : RArgument.is(node) ? node.value : node;
+	},
 	/**
 	 * Type guard for arguments with a value, i.e. arguments that are not just placeholders without a value.
 	 */
@@ -74,18 +78,7 @@ export const RArgument = {
 		return RArgument.is(node) && node.value !== undefined;
 	},
 	getWithId<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): Exclude<PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, typeof EmptyArgument> | undefined {
-		if(id === undefined) {
-			return undefined;
-		}
-		for(const arg of args) {
-			if(RArgument.isEmpty(arg)) {
-				continue;
-			}
-			if(arg.info.id === id) {
-				return arg;
-			}
-		}
-		return undefined;
+		return id === undefined ? undefined : args.filter(RArgument.isNotEmpty).find(arg => arg.info.id === id);
 	},
 	/**
 	 * Retrieve the value of the argument with the given id from the list of arguments.

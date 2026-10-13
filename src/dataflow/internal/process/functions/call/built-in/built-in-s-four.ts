@@ -8,7 +8,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ClassArgRef, argForImpl, ClassSystem } from '../../../../../fn/class-declaration';
-import { type Identifier, type IdentifierReference, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { DfgVertex } from '../../../../../graph/vertex';
@@ -42,30 +42,17 @@ export interface S4UseConfig {
 
 /** The names an argument states, looking through the `c(...)`/`signature(...)` wrappers a signature may use. */
 function namesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly string[] {
-	if(node === undefined) {
-		return [];
-	}
-	const known = NodeValue.knownStringsOf(node.info.id, data);
+	const known = node === undefined ? [] : NodeValue.knownStringsOf(node.info.id, data);
 	if(known.length > 0 || !RFunctionCall.isNamed(node)) {
 		return known;
 	}
-	const collected: string[] = [];
-	for(const arg of node.arguments) {
-		if(!RArgument.isEmpty(arg) && arg.value !== undefined) {
-			collected.push(...namesOf(arg.value, data));
-		}
-	}
-	return collected;
+	return node.arguments.flatMap(arg => namesOf(RArgument.valueOf(arg), data));
 }
 
 /** Adds a read of every given name to the call, so the call depends on whatever registered them. */
-function readNames<O>(info: DataflowInformation, rootId: NodeId, names: Iterable<Identifier>, type: ReferenceType, data: Data<O>): void {
-	const added: IdentifierReference[] = [];
-	for(const name of names) {
-		added.push({ nodeId: rootId, name, type, cds: data.cds });
-	}
-	if(added.length > 0) {
-		info.in = [...info.in, ...added];
+function readNames<O>(info: DataflowInformation, rootId: NodeId, names: readonly Identifier[], type: ReferenceType, data: Data<O>): void {
+	if(names.length > 0) {
+		info.in = [...info.in, ...names.map(name => ({ nodeId: rootId, name, type, cds: data.cds }))];
 	}
 }
 
@@ -80,23 +67,20 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 	for(const ref of config.classArgs ?? []) {
 		readNames(info, rootId, namesOf(argForImpl(args, ref), data).map(s4ClassName), ReferenceType.Variable, data);
 	}
-	if(config.genericArg !== undefined) {
-		readNames(info, rootId, namesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? '')), ReferenceType.Function, data);
-	}
-	if(config.registersArg !== undefined) {
-		const registered = namesOf(argForImpl(args, config.registersArg), data);
-		readNames(info, rootId, registered.map(s4ClassName), ReferenceType.Variable, data);
-		for(const cls of registered) {
-			defineOut(info, rootId, s4ClassName(cls), ReferenceType.Variable, data);
-		}
+	const generics = namesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? ''));
+	readNames(info, rootId, generics, ReferenceType.Function, data);
+	const registered = namesOf(argForImpl(args, config.registersArg), data).map(s4ClassName);
+	readNames(info, rootId, registered, ReferenceType.Variable, data);
+	for(const cls of registered) {
+		defineOut(info, rootId, cls, ReferenceType.Variable, data);
 	}
 }
 
-/** wires what the attached {@link DataflowGraphVertexFunctionCall.classDecl|class declaration} states, S4 only: a declaration reads the classes it builds on and registers its own name; a mere relation (`setIs`, `setValidity`) reads and re-registers the class it names */
+/** wires what the attached {@link DataflowGraphVertexFunctionCall.classDecl|class declaration} states, S4 and Reference Classes only: a declaration reads the classes it builds on and registers its own name; a mere relation (`setIs`, `setValidity`) reads and re-registers the class it names */
 export function linkS4Declaration<O>(info: DataflowInformation, rootId: NodeId, data: Data<O>): void {
 	const vertex = info.graph.getVertex(rootId);
 	const decl = DfgVertex.isFunctionCall(vertex) ? vertex.classDecl : undefined;
-	if(decl === undefined || decl.system !== ClassSystem.S4) {
+	if(decl === undefined || (decl.system !== ClassSystem.S4 && decl.system !== ClassSystem.RefClass)) {
 		return;
 	}
 	const used = [...decl.contains, ...(decl.union ?? []), ...decl.members.map(m => m.type).filter(t => t !== undefined)];

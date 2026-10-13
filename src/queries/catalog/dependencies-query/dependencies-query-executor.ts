@@ -31,7 +31,6 @@ export async function executeDependenciesQuery({
 }: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
 	let query = queries[0];
 	if(queries.length !== 1) {
-		// merge
 		for(let i = 1; i < queries.length; i++) {
 			const q = queries[i];
 			query = {
@@ -57,15 +56,12 @@ export async function executeDependenciesQuery({
 	const now = Date.now();
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
 	const ctx = analyzer.inspectContext();
-	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(defaultDependencyCategories(ctx)).map(([c, v]) => {
-		return [c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)];
-	}));
-	if(query.additionalCategories !== undefined) {
-		for(const [category, value] of Object.entries(query.additionalCategories)) {
-			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
-			const custom = getFunctionsToCheck(undefined, category, undefined, false, value.functions);
-			functions.set(category, [...(functions.get(category) ?? []), ...custom]);
-		}
+	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(defaultDependencyCategories(ctx)).map(([c, v]) =>
+		[c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)]));
+	for(const [category, value] of Object.entries(query.additionalCategories ?? {})) {
+		/* custom categories only use their "functions" collection and allow no additional functions in the object itself */
+		const custom = getFunctionsToCheck(undefined, category, undefined, false, value.functions);
+		functions.set(category, [...(functions.get(category) ?? []), ...custom]);
 	}
 
 	const queryResults = !functions.values().toArray().some(f => f.length > 0) ? { kinds: {}, '.meta': { timing: 0 } } :
@@ -75,8 +71,8 @@ export async function executeDependenciesQuery({
 
 	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
 		const results = getResults(g, { dataflow, config, normalize }, queryResults, c, f, data);
-		// only default categories allow additional analyses, so we null-coalesce here!
-		if(enabled === undefined || (enabled?.length > 0 && enabled.includes(c))) {
+		/* only default categories allow additional analyses */
+		if(enabled === undefined || enabled.includes(c)) {
 			await g[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		}
 		return [c, results];
@@ -89,8 +85,7 @@ export async function executeDependenciesQuery({
 
 	if(query.assumedPackages && (enabled === undefined || enabled.includes('library'))) {
 		const explicit = new Set((results.library ?? []).map(r => r.value).filter((v): v is string => v !== undefined && v !== Unknown && v !== Constant));
-		const rVersion = ctx.resolvedRVersion;
-		const assumed = assumedBasePackageEntries(dataflow.graph, rVersion, explicit);
+		const assumed = assumedBasePackageEntries(dataflow.graph, ctx.resolvedRVersion, explicit);
 		if(assumed.length > 0) {
 			results.library = [...(results.library ?? []), ...assumed];
 		}
@@ -104,26 +99,22 @@ export async function executeDependenciesQuery({
 	} as DependenciesQueryResult;
 }
 
+/** One implicit `library` entry per attached base package that the graph uses but that is not loaded explicitly. */
 function assumedBasePackageEntries(dfg: DataflowGraph, rVersion: string, explicit: ReadonlySet<string>): DependencyInfo[] {
-	const usedBy = new Map<string, NodeId[]>();
+	const used: { id: NodeId, pkg: string }[] = [];
 	for(const [id, qualified] of Dataflow.qualifyAll(dfg, true)) {
-		const pkg = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
-		if(pkg === undefined || explicit.has(pkg) || !AttachedBasePackageSet.has(pkg)) {
-			continue;
-		}
-		const known = usedBy.get(pkg);
-		if(known) {
-			known.push(id);
-		} else {
-			usedBy.set(pkg, [id]);
+		const pkg = Identifier.getNamespace(qualified);
+		if(pkg !== undefined && !explicit.has(pkg) && AttachedBasePackageSet.has(pkg)) {
+			used.push({ id, pkg });
 		}
 	}
+	const usedBy = Map.groupBy(used, u => u.pkg);
 	return attachedBasePackages(rVersion).filter(pkg => usedBy.has(pkg)).map(pkg => compactRecord({
 		functionName:   Attached,
 		value:          pkg,
 		implicit:       true,
 		alwaysAttached: pkg === PkgName.Base ? true : undefined,
-		linkedIds:      usedBy.get(pkg)
+		linkedIds:      usedBy.get(pkg)?.map(u => u.id)
 	}) as DependencyInfo);
 }
 
@@ -138,13 +129,6 @@ function makeCallContextQuery(this: void, [kind, functions]: [DependencyCategory
 		linkTo:         f.linkTo,
 		kind
 	}));
-}
-
-function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: object })[] | undefined): NodeId[] | undefined {
-	if(!linkedIds) {
-		return undefined;
-	}
-	return linkedIds.map(id => typeof id === 'object' ? id.id : id);
 }
 
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
@@ -168,15 +152,7 @@ function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: st
 function getResults(categories: Record<DependencyCategoryName, DependencyCategorySettings>, { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
 	const defaultValue = categories[kind].defaultValue;
 	const vars = config.solver.variables;
-	const functionMap = new Map<string, FunctionInfo[]>();
-	for(const f of functions) {
-		const known = functionMap.get(f.name);
-		if(known) {
-			known.push(f);
-		} else {
-			functionMap.set(f.name, [f]);
-		}
-	}
+	const functionMap = Map.groupBy(functions, f => f.name);
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	const finalResults: DependencyInfo[] = [];
 	const ictx = data.analyzer.inspectContext();
@@ -188,87 +164,61 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 	for(const [name, results] of kindEntries) {
 		for(const { id, linkedIds } of results) {
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
-
 			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
-			/* aliased into a const the nested checks can capture, as a hoisted declaration would not see the narrowing */
-			const picked = pickFunctionInfo(functionMap.get(name) as readonly FunctionInfo[], Identifier.getNamespace(functionName), isLoadedPackage);
-			if(picked === undefined) {
+			const info = pickFunctionInfo(functionMap.get(name) as readonly FunctionInfo[], Identifier.getNamespace(functionName), isLoadedPackage);
+			if(info === undefined) {
 				continue;
 			}
-			const info = picked;
-
 			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
 			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
-			const linked = dropInfoOnLinkedIds(linkedIds);
-
-			function ignoreOnArgVal() {
-				if(info.ignoreIf === 'arg-true' || info.ignoreIf === 'arg-false') {
-					const margs = info.additionalArgs?.val;
-					guard(margs, 'Need additional argument val when checking for arg-true');
-					const valArgs = getArgumentStringValue(vars, dfg, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
-					const valValues = valArgs?.values().flatMap(v => Array.from(v)).toArray() ?? [];
-					if(valValues.length === 0) {
-						return false;
-					}
-					if(info.ignoreIf === 'arg-true' && valValues.every(v => v === 'TRUE')) {
-						// all values are TRUE, so we can ignore this
-						return true;
-					} else if(info.ignoreIf === 'arg-false' && valValues.every(v => v === 'FALSE')) {
-						// all values are FALSE, so we can ignore this
-						return true;
-					}
+			const linked = linkedIds?.map(linkedId => typeof linkedId === 'object' ? linkedId.id : linkedId);
+			const ignoreOnArgVal = () => {
+				if(info.ignoreIf !== 'arg-true' && info.ignoreIf !== 'arg-false') {
+					return false;
 				}
-				return false;
-			}
-
-			function ignoreOnArgSet() {
+				const margs = info.additionalArgs?.val;
+				guard(margs, 'Need additional argument val when checking for arg-true');
+				const valArgs = getArgumentStringValue(vars, dfg, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
+				const valValues = valArgs?.values().flatMap(v => Array.from(v)).toArray() ?? [];
+				/* ignore only if every value is the one the check asks for */
+				const ignoredValue = info.ignoreIf === 'arg-true' ? 'TRUE' : 'FALSE';
+				return valValues.length > 0 && valValues.every(v => v === ignoredValue);
+			};
+			const ignoreOnArgSet = () => {
 				if(info.ignoreIf !== 'arg-set') {
 					return;
 				}
-
 				const hasArg = (name?: string, index?: number | 'unnamed') => vertex.args.some((arg, idx) =>
 					FunctionArgument.isNamed(arg) && arg.name === name ||
 					FunctionArgument.isPositional(arg) && idx === index
 				);
-
 				if(hasArg(info.argName, info.argIdx)) {
 					return false;
 				}
-
 				const margs = info.additionalArgs?.argSet;
 				guard(margs, 'Need additional argument argSet when checking for arg-set');
-
 				return hasArg(margs.argName, margs.argIdx);
-			}
-
+			};
 			const foundValues = linkedArgs ?? args;
 			if(!foundValues) {
-				if(info.ignoreIf === 'arg-missing') {
-					continue;
-				} else if(ignoreOnArgVal()) {
-					continue;
-				}
-				const record = compactRecord({
-					nodeId:           id,
-					functionName,
-					lexemeOfArgument: undefined,
-					linkedIds:        linked?.length ? linked : undefined,
-					value:            info.defaultValue ?? defaultValue
-				} as DependencyInfo);
-				if(record) {
-					finalResults.push(record);
+				if(info.ignoreIf !== 'arg-missing' && !ignoreOnArgVal() && !ignoreOnArgSet()) {
+					finalResults.push(compactRecord({
+						nodeId:           id,
+						functionName,
+						lexemeOfArgument: undefined,
+						linkedIds:        linked?.length ? linked : undefined,
+						value:            info.defaultValue ?? defaultValue
+					} as DependencyInfo));
 				}
 				continue;
 			} else if(info.ignoreIf === 'mode-only-read' || info.ignoreIf === 'mode-only-write') {
 				const margs = info.additionalArgs?.mode;
 				guard(margs, 'Need additional argument mode when checking for mode');
+				const modes = info.ignoreIf === 'mode-only-read' ? readOnlyModes : writeOnlyModes;
 				const modeArgs = getArgumentStringValue(vars, dfg, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
 				const modeValues = modeArgs?.values().flatMap(v => Array.from(v)) ?? [];
-				if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
-					// all modes are read-only, so we can ignore this
-					continue;
-				} else if(info.ignoreIf === 'mode-only-write' && modeValues.every(m => m && writeOnlyModes.has(m))) {
-					// all modes are write-only, so we can ignore this
+				/* all modes are read-only (resp. write-only), so we can ignore this */
+				if(modeValues.every(m => m && modes.has(m))) {
 					continue;
 				}
 			} else if(ignoreOnArgVal() || ignoreOnArgSet()) {
@@ -277,8 +227,8 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 			for(const [arg, values] of foundValues.entries()) {
 				for(const value of values) {
 					let resolvedValue = value;
-					if(info.stringReplacements && resolvedValue !== undefined && Object.hasOwn(info.stringReplacements, resolvedValue)) {
-						resolvedValue = info.stringReplacements[resolvedValue];
+					if(info.stringReplacements && value !== undefined && Object.hasOwn(info.stringReplacements, value)) {
+						resolvedValue = info.stringReplacements[value];
 					}
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
 					const lexeme = getLexeme(value, arg);
@@ -305,11 +255,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 		if((argument && argument !== Unknown && argument !== Constant) || !id) {
 			return undefined;
 		}
-		let get = normalize.idMap.get(id);
-		if(RArgument.is(get)) {
-			get = get.value;
-		}
-		return RNode.lexeme(get);
+		return RNode.lexeme(RArgument.valueOf(normalize.idMap.get(id)));
 	}
 }
 
@@ -324,38 +270,24 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 			continue;
 		}
 		const info = linkedId.info;
-		// do not collect this one
 		if(hasAtLeastAValue && info.when !== DependencyInfoLinkConstraint.Always) {
 			continue;
 		}
-		// collect this one!
 		const vertex = data.dataflow.graph.getVertex(linkedId.id);
 		if(!DfgVertex.isFunctionCall(vertex)) {
 			continue;
 		}
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
-		if(args === undefined) {
-			continue;
-		}
-		for(const [arg, values] of args.entries()) {
-			const set = map.get(arg) ?? new Set();
-			map.set(arg, set);
-			for(const value of values) {
-				set.add(value);
-			}
+		for(const [arg, values] of args?.entries() ?? []) {
+			map.set(arg, (map.get(arg) ?? new Set()).union(values));
 		}
 	}
 	return map.size ? map : undefined;
 }
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: readonly DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
-	// "If unset or empty, all function types are searched for."
-	if(enabled !== undefined && (enabled?.length === 0 || !enabled.includes(functionFlag))) {
+	if(enabled !== undefined && !enabled.includes(functionFlag)) {
 		return [];
 	}
-	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : defaultFunctions.slice();
-	if(customFunctions) {
-		functions = functions.concat(customFunctions);
-	}
-	return functions;
+	return [...(ignoreDefaultFunctions ? [] : defaultFunctions), ...(customFunctions ?? [])];
 }

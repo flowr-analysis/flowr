@@ -23,7 +23,7 @@ import { join } from 'path';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
+import type { BuiltInFnInfo } from '../../../../src/dataflow/environments/built-in-props';
 import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import { readFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { writeFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
@@ -920,14 +920,14 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('The categories agree with the built-in configuration', () => {
-		const resources = new Map<string, { idx: number, name: string }>();
+		const resources = new Map<string, { idx: number, name: string }[]>();
 		for(const d of DefaultBuiltinConfig) {
 			const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
-			const idx = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
-			if(idx >= 0) {
+			const declared = (info?.sig ?? []).flatMap(([name, p], idx) => (p & ArgProp.Resource) !== 0 ? [{ idx, name }] : []);
+			if(declared.length > 0) {
 				for(const n of builtInNames(d)) {
 					/* keyed by the package that declares it: `readr::read_lines` and `sourcetools::read_lines` are two entries */
-					resources.set(Identifier.toString(n), { idx, name: (info?.sig as FnSig)[idx][0] });
+					resources.set(Identifier.toString(n), declared);
 				}
 			}
 		}
@@ -939,10 +939,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 						continue;
 					}
 					if(f.argIdx !== undefined && f.argIdx !== 'unnamed') {
-						assert.strictEqual(f.argIdx, declared.idx, `${f.package}::${f.name} takes its resource from another position than the built-in states`);
+						assert.include(declared.map(r => r.idx), f.argIdx, `${f.package}::${f.name} takes its resource from another position than the built-in states`);
 					}
 					if(f.argName !== undefined) {
-						assert.strictEqual(f.argName, declared.name, `${f.package}::${f.name} names its resource differently than the built-in states`);
+						assert.include(declared.map(r => r.name), f.argName, `${f.package}::${f.name} names its resource differently than the built-in states`);
 					}
 				}
 			});

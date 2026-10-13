@@ -1,5 +1,6 @@
 import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
+import { Ternary } from '../../util/logic';
 
 /**
  * What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault}
@@ -281,7 +282,6 @@ function getPropMask(this: void, selector: PropSelector): PropMask {
 	}
 	let props = 0;
 	const tags = new Set<SemanticCallTag>();
-
 	for(const prop of selector) {
 		if(typeof prop === 'number') {
 			props |= prop;
@@ -311,13 +311,11 @@ export const CallProps = {
 			return ((stated?.props ?? 0) & ~ProvenanceProps) !== 0 || stated?.tags !== undefined;
 		}
 		const mask = getPropMask(selector);
-
 		return ((stated?.props ?? 0) & mask.props) !== 0 || (stated?.tags?.some(prop => mask.tags.has(prop)) ?? false);
 	},
 	/** Whether stated properties carry every property of a selector. */
 	hasAll(this: void, stated: StatedProps | undefined, selector: PropSelector): boolean {
 		const mask = getPropMask(selector);
-
 		return ((stated?.props ?? 0) & mask.props) === mask.props && mask.tags.values().every(prop => stated?.tags?.includes(prop));
 	},
 	/** Joins the {@link CallProp}s and {@link SemanticCallTag}s of two stated properties */
@@ -325,13 +323,11 @@ export const CallProps = {
 		const props = props1?.props === undefined ? props2?.props : (props2?.props === undefined ? props1.props : props1.props | props2.props);
 		const tags = props1?.tags === undefined ? props2?.tags :
 			(props2?.tags === undefined ? props1.tags : [...new Set([...props1.tags, ...props2.tags])]);
-
 		return { props, tags };
 	},
 	/** Keep only the properties in the stated properties that are in the property selector. */
 	filter(this: void, stated: StatedProps | undefined, selector: PropSelector): StatedProps {
 		const mask = getPropMask(selector);
-
 		return {
 			props: (stated?.props ?? 0) & mask.props,
 			tags:  stated?.tags?.filter(prop => mask.tags.has(prop))
@@ -340,13 +336,11 @@ export const CallProps = {
 	/** Transforms a property selector into a unique string identifier. */
 	key(this: void, selector: PropSelector): string {
 		const mask = getPropMask(selector);
-
 		return `${mask.props}|${[...mask.tags].sort().join(',')}`;
 	},
 	/** Gets the property names for a property selector. */
 	names(this: void, selector: PropSelector): string[] {
 		const mask = getPropMask(selector);
-
 		return [
 			...Record.entries(CallProp).filter(([, prop]) => (prop & mask.props) !== 0).map(([name]) => name),
 			...Record.entries(SemanticCallTag).filter(([, prop]) => mask.tags.has(prop)).map(([name]) => name)
@@ -354,17 +348,11 @@ export const CallProps = {
 	},
 	/** Gets the string labels for stated properties {@link CallPropLabels}. */
 	labels(this: void, stated: StatedProps | undefined): string[] {
-		if(stated === undefined) {
-			return [];
-		}
-		const callProps = Record.keys(CallPropLabels).filter(prop => ((stated?.props ?? 0) & prop) !== 0).map(prop => CallPropLabels[prop]);
-		const semanticProps = stated.tags ?? [];
-
-		return [...callProps, ...semanticProps];
+		return [...CallProps.words(stated?.props), ...stated?.tags ?? []];
 	},
 	/** The {@link CallPropLabels} words for a bare {@link CallProps} bitfield, as inferred functions carry one. */
 	words(this: void, props: CallProps | undefined): string[] {
-		return props === undefined ? [] : Record.keys(CallPropLabels).filter(prop => (props & prop) !== 0).map(prop => CallPropLabels[prop]);
+		return wordsOf(CallPropEntries, props);
 	},
 	/** The {@link PropMask} the given {@link CallProp}/{@link SemanticCallTag} member names stand for, unknown ones ignored. */
 	mask(this: void, names: readonly string[]): PropMask {
@@ -408,6 +396,8 @@ export const FnSig = {
 	posWith: argsWith,
 	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
 	forced:  forcedArgs,
+	/** How surely a call evaluates each of the first `count` arguments; see {@link argForcing}. */
+	forcing: argForcing,
 	/** A signature saying only that the call evaluates every argument; see {@link ForcingEvery}. */
 	every:   ForcingEvery,
 	/** A signature saying only that the call evaluates one argument; see {@link forcingOnly}. */
@@ -474,6 +464,7 @@ function bitEntries(this: void, byBit: Readonly<Record<number, string>>): readon
 }
 
 const ArgPropEntries = bitEntries(ArgPropNames);
+const CallPropEntries = bitEntries(CallPropLabels);
 
 /**
  * Utility functions for {@link ArgProps|argument property bitfields}.
@@ -517,6 +508,7 @@ export interface SigLayout {
 	/** the position of the {@link ArgProp.Alias} argument, handed back as the result, `-1` if there is none */
 	readonly alias: number
 	forced?:        (readonly boolean[])[]
+	forcing?:       (readonly Ternary[])[]
 }
 
 const layouts = new WeakMap<FnSig, SigLayout>();
@@ -560,26 +552,34 @@ function forcingOnly(this: void, index: number, name: string): FnSig {
  * A signature is the one place that says so, which is why nothing else may state it alongside.
  */
 function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly boolean[] | undefined {
-	if(sig === undefined) {
-		return undefined;
-	}
-	const layout = sigLayout(sig);
-	if((layout.any & ArgProp.Forced) === 0) {
+	const layout = sig === undefined ? undefined : sigLayout(sig);
+	if(layout === undefined || (layout.any & ArgProp.Forced) === 0) {
 		return undefined;
 	}
 	const cache = layout.forced ??= [];
 	return cache[count] ??= Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
 }
 
+/**
+ * How surely a call evaluates each of the first `count` arguments: {@link ArgProp.Forced} always,
+ * {@link ArgProp.Nse} and {@link ArgProp.Presence} never, anything else maybe; `undefined` without a signature.
+ */
+function argForcing(this: void, sig: FnSig | undefined, count: number): readonly Ternary[] | undefined {
+	if(sig === undefined) {
+		return undefined;
+	}
+	const layout = sigLayout(sig);
+	const cache = layout.forcing ??= [];
+	return cache[count] ??= Array.from({ length: count }, (_, i) => {
+		const props = argProp(layout, i);
+		return (props & ArgProp.Forced) !== 0 ? Ternary.Always
+			: (props & (ArgProp.Nse | ArgProp.Presence)) !== 0 ? Ternary.Never : Ternary.Maybe;
+	});
+}
+
 /** The positions of the first `count` arguments that carry any of `prop`. */
 function argsWith(this: void, layout: SigLayout, count: number, prop: ArgProps): number[] {
-	const found: number[] = [];
-	for(let i = 0; i < count; i++) {
-		if((FnSig.propAt(layout, i) & prop) !== 0) {
-			found.push(i);
-		}
-	}
-	return found;
+	return Array.from({ length: count }, (_, i) => i).filter(i => (argProp(layout, i) & prop) !== 0);
 }
 
 /** the {@link DecodedFunction#props} names that have a {@link CallProp} counterpart, together {@link SigDbInferable} */

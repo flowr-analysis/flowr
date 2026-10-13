@@ -44,10 +44,8 @@ function loadJupyter(content: string): string {
 	const nb = JSON.parse(content) as INotebookContent;
 
 	return nb.cells.map(cell => {
-		if(cell.cell_type === 'code') {
-			return typeof cell.source === 'object' ? cell.source.join('') : cell.source;
-		} else {
-			return typeof cell.source === 'object' ? cell.source.map(s => `# ${s}`).join('') : `# ${cell.source}`;
-		}
+		const source = typeof cell.source === 'object' ? cell.source.join('') : cell.source;
+		/* every line of a text cell becomes a comment, whether the notebook stores the cell as lines or as one string */
+		return cell.cell_type === 'code' ? source : source.replace(/^/gm, '# ');
 	}).join('\n');
 }

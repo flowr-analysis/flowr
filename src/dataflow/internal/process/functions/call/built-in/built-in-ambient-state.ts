@@ -80,7 +80,6 @@ export const AmbientStateName = {
 	}
 } as const;
 
-/** the states of the open devices, which a device call moves between the active device and the others */
 const DeviceStates = [AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy];
 
 const Accumulating: ReadonlySet<string> = new Set([
@@ -167,10 +166,7 @@ function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds
 	return environment;
 }
 
-/**
- * What an assignment writes beyond its target: a global `.Random.seed` is the state of the random number
- * generator ({@link AmbientStateName.rng}), a local one is a plain variable R never looks at.
- */
+/** What an assignment writes beyond its target: only a global `.Random.seed` sets {@link AmbientStateName.rng}. */
 export function ambientWritesOfAssignment(environment: REnvironmentInformation, target: Identifier, rootId: NodeId, cds: ControlDependency[] | undefined, global: boolean): REnvironmentInformation {
 	environment = ambientWritesOfRelease(environment, [target], rootId, cds);
 	return global && Identifier.getName(target) === AmbientStateName.rngVariable ? defineAmbient(environment, rootId, cds, [AmbientStateName.rng, AmbientStateName.rngKind]) : environment;
@@ -183,7 +179,6 @@ export function ambientWritesOfRelease(environment: REnvironmentInformation, nam
 	return released ? defineAmbient(environment, rootId, cds, [AmbientStateName.finalizers]) : environment;
 }
 
-/** The definitions of the ambient states in `after` that `before` does not hold, as the state and the node that defines it. */
 function* ambientDefinitionsBetween(after: REnvironmentInformation, before: REnvironmentInformation, skipUnchanged: boolean): Generator<[string, NodeId]> {
 	let unchanged: Environment | undefined = before.current;
 	for(let env: Environment | undefined = after.current; env !== undefined && !env.builtInEnv; env = env.parent, unchanged = unchanged?.parent) {
@@ -205,11 +200,7 @@ function* ambientDefinitionsBetween(after: REnvironmentInformation, before: REnv
 	}
 }
 
-/**
- * The ambient writes {@link withAccess} makes stay out of `out`, so a part that only maybe runs (a branch, a
- * loop body) marks them as maybe in `target` here, as it does with `out` for every other definition: what
- * `after` (the environment after that part) holds for the state that `before` does not came from that part.
- */
+/** Ambient writes stay out of `out` (see {@link withAccess}), so a part that only maybe runs marks its writes as maybe in `target` here. */
 export function makeAmbientWritesMaybe(after: REnvironmentInformation, before: REnvironmentInformation, target: REnvironmentInformation, cds: readonly ControlDependency[]): void {
 	for(const [name, nodeId] of ambientDefinitionsBetween(after, before, true)) {
 		applyCdsToDefinitions(target, name, ReferenceType.Variable, Resolve.byName(name, target) ?? [], nodeId, cds);
@@ -235,10 +226,7 @@ export function mayForce(environment: REnvironmentInformation): boolean {
 	return REnvironment.findBuiltIn(environment.current).forcing === true;
 }
 
-/**
- * The state a symbol reads (see {@link ambientReadsOfSymbol}), and the writes of a read of a name bound to a
- * promise, which may force it and so (maybe) writes what the promise writes.
- */
+/** The state a symbol reads, plus the maybe-writes of forcing a promise bound to it. */
 export function ambientAccessOfSymbol<OtherInfo>(res: DataflowInformation, symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const forcing = mayForce(data.environment);
 	const definitions = forcing ? Resolve.byName(symbol.content, data.environment) ?? [] : [];
@@ -286,7 +274,7 @@ function optionsVariableReads<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	return optionReads(undefined);
 }
 
-/** `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
+/** {@link optionsVariableReads} as references. */
 export function readsOfOptionsVariable<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): IdentifierReference[] {
 	return optionsVariableReads(symbol, data).map(name => ({ nodeId: symbol.info.id, name, type: ReferenceType.Variable, cds: data.cds }));
 }
@@ -927,11 +915,7 @@ function belowTwo(value: Value): boolean {
 	return value.type === 'logical' || (RValue.numberOf(value) ?? 2) < 2;
 }
 
-/**
- * With `warn >= 2` R turns a warning into an error, so a construct catching errors also catches whatever may warn
- * in its `block`, which this returns as maybe error exits linked to the options that may set it. A call of a
- * closure is such an exit if its body may warn, and reads what may, as R aborts the body there.
- */
+/** With `warn >= 2` R turns warnings into errors, so whatever may warn in `block` is a maybe error exit reading the options that may set `warn`. */
 export function errorsOfWarnings<OtherInfo>(block: RNode<OtherInfo & ParentInformation>, after: REnvironmentInformation, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): ExitPoint[] {
 	const lookup = (name: string) => [...Resolve.byName(name, data.environment) ?? [], ...Resolve.byName(name, after) ?? []];
 	const marked = new Set(lookup(AmbientStateName.warnsAsErrors).map(d => d.nodeId));
@@ -985,10 +969,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 	return sites;
 }
 
-/**
- * The handler arguments of a `withCallingHandlers` whose first handler is for `warning` and starts with `invokeRestart("muffleWarning")`,
- * so no warning of its `expr` reaches R's conversion into an error. `undefined` for any other call.
- */
+/** The handlers of a `withCallingHandlers` whose first handler muffles every `warning` of its `expr`, `undefined` otherwise. */
 function muffledHandlers<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation>[] | undefined {
 	const vertex = graph.getVertex(call.info.id);
 	if(!DfgVertex.isFunctionCall(vertex) || !resolvesTo(call, 'withCallingHandlers', BuiltInProcName.Try, graph, data)) {

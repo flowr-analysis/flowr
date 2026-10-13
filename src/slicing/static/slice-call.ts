@@ -23,7 +23,6 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
-/** The function definitions linked to the given definitions, memoized in the queue under their joined ids. */
 function linkedDefinitions(defs: readonly NodeId[], graph: DataflowGraph, queue: VisitingQueue): ReadonlySet<DataflowGraphVertexInfo> {
 	return queue.memoizeCallTargets(defs.join(';'), () => getAllLinkedFunctionDefinitions(new Set(defs), graph)[0]);
 }
@@ -53,7 +52,6 @@ function linkCallTargets(
 		for(const exitPoint of onlyForSideEffects ? [] : functionCallTarget.exitPoints) {
 			queue.add(exitPoint.nodeId, activeEnvironment, activeEnvironmentFingerprint(), false);
 		}
-		// handle open reads, resolving them in the active env
 		for(const openIn of functionCallTarget.subflow.in) {
 			for(const res of openIn.name ? Resolve.byName(openIn.name, activeEnvironment) ?? [] : []) {
 				updatePotentialAddition(queue, functionCallTarget.id, res.nodeId, activeEnvironment, activeEnvironmentFingerprint());

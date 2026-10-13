@@ -254,7 +254,6 @@ function defaultBuiltInProcessor<OtherInfo>(
 	return ambient === undefined ? res : applyAmbientStateAccess(res, args, rootId, data, ambient);
 }
 
-/** Adds a {@link EdgeType.Reads|read} edge from the call to each (processed) argument. */
 function readArguments(graph: DataflowGraph, rootId: NodeId, args: readonly (DataflowInformation | undefined)[]): void {
 	for(const arg of args) {
 		if(arg) {

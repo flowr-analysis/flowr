@@ -88,7 +88,6 @@ export const SEEDED_RANDOMNESS = {
 			callsWithOtherBranchProducers: 0
 		};
 
-		/** what a write of the generator state (see `AmbientStateName.rng`) is: a seed, a draw that advances it, or neither */
 		const writerKind = (vertex: DataflowGraphVertexFunctionCall): { kind: 'function' | 'assignment', constant: boolean } | 'draw' | undefined => {
 			const name = Identifier.getName(vertex.name);
 			if(functionProducers.has(name)) {
@@ -122,7 +121,6 @@ export const SEEDED_RANDOMNESS = {
 		interface Seeding {
 			/** the constant seeds that reach the call, by how they were set */
 			readonly seeds: { readonly function: Set<NodeId>, readonly assignment: Set<NodeId> }
-			/** whether a seed reaching the call is not constant */
 			nonConstant:    boolean
 			/** whether a seed reaches the call only on some of the ways there */
 			otherBranch:    boolean
@@ -136,7 +134,7 @@ export const SEEDED_RANDOMNESS = {
 			const ownReads = edgeTargets(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall);
 			return [...ownReads, ...callers.flatMap(c => edgeTargets(graph, c, EdgeType.DefinedByOnCall))];
 		};
-		/** collects into `seeding` how the generator state a call reads came about, following the draws back to where it was seeded */
+		/** follows the draws behind the generator state `id` reads back to where it was seeded */
 		const collectSeeding = (id: NodeId, visiting: ReadonlySet<NodeId>, seeding: Seeding): Seeding => {
 			const own = new Set(graph.getVertex(id)?.cds);
 			const cds: ControlDependency[] = [];
@@ -196,9 +194,8 @@ export const SEEDED_RANDOMNESS = {
 				if(seeding.otherBranch) {
 					metadata.callsWithOtherBranchProducers++;
 				}
-				/* a call within a function body is seeded by whatever its callers did first, which the control
-				   flow of this body does not show: `set.seed(1); sapply(1:3, function(i) runif(1))` is seeded.
-				   Only a call the program itself reaches can be stated as unseeded for certain. */
+				/* a call in a function body is seeded by what its callers did first (`set.seed(1); sapply(1:3, function(i) runif(1))`),
+				   so only a call the program itself reaches can be unseeded for certain */
 				const nested = !graph.isRoot(id);
 				const someSeed = seeding.seeds.function.size + seeding.seeds.assignment.size > 0;
 				return [{
@@ -241,7 +238,6 @@ function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunction
 		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
 }
 
-/** maps each assignment function name to the index of the argument it assigns to */
 function assignmentTargetIndexes(definitions: BuiltInDefinitions): Map<string, number> {
 	return new Map(getDefaultAssignments(definitions).flatMap(a => {
 		const targetIndex = a.config?.swapSourceAndTarget ? 1 : 0;

@@ -52,11 +52,8 @@ export function someAlwaysBefore(cfg: ControlFlowGraph, candidates: ReadonlySet<
 }
 
 /**
- * The `candidates` none of the others always happens before: those some path of the control flow reaches without
- * passing another candidate. One walk back marks what may lead to a candidate, one walk forward from where that
- * region starts settles them all, where {@link someAlwaysBefore} walks back once per candidate. With `within`, the
- * walk stays among those nodes (a function's body), which then start where nothing within leads to them.
- * Without any start (the region is one cycle) every candidate is kept.
+ * The `candidates` none of the others always happens before, i.e. those some path reaches without passing another.
+ * With `within` (a function's body) the walk stays among those nodes; a region that is one cycle keeps every candidate.
  */
 export function firstOnSomePath(cfg: ControlFlowGraph, candidates: ReadonlySet<NodeId>, within?: ReadonlySet<NodeId>): ReadonlySet<NodeId> {
 	const inside = (id: NodeId) => within === undefined || within.has(id);

@@ -810,20 +810,13 @@ export function assertCallTargets(name: string, parser: KnownParser, code: strin
 	});
 }
 
-/** asserts that the slice for `criterion`, run in `shell` after `reset`, prints `lastLine` last, just as the whole program does */
-export function assertSliceRunsInShell(name: string, shell: RShell, code: string, criterion: SlicingCriterion, lastLine: string, reset?: string) {
+/** asserts that the slice for `criterion`, run by {@link printedByR}, prints `lastLine` last, as the whole program does */
+export function assertSliceRunsInR(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, lastLine: string) {
 	test(name, async() => {
-		const slice = await sliceOf(shell, code, criterion);
-		const run = async(c: string) => {
-			shell.clearEnvironment();
-			if(reset !== undefined) {
-				await shell.sendCommandWithOutput(reset);
-			}
-			return (await shell.sendCommandWithOutput(c)).at(-1);
-		};
-		assert.strictEqual(await run(code), lastLine, 'the program itself');
-		assert.strictEqual(await run(slice), lastLine, `the slice:\n${slice}`);
-		shell.clearEnvironment();
+		const slice = await sliceOf(parser, code, criterion);
+		const [program, sliced] = await Promise.all([printedByR(code), printedByR(slice)]);
+		assert.strictEqual(program.split('\n').at(-1), lastLine, 'the program itself');
+		assert.strictEqual(sliced.split('\n').at(-1), lastLine, `the slice:\n${slice}`);
 	});
 }
 

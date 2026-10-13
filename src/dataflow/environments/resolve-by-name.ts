@@ -220,7 +220,6 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 	return remember(environment, id, builtIns === undefined ? definitions : definitions.concat(builtIns));
 }
 
-/** Caches the answer for a plain name `id` at the current environment, and hands it back. */
 function remember(environment: REnvironmentInformation, id: Identifier, definitions: IdentifierDefinition[] | undefined): IdentifierDefinition[] | undefined {
 	if(definitions !== undefined && typeof id === 'string') {
 		(environment.current.cache ??= new Map()).set(id, definitions);

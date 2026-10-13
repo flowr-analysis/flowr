@@ -77,7 +77,6 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvi
 	}
 }
 
-/** Whether the argument is a function: one written in place, or a name bound to one. */
 function handsOverFunction<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const value = arg === EmptyArgument ? undefined : arg.value;
 	return RFunctionDefinition.is(value) || (RSymbol.is(value) && (Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);

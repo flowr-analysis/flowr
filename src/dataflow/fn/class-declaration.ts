@@ -360,10 +360,7 @@ function assignedValueOf(def: NodeId, graph: DataflowGraph): NodeId | undefined 
 	return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
 }
 
-/**
- * The class vectors S3 dispatch may see for the argument at `id`, one per definition reaching it, without the trailing `default`.
- * `undefined` unless every value is a literal or a `structure(..., class = )` with a known class.
- */
+/** The class vectors S3 dispatch may see for the argument at `id`, one per reaching definition, `undefined` unless all are known. */
 export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly (readonly string[])[] | undefined {
 	const { graph } = info;
 	const value = RArgument.valueOf(info.idMap.get(id))?.info.id;

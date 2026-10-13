@@ -192,7 +192,7 @@ export function processFunctionDefinition<OtherInfo>(
 			hookEnvironment = popLocalEnvironment(hookEnvironment);
 		}
 		outEnvironment = overwriteEnvironment(outEnvironment, hookEnvironment);
-		/* the function calls each of its exit hooks, their jumps and errors overrule the exit points of the body */
+		/* the jumps and errors of an exit hook overrule the exit points of the body */
 		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
 		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);
 		if(hookExitPoints.length > 0) {
@@ -260,10 +260,7 @@ export function processFunctionDefinition<OtherInfo>(
 	};
 }
 
-/**
- * The tracked environment state a function hands out when it returns at the exit point `nodeId`:
- * a fresh `new.env()`, a list or class generator of methods, or a variable holding such a state.
- */
+/** The tracked environment state returned at `nodeId`: a fresh `new.env()`, a list or class generator of methods, or a variable holding one. */
 function envStateReturnedAt<OtherInfo>(
 	nodeId: NodeId,
 	graph: DataflowGraph,
@@ -390,7 +387,6 @@ function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironment: REnv
 	}
 }
 
-/** The variables the `<<-` among `nodes` define, with their names. */
 function* superAssignedTargets(graph: DataflowGraph, nodes: Iterable<NodeId>): Generator<[NodeId, Identifier]> {
 	for(const nodeId of nodes) {
 		if(!DfgVertex.hasOrigin(graph.getVertex(nodeId), BuiltInProcName.SuperAssignment)) {
@@ -436,7 +432,6 @@ function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfIn
 	return { shadowing, generics };
 }
 
-/** The properties of the function `name`, from the environment or else the signature database. */
 function fnPropsOf(name: Identifier, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext) {
 	return queryFnProps(name, { environment }) ?? ctx.functionInfo(name);
 }
@@ -471,9 +466,8 @@ function linkedDefinitions(defs: readonly IdentifierDefinition[], graph: Dataflo
 }
 
 /**
- * The `methods` a call dispatches to when the class of its dispatch object is known: per class in order (then `default`),
- * the methods of that name, for a top-level call run once (`statement`) stopping once one is surely bound before the call.
- * `undefined` if this is not known or a method may `NextMethod()`.
+ * The `methods` a call dispatches to per known class of its dispatch object (then `default`), stopping for a top-level call at one surely bound before it;
+ * `undefined` if the class is unknown or a method may `NextMethod()`.
  */
 function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, methods: readonly IdentifierDefinition[], graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext): IdentifierDefinition[] | undefined {
 	const generic = Identifier.getName(name);
@@ -706,7 +700,6 @@ function linkLiftedReads(
 	}
 }
 
-/** The frame offset of a `sys.frame(n)` call given a literal `n`. */
 function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number | undefined {
 	if(!RFunctionCall.isNamed(node) || Identifier.getName(node.functionName.content) !== 'sys.frame' || node.arguments.length !== 1) {
 		return undefined;
@@ -714,7 +707,6 @@ function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number
 	return RNumber.literalValueOf(RArgument.valueOf(node.arguments[0]));
 }
 
-/** The names an `rm` call removes, given as strings or symbols (its `envir` argument aside). */
 function namesRemovedBy(call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<ParentInformation>): Identifier[] {
 	const names: Identifier[] = [];
 	for(const a of call.args) {

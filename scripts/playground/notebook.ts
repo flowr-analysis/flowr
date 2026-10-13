@@ -1,7 +1,4 @@
-/**
- * Notebooks in the editor: R Markdown and Quarto as prose around R chunks, Jupyter notebooks as R scripts in the
- * percent format (`# %%` opens a code cell, `# %% [markdown]` a text cell), both keeping every line where flowR sees it.
- */
+/** R Markdown and Quarto as prose around R chunks, Jupyter as R scripts in the percent format (`# %%`), every line kept where flowR sees it */
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { Prec, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { StreamLanguage, type StreamParser, type StringStream } from '@codemirror/language';
@@ -11,7 +8,6 @@ import type { INotebookContent } from '@jupyterlab/nbformat';
 import { globalChunkOptions, isExecutableCell, parseRMarkdownFile, RTagRegex } from '../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { el } from '../page-lib/dom';
 
-/** whether flowR reads `name` as a document of prose and R chunks */
 export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
 
 const CellMarker = /^#\s?%%/;
@@ -19,7 +15,6 @@ const MarkdownCellMarker = /^#\s?%%.*\[markdown\]/i;
 const Fence = /^\s*(`{3,}|~{3,})/;
 const LineBreak = /\r\n|\r|\n/;
 
-/** the inline markdown of a line of prose: headings, code, emphasis, and links; `opens` says the text of the line starts here */
 function prose(stream: StringStream, opens: boolean): string | null {
 	if(opens && stream.match(/^#{1,6}\s.*/)) {
 		return 'heading';
@@ -52,7 +47,6 @@ const yamlParser: StreamParser<unknown> = yaml;
 const startOf = (parser: StreamParser<unknown>) => parser.startState?.(2) ?? {};
 const copyOf = (parser: StreamParser<unknown>, state: unknown) => parser.copyState?.(state) ?? state;
 
-/** R Markdown and Quarto: yaml up front, then prose, R in the chunks flowR reads, anything else as plain code */
 const markdownDocument: StreamParser<MarkdownState> = {
 	name:       'rmarkdown',
 	startState: () => ({ zone: 'start', fence: '', inner: undefined }),
@@ -110,7 +104,6 @@ interface ScriptState {
 	inner: unknown
 }
 
-/** R, with the cells of the percent format: a text cell is markdown behind the `#` that keeps it a comment for R */
 const percentScript: StreamParser<ScriptState> = {
 	name:       'r',
 	startState: () => ({ text: false, opens: false, inner: startOf(rParser) }),
@@ -144,16 +137,13 @@ export function languageOf(name: string): Extension {
 	return isMarkdownDocument(name) ? markdownLanguage : scriptLanguage;
 }
 
-/** a run of lines (1-based, inclusive) the editor sets apart */
+/** a run of lines, 1-based and inclusive */
 interface Cell {
 	readonly kind:  'code' | 'text' | 'meta'
-	/** the fence or marker line that opens the cell, if it has one */
 	readonly head?: number
 	readonly from:  number
 	readonly to:    number
-	/** the fence that closes a chunk */
 	readonly tail?: number
-	/** whether knitting runs the chunk, which flowR follows as well */
 	readonly runs:  boolean
 	readonly label: string
 }
@@ -202,10 +192,9 @@ function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 	return markdown ? documentCells(text, rows) : scriptCells(rows);
 }
 
-/** runs the code of a cell in the R session the cells share, saying which cell it was */
+/** runs a cell in the R session the cells share */
 export type CellRunner = (code: string, title: string) => void;
 
-/** what a code cell is called in the output: its label, or its place among the code cells */
 const titleOf = (cell: Cell, cells: readonly Cell[]) => cell.label || `cell ${cells.filter(c => c.kind === 'code').indexOf(cell) + 1}`;
 
 function runCell(state: EditorState, cell: Cell, cells: readonly Cell[], run: CellRunner): void {
@@ -282,7 +271,7 @@ function decorate(view: EditorView, markdown: boolean, run: CellRunner): Decorat
 	return Decoration.set(found, true);
 }
 
-/** sets the cells of a notebook apart from each other and from the prose around them, each code cell runnable with `run` */
+/** the cell decorations of a notebook, each code cell runnable with `run` */
 export function notebookCells(name: string, run: CellRunner): Extension {
 	const markdown = isMarkdownDocument(name);
 	return [
@@ -353,7 +342,7 @@ const cellLook = EditorView.theme({
 	'.cm-prose, .cm-cell-text:not(.cm-cell-head)': { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' }
 });
 
-/** a Jupyter notebook as an R script in the percent format, its text cells as comments so R reads past them */
+/** a Jupyter notebook as an R script in the percent format, text cells as comments */
 export function notebookAsScript(json: string): string {
 	const { cells } = JSON.parse(json) as Partial<INotebookContent>;
 	if(!Array.isArray(cells)) {

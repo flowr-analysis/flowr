@@ -311,7 +311,6 @@ export function staticDice(
 function extendSlices(results: ReadonlySet<NodeId>, ast: AstIdMap): Set<NodeId> {
 	const res = new Set(results);
 	for(const id of results) {
-		/* extend to the whole statement the node is part of */
 		const statement = RNode.findEnclosing(id, ast, n => n.info.role === RoleInParent.Root || n.info.role === RoleInParent.ExpressionListChild);
 		for(const inner of statement === undefined ? [] : RNode.collectAllIds(ast.get(statement))) {
 			res.add(inner);

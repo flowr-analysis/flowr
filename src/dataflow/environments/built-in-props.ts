@@ -562,8 +562,7 @@ function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly
 
 /**
  * How surely a call evaluates each of the first `count` arguments: {@link ArgProp.Forced} always,
- * {@link ArgProp.Nse} and {@link ArgProp.Presence} never, and anything the signature does not state may go either way;
- * `undefined` without a signature, which states nothing.
+ * {@link ArgProp.Nse} and {@link ArgProp.Presence} never, anything else maybe; `undefined` without a signature.
  */
 function argForcing(this: void, sig: FnSig | undefined, count: number): readonly Ternary[] | undefined {
 	if(sig === undefined) {

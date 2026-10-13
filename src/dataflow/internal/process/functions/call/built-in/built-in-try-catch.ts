@@ -80,7 +80,6 @@ export function processTryCatch<OtherInfo>(
 	const catchesError = (config.aborts ?? true) && (error === undefined || namesAnErrorHandler(args));
 	const raising: NodeId[] = [];
 	if(catchesError) {
-		/* within the block every later call reads the earlier ones that may raise, and those read the construct */
 		const targetsOf = (n: Identifier) => [data.environment, info.environment]
 			.flatMap(env => Resolve.byNameAndType(n, env, ReferenceType.Function) ?? []);
 		const order = raisingOrder(info.graph, builtInLookup(data.ctx), { rootId, targetsOf });
@@ -314,7 +313,6 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 	}
 }
 
-/** The exit points of the handler at `id`, a function definition given directly or as the value of a named argument. */
 function exitPointsOfHandler(id: NodeId, graph: DataflowGraph): readonly ExitPoint[] | undefined {
 	const vertex = graph.getVertex(id);
 	if(DfgVertex.isFunctionDefinition(vertex)) {

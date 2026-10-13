@@ -208,7 +208,7 @@ export const UNDEFINED_SYMBOL = {
 			} satisfies UndefinedSymbolResult;
 		};
 
-		/** the symbol a candidate names if the config asks to check it: a called function, or a plain symbol read (not an argument name, `...`, or empty) */
+		/** the symbol to check if the config asks for it: a called function, or a plain symbol read */
 		const symbolOf = (node: RNodeWithParent): [UndefinedSymbolKind, Identifier] | undefined => {
 			const vtx = graph.getVertex(node.info.id);
 			if(DfgVertex.isFunctionCall(vtx)) {

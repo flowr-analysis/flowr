@@ -12,23 +12,20 @@ import snippets from './snippets.json';
 import { sliceOf } from '../functionality/_helper/shell';
 
 /*
- * Every snippet that states what it yields (refresh with
- * `npx ts-node scripts/extract-yield-snippets.ts <dir with .tex files> test/yields/snippets.json`):
- * R has to print that value for the statement, and so has the slice flowR computes for it.
+ * R has to print every stated :yields: value, and so has the flowR slice; refresh snippets.json with
+ * `npx ts-node scripts/extract-yield-snippets.ts <dir with .tex files> test/yields/snippets.json`
  */
 const run = promisify(execFile);
 
-/** where the packages a snippet needs but R lacks are installed, ahead of the libraries R already has */
 const packageLibrary = path.join(path.dirname(sigDbCacheDir(undefined, false)), 'r-packages');
 
-/** what R prints for `code`, in a process of its own so no check sees the state another left behind */
+/** a fresh Rscript per check, so none sees the state another left behind */
 async function printed(code: string): Promise<string[]> {
 	const env = { ...process.env, R_LIBS: [packageLibrary, process.env.R_LIBS].filter(Boolean).join(path.delimiter) };
 	const { stdout } = await run('Rscript', ['--vanilla', '-e', code], { maxBuffer: 1 << 24, cwd: os.tmpdir(), env });
 	return stdout.trimEnd().split('\n');
 }
 
-/** the packages out of `packages` that R can not load */
 async function missingOf(packages: readonly string[]): Promise<string[]> {
 	if(packages.length === 0) {
 		return [];
@@ -37,21 +34,16 @@ async function missingOf(packages: readonly string[]): Promise<string[]> {
 	return missing.join(' ').split(' ').filter(m => m !== '');
 }
 
-/**
- * Whether `output` ends with what R prints for the stated value, or, for a value stated in words
- * (a backquoted plus, `2 + 2 = 4`, `3 (as before)`, `1.01 m`), with that text as R would print it.
- */
+/** whether `output` ends with the stated value, or, for one stated in words (`2 + 2 = 4`, `1.01 m`), with that text */
 function yieldsAsStated(output: readonly string[], expected: readonly string[] | undefined, yields: string): boolean {
 	if(expected !== undefined && expected.every((line, i) => output[output.length - expected.length + i] === line)) {
 		return true;
 	}
-	/* the value as written in prose: no `[1]`, no quotes, no brackets around a unit, and for `2 + 2 = 4` what follows the `=` */
 	const plain = (text: string) => text.replace(/^\[\d+\]\s*/, '').replace(/^"(.*)"$/, '$1').replace(/[[\]]/g, '').trim();
 	const stated = yields.replace(/\s*\([^)]*\)$/, '').split(' = ').at(-1) ?? yields;
 	return plain(output.at(-1) ?? '') === plain(stated);
 }
 
-/** the statement without the comment trailing it */
 const statementOf = (line: string) => line.replace(/\s*#\s*:yields:.*$/, '').replace(/\s*#[^"'`]*$/, '').trim();
 
 describe('Snippets that state what they yield', () => {

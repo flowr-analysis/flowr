@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 
-/* snippets stating what they yield, checked in R and against flowR's slices; every check runs its own R processes, so all run at once */
+/* every check runs its own R processes, so all run at once */
 export default defineConfig({
 	test: {
 		include:     ['test/yields/**/*.test.ts'],

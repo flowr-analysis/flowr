@@ -58,7 +58,6 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	}).loopsOnlyOnce();
 }
 
-/** Whether `value` surely has exactly one element. */
 function holdsOneElement(value: Lift<Value>, element = false): boolean {
 	if(!isValue(value)) {
 		return false;

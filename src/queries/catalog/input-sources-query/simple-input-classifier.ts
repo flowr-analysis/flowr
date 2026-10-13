@@ -52,7 +52,6 @@ class ClassificationAccumulator {
 	readonly values: (ConstantValue | undefined)[] = [];
 	allPure = true;
 
-	/** adds what `c` classifies, an unknown if there is nothing */
 	merge(c: InputSource | undefined): void {
 		if(c === undefined) {
 			this.push(InputType.Unknown);
@@ -71,7 +70,6 @@ class ClassificationAccumulator {
 
 	build(id: NodeId): InputSource {
 		const types = this.types.length === 0 ? [InputType.Unknown] : uniqueArray(this.types);
-		/* the common value shared by all entries, none if they disagree or one of them is unknown */
 		const first = this.values[0];
 		const agreed = first !== undefined && this.values.every(v => v === first);
 		const value = agreed && types.every(isConstantLike) ? first : undefined;
@@ -112,7 +110,6 @@ class InputClassifier {
 		return name === undefined || this.packages === undefined || this.packages.has(name);
 	}
 
-	/** the classification of the vertex at `ref`, `undefined` if there is none */
 	public classifyAt(ref: NodeId | undefined, graph = this.dfg): InputSource | undefined {
 		const vtx = ref === undefined ? undefined : graph.getVertex(ref);
 		return vtx ? this.classifyEntry(vtx) : undefined;
@@ -288,9 +285,8 @@ class InputClassifier {
 	}
 
 	/**
-	 * Whether the code `call` yields is the one written in its arguments: no name within them is resolved to
-	 * anything outside of them (built-ins aside), as a splice like `bquote(.(y))` is, and none names a parameter
-	 * of a function around it, which `substitute(x)` would replace with what the caller wrote.
+	 * Whether `call` quotes only the code written in its arguments: no name in them resolves outside of them
+	 * (built-ins aside), as a `bquote(.(y))` splice would, and none names an enclosing parameter `substitute` would replace.
 	 */
 	private quotesOnlyWrittenCode(call: DataflowGraphVertexFunctionCall): boolean {
 		const idMap = this.dfg.idMap;
@@ -339,7 +335,6 @@ class InputClassifier {
 		});
 	}
 
-	/** the field an access like `input$n` or `input[["n"]]` reads, `undefined` if it is not spelled out */
 	private accessedField(call: DataflowGraphVertexFunctionCall): string | undefined {
 		const ref = call.args[1] === undefined ? undefined : FunctionArgument.getReference(call.args[1]);
 		const node = ref === undefined ? undefined : this.dfg.idMap?.get(ref);
@@ -351,10 +346,7 @@ class InputClassifier {
 		return undefined;
 	}
 
-	/**
-	 * The argument a built-in construct hands on: the value of a block or `get` (which then is `renamed` to the call),
-	 * the condition of a branch or loop. `undefined` for every other call.
-	 */
+	/** the argument a built-in hands on: the value of a block or `get` (then `renamed`), the condition of a branch or loop */
 	private passedOn(call: DataflowGraphVertexFunctionCall): { via: FunctionArgument | undefined, renamed: boolean } | undefined {
 		if(call.origin.includes(BuiltInProcName.ExpressionList)) {
 			// `{ a; b }` evaluates to its last expression, just like in R
@@ -403,7 +395,7 @@ class InputClassifier {
 				types.splice(types.indexOf(InputType.File), 1);
 				types.push(InputType.TempFile);
 			}
-			/* `quote(1 + 2)` yields code the program spells out itself, only capturing (`substitute(x)`) or splicing (`bquote(.(y))`) brings in other code */
+			/* `quote` yields written code, only capturing (`substitute(x)`) or splicing (`bquote(.(y))`) brings in other code */
 			if(types.includes(InputType.Lang) && this.quotesOnlyWrittenCode(call)) {
 				types.splice(types.indexOf(InputType.Lang), 1, InputType.DerivedConstant);
 			}
@@ -419,7 +411,6 @@ class InputClassifier {
 			return this.classifyCdsAndReturn(call, { id: call.id, types, trace: InputTraceType.Unknown });
 		}
 
-		// otherwise, classify by arguments; pure functions get Known/Pure handling
 		const argTypes: InputType[] = [];
 		const cdTypes: InputType[] = [];
 		for(const arg of call.args.filter(FunctionArgument.isNotEmpty)) {
@@ -537,7 +528,6 @@ class InputClassifier {
 		return this.classifyCdsAndReturn(vtx, acc.build(vtx.id));
 	}
 
-	/** the type of a parameter definition (the linked object it binds, if any), `undefined` for anything else */
 	private parameterType(id: NodeId): InputType | undefined {
 		if(this.dfg.idMap?.get(id)?.info.role !== RoleInParent.ParameterName) {
 			return undefined;

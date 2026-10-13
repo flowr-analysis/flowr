@@ -207,7 +207,6 @@ function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' |
 	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), worthKeeping);
 }
 
-/** The assignment `node` is one side of, with the value on the other side. */
 function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): { statement: RNode<ParentInformation>, value: RNode<ParentInformation> } | undefined {
 	const parent = RNode.directParent(node, ast.idMap);
 	if(!RBinaryOp.is(parent)) {
@@ -222,7 +221,6 @@ function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): 
 	return undefined;
 }
 
-/** whether the node yields the value of the function around it, which removing it would change */
 function yieldsFunctionValue(node: RNode<ParentInformation>, ast: NormalizedAst, dfg: DataflowGraph): boolean {
 	const path = new Set<NodeId>([node.info.id]);
 	for(const up of RNode.iterateParents(node, ast.idMap)) {
@@ -235,7 +233,6 @@ function yieldsFunctionValue(node: RNode<ParentInformation>, ast: NormalizedAst,
 	return false;
 }
 
-/** Whether the node is a statement of its own in a `{` block or at top level, so it can be removed as a whole. */
 function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAst): boolean {
 	if(node.info.role !== RoleInParent.ExpressionListChild) {
 		return false;

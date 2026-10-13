@@ -201,10 +201,7 @@ function propagateTransitivePackages(graph: DataflowGraph, environment: REnviron
 
 type NamedDefinition = InGraphIdentifierDefinition & { name: string };
 
-/**
- * The ambient writes of the calls in function bodies that only linking resolved to a built-in, see {@link writesOfHiddenBuiltIn};
- * links their reads as well.
- */
+/** The ambient writes of body calls only linking resolved to a built-in (see {@link writesOfHiddenBuiltIn}), linking their reads as well. */
 function hiddenBuiltInWrites(graph: DataflowGraph, environment: REnvironmentInformation): Map<NodeId, NamedDefinition[]> {
 	const builtIns = REnvironment.findBuiltIn(environment.current);
 	const writes = new Map<NodeId, NamedDefinition[]>();

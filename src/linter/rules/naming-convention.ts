@@ -153,7 +153,6 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
 	}
 }
 
-/** Splits the quotes or backticks of a non-syntactic name off the name, as they are syntax and not part of it. */
 function unquoteName(lexeme: string): { quote: string, name: string } {
 	const quoted = /^(["'`])(.*)\1$/s.exec(lexeme);
 	return quoted ? { quote: quoted[1], name: quoted[2] } : { quote: '', name: lexeme };

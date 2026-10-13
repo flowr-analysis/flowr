@@ -171,7 +171,6 @@ function getCriticalTargets(
 	config: UnescapedArgumentsConfig,
 	builtIns: BuiltInIndex
 ): CriticalTarget[] {
-	/* index the critical calls of the enabled categories by function name */
 	const criticalCalls = Map.groupBy(getEnabledCriticalCalls(config, builtIns), call => Identifier.getName(call.name));
 	const targets: CriticalTarget[] = [];
 	const seen = new Set<string>();

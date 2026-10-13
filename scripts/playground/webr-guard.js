@@ -40,7 +40,6 @@ function base64(buffer) {
 	return btoa(text);
 }
 
-/* the body of a download, telling the page each time more of its `total` bytes arrived */
 async function read(url, response, total) {
 	const reader = response.body.getReader();
 	const chunks = [];

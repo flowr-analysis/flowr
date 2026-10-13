@@ -151,13 +151,11 @@ function writesOfParameters(graph: DataflowGraph, definition: DataflowGraphVerte
 	}
 }
 
-/** Whether `argument` is a name bound to an environment. */
 function holdsEnvironment(graph: DataflowGraph, argument: NodeId, environment: REnvironmentInformation): boolean {
 	const node = graph.idMap?.get(argument);
 	return RSymbol.is(node) && (Resolve.byName(node.content, environment)?.some(hasEnvState) ?? false);
 }
 
-/** The reads within the bodies of called functions that nothing resolved, which the program reads from outside. */
 function openReadsOfCalledFunctions(graph: DataflowGraph): IdentifierReference[] {
 	const reads = new Map<NodeId, IdentifierReference>();
 	for(const [id, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {
@@ -172,12 +170,7 @@ function openReadsOfCalledFunctions(graph: DataflowGraph): IdentifierReference[]
 	return [...reads.values()];
 }
 
-/**
- * An active binding (`makeActiveBinding`) runs its function on every assignment to and read of the name.
- * An assignment to an actively bound name calls the binding function with the value, and the name stays bound to it.
- * A read runs the bound function, so it becomes a call of it, wherever the read was resolved; the call linking that
- * follows then resolves what the function reads where the binding is read.
- */
+/** An active binding (`makeActiveBinding`) runs its function on every assignment to and read of the name, so each becomes a call of it. */
 function callActiveBindings(graph: DataflowGraph): void {
 	const bindings = new Map<NodeId, NodeId[]>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
@@ -217,10 +210,7 @@ function markCallsOfUnknownValues(graph: DataflowGraph, environment: REnvironmen
 	}
 }
 
-/**
- * `environment()` within a function hands out that function's frame, by reference: whatever the frame binds, now or
- * later, a closure's `<<-` included, can be read through it, so the call reads every definition of the frame.
- */
+/** `environment()` hands out the function's frame by reference, so the call reads every definition of the frame, a closure's `<<-` included. */
 function readFramesThroughEnvironment(graph: DataflowGraph): void {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {

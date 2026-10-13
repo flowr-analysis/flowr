@@ -79,7 +79,6 @@ function compileReplacements(replacements: readonly Record<string, string>[]): r
 	return replacements.map(replacement => Object.entries(replacement).map(([key, value]) => [new RegExp(key, 'g'), value] as const));
 }
 
-/** the variant of `path` each replacement rule produces, applying all of its patterns in order */
 function applyReplacements(path: string, replacements: readonly (readonly [RegExp, string])[][]): string[] {
 	return replacements.map(replacement => {
 		let result = path;
@@ -90,7 +89,6 @@ function applyReplacements(path: string, replacements: readonly (readonly [RegEx
 	});
 }
 
-/** the paths to try for `seed`, which, depending on `dropPaths`, may drop the leading directories */
 function candidatePaths(seed: string, dropPaths: DropPathsOption | undefined): string[] {
 	if(dropPaths !== DropPathsOption.Once && dropPaths !== DropPathsOption.All) {
 		return [seed];

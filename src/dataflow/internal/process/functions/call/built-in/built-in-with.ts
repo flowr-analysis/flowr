@@ -148,10 +148,7 @@ function callsOpaque(graph: DataflowGraph, rootId: NodeId): boolean {
 	return graph.verticesOfType(VertexType.FunctionCall).some(([id, vertex]) => id !== rootId && !vertex.onlyBuiltin);
 }
 
-/**
- * `data` may be an environment we do not track, in which `expr` writes: later reads of the variable holding it
- * see the call as a (maybe) redefinition, which reads the previous value through its argument.
- */
+/** `data` may be an untracked environment `expr` writes into, so later reads of its variable see the call as a maybe redefinition. */
 function mayWriteInto<OtherInfo>(
 	dataNode: RNode<OtherInfo & ParentInformation>,
 	result:   DataflowInformation,

@@ -141,16 +141,7 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        timeout-minutes: 20
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "📦 Install Node Dependencies"
         # the sync below runs through ts-node, so the dependencies have to be there before it

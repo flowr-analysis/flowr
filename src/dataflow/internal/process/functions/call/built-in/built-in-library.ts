@@ -314,10 +314,7 @@ export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, envi
 /** Reserved marker binding recording an unresolved `library()`/`require()` load; the leading space cannot collide with a real export name. */
 const libraryLoadMarker = ' library-load' as BrandedIdentifier;
 
-/**
- * The {@link libraryLoadMarker} binding of the load of `pack` at `loadedAt`,
- * so an explicit `pack::fn` links back via {@link loadNodesForNamespace}.
- */
+/** The {@link libraryLoadMarker} binding of loading `pack` at `loadedAt`, so `pack::fn` links back via {@link loadNodesForNamespace}. */
 function loadMarkerOf(pack: string, loadedAt: NodeId, cds?: readonly ControlDependency[]): InGraphIdentifierDefinition & { name: Identifier } {
 	return { name: Identifier.make(libraryLoadMarker, pack), type: ReferenceType.Function, nodeId: loadedAt, definedAt: loadedAt, cds: cds?.slice() };
 }
@@ -711,7 +708,6 @@ function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: 
 		if(toDefine.length > 0) {
 			importsEnv = importsEnv.defineAll(toDefine);
 		}
-		/* only importing everything has to recurse */
 		if(imported === 'all') {
 			alreadyImportedAll.add(importedDependency.name);
 			importsEnv = recImports(importsEnv, importedNs, ctx, alreadyImportedAll);

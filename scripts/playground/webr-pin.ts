@@ -86,7 +86,7 @@ function* entries(tar: Buffer): Generator<{ name: string, data: Buffer }> {
 	}
 }
 
-/** what the page knows of a file of webR before fetching it: the hash it must have, and how many bytes it takes */
+/** the hash and size a file of webR must have */
 export interface PinnedFile {
 	readonly sha256: string
 	readonly size:   number

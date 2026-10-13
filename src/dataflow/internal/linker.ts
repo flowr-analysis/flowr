@@ -31,7 +31,6 @@ import { type BuiltInLookup, edgeSources, edgeTargets, hasEdgeOfType } from '../
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
-/** Every edge kind along which a name takes over the value another holds. */
 const ValueFlowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 const FCallLinkReadBits = EdgeType.Reads | EdgeType.Calls | EdgeType.DefinedByOnCall;
 
@@ -95,7 +94,6 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 	return FunctionSemantics.call.match.onCallAndLink(args, params, graph);
 }
 
-/** The environments captured by the definitions the name of `info` resolves to, searched before the environment of the call itself. */
 function environmentsOfCallee(info: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation): readonly REnvironmentInformation[] {
 	if(info.name === undefined) {
 		return [];
@@ -194,7 +192,6 @@ function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Re
 
 /** The call `id` of `fnId` writes the fields of the environment `binding` holds through every alias of `start`. */
 function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, start: NodeId, binding: NodeId, envState: REnvironmentInformation, idMap: AstIdMap): void {
-	/* `start` and everything that takes over what it reads: aliases and nested uses of an environment all share it */
 	const aliases = new Set<NodeId>([start]);
 	for(const alias of aliases) {
 		for(const from of edgeSources(graph, alias, ValueFlowBits)) {
@@ -405,7 +402,7 @@ export function linkCallToDefinitions(graph: DataflowGraph, callId: NodeId, defi
 /**
  * Links a set of read variables to definitions in `environmentInformation`; each reference that cannot be linked (or
  * links to built-ins only) is added to `givenInputs` (marked maybe if `maybeForRemaining`), and the extended list is returned.
- * @param alsoFrom - a node that reads every definition found as well, e.g., the anonymous call of the definition whose inputs these are
+ * @param alsoFrom - a node that reads every definition found as well
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean, alsoFrom?: NodeId): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
@@ -466,7 +463,6 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 }
 
-/** Adds `cd` to `holder` unless it already has one with the same id, returning whether it did. */
 function addControlDependency(holder: { cds?: ControlDependency[] | undefined }, cd: ControlDependency): boolean {
 	if(holder.cds?.some(c => c.id === cd.id)) {
 		return false;
@@ -576,11 +572,7 @@ export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState
 	linkFieldReads(graph, access.info.id, fieldName ? envState.current.memory.get(fieldName) : undefined, true);
 }
 
-/**
- * The factory creating `closure` afresh on every call, with the names bound in its frame by the time it hands the
- * closure back: the closure is all the factory returns, and the factory itself defines no other function, calls
- * nothing but built-ins with known effects, and does not reflect on its frame.
- */
+/** The factory that creates and returns only `closure`, calling only known built-ins and not reflecting on its frame, with the names its frame binds. */
 function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup, idMap: AstIdMap): { readonly factory: NodeId, readonly locals: ReadonlySet<string> } | undefined {
 	const id = RNode.strictlyEnclosingFunction(closure.id, idMap);
 	const factory = id === undefined ? undefined : graph.getVertex(id);
@@ -631,18 +623,14 @@ function instancesOf(call: NodeId, closure: NodeId, factory: NodeId, graph: Data
 	return instances.length > 0 ? instances : undefined;
 }
 
-/**
- * Each call of a factory gives the closure it creates a frame of its own, so what the closure writes there with `<<-`
- * only calls of a closure from the same factory call can see. Rather than having every call of any such closure
- * perform these writes, a call depends on the other calls that may run a closure of the same factory call.
- */
+/** A closure's `<<-` into its factory frame is seen only by calls of closures from the same factory call, so such calls depend on each other instead. */
 export function separateClosureInstances(graph: DataflowGraph, known: BuiltInLookup): void {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
 		return;
 	}
 	for(const [closure, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		/* only a closure writing with `<<-` can share state, which most do not */
+		/* only a closure writing with `<<-` can share state */
 		const superAssignments = vertex.subflow.graph.values().filter(id => DfgVertex.hasOrigin(graph.getVertex(id), BuiltInProcName.SuperAssignment)).toArray();
 		const found = superAssignments.length === 0 ? undefined : factoryOf(vertex, graph, known, idMap);
 		if(found === undefined) {

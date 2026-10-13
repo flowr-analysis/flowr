@@ -75,7 +75,6 @@ export function processS7NewGeneric<OtherInfo>(
 	let funArg = argNamed('fun')?.info.id;
 	const effectiveArgs = args.slice();
 	if(!funArg) {
-		/* fake it as `function([dispatch_args], ...) S7_dispatch()` */
 		const [fun, funId] = makeS7DispatchFDef<OtherInfo>(name, [argNamed('dispatchArg')?.lexeme], rootId, args.length, data.completeAst.idMap);
 		effectiveArgs.push(fun);
 		funArg = funId;
@@ -190,7 +189,6 @@ export const S7SyntheticFunArgSuffix = '-s7-new-generic-fun-arg';
 /** Synthesizes the argument `fun = function([dispatch_args], ...) S7_dispatch()`, returning it and the id of its value. */
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
 	const r = name.location ?? SourceRange.invalid();
-	/* every synthesized node stands at the location of the call, nested like it */
 	const info = (id: NodeId, role: RoleInParent, parent: NodeId, index = 0) => (
 		{ id, nest: name.info.nest, role, fullRange: r, adToks: undefined, file: name.info.file, parent, index }
 	);

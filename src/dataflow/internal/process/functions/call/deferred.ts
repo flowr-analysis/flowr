@@ -87,8 +87,8 @@ export const Deferred = {
 
 	/**
 	 * The reads that may be the one forcing `binding`: every read of it that no other read always precedes,
-	 * since an earlier read would already have forced it and cached the value. With `viaClosures`, for a binding of
-	 * its own (`delayedAssign`), a closure reading it forces it when called.
+	 * since an earlier read would already have forced it and cached the value.
+	 * With `viaClosures`, a closure reading a `delayedAssign` binding forces it when called.
 	 */
 	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph, viaClosures = false): readonly NodeId[] {
 		const reads = edgeSources(graph, binding, EdgeType.Reads);

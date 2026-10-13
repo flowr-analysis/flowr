@@ -80,10 +80,7 @@ export const Quoted = {
 		return found;
 	},
 
-	/**
-	 * What the node `id` within captured code depends on for running at all: the call capturing the code, and
-	 * every call that evaluates it, be it an `eval` or a function whose body it became (`body(f) <- quote(...)`).
-	 */
+	/** What `id` within captured code needs to run at all: the capturing call and every call evaluating it (`eval`, `body(f) <- quote(...)`). */
 	evaluationDependencies(this: void, graph: DataflowGraph, id: NodeId): NodeId[] {
 		const idMap = graph.idMap;
 		for(let parent = idMap?.get(id)?.info.parent; parent !== undefined; parent = idMap?.get(parent)?.info.parent) {
@@ -459,12 +456,7 @@ function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<readonl
 	}
 }
 
-/**
- * A promise only the closure `closure` forces (see {@link escapingArguments}) sees what is bound where the closure
- * is called. When the closure the factory call `factoryCall` hands back is only ever bound by assignments and
- * called through them, and each of these calls runs once in program order, a definition none of them sees does
- * not reach the promise.
- */
+/** A promise only `closure` forces sees what is bound where it is called, so if each of its calls runs once, a definition none of them sees does not reach it. */
 function readAtForcingCalls<Info>(graph: DataflowGraph, factoryCall: NodeId, argument: NodeId, closure: NodeId, idMap: AstIdMap<Info & ParentInformation>): void {
 	const environments: REnvironmentInformation[] = [];
 	for(const [binding, edge] of graph.edgesTo(factoryCall)) {

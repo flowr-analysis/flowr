@@ -103,11 +103,7 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 	return { calls, own, defs };
 }
 
-/**
- * What each node may raise: its own points and those of everything it calls. The calls are collapsed into their
- * strongly connected components (Tarjan), which come out callees first, so every component is settled once and all
- * of its members share what it may raise, however many cycles run through it.
- */
+/** What each node may raise, its callees included; Tarjan yields the call cycles callees first, so each is settled once. */
 function raisedPerNode(calls: ReadonlyMap<NodeId, readonly NodeId[]>, own: ReadonlyMap<NodeId, readonly ExceptionPoint[]>): ReadonlyMap<NodeId, ReadonlyMap<NodeId, ExceptionPoint>> {
 	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
 	const index = new Map<NodeId, number>();

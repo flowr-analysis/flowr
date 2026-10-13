@@ -54,7 +54,6 @@ export const ROXYGEN_ARGS = {
 			if(!roxygen.documentation.length) {
 				return [];
 			}
-			//get parameter names
 			const params = roxygen.tags[KnownRoxygenTags.Param] ?? [];
 			const functionParamNames = getParameters(node).map(p => Identifier.make(Identifier.getName(p.name.content)).toString());
 			/* one `@param a,b` documents several parameters */

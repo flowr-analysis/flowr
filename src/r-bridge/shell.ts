@@ -461,6 +461,12 @@ class RShellSession {
 		};
 
 		return new Promise<string[]>((resolve, reject) => {
+			if(this.bareSession.exitCode !== null || this.bareSession.signalCode !== null) {
+				reject(new Error(`the R session has exited (${this.bareSession.exitCode ?? this.bareSession.signalCode}), it cannot answer anymore`));
+				drained = true;
+				onDrained();
+				return;
+			}
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
 				if(timeout.onTimeout) {
 					timeout.onTimeout(resolve, reject, result);

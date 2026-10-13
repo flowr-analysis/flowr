@@ -52,7 +52,6 @@ export function applyCdsToDefinitions(environments: REnvironmentInformation, nam
 	}
 }
 
-/** Appends `cds` to those of `target`, starting them from a copy if it has none yet. */
 function addCds(target: { cds?: ControlDependency[] }, cds: readonly ControlDependency[] | undefined): void {
 	if(target.cds) {
 		appendCds(target.cds, cds);

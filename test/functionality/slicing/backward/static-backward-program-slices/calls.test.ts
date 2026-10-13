@@ -1,4 +1,4 @@
-import { assertSliced, assumeLoadedPackages, withShell, assertCallTargets, assertDataflow, assertSliceKeeps, assertSliceMatchesR, assertSliceRunsInShell, withTreeSitter } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell, assertCallTargets, assertDataflow, assertSliceKeeps, assertSliceMatchesR, assertSliceRunsInR, withTreeSitter } from '../../../_helper/shell';
 import { label, decorateLabelContext } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
@@ -814,9 +814,12 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 		/* the super-assigning form binds outside the frame it is called in */
 		assertSliced(label('a super-assigning user replacement binds outside the frame', [...replCaps, ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call']), shell, '`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() { s(y) <<- 5 }\nf()\nv <- y\nv', ['6@v'], '`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() s(y) <<- 5\nf()\nv <- y\nv', { expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
 	});
+}));
+
+describe('Calls run in R', withShell(shell => {
 	describe('Redefined primitives, environments and promises bound by name, run in R', () => {
 		const name = (s: string) => decorateLabelContext(label(s, ['redefinition-of-built-in-functions-primitives']), ['dataflow']);
-		const assertSliceRuns = (title: string, code: string, criterion: SlicingCriterion, lastLine: string) => assertSliceRunsInShell(name(title), shell, code, criterion, lastLine);
+		const assertSliceRuns = (title: string, code: string, criterion: SlicingCriterion, lastLine: string) => assertSliceRunsInR(name(title), shell, code, criterion, lastLine);
 		describe('redefined grouping', () => {
 			assertSliceRuns('a redefined parenthesis', '`(` <- function(x) x * 2\ny <- (3)\nprint(y)', '3@print', '[1] 6');
 			assertSliceRuns('a redefined parenthesis in a function', 'f <- function() {\n  `(` <- function(x) x + 1\n  (1)\n}\nprint(f())', '5@print', '[1] 2');
@@ -850,7 +853,7 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 	});
 	describe('Promises with higher-order functions, recursion and loops, run in R', () => {
 		const name = (s: string) => decorateLabelContext(label(s, ['function-calls', 'formals-promises']), ['dataflow']);
-		const assertSliceRuns = (title: string, code: string, criterion: SlicingCriterion, lastLine: string) => assertSliceRunsInShell(name(title), shell, code, criterion, lastLine);
+		const assertSliceRuns = (title: string, code: string, criterion: SlicingCriterion, lastLine: string) => assertSliceRunsInR(name(title), shell, code, criterion, lastLine);
 		function assertReaches(title: string, code: string, target: SlicingCriterion, expected: boolean) {
 			test.each([shell, new TreeSitterExecutor()])(name(`${title} (%s)`), async parser => {
 				assert.strictEqual(await controlReaches(parser, code, target), expected);
@@ -910,9 +913,7 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 	});
 	describe('Ambient state through every way of calling a function, run in R', () => {
 		const name = (s: string) => decorateLabelContext(label(s, ['function-calls', 'side-effects-in-function-call']), ['dataflow', 'slice']);
-		/* R keeps the state across runs, so each one starts from a fresh generator, the initial options, and no device */
-		const reset = 'RNGkind("default", "default", "default"); if(exists(".Random.seed", globalenv())) rm(".Random.seed", envir = globalenv()); if(!exists(".flowr_opts")) .flowr_opts <- options(); invisible(options(.flowr_opts)); graphics.off(); palette("default")';
-		const assertSliceRuns = (title: string, code: string, lastLine: string) => assertSliceRunsInShell(name(title), shell, code, `${code.split('\n').length}@print`, lastLine, reset);
+		const assertSliceRuns = (title: string, code: string, lastLine: string) => assertSliceRunsInR(name(title), shell, code, `${code.split('\n').length}@print`, lastLine);
 		describe('random numbers', () => {
 			const rng = (title: string, body: string, expected: string) => assertSliceRuns(title, `set.seed(1)\n${body}\nr <- runif(1)\nprint(r)`, expected);
 			const one = '[1] 0.3721239';
@@ -1319,7 +1320,7 @@ describe('Primer', { concurrent: false }, withShell(shell => {
 		const f = 'f <- function() {\n  n <- as.integer("a")\n  "after"\n}\n';
 		const fn = 'f <- function() {\n        as.integer("a")\n        "after"\n    }\n';
 		const tc = (block = 'f()') => `r <- tryCatch(${block}, error = function(e) "aborted")\nprint(r)`;
-		/* each checked with R: the slice keeps what may warn exactly when `warn` may be 2 or more */
+		/* the slice keeps what may warn exactly when `warn` may be 2 or more */
 		for(const [label, setup, criterion, sliced, block, output] of [
 			['warn 1', 'options(warn = 1)\n', '7@print', 'f <- function() "after"\noptions(warn = 1)\n', 'f()', '[1] "after"'],
 			['suppressWarnings', 'options(warn = 2)\n', '7@print', 'f <- function() "after"\noptions(warn = 2)\n', 'suppressWarnings(f())', '[1] "after"'],

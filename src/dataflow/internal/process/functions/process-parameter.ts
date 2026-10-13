@@ -10,7 +10,6 @@ import { ControlFlow } from '../../control-flow';
 import { Ternary } from '../../../../util/logic';
 import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
-/** What the parameter is defined by: a function given as its default, or else whatever its default reads. */
 function definedByDefault<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, defaultValue: DataflowInformation | undefined): NodeId[] {
 	if(defaultValue === undefined) {
 		return [];

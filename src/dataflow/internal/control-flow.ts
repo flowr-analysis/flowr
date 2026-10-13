@@ -64,8 +64,7 @@ export const ControlFlow = {
 	},
 	/**
 	 * Whether the subtree always jumps away instead of being left normally, i.e. whether a non-default exit
-	 * point happens in every branch. The control dependencies the subtree stands under as a whole (`context`,
-	 * like those of a promise it sits in) are no condition within it.
+	 * point happens in every branch. The control dependencies in `context` (like a promise's) hold for the whole subtree.
 	 * @see {@link ControlFlow#canComplete|canComplete()} - for whether it can be left normally at all
 	 * @example
 	 * ```r
@@ -158,17 +157,15 @@ export const ControlFlow = {
 		return { ...data, cds: withCds(data.cds, [{ id: holder, when: true, byPromise: true }]) };
 	},
 	/**
-	 * The one gate for a promise: an argument or a default that R evaluates only when, and if, `holder` forces
-	 * it. A jump within it
-	 * - never runs when it is {@link Ternary#Never|never} forced, so control resumes at `holder`,
-	 * - leaves whenever it is reached when it is {@link Ternary#Always|always} forced,
-	 * - otherwise may do either: it stays an exit, under the control dependency `{ id: holder, when: true, byPromise: true }`,
-	 *   and control may resume at `holder` as well. Once the calls are linked,
-	 *   {@link FunctionSemantics.settleJumpsInPromises} decides what the receiver really does.
+	 * The jumps within a promise, an argument or default R evaluates only if `holder` forces it. A jump
+	 * - never runs if the promise is {@link Ternary#Never|never} forced, so control resumes at `holder`,
+	 * - leaves whenever reached if it is {@link Ternary#Always|always} forced,
+	 * - otherwise stays an exit under a `byPromise` dependency on `holder`, and control may resume at `holder` as well,
+	 *   until {@link FunctionSemantics.settleJumpsInPromises} settles it.
 	 * @returns the exit points the holder takes over from the promise
 	 * @example
 	 * ```r
-	 * g(return(1))           # whether `h` returns here is up to `g`
+	 * g(return(1))           # whether this returns is up to `g`
 	 * function(x = break) x  # the `break` runs where `x` is first used
 	 * ```
 	 */

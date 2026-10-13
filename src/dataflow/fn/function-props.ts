@@ -69,7 +69,6 @@ function callProps(definitions: readonly NodeId[], state: LookupState, strict: R
 		callees.set(id, own.callees);
 		toVisit.push(...own.callees);
 	}
-	/* hand the propagated props on to callers until nothing changes, so a chain of calls carries them however long it is */
 	propagateToFixpoint(callees.keys(), callees, id => {
 		const before = props.get(id);
 		let grown = before ?? {};

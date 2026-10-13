@@ -981,7 +981,6 @@ document.getElementById('configreset')?.addEventListener('click', () => {
 
 const configTab = document.getElementById('configtab') as HTMLElement;
 let onConfig = false;
-/** shows the configuration, or the file that is open */
 function showTab(config: boolean): void {
 	onConfig = config;
 	configTab.setAttribute('aria-selected', String(config));
@@ -1005,18 +1004,16 @@ const editorExtensions = [
 	})
 ];
 
-/** how a file reads, which follows its name */
 const fileKind = new Compartment();
 const kindOf = (name: string) => [languageOf(name), notebookCells(name, (code, title) => runCell(code, title))];
 const fileState = (name: string, text: string) => EditorState.create({ doc: text, extensions: [editorExtensions, fileKind.of(kindOf(name))] });
-/** the project flowR analyzes, one editor state per file, the editor holds the one at {@link active} */
+/** one editor state per file, the editor holds the live one at {@link active} */
 const files = [...shared.others.slice(0, shared.position), [shared.name, shared.code ?? Sample], ...shared.others.slice(shared.position)].map(([name, text]) => ({ name, state: fileState(name, text) }));
 let active = shared.position;
 const editor = new EditorView({ state: files[active].state, parent: document.getElementById('editor') as HTMLElement });
 const textOf = (at: number): string => (at === active ? editor.state : files[at].state).doc.toString();
 const projectFiles = () => files.map((f, at) => [f.name, textOf(at)] as const);
 
-/** opens the file at `at`, or of that name, once `change` has done to the list what it is about */
 function openFile(at: number | string, change?: () => void): void {
 	files[active].state = editor.state;
 	change?.();
@@ -1032,14 +1029,12 @@ function putFile(name: string, text: string): void {
 	files.splice(known < 0 ? files.length : known, 1, { name, state: fileState(name, text) });
 }
 
-/** the regex flowR restricts a criterion to the shown file with, needed only once there are others */
 function scoped(criterion: string): string {
 	return files.length < 2 ? criterion : `${criterion}(^${files[active].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$)`;
 }
 
 marks.splice(0, marks.length, ...marks.map(mark => /^\d/.test(mark) ? scoped(mark) as Mark : mark));
 
-/** the file a node stems from, when that is not the one the editor shows */
 function elsewhere(node: { info: { file?: string } } | undefined): string | undefined {
 	const file = node?.info.file;
 	return file === files[active].name ? undefined : file;
@@ -1048,7 +1043,6 @@ function elsewhere(node: { info: { file?: string } } | undefined): string | unde
 const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb)$/i;
 const Wanted = (name: string) => (Analyzed.test(name) || /\.zip$|(^|\/)DESCRIPTION$/i.test(name)) && !/(^|\/)(__MACOSX|\.)/.test(name);
 
-/** the files a dropped folder holds, with their paths below it */
 async function entryFiles(entry: FileSystemEntry): Promise<[string, Blob][]> {
 	if(entry.isFile) {
 		return [[entry.fullPath.replace(/^\//, ''), await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject))]];
@@ -1061,7 +1055,6 @@ async function entryFiles(entry: FileSystemEntry): Promise<[string, Blob][]> {
 	return found;
 }
 
-/** the wanted files of a zip, read from its central directory and inflated by the browser */
 async function unzip(blob: Blob): Promise<[string, Blob][]> {
 	const bytes = new Uint8Array(await blob.arrayBuffer());
 	const view = new DataView(bytes.buffer);
@@ -1084,11 +1077,9 @@ async function unzip(blob: Blob): Promise<[string, Blob][]> {
 	return found;
 }
 
-/** a Jupyter notebook comes in as an R script of cells */
 function asProjectFile(name: string, text: string): [string, string] {
 	return /\.ipynb$/i.test(name) ? [`${name}.R`, notebookAsScript(text)] : [name, text];
 }
-/** what flowR reads out of `found`, a zip by what it holds; what can not be read lands in `failed` */
 async function readable(found: readonly [string, Blob][], failed: string[]): Promise<[string, string][]> {
 	const read: [string, string][] = [];
 	for(const [name, blob] of found.filter(([name]) => Wanted(name))) {
@@ -1131,7 +1122,6 @@ function load(found: Promise<[string, Blob][]> | [string, Blob][]): void {
 	}).catch((e: unknown) => showTook(`could not open that: ${String(e)}`));
 }
 
-/** why `name` can not name a file of the project, other than the one at `except` */
 function nameProblem(name: string, except?: number): string | undefined {
 	if(name.length === 0 || name.endsWith('/')) {
 		return 'a file needs a name';
@@ -1170,7 +1160,6 @@ function picker(folder: boolean): HTMLInputElement {
 const pickers = [picker(false), picker(true)];
 
 const fileBar = document.getElementById('files') as HTMLElement;
-/** one tab per file of the project, the open one selected unless the configuration is shown */
 function showFiles(): void {
 	fileBar.replaceChildren(...files.map((file, at) => {
 		const open = !onConfig && at === active;
@@ -1248,7 +1237,7 @@ function fileMenu(at: number): readonly MenuEntry[] {
 	];
 }
 
-/** a choice of the menu, a heading, or with `''`, a separator */
+/** a string is a heading, `''` a separator */
 type MenuEntry = { readonly label: string, readonly title?: string, readonly run: () => void } | string;
 const menu = document.getElementById('menu') as HTMLElement;
 let menuAnchor: HTMLElement | undefined;
@@ -1257,7 +1246,6 @@ function closeMenu(): void {
 	menuAnchor?.setAttribute('aria-expanded', 'false');
 	menuAnchor = undefined;
 }
-/** opens `entries` below `anchor`, or closes them when they are already open there */
 function openMenu(anchor: HTMLElement, entries: readonly MenuEntry[]): void {
 	if(menuAnchor === anchor && !menu.hidden) {
 		closeMenu();
@@ -1345,7 +1333,6 @@ async function packagesOf(code?: string): Promise<readonly string[]> {
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
 	return [...new Set(found)].filter(p => !BaseRPackages.has(p));
 }
-/** what Run executes: the open file as R, a notebook by the chunks knitting it would run */
 async function toRun(): Promise<RunInput> {
 	const name = files[active].name;
 	const code = Analyzed.test(name) && !/\.r$/i.test(name)
@@ -1354,7 +1341,7 @@ async function toRun(): Promise<RunInput> {
 	return { code, files: projectFiles(), fresh: true };
 }
 const runner = setupRunR(toRun, packagesOf);
-/** a cell runs where the cells before it ran, next to the files of the project as they are now */
+/** cells share one R session, next to the project files as they are now */
 function runCell(code: string, title: string): void {
 	runner(() => Promise.resolve({ code, files: projectFiles(), fresh: false }), title);
 }
@@ -1838,7 +1825,6 @@ async function describe(criterion: string): Promise<Known> {
 	return answer;
 }
 
-/** the lines an origin answer points at, with the file of those not in the shown one */
 async function originLines(origins: { id: string | number }[] | undefined): Promise<{ line: number, file?: string }[]> {
 	if(origins === undefined || origins.length === 0) {
 		return [];
@@ -2269,7 +2255,6 @@ document.getElementById('clearmarks')?.addEventListener('click', () => {
 	showShared('the highlights are cleared');
 });
 
-/** opens `project` with the configuration and the view the page starts with, its main file first */
 function showExample(project: readonly [string, string][], note: string): void {
 	openFile(Playground.MainFile, () => files.splice(0, files.length, ...project.map(([name, text]) => ({ name, state: fileState(name, text) }))));
 	showTab(false);

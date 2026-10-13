@@ -71,7 +71,7 @@ function showTrust(refusal?: string): void {
 		: '');
 }
 
-/** a download the page waits for: which transfers count, their total bytes if known, and what follows them */
+/** a download the page waits for, `then` naming what follows it */
 interface Step {
 	readonly counts: (url: string) => boolean
 	readonly total?: number
@@ -79,7 +79,6 @@ interface Step {
 }
 
 let step: Step | undefined;
-/** the bytes that arrived so far for each transfer of the {@link step} */
 const transfers = new Map<string, number>();
 
 const megabytes = (bytes: number) => (bytes / 1_000_000).toFixed(1);
@@ -102,7 +101,6 @@ function showProgress(): void {
 	}
 }
 
-/** starts counting towards `next`, or with nothing, hides the bar */
 function beginStep(next?: Step): void {
 	step = next;
 	transfers.clear();
@@ -146,7 +144,7 @@ function start(): Promise<Session> {
 	return session;
 }
 
-/** the packages a piece of R code loads, or without code the whole project, the page answers with flowR's dependencies query */
+/** the packages `code` loads, or the whole project without code, from flowR's dependencies query */
 export type PackageFinder = (code?: string) => Promise<readonly string[]>;
 
 /** what a run executes next to the project files, `fresh` from an empty workspace like `Rscript`, otherwise like a notebook cell */
@@ -156,7 +154,6 @@ export interface RunInput {
 	readonly fresh: boolean
 }
 
-/** writes `files` into a new working directory for a fresh run, otherwise into the current one */
 async function provideFiles(s: Session, { files, fresh }: RunInput): Promise<void> {
 	const [dir] = await s.r.evalRRaw(fresh ? 'local({ d <- tempfile("project"); dir.create(d); setwd(d); d })' : 'getwd()', 'string[]');
 	for(const [name, text] of files) {
@@ -249,10 +246,7 @@ function canvasOf(image: ImageBitmap): HTMLCanvasElement {
 	return canvas;
 }
 
-/**
- * Evaluates `code` in the one R session of the page, after fetching the packages `wanted` names and writing the `project`.
- * Gives up silently once `current` says a newer evaluation took over. Returns whether R said or drew anything.
- */
+/** runs `code` in the page's R session, silently giving up once `current` fails; whether R printed or drew anything */
 async function evaluate(code: string, wanted: () => Promise<readonly string[]>, sink: Sink, plot: PlotSize, current: () => boolean, project?: RunInput): Promise<boolean> {
 	if(session === undefined) {
 		sink.status('downloading R, only once...');
@@ -325,10 +319,7 @@ export async function evalInR(code: string, packagesOf: PackageFinder, line: (te
 /** runs what `prepare` returns, saying in the output card what ran under `title` */
 export type Runner = (prepare: () => Promise<RunInput>, title: string) => void;
 
-/**
- * Wires the run button and the output card: runs what `prepare` returns and shows its output and plots.
- * `packagesOf` tells which packages the project loads. Returns how else to run something there, as notebook cells do.
- */
+/** wires the run button and the output card, returning a runner for notebook cells */
 export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageFinder): Runner {
 	const go = document.getElementById('runrgo') as HTMLButtonElement | null;
 	const stop = document.getElementById('runrstop') as HTMLButtonElement | null;

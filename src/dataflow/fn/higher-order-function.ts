@@ -29,8 +29,7 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 		if(DfgVertex.isFunctionDefinition(current)) {
 			return true;
 		}
-		/* a call hands back what its callee returns, which its `returns` edges name, and never the callee itself;
-		 * a returned name is followed to what it holds, as `g <- function() 1; g` hands back that function */
+		/* a call hands back what its callee returns, never the callee; a returned name is followed to what it holds */
 		const follow = DfgVertex.isFunctionCall(current) ? EdgeType.Returns : EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy;
 		for(const [t, e] of graph.edgesFrom(current.id)) {
 			const v = DfEdge.includesType(e, follow) && !NodeId.isBuiltIn(t) ? graph.getVertex(t) : undefined;

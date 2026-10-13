@@ -103,10 +103,7 @@ interface TransitiveCallee<Fn = DataflowGraphVertexInfo> {
 	readonly cds?:   readonly ControlDependency[]
 }
 
-/**
- * Expands `initial`'s directly-called functions with everything they transitively call (via `resolveEnv`): a sibling/outer
- * callee's escaped globals otherwise never fold into the caller, so a `<<-` escaping several call levels would go unlinked.
- */
+/** Expands `initial` with everything it transitively calls, so a `<<-` escaping several call levels still folds into the caller. */
 function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<TransitiveCallee<DataflowGraphVertexFunctionDefinition>> {
 	const seen = new Set<NodeId>();
 	const stack: TransitiveCallee[] = initial.map(fn => ({ fn, direct: true }));

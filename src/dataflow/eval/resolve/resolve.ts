@@ -49,10 +49,7 @@ function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext
 /** the node types that may fold through a built-in: calls, operators, and the `(`/`{` groupings */
 const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.ExpressionList];
 
-/**
- * Whether the operator only combines literals (`1 + 2`): while the analysis is still running, a name may yet
- * change its value (a loop runs again), so only these fold before it is done.
- */
+/** Whether the operator only combines literals (`1 + 2`), which alone fold while the analysis runs, as a name may still change its value. */
 export function onlyLiterals(node: RNode<ParentInformation>): boolean {
 	return RBinaryOp.is(node) ? onlyLiterals(node.lhs) && onlyLiterals(node.rhs)
 		: RUnaryOp.is(node) ? onlyLiterals(node.operand)

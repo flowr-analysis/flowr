@@ -195,7 +195,6 @@ export class Environment implements IEnvironment {
 		return clone;
 	}
 
-	/** A new environment with the markers of this one, below `parent`. */
 	private derive(parent: Environment, frame?: Frame): Environment {
 		const env = new Environment(parent, undefined, frame);
 		env.c = this.c;
@@ -322,8 +321,7 @@ export class Environment implements IEnvironment {
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		/* nothing on the other side leaves these bindings as the result, so they are shared rather than merged;
-		 * otherwise {@link Frame.forWrite} overlays a big frame instead of copying it, so the cost follows what the merge changes */
+		/* nothing on the other side leaves these bindings as the result, so they are shared rather than merged */
 		const keep = other.memory.size === 0;
 		const frame = keep ? this.frame : this.frame.forWrite();
 		/* the result may keep this frame as its base, so a later write here has to fork */

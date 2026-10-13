@@ -43,10 +43,7 @@ function namesDenotedBy<OtherInfo>(
 	return [];
 }
 
-/**
- * Synthesizes one symbol per name the first argument of `get` denotes (a string literal, or an expression folding to
- * constant strings), so the lookup can be processed like a plain read of these symbols.
- */
+/** One symbol per constant name the first argument of `get` denotes, so the lookup is processed like a plain read of them. */
 function synthesizeTargets<OtherInfo>(
 	retrieve: RNode<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,

@@ -5,9 +5,7 @@ import { ControlDependency } from '../info';
 import type { DataflowGraph } from '../graph/graph';
 
 /**
- * Where code runs in the order the program is written, for the part of a program that runs straight through:
- * what the dataflow graph places at the top level (outside of any function), under no loop and not within
- * code handed on unevaluated runs once, so a definition one of these makes is not there yet for the ones before.
+ * Program order of top-level code outside loops and quotes: it runs once, so its definitions are not there yet for the statements before.
  * @helper dataflow
  * @example
  * ```r

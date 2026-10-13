@@ -1,0 +1,384 @@
+/**
+ * Notebooks in the editor: R Markdown and Quarto documents as prose around R chunks, Jupyter notebooks as R
+ * scripts in the percent format (`# %%` opens a code cell, `# %% [markdown]` a text cell) that Jupytext,
+ * VS Code, and RStudio read as well. Both keep every line where flowR sees it, so marks, slices, and lints
+ * land on the lines they name.
+ */
+import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
+import { Prec, type EditorState, type Extension, type Range } from '@codemirror/state';
+import { StreamLanguage, type StreamParser, type StringStream } from '@codemirror/language';
+import { r } from '@codemirror/legacy-modes/mode/r';
+import { yaml } from '@codemirror/legacy-modes/mode/yaml';
+import { globalChunkOptions, isExecutableCell, parseRMarkdownFile, RTagRegex } from '../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
+
+/** whether flowR reads `name` as a document of prose and R chunks */
+export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
+
+const CellMarker = /^#\s?%%/;
+const MarkdownCellMarker = /^#\s?%%.*\[markdown\]/i;
+const Fence = /^\s*(`{3,}|~{3,})/;
+
+/** the inline markdown of a line of prose: headings, code, emphasis, and links; `opens` says the text of the line starts here */
+function prose(stream: StringStream, opens: boolean): string | null {
+	if(opens && stream.match(/^#{1,6}\s.*/)) {
+		return 'heading';
+	}
+	if(stream.match(/^`[^`]*`/)) {
+		return 'monospace';
+	}
+	if(stream.match(/^(\*\*|__)(?=\S)[^*_]*?\S\1/)) {
+		return 'strong';
+	}
+	if(stream.match(/^([*_])(?=\S)[^*_]*?\S\1/)) {
+		return 'emphasis';
+	}
+	if(stream.match(/^\[[^\]]*\]\([^)]*\)/)) {
+		return 'link';
+	}
+	stream.next();
+	stream.eatWhile(/[^`*_[]/);
+	return null;
+}
+
+interface MarkdownState {
+	zone:  'start' | 'frontmatter' | 'prose' | 'chunk' | 'foreign'
+	fence: string
+	inner: unknown
+}
+
+const rParser: StreamParser<unknown> = r;
+const yamlParser: StreamParser<unknown> = yaml;
+const startOf = (parser: StreamParser<unknown>) => parser.startState?.(2) ?? {};
+const copyOf = (parser: StreamParser<unknown>, state: unknown) => parser.copyState?.(state) ?? state;
+
+/** R Markdown and Quarto: yaml up front, then prose, R in the chunks flowR reads, anything else as plain code */
+const markdownDocument: StreamParser<MarkdownState> = {
+	name:       'rmarkdown',
+	startState: () => ({ zone: 'start', fence: '', inner: undefined }),
+	copyState:  state => ({ ...state, inner: state.zone === 'chunk' ? copyOf(rParser, state.inner) : state.zone === 'frontmatter' ? copyOf(yamlParser, state.inner) : state.inner }),
+	token(stream, state) {
+		if(stream.sol()) {
+			const line = stream.string;
+			if(state.zone === 'start') {
+				state.zone = 'prose';
+				if(/^---\s*$/.test(line)) {
+					state.zone = 'frontmatter';
+					state.inner = startOf(yamlParser);
+					stream.skipToEnd();
+					return 'meta';
+				}
+			}
+			if(state.zone === 'frontmatter' && /^(---|\.\.\.)\s*$/.test(line)) {
+				state.zone = 'prose';
+				stream.skipToEnd();
+				return 'meta';
+			}
+			const fence = Fence.exec(line)?.[1];
+			if(fence !== undefined && state.zone === 'prose') {
+				state.zone = RTagRegex.test(line) ? 'chunk' : 'foreign';
+				state.fence = fence;
+				state.inner = startOf(rParser);
+				stream.skipToEnd();
+				return 'meta';
+			}
+			if(fence !== undefined && (state.zone === 'chunk' || state.zone === 'foreign') && fence[0] === state.fence[0] && fence.length >= state.fence.length && line.trim() === fence) {
+				state.zone = 'prose';
+				stream.skipToEnd();
+				return 'meta';
+			}
+		}
+		switch(state.zone) {
+			case 'frontmatter':
+				return yamlParser.token(stream, state.inner);
+			case 'chunk':
+				return rParser.token(stream, state.inner);
+			case 'foreign':
+				stream.skipToEnd();
+				return 'monospace';
+			default:
+				return prose(stream, stream.sol());
+		}
+	},
+	languageData: { commentTokens: { line: '#' } }
+};
+
+interface ScriptState {
+	text:  boolean
+	/** right behind the `#` of a text cell, where its markdown line begins */
+	opens: boolean
+	inner: unknown
+}
+
+/** R, with the cells of the percent format: a text cell is markdown behind the `#` that keeps it a comment for R */
+const percentScript: StreamParser<ScriptState> = {
+	name:       'r',
+	startState: () => ({ text: false, opens: false, inner: startOf(rParser) }),
+	copyState:  state => ({ ...state, inner: copyOf(rParser, state.inner) }),
+	token(stream, state) {
+		if(stream.sol() && CellMarker.test(stream.string)) {
+			state.text = MarkdownCellMarker.test(stream.string);
+			stream.skipToEnd();
+			return 'meta';
+		}
+		if(state.text) {
+			if(stream.sol() && stream.match(/^#\s?/)) {
+				state.opens = true;
+				return 'meta';
+			}
+			const opens = state.opens;
+			state.opens = false;
+			return prose(stream, opens);
+		}
+		return rParser.token(stream, state.inner);
+	},
+	indent:       (state, textAfter, context) => rParser.indent?.(state.inner, textAfter, context) ?? null,
+	languageData: { commentTokens: { line: '#' } }
+};
+
+const markdownLanguage = StreamLanguage.define(markdownDocument);
+const scriptLanguage = StreamLanguage.define(percentScript);
+
+/** how a file of this name reads in the editor */
+export function languageOf(name: string): Extension {
+	return isMarkdownDocument(name) ? markdownLanguage : scriptLanguage;
+}
+
+/** a run of lines (1-based, inclusive) the editor sets apart */
+interface Cell {
+	readonly kind:  'code' | 'text' | 'meta'
+	/** the fence or marker line that opens the cell, if it has one */
+	readonly head?: number
+	readonly from:  number
+	readonly to:    number
+	/** the fence that closes a chunk */
+	readonly tail?: number
+	/** whether knitting runs the chunk, which flowR follows as well */
+	readonly runs:  boolean
+	readonly label: string
+}
+
+/** knitr names a chunk by the first, unnamed option of its header, as in `{r setup, include = FALSE}` */
+const chunkName = (header: string) => /^\{r[\s,]+([^\s,=}]+)\s*(?:[,}]|$)/i.exec(header)?.[1] ?? '';
+
+function documentCells(text: string, lines: number): Cell[] {
+	const cells: Cell[] = [];
+	const rows = text.split(/\r\n|\r|\n/);
+	if(/^---\s*$/.test(rows[0] ?? '')) {
+		const close = rows.findIndex((row, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(row));
+		if(close > 0) {
+			cells.push({ kind: 'meta', head: 1, from: 2, to: close, tail: close + 1, runs: true, label: 'front matter' });
+		}
+	}
+	const info = parseRMarkdownFile(text);
+	const defaults = globalChunkOptions(info.options);
+	for(const block of info.blocks) {
+		if(block.header === '') {
+			continue;
+		}
+		const from = block.startpos.line;
+		const to = from + block.code.split(/\r\n|\r|\n/).length - 2;
+		const closed = to + 1 <= lines && Fence.test(rows[to] ?? '');
+		cells.push({ kind: 'code', head: from - 1, from, to, tail: closed ? to + 1 : undefined, runs: isExecutableCell(block, defaults), label: block.options.get('label') ?? chunkName(block.header) });
+	}
+	return cells;
+}
+
+function scriptCells(rows: readonly string[]): Cell[] {
+	const heads = rows.flatMap((row, at) => CellMarker.test(row) ? [at + 1] : []);
+	return heads.map((head, i) => ({
+		kind:  MarkdownCellMarker.test(rows[head - 1]) ? 'text' : 'code',
+		head,
+		from:  head + 1,
+		to:    (heads[i + 1] ?? rows.length + 1) - 1,
+		runs:  true,
+		label: ''
+	}));
+}
+
+const lineDeco = (classes: string, note?: string) => Decoration.line({ class: classes, attributes: note === undefined ? undefined : { 'data-note': note } });
+
+function cellsOf(state: EditorState, markdown: boolean): Cell[] {
+	const text = state.doc.toString();
+	return markdown ? documentCells(text, state.doc.lines) : scriptCells(text.split(/\r\n|\r|\n/));
+}
+
+/** runs the code of a cell in the R session the cells share, saying which cell it was */
+export type CellRunner = (code: string, title: string) => void;
+
+/** what a code cell is called in the output: its label, or its place among the code cells */
+const titleOf = (cell: Cell, cells: readonly Cell[]) => cell.label || `cell ${cells.filter(c => c.kind === 'code').indexOf(cell) + 1}`;
+
+function runCell(state: EditorState, cell: Cell, cells: readonly Cell[], run: CellRunner): void {
+	const code = cell.from > cell.to ? '' : state.sliceDoc(state.doc.line(cell.from).from, state.doc.line(cell.to).to);
+	run(code, titleOf(cell, cells));
+}
+
+class RunButton extends WidgetType {
+	constructor(readonly cell: Cell, readonly markdown: boolean, readonly run: CellRunner) {
+		super();
+	}
+	eq(other: RunButton): boolean {
+		return other.cell.from === this.cell.from && other.cell.to === this.cell.to && other.cell.label === this.cell.label && other.cell.runs === this.cell.runs;
+	}
+	toDOM(view: EditorView): HTMLElement {
+		const tools = document.createElement('span');
+		tools.className = 'cm-cell-tools';
+		const note = this.cell.runs ? this.cell.label : 'not run';
+		if(note !== '') {
+			const said = document.createElement('span');
+			said.className = 'cm-cell-note';
+			said.textContent = note;
+			tools.append(said);
+		}
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = 'cm-cell-run';
+		button.textContent = 'run';
+		button.title = 'run this cell in the R session the cells share (shift+enter)';
+		button.addEventListener('mousedown', event => event.preventDefault());
+		button.addEventListener('click', () => {
+			const cells = cellsOf(view.state, this.markdown);
+			const now = cells.find(c => c.head === this.cell.head) ?? this.cell;
+			runCell(view.state, now, cells, this.run);
+		});
+		tools.append(button);
+		return tools;
+	}
+	ignoreEvent(): boolean {
+		return true;
+	}
+}
+
+function decorate(view: EditorView, markdown: boolean, run: CellRunner): DecorationSet {
+	const doc = view.state.doc;
+	const cells = cellsOf(view.state, markdown);
+	const found: Range<Decoration>[] = [];
+	const at = (line: number, deco: Decoration) => {
+		if(line >= 1 && line <= doc.lines) {
+			found.push(deco.range(doc.line(line).from));
+		}
+	};
+	const inCell = new Set<number>();
+	for(const cell of cells) {
+		const kind = `cm-cell cm-cell-${cell.kind}${cell.runs ? '' : ' cm-cell-off'}`;
+		/* a code cell says what it is next to its run button, the others in the corner of their head */
+		const note = cell.kind === 'meta' ? cell.label : cell.kind === 'text' ? 'markdown' : undefined;
+		if(cell.head !== undefined) {
+			at(cell.head, lineDeco(`${kind} cm-cell-head`, note));
+			inCell.add(cell.head);
+			if(cell.kind === 'code' && cell.head <= doc.lines) {
+				found.push(Decoration.widget({ widget: new RunButton(cell, markdown, run), side: 1 }).range(doc.line(cell.head).to));
+			}
+		}
+		for(let line = cell.from; line <= cell.to; line++) {
+			at(line, lineDeco(`${kind}${line === cell.to && cell.tail === undefined ? ' cm-cell-end' : ''}`));
+			inCell.add(line);
+		}
+		if(cell.tail !== undefined) {
+			at(cell.tail, lineDeco(`${kind} cm-cell-tail cm-cell-end`));
+			inCell.add(cell.tail);
+		}
+	}
+	if(markdown) {
+		for(let line = 1; line <= doc.lines; line++) {
+			if(!inCell.has(line)) {
+				at(line, lineDeco('cm-prose'));
+			}
+		}
+	}
+	return Decoration.set(found, true);
+}
+
+/** sets the cells of a notebook apart from each other and from the prose around them, each code cell runnable with `run` */
+export function notebookCells(name: string, run: CellRunner): Extension {
+	const markdown = isMarkdownDocument(name);
+	return [
+		ViewPlugin.fromClass(class {
+			decorations: DecorationSet;
+			constructor(view: EditorView) {
+				this.decorations = decorate(view, markdown, run);
+			}
+			update(update: ViewUpdate) {
+				if(update.docChanged) {
+					this.decorations = decorate(update.view, markdown, run);
+				}
+			}
+		}, { decorations: plugin => plugin.decorations }),
+		Prec.high(keymap.of([{
+			key: 'Shift-Enter',
+			run(view) {
+				const line = view.state.doc.lineAt(view.state.selection.main.head).number;
+				const cells = cellsOf(view.state, markdown);
+				const cell = cells.find(c => c.kind === 'code' && (c.head ?? c.from) <= line && line <= (c.tail ?? c.to));
+				/* in a notebook the key runs cells and nothing else, so it never splits the line it is pressed on */
+				if(cell === undefined) {
+					return markdown || cells.length > 0;
+				}
+				runCell(view.state, cell, cells, run);
+				return true;
+			}
+		}])),
+		cellLook
+	];
+}
+
+const cellLook = EditorView.theme({
+	'.cm-cell': {
+		backgroundColor: 'color-mix(in srgb, var(--accent) 5%, var(--bg))',
+		boxShadow:       'inset 3px 0 0 color-mix(in srgb, var(--accent) 55%, transparent)'
+	},
+	'.cm-cell-text':                                  { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 var(--border)' },
+	'.cm-cell-meta':                                  { backgroundColor: 'var(--sunk)', boxShadow: 'inset 3px 0 0 var(--border)' },
+	'.cm-cell-off':                                   { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 var(--border)', opacity: '.6' },
+	'.cm-cell-head':                                  { borderTop: '1px solid var(--border)', fontSize: '.85em' },
+	'.cm-cell-tail':                                  { fontSize: '.85em' },
+	'.cm-cell-end':                                   { borderBottom: '1px solid var(--border)' },
+	/* what a head says about its cell, and for a code cell the button running it, in the corner of the head */
+	'.cm-cell-tools':                                 { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', marginRight: '.5rem' },
+	'.cm-cell-note, .cm-cell-head[data-note]::after': {
+		fontFamily:    'system-ui, sans-serif',
+		fontSize:      '.7rem',
+		color:         'var(--muted)',
+		letterSpacing: '.04em',
+		textTransform: 'uppercase'
+	},
+	'.cm-cell-head[data-note]::after': { content: 'attr(data-note)', float: 'right', marginRight: '.5rem' },
+	'.cm-cell-run':                    {
+		padding:         '0 .5rem',
+		cursor:          'pointer',
+		lineHeight:      '1.4',
+		fontFamily:      'system-ui, sans-serif',
+		fontSize:        '.7rem',
+		fontWeight:      '600',
+		letterSpacing:   '.04em',
+		textTransform:   'uppercase',
+		color:           'var(--accent-fg)',
+		backgroundColor: 'var(--accent)',
+		border:          '0',
+		borderRadius:    '1rem'
+	},
+	'.cm-cell-run::before':                        { content: '"▶ "', fontSize: '.6rem' },
+	'.cm-cell-run:hover':                          { filter: 'brightness(1.1)' },
+	'.cm-prose, .cm-cell-text:not(.cm-cell-head)': { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' }
+});
+
+interface NotebookCell {
+	readonly cell_type: string
+	readonly source:    string | readonly string[]
+}
+
+/** a Jupyter notebook as an R script in the percent format, its text cells as comments so R reads past them */
+export function notebookAsScript(json: string): string {
+	const { cells } = JSON.parse(json) as { cells?: unknown };
+	if(!Array.isArray(cells)) {
+		throw new Error('not a Jupyter notebook, it has no cells');
+	}
+	return (cells as readonly NotebookCell[]).map(cell => {
+		const source = (typeof cell.source === 'string' ? cell.source : cell.source.join('')).replace(/\n$/, '');
+		if(cell.cell_type === 'code') {
+			return `# %%\n${source}`;
+		}
+		const text = source.split(/\r\n|\r|\n/).map(line => line === '' ? '#' : `# ${line}`).join('\n');
+		return `# %% [${cell.cell_type === 'markdown' ? 'markdown' : 'raw'}]\n${text}`;
+	}).join('\n\n') + '\n';
+}

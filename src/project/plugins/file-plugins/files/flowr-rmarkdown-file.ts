@@ -280,8 +280,8 @@ function parseIncludeShortcodes(raw: string): CodeBlock[] {
 	return blocks;
 }
 
-// We need the [\s,] part, otherwise {rust} would also match
-const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
+/** The info string of an R chunk, `{r}` or `{r label, eval = FALSE}`; the `[\s,]` keeps `{rust}` out */
+export const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
 
 /**
  * Checks whether a CommonMark node is an R code block

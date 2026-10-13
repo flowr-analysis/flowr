@@ -11,6 +11,7 @@ import { openDatabase } from './sigdb-index';
 import { rSourceUrl, helpPageUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
 import { template, writePage, committedNote } from './html-page';
 import { webRManifest, WebRBase, WebRVersion } from './playground/webr-pin';
+import { arraySum } from '../src/util/collections/arrays';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier } from '../src/dataflow/environments/identifier';
@@ -181,12 +182,23 @@ async function main(): Promise<void> {
 	const exports = await packageExports();
 	/* the script the page opens with, kept as an R file so the documentation links to the same one */
 	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
+	/* the examples one can switch to, each as the files it opens with, read from where `examples/index.json` points */
+	const examples = (JSON.parse(fs.readFileSync(path.join('scripts', 'playground', 'examples', 'index.json'), 'utf8')) as { label: string, title: string, files: Record<string, string> }[])
+		.map(e => ({ ...e, files: Object.entries(e.files).map(([name, from]) => [name, fs.readFileSync(path.join('scripts', 'playground', from), 'utf8').trim()]) }));
+	/* webR's own files, each pinned to its hash; what lies outside `vfs/` is what every start of R downloads */
+	const manifest = await webRManifest().catch((e: unknown) => {
+		console.warn(`  could not pin webR, the playground cannot run R: ${e instanceof Error ? e.message : String(e)}`);
+		return undefined;
+	});
+	const startBytes = arraySum(Object.entries(manifest ?? {}).filter(([file]) => !file.startsWith('vfs/')).map(([, pinned]) => pinned.size));
 	writePage(path.join(Target, 'index.html'), (page
 		/* the text of a script element ends at `</`, and nothing else in it has to be escaped */
 		.replace('<!--SAMPLE-->', sample.replaceAll('</', '<\\/'))
+		.replace('<!--EXAMPLES-->', JSON.stringify(examples).replaceAll('</', '<\\/'))
 		.replace('<!--SIGS-->', signatures)
 		.replace('<!--PKGS-->', exports)
-		.replace('<!--CFGDOCS-->', configDocs())));
+		.replace('<!--CFGDOCS-->', configDocs())
+		.replace('<!--WEBR-START-BYTES-->', String(startBytes))));
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `
@@ -194,14 +206,11 @@ async function main(): Promise<void> {
 	/* without the guard the page refuses to run R, it never runs a webR it cannot check */
 	const guard = path.join(Target, 'webr-guard.js');
 	fs.rmSync(guard, { force: true });
-	try {
-		const manifest = await webRManifest();
+	if(manifest !== undefined) {
 		fs.writeFileSync(guard, fs.readFileSync(path.join('scripts', 'playground', 'webr-guard.js'), 'utf8')
 			.replace('<!--WEBR-BASE-->', WebRBase)
 			.replace('<!--WEBR-MANIFEST-->', JSON.stringify(manifest)));
 		console.log(`  pinned ${Object.keys(manifest).length} files of webR ${WebRVersion}, verified against its npm signature`);
-	} catch(e) {
-		console.warn(`  could not pin webR, the playground cannot run R: ${e instanceof Error ? e.message : String(e)}`);
 	}
 }
 

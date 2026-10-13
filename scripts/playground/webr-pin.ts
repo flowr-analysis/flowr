@@ -88,15 +88,21 @@ function* entries(tar: Buffer): Generator<{ name: string, data: Buffer }> {
 	}
 }
 
+/** what the page knows of a file of webR before fetching it: the hash it must have, and how many bytes it takes */
+export interface PinnedFile {
+	readonly sha256: string
+	readonly size:   number
+}
+
 /**
- * The SHA-256 (base64) of every file the page loads from {@link WebRBase}, keyed by its path below it.
+ * The SHA-256 (base64) and size of every file the page loads from {@link WebRBase}, keyed by its path below it.
  * Throws when the package cannot be fetched or does not verify.
  */
-export async function webRManifest(): Promise<Record<string, string>> {
-	const manifest: Record<string, string> = {};
+export async function webRManifest(): Promise<Record<string, PinnedFile>> {
+	const manifest: Record<string, PinnedFile> = {};
 	for(const { name, data } of entries(zlib.gunzipSync(await tarball()))) {
 		if(Wanted.test(name)) {
-			manifest[CdnName(name.slice('package/dist/'.length))] = crypto.createHash('sha256').update(data).digest('base64');
+			manifest[CdnName(name.slice('package/dist/'.length))] = { sha256: crypto.createHash('sha256').update(data).digest('base64'), size: data.length };
 		}
 	}
 	return manifest;

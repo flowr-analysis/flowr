@@ -92,17 +92,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	:root:not([data-theme="light"]) #theme .moon { display: none; }
 }
 
-.tools {
-	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .5rem 1rem; flex: none;
-	border-bottom: 1px solid var(--border);
-}
+.tools { display: inline-flex; align-items: center; gap: .3rem; margin: 0 0 .3rem auto; }
 .tools button {
-	font: inherit; font-size: .82rem; font-weight: 600; padding: .3rem .8rem; cursor: pointer;
+	display: inline-flex; align-items: center; gap: .3rem; font: inherit; font-size: .74rem; padding: .1rem .55rem; cursor: pointer;
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
+.tools svg { width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+@container pane (max-width: 36rem) {
+	.tools .label, .tools .sharenote { display: none; }
+	.tools button { padding: .2rem .4rem; }
+}
 .tools button:hover { border-color: var(--accent); color: var(--accent); }
-.tools .hint { margin-left: auto; color: var(--muted); font-size: .8rem; }
-.tools .sharenote { color: var(--muted); font-size: .78rem; }
+.tools .sharenote { color: var(--muted); font-size: .74rem; }
 /* the graphs flowR builds are handed to mermaid.live rather than drawn in here */
 #views {
 	flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
@@ -114,23 +115,49 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk);
 }
 #views button:hover { color: var(--accent); border-color: var(--accent); }
-.tools .preview { font-size: .8rem; font-weight: 700; color: var(--fg); }
+.top .preview {
+	margin-left: .6rem; padding: .05rem .5rem; font-size: .72rem; font-weight: 700; white-space: nowrap;
+	border: 1px solid var(--accent); border-radius: 1rem; color: var(--accent);
+}
 .top .version { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .split { flex: 1; display: grid; grid-template-columns: minmax(0, var(--split, 1.15fr)) .35rem minmax(14rem, 1fr); min-height: 0; }
 /* the bar between the panes, dragged to give one of them more room */
 .divider { cursor: ew-resize; background: var(--border); }
 .divider:hover { background: var(--accent); }
-.pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+.pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); container: pane / inline-size; }
 /* the code and the configuration flowR reads it with, one at a time */
-.tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem 1rem 0; border-bottom: 1px solid var(--border); }
+.tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem 1rem 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tablist { display: flex; align-items: flex-end; align-self: flex-end; gap: .2rem; min-width: 0; flex: 0 1 auto; margin-bottom: -1px; }
+/* the files scroll sideways rather than wrap once there are many */
+#files { display: flex; align-items: flex-end; gap: .2rem; min-width: 0; flex: 0 1 auto; overflow: auto hidden; scrollbar-width: none; }
 .tabs .tab {
-	font: inherit; font-size: .8rem; padding: .3rem .7rem; cursor: pointer; color: var(--muted);
+	font: inherit; font-size: .8rem; padding: .3rem .7rem; cursor: pointer; color: var(--muted); flex: none;
 	border: 1px solid transparent; border-bottom: 0; border-radius: .4rem .4rem 0 0; background: none;
 }
+.tabs .caret::before { content: "▾"; margin-left: .35rem; color: var(--muted); font-size: .7rem; }
+.tabs .tab .x { margin-left: .45rem; padding: 0 .15rem; border-radius: .2rem; color: var(--muted); }
+.tabs .tab .x:hover { color: #d55e00; background: var(--sunk); }
+.tabs .add { padding: .3rem .6rem; font-weight: 600; }
+.tabs .add[aria-expanded="true"] { color: var(--accent); }
+.tabs > :not(.tablist) { flex: none; }
+/* below what opened it, kept on screen: the script sets where that is */
+.menu {
+	position: fixed; z-index: 20; display: flex; flex-direction: column; padding: .25rem; min-width: 11rem;
+	top: var(--top); left: max(.5rem, var(--left)); margin-top: .15rem; max-height: calc(100dvh - var(--top) - 1rem); overflow-y: auto;
+	background: var(--panel); border: 1px solid var(--border); border-radius: .4rem; box-shadow: 0 .4rem 1.2rem rgb(0 0 0 / .25);
+}
+.menu[hidden] { display: none; }
+.menu .heading { padding: .4rem .6rem .15rem; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.menu hr { width: 100%; margin: .25rem 0; border: 0; border-top: 1px solid var(--border); }
+.menu button {
+	font: inherit; font-size: .8rem; text-align: left; padding: .3rem .6rem; cursor: pointer;
+	border: 0; border-radius: .3rem; background: none; color: var(--fg);
+}
+.menu button:hover, .menu button:focus-visible { background: var(--sunk); color: var(--accent); outline: none; }
 .tabs .tab:hover { color: var(--fg); }
-.tabs .tab[aria-selected="true"] { color: var(--fg); background: var(--panel); border-color: var(--border); margin-bottom: -1px; }
-.tabnote { margin-left: auto; font-size: .76rem; color: var(--muted); }
+.tabs .tab[aria-selected="true"] { color: var(--fg); background: var(--panel); border-color: var(--border); }
+.tabnote { margin-left: .4rem; font-size: .76rem; color: var(--muted); }
 .tabnote.bad { color: #d55e00; }
 .tabhelp { font-size: .76rem; }
 .tabreset {
@@ -139,6 +166,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .tabreset:hover { color: var(--accent); border-color: var(--accent); }
 #editor, #config { min-height: 0; flex: 1; overflow: auto; }
+#editor { display: flex; flex-direction: column; }
+#editor .cm-editor { flex: 1; min-height: 0; }
+.pane.dropping { outline: 2px dashed var(--accent); outline-offset: -2px; }
 /* flowR's own repl, folded away under the panes until someone opens it */
 .drawer { flex: none; border-top: 1px solid var(--border); background: var(--panel); }
 .drawer > summary {
@@ -186,7 +216,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .runbtn:disabled { opacity: .6; cursor: progress; }
 .runbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .runbtn svg { width: .7rem; height: .7rem; fill: currentColor; }
-.runbtn kbd { font: inherit; font-size: .7rem; font-weight: 400; opacity: .8; }
 /* what R said, above flowR's view of the same script */
 #runr {
 	/* until dragged, as tall as what R said, up to under half the pane */
@@ -198,7 +227,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	display: flex; align-items: center; gap: .5rem; padding: .5rem 1.2rem .3rem;
 	font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
 }
-#runrstate, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
+#runrstate, #runrbytes, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
+/* one line however narrow the card: the words give way, the bar keeps its width */
+#runr .head { white-space: nowrap; }
+#runrstate, #runr .via { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#runrbytes { font-variant-numeric: tabular-nums; }
+#runrprogress { flex: none; width: 5rem; height: .4rem; accent-color: var(--accent); }
 #runr .via a { color: inherit; text-decoration: underline dotted; }
 #runr .via a:hover { color: var(--accent); }
 #runrtrust { cursor: help; }
@@ -212,7 +246,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { #runr.busy #runrstate::before { animation: none; } }
-@media (max-width: 46rem), (hover: none) { .runbtn kbd { display: none; } }
 #runr .head button {
 	font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0; cursor: pointer; padding: .05rem .55rem;
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
@@ -532,11 +565,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 
 @media (max-width: 46rem) {
-	/* no pointer here, so the hint describes nothing one can do, and the code needs the room */
-	.tools .hint { display: none; }
-	.tools { gap: .3rem .5rem; }
-	.tools button { display: inline-flex; align-items: center; height: 1.7rem; padding: 0 .6rem; font-size: .78rem; }
-	.tools .preview { font-size: .76rem; }
+	.top .preview { font-size: .68rem; }
 }
 
 @media (max-width: 52rem) {
@@ -555,6 +584,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 		<a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a>
 		<span class="where">Playground</span>
 		<!--VERSION-LINK-->
+		<span class="preview">feature preview</span>
 	</span>
 	<span class="grow"></span>
 	<span class="note">Fully local, selected features, use the
@@ -567,24 +597,26 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	</span>
 </div>
 
-<div class="tools">
-	<button type="button" data-sample="survey">Reset the example</button>
-	<button type="button" id="share" title="The address bar already holds this script; this copies it (ctrl+s)">Copy link</button>
-	<button type="button" id="clearmarks" hidden title="alt-click highlights what a link points at; this clears every highlight">Clear highlights</button>
-	<span class="sharenote" id="sharenote"></span>
-	<span class="preview">This is a feature preview</span>
-</div>
-
 <div class="split">
 	<div class="pane">
-		<div class="tabs" role="tablist">
-			<button type="button" class="tab" data-tab="editor" aria-selected="true">R code</button>
-			<button type="button" class="tab" data-tab="config" aria-selected="false">Configuration</button>
+		<div class="tabs">
+			<div class="tablist" role="tablist">
+				<span id="files"></span>
+				<button type="button" class="tab add" id="addfile" aria-haspopup="menu" aria-expanded="false" title="a new file, or files and folders from your computer; you can also drop them on the code">+</button>
+				<button type="button" class="tab" id="configtab" role="tab" aria-selected="false">Configuration</button>
+			</div>
 			<span class="tabnote" id="confignote"></span>
 			<button type="button" class="tabreset" id="configreset" hidden>reset</button>
 			<a class="tabhelp" id="confighelp" href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" target="_blank" rel="noopener" hidden>what these options do</a>
-			<button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0.5v9l8-4.5z"/></svg>Run<kbd>ctrl+enter</kbd></button>
+			<span class="tools">
+				<span class="sharenote" id="sharenote"></span>
+				<button type="button" id="clearmarks" hidden title="alt-click highlights what a link points at; this clears every highlight">Clear highlights</button>
+				<button type="button" data-sample="survey" title="the example script, configuration, and view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg><span class="label">Reset example</span></button>
+				<button type="button" id="share" title="The address bar already holds this script; this copies it (ctrl+s)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8"/></svg><span class="label">Copy link</span></button>
+			</span>
+			<button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0.5v9l8-4.5z"/></svg>Run</button>
 		</div>
+		<div class="menu" id="menu" role="menu" hidden></div>
 		<div id="editor"></div>
 		<div id="config" hidden></div>
 		<details class="drawer" id="repl">
@@ -598,8 +630,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	</div>
 	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
-		<section id="runr" hidden aria-live="polite">
-			<div class="head">R output <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
+		<section id="runr" hidden aria-live="polite" data-webr-start-bytes="<!--WEBR-START-BYTES-->">
+			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" hidden></progress><span id="runrbytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
 			<div class="out" id="runrout"></div>
 			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>
@@ -619,6 +651,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 
 
 <script type="text/plain" id="sample"><!--SAMPLE--></script>
+<script type="application/json" id="examples"><!--EXAMPLES--></script>
 <script type="text/plain" id="sigs"><!--SIGS--></script>
 <script type="application/json" id="pkgs"><!--PKGS--></script>
 <script type="application/json" id="cfgdocs"><!--CFGDOCS--></script>

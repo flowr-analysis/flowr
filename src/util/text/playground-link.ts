@@ -23,11 +23,11 @@ export enum PlaygroundBox {
  * - a {@link PlaygroundBox} is one of the boxes of the page itself
  * @see {@link Mark.isValid} to check one, {@link Mark.compress} to shorten a list
  */
-export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}`
+export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}` | `${number}(${string})`
 	| `lint:${string}` | `dep:${string}` | PlaygroundBox;
 
-/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line */
-const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?$/;
+/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line, in another file with a `(file-regex)` */
+const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?(\(.+\))?$/;
 /** a mark that stands for what an analysis found: `lint:<rule>[@<line>]`, `dep:<kind>[@<line>]` */
 const FoundMarkPattern = /^(lint|dep):[^@,]+(@\d+)?$/;
 /** how many lines one range may stand for, so a hand-written link cannot ask for a million marks */
@@ -99,6 +99,10 @@ const Mark = {
 export interface PlaygroundLinkParts {
 	/** the script the page opens with; left out, the page keeps its own sample */
 	readonly code?:       string;
+	/** the file name of that script, `main.R` when left out */
+	readonly name?:       string;
+	/** the other files of the project, in the order flowR loads them, all before the opened one */
+	readonly files?:      readonly { name: string, code: string }[];
 	/** what the page marks when it opens, and what alt-click toggles from there on */
 	readonly marks?:      readonly PlaygroundMark[];
 	/** the boxes that open folded away, for whatever the example is not about */
@@ -132,23 +136,31 @@ export interface PlaygroundLinkParts {
  * ```
  */
 export const Playground = {
-	name:    'Playground',
+	name:     'Playground',
 	/** where the page these links point at is served from */
-	BaseRef: 'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	BaseRef:  'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	/** the name of the file a link opens on when it names none */
+	MainFile: 'main.R',
 	/** what a link can point at */
 	Mark,
 	/** the boxes of the page a mark can point at */
-	Box:     PlaygroundBox,
+	Box:      PlaygroundBox,
 	/**
 	 * The link that opens the playground on exactly this: a script, what it points at, where its cursor
 	 * sits, and how the page is laid out.
 	 */
 	link(this: void, parts: PlaygroundLinkParts): string {
-		const { code, marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
+		const { code, name, files = [], marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
 		const base = parts.base ?? Playground.BaseRef;
 		const fields: [string, string][] = [];
 		if(code !== undefined && code.length > 0) {
 			fields.push(['c', packForUrl(code)]);
+		}
+		if(name !== undefined && name !== Playground.MainFile) {
+			fields.push(['n', name]);
+		}
+		if(files.length > 0) {
+			fields.push(['o', packForUrl(JSON.stringify(files.map(f => [f.name, f.code])))]);
 		}
 		if(config.length > 0) {
 			fields.push(['k', Playground.packConfig(config)]);

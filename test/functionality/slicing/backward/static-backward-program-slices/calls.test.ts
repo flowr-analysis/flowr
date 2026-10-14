@@ -1056,7 +1056,7 @@ describe('Calls run in R', withShell(shell => {
 			file('a sink to a connection', 'zz <- file(p, "w")\nsink(zz)\ncat("s\\n")\nsink()\nclose(zz)\nprint(readLines(p))', '[1] "s"');
 			file('capture.output to a file', 'capture.output(print(5), file = p)\nprint(readLines(p))', '[1] "[1] 5"');
 			file('dput and dget', 'dput(3, file = p)\nprint(dget(p))', '[1] 3');
-			file('file.size', 'writeLines("abc", p)\nprint(file.size(p))', '[1] 4');
+			file('file.size', 'writeLines("abc", p, sep = "")\nprint(file.size(p))', '[1] 3');
 			file('a file sourced after a call wrote it', 'f <- function() writeLines("zz <- 3", p)\nf()\nsource(p)\nprint(zz)', '[1] 3');
 			file('cat appending in a function', 'cat("a\\n", file = p)\nw <- function(s) cat(s, "\\n", file = p, append = TRUE)\nw("b")\nprint(length(readLines(p)))', '[1] 2');
 		});

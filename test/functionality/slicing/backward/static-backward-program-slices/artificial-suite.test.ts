@@ -1,6 +1,6 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, skipTestBecauseConfigNotMet, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { assert, describe, test } from 'vitest';
 import fs from 'fs';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
@@ -97,9 +97,11 @@ describe('Artificial performance suite', { concurrent: false }, withShell(shell 
 	/* the suite's `setup.sh` blows each file up to 22 copies, where a slice must never hit the threshold */
 	const dir = 'test/performance/suite-artificial/static';
 	for(const file of fs.readdirSync(dir)) {
-		test(label(`${file} x22: no slice hits the threshold`, [], ['other']), async() => {
+		const code = fs.readFileSync(`${dir}/${file}`, 'utf-8');
+		const minRVersion = /\|>/.test(code) ? MIN_VERSION_PIPE : /\\\(/.test(code) ? MIN_VERSION_LAMBDA : undefined;
+		test.skipIf(skipTestBecauseConfigNotMet({ minRVersion }))(label(`${file} x22: no slice hits the threshold`, [], ['other']), async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
-			analyzer.addRequest(fs.readFileSync(`${dir}/${file}`, 'utf-8').concat('\n').repeat(22));
+			analyzer.addRequest(code.concat('\n').repeat(22));
 			const [ast, info] = [await analyzer.normalize(), await analyzer.dataflow()];
 			for(const criteria of equidistantSampling([...collectAllSlicingCriteria(ast.ast, DefaultAllVariablesFilter)], 50)) {
 				const { timesHitThreshold } = staticSlice({ ctx: analyzer.context(), info, ast, ids: SlicingCriterion.convertAll(criteria, ast.idMap) });

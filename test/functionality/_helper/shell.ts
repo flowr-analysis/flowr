@@ -811,8 +811,9 @@ export function assertCallTargets(name: string, parser: KnownParser, code: strin
 }
 
 /** asserts that the slice for `criterion`, run by {@link printedByR}, prints `lastLine` last, as the whole program does */
-export function assertSliceRunsInR(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, lastLine: string) {
-	test(name, async() => {
+export function assertSliceRunsInR(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, lastLine: string, config?: Partial<TestConfiguration>) {
+	test.skipIf(skipTestBecauseConfigNotMet(config))(name, async({ skip }) => {
+		await skipWithoutRPackages(code, skip);
 		const slice = await sliceOf(parser, code, criterion);
 		const [program, sliced] = await Promise.all([printedByR(code), printedByR(slice)]);
 		assert.strictEqual(program.split('\n').at(-1), lastLine, 'the program itself');
@@ -822,14 +823,35 @@ export function assertSliceRunsInR(name: string, parser: KnownParser, code: stri
 
 const execFileAsync = promisify(execFile);
 
-/** what `Rscript` prints for `code` in a fresh directory, failing on an error or after 20 seconds */
+/** what `Rscript` prints for `code` in a fresh directory, failing on an error or after 20 seconds; the code goes through a file, as windows cuts `-e` at the first line break */
 export async function printedByR(code: string): Promise<string> {
-	const cwd = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'flowr-r-'));
+	const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'flowr-r-'));
+	const cwd = path.join(root, 'work');
+	const script = path.join(root, 'script.R');
 	try {
-		return (await execFileAsync('Rscript', ['--vanilla', '-e', code], { cwd, timeout: 20_000, killSignal: 'SIGKILL', maxBuffer: 1 << 24 })).stdout.trimEnd();
+		await fs.promises.mkdir(cwd);
+		await fs.promises.writeFile(script, code);
+		return (await execFileAsync('Rscript', ['--vanilla', script], { cwd, timeout: 20_000, killSignal: 'SIGKILL', maxBuffer: 1 << 24 })).stdout.replace(/\r\n/g, '\n').trimEnd();
 	} finally {
-		await fs.promises.rm(cwd, { recursive: true, force: true });
+		await fs.promises.rm(root, { recursive: true, force: true });
 	}
+}
+
+let ciRPackages: Promise<{ listed: readonly string[], available: ReadonlySet<string> }> | undefined;
+
+/** skips a test whose `code` loads a package CI installs (`packages.txt`) but this R lacks, as CRAN no longer builds it for an old R */
+async function skipWithoutRPackages(code: string, skip: (condition: boolean, note?: string) => void): Promise<void> {
+	const used = [...code.matchAll(/\b(?:library|require|requireNamespace|loadNamespace)\(\s*["']?([\w.]+)|\b([\w.]+):::?/g)].map(m => m[1] ?? m[2]);
+	if(used.length === 0) {
+		return;
+	}
+	ciRPackages ??= (async() => ({
+		listed:    (await fs.promises.readFile('.github/actions/setup-r/packages.txt', 'utf-8')).split(/\s+/).filter(p => p.length > 0),
+		available: new Set((await printedByR('cat(.packages(all.available = TRUE), sep = "\\n")')).split('\n'))
+	}))();
+	const { listed, available } = await ciRPackages;
+	const missing = [...new Set(used)].filter(p => listed.includes(p) && !available.has(p));
+	skip(missing.length > 0, `R ${globalThis.rVersion?.raw ?? '?'} lacks ${missing.join(', ')}`);
 }
 
 /**
@@ -837,7 +859,8 @@ export async function printedByR(code: string): Promise<string> {
  * prints last (all of it with `whole`) and lacks `absent`; `sigdb` turns the shipped signature database on.
  */
 export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, absent, whole, sigdb }: { criterion?: SlicingCriterion, absent?: string, whole?: boolean, sigdb?: boolean } = {}) {
-	test(name, async() => {
+	test(name, async({ skip }) => {
+		await skipWithoutRPackages(code, skip);
 		const lines = code.split('\n');
 		const disabled = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
 		if(sigdb) {

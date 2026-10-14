@@ -217,7 +217,7 @@ class RunButton extends WidgetType {
 		}
 		const button = el('button', 'cm-cell-run', 'run');
 		button.type = 'button';
-		button.title = 'run this cell in the R session the cells share (shift+enter)';
+		button.title = 'run this cell in the same R session as runs and the repl (shift+enter)';
 		button.addEventListener('mousedown', event => event.preventDefault());
 		button.addEventListener('click', () => {
 			const cells = cellsOf(view.state, this.markdown);

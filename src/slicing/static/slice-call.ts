@@ -23,20 +23,31 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
-function linkedDefinitions(defs: readonly NodeId[], graph: DataflowGraph, queue: VisitingQueue): ReadonlySet<DataflowGraphVertexInfo> {
-	return queue.memoizeCallTargets(defs.join(';'), () => getAllLinkedFunctionDefinitions(new Set(defs), graph)[0]);
+const linkedByGraph = new WeakMap<DataflowGraph, Map<string, ReadonlySet<DataflowGraphVertexInfo>>>();
+
+function linkedDefinitions(defs: readonly NodeId[], graph: DataflowGraph): ReadonlySet<DataflowGraphVertexInfo> {
+	let known = linkedByGraph.get(graph);
+	if(known === undefined) {
+		linkedByGraph.set(graph, known = new Map<string, ReadonlySet<DataflowGraphVertexInfo>>());
+	}
+	const key = defs.join(';');
+	let linked = known.get(key);
+	if(linked === undefined) {
+		known.set(key, linked = getAllLinkedFunctionDefinitions(new Set(defs), graph)[0]);
+	}
+	return linked;
 }
 
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	guard(dataflowGraph.hasVertex(callerInfo.id), () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 	// bind with call-local environments during slicing
 	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
 	const resolved = (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
 	const functionCallDefs = [...resolved.map(d => d.nodeId), ...edgeTargets(dataflowGraph, callerInfo.id, EdgeType.Calls)];
-	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets : linkedDefinitions(functionCallDefs, dataflowGraph, queue);
+	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets : linkedDefinitions(functionCallDefs, dataflowGraph);
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -62,7 +73,7 @@ function linkCallTargets(
 
 /** Links the call `callerInfo` to the definitions it resolves to, or to the closures of its arguments if it resolves to none. */
 export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, queue, ctx);
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, ctx);
 	/* hashing the environment is expensive, so only a call that links something pays for it */
 	let fingerprint: Fingerprint | undefined;
 	const activeEnvironmentFingerprint = () => fingerprint ??= activeEnvironment === current.baseEnvironment ? current.envFingerprint : envFingerprint(activeEnvironment);
@@ -82,7 +93,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	for(const arg of callerInfo.args) {
 		const reference = FunctionArgument.getReference(arg);
 		if(reference && !hasEdgeOfType(graph, callerInfo.id, reference, EdgeType.Returns)) {
-			linkCallTargets(false, linkedDefinitions([reference], graph, queue), activeEnvironment, activeEnvironmentFingerprint, queue);
+			linkCallTargets(false, linkedDefinitions([reference], graph), activeEnvironment, activeEnvironmentFingerprint, queue);
 		}
 	}
 }

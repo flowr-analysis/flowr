@@ -85,18 +85,18 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	};
 	const graph = sliceGraph ?? (direction === SliceDirection.Forward ? Dataflow.invertGraph(info.graph, ctx.env.makeCleanEnv()) : info.graph);
-	const queue = new VisitingQueue(options.threshold ?? 75, cache, id => graph.hasVertex(id), ctx.gas.scope(options.gas));
+	const emptyEnv = ctx.env.makeCleanEnv();
+	const basePrint = ctx.env.getCleanEnvFingerprint();
+	const queue = new VisitingQueue(options.threshold ?? 75, cache, graph, ctx.gas.scope(options.gas), [emptyEnv, basePrint]);
 	const enclosingHandled = new Set<NodeId | undefined>();
 	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
 		if(!queue.hasId(id)) {
-			queue.add(id, env, print, false);
+			queue.add(id, env, print, true);
 		}
 	};
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
-	const emptyEnv = ctx.env.makeCleanEnv();
-	const basePrint = ctx.env.getCleanEnvFingerprint();
 	for(const startId of ids) {
 		queue.add(startId, emptyEnv, basePrint, false);
 		// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution

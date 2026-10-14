@@ -34,15 +34,15 @@ describe('release version bump', () => {
 		assert.match(pkg['release-it'].hooks['after:bump'][0], /scripts\/bump-version\.ts \$\{version\}$/);
 	});
 	test('the script rewrites the file in the working directory', () => {
-		/* the local binary, so nothing is fetched for the temporary directory */
-		const tsNode = path.resolve('node_modules/.bin/ts-node');
+		/* the local entry point run by node itself, so nothing is fetched and windows needs no shell for a `.cmd` shim */
+		const tsNode = path.resolve('node_modules/ts-node/dist/bin.js');
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-bump-'));
 		try {
 			fs.mkdirSync(path.join(dir, 'src/util'), { recursive: true });
 			fs.writeFileSync(path.join(dir, 'src/util/version.ts'), source);
-			execFileSync(tsNode, ['--transpile-only', path.resolve('scripts/bump-version.ts'), '4.5.6'], { cwd: dir, stdio: 'pipe' });
+			execFileSync(process.execPath, [tsNode, '--transpile-only', path.resolve('scripts/bump-version.ts'), '4.5.6'], { cwd: dir, stdio: 'pipe' });
 			assert.include(fs.readFileSync(path.join(dir, 'src/util/version.ts'), 'utf-8'), "const version = '4.5.6'");
-			assert.throws(() => execFileSync(tsNode, ['--transpile-only', path.resolve('scripts/bump-version.ts')], { cwd: dir, stdio: 'pipe' }));
+			assert.throws(() => execFileSync(process.execPath, [tsNode, '--transpile-only', path.resolve('scripts/bump-version.ts')], { cwd: dir, stdio: 'pipe' }));
 		} finally {
 			fs.rmSync(dir, { recursive: true, force: true });
 		}

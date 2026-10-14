@@ -43,6 +43,7 @@ import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
 import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
 import { languageOf, notebookAsScript, notebookCells } from './notebook';
+import { arraySum } from '../../src/util/collections/arrays';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -930,24 +931,86 @@ function remember(): void {
 }
 
 let settings: ReturnType<typeof FlowrConfig.parse>;
-const note = document.getElementById('confignote');
+
+/** what is wrong with the configuration, at the key it is about or where JSON stopped reading */
+interface ConfigProblem {
+	readonly from:    number
+	readonly to:      number
+	readonly message: string
+}
+
+/** browsers say where JSON stopped reading as a position, as a line and column, or both */
+function jsonStop(text: string, message: string): number {
+	const position = /position (\d+)/.exec(message);
+	const lineColumn = /line (\d+) column (\d+)/.exec(message);
+	if(position !== null) {
+		return Number(position[1]);
+	} else if(lineColumn !== null) {
+		return arraySum(text.split('\n').slice(0, Number(lineColumn[1]) - 1).map(line => line.length + 1)) + Number(lineColumn[2]) - 1;
+	}
+	return text.length;
+}
+
+function configProblems(text: string): ConfigProblem[] {
+	const near = (at: number, message: string): ConfigProblem => {
+		const from = Math.max(0, Math.min(at, text.length - 1));
+		return { from, to: Math.min(from + 1, text.length), message };
+	};
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(text);
+	} catch(e) {
+		const message = (e as Error).message;
+		return [near(jsonStop(text, message), message.replace(/^JSON\.parse: /, '').replace(/ (in JSON )?at (position|line) .*$/, ''))];
+	}
+	const keys = keyPaths(text);
+	const problems = (FlowrConfig.Schema.validate(parsed, { abortEarly: false }).error?.details ?? []).map(detail => {
+		const path = detail.path.filter(part => typeof part === 'string');
+		for(let length = path.length; length > 0; length--) {
+			const key = keys.find(k => k.path.join('.') === path.slice(0, length).join('.'));
+			if(key !== undefined) {
+				return { from: key.from, to: key.to, message: detail.message };
+			}
+		}
+		return near(0, detail.message);
+	}).filter((problem, at, all) => all.findIndex(other => other.from === problem.from) === at);
+	return problems.length > 0 || FlowrConfig.parse(text) !== undefined ? problems : [near(0, 'flowR cannot read this configuration')];
+}
+
+const configNote = document.getElementById('confignote') as HTMLElement;
+const configReset = document.getElementById('configreset') as HTMLElement;
+const configIssues = document.getElementById('configproblems') as HTMLElement;
+
+function showConfigState(text: string, problems: readonly ConfigProblem[]): void {
+	configReset.hidden = text === Defaults;
+	configNote.classList.toggle('bad', problems.length > 0);
+	configNote.textContent = problems.length > 0
+		? `${problems.length === 1 ? 'one problem' : `${problems.length} problems`}, flowR keeps analyzing with the last valid configuration`
+		: text === Defaults ? 'flowR\'s defaults, with the lax parser' : 'edited, flowR analyzes with this';
+	configIssues.replaceChildren(...problems.map(problem => {
+		const row = el('button', undefined, ` ${problem.message}`);
+		row.type = 'button';
+		row.title = 'jump to it';
+		row.prepend(el('span', 'where', `line ${config.state.doc.lineAt(problem.from).number}`));
+		row.addEventListener('click', () => {
+			config.dispatch({ selection: { anchor: problem.from, head: problem.to }, scrollIntoView: true });
+			config.focus();
+		});
+		return row;
+	}));
+	configIssues.hidden = problems.length === 0;
+	config.dispatch({ effects: setLints.of(problems) });
+}
 
 function readSettings(): void {
 	const text = config.state.doc.toString();
-	const parsed = FlowrConfig.parse(text);
-	if(parsed === undefined) {
-		if(note !== null) {
-			note.textContent = 'not a valid flowR configuration, keeping the last one';
-			note.classList.add('bad');
-		}
-		return;
+	const problems = configProblems(text);
+	showConfigState(text, problems);
+	const parsed = problems.length === 0 ? FlowrConfig.parse(text) : undefined;
+	if(parsed !== undefined) {
+		settings = parsed;
+		void run();
 	}
-	if(note !== null) {
-		note.textContent = text === Defaults ? '' : 'edited';
-		note.classList.remove('bad');
-	}
-	settings = parsed;
-	void run();
 }
 
 /**
@@ -962,7 +1025,7 @@ settings = FlowrConfig.parse(shared.config ?? Defaults);
 const config = new EditorView({
 	doc:        shared.config ?? Defaults,
 	extensions: [
-		basicSetup, StreamLanguage.define(json), look, syntaxHighlighting(highlight), configTips,
+		basicSetup, StreamLanguage.define(json), look, syntaxHighlighting(highlight), configTips, lintMarks,
 		EditorView.updateListener.of(update => {
 			if(update.docChanged) {
 				clearTimeout(configTimer);
@@ -974,8 +1037,9 @@ const config = new EditorView({
 	parent: document.getElementById('config') as HTMLElement
 });
 let configTimer = 0;
+showConfigState(config.state.doc.toString(), configProblems(config.state.doc.toString()));
 
-document.getElementById('configreset')?.addEventListener('click', () => {
+configReset.addEventListener('click', () => {
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
 });
 
@@ -984,7 +1048,7 @@ let onConfig = false;
 function showTab(config: boolean): void {
 	onConfig = config;
 	configTab.setAttribute('aria-selected', String(config));
-	for(const id of ['editor', 'config', 'confighelp', 'configreset']) {
+	for(const id of ['editor', 'config', 'configbar']) {
 		document.getElementById(id)?.toggleAttribute('hidden', config === (id === 'editor'));
 	}
 	showFiles();
@@ -1165,7 +1229,7 @@ function showFiles(): void {
 		const open = !onConfig && at === active;
 		const button = roleButton('tab file', file.name, 'tab');
 		button.setAttribute('aria-selected', String(open));
-		button.title = open ? 'rename or remove this file, or open an example' : `open ${file.name}`;
+		button.title = open ? `rename or remove this file${at === 0 ? ', or open an example in place of all files' : ''}` : `open ${file.name}`;
 		if(open) {
 			button.setAttribute('aria-haspopup', 'menu');
 			button.append(el('span', 'caret'));
@@ -1231,14 +1295,12 @@ function fileMenu(at: number): readonly MenuEntry[] {
 	return [
 		{ label: 'Rename...', run: () => renameFile(at) },
 		...files.length > 1 ? [{ label: 'Remove', run: () => removeFile(at) }] : [],
-		'',
-		'Examples, in place of all files',
-		...Examples.map(example => ({ label: example.label, title: example.title, run: () => showExample(example.files.map(([name, text]) => asProjectFile(name, text)), `the ${example.label} example is open`) }))
+		...at > 0 ? [] : ['', 'Examples, in place of all files', ...Examples.map(example => ({ label: example.label, title: example.title, run: () => showExample(example.files.map(([name, text]) => asProjectFile(name, text)), `the ${example.label} example is open`) }))]
 	];
 }
 
 /** a string is a heading, `''` a separator */
-type MenuEntry = { readonly label: string, readonly title?: string, readonly run: () => void } | string;
+type MenuEntry = { readonly label: string, readonly title?: string, readonly checked?: boolean, readonly run: () => void } | string;
 const menu = document.getElementById('menu') as HTMLElement;
 let menuAnchor: HTMLElement | undefined;
 function closeMenu(): void {
@@ -1256,8 +1318,11 @@ function openMenu(anchor: HTMLElement, entries: readonly MenuEntry[]): void {
 		if(typeof entry === 'string') {
 			return entry === '' ? document.createElement('hr') : el('div', 'heading', entry);
 		}
-		const item = roleButton(undefined, entry.label, 'menuitem');
+		const item = roleButton(undefined, entry.label, entry.checked === undefined ? 'menuitem' : 'menuitemradio');
 		item.title = entry.title ?? '';
+		if(entry.checked !== undefined) {
+			item.setAttribute('aria-checked', String(entry.checked));
+		}
 		item.addEventListener('click', () => {
 			closeMenu();
 			entry.run();
@@ -1338,8 +1403,34 @@ async function toRun(): Promise<RunInput> {
 	const code = Analyzed.test(name) && !/\.r$/i.test(name)
 		? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
 		: textOf(active);
-	return { code, files: projectFiles(), fresh: true };
+	return { code, files: projectFiles(), fresh: runFresh };
 }
+const RunFreshKey = 'flowr-playground-run-fresh';
+/** whether the run button starts R over like `Rscript` or continues the session the cells share */
+let runFresh = (() => {
+	try {
+		return localStorage.getItem(RunFreshKey) !== 'false';
+	} catch{
+		return true;
+	}
+})();
+const runMode = document.getElementById('runmode') as HTMLElement;
+function setRunFresh(fresh: boolean): void {
+	runFresh = fresh;
+	runMode.title = fresh ? 'a run starts R in a fresh session, like Rscript' : 'a run uses the same R session as earlier runs, cells, and the repl';
+	document.getElementById('runrgo')?.classList.toggle('same', !fresh);
+	try {
+		localStorage.setItem(RunFreshKey, String(fresh));
+	} catch{
+		/* private windows refuse storage, the choice then lasts for this page only */
+	}
+}
+setRunFresh(runFresh);
+runMode.addEventListener('click', () => openMenu(runMode, [
+	'Run the open file',
+	{ label: 'in a fresh session', title: 'like Rscript: no variables, attached packages, or options from earlier runs, cells, or the repl', checked: runFresh, run: () => setRunFresh(true) },
+	{ label: 'in the same session', title: 'what earlier runs, cells, and the repl left behind stays', checked: !runFresh, run: () => setRunFresh(false) }
+]));
 const runner = setupRunR(toRun, packagesOf);
 /** cells share one R session, next to the project files as they are now */
 function runCell(code: string, title: string): void {

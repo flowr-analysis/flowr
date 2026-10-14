@@ -157,14 +157,25 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .menu button:hover, .menu button:focus-visible { background: var(--sunk); color: var(--accent); outline: none; }
 .tabs .tab:hover { color: var(--fg); }
 .tabs .tab[aria-selected="true"] { color: var(--fg); background: var(--panel); border-color: var(--border); }
-.tabnote { margin-left: .4rem; font-size: .76rem; color: var(--muted); }
-.tabnote.bad { color: #d55e00; }
-.tabhelp { font-size: .76rem; }
-.tabreset {
-	font: inherit; font-size: .74rem; cursor: pointer; padding: .05rem .55rem;
-	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+/* above the configuration: whether flowR uses it, and what keeps it from doing so */
+#configbar { flex: none; border-bottom: 1px solid var(--border); background: var(--panel); font-size: .76rem; }
+#configbar .state { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .8rem; padding: .35rem 1rem; }
+#confignote { color: var(--muted); }
+#confignote.bad { color: #d55e00; font-weight: 600; }
+#configreset {
+	margin-left: auto; font: inherit; cursor: pointer; padding: .05rem .6rem;
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
-.tabreset:hover { color: var(--accent); border-color: var(--accent); }
+#configreset:hover { color: var(--accent); border-color: var(--accent); }
+#configproblems { display: flex; flex-direction: column; max-height: 7.5rem; overflow: auto; padding: 0 1rem .4rem; }
+#configproblems button {
+	display: flex; align-items: baseline; gap: .6rem; padding: .2rem .5rem; text-align: left; cursor: pointer;
+	font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--fg);
+	border: 0; border-left: 3px solid #d55e00; border-radius: 0 .3rem .3rem 0; background: color-mix(in srgb, #d55e00 9%, var(--panel));
+}
+#configproblems button + button { margin-top: .2rem; }
+#configproblems button:hover { background: color-mix(in srgb, #d55e00 16%, var(--panel)); }
+#configproblems .where { flex: none; color: var(--muted); font-family: system-ui, sans-serif; }
 #editor, #config { min-height: 0; flex: 1; overflow: auto; }
 #editor { display: flex; flex-direction: column; }
 #editor .cm-editor { flex: 1; min-height: 0; }
@@ -216,6 +227,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .runbtn:disabled { opacity: .6; cursor: progress; }
 .runbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .runbtn svg { width: .7rem; height: .7rem; fill: currentColor; }
+/* the run button and the choice of whether a run starts R fresh, as one */
+.runsplit { display: inline-flex; flex: none; margin: 0 0 .3rem .5rem; }
+.runsplit .runbtn { margin: 0; }
+#runrgo { border-radius: 1rem 0 0 1rem; }
+#runmode { padding: .25rem .5rem .25rem .3rem; border-radius: 0 1rem 1rem 0; border-left-color: color-mix(in srgb, var(--accent-fg) 40%, var(--accent)); }
+#runmode::before { content: "\25BE"; font-size: .7rem; }
+#runrgo svg { overflow: visible; }
+#runrgo:not(.same) .badge { display: none; }
+#runrgo .badge circle { fill: var(--accent); }
+#runrgo .badge path { fill: none; stroke: currentColor; stroke-width: .8; }
+#runrgo .badge .tip { fill: currentColor; stroke: none; }
+.menu button[aria-checked]::before { content: "\2713"; display: inline-block; width: 1.2em; visibility: hidden; }
+.menu button[aria-checked="true"]::before { visibility: visible; }
 /* what R said, above flowR's view of the same script */
 #runr {
 	/* until dragged, as tall as what R said, up to under half the pane */
@@ -605,19 +629,20 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 				<button type="button" class="tab add" id="addfile" aria-haspopup="menu" aria-expanded="false" title="a new file, or files and folders from your computer; you can also drop them on the code">+</button>
 				<button type="button" class="tab" id="configtab" role="tab" aria-selected="false">Configuration</button>
 			</div>
-			<span class="tabnote" id="confignote"></span>
-			<button type="button" class="tabreset" id="configreset" hidden>reset</button>
-			<a class="tabhelp" id="confighelp" href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" target="_blank" rel="noopener" hidden>what these options do</a>
 			<span class="tools">
 				<span class="sharenote" id="sharenote"></span>
 				<button type="button" id="clearmarks" hidden title="alt-click highlights what a link points at; this clears every highlight">Clear highlights</button>
 				<button type="button" data-sample="survey" title="the example script, configuration, and view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg><span class="label">Reset example</span></button>
 				<button type="button" id="share" title="The address bar already holds this script; this copies it (ctrl+s)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8"/></svg><span class="label">Copy link</span></button>
 			</span>
-			<button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0.5v9l8-4.5z"/></svg>Run</button>
+			<span class="runsplit"><button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0.5v9l8-4.5z"/><g class="badge"><circle cx="8" cy="8" r="2.6"/><path d="M8 6.6a1.4 1.4 0 1 1-1.4 1.4"/><path class="tip" d="M5.8 8.3h1.6l-.8-1.1z"/></g></svg>Run</button><button type="button" class="runbtn" id="runmode" aria-haspopup="menu" aria-expanded="false" aria-label="what a run does with the R session"></button></span>
 		</div>
 		<div class="menu" id="menu" role="menu" hidden></div>
 		<div id="editor"></div>
+		<div id="configbar" hidden>
+			<div class="state"><span id="confignote"></span><a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" target="_blank" rel="noopener">what these options do</a><button type="button" id="configreset" hidden title="replace the configuration with flowR's defaults">Reset to defaults</button></div>
+			<div id="configproblems" hidden></div>
+		</div>
 		<div id="config" hidden></div>
 		<details class="drawer" id="repl">
 	<summary data-mark="repl"><span class="label">flowR repl</span><span class="what" title="flowR commands start with a colon, :help lists them; plain R runs in your browser with webR">flowR commands (<code>:help</code>) over the script above, plain R runs with webR</span></summary>

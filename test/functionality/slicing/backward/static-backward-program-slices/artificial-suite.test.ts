@@ -1,7 +1,14 @@
 import { assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
+import fs from 'fs';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import { staticSlice } from '../../../../../src/slicing/static/static-slicer';
+import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
+import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
+import { equidistantSampling } from '../../../../../src/util/collections/arrays';
 
 /**
  * Slicing tests for the R files added to the artificial performance suite
@@ -86,4 +93,18 @@ describe('Artificial performance suite', { concurrent: false }, withShell(shell 
 		['10@c1'],
 		'make_counter <- function(start) {\n        count <- start\n        function() {\n            count <<- count + 1\n            count\n        }\n    }\nc1 <- make_counter(0)\nc1()\nc1()'
 	);
+
+	/* the suite's `setup.sh` blows each file up to 22 copies, where a slice must never hit the threshold */
+	const dir = 'test/performance/suite-artificial/static';
+	for(const file of fs.readdirSync(dir)) {
+		test(label(`${file} x22: no slice hits the threshold`, [], ['other']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+			analyzer.addRequest(fs.readFileSync(`${dir}/${file}`, 'utf-8').concat('\n').repeat(22));
+			const [ast, info] = [await analyzer.normalize(), await analyzer.dataflow()];
+			for(const criteria of equidistantSampling([...collectAllSlicingCriteria(ast.ast, DefaultAllVariablesFilter)], 50)) {
+				const { timesHitThreshold } = staticSlice({ ctx: analyzer.context(), info, ast, ids: SlicingCriterion.convertAll(criteria, ast.idMap) });
+				assert.strictEqual(timesHitThreshold, 0, `${file} at ${JSON.stringify(criteria)}`);
+			}
+		});
+	}
 }));

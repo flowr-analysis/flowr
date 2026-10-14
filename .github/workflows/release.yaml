@@ -83,7 +83,11 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run:   install.packages(readLines(".github/actions/setup-r/packages.txt"), repos="https://cloud.r-project.org/")
+        run: |
+          wanted <- readLines(".github/actions/setup-r/packages.txt")
+          install.packages(wanted, repos="https://cloud.r-project.org/")
+          missing <- setdiff(wanted, rownames(installed.packages()))
+          if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"

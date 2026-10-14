@@ -539,7 +539,7 @@ export function updateNestedFunctionCalls(
 
 		const effectiveEnvironment = environmentAt(id);
 		/* a call the program runs once, at the top and outside any loop, cannot see what is defined after it */
-		const definedLater = (definition: NodeId) => graph.isRoot(definition) && ProgramOrder.definedLater(definition, runsOnceAt(id), graph);
+		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph);
 
 		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
 		/* a call of a parameter sees what it is bound to only once the calls handing it down are linked */

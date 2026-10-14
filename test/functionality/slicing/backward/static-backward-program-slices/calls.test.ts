@@ -1,4 +1,4 @@
-import { assertSliced, assumeLoadedPackages, withShell, assertCallTargets, assertDataflow, assertSliceKeeps, assertSliceMatchesR, assertSliceRunsInR, withTreeSitter } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell, assertCallTargets, assertDataflow, assertSliceKeeps, assertSliceMatchesR, assertSliceRunsInR, withTreeSitter, type TestConfiguration } from '../../../_helper/shell';
 import { label, decorateLabelContext } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
@@ -58,6 +58,16 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, code, ['3@a'], 'a <- b <- function() x\nx <- 2\na()');
 		assertSliced(label('Include only b-definition', caps),
 			shell, code, ['4@b'], 'a <- b <- function() x\nx <- 2\nb()');
+		const redefined = 'f <- function(g) g(1)\nk <- f(function(x) x)\nf <- function(g) g(2)\nk2 <- f(function(x) x)\nprint(k)';
+		const redefinedCaps: FlowrCapabilityId[] = [...caps, 'resolve-arguments', 'formals-named', 'unnamed-arguments', 'call-anonymous', 'lambda-syntax'];
+		assertSliced(label('A call does not see the body of a later redefinition', redefinedCaps),
+			shell, redefined, ['5@print'], 'f <- function(g) g(1)\nk <- f(function(x) x)\nprint(k)', { expectedSliceOutput: '[1] 1' });
+		const nested = 'f <- function(g, a, b) {\n  x <- g(a + b) + b\n  print(x)\n  return(x)\n}\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)\n';
+		assertSliced(label('Repeated redefinition keeps each call to its own copy', redefinedCaps),
+			shell, nested + nested + nested, ['7@print'], 'f <- function(g, a, b) {\n        x <- g(a + b) + b\n        x\n        return(x)\n    }\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)', { minRVersion: MIN_VERSION_LAMBDA });
+		const draws = 'sim <- function(n) {\n  a <- rmvnorm(n)\n  b <- rnorm(n)\n  list(a = a, b = b)\n}\n' + [1, 2, 3, 4, 5, 6].map(i => `dat <- sim(${i})\nm <- fit(dat)\n`).join('') + 'print(m)';
+		assertSliced(label('Top-level calls chained by the random state', caps),
+			shell, draws, ['18@m'], 'sim <- function(n) {\n        a <- rmvnorm(n)\n        b <- rnorm(n)\n        list(a = a, b = b)\n    }\n' + [1, 2, 3, 4, 5].map(i => `dat <- sim(${i})\nfit(dat)\n`).join('') + 'dat <- sim(6)\nm <- fit(dat)\nm');
 	});
 	describe('Functions with named arguments', () => {
 		const code = 'a <- function(x=4) { x }\na(x = 3)';
@@ -913,7 +923,7 @@ describe('Calls run in R', withShell(shell => {
 	});
 	describe('Ambient state through every way of calling a function, run in R', () => {
 		const name = (s: string) => decorateLabelContext(label(s, ['function-calls', 'side-effects-in-function-call']), ['dataflow', 'slice']);
-		const assertSliceRuns = (title: string, code: string, lastLine: string) => assertSliceRunsInR(name(title), shell, code, `${code.split('\n').length}@print`, lastLine);
+		const assertSliceRuns = (title: string, code: string, lastLine: string, config?: Partial<TestConfiguration>) => assertSliceRunsInR(name(title), shell, code, `${code.split('\n').length}@print`, lastLine, config);
 		describe('random numbers', () => {
 			const rng = (title: string, body: string, expected: string) => assertSliceRuns(title, `set.seed(1)\n${body}\nr <- runif(1)\nprint(r)`, expected);
 			const one = '[1] 0.3721239';
@@ -1051,7 +1061,8 @@ describe('Calls run in R', withShell(shell => {
 			file('cat appending in a function', 'cat("a\\n", file = p)\nw <- function(s) cat(s, "\\n", file = p, append = TRUE)\nw("b")\nprint(length(readLines(p)))', '[1] 2');
 		});
 		describe('graphics', () => {
-			const mar = (title: string, body: string, expected = '[1] 1 1 1 1') => assertSliceRuns(title, `${body}\nprint(par("mar"))`, expected);
+			const mar = (title: string, body: string, expected = '[1] 1 1 1 1', config?: Partial<TestConfiguration>) => assertSliceRuns(title, `${body}\nprint(par("mar"))`, expected, config);
+			const paletteNames = { minRVersion: '4.0.0' };
 			const set = 'function() par(mar = c(1, 1, 1, 1))';
 			mar('a direct call', `f <- ${set}\nf()`);
 			mar('a nested call', `f <- ${set}\nk <- function() f()\nk()`);
@@ -1063,9 +1074,9 @@ describe('Calls run in R', withShell(shell => {
 			mar('a plot after the call', `f <- ${set}\nf()\nplot(1)`);
 			mar('a higher-order call within a function', `g <- function(f) f()\nw <- function() g(${set})\nw()`);
 			mar('do.call with par', 'do.call(par, list(mar = c(1, 1, 1, 1)))');
-			mar('palette handed to a user function does not touch the parameters', 'g <- function(f, ...) f(...)\ng(palette, "R3")', '[1] 5.1 4.1 4.1 2.1');
-			assertSliceRuns('palette handed to a user function', 'g <- function(f, ...) f(...)\ng(palette, "R3")\nprint(palette()[2])', '[1] "red"');
-			assertSliceRuns('palette set in a closure handed to a user function', 'g <- function(f) f()\ng(function() palette("R3"))\nprint(palette()[2])', '[1] "red"');
+			mar('palette handed to a user function does not touch the parameters', 'g <- function(f, ...) f(...)\ng(palette, "R3")', '[1] 5.1 4.1 4.1 2.1', paletteNames);
+			assertSliceRuns('palette handed to a user function', 'g <- function(f, ...) f(...)\ng(palette, "R3")\nprint(palette()[2])', '[1] "red"', paletteNames);
+			assertSliceRuns('palette set in a closure handed to a user function', 'g <- function(f) f()\ng(function() palette("R3"))\nprint(palette()[2])', '[1] "red"', paletteNames);
 		});
 	});
 }));
@@ -1365,7 +1376,7 @@ describe('Primer', { concurrent: false }, withShell(shell => {
 	});
 	describe('abstract interpretation: pipeline', () => {
 		const code = 'df <- data.frame(id = 1:4, score = 1:4)\ndf2 <- df |> filter(score > 2) |>\n  mutate(lvl = score^2) |> select(-score)\ndf2$lvl';
-		assertSliced(sec('ai:shape pipeline'), shell, code, ['4@df2'], 'df <- data.frame(id = 1:4, score = 1:4)\ndf2 <- df |> filter(score > 2) |> mutate(lvl = score^2) |> select(-score)\ndf2');
+		assertSliced(sec('ai:shape pipeline'), shell, code, ['4@df2'], 'df <- data.frame(id = 1:4, score = 1:4)\ndf2 <- df |> filter(score > 2) |> mutate(lvl = score^2) |> select(-score)\ndf2', { minRVersion: MIN_VERSION_PIPE });
 	});
 	describe('cycle figure', () => {
 		const code = 'avg <- function(df, col, n = nrow(df)) {\n  if(anyNA(df))\n    df <- na.omit(df)\n  sum(df[[col]]) / n\n}\ndf <- data.frame(a = c(1, NA, 3))\nr <- avg(df, "a")\nprint(r)';

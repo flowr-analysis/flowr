@@ -51,6 +51,8 @@ interface Session {
 	readonly r:         WebR
 	/** what the session can load without a download */
 	readonly installed: Set<string>
+	/** the search path R started with, a fresh run detaches what was attached since */
+	readonly attached:  readonly string[]
 }
 
 let session: Promise<Session> | undefined;
@@ -129,13 +131,30 @@ function refused(): Promise<never> {
 	}));
 }
 
+/** where the options R started with are kept, out of the reach of `rm` */
+const StartOptions = 'file.path(tempdir(), "flowr-start-options.rds")';
+
+/** R as it started: without the variables, attachments, and options earlier runs left behind */
+const startOver = (s: Session) => `local({
+	for(name in setdiff(search(), c(${s.attached.map(a => JSON.stringify(a)).join(', ')}))) detach(name, character.only = TRUE)
+	start <- readRDS(${StartOptions})
+	added <- setdiff(names(options()), names(start))
+	options(start)
+	options(setNames(vector("list", length(added)), added))
+})
+rm(list = ls(all.names = TRUE))`;
+
 function start(): Promise<Session> {
 	session ??= (async() => {
 		await guard();
 		const { WebR } = await import(`${WebRBase}webr.mjs`) as { WebR: new () => WebR };
 		const r = new WebR();
 		await Promise.race([r.init(), refused()]);
-		return { r, installed: new Set(await r.evalRRaw('.packages(all.available = TRUE)', 'string[]')) };
+		return {
+			r,
+			installed: new Set(await r.evalRRaw('.packages(all.available = TRUE)', 'string[]')),
+			attached:  await r.evalRRaw(`{ saveRDS(options(), ${StartOptions}); search() }`, 'string[]')
+		};
 	})();
 	/* a failed download should not stick, the next click tries again */
 	session.catch(() => {
@@ -263,7 +282,7 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 	const shelter = await new s.r.Shelter();
 	try {
 		if(project?.fresh === true) {
-			await shelter.captureR('rm(list = ls(all.names = TRUE))', { captureGraphics: false });
+			await shelter.captureR(startOver(s), { captureGraphics: false });
 		}
 		if(project !== undefined) {
 			await provideFiles(s, project);

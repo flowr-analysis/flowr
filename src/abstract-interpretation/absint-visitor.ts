@@ -27,7 +27,21 @@ import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 export type DomainOfVisitor<AbsintVisitor extends AbstractInterpretationVisitor<AnyStateDomain>> =
 	AbsintVisitor extends AbstractInterpretationVisitor<infer StateDomain> ? StateDomain : never;
 
-export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder'>;
+export interface AbsintProvenanceEvent {
+	readonly node:    NodeId
+	readonly kind:    'assign' | 'read' | 'parameter' | 'return' | 'call'
+	readonly value:   AnyAbstractDomain | undefined
+	readonly inputs:  readonly { readonly node: NodeId, readonly value: AnyAbstractDomain | undefined }[]
+	readonly detail?: Readonly<Record<string, unknown>>
+}
+
+export interface AbsintProvenanceRecorder {
+	record(event: AbsintProvenanceEvent): void
+}
+
+export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder'> & {
+	readonly provenance?: AbsintProvenanceRecorder;
+};
 
 /**
  * Where an abstract state arrives from, and which way the branch went if the step was one.
@@ -169,12 +183,13 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(RSymbol.is(node)) {
-			const values = this.getVariableOrigins(node.info.id)
+			const origins = this.getVariableOrigins(node.info.id);
+			const values = origins
 				.map(origin => (this.getAbstractState(origin)?.isBottom() ? this.currentState.domain.bottom() : state?.get(origin)) as ValueDomain<StateDomain>);
+			const value = values.length > 0 && values.every(isNotUndefined) ? AbstractDomain.joinAll(values) : undefined;
 
-			if(values.length > 0 && values.every(isNotUndefined)) {
-				return AbstractDomain.joinAll(values);
-			}
+			this.config.provenance?.record({ node: node.info.id, kind: 'read', value, inputs: origins.map((origin, at) => ({ node: origin, value: values[at] })) });
+			return value;
 		} else if(RArgument.isWithValue(node)) {
 			return this.getAbstractValue(node.value, state);
 		} else if(RExpressionList.is(node) && node.children.length > 0) {
@@ -372,6 +387,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 			this.currentState.remove(target);
 		}
 		this.trace.set(target, this.currentState);
+		this.config.provenance?.record({ node: target, kind: 'assign', value, inputs: [{ node: source, value }] });
 	}
 
 	protected override onReplacementCall({ target }: OnCall & { target?: NodeId, source?: NodeId }): void {
@@ -594,6 +610,12 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 				}
 			}
 			const left = complete && exits.length > 0 ? AbstractDomain.joinAll(exits) : undefined;
+			this.config.provenance?.record({
+				node:   callId,
+				kind:   'return',
+				value:  left,
+				inputs: this.getFunctionExits(def).filter(exit => this.trace.has(exit)).map(exit => ({ node: exit, value: this.getAbstractValue(exit, this.trace.get(exit)) }))
+			});
 
 			if(!this.recursive.has(def)) {
 				this.restoreVisits(counts);
@@ -679,6 +701,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 					/* the parameter is a definition like any other, so the body only reads it once it counts as assigned */
 					this.trace.set(parameter, this.currentState);
 					this.unassigned.delete(parameter);
+					this.config.provenance?.record({ node: parameter, kind: 'parameter', value, inputs: [{ node: target, value }], detail: { call: callId } });
 				}
 			}
 		}

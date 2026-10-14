@@ -19,6 +19,7 @@ import { guard, isNotUndefined } from '../../util/assert';
 import { buildFindingContext, renderReport } from './report-template';
 import type { TaintConditionFunction, TaintRole } from '../taint-mapping';
 import type { TaintFnCategory } from '../function-categories';
+import type { AbsintProvenanceEvent, AbsintProvenanceRecorder } from '../../abstract-interpretation/absint-visitor';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -44,6 +45,12 @@ export interface FnCallHookInfo {
 	dfg:        DataflowGraph;
 	/** The analysis context (e.g. for resolving argument values) */
 	ctx:        ReadOnlyFlowrAnalyzerContext;
+}
+
+function recordProvenance(events: Map<string, Map<NodeId, AbsintProvenanceEvent>>, name: string): AbsintProvenanceRecorder {
+	const byNode = events.get(name) ?? new Map<NodeId, AbsintProvenanceEvent>();
+	events.set(name, byNode);
+	return { record: event => byNode.set(event.node, event) };
 }
 
 /**
@@ -92,6 +99,8 @@ export interface TaintAnalysisBuilder<Defs extends readonly string[]> {
 	 */
 	withHook(fnCallHook: FnCallHook): this;
 
+	withProvenance(events: Map<string, Map<NodeId, AbsintProvenanceEvent>>): this;
+
 	/**
 	 * Add a predefined taint analysis by name.
 	 */
@@ -124,6 +133,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 	private readonly defs:       RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
 	private readonly categories: TaintFnCategory[] = [];
 	private fnCallHook:          FnCallHook | undefined;
+	private provenance:          Map<string, Map<NodeId, AbsintProvenanceEvent>> | undefined;
 
 	private constructor(analyzer?: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
@@ -145,6 +155,11 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 
 	public withHook(fnCallHook: FnCallHook): this {
 		this.fnCallHook = fnCallHook;
+		return this;
+	}
+
+	public withProvenance(events: Map<string, Map<NodeId, AbsintProvenanceEvent>>): this {
+		this.provenance = events;
 		return this;
 	}
 
@@ -181,6 +196,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 				dfg:           dfg,
 				normalizedAst: await analyzer.normalize(),
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
+				provenance:    this.provenance === undefined ? undefined : recordProvenance(this.provenance, def.name),
 			};
 
 			const visitor = def.createVisitor(baseConfig, this.categories);

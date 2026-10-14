@@ -29,7 +29,8 @@ export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryRe
 
 const prefix = 'definitions:';
 
-function taintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
+/** */
+export function taintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	const prefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < prefix.length);
 	const notFinished = line.length == 1 && line[0].startsWith(prefix) && !startingNewArg;
 	const endOfOptions = line.length == 1 && startingNewArg || line.length == 2;
@@ -73,7 +74,8 @@ function defsInInput(defsPart: readonly string[]): { valid: AnyPredefinedTaintAn
 		}, { valid: [] as (AnyPredefinedTaintAnalysisName)[], invalid: [] as string[] });
 }
 
-function taintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'taint'> {
+/** */
+export function taintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'taint'> {
 	let defs: AnyPredefinedTaintAnalysisName[] = [];
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(prefix)) {

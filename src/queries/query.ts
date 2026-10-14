@@ -93,6 +93,7 @@ import type { ProvenanceQuery } from './catalog/provenance-query/provenance-quer
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
 import type { TaintQuery } from './catalog/taint-query/taint-query-format';
 import { TaintQueryDefinition } from './catalog/taint-query/taint-query-format';
+import { type TaintProvenanceQuery, TaintProvenanceQueryDefinition } from './catalog/taint-provenance-query/taint-provenance-query-format';
 import type { LintingResultCertainty } from '../linter/linter-format';
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
 import {
@@ -133,6 +134,7 @@ export type Query = CallContextQuery
 	| ProvenanceQuery
 	| InputSourcesQuery
 	| TaintQuery
+	| TaintProvenanceQuery
 	| DiceQuery
 	| GuessDepVersionsQuery
 	;
@@ -190,6 +192,7 @@ export const SupportedQueries = {
 	'dataflow-lens':        DataflowLensQueryDefinition,
 	'absint':               AbsintQueryDefinition,
 	'taint':                TaintQueryDefinition,
+	'taint-provenance':     TaintProvenanceQueryDefinition,
 	'files':                FilesQueryDefinition,
 	'id-map':               IdMapQueryDefinition,
 	'normalized-ast':       NormalizedAstQueryDefinition,

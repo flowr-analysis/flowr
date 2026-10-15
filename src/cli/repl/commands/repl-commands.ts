@@ -205,6 +205,8 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 				description,
 				aliases:       [],
 				script:        true,
+				// master scripts run as separate processes with client-controlled arguments (e.g., output files)
+				localOnly:     true,
 				usageExample:  `:${script} --help`,
 				isCodeCommand: false,
 				fn:            async({ output, remainingLine, analyzer }) => {

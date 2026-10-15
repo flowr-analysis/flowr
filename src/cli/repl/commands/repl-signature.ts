@@ -148,6 +148,8 @@ export const signatureCommand: ReplCodeCommand = {
 	usageExample:  ':signature <query|add|download> ...',
 	aliases:       ['sig'],
 	script:        false,
+	// `add` mounts arbitrary local files and `download` fetches from the network and persists into the global config
+	localOnly:     true,
 	argsParser:    parseArgs,
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const [sub = 'help', ...rest] = remainingArgs.filter(a => a.length > 0);

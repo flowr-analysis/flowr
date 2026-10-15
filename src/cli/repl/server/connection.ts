@@ -353,7 +353,8 @@ export class FlowRServerConnection {
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
 		}, request.expression,
-		this.allowRSessionAccess
+		this.allowRSessionAccess,
+		/* remote */ true
 		);
 		sendMessage<ExecuteEndMessage>(this.socket, {
 			type: 'end-repl-execution',

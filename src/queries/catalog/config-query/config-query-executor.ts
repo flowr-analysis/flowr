@@ -3,6 +3,7 @@ import type { ConfigQuery, ConfigQueryResult } from './config-query-format';
 import { validateConfigUpdate } from './config-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import { isNotUndefined } from '../../../util/assert';
+import { FlowrConfig } from '../../../config';
 
 /**
  * Executes the given configuration queries using the provided analyzer.
@@ -19,11 +20,17 @@ export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readon
 
 	// validate here too (not only in the repl parser), so a programmatic / JSON-API update cannot merge an unknown
 	// key or a wrong-typed value; the update then lands via `updateConfig`, which invalidates the analysis cache
-	for(const update of updates) {
-		const err = validateConfigUpdate(update);
+	for(const given of updates) {
+		const err = validateConfigUpdate(given);
 		if(err !== undefined) {
 			log.warn(`ignoring invalid config update: ${err}`);
 			continue;
+		}
+		// queries may come from clients of the server, so they must not choose what flowR executes, loads, or downloads
+		const update = structuredClone(given);
+		const dropped = FlowrConfig.dropSecuritySensitive(update);
+		if(dropped.length > 0) {
+			log.warn(`ignoring security-sensitive options in config update: ${dropped.join(', ')}`);
 		}
 		analyzer.updateConfig(update);
 	}

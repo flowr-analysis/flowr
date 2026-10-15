@@ -59,6 +59,7 @@ export interface FlowrCliOptions {
 	verbose:            boolean
 	version:            boolean
 	ws:                 boolean
+	'ws-allow-origin':  string[] | undefined
 	'default-engine':   string
 
 	'engine.r-shell.disabled':  boolean
@@ -264,7 +265,7 @@ async function mainServer(useWebSocket: boolean) {
 	// so the common one-shot analysis path does not pay for evaluating it
 	const { FlowRServer } = await import('./repl/server/server');
 	const { NetServer, WebSocketServerWrapper } = await import('./repl/server/net');
-	const backend: Server = useWebSocket ? new WebSocketServerWrapper() : new NetServer();
+	const backend: Server = useWebSocket ? new WebSocketServerWrapper(options['ws-allow-origin']) : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
 

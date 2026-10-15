@@ -1,6 +1,7 @@
 import { assert, describe, expect, test } from 'vitest';
 import { joinUntrustedSegment } from '../../../../src/util/files';
 import path from 'path';
+import { isAllowedWebSocketOrigin } from '../../../../src/cli/repl/server/net';
 import { ensurePlain } from '../../../../src/project/sigdb/decompress';
 import { getReplCommands } from '../../../../src/cli/repl/commands/repl-commands';
 import { replProcessAnswer } from '../../../../src/cli/repl/core';
@@ -64,5 +65,12 @@ describe('Remote REPL access', () => {
 		for(const hash of ['../../evil', 'a/b']) {
 			await expect(ensurePlain('/nonexistent/db.sigs.ndjson.br', { hash, cacheDir: '/nonexistent/cache' })).rejects.toThrow('untrusted path segment');
 		}
+	});
+	test.each([
+		[undefined, [], true], ['http://localhost:3000', [], true], ['http://127.0.0.1', [], true], ['http://[::1]:8080', [], true],
+		['https://evil.example', [], false], ['https://localhost.evil.example', [], false], ['null', [], false],
+		['https://ok.example', ['https://ok.example'], true], ['https://evil.example', ['https://ok.example'], false], ['https://any.example', ['*'], true]
+	] as const)(label('websocket origin %j with allowed %j is allowed: %s', ['name-normal'], ['other']), (origin, allowed, expected) => {
+		assert.strictEqual(isAllowedWebSocketOrigin(origin, allowed), expected);
 	});
 });

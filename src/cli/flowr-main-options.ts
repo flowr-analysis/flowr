@@ -98,6 +98,12 @@ export const flowrMainOptionDefinitions = [
 	},
 	{ name: 'ws', type: Boolean, description: 'If the server flag is set, use websocket for messaging' },
 	{
+		name:        'ws-allow-origin',
+		type:        String,
+		description: 'An origin (e.g., {italic https://example.org}) whose web pages may connect to the websocket server, in addition to local pages and clients that are no browser. Can be given multiple times, {italic *} allows all origins.',
+		multiple:    true
+	},
+	{
 		name:        'engine.r-shell.disabled',
 		type:        Boolean,
 		description: 'Disable the R shell engine'

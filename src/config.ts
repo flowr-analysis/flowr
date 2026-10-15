@@ -27,6 +27,11 @@ import type { InputClassifierConfig } from './queries/catalog/input-sources-quer
 import { InputType } from './queries/catalog/input-sources-query/input-types';
 import { uniqueArray } from './util/collections/arrays';
 
+/** Marks an option that decides what flowR executes or loads, it is dropped from untrusted configs (see {@link FlowrConfig.fromFile}). */
+function securitySensitive<T extends Joi.Schema>(schema: T): T {
+	return schema.meta({ securitySensitive: true }) as T;
+}
+
 export enum VariableResolve {
 	/** Don't resolve constants at all */
 	Disabled = 'disabled',
@@ -721,13 +726,13 @@ export const FlowrConfig = {
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({
 				type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
-				wasmPath:           Joi.string().optional().description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
-				treeSitterWasmPath: Joi.string().optional().description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.'),
+				wasmPath:           securitySensitive(Joi.string().optional()).description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
+				treeSitterWasmPath: securitySensitive(Joi.string().optional()).description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.'),
 				lax:                Joi.boolean().optional().description('Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.')
 			}).description('The configuration for the tree sitter engine.'),
 			Joi.object({
 				type:     Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
-				rPath:    Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.'),
+				rPath:    securitySensitive(Joi.string().optional()).description('The path to the R executable to use. If this is undefined, this uses the default path.'),
 				pipeBind: Joi.boolean().optional().description('Whether to enable R\'s experimental pipe-bind operator "=>" by setting _R_USE_PIPEBIND_ for the R session (default false); R itself keeps this off by default, as it is experimental and has never shipped in a release version of R.')
 			}).description('The configuration for the R shell engine.')
 		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
@@ -747,12 +752,12 @@ export const FlowrConfig = {
 				linkPackageCalls:            Joi.boolean().optional().description('Add a lightweight Reads edge from a resolved package call to its signature-database function vertex (default false).'),
 				linkDescriptionDependencies: Joi.boolean().optional().description('Eagerly attach the namespaces of the project\'s declared DESCRIPTION dependencies (Imports/Depends) so their exports resolve without an explicit library() (default false).'),
 				warmInBackground:            Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).'),
-				additionalPaths:             Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
-				downloadRepo:                Joi.string().optional().description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
+				additionalPaths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
+				downloadRepo:                securitySensitive(Joi.string().optional()).description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
 				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
 				installedLibrary:            Joi.object({
 					enabled:           Joi.boolean().required().description('Recover packages no signature database knows from their installed copy (default false).'),
-					paths:             Joi.array().items(Joi.string()).optional().description('Library directories to search; when empty they are discovered from the environment and the project.'),
+					paths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Library directories to search; when empty they are discovered from the environment and the project.'),
 					useEnvironment:    Joi.boolean().optional().description('Search the libraries R_LIBS_USER/R_LIBS/R_LIBS_SITE name (default true).'),
 					useProjectLibrary: Joi.boolean().optional().description('Search a project-local renv/packrat library (default true).'),
 					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
@@ -849,9 +854,13 @@ export const FlowrConfig = {
 	/**
 	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.
 	 */
-	parse(this: void, jsonString: string): FlowrConfig | undefined {
+	parse(this: void, jsonString: string, trusted = true): FlowrConfig | undefined {
 		try {
 			const parsed   = JSON.parse(jsonString) as FlowrConfig;
+			const dropped = trusted ? [] : FlowrConfig.dropSecuritySensitive(parsed);
+			if(dropped.length > 0) {
+				console.warn(`[flowR] Ignoring ${dropped.join(', ')} from the project config, pass --config-file or --trust-config to use them.`);
+			}
 			const validate = FlowrConfig.Schema.validate(parsed);
 			if(!validate.error) {
 				// assign default values to all config options except for the specified ones
@@ -863,6 +872,18 @@ export const FlowrConfig = {
 		} catch(e) {
 			log.error(`Failed to parse config ${jsonString}: ${(e as Error).message}`);
 		}
+	},
+	/** Paths (`*` matching any key) of all {@link securitySensitive} options, also within `specializeConfig`. */
+	securitySensitivePaths(this: void): readonly (readonly string[])[] {
+		if(sensitivePaths === undefined) {
+			const base = collectSensitivePaths(FlowrConfig.Schema.describe());
+			sensitivePaths = [...base, ...base.map(p => ['specializeConfig', '*', ...p])];
+		}
+		return sensitivePaths;
+	},
+	/** Removes all {@link FlowrConfig.securitySensitivePaths} from the raw config (in place), returns the removed paths. */
+	dropSecuritySensitive(this: void, raw: unknown): string[] {
+		return FlowrConfig.securitySensitivePaths().flatMap(p => dropPath(raw, p, ''));
 	},
 	/**
 	 * Creates a new flowr config that has the updated values.
@@ -883,11 +904,13 @@ export const FlowrConfig = {
 	 * Please note that you can also use this without a path parameter to
 	 * infer the config from flowR's default locations.
 	 * This is mostly useful for user-facing features.
+	 * A relative `configFile` is searched for in the working directory and its parents. That file belongs to the analyzed
+	 * project, so its {@link securitySensitive} options are dropped unless `trustProjectConfig` is set.
 	 */
-	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
+	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd(), trustProjectConfig = false): FlowrConfig {
 		let config: FlowrConfig;
 		try {
-			config = loadConfigFromFile(configFile, configWorkingDirectory);
+			config = loadConfigFromFile(configFile, configWorkingDirectory, trustProjectConfig);
 		} catch(e) {
 			log.error(`Failed to load config: ${(e as Error).message}`);
 			config = FlowrConfig.default();
@@ -1034,7 +1057,47 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	return file;
 }
 
-function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {
+let sensitivePaths: readonly (readonly string[])[] | undefined;
+
+interface JoiDescription {
+	readonly keys?:    Record<string, JoiDescription>
+	readonly items?:   readonly JoiDescription[]
+	readonly matches?: readonly { readonly schema?: JoiDescription }[]
+	readonly metas?:   readonly Record<string, unknown>[]
+}
+
+function collectSensitivePaths(d: JoiDescription | undefined, at: readonly string[] = []): string[][] {
+	if(!d) {
+		return [];
+	} else if(d.metas?.some(m => m.securitySensitive === true)) {
+		return [[...at]];
+	}
+	return [
+		...Object.entries(d.keys ?? {}).flatMap(([k, v]) => collectSensitivePaths(v, [...at, k])),
+		...(d.items ?? []).flatMap(i => collectSensitivePaths(i, [...at, '*'])),
+		...(d.matches ?? []).flatMap(m => collectSensitivePaths(m.schema, at))
+	];
+}
+
+function dropPath(obj: unknown, path: readonly string[], at: string): string[] {
+	if(obj === null || typeof obj !== 'object' || path.length === 0) {
+		return [];
+	}
+	const [head, ...rest] = path;
+	const record = obj as Record<string, unknown>;
+	const dropped: string[] = [];
+	for(const key of head === '*' ? Object.keys(record) : Object.hasOwn(record, head) ? [head] : []) {
+		const next = at === '' ? key : `${at}.${key}`;
+		if(rest.length > 0) {
+			dropped.push(...dropPath(record[key], rest, next));
+		} else if(Reflect.deleteProperty(record, key)) {
+			dropped.push(next);
+		}
+	}
+	return dropped;
+}
+
+function loadConfigFromFile(configFile: string | undefined, workingDirectory: string, trustProjectConfig: boolean): FlowrConfig {
 	if(configFile !== undefined) {
 		if(path.isAbsolute(configFile) && fs.existsSync(configFile)) {
 			log.trace(`Found config at ${configFile} (absolute)`);
@@ -1049,7 +1112,7 @@ function loadConfigFromFile(configFile: string | undefined, workingDirectory: st
 			const configPath = path.join(searchPath, configFile);
 			if(fs.existsSync(configPath)) {
 				log.trace(`Found config at ${configPath}`);
-				const ret = FlowrConfig.parse(fs.readFileSync(configPath, { encoding: 'utf-8' }));
+				const ret = FlowrConfig.parse(fs.readFileSync(configPath, { encoding: 'utf-8' }), trustProjectConfig);
 				if(ret) {
 					log.info(`Using config ${JSON.stringify(ret)}`);
 					return ret;

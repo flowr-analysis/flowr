@@ -46,6 +46,7 @@ export const toolName = 'flowr';
 export interface FlowrCliOptions {
 	'config-file':      string
 	'config-json':      string
+	'trust-config':     boolean
 	'no-ansi':          boolean
 	'no-fs':            boolean
 	'r-path':           string | undefined
@@ -123,7 +124,10 @@ function createConfig(): FlowrConfig {
 					process.exit(1);
 				}
 			}
-			config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
+			// a file named by the user is trusted, a flowr.json found in the analyzed project is not
+			config = options['config-file']
+				? FlowrConfig.fromFile(path.resolve(options['config-file']))
+				: FlowrConfig.fromFile(defaultConfigFile, process.cwd(), options['trust-config']);
 		}
 	}
 

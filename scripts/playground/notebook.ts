@@ -216,6 +216,11 @@ class RunButton extends WidgetType {
 			tools.append(el('span', 'cm-cell-note', note));
 		}
 		const button = el('button', 'cm-cell-run', 'run');
+		/* the Run button's own icon, badge and all: a cell always runs in the session that runs keep */
+		const icon = document.querySelector('#runrgo .runicon')?.cloneNode(true);
+		if(icon) {
+			button.prepend(icon);
+		}
 		button.type = 'button';
 		button.title = 'run this cell in the same R session as runs and the repl (shift+enter)';
 		button.addEventListener('mousedown', event => event.preventDefault());
@@ -314,7 +319,7 @@ const cellLook = EditorView.theme({
 	'.cm-cell-head':                                  { borderTop: '1px solid var(--border)', fontSize: '.85em' },
 	'.cm-cell-tail':                                  { fontSize: '.85em' },
 	'.cm-cell-end':                                   { borderBottom: '1px solid var(--border)' },
-	'.cm-cell-tools':                                 { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', marginRight: '.5rem' },
+	'.cm-cell-tools':                                 { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem' },
 	'.cm-cell-note, .cm-cell-head[data-note]::after': {
 		fontFamily:    'system-ui, sans-serif',
 		fontSize:      '.7rem',
@@ -324,6 +329,9 @@ const cellLook = EditorView.theme({
 	},
 	'.cm-cell-head[data-note]::after': { content: 'attr(data-note)', float: 'right', marginRight: '.5rem' },
 	'.cm-cell-run':                    {
+		display:         'inline-flex',
+		alignItems:      'center',
+		gap:             '.3rem',
 		padding:         '0 .5rem',
 		cursor:          'pointer',
 		lineHeight:      '1.4',
@@ -337,7 +345,7 @@ const cellLook = EditorView.theme({
 		border:          '0',
 		borderRadius:    '1rem'
 	},
-	'.cm-cell-run::before':                        { content: '"▶ "', fontSize: '.6rem' },
+	'.cm-cell-run .runicon':                       { width: '.65rem', height: '.65rem' },
 	'.cm-cell-run:hover':                          { filter: 'brightness(1.1)' },
 	'.cm-prose, .cm-cell-text:not(.cm-cell-head)': { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' }
 });

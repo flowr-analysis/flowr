@@ -157,6 +157,21 @@ export const ControlFlow = {
 		return { ...data, cds: withCds(data.cds, [{ id: holder, when: true, byPromise: true }]) };
 	},
 	/**
+	 * A function defined within a promise: forcing the promise only creates it, its body runs once it is called,
+	 * so neither the definition nor its body depend on the call holding the promise.
+	 * @example
+	 * ```r
+	 * f(function() print(1)) # the print runs when `f` calls its argument, which `f(...)` itself does not decide
+	 * ```
+	 */
+	outsidePromises<Data extends { readonly cds?: readonly ControlDependency[] }>(this: void, data: Data): Data {
+		if(!data.cds?.some(cd => cd.byPromise)) {
+			return data;
+		}
+		const kept = data.cds.filter(cd => !cd.byPromise);
+		return { ...data, cds: kept.length > 0 ? kept : undefined };
+	},
+	/**
 	 * The jumps within a promise, an argument or default R evaluates only if `holder` forces it. A jump
 	 * - never runs if the promise is {@link Ternary#Never|never} forced, so control resumes at `holder`,
 	 * - leaves whenever reached if it is {@link Ternary#Always|always} forced,

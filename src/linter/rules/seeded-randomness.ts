@@ -127,6 +127,9 @@ export const SEEDED_RANDOMNESS = {
 			/** whether the call may see a state no constant seed set: the initial one, or a non-constant seed */
 			unseeded:       boolean
 		}
+		/** a call of a draw by another name, like a parameter `f` bound to `runif` */
+		const drawsThrough = (call: NodeId): 'draw' | undefined =>
+			edgeTargets(graph, call, EdgeType.Calls).some(t => NodeId.isBuiltIn(t) && consumers.has(NodeId.fromBuiltIn(t))) ? 'draw' : undefined;
 		/** the writes a draw reads the generator state from: its own, and those of the calls running the function it sits in, which link what was written before them */
 		const statesReadBy = (id: NodeId): NodeId[] => {
 			const within = idMap === undefined ? undefined : RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
@@ -142,7 +145,7 @@ export const SEEDED_RANDOMNESS = {
 			let always = false;
 			for(const target of statesReadBy(id)) {
 				const writer = graph.getVertex(target);
-				const kind = DfgVertex.isFunctionCall(writer) && !visiting.has(target) ? writerKind(writer) : undefined;
+				const kind = DfgVertex.isFunctionCall(writer) && !visiting.has(target) ? writerKind(writer) ?? drawsThrough(target) : undefined;
 				if(kind === undefined) {
 					continue;
 				}

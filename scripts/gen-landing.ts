@@ -51,6 +51,8 @@ const ValueNames = ['1@df', '2@df', '3@n'] as const;
 const OriginNames = ['1@square', '2@square', '2@area', '3@area', '3@print'] as const;
 
 const SliceSample = Samples['survey.R'];
+/** The slice the demo shows until the reader points at the code, so the page opens on an answer. */
+const PreviewSlice = '9@plot';
 const DependencySample = Samples['project.R'];
 const LintSample = Samples['messy.R'];
 const ValueSample = Samples['shapes.R'];
@@ -469,6 +471,9 @@ function highlightWithMarks(line: string, marks: readonly Mark[]): string {
 }
 
 function render(data: PageData): string {
+	if(!(PreviewSlice in data.slices)) {
+		throw new Error(`the slice demo has no criterion ${PreviewSlice} to open on`);
+	}
 	const sliceCode = SliceSample.split('\n').map((line, index) => {
 		const number = index + 1;
 		const keeps = Object.entries(data.slices).filter(([, lines]) => lines.includes(number)).map(([key]) => key);
@@ -555,6 +560,7 @@ function render(data: PageData): string {
 		.replace('<!--BENCHRELEASE-->', measured?.release ?? '')
 		.replace('<!--BENCHCALIBRATION-->', measured?.calibration ?? '')
 		.replace('<!--SLICE-->', sliceCode)
+		.replace('<!--SLICE-PREVIEW-->', PreviewSlice)
 		.replace('<!--DEPSOURCE-->', depSource(DependencySample, data.dependencies))
 		.replace('<!--LINTSOURCE-->', flagged(LintSample, data.lint))
 		.replace('<!--ORIGIN-->', rows(data.origin, true))

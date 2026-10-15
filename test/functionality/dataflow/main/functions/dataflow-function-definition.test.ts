@@ -926,7 +926,7 @@ f(3)`, emptyGraph()
 				.reads('4', '1')
 				.use('15', 'g', undefined, false)
 				.reads('15', '10')
-				.use('23', 'x', { cds: [{ id: '29', when: true, byPromise: true }] }, false)
+				.use('23', 'x', undefined, false)
 				.reads('23', '21')
 				.argument('5', '4')
 				.call('5', '*', [argumentInCall('3'), argumentInCall('4')], { returns: [], reads: ['3', '4', NodeId.toBuiltIn('*')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '1', '2') }, false)
@@ -946,7 +946,7 @@ f(3)`, emptyGraph()
 				.calls('19', NodeId.toBuiltIn('<-'))
 				.argument('19', ['18', '9'])
 				.argument('25', '23')
-				.call('25', '+', [argumentInCall('23'), argumentInCall('24')], { returns: [], reads: ['23', '24', NodeId.toBuiltIn('+')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '21', '22'), cds: [{ id: '29', when: true, byPromise: true }] }, false)
+				.call('25', '+', [argumentInCall('23'), argumentInCall('24')], { returns: [], reads: ['23', '24', NodeId.toBuiltIn('+')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '21', '22') }, false)
 				.calls('25', NodeId.toBuiltIn('+'))
 				.argument('25', '24')
 				.call('29', 'm', [argumentInCall('27')], { returns: ['16'], reads: ['9'], environment: defaultEnv().defineFunction('f', '0', '8').defineFunction('m', '9', '19') })
@@ -978,16 +978,16 @@ f(3)`, emptyGraph()
 					environment:       defaultEnv().defineVariable('f', '14', '16').pushEnv().defineParameter('g', '10', '11')
 				}, { environment: defaultEnv().defineVariable('f', '14', '16'), readParams: [[10, true]] })
 				.defineVariable('9', 'm', { definedBy: ['18', '19'] })
-				.defineVariable('21', 'x', { definedBy: [], cds: [{ id: '29', when: true, byPromise: true }] }, false)
-				.constant('24', { cds: [{ id: '29', when: true, byPromise: true }] }, false)
-				.defineFunction('27', [{ nodeId: '25', type: ExitPointType.Default, cds: [{ id: '29', when: true, byPromise: true }] }], {
+				.defineVariable('21', 'x', { definedBy: [] }, false)
+				.constant('24', undefined, false)
+				.defineFunction('27', [{ nodeId: '25', type: ExitPointType.Default }], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
 					entryPoint:        '25',
 					graph:             new Set(['21', '23', '24', '25']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '21', '22')
-				}, { readParams: [[21, true]], cds: [{ id: '29', when: true, byPromise: true }] })
+				}, { readParams: [[21, true]] })
 				.definesOnCall(27, 10)
 				.definedByOnCall(10, 27)
 				.constant(31, { cds: [{ id: '33', when: true, byPromise: true }] })
@@ -1002,7 +1002,7 @@ f(3)`, emptyGraph()
 			/* we want to ensure that the function call to f is linked to the correct definition */
 			emptyGraph()
 				.defineVariable('0', 'f')
-				.call('19', 'f', [], { cds: [{ id: '25', when: true, byPromise: true }] }, false)
+				.call('19', 'f', [], {}, false)
 				.calls('19', '5'),
 			{
 				expectIsSubgraph: true

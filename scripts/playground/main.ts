@@ -25,7 +25,7 @@ import { DefaultDependencyCategoryNames } from '../../src/queries/catalog/depend
 import { SliceDirection } from '../../src/util/slice-direction';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
-import { replCompleter, replProcessAnswer } from '../../src/cli/repl/core';
+import { computeCompletions, replProcessAnswer } from '../../src/cli/repl/core';
 import { getCommand } from '../../src/cli/repl/commands/repl-commands';
 import { splitAtEscapeSensitive } from '../../src/util/text/args';
 import type { ReplOutput } from '../../src/cli/repl/commands/repl-main';
@@ -2365,6 +2365,15 @@ function showExample(project: readonly [string, string][], note: string): void {
 	showShared(note);
 }
 document.querySelector('[data-sample]')?.addEventListener('click', () => showExample([[Playground.MainFile, Sample]], 'the example is back'));
+/* a reset turns its arrow once around; the class goes again so the next click turns it again */
+for(const button of document.querySelectorAll<HTMLElement>('.spins')) {
+	button.addEventListener('click', () => {
+		button.classList.remove('spinning');
+		void button.offsetWidth;
+		button.classList.add('spinning');
+	});
+	button.addEventListener('animationend', () => button.classList.remove('spinning'));
+}
 
 /**
  * Copies the link that brings this playground back, which the button and `ctrl+s` both ask for.
@@ -2496,16 +2505,99 @@ const MaxSharedCommands = 8;
 /** the commands typed into the repl, which a link carries so a showcase opens on what it showed */
 let replSaid: string[] = shared.said;
 
-replIn?.addEventListener('keydown', event => {
-	if(event.key === 'Tab') {
-		/* flowR's own completer, so the page offers exactly what the repl does */
-		event.preventDefault();
-		const [options, prefix] = replCompleter(replIn.value, settings ?? FlowrConfig.default());
-		if(options.length === 1) {
-			replIn.value = replIn.value.slice(0, replIn.value.length - prefix.length) + options[0];
-		} else if(options.length > 1) {
-			say(options.join('  '));
+/**
+ * What the line typed so far can go on with, as a list above it that follows the typing: flowR's own completer
+ * decides, so the page offers exactly what the terminal repl does, and says what each command is for.
+ */
+const replHints = document.getElementById('replhints');
+let hints: { insert: string, label: string, says: string }[] = [];
+let hintsFrom = '';
+/** the hint the arrow keys moved to, none until they move */
+let hinted = -1;
+
+function showHints(): void {
+	if(replIn === null || replHints === null) {
+		return;
+	}
+	const line = replIn.value;
+	const [options, fragment, labels] = line.trim().length === 0 ? [[], ''] : computeCompletions(line, settings ?? FlowrConfig.default());
+	hintsFrom = fragment;
+	/* an alias is a second name for a command already listed, so it joins that row rather than taking its own */
+	const commandOf = (insert: string) => getCommand(/^:(\S+) $/.exec(insert)?.[1] ?? '');
+	hints = options.filter(option => option.trim() !== fragment && !commandOf(option)?.aliases.includes(option.trim().slice(1))).map(insert => {
+		const shown = insert.trim();
+		const labelled = stripAnsi(labels?.get(insert) ?? '').slice(shown.length).trim();
+		const command = commandOf(insert);
+		const aliases = command?.aliases.map(alias => `:${alias}`).join(', ');
+		return { insert, label: shown, says: labelled || [command?.description, aliases && `(${aliases})`].filter(Boolean).join(' ') };
+	});
+	hinted = Math.min(hinted, hints.length - 1);
+	replHints.replaceChildren(...hints.map((hint, at) => {
+		const item = el('li');
+		item.setAttribute('role', 'option');
+		item.setAttribute('aria-selected', String(at === hinted));
+		item.append(el('b', undefined, hint.label));
+		if(hint.says) {
+			item.append(el('span', undefined, hint.says));
 		}
+		item.addEventListener('mousedown', event => {
+			event.preventDefault();
+			takeHint(at);
+		});
+		return item;
+	}));
+	replHints.hidden = hints.length === 0;
+	replIn.setAttribute('aria-expanded', String(hints.length > 0));
+	replHints.children[hinted]?.scrollIntoView({ block: 'nearest' });
+}
+
+function takeHint(at: number): void {
+	const hint = hints[at];
+	if(replIn === null || hint === undefined) {
+		return;
+	}
+	replIn.value = replIn.value.slice(0, replIn.value.length - hintsFrom.length) + hint.insert;
+	hinted = -1;
+	showHints();
+}
+
+function hideHints(): void {
+	hints = [];
+	hinted = -1;
+	replHints?.toggleAttribute('hidden', true);
+	replIn?.setAttribute('aria-expanded', 'false');
+}
+
+replIn?.addEventListener('input', () => {
+	hinted = -1;
+	showHints();
+});
+replIn?.addEventListener('blur', hideHints);
+
+replIn?.addEventListener('keydown', event => {
+	const open = hints.length > 0;
+	if(event.key === 'Tab') {
+		event.preventDefault();
+		if(!open) {
+			showHints();
+		}
+		/* one option, or one picked with the arrows, goes in; otherwise the list is the answer */
+		if(hints.length === 1 || hinted >= 0) {
+			takeHint(Math.max(hinted, 0));
+		}
+		return;
+	} else if(open && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+		event.preventDefault();
+		hinted = (hinted + (event.key === 'ArrowUp' ? hints.length - 1 : 1) + (hinted < 0 && event.key === 'ArrowUp' ? 1 : 0)) % hints.length;
+		showHints();
+		return;
+	} else if(open && event.key === 'Escape') {
+		event.preventDefault();
+		hideHints();
+		return;
+	} else if(open && event.key === 'Enter' && hinted >= 0) {
+		event.preventDefault();
+		takeHint(hinted);
 		return;
 	} else if(event.key === 'ArrowUp' || event.key === 'ArrowDown') {
 		event.preventDefault();
@@ -2520,6 +2612,7 @@ replIn?.addEventListener('keydown', event => {
 		return;
 	}
 	replIn.value = '';
+	hideHints();
 	replHistory.push(line);
 	replAt = replHistory.length;
 	runRepl(line);
@@ -2571,35 +2664,85 @@ function draggable(handle: HTMLElement | null, property: string, begin: () => nu
 		/* what it measured before the drag: reading it again on every move would compound the delta */
 		const begun = begin();
 		const drag = (at: PointerEvent) => document.documentElement.style.setProperty(property, measure(at, start, begun));
+		/* a release, a touch the browser took over for scrolling, and a handle that folded away under the
+		   pointer all end the capture, and so the drag */
 		const done = () => {
-			handle.releasePointerCapture(start.pointerId);
 			handle.removeEventListener('pointermove', drag);
-			handle.removeEventListener('pointerup', done);
+			handle.removeEventListener('lostpointercapture', done);
 			remember();
 		};
 		handle.addEventListener('pointermove', drag);
-		handle.addEventListener('pointerup', done);
+		handle.addEventListener('lostpointercapture', done);
 	});
 }
 
 const between = (low: number, value: number, high: number): number => Math.min(Math.max(low, value), high);
 
+const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize);
 const replBody = () => document.getElementById('repl')?.querySelector('.body')?.getBoundingClientRect().height ?? 224;
-draggable(document.getElementById('divider'), '--split', () => 0, at => {
-	const split = document.querySelector('.split')?.getBoundingClientRect();
-	const wanted = split === undefined ? 50 : (at.clientX - split.left) / split.width * 100;
-	return `${between(15, wanted, 85).toFixed(1)}%`;
-});
-draggable(document.getElementById('replgrip'), '--repl-height', replBody, (at, from, begun) =>
-	`${Math.round(between(6 * 16, begun + (from.clientY - at.clientY), window.innerHeight * 0.8))}px`);
 
-/* the R output grows downwards, into the analysis below it; past most of the pane the bars under it fold away */
+/* a pane is at least as wide as the grid lets the panel get; dragged past half of that, it folds away */
+const splitBox = document.querySelector<HTMLElement>('.split');
+const fold = (split: string): void => {
+	const at = parseFloat(split);
+	if(splitBox === null) {
+		return;
+	} else if(at <= 0 || at >= 100) {
+		splitBox.dataset.fold = at <= 0 ? 'code' : 'panel';
+	} else {
+		delete splitBox.dataset.fold;
+	}
+};
+/* where the bar was before it folded, which a click on the folded bar goes back to */
+let unfolded = '';
+draggable(document.getElementById('divider'), '--split', () => 0, at => {
+	const box = splitBox?.getBoundingClientRect();
+	if(box === undefined) {
+		return '50%';
+	}
+	const x = at.clientX - box.left, least = 14 * rem();
+	const split = x < least / 2 ? '0%' : box.width - x < least / 2 ? '100%'
+		: `${(between(least, x, box.width - least) / box.width * 100).toFixed(1)}%`;
+	if(splitBox?.dataset.fold === undefined) {
+		unfolded = document.documentElement.style.getPropertyValue('--split');
+	}
+	fold(split);
+	return split;
+});
+/* a click on the folded bar, rather than a drag off it, brings the pane back to where it was */
+let foldedOnPress: string | undefined;
+document.getElementById('divider')?.addEventListener('pointerdown', () => {
+	foldedOnPress = splitBox?.dataset.fold;
+});
+document.getElementById('divider')?.addEventListener('click', () => {
+	if(foldedOnPress !== undefined && splitBox?.dataset.fold === foldedOnPress) {
+		document.documentElement.style.setProperty('--split', unfolded);
+		fold(unfolded || '50');
+		remember();
+	}
+});
+
+/* the repl folds the same way: dragged down past half its least height, it closes and keeps the height it had */
+draggable(document.getElementById('replgrip'), '--repl-height', replBody, (at, from, begun) => {
+	const least = 6 * rem(), height = begun + (from.clientY - at.clientY);
+	if(height < least / 2) {
+		(document.getElementById('repl') as HTMLDetailsElement | null)?.removeAttribute('open');
+		return `${Math.round(begun)}px`;
+	}
+	return `${Math.round(between(least, height, window.innerHeight * 0.8))}px`;
+});
+
+/* the R output grows downwards, into the analysis below it, while the bars under that stay put; dragged to
+   within a few lines of them, the analysis folds away entirely rather than leaving a clipped sliver */
 draggable(document.getElementById('runrgrip'), '--runr-height', () => document.getElementById('runr')?.getBoundingClientRect().height ?? 0, (at, from, begun) => {
 	const right = document.querySelector<HTMLElement>('.right');
-	const room = right?.getBoundingClientRect().height ?? window.innerHeight;
-	const height = between(5 * 16, begun + (at.clientY - from.clientY), room * .9);
-	right?.classList.toggle('squeezed', height > room * .7);
-	return `${Math.round(height)}px`;
+	const bars = [...right?.children ?? []].filter(child => child.id !== 'runr' && child.id !== 'panel')
+		.reduce((sum, child) => sum + child.getBoundingClientRect().height, 0);
+	const room = Math.min((right?.getBoundingClientRect().height ?? window.innerHeight) - bars, window.innerHeight * .9);
+	const height = between(5 * rem(), begun + (at.clientY - from.clientY), room);
+	const folded = height > room - 3 * rem();
+	right?.classList.toggle('folded', folded);
+	return `${Math.round(folded ? room : height)}px`;
 });
 
 /* a link that was shared with a layout opens with it */
@@ -2608,6 +2751,7 @@ for(const [property, value] of [['--split', shared.split], ['--repl-height', sha
 		document.documentElement.style.setProperty(property, value);
 	}
 }
+fold(document.documentElement.style.getPropertyValue('--split') || '50');
 /* opening it is what someone does to type into it */
 document.getElementById('repl')?.addEventListener('toggle', () => {
 	if((document.getElementById('repl') as HTMLDetailsElement | null)?.open) {

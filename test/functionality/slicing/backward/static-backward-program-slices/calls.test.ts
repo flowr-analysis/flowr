@@ -64,10 +64,14 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, redefined, ['5@print'], 'f <- function(g) g(1)\nk <- f(function(x) x)\nprint(k)', { expectedSliceOutput: '[1] 1' });
 		const nested = 'f <- function(g, a, b) {\n  x <- g(a + b) + b\n  print(x)\n  return(x)\n}\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)\n';
 		assertSliced(label('Repeated redefinition keeps each call to its own copy', redefinedCaps),
-			shell, nested + nested + nested, ['7@print'], 'f <- function(g, a, b) {\n        x <- g(a + b) + b\n        x\n        return(x)\n    }\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)', { minRVersion: MIN_VERSION_LAMBDA });
+			shell, nested + nested + nested, ['7@print'], 'f <- function(g, a, b) {\n        x <- g(a + b) + b\n        return(x)\n    }\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)', { minRVersion: MIN_VERSION_LAMBDA });
 		const draws = 'sim <- function(n) {\n  a <- rmvnorm(n)\n  b <- rnorm(n)\n  list(a = a, b = b)\n}\n' + [1, 2, 3, 4, 5, 6].map(i => `dat <- sim(${i})\nm <- fit(dat)\n`).join('') + 'print(m)';
 		assertSliced(label('Top-level calls chained by the random state', caps),
-			shell, draws, ['18@m'], 'sim <- function(n) {\n        a <- rmvnorm(n)\n        b <- rnorm(n)\n        list(a = a, b = b)\n    }\n' + [1, 2, 3, 4, 5].map(i => `dat <- sim(${i})\nfit(dat)\n`).join('') + 'dat <- sim(6)\nm <- fit(dat)\nm');
+			shell, draws, ['18@m'], 'sim <- function(n) {\n        a <- rmvnorm(n)\n        b <- rnorm(n)\n        list(a = a, b = b)\n    }\n' + [1, 2, 3, 4, 5].map(i => `sim(${i})\n`).join('') + 'dat <- sim(6)\nm <- fit(dat)\nm');
+		assertSliced(label('Calls handed data are not chained by the random state', caps),
+			shell, 'd <- c(1, 2)\na <- fit(d, NA)\nb <- fit(d, mean)\nk <- fit(d)\nk', ['5@k'], 'd <- c(1, 2)\nk <- fit(d)\nk');
+		assertSliced(label('Calls handed a drawing function are chained by the random state', caps),
+			shell, 'set.seed(1)\na <- fit(1, runif)\nk <- runif(1)\nk', ['4@k'], 'set.seed(1)\nfit(1, runif)\nk <- runif(1)\nk');
 	});
 	describe('Functions with named arguments', () => {
 		const code = 'a <- function(x=4) { x }\na(x = 3)';
@@ -1212,6 +1216,19 @@ describe('Calls checked against R', withTreeSitter(parser => {
 		['closure returned by a call of a factory result within a function', 'n <- 0\nmk <- function() { f <- function() { n <<- n + 1; sys.function() }; f }\nrun <- function() { g <- mk()(); g() }\nrun()\nprint(n)'],
 		['closure returned within a function but not called', 'n <- 0\nmk <- function() { f <- function() { n <<- n + 1; sys.function() }; f }\nrun <- function() { g <- mk()(); 0 }\nrun()\nprint(n)', 'g <-'],
 	]));
+	/* guards for how 2.16.0 got smaller slices back: no callers by default, promises only for what runs in them,
+	   function bodies not part of the argument they are handed in, and the random state as one chain */
+	describe('callers, promises, and the random state', () => {
+		check([
+			['a lambda parameter is not a name of the body calling it', 'f <- function(g) { x <- 1; y <- g(5); x + y }\nprint(f(function(x) x * 2))'],
+			['a super-assignment in a stored lambda escapes once it is called', 'store <- NULL\nkeep <- function(f) store <<- f\nkeep(function() z <<- 3)\nz <- 0\nstore()\nprint(z)'],
+			['copies of a higher-order call each keep their draw', 'set.seed(6)\nf <- function(g, a) g(a)\nk <- f(function(x) runif(x), 1)\nk <- f(function(x) runif(x), 1)\nprint(runif(1))']
+		]);
+		const nested = 'f <- function(g, a, b) {\n  x <- g(a + b) + b\n  return(x)\n}\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)';
+		assertSliceKeeps('a criterion in a body keeps the header and the handed function, not the call site', parser, nested, '2@x', { has: ['f <- function(g, a, b)', '\\(x)'], lacks: ['k <- f('] });
+		assertSliceKeeps('a criterion in a handed lambda does not keep the call it is handed to', parser, nested, '5@x', { lacks: ['k <- f(', 'print'] });
+		assertSliceKeeps('a value read in an argument does not keep the callee', parser, 'classify <- function(n) n %% 3\nfor(i in 1:9) print(classify(i))', '2@i', { lacks: ['classify <- function'] });
+	});
 	/* the last element states whether the shipped signature database is on, as it is outside the tests */
 	describe.sequential('real-world scripts', () => {
 		for(const [name, code, criterion, sigdb] of [

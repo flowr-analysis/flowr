@@ -146,8 +146,7 @@ function escapedDefinitions(this: void, hidden: ReadonlyMap<NodeId, readonly Nam
 }
 
 /** Emits {@link EdgeType.SideEffectOnCall} edges for definitions that escape a function transitively. */
-function propagateTransitiveDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>): void {
-	const summary = computeCallGraphSummaries(graph, escapedDefinitions(hidden));
+function propagateTransitiveDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, summary: ReadonlyMap<NodeId, ReadonlySet<NodeId>>): void {
 	for(const [id, vertex] of graph.vertices(true)) {
 		if(!DfgVertex.isFunctionCall(vertex)) {
 			continue;
@@ -288,8 +287,7 @@ function escapedDefinitionMap(graph: DataflowGraph, hidden: ReadonlyMap<NodeId, 
  * `f <- function() x <<- 1; g <- function() f(); g(); print(x)` makes `x` resolvable.
  * @returns the enriched environment and whether it grew (so the extractor can re-resolve open reads and re-run).
  */
-function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, defined: Set<string>, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>, open: readonly IdentifierReference[]): { environment: REnvironmentInformation, grew: boolean, names: Set<string> } {
-	const summary = computeCallGraphSummaries(graph, escapedDefinitions(hidden));
+function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, defined: Set<string>, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>, summary: ReadonlyMap<NodeId, ReadonlySet<NodeId>>, open: readonly IdentifierReference[]): { environment: REnvironmentInformation, grew: boolean, names: Set<string> } {
 	const defs = escapedDefinitionMap(graph, hidden);
 	const names = new Set<string>();
 	let byName: DefaultMap<string, NodeId[]> | undefined;
@@ -333,7 +331,8 @@ function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition
 	const replaced = new Set([...visible, ...edgeSources(graph, call, EdgeType.SideEffectOnCall)]);
 	const readers = new Set(open.filter(r => r.name === def.name).map(r => r.nodeId));
 	for(const [id] of graph.vertices(true)) {
-		if((readers.has(id) || graph.edgesFrom(id).entries().some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && replaced.has(target)))
+		/* an argument reads the value of a call, not a name the call may define (an ambient state is defined at its call) */
+		if((readers.has(id) || graph.edgesFrom(id).entries().some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && DfEdge.doesNotIncludeType(edge, EdgeType.Argument) && replaced.has(target)))
 			&& !ProgramOrder.definedLater(call, ProgramOrder.runsOnceAt(id, graph), graph)) {
 			graph.addEdge(id, def.nodeId, EdgeType.Reads);
 		}
@@ -361,8 +360,10 @@ export function reResolveOpenReferences(this: void, graph: DataflowGraph, enviro
  */
 export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, defined: Set<string> = new Set(), open: readonly IdentifierReference[] = []): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {
 	const hidden = hiddenBuiltInWrites(graph, environment);
-	propagateTransitiveDefinitions(graph, environment, ctx, hidden);
+	/* both passes ask what escapes each function, and neither changes a body or a call target in between */
+	const escapes = computeCallGraphSummaries(graph, escapedDefinitions(hidden));
+	propagateTransitiveDefinitions(graph, environment, ctx, escapes);
 	const packages = propagateTransitivePackages(graph, environment, ctx);
-	const escaped = propagateTransitiveEscapedDefinitions(graph, packages.environment, defined, hidden, open);
+	const escaped = propagateTransitiveEscapedDefinitions(graph, packages.environment, defined, hidden, escapes, open);
 	return { environment: escaped.environment, grew: packages.grew || escaped.grew, escapedNames: escaped.names };
 }

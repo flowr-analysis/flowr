@@ -35,72 +35,27 @@ a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decorati
 @media (prefers-reduced-motion: reduce) { a { transition: none; } }
 code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-.top {
-	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .8rem 1rem .6rem; flex: none;
-	border-bottom: 1px solid var(--border); background: var(--panel);
-}
-/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
-.top .ident { display: inline-flex; align-items: center; flex: none; }
-.top .brand { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; font-size: 1.15rem; text-decoration: none; color: var(--fg); }
-.mark { flex: none; }
-/* the slash owns the space on both of its sides, so the two names sit evenly around it */
-.top .where { color: var(--muted); font-size: 1.05rem; white-space: nowrap; }
-.top .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
-.top .version { margin-left: .55rem; font-size: .82rem; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.top .version:hover { color: var(--fg); }
-.top .note { color: var(--muted); font-size: .8rem; line-height: 1.35; flex: 1 1 22rem; min-width: 14rem; max-width: 54rem; }
-.top .grow { margin-left: auto; }
-.top .links { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .3rem; min-width: 0; }
-.top .controls { display: inline-flex; align-items: center; gap: .3rem; flex: none; }
-/* a narrow window has no room for the aside, and the links matter more */
-@media (max-width: 68rem) { .top .note { display: none; } }
-/* below this, names, links, and controls no longer share a row: the links move under them rather than breaking the row in two */
-@media (max-width: 56rem) {
-	.top .grow { display: none; }
-	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
-	.top .links { order: 3; flex-basis: 100%; margin-left: -.4rem; gap: .15rem; }
-	.top .links a.link { font-size: .8rem; padding: 0 .4rem; }
-	.top .controls { margin-left: auto; }
-}
-/* the four names no longer fit on one line: two by two reads better than three and a stray */
-@media (max-width: 21rem) { .top .links { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
-@media (max-width: 42rem) { .top .version { display: none; } }
-.top a.link {
-	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
-	color: var(--muted); text-decoration: none; font-size: .85rem; border-radius: .45rem;
-}
-.top a.link:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 7%, transparent); }
-/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
-   page colours; only the backdrop reacts to the pointer */
-.top a.gh, .top a.gh:hover { color: #181717; }
-.top a.gh { justify-content: center; width: 2rem; padding: 0; }
-:root[data-theme="dark"] .top a.gh, :root[data-theme="dark"] .top a.gh:hover { color: #fff; }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) .top a.gh, :root:not([data-theme="light"]) .top a.gh:hover { color: #fff; }
-}
-.top a.gh svg { display: block; }
-#theme {
-	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; cursor: pointer;
-	border-radius: .45rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
-}
-#theme:hover { border-color: var(--accent); color: var(--accent); }
-#theme .sun { display: none; }
-:root[data-theme="dark"] #theme .sun { display: block; }
-:root[data-theme="dark"] #theme .moon { display: none; }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) #theme .sun { display: block; }
-	:root:not([data-theme="light"]) #theme .moon { display: none; }
-}
+<!--BAR-CSS-->
+/* the bar spans the whole window here, not a centred column, so it brings its own margin and backdrop */
+.bar { flex: none; padding-inline: 1rem; background: var(--panel); }
+/* the aside only takes the room the nav leaves over, and a window too narrow for two short lines of it drops it */
+.bar .note { color: var(--muted); font-size: .8rem; line-height: 1.35; flex: 1 1 0; min-width: 0; max-width: 54rem; }
+@media (max-width: 80rem) { .bar .note { display: none; } }
 
-.tools { display: inline-flex; align-items: center; gap: .3rem; margin: 0 0 .3rem auto; }
+/* the tools and the run button move as one, so a narrow pane never splits them over two rows */
+.actions { display: inline-flex; align-items: center; margin-left: auto; }
+.tools { display: inline-flex; align-items: center; gap: .3rem; margin: 0 0 .3rem; }
 .tools button {
 	display: inline-flex; align-items: center; gap: .3rem; font: inherit; font-size: .74rem; padding: .1rem .55rem; cursor: pointer;
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
-.tools svg { width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.tools svg, #runrclear svg { width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 @container pane (max-width: 36rem) {
 	.tools .label, .tools .sharenote { display: none; }
 	.tools button { padding: .2rem .4rem; }
+	/* the file tabs keep their names: what does not fit beside them moves to a row above, so the tabs stay on the line */
+	.tabs { flex-wrap: wrap-reverse; padding-inline: .5rem; }
+	.tabs .tab { padding-inline: .5rem; }
 }
 .tools button:hover { border-color: var(--accent); color: var(--accent); }
 .tools .sharenote { color: var(--muted); font-size: .74rem; }
@@ -115,16 +70,21 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk);
 }
 #views button:hover { color: var(--accent); border-color: var(--accent); }
-.top .preview {
-	margin-left: .6rem; padding: .05rem .5rem; font-size: .72rem; font-weight: 700; white-space: nowrap;
-	border: 1px solid var(--accent); border-radius: 1rem; color: var(--accent);
-}
-.top .version { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .split { flex: 1; display: grid; grid-template-columns: minmax(0, var(--split, 1.15fr)) .35rem minmax(14rem, 1fr); min-height: 0; }
 /* the bar between the panes, dragged to give one of them more room */
-.divider { cursor: ew-resize; background: var(--border); }
+.divider { cursor: ew-resize; background: var(--border); touch-action: none; transition: background .15s; }
 .divider:hover { background: var(--accent); }
+/* dragged most of the way over, a pane folds away entirely; the bar stays, a little wider, to be clicked or dragged back */
+@media not all and (max-width: 52rem) {
+	.split[data-fold="code"] { grid-template-columns: 0 .8rem minmax(0, 1fr); }
+	.split[data-fold="panel"] { grid-template-columns: minmax(0, 1fr) .8rem 0; }
+	.split[data-fold="code"] > .pane, .split[data-fold="panel"] > .right { visibility: hidden; }
+	.split[data-fold] > .divider { display: grid; place-items: center; cursor: pointer; color: var(--muted); font-size: 1.1rem; font-weight: 700; }
+	.split[data-fold] > .divider:hover { color: var(--accent-fg); }
+	.split[data-fold="code"] > .divider::before { content: "\203A"; }
+	.split[data-fold="panel"] > .divider::before { content: "\2039"; }
+}
 .pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); container: pane / inline-size; }
 /* the code and the configuration flowR reads it with, one at a time */
 .tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem 1rem 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -198,7 +158,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .drawer > summary .what code { font-size: .95em; }
 .drawer .body { display: flex; flex-direction: column; height: var(--repl-height, 14rem); border-top: 1px solid var(--border); }
 /* the bar one drags to give the repl more or less room */
-.drawer .grip { flex: none; height: .4rem; cursor: ns-resize; background: var(--sunk); }
+.drawer .grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); }
 .drawer .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
 #repl .out {
 	flex: 1; min-height: 0; overflow: auto; margin: 0; padding: .6rem .8rem; white-space: pre-wrap;
@@ -209,14 +169,26 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #repl .bad { color: #d55e00; }
 #repl .note { color: var(--muted); }
 #repl .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
-#repl .ask { display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
-#repl .ask span { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
+#repl .ask > span { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 #repl input {
 	flex: 1; font: inherit; font-size: .82rem; padding: .2rem .4rem; color: var(--fg);
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	border: 1px solid var(--border); border-radius: .3rem; background: var(--bg);
 }
 #repl input:focus { outline: none; border-color: var(--accent); }
+/* what the line can go on with, above it, the way the editor offers names: flowR's own completer decides */
+#replhints {
+	position: absolute; left: 2.4rem; right: .8rem; bottom: calc(100% - .2rem); z-index: 5; margin: 0; padding: .25rem; list-style: none;
+	max-height: min(14rem, 60vh); overflow-y: auto; border: 1px solid var(--border); border-radius: .4rem;
+	background: var(--panel); box-shadow: 0 .4rem 1.2rem rgb(0 0 0 / .2);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+}
+#replhints li { display: flex; align-items: baseline; gap: .8rem; padding: .15rem .5rem; border-radius: .25rem; cursor: pointer; white-space: nowrap; }
+#replhints li b { font-weight: 600; color: var(--fg); }
+#replhints li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-family: system-ui, sans-serif; font-size: .92em; }
+#replhints li:hover, #replhints li[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+#replhints li[aria-selected="true"] b { color: var(--accent); }
 /* running the script is the one primary action of the editor, so it gets the one filled button */
 .runbtn {
 	display: inline-flex; align-items: center; gap: .35rem; margin: 0 0 .3rem .5rem; padding: .25rem .8rem;
@@ -226,18 +198,20 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .runbtn:hover { filter: brightness(1.1); }
 .runbtn:disabled { opacity: .6; cursor: progress; }
 .runbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.runbtn svg { width: .7rem; height: .7rem; fill: currentColor; }
 /* the run button and the choice of whether a run starts R fresh, as one */
 .runsplit { display: inline-flex; flex: none; margin: 0 0 .3rem .5rem; }
 .runsplit .runbtn { margin: 0; }
 #runrgo { border-radius: 1rem 0 0 1rem; }
 #runmode { padding: .25rem .5rem .25rem .3rem; border-radius: 0 1rem 1rem 0; border-left-color: color-mix(in srgb, var(--accent-fg) 40%, var(--accent)); }
 #runmode::before { content: "\25BE"; font-size: .7rem; }
-#runrgo svg { overflow: visible; }
+/* the run icon, on this button and on every notebook cell: a play triangle and, for a run that keeps the
+   R session, a turning arrow; the ring around that is the button's own colour, cutting it out of the triangle */
+.runicon { width: .8rem; height: .8rem; flex: none; overflow: visible; fill: currentColor; }
 #runrgo:not(.same) .badge { display: none; }
-#runrgo .badge circle { fill: var(--accent); }
-#runrgo .badge path { fill: none; stroke: currentColor; stroke-width: .8; }
-#runrgo .badge .tip { fill: currentColor; stroke: none; }
+.runicon .badge circle { fill: var(--accent); }
+.runicon .badge path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; }
+.runicon .badge .tip { fill: currentColor; stroke: none; }
+.runicon .badge, .runicon .turn { transform-origin: 8px 8px; }
 .menu button[aria-checked]::before { content: "\2713"; display: inline-block; width: 1.2em; visibility: hidden; }
 .menu button[aria-checked="true"]::before { visibility: visible; }
 /* what R said, above flowR's view of the same script */
@@ -275,8 +249,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
 }
 #runr .head button:hover { color: var(--accent); border-color: var(--accent); }
-#runrstop { margin-left: auto; }
-#runrstop[hidden] + #runrclose { margin-left: auto; }
+/* the buttons sit at the end of the head, from whichever of them is shown first */
+#runr .head button:not([hidden]) { margin-left: auto; }
+#runr .head button:not([hidden]) ~ button { margin-left: 0; }
+#runrclear { display: inline-flex; align-items: center; gap: .25rem; }
 #runr .out {
 	min-height: 0; overflow: auto; padding: 0 1.2rem .8rem; white-space: pre-wrap; overflow-wrap: anywhere;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
@@ -351,9 +327,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
 .right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); }
-/* a tall R output folds the bars under the analysis away rather than growing the page */
 .right { overflow: hidden; }
-.right.squeezed > #pointed, .right.squeezed > #signature, .right.squeezed > #views { display: none; }
+.right.folded > #runr:not([hidden]) ~ #panel { display: none; }
 #pointed {
 	display: flex; align-items: baseline; gap: .6rem; flex: none;
 	padding: .5rem 1rem; border-top: 1px solid var(--border); background: var(--panel); min-height: 2.2rem;
@@ -588,12 +563,32 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	#panel .way, #panel h3 .suggest { padding: .1rem .4rem; }
 }
 
-@media (max-width: 46rem) {
-	.top .preview { font-size: .68rem; }
+/* small motions that answer the pointer, and none of them for someone who asked for less */
+@media (prefers-reduced-motion: no-preference) {
+	/* the icon moves as one: hovered, the arrow gives the triangle a quarter turn of a push */
+	.runicon .turn, .tools svg { transition: transform .3s cubic-bezier(.3, 1.6, .6, 1); }
+	#runrgo:not(:disabled):hover .turn, .cm-cell-run:hover .turn { transform: rotate(.25turn); }
+	#runrgo.same .badge { animation: pop .35s cubic-bezier(.3, 1.6, .6, 1); }
+	/* while R runs, the arrow keeps turning, or the triangle breathes for a run that starts afresh */
+	#runrgo:disabled .turn, body:has(#runr.busy) .cm-cell-run .turn { animation: turn 1s linear infinite; }
+	#runrgo:disabled:not(.same) .play { animation: breathe 1.2s ease-in-out infinite; }
+	/* a reset turns its arrow once around: on the way in, where nothing else competes for the frames, and again
+	   on a click or tap; an animation rather than a transition, so leaving does not turn it back */
+	.spins:hover svg, .spins.spinning svg { animation: unwind .8s ease-in-out; }
+	.tools #share:hover svg { transform: rotate(-20deg); }
+	.split[data-fold] > .divider::before { animation: nudge 1.6s ease-in-out 2; display: inline-block; }
 }
+@keyframes pop { from { transform: scale(0); } }
+@keyframes turn { to { transform: rotate(1turn); } }
+@keyframes unwind { to { transform: rotate(-1turn); } }
+@keyframes breathe { 50% { opacity: .45; } }
+@keyframes nudge { 50% { transform: translateX(var(--nudge, .12rem)); } }
+.split[data-fold="panel"] > .divider { --nudge: -.12rem; }
 
 @media (max-width: 52rem) {
 	body { height: auto; }
+	/* a phone has no room to scroll code sideways: long lines wrap, which the editor notices from the style alone */
+	#editor .cm-content { white-space: break-spaces; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 1; }
 	.split { grid-template-columns: minmax(0, 1fr); }
 	.divider { display: none; }
 	.pane { border-right: 0; border-bottom: 1px solid var(--border); }
@@ -603,17 +598,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 </head>
 <body>
 
-<div class="top">
-	<span class="ident">
-		<a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a>
-		<span class="where">Playground</span>
-		<!--VERSION-LINK-->
-		<span class="preview">feature preview</span>
-	</span>
-	<span class="grow"></span>
-	<span class="note">Fully local, selected features, use the
-		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> for more.</span>
-	<nav class="links">
+<div class="bar">
+	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Playground</span><!--VERSION-LINK--></h2>
+	<span class="note">A feature preview, fully local: use the
+		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> for all of flowR.</span>
+	<nav>
 		<!--NAV:playground-->
 	</nav>
 	<span class="controls">
@@ -629,13 +618,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 				<button type="button" class="tab add" id="addfile" aria-haspopup="menu" aria-expanded="false" title="a new file, or files and folders from your computer; you can also drop them on the code">+</button>
 				<button type="button" class="tab" id="configtab" role="tab" aria-selected="false">Configuration</button>
 			</div>
+			<span class="actions">
 			<span class="tools">
 				<span class="sharenote" id="sharenote"></span>
 				<button type="button" id="clearmarks" hidden title="alt-click highlights what a link points at; this clears every highlight">Clear highlights</button>
-				<button type="button" data-sample="survey" title="the example script, configuration, and view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg><span class="label">Reset example</span></button>
+				<button type="button" data-sample="survey" class="spins" title="the example script, configuration, and view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg><span class="label">Reset example</span></button>
 				<button type="button" id="share" title="The address bar already holds this script; this copies it (ctrl+s)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8"/></svg><span class="label">Copy link</span></button>
 			</span>
-			<span class="runsplit"><button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0.5v9l8-4.5z"/><g class="badge"><circle cx="8" cy="8" r="2.6"/><path d="M8 6.6a1.4 1.4 0 1 1-1.4 1.4"/><path class="tip" d="M5.8 8.3h1.6l-.8-1.1z"/></g></svg>Run</button><button type="button" class="runbtn" id="runmode" aria-haspopup="menu" aria-expanded="false" aria-label="what a run does with the R session"></button></span>
+			<span class="runsplit"><button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg class="runicon" viewBox="0 0 10 10" aria-hidden="true"><path class="play" d="M1 0.5v9l8-4.5z"/><g class="badge"><circle cx="8" cy="8" r="3.8"/><g class="turn"><path d="M10.2 8a2.2 2.2 0 1 1-.79-1.69"/><path class="tip" d="M10.18 6.96 8.9 6.93l1.03-1.23z"/></g></g></svg>Run</button><button type="button" class="runbtn" id="runmode" aria-haspopup="menu" aria-expanded="false" aria-label="what a run does with the R session"></button></span>
+			</span>
 		</div>
 		<div class="menu" id="menu" role="menu" hidden></div>
 		<div id="editor"></div>
@@ -649,14 +640,14 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	<div class="body">
 		<div class="grip" id="replgrip" role="separator" aria-label="Drag to resize the repl" title="drag to resize"></div>
 		<pre class="out" id="replout"></pre>
-		<div class="ask"><span>R&gt;</span><input id="replin" type="text" spellcheck="false" autocomplete="off" aria-label="a flowR command (:help lists them) or R code"></div>
+		<div class="ask"><span>R&gt;</span><input id="replin" type="text" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="replhints" aria-autocomplete="list" aria-label="a flowR command (:help lists them) or R code"><ul id="replhints" role="listbox" aria-label="completions" hidden></ul></div>
 	</div>
 </details>
 	</div>
 	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
 		<section id="runr" hidden aria-live="polite" data-webr-start-bytes="<!--WEBR-START-BYTES-->">
-			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" hidden></progress><span id="runrbytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
+			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" hidden></progress><span id="runrbytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclear" class="spins" hidden title="forget what earlier runs, cells, and the repl left in R: variables, attached packages, and options"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg>clear</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
 			<div class="out" id="runrout"></div>
 			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>

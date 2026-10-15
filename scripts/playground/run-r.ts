@@ -309,6 +309,20 @@ function endSession(): void {
 	session = undefined;
 }
 
+/** forgets what earlier runs, cells, and the repl left in the session, without the wait of starting R again */
+async function clearSession(): Promise<void> {
+	const s = await session?.catch(() => undefined);
+	if(s === undefined) {
+		return;
+	}
+	const shelter = await new s.r.Shelter();
+	try {
+		await shelter.captureR(startOver(s), { captureGraphics: false });
+	} finally {
+		await shelter.purge();
+	}
+}
+
 let repl = 0;
 
 /**
@@ -343,10 +357,11 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 	const go = document.getElementById('runrgo') as HTMLButtonElement | null;
 	const stop = document.getElementById('runrstop') as HTMLButtonElement | null;
 	const close = document.getElementById('runrclose') as HTMLButtonElement | null;
+	const clear = document.getElementById('runrclear') as HTMLButtonElement | null;
 	const card = document.getElementById('runr');
 	const state = document.getElementById('runrstate');
 	const out = document.getElementById('runrout');
-	if(go === null || stop === null || close === null || card === null || state === null || out === null) {
+	if(go === null || stop === null || close === null || clear === null || card === null || state === null || out === null) {
 		return () => undefined;
 	}
 	let running = 0;
@@ -365,6 +380,8 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		go.disabled = false;
 		card.classList.remove('busy');
 		stop.hidden = true;
+		/* a session to clear is there after every run but a stopped one, which ended it */
+		clear.hidden = session === undefined;
 	};
 
 	stop.addEventListener('click', () => {
@@ -378,6 +395,17 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		card.hidden = true;
 	});
 
+	clear.addEventListener('click', () => {
+		const run = ++running;
+		void clearSession().then(() => {
+			if(run === running) {
+				out.replaceChildren();
+				line('the R session is clear: no variables, attached packages, or options from earlier runs', 'note');
+				state.textContent = '';
+			}
+		}, (e: unknown) => line(e instanceof Error ? e.message : String(e), 'bad'));
+	});
+
 	const title = document.getElementById('runrtitle');
 	const runScript = async(what: () => Promise<RunInput>, named: string): Promise<void> => {
 		const run = ++running;
@@ -386,6 +414,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		}
 		go.disabled = true;
 		stop.hidden = false;
+		clear.hidden = true;
 		card.hidden = false;
 		card.classList.add('busy');
 		out.replaceChildren();

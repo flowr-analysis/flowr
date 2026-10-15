@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-14, 08:44:35 UTC (v2.15.10), do not edit directly._
 <h2 id="Inspect Argument Roles Query">Inspect Argument Roles Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine what functions and their formals do\
@@ -38,7 +38,7 @@ Using the example code `f <- function(x, xs, FUN, opt) { if(missing(opt)) print(
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (22ms)\
+Query: **inspect-fn-props** (32ms)\
 &nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -72,7 +72,7 @@ flowchart LR
     %% Environment of 32 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
-    %%   #rng: {**#rng** (id: 27, type: Variable, cds: {}, def. @27)}
+    %%   #rng: {**#rng** (id: 27, type: Variable, def. @27)}
     32["`*#91;RFunctionDefinition#93;* **function**
       *1.6-89* (**id: 32**)`"]
 
@@ -251,7 +251,7 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (13ms)\
+Query: **inspect-fn-props** (14ms)\
 &nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -285,7 +285,7 @@ flowchart LR
     %% Environment of 32 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
-    %%   #rng: {**#rng** (id: 27, type: Variable, cds: {}, def. @27)}
+    %%   #rng: {**#rng** (id: 27, type: Variable, def. @27)}
     32["`*#91;RFunctionDefinition#93;* **function**
       *1.6-89* (**id: 32**)`"]
 

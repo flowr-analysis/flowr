@@ -20,6 +20,8 @@ import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex } from '../../../../graph/vertex';
 import { Resolve } from '../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../util/assert';
+import { CallProp, CallProps, SemanticCallTag } from '../../../../environments/built-in-props';
+import { queryFnProps } from '../../../../environments/query-fn-props';
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
 	if(info === undefined) {
@@ -77,9 +79,17 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvi
 	}
 }
 
+const HandedFunction = ReferenceType.Function | ReferenceType.Parameter | ReferenceType.Argument;
+
+/** Whether `arg` hands over a function that may draw: a symbol bound to data (`d <- read.csv(f)`, `NA`) does not, nor does a built-in stating it does not (`mean`) */
 function handsOverFunction<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const value = arg === EmptyArgument ? undefined : arg.value;
-	return RFunctionDefinition.is(value) || (RSymbol.is(value) && (Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
+	if(!RSymbol.is(value)) {
+		return RFunctionDefinition.is(value);
+	}
+	const defs = Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function) ?? [];
+	return defs.some(d => isReferenceType(d.type, HandedFunction)) || (defs.some(d => d.type === ReferenceType.BuiltInFunction)
+		&& CallProps.hasAny(queryFnProps(value.content, { environment: data.environment }), [CallProp.Configures, SemanticCallTag.Random]));
 }
 
 /** Whether a replacement function rewrote the value of `definition`, like `body(f) <- quote(runif(1))`, so its body is unknown. */

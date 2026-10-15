@@ -63,7 +63,11 @@ export function describeCompletion(insert: string, describe: string): string {
 	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
 }
 
-function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?, (readonly string[])?] {
+/**
+ * Every completion for `line`, the fragment of it they replace, the labels saying what each does, and the
+ * display-only hints; {@link replCompleter} and {@link completionSuggestion} are the two views the terminal needs.
+ */
+export function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?, (readonly string[])?] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');

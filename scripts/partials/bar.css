@@ -18,15 +18,13 @@
 }
 .bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
 .bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
-/* narrow viewport: wrap nav under the title instead of scrolling it off-screen */
-@media (max-width: 46rem) {
-	.bar { flex-wrap: wrap; }
-	/* negative margin aligns pill text with the brand, offsetting pill padding */
-	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
-	.bar .controls { margin-left: auto; }
-}
-/* below 21rem a 2x2 grid reads better than three names and a stray */
-@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
+/* set by the chrome script once title, nav, and controls no longer fit one row: the nav wraps under the
+   title instead of scrolling off-screen, and the controls stay beside the title */
+.bar.stacked { flex-wrap: wrap; column-gap: .5rem; }
+/* negative margin aligns pill text with the brand, offsetting pill padding */
+.bar.stacked nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
+.bar.stacked .controls { margin-left: auto; }
+.bar.tight .version { display: none; }
 /* GitHub brand guidelines: mark stays solid black/white, only the backdrop hovers */
 .bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
 .bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
@@ -42,6 +40,11 @@
 	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
 #theme:hover { border-color: var(--accent); color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+	.bar .brand .mark, #theme svg { transition: transform .5s cubic-bezier(.3, 1.6, .6, 1); }
+	.bar .brand:hover .mark { transform: rotate(30deg) scale(1.06); }
+	#theme:hover svg { transform: rotate(-25deg); }
+}
 #theme svg { display: block; width: auto; height: auto; }
 #theme .sun { display: none; }
 :root[data-theme="dark"] #theme .sun { display: block; }

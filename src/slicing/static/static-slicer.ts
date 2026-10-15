@@ -21,6 +21,7 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { GasOverrides } from '../../gas';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -102,9 +103,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
 		minNesting = Math.min(minNesting, idMap.get(startId)?.info.nest ?? minNesting);
 		sliceSeedIds.add(startId);
-		if(trackCallees) {
-			openBodiesAround(startId);
-		}
+		openBodiesAround(startId);
 	}
 	/* include all the implicit side effects that we have to consider as we are unable to narrow them down */
 	for(const id of graph.unknownSideEffects) {
@@ -138,7 +137,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		const strictlyEnclosing = RNode.strictlyEnclosingFunction(id, idMap);
 		if(!enclosingHandled.has(strictlyEnclosing)) {
 			enclosingHandled.add(strictlyEnclosing);
-			definitionWithHolders(strictlyEnclosing, idMap, graph).forEach(outer => enqueue(outer, emptyEnv, basePrint));
+			definitionWithHolders(strictlyEnclosing, idMap, graph, trackCallees ? undefined : openedBodies).forEach(outer => enqueue(outer, emptyEnv, basePrint));
 		}
 		// includeCallees: note the enclosing function definition (if any) so its callees can be considered once the body slice is complete
 		if(trackCallees) {
@@ -147,9 +146,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 				pendingCalleeBoundaries.set(enclosingFnDef, [baseEnvironment, baseEnvFingerprint]);
 			}
 		}
-		/* control dependencies count only in a different call or at least at the nesting of the seeds */
+		/* control dependencies count only in a different call or at least at the nesting of the seeds; a read or a constant
+		   is the same value whether or not its promise is forced, only what runs within one depends on its call */
 		const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
-		for(const cd of currentVertex.cds?.filter(({ id }) => !queue.hasId(id)) ?? []) {
+		const plain = DfgVertex.isUse(currentVertex) || DfgVertex.isValue(currentVertex);
+		for(const cd of currentVertex.cds?.filter(cd => !(plain && cd.byPromise) && !queue.hasId(cd.id)) ?? []) {
 			if(!topLevel || (idMap.get(cd.id)?.info.nest ?? 0) >= minNesting) {
 				queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
 			}
@@ -232,15 +233,19 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 	return found;
 }
 
-/** The function `definition` and what holds it, up to its statement, as a body only runs as part of its definition. */
-function definitionWithHolders(definition: NodeId | undefined, idMap: AstIdMap, graph: DataflowGraph): NodeId[] {
+/**
+ * The function `definition` and what holds it, up to its statement, as a body only runs as part of its definition.
+ * The `opened` bodies the slice starts in stop at an argument holding them or handed to a call of them: that call is a caller.
+ */
+function definitionWithHolders(definition: NodeId | undefined, idMap: AstIdMap, graph: DataflowGraph, opened?: ReadonlySet<NodeId>): NodeId[] {
 	const definitionNode = definition === undefined ? undefined : idMap.get(definition);
 	if(definitionNode === undefined) {
 		return [];
 	}
 	const outer = [definitionNode.info.id];
 	for(const node of RNode.iterateParents(definitionNode, idMap)) {
-		if(RFunctionDefinition.is(node) || (RExpressionList.is(node) && node.grouping?.[0].lexeme !== '(')) {
+		if(RFunctionDefinition.is(node) || (RExpressionList.is(node) && node.grouping?.[0].lexeme !== '(')
+			|| (opened !== undefined && RArgument.is(node) && (opened.has(definitionNode.info.id) || edgeTargets(graph, node.info.parent ?? '', EdgeType.Calls).some(fn => opened.has(fn))))) {
 			break;
 		}
 		if(graph.hasVertex(node.info.id)) {

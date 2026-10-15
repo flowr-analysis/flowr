@@ -12,6 +12,7 @@ import { firstOnSomePath, reachableFrom, reachableTo, someAlwaysBefore } from '.
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { linkCallToDefinitions } from '../../../linker';
 import { edgeSources } from '../../../../fn/frame-reflection';
+import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
@@ -42,7 +43,10 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 	const names: (readonly [NodeId, string, boolean])[] = [];
 	const callees = new Set<NodeId>();
 	RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
-		if(RFunctionCall.isNamed(inner)) {
+		/* a definition only creates its closure, the body runs when it is called and that call carries its effects */
+		if(RFunctionDefinition.is(inner)) {
+			return true;
+		} else if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
 			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {

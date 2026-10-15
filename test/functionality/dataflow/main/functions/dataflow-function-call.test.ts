@@ -285,21 +285,20 @@ a()()`, emptyGraph()
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
 				reads:       [NodeId.toBuiltIn('{')],
-				environment: defaultEnv().pushEnv(),
-				cds:         [{ id: '7', when: true, byPromise: true }]
+				environment: defaultEnv().pushEnv()
 			}, false)
 			.calls('4', NodeId.toBuiltIn('{'))
 			.call('7', 'f', [argumentInCall('5')], { returns: [], reads: [] })
 			.reads('7', '3')
-			.constant('3', { cds: [{ id: '7', when: true, byPromise: true }] }, false)
-			.defineFunction('5', [{ nodeId: '3', type: ExitPointType.Default, cds: [{ id: '7', when: true, byPromise: true }] }], {
+			.constant('3', undefined, false)
+			.defineFunction('5', [{ nodeId: '3', type: ExitPointType.Default }], {
 				out:               [],
-				in:                [{ nodeId: '3', name: undefined, cds: [{ id: '7', when: true, byPromise: true }], type: ReferenceType.Argument }, { nodeId: 4, name: '{', cds: [{ id: '7', when: true, byPromise: true }], type: ReferenceType.Function }],
+				in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }, { nodeId: 4, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '4',
 				graph:             new Set(['3', '4']),
 				environment:       defaultEnv().pushEnv()
-			}, { cds: [{ id: '7', when: true, byPromise: true }] })
+			}, {})
 		);
 	});
 

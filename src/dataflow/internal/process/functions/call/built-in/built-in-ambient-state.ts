@@ -87,13 +87,13 @@ const Accumulating: ReadonlySet<string> = new Set([
 	AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers
 ]);
 
-/** A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` keeps what was there. */
+/** A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` may not happen. */
 interface AmbientWrite {
 	readonly name: string
 	readonly mode: 'local' | 'reset' | 'maybe'
 }
 
-/** a write that keeps what was there, as the call may not happen to write */
+/** a write that may not happen: it reads what was there, so it can still replace the state and keep everything before reachable */
 function maybe(name: string): AmbientWrite {
 	return { name, mode: 'maybe' };
 }
@@ -129,7 +129,8 @@ function withAccess<OtherInfo>(
 		return res;
 	}
 	const cds = data.cds ? [...data.cds] : undefined;
-	const readRefs: IdentifierReference[] = reads.map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
+	const maybeWritten = writes.flatMap(w => typeof w === 'object' && w.mode === 'maybe' ? [w.name] : []);
+	const readRefs: IdentifierReference[] = [...new Set([...reads, ...maybeWritten])].map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
 	/* the writes stay out of `out`: an assignment reads whatever else its source writes (`x <- y <- 3`) */
 	return {
 		...res,
@@ -143,23 +144,16 @@ function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds
 	for(const write of writes) {
 		const { name, mode } = typeof write === 'string' ? { name: write, mode: undefined } : write;
 		const accumulates = Accumulating.has(name) || name.startsWith(AmbientStateName.file(''));
-		const keep = mode === 'maybe' || (accumulates && mode === undefined);
+		const keep = accumulates && (mode === undefined || mode === 'maybe');
 		/* an accumulating state only ever grows, its definitions are maybe so merging environments keeps them all; a reset is definite */
 		const isMaybe = keep || (accumulates && mode !== 'reset');
-		const def: InGraphIdentifierDefinition & { name: string, maybeWrite?: true } = {
+		const def: InGraphIdentifierDefinition & { name: string } = {
 			nodeId:    rootId,
 			name,
 			type:      ReferenceType.Variable,
 			definedAt: rootId,
 			cds:       isMaybe ? cds ?? [] : cds
 		};
-		if(mode === 'maybe') {
-			/* a call that may write reads what was there, so the maybe-writes before it stay reachable through it alone */
-			def.maybeWrite = true;
-			const kept = (Resolve.byName(name, environment) ?? []).filter(d => !(d as { maybeWrite?: true }).maybeWrite);
-			environment = setAmbient(environment, name, [...kept, def]);
-			continue;
-		}
 		/* the state is global, wherever the call happens, unless the call scopes it to the current frame */
 		environment = define(def, mode !== 'local', environment, keep);
 	}

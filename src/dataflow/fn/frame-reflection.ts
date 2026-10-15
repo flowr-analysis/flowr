@@ -17,7 +17,13 @@ export type BuiltInLookup = (name: Identifier) => BuiltInFnInfo | undefined;
 
 /** The nodes at the far end of `node`'s outgoing edges of any of `types`, shared by every walk here and in the sibling analyses that follow specific edge kinds. */
 export function edgeTargets(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
-	return [...graph.edgesFrom(node)].filter(([, edge]) => DfEdge.includesType(edge, types)).map(([target]) => target);
+	const found: NodeId[] = [];
+	for(const [target, edge] of graph.edgesFrom(node)) {
+		if(DfEdge.includesType(edge, types)) {
+			found.push(target);
+		}
+	}
+	return found;
 }
 
 /** The function-definition vertices a `call` resolves to (via {@link EdgeType.Calls}). */
@@ -27,7 +33,13 @@ export function calledDefinitions(this: void, graph: DataflowGraph, call: NodeId
 
 /** The nodes at the near end of `node`'s incoming edges of any of `types`, see {@link edgeTargets}. */
 export function edgeSources(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
-	return [...graph.edgesTo(node)].filter(([, edge]) => DfEdge.includesType(edge, types)).map(([source]) => source);
+	const found: NodeId[] = [];
+	for(const [source, edge] of graph.edgesTo(node)) {
+		if(DfEdge.includesType(edge, types)) {
+			found.push(source);
+		}
+	}
+	return found;
 }
 
 /** Every variable definition by its unquoted name, in a single pass. */

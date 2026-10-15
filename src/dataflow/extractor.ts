@@ -172,17 +172,27 @@ function openReadsOfCalledFunctions(graph: DataflowGraph): IdentifierReference[]
 
 /** An active binding (`makeActiveBinding`) runs its function on every assignment to and read of the name, so each becomes a call of it. */
 function callActiveBindings(graph: DataflowGraph): void {
+	/* the definitions that call something are the bindings, and most scripts have none, so nothing else is walked then */
+	const active = new Set<NodeId>();
 	const bindings = new Map<NodeId, NodeId[]>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
-		const fns = calledDefinitions(graph, id);
-		if(fns.length > 0) {
-			bindings.set(id, fns);
+		const called = edgeTargets(graph, id, EdgeType.Calls);
+		if(called.length > 0) {
+			active.add(id);
+			const fns = called.filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+			if(fns.length > 0) {
+				bindings.set(id, fns);
+			}
 		}
+	}
+	if(active.size === 0) {
+		return;
 	}
 	for(const [, ids] of bindings.size === 0 ? [] : definitionsByName(graph).entries()) {
 		const fns = ids.flatMap(id => bindings.get(id) ?? []);
 		for(const id of fns.length === 0 ? [] : ids.filter(id => !bindings.has(id))) {
 			for(const assignment of edgeSources(graph, id, EdgeType.Returns).filter(a => DfgVertex.isFunctionCall(graph.getVertex(a)))) {
+				active.add(id);
 				for(const fn of fns) {
 					graph.addEdge(assignment, fn, EdgeType.Calls);
 					graph.addEdge(id, fn, EdgeType.Calls);
@@ -190,10 +200,9 @@ function callActiveBindings(graph: DataflowGraph): void {
 			}
 		}
 	}
-	const isActiveBinding = (def: NodeId) => DfgVertex.isVariableDefinition(graph.getVertex(def)) && edgeTargets(graph, def, EdgeType.Calls).length > 0;
 	for(const id of graph.vertexIdsOfType(VertexType.Use)) {
 		const node = graph.idMap?.get(id);
-		if(RSymbol.is(node) && edgeTargets(graph, id, EdgeType.Reads).some(isActiveBinding)) {
+		if(RSymbol.is(node) && edgeTargets(graph, id, EdgeType.Reads).some(def => active.has(def))) {
 			graph.updateToFunctionCall({ tag: VertexType.FunctionCall, id, name: node.content, args: [], environment: undefined, onlyBuiltin: false, cds: graph.getVertex(id)?.cds, origin: [BuiltInProcName.Function] });
 		}
 	}

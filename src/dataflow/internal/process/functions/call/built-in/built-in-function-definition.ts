@@ -65,7 +65,7 @@ export function processFunctionDefinition<OtherInfo>(
 	const originalEnvironment = data.environment;
 	const idMap = data.completeAst.idMap;
 	// within a function def we do not pass on the outer binds as they could be overwritten when called
-	data = prepareFunctionEnvironment(data, rootId);
+	data = prepareFunctionEnvironment(ControlFlow.outsidePromises(data), rootId);
 
 	const subgraph = new DataflowGraph(idMap);
 

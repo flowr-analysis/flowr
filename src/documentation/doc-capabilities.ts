@@ -342,7 +342,10 @@ function obtainDetailedInfos(): DefaultMap<string, TestLabel[]> | undefined {
 		foundAny = true;
 		const base = JSON.parse(fs.readFileSync(file).toString()) as [string, SerializedTestLabel[]][];
 		for(const [key, values] of base) {
-			out.get(key).push(...values.map(v => ({ ...v, capabilities: new Set(v.capabilities), context: new Set(v.context) } satisfies TestLabel)));
+			const target = out.get(key);
+			for(const v of values) {
+				target.push({ ...v, capabilities: new Set(v.capabilities), context: new Set(v.context) } satisfies TestLabel);
+			}
 		}
 	}
 	return foundAny ? out : undefined;

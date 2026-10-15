@@ -16,6 +16,12 @@ export function getScriptsText() {
 export const flowrMainOptionDefinitions = [
 	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false },
 	{
+		name:        'trust-config',
+		type:        Boolean,
+		description: 'Keep the security-sensitive options (e.g., the R executable) of the flowr.json found in the working directory or a parent. Only use this for projects you trust.',
+		multiple:    false
+	},
+	{
 		name:        'config-json',
 		type:        String,
 		description: 'The flowR configuration to use, as a JSON string',

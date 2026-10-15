@@ -226,6 +226,9 @@ function explainConfigFile(ctx: GeneralDocContext): string {
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file.
 By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory).
 You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
+A \`${defaultConfigFile}\` found this way belongs to the analyzed project, so flowR ignores its options that decide what flowR executes or loads
+(${FlowrConfig.securitySensitivePaths().filter(p => p[0] !== 'specializeConfig').map(p => `\`${p.join('.')}\``).join(', ')}),
+unless you pass ${getCliLongOptionOf('flowr', 'trust-config')}.
 To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` ${ctx.linkPage('wiki/Query API', 'Query')}.
 Within the REPL this works by running the following:
 

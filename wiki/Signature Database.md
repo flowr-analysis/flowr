@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-10-15, 09:34:54 UTC (v2.16.0, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-10-15, 15:12:48 UTC (v2.16.0, R v4.5.0), do not edit directly._
 
 # Signature Database
 
@@ -123,7 +123,7 @@ function usePackageDatabase(parser: KnownParser) {
 File sources load lazily on the first package load, so a script with no `library()` or `use()` calls
 never pays to parse them. Set <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Parse the database up front rather than on the first package load (default false, ignored if disabled).">solver.sigdb.eagerlyLoad</a> to mount the database up front instead, or
 <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Resolve library()/use() exports from a signature database (default true); when false no database is consulted.">solver.sigdb.enabled</a> to `false` to switch it off entirely. For a compressed (`.br`) or manifest source,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L343"><code><span title="Open every source, including compressed bundles (.br/.gz) and manifests (*.manifest.json). Call once at the analyzer boundary so resolution can fall through to them.">preload</span></code></a> it before analysis to mount it.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L344"><code><span title="Open every source, including compressed bundles (.br/.gz) and manifests (*.manifest.json). Call once at the analyzer boundary so resolution can fall through to them.">preload</span></code></a> it before analysis to mount it.
 
 The base-R packages (`base`, `stats`, `graphics`, ...) resolve against an assumed R version, which
 defaults to `4.5.3` (<a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (string): R version assumed when resolving versioned (base-R) exports: a pin like &quot;4.5&quot; or &quot;auto&quot; to detect the installed R (default &quot;auto&quot;).">solver.sigdb.assumedRVersion</a>, or `"auto"` to detect the local R).
@@ -152,11 +152,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 430 µs |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 2.3 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 10 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 180 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 330 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 340 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 2.2 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 8.1 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 160 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 310 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from

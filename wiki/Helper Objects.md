@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-10-15, 14:58:45 UTC (v2.16.0, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-10-15, 15:12:48 UTC (v2.16.0, R v4.5.0), do not edit directly._
 
 This page lists every important helper object of flowR.
 
@@ -48,7 +48,7 @@ This page lists every important helper object of flowR.
 | :-- | :-- |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L32"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> | What a NodeId is: the identity of a node within one analysis, plus the built-in and `pkg::fn` names encoded as one, and the ways to read a name back out of it. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/text/playground-link.ts#L138"><code><span title="Everything about flowR's playground that is not the page itself: what a link to it carries, and how one is written. The page reads back exactly what Playground.link writes.">Playground</span></code></a> | Everything about flowR's playground that is not the page itself: what a link to it carries, and how one is written. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/files.ts#L171"><code><span title="Paths as R spells them on every OS: forward slashes throughout, which R accepts on Windows as well and which survive interpolation into an R string literal, where a raw \\ would escape.">RPath</span></code></a> | Paths as R spells them on every OS, with forward slashes throughout. |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/files.ts#L183"><code><span title="Paths as R spells them on every OS: forward slashes throughout, which R accepts on Windows as well and which survive interpolation into an R string literal, where a raw \\ would escape.">RPath</span></code></a> | Paths as R spells them on every OS, with forward slashes throughout. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/criterion/parse.ts#L26"><code><span title="The helper object for slicing criteria: parsing, validating and resolving them, one ( SlicingCriterion.parse ) or several ( SlicingCriterion.decodeAll ) at a time.">SlicingCriterion</span></code></a> | The helper object for slicing criteria: parsing, validating and resolving them, one (SlicingCriterion.parse) or several (SlicingCriterion.decodeAll) at a time. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L312"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a> | Utility functions for source locations. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L64"><code><span title="Utility functions for source ranges .">SourceRange</span></code></a> | Utility functions for source ranges. |
@@ -86,7 +86,7 @@ This page lists every important helper object of flowR.
 | helper | what it is |
 | :-- | :-- |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L16"><code><span title="Access to the DESCRIPTION file of the analyzed project.">DescriptionFile</span></code></a> | Access to the `DESCRIPTION` file of the analyzed project. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L556"><code><span title="flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included).">FlowrConfig</span></code></a> | flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included). |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L562"><code><span title="flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included).">FlowrConfig</span></code></a> | flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included). |
 
 <h2 id="Output">Output</h2>
 
@@ -95,7 +95,7 @@ This page lists every important helper object of flowR.
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/dfg.ts#L363"><code><span title="The helper object for all things regarding the mermaid based visualization of dataflow graphs!">DataflowMermaid</span></code></a> | The helper object for all things regarding the mermaid based visualization of dataflow graphs! |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/mermaid.ts#L12"><code><span title="Global mermaid helper object with useful functions.">Mermaid</span></code></a> | Global mermaid helper object with useful functions. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/record.ts#L5"><code><span title="Helper for transforming records.">Record</span></code></a> | Helper for transforming records. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/cli/repl/commands/repl-clipboard.ts#L7"><code><span title="Output that the user most likely wants on their clipboard as well.">ReplClipboard</span></code></a> | Output that the user most likely wants on their clipboard as well. |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/cli/repl/commands/repl-clipboard.ts#L8"><code><span title="Output that the user most likely wants on their clipboard as well.">ReplClipboard</span></code></a> | Output that the user most likely wants on their clipboard as well. |
 
 <h2 id="Adding_32_a_32_helper_32_object">Adding a helper object</h2>
 

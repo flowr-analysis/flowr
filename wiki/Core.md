@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-14, 08:44:35 UTC (v2.15.10, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-15, 15:12:48 UTC (v2.16.0, R v4.5.0), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -17,7 +17,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-> flowR repl v2.15.10, R v4.6.1 (r-shell engine)
+> flowR repl v2.16.0, R v4.5.0 (r-shell engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -44,7 +44,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > ```
 > 
 > 
-> Retrieves the AST from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a>.
+> Retrieves the AST from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a>.
 > 
 > </details>
 > 
@@ -247,7 +247,7 @@ Let's have a look at the definition of the pipeline:
    
 We can see that it relies on three steps:
 
-1. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/00-parse.ts#L8">PARSE_WITH_R_SHELL_STEP</a>** ([parsing](#parsing)): Uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> to parse the input program.\
+1. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/00-parse.ts#L8">PARSE_WITH_R_SHELL_STEP</a>** ([parsing](#parsing)): Uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> to parse the input program.\
    _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/parser.ts#L97"><span title="Takes an input program and parses it using the given parser.">parseRequests</span></a> function._
 2. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/10-normalize.ts#L35">NORMALIZE</a>** ([normalization](#normalization)):  Normalizes the AST produced by the parser (to create a [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)).\
    _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L76"><span title="the normalized AST produced by the 'normalization' step, including its parent decoration">normalize</span></a> function._
@@ -258,7 +258,7 @@ To explore these steps, let's use the REPL with the (simple, contrived) R code: 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.10, R v4.6.1 (r-shell engine)
+flowR repl v2.16.0, R v4.5.0 (r-shell engine)
 R> :parse "x <- 1; print(x)"
 ```
 
@@ -283,7 +283,7 @@ exprlist
   ╰ ) ")" (1:16)
 ```
 
-This shows the ASCII-Art representation of the parse-tree of the R code `x <- 1; print(x)`, as it is provided by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a>. See the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/init.ts#L11"><code><span title="Command(s) to be issued at the start of each shell.">initCommand</span></code></a> function for more information on how we request a parse.
+This shows the ASCII-Art representation of the parse-tree of the R code `x <- 1; print(x)`, as it is provided by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a>. See the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/init.ts#L11"><code><span title="Command(s) to be issued at the start of each shell.">initCommand</span></code></a> function for more information on how we request a parse.
 
 </details>
 
@@ -409,7 +409,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr --default-engine tree-sitter # or npm run flowr -- --default-engine tree-sitter
-> flowR repl v2.15.10, R grammar v14 (tree-sitter engine)
+> flowR repl v2.16.0, R grammar v14 (tree-sitter engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -562,7 +562,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 
 ### Parsing
 
-The parsing step uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> to parse the input program (or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor.ts#L29"><code><span title="Synchronous and (way) faster alternative to the RShell using tree-sitter.">TreeSitterExecutor</span></code></a> when using the [`tree-sitter` engine](https://github.com/flowr-analysis/flowr/wiki/Engines)).
+The parsing step uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> to parse the input program (or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor.ts#L29"><code><span title="Synchronous and (way) faster alternative to the RShell using tree-sitter.">TreeSitterExecutor</span></code></a> when using the [`tree-sitter` engine](https://github.com/flowr-analysis/flowr/wiki/Engines)).
 To speed up the process, we use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/init.ts#L11"><code><span title="Command(s) to be issued at the start of each shell.">initCommand</span></code></a> function to compile the parsing function and rely on a 
 custom serialization, which outputs the information in a CSV-like format.
 The <span title="Description (Repl Command): Prints ASCII Art of the parsed, unmodified AST (aliases: :p)">`:parse`</span> command pretty-prints the serialized version, which looks more like the following (this uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/retriever.ts#L95"><code>retrieveParseDataFromRCode</code></a> function with the sample code `x <- 1; print(x)`):
@@ -839,7 +839,7 @@ while <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/la
 #### Normalizing the Object
 
 We have a handler for everything. For example <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/main/internal/control/normalize-if-then.ts#L14"><code><span title="Try to parse the construct as a RIfThenElse .">tryNormalizeIfThen</span></code></a> or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/main/internal/loops/normalize-for.ts#L26"><code><span title="Normalizes a for(<variable> in <vector>) <body>, undefined if the entry is not one.">tryNormalizeFor</span></code></a> to handle `if(x) y` or `for(i in 1:10) x` constructs.
-All of these handlers contain many sanity checks to be sure that we talk to an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> which we can handle (as assumptions may break with newer versions).
+All of these handlers contain many sanity checks to be sure that we talk to an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> which we can handle (as assumptions may break with newer versions).
 These functions contain the keyword `try` as they may fail. For example, whenever they notice late into normalization that they should actually be a different construct (R is great).
 For single nodes, we use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/main/internal/structure/normalize-single-node.ts#L24"><code><span title="Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)">normalizeSingleNode</span></code></a> which contains a catch-all for some edge-cases in the R grammar.
 
@@ -1453,7 +1453,7 @@ to produce a new dataflow information.
 
 Given the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), you can do a lot more!
 You can issue [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) to explore the graph, [search](https://github.com/flowr-analysis/flowr/wiki/Search-API) for specific elements, or, for example, request a [static backward slice](#static-backward-slicing).
-All of these work with both the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> and the [`tree-sitter` engine](https://github.com/flowr-analysis/flowr/wiki/Engines).
+All of these work with both the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> and the [`tree-sitter` engine](https://github.com/flowr-analysis/flowr/wiki/Engines).
 
 ### Static Backward Slicing
 
@@ -1469,7 +1469,7 @@ You can explore the slicing using the REPL with the <span title="Description (Re
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.10, R grammar v14 (tree-sitter engine)
+flowR repl v2.16.0, R grammar v14 (tree-sitter engine)
 R> :query @static-slice (12@product) file://test/testfiles/example.R
 ```
 

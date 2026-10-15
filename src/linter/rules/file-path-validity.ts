@@ -33,6 +33,7 @@ import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argu
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { BaseDatasets } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { SecureMode } from '../../util/secure-mode';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string
@@ -75,6 +76,7 @@ function namesPackage(node: RNode<ParentInformation>): boolean {
 }
 
 async function urlExists(url: string): Promise<boolean> {
+	SecureMode.guard('network access', url);
 	try {
 		return (await fetch(url, { method: 'HEAD' })).ok;
 	} catch{
@@ -157,7 +159,8 @@ export const FILE_PATH_VALIDITY = {
 			}
 			// handle remote URLs separately from file paths
 			if(isUrl(path)) {
-				return config.checkUrls ? verdict(await urlExists(path), path, LintingResultCertainty.Uncertain) : [];
+				// the secure mode forbids network access, so the URL stays unchecked as if checkUrls was off
+				return config.checkUrls && !SecureMode.isEnabled() ? verdict(await urlExists(path), path, LintingResultCertainty.Uncertain) : [];
 			}
 			// check if any write to the same file happens before the read, and exclude this case if so
 			const writesToFile = results.write.filter((r): r is typeof r & { nodeId: NodeId } =>

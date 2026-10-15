@@ -65,6 +65,12 @@ export const flowrMainOptionDefinitions = [
 		multiple:    false
 	},
 	{
+		name:        'secure',
+		type:        Boolean,
+		description: 'Run in secure mode for analyzing untrusted code: flowR does not start R (or any other process), does not access the network, does not search for project configs, and ignores security-sensitive options in every config. Cannot be disabled once enabled. Can also be enabled with the environment variable {italic FLOWR_SECURE_MODE=1}.',
+		multiple:    false
+	},
+	{
 		name:        'r-session-access',
 		type:        Boolean,
 		description: 'Allow to access the underlying R session when using flowR (security warning: this allows the execution of arbitrary R code!)'
@@ -97,6 +103,12 @@ export const flowrMainOptionDefinitions = [
 		description: 'Provide information about the version of flowR as well as its underlying R system and exit.'
 	},
 	{ name: 'ws', type: Boolean, description: 'If the server flag is set, use websocket for messaging' },
+	{
+		name:        'ws-allow-origin',
+		type:        String,
+		description: 'An origin (e.g., {italic https://example.org}) whose web pages may connect to the websocket server, in addition to local pages and clients that are no browser. Can be given multiple times, {italic *} allows all origins.',
+		multiple:    true
+	},
 	{
 		name:        'engine.r-shell.disabled',
 		type:        Boolean,

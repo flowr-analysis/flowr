@@ -1,4 +1,5 @@
 import type { ReplOutput } from './repl-main';
+import { SecureMode } from '../../../util/secure-mode';
 
 /**
  * Output that the user most likely wants on their clipboard as well.
@@ -9,7 +10,7 @@ export const ReplClipboard = {
 	/** Prints `text` and, if the output allows it, copies it to the clipboard and reports `note` afterwards. */
 	async print(this: void, output: ReplOutput, text: string, note: string): Promise<void> {
 		output.stdout(text);
-		if(output.allowClipboard !== false) {
+		if(output.allowClipboard !== false && !SecureMode.isEnabled()) {
 			try {
 				const clipboard = await import('clipboardy');
 				clipboard.default.writeSync(text);

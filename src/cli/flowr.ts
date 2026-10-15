@@ -40,6 +40,7 @@ import fs from 'fs';
 import path from 'path';
 import { retrieveEngineInstances } from '../engines';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { SecureMode } from '../util/secure-mode';
 
 export const toolName = 'flowr';
 
@@ -51,6 +52,7 @@ export interface FlowrCliOptions {
 	'no-fs':            boolean
 	'r-path':           string | undefined
 	'r-session-access': boolean
+	secure:             boolean
 	execute:            string | undefined
 	help:               boolean
 	port:               number
@@ -59,6 +61,7 @@ export interface FlowrCliOptions {
 	verbose:            boolean
 	version:            boolean
 	ws:                 boolean
+	'ws-allow-origin':  string[] | undefined
 	'default-engine':   string
 
 	'engine.r-shell.disabled':  boolean
@@ -97,6 +100,14 @@ const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
 log.debug(`flowR ${flowrVersion().toString()}, node ${process.version}, ${process.platform}/${process.arch}`);
 log.info('running with options', options);
+
+if(options.secure) {
+	SecureMode.enable();
+}
+if(SecureMode.isEnabled() && options['r-session-access']) {
+	console.error('The secure mode forbids --r-session-access, as it would run R code');
+	process.exit(1);
+}
 
 if(options['no-ansi'] || (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')) {
 	log.info('disabling ansi colors');
@@ -264,7 +275,7 @@ async function mainServer(useWebSocket: boolean) {
 	// so the common one-shot analysis path does not pay for evaluating it
 	const { FlowRServer } = await import('./repl/server/server');
 	const { NetServer, WebSocketServerWrapper } = await import('./repl/server/net');
-	const backend: Server = useWebSocket ? new WebSocketServerWrapper() : new NetServer();
+	const backend: Server = useWebSocket ? new WebSocketServerWrapper(options['ws-allow-origin']) : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
 

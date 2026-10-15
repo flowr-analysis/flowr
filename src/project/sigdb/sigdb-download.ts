@@ -7,6 +7,8 @@ import type { IncomingMessage } from 'http';
 import { sigDbCacheDir } from './decompress';
 import { CompressedExtPattern, compressedExtOf, readableExtsPreferred, stripCompressedExt } from './codec';
 import { flowrVersion } from '../../util/version';
+import { joinUntrustedSegment } from '../../util/files';
+import { SecureMode } from '../../util/secure-mode';
 
 /** the GitHub `owner/repo` the full-history bundle is published to (see `scripts/publish-sigdb.mjs`) */
 const DefaultRepo = 'flowr-analysis/flowr';
@@ -37,6 +39,7 @@ class HttpError extends Error {
 
 /** GET following redirects (GitHub asset URLs redirect to a storage host); resolves the final response for streaming */
 function httpGet(url: string, accept: string, redirects = 5, withAuth = true): Promise<IncomingMessage> {
+	SecureMode.guard('network access', url);
 	return new Promise((resolve, reject) => {
 		const req = (url.startsWith('http:') ? http : https).get(url, { headers: ghHeaders(accept, withAuth) }, res => {
 			const status = res.statusCode ?? 0;
@@ -157,9 +160,8 @@ function findRemotePointer(): string | undefined {
 		return fs.existsSync(override) ? override : undefined;
 	}
 	const candidates = [
-		path.join(__dirname, '../../data/sigdb', SigDbRemoteFileName),   // src/ and dist/src/ layouts (same depth)
-		path.join(process.cwd(), 'src/data/sigdb', SigDbRemoteFileName),
-		path.join(process.cwd(), 'dist/src/data/sigdb', SigDbRemoteFileName),
+		// src/ and dist/src/ layouts (same depth); never the working directory, which may be the analyzed (untrusted) project
+		path.join(__dirname, '../../data/sigdb', SigDbRemoteFileName),
 	];
 	return candidates.find(p => {
 		try {
@@ -294,10 +296,11 @@ function isCached(dest: string, file: PlannedFile): boolean {
 async function syncFiles(tag: string, repo: string, planned: readonly PlannedFile[], opts: SigDbDownloadOptions): Promise<SigDbDownloadResult> {
 	const progress = opts.onProgress ?? (() => {});
 	const start = Date.now();
-	const dir = path.join(sigDbCacheDir(), 'bundles', tag);
+	// tag and file names come from the (remote) pointer and release listing
+	const dir = joinUntrustedSegment(path.join(sigDbCacheDir(), 'bundles'), tag);
 	fs.mkdirSync(dir, { recursive: true });
 	const ordered = [...planned.filter(p => !isManifestFile(p.name)), ...planned.filter(p => isManifestFile(p.name))];
-	const missing = ordered.filter(p => opts.force || !isCached(path.join(dir, p.name), p));
+	const missing = ordered.filter(p => opts.force || !isCached(joinUntrustedSegment(dir, p.name), p));
 	const toFetch = missing.reduce((sum, p) => sum + (p.expected?.bytes ?? p.size ?? 0), 0);
 	progress(`signature database ${tag} from ${repo}: ${ordered.length} file(s), ${ordered.length - missing.length} up to date, ${missing.length} to fetch (${mb(toFetch)}) into ${dir}`);
 
@@ -306,7 +309,7 @@ async function syncFiles(tag: string, repo: string, planned: readonly PlannedFil
 	const failed: { name: string, reason: string }[] = [];
 	let bytes = 0;
 	for(const file of ordered) {
-		const dest = path.join(dir, file.name);
+		const dest = joinUntrustedSegment(dir, file.name);
 		if(!missing.includes(file)) {
 			files.push(dest);
 			continue;

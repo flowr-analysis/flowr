@@ -26,10 +26,16 @@ import { type FlowrGasConfig, GasWikiRef } from './gas';
 import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from './queries/catalog/input-sources-query/input-types';
 import { uniqueArray } from './util/collections/arrays';
+import { SecureMode } from './util/secure-mode';
 
 /** Marks an option that decides what flowR executes or loads, it is dropped from untrusted configs (see {@link FlowrConfig.fromFile}). */
 function securitySensitive<T extends Joi.Schema>(schema: T): T {
 	return schema.meta({ securitySensitive: true }) as T;
+}
+
+/** Marks an option holding regular expressions, which the {@link SecureMode} drops from every config (ReDoS). */
+function regexOption<T extends Joi.Schema>(schema: T): T {
+	return schema.meta({ regex: true }) as T;
 }
 
 export enum VariableResolve {
@@ -706,7 +712,7 @@ export const FlowrConfig = {
 			classification: Joi.object({
 				shinyDescriptionTypes: Joi.array().items(Joi.string()).optional().description('DESCRIPTION Type: values that mark a shiny app.'),
 				shinyEntryFiles:       Joi.array().items(Joi.string()).optional().description('File names a shiny app is assembled from.'),
-				shinyUsagePattern:     Joi.string().optional().description('Regex source evidencing shiny usage in an entry file.'),
+				shinyUsagePattern:     regexOption(Joi.string().optional()).description('Regex source evidencing shiny usage in an entry file.'),
 				notebookExtensions:    Joi.array().items(Joi.string()).optional().description('File extensions marking a notebook.')
 			}).optional().description('Overrides for the signals flowR uses to classify the project kind.')
 		}).description('Project specific configuration options.'),
@@ -761,7 +767,7 @@ export const FlowrConfig = {
 					useEnvironment:    Joi.boolean().optional().description('Search the libraries R_LIBS_USER/R_LIBS/R_LIBS_SITE name (default true).'),
 					useProjectLibrary: Joi.boolean().optional().description('Search a project-local renv/packrat library (default true).'),
 					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
-					packages:          Joi.array().items(Joi.string()).optional().description('Only recover packages whose name matches one of these regular expressions; empty means any.')
+					packages:          regexOption(Joi.array().items(Joi.string()).optional()).description('Only recover packages whose name matches one of these regular expressions; empty means any.')
 				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
 				blobCacheBudgetMb: Joi.number().min(0).optional().description('How many MiB of decoded package blobs every open bundle may hold together (default 16).'),
 				versionSelection:  Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
@@ -782,7 +788,7 @@ export const FlowrConfig = {
 				inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 				searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
 				repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
-				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files'),
+				applyReplacements:     regexOption(Joi.array().items(Joi.object())).description('Provide name replacements for loaded files'),
 				assumeFilesExist:      Joi.boolean().optional().description('Assume a sourced file is always there, making what it defines certain instead of conditional on the source call.')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
@@ -857,9 +863,11 @@ export const FlowrConfig = {
 	parse(this: void, jsonString: string, trusted = true): FlowrConfig | undefined {
 		try {
 			const parsed   = JSON.parse(jsonString) as FlowrConfig;
-			const dropped = trusted ? [] : FlowrConfig.dropSecuritySensitive(parsed);
+			const dropped = trusted && !SecureMode.isEnabled() ? [] : FlowrConfig.dropUntrusted(parsed);
 			if(dropped.length > 0) {
-				console.warn(`[flowR] Ignoring ${dropped.join(', ')} from the project config, pass --config-file or --trust-config to use them.`);
+				console.warn(SecureMode.isEnabled()
+					? `[flowR] Ignoring ${dropped.join(', ')}, the secure mode does not allow them in any config.`
+					: `[flowR] Ignoring ${dropped.join(', ')} from the project config, pass --config-file or --trust-config to use them.`);
 			}
 			const validate = FlowrConfig.Schema.validate(parsed);
 			if(!validate.error) {
@@ -875,15 +883,20 @@ export const FlowrConfig = {
 	},
 	/** Paths (`*` matching any key) of all {@link securitySensitive} options, also within `specializeConfig`. */
 	securitySensitivePaths(this: void): readonly (readonly string[])[] {
-		if(sensitivePaths === undefined) {
-			const base = collectSensitivePaths(FlowrConfig.Schema.describe());
-			sensitivePaths = [...base, ...base.map(p => ['specializeConfig', '*', ...p])];
-		}
-		return sensitivePaths;
+		return taggedPaths('securitySensitive');
+	},
+	/** Paths of all {@link regexOption} options, see {@link FlowrConfig.securitySensitivePaths}. */
+	regexPaths(this: void): readonly (readonly string[])[] {
+		return taggedPaths('regex');
 	},
 	/** Removes all {@link FlowrConfig.securitySensitivePaths} from the raw config (in place), returns the removed paths. */
 	dropSecuritySensitive(this: void, raw: unknown): string[] {
 		return FlowrConfig.securitySensitivePaths().flatMap(p => dropPath(raw, p, ''));
+	},
+	/** Like {@link FlowrConfig.dropSecuritySensitive}, but in {@link SecureMode} also drops the {@link FlowrConfig.regexPaths}. */
+	dropUntrusted(this: void, raw: unknown): string[] {
+		const dropped = FlowrConfig.dropSecuritySensitive(raw);
+		return SecureMode.isEnabled() ? [...dropped, ...FlowrConfig.regexPaths().flatMap(p => dropPath(raw, p, ''))] : dropped;
 	},
 	/**
 	 * Creates a new flowr config that has the updated values.
@@ -910,7 +923,9 @@ export const FlowrConfig = {
 	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd(), trustProjectConfig = false): FlowrConfig {
 		let config: FlowrConfig;
 		try {
-			config = loadConfigFromFile(configFile, configWorkingDirectory, trustProjectConfig);
+			// the secure mode never searches for a project config
+			const searched = configFile !== undefined && !path.isAbsolute(configFile);
+			config = loadConfigFromFile(searched && SecureMode.isEnabled() ? undefined : configFile, configWorkingDirectory, trustProjectConfig);
 		} catch(e) {
 			log.error(`Failed to load config: ${(e as Error).message}`);
 			config = FlowrConfig.default();
@@ -1057,7 +1072,17 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	return file;
 }
 
-let sensitivePaths: readonly (readonly string[])[] | undefined;
+const taggedPathsCache = new Map<string, readonly (readonly string[])[]>();
+
+function taggedPaths(meta: string): readonly (readonly string[])[] {
+	let paths = taggedPathsCache.get(meta);
+	if(paths === undefined) {
+		const base = collectTaggedPaths(FlowrConfig.Schema.describe(), meta);
+		paths = [...base, ...base.map(p => ['specializeConfig', '*', ...p])];
+		taggedPathsCache.set(meta, paths);
+	}
+	return paths;
+}
 
 interface JoiDescription {
 	readonly keys?:    Record<string, JoiDescription>
@@ -1066,16 +1091,16 @@ interface JoiDescription {
 	readonly metas?:   readonly Record<string, unknown>[]
 }
 
-function collectSensitivePaths(d: JoiDescription | undefined, at: readonly string[] = []): string[][] {
+function collectTaggedPaths(d: JoiDescription | undefined, meta: string, at: readonly string[] = []): string[][] {
 	if(!d) {
 		return [];
-	} else if(d.metas?.some(m => m.securitySensitive === true)) {
+	} else if(d.metas?.some(m => m[meta] === true)) {
 		return [[...at]];
 	}
 	return [
-		...Object.entries(d.keys ?? {}).flatMap(([k, v]) => collectSensitivePaths(v, [...at, k])),
-		...(d.items ?? []).flatMap(i => collectSensitivePaths(i, [...at, '*'])),
-		...(d.matches ?? []).flatMap(m => collectSensitivePaths(m.schema, at))
+		...Object.entries(d.keys ?? {}).flatMap(([k, v]) => collectTaggedPaths(v, meta, [...at, k])),
+		...(d.items ?? []).flatMap(i => collectTaggedPaths(i, meta, [...at, '*'])),
+		...(d.matches ?? []).flatMap(m => collectTaggedPaths(m.schema, meta, at))
 	];
 }
 

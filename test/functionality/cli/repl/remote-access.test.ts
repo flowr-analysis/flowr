@@ -1,4 +1,7 @@
-import { assert, describe, test } from 'vitest';
+import { assert, describe, expect, test } from 'vitest';
+import { joinUntrustedSegment } from '../../../../src/util/files';
+import path from 'path';
+import { ensurePlain } from '../../../../src/project/sigdb/decompress';
 import { getReplCommands } from '../../../../src/cli/repl/commands/repl-commands';
 import { replProcessAnswer } from '../../../../src/cli/repl/core';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
@@ -50,4 +53,16 @@ describe('Remote REPL access', () => {
 		assert.notInclude(config.solver.sigdb.additionalPaths ?? [], '/tmp/evil');
 	});
 
+	test.each(['..', '.', '', '../x', 'a/b', 'a\\b', '/etc/passwd', 'x\0y'])(label('joinUntrustedSegment refuses %j', ['name-normal'], ['other']), segment => {
+		assert.throws(() => joinUntrustedSegment('/base', segment));
+	});
+	test(label('joinUntrustedSegment joins a plain name', ['name-normal'], ['other']), () => {
+		assert.strictEqual(joinUntrustedSegment('/base', 'sigdb-v2.16.0'), path.join('/base', 'sigdb-v2.16.0'));
+	});
+	test(label('a signature database hash cannot leave the cache directory', ['name-normal'], ['other']), async() => {
+		/* the hash may come from the header of a project-supplied bundle */
+		for(const hash of ['../../evil', 'a/b']) {
+			await expect(ensurePlain('/nonexistent/db.sigs.ndjson.br', { hash, cacheDir: '/nonexistent/cache' })).rejects.toThrow('untrusted path segment');
+		}
+	});
 });

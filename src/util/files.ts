@@ -154,6 +154,18 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 }
 
 /**
+ * Joins `base` with a single path segment taken from an untrusted source (e.g., a file name, release tag, or hash read
+ * from a downloaded or project-supplied file), refusing every segment that could name anything outside `base`.
+ * @throws if the segment is empty, `.` or `..`, or contains a path separator or NUL
+ */
+export function joinUntrustedSegment(base: string, segment: string): string {
+	if(segment === '' || segment === '.' || segment === '..' || /[/\\\0]/.test(segment) || path.isAbsolute(segment)) {
+		throw new Error(`Refusing the untrusted path segment ${JSON.stringify(segment)}`);
+	}
+	return path.join(base, segment);
+}
+
+/**
  * Chops off the last part of the given directory path after a path separator, essentially returning the path's parent directory.
  * If an absolute path is passed, the returned path is also absolute.
  * @param directory - The directory whose parent to return

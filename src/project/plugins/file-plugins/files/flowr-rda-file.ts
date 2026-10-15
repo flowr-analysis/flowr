@@ -4,6 +4,7 @@ import fs from 'fs';
 import { assertUnreachable } from '../../../../util/assert';
 import { RFunTabOffsets } from './r-fun-tab';
 import { log } from '../../../../util/log';
+import { SecureMode } from '../../../../util/secure-mode';
 
 const rdaLog = log.getSubLogger({ name: 'flowr-rda-file' });
 
@@ -283,6 +284,30 @@ const SpecialValueSxps: ReadonlyMap<SexpType, { readonly value: RValues, readonl
 	[SexpType.BaseNamespaceSxp, { value: RValues.BaseNamespace, type: SexpType.EnvSxp }],
 ]);
 
+/** The parts of the (untyped) `bzip2` package we use. */
+export interface Bzip2 {
+	array(bytes: Uint8Array): unknown
+	header(bits: unknown): number
+	/** decompresses the next block (stopping after `len` bytes), `-1` after the last one */
+	decompress(bits: unknown, size: number, len?: number): Uint8Array | -1
+}
+
+/** Decompresses a bzip2 stream block by block, throwing a `RangeError` if it would yield more than `limit` bytes. */
+export function bunzip(bzip2: Bzip2, content: Buffer, limit = Infinity): Buffer {
+	const bits = bzip2.array(content);
+	const size = bzip2.header(bits);
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	for(let chunk = bzip2.decompress(bits, size, limit - total + 1); chunk !== -1; chunk = bzip2.decompress(bits, size, limit - total + 1)) {
+		total += chunk.byteLength;
+		if(total > limit) {
+			throw new RangeError(`Refusing to decompress more than ${limit} bytes`);
+		}
+		chunks.push(chunk);
+	}
+	return Buffer.concat(chunks);
+}
+
 /**
  * Parser for RDA files.
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c | R source: serialize.c}
@@ -348,6 +373,8 @@ export class RDAParser {
 	/** Decompresses `fileContent` per the {@link detectCompression} result `compressionType`. Throws error for unsupported compression types. */
 	decompress(fileContent: Buffer, compressionType: CompressionType): Buffer {
 		let buffer: Buffer;
+		// the file belongs to the (possibly hostile) project, so the secure mode bounds what it may decompress to
+		const limit = SecureMode.decompressionLimit();
 
 		switch(compressionType) {
 			case CompressionType.CompGz: {
@@ -355,21 +382,21 @@ export class RDAParser {
 				const zlib = require('zlib');
 				try {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-					buffer = zlib.gunzipSync(fileContent);
-				} catch{
+					buffer = zlib.gunzipSync(fileContent, { maxOutputLength: limit });
+				} catch(e) {
+					if((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') {
+						throw e;
+					}
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-					buffer = zlib.inflateSync(fileContent);
+					buffer = zlib.inflateSync(fileContent, { maxOutputLength: limit });
 				}
 				break;
 			}
 
 			case CompressionType.CompBz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const bzip2 = require('bzip2');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-				const decompressed = bzip2.simple(bzip2.array(fileContent));
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				buffer = Buffer.from(decompressed);
+				// eslint-disable-next-line @typescript-eslint/no-require-imports
+				const bzip2 = require('bzip2') as Bzip2;
+				buffer = bunzip(bzip2, fileContent, limit);
 				break;
 			}
 

@@ -65,6 +65,12 @@ export const flowrMainOptionDefinitions = [
 		multiple:    false
 	},
 	{
+		name:        'secure',
+		type:        Boolean,
+		description: 'Run in secure mode for analyzing untrusted code: flowR does not start R (or any other process), does not access the network, does not search for project configs, and ignores security-sensitive options in every config. Cannot be disabled once enabled. Can also be enabled with the environment variable {italic FLOWR_SECURE_MODE=1}.',
+		multiple:    false
+	},
+	{
 		name:        'r-session-access',
 		type:        Boolean,
 		description: 'Allow to access the underlying R session when using flowR (security warning: this allows the execution of arbitrary R code!)'

@@ -3,6 +3,7 @@ import { RShell, RShellReviveOptions } from './r-bridge/shell';
 import { bold, ColorEffect, Colors, formatter, italic } from './util/text/ansi';
 import { TreeSitterExecutor } from './r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { log } from './util/log';
+import { SecureMode } from './util/secure-mode';
 
 /**
  * Retrieve all requested engine instance.
@@ -10,7 +11,10 @@ import { log } from './util/log';
  */
 export async function retrieveEngineInstances(config: FlowrConfig, defaultOnly = false): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
 	const engines: KnownEngines = {};
-	if(FlowrConfig.getForEngine(config, 'r-shell') && (!defaultOnly || config.defaultEngine === 'r-shell')) {
+	const rShellWanted = FlowrConfig.getForEngine(config, 'r-shell') && (!defaultOnly || config.defaultEngine === 'r-shell');
+	if(rShellWanted && SecureMode.isEnabled()) {
+		log.warn('The secure mode forbids starting R, so the r-shell engine is not available');
+	} else if(rShellWanted) {
 		// we keep an active shell session to allow other parse investigations :)
 		engines['r-shell'] = new RShell(FlowrConfig.getForEngine(config, 'r-shell'), {
 			revive:   RShellReviveOptions.Always,
@@ -21,8 +25,11 @@ export async function retrieveEngineInstances(config: FlowrConfig, defaultOnly =
 			}
 		});
 	}
-	if(FlowrConfig.getForEngine(config, 'tree-sitter') && (!defaultOnly || config.defaultEngine === 'tree-sitter')) {
-		await TreeSitterExecutor.initTreeSitter(FlowrConfig.getForEngine(config, 'tree-sitter'));
+	// in secure mode, tree-sitter is the only engine, so we start it whenever r-shell was refused
+	const treeSitterForced = SecureMode.isEnabled() && rShellWanted;
+	const treeSitter = FlowrConfig.getForEngine(config, 'tree-sitter') ?? (treeSitterForced ? { type: 'tree-sitter' } as const : undefined);
+	if(treeSitter && (!defaultOnly || config.defaultEngine === 'tree-sitter' || treeSitterForced)) {
+		await TreeSitterExecutor.initTreeSitter(treeSitter);
 		engines['tree-sitter'] = new TreeSitterExecutor();
 	}
 	let defaultEngine = config.defaultEngine;

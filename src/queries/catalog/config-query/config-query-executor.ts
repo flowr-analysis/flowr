@@ -28,9 +28,9 @@ export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readon
 		}
 		// queries may come from clients of the server, so they must not choose what flowR executes, loads, or downloads
 		const update = structuredClone(given);
-		const dropped = FlowrConfig.dropSecuritySensitive(update);
+		const dropped = FlowrConfig.dropUntrusted(update);
 		if(dropped.length > 0) {
-			log.warn(`ignoring security-sensitive options in config update: ${dropped.join(', ')}`);
+			log.warn(`ignoring untrusted options in config update: ${dropped.join(', ')}`);
 		}
 		analyzer.updateConfig(update);
 	}

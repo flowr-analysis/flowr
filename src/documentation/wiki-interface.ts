@@ -229,6 +229,7 @@ You can also specify a different file with ${getCliLongOptionOf('flowr', 'config
 A \`${defaultConfigFile}\` found this way belongs to the analyzed project, so flowR ignores its options that decide what flowR executes or loads
 (${FlowrConfig.securitySensitivePaths().filter(p => p[0] !== 'specializeConfig').map(p => `\`${p.join('.')}\``).join(', ')}),
 unless you pass ${getCliLongOptionOf('flowr', 'trust-config')}.
+To analyze code you do not trust, use the secure mode (${getCliLongOptionOf('flowr', 'secure')}, see the [security policy](https://github.com/flowr-analysis/flowr/blob/main/.github/SECURITY.md)).
 To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` ${ctx.linkPage('wiki/Query API', 'Query')}.
 Within the REPL this works by running the following:
 

@@ -8,6 +8,7 @@ import { sigDbCacheDir } from './decompress';
 import { CompressedExtPattern, compressedExtOf, readableExtsPreferred, stripCompressedExt } from './codec';
 import { flowrVersion } from '../../util/version';
 import { joinUntrustedSegment } from '../../util/files';
+import { SecureMode } from '../../util/secure-mode';
 
 /** the GitHub `owner/repo` the full-history bundle is published to (see `scripts/publish-sigdb.mjs`) */
 const DefaultRepo = 'flowr-analysis/flowr';
@@ -38,6 +39,7 @@ class HttpError extends Error {
 
 /** GET following redirects (GitHub asset URLs redirect to a storage host); resolves the final response for streaming */
 function httpGet(url: string, accept: string, redirects = 5, withAuth = true): Promise<IncomingMessage> {
+	SecureMode.guard('network access', url);
 	return new Promise((resolve, reject) => {
 		const req = (url.startsWith('http:') ? http : https).get(url, { headers: ghHeaders(accept, withAuth) }, res => {
 			const status = res.statusCode ?? 0;

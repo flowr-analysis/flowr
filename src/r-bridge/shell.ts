@@ -13,6 +13,7 @@ import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
 import type { AsyncParser, RShellInformation } from './parser';
 import { type RParseRequest, retrieveParseDataFromRCode } from './retriever';
+import { SecureMode } from '../util/secure-mode';
 
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
@@ -375,6 +376,7 @@ class RShellSession {
 	private requestQueue:           Promise<unknown> = Promise.resolve();
 
 	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
+		SecureMode.guard('starting R', options.pathToRExecutable);
 		this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
 			env:         options.env,
 			cwd:         options.cwd,

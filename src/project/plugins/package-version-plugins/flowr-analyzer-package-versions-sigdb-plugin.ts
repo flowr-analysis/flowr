@@ -17,6 +17,7 @@ import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { SecureMode } from '../../../util/secure-mode';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
@@ -151,7 +152,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(ctx.config.solver.sigdb.warmInBackground) {
 				this.startBackgroundWarm();
 			}
-			if(ctx.config.solver.sigdb.autoSync) {
+			if(ctx.config.solver.sigdb.autoSync && !SecureMode.isEnabled()) {
 				this.startBackgroundSync(ctx);
 			}
 			if(ctx.config.solver.sigdb.versionSelection === VersionSelection.System) {

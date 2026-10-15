@@ -4,6 +4,7 @@ import readline from 'readline';
 import { guard } from '../../util/assert';
 import { log } from '../../util/log';
 import { exitSafe } from '../../util/proc';
+import { SecureMode } from '../../util/secure-mode';
 
 type Stdio = [stdin: Writable | null, stdout: Readable | null, stderr: Readable | null, extra: Writable | Readable | null | undefined, extra: Writable | Readable | null | undefined];
 export type StdioProcessor = (stdio: Stdio) => void;
@@ -45,6 +46,7 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
  */
 export async function waitOnScript(module: string, args: readonly string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`);
+	SecureMode.guard('starting a process', module);
 	const child = cp.fork(module, args, {
 		silent: io !== undefined
 	});

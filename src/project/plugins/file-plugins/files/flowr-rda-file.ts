@@ -3,7 +3,6 @@ import { FlowrFile } from '../../../context/flowr-file';
 import fs from 'fs';
 import { assertUnreachable } from '../../../../util/assert';
 import { RFunTabOffsets } from './r-fun-tab';
-import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 import { log } from '../../../../util/log';
 
 const rdaLog = log.getSubLogger({ name: 'flowr-rda-file' });
@@ -295,7 +294,6 @@ export class RDAParser {
 	private buffer!:                       Buffer;
 	private currentDepth:                  number = 0;
 	private static readonly INITIAL_DEPTH: number = 1;
-	private lastName:                      string | undefined = undefined;
 	private offset = 0;
 	private static readonly R_CODE_SET_MAX = 2 ** 6 - 1;
 	private RWeakRefs:                     null | RObjectData = null;
@@ -686,28 +684,24 @@ export class RDAParser {
 		return this.readItemRecursive(flags);
 	}
 
-	/** Runs `code` in R and answers an `EnvSxp`, `value` set to {@link RValues.GlobalEnv} when the result names it. Shared by {@link R_FindNamespace} and {@link R_FindNamespace1}. */
-	private runNamespaceLookup(code: string): RObjectData {
-		const shell = new RShellExecutor();
-		const result = shell.run(code);
-		shell.close();
-		return result === '<environment: R_GlobalEnv>' ? { type: SexpType.EnvSxp, value: RValues.GlobalEnv } : { type: SexpType.EnvSxp };
-	}
-
 	/**
-	 * Resolves a namespace reference by name via `getNamespace()` in R. Simpler variant of {@link R_FindNamespace1}.
+	 * Resolves a namespace reference by name. Simpler variant of {@link R_FindNamespace1}.
+	 * R would load the namespace (`getNamespace()`), but flowR analyzes R code and data without running it: the name comes
+	 * from the (untrusted) file, and loading a namespace runs the package's code. Hence, this answers an `EnvSxp` standing
+	 * for the (unknown) namespace environment without consulting R.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3795-L3804 | R source: R_FindNamespace}
 	 */
 	R_FindNamespace(info: RObjectData): RObjectData {
-		return this.runNamespaceLookup(`getNamespace("${(info.value as RObjectData).name as string}")`);
+		rdaLog.trace(`Not loading namespace ${JSON.stringify((info.value as RObjectData | undefined)?.name)} of a serialized object`);
+		return { type: SexpType.EnvSxp };
 	}
 
 	/**
-	 * Resolves a serialized namespace reference by executing R at runtime. See {@link R_FindNamespace} for the result shape.
+	 * Resolves a serialized namespace reference, see {@link R_FindNamespace} for why this does not ask R.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1785-L1796 | R source: R_FindNamespace1}
 	 */
 	R_FindNamespace1(info: RObjectData): RObjectData {
-		return this.runNamespaceLookup(`..getNamespace("${(info.value as RObjectData[])[0].name as string}", "${this.lastName as string}")`);
+		return this.R_FindNamespace({ ...info, value: (info.value as RObjectData[] | undefined)?.[0] });
 	}
 
 	/**
@@ -1165,10 +1159,6 @@ export class RDAParser {
 
 			s.attributes = hasAttr ? [this.shortcut ? this.skipItem() : this.assertRObjectData(this.readItem())] : undefined;
 			s.tag = hasTag ? this.readItem() : RValues.NilValue;
-
-			if(hasTag && this.currentDepth == RDAParser.INITIAL_DEPTH && typeof s.tag === 'object') {
-				this.lastName = s.tag.name;
-			}
 
 			s.car = this.shortcut ? this.skipItem() : this.readItem();
 			this.currentDepth--;

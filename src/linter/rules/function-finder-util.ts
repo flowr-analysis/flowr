@@ -19,7 +19,6 @@ import { Ternary } from '../../util/logic';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { AsyncOrSync } from 'ts-essentials';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface FunctionsResult extends LintingResult {
 	function: string
@@ -96,11 +95,10 @@ export const functionFinderUtil = {
 		element: FlowrSearchElement<ParentInformation>,
 		pool: ReadonlyMap<string, FunctionInfo>,
 		analyzer: ReadonlyFlowrAnalysisProvider,
-		requireValue: RegExp | string | undefined
+		requireValue: RegExp | string | undefined,
+		identifier: Identifier | undefined
 	): Promise<Ternary> {
 		const dataflow = await analyzer.dataflow();
-		const identifier = Dataflow.qualify(element.node.info.id, dataflow.graph, true) ?? (element.node.lexeme !== undefined ? Identifier.parse(element.node.lexeme) : undefined);
-
 		/* if we have no additional info, we assume they always access the network */
 		if(identifier === undefined || requireValue === undefined) {
 			return Ternary.Always;

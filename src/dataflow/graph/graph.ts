@@ -534,6 +534,9 @@ export class DataflowGraph<
 		const vid = vertex.id;
 		const previous = this.vertexInformation.get(vid);
 		if(previous !== undefined && !overwrite) {
+			if(DfgVertex.isFunctionCall(previous) && DfgVertex.isFunctionCall(vertex)) {
+				mergeOrigins(previous, vertex);
+			}
 			return this;
 		}
 		this.dropQualifications();
@@ -781,8 +784,17 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 				}
 			}
 		}
+	} else if(DfgVertex.isFunctionCall(current) && DfgVertex.isFunctionCall(next)) {
+		mergeOrigins(current, next);
 	}
 	return current;
+}
+
+/** a call resolving to several callees is processed once per callee, each adding its origin */
+function mergeOrigins(current: DataflowGraphVertexFunctionCall, next: { origin: DataflowGraphVertexFunctionCall['origin'] }): void {
+	if(Array.isArray(current.origin) && Array.isArray(next.origin)) {
+		current.origin = uniqueArrayMerge(current.origin, next.origin);
+	}
 }
 
 export interface IEnvironmentJson {

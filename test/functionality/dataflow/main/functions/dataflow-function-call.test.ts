@@ -1,4 +1,5 @@
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
@@ -495,7 +496,7 @@ testFuncCorrect <- function(x, length=0.1){
 testFuncCorrect(1:5)
 testFuncCorrect(1:5, sum)
 `, emptyGraph()
-				.call('3@length', 'length', [argumentInCall('3@x')], { returns: [], reads: ['3@x', NodeId.toBuiltIn('length')], onlyBuiltIn: false }, false)
+				.call('3@length', 'length', [argumentInCall('3@x')], { returns: [], reads: ['3@x', NodeId.toBuiltIn('length')], onlyBuiltIn: false, origin: [BuiltInProcName.Default, BuiltInProcName.Function] }, false)
 				.calls('3@length', NodeId.toBuiltIn('length')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);

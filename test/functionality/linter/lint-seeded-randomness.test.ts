@@ -126,6 +126,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('a draw in a closure handed to a user function after seeding', parser, 'set.seed(1)\ng <- function(f) f(1)\ng(function(n) runif(n))\nrnorm(1)', 'seeded-randomness', []);
 			assertLinter('a built-in handed to a user function after seeding', parser, 'set.seed(1)\ng <- function(f) f(1)\ng(runif)\nrnorm(1)', 'seeded-randomness', []);
 			assertLinter('a built-in handed to a user function without a seed', parser, 'g <- function(f) f(1)\ng(runif)\nrnorm(1)', 'seeded-randomness', [
+				{ loc: [1, 18, 1, 21], function: 'runif', certainty: LintingResultCertainty.Uncertain },
 				{ loc: [3, 1, 3, 8], function: 'rnorm', certainty: LintingResultCertainty.Certain }
 			]);
 			assertLinter('a seed in a closure handed to a user function only after the draw', parser, 'g <- function(f) f()\nrunif(1)\ng(function() set.seed(1))', 'seeded-randomness', [

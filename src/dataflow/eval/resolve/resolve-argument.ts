@@ -98,8 +98,11 @@ function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph
 		const vertex = graph.getVertex(id);
 		const info = DfgVertex.isFunctionCall(vertex) ? callFnProps(id, { graph, environment: ctx.env.cleanEnv() }) : undefined;
 		const resource = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
-		if(vertex === undefined || resource < 0 || !FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Opens])) {
+		if(vertex === undefined || !FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Opens]) || (resource < 0 && info?.sig === undefined)) {
 			continue;
+		} else if(resource < 0) {
+			/* a handle on data in memory (`textConnection(x)`) names no resource at all */
+			return [Constant];
 		}
 		const values = getArgumentStringValue(variableResolve, graph, vertex as DataflowGraphVertexFunctionCall, resource, info?.sig?.[resource][0], true, ctx);
 		return values === undefined ? undefined : [...values.values()].flatMap(v => [...v]).filter(isNotUndefined);

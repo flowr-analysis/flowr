@@ -439,6 +439,7 @@ export const enum PkgName {
 	HtmlTools    = 'htmltools',
 	HtmlWidgets  = 'htmlwidgets',
 	Httr         = 'httr',
+	Httr2        = 'httr2',
 	Imager       = 'imager',
 	Import       = 'import',
 	Inferference = 'inferference',

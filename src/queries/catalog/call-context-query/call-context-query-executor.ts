@@ -23,6 +23,7 @@ import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/ro
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { quotedForWorker } from '../../../dataflow/environments/query-fn-props';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
@@ -359,7 +360,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 					continue;
 				}
 			}
-			if(Dataflow.isQuoted(nodeId, dataflow.graph)) {
+			if(Dataflow.isQuoted(nodeId, dataflow.graph) && !quotedForWorker(nodeId, dataflow.graph, analyzer.inspectContext().env.builtInIndex)) {
 				/* if the call is quoted, we do not want to link to it */
 				continue;
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {

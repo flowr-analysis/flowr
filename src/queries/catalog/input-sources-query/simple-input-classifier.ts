@@ -2,7 +2,7 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { InputTraceType, InputType } from './input-types';
 export { InputTraceType, InputType } from './input-types';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { FunctionArgument } from '../../../dataflow/graph/graph';
+import { FunctionArgument, UnknownSideEffect } from '../../../dataflow/graph/graph';
 import type { MergeableRecord } from '../../../util/objects';
 import { compactRecord } from '../../../util/objects';
 import type {
@@ -15,6 +15,8 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { isNotUndefined } from '../../../util/assert';
 import { uniqueArray } from '../../../util/collections/arrays';
@@ -28,8 +30,12 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { edgeTargets, hasEdgeOfType } from '../../../dataflow/fn/frame-reflection';
+import { calledDefinitions, edgeSources, edgeTargets, hasEdgeOfType } from '../../../dataflow/fn/frame-reflection';
+import { SourceRange } from '../../../util/range';
+import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 
 /** how far a function handed to an entry point may be passed along before we give up resolving it */
 const MaxFunctionResolveDepth = 4;
@@ -86,8 +92,10 @@ class ClassificationAccumulator {
 class InputClassifier {
 	private readonly cache = new Map<NodeId, InputSource>();
 	private fullClassifier:   InputClassifier | undefined;
+	private unsanitized:      InputClassifier | undefined;
 	private declarationIndex: Map<string, NodeId[]> | undefined;
 	private entryPointIndex:  Map<NodeId, readonly (string | undefined)[]> | undefined;
+	private rebinding:        (readonly [NodeId, readonly (ConstantValue | undefined)[] | undefined])[] | undefined;
 
 	/** `packages` are the packages attached in the analyzed program, `undefined` if that is not known (then everything may match) */
 	constructor(
@@ -102,7 +110,13 @@ class InputClassifier {
 	}
 
 	private matches(call: DataflowGraphVertexFunctionCall, list: InputClassifierFunctionIdentifiers | undefined): boolean {
-		return list?.some(id => call.id === id || (Identifier.is(id) && callMeans(call.name, id, this.packages))) ?? false;
+		/* a call of a definition in the code does not mean the built-in of the same name */
+		return list?.some(id => call.id === id || (Identifier.is(id) && callMeans(call.name, id, this.packages) && !this.callsDefinition(call))) ?? false;
+	}
+
+	/** whether the callee is a definition of the code rather than one handed in as an argument */
+	private callsDefinition(call: DataflowGraphVertexFunctionCall): boolean {
+		return calledDefinitions(this.whole, call.id).some(d => !hasEdgeOfType(this.whole, call.id, d, EdgeType.Argument));
 	}
 
 	/** whether the package the given entry needs is attached (unknown package information lets everything through) */
@@ -112,7 +126,25 @@ class InputClassifier {
 
 	public classifyAt(ref: NodeId | undefined, graph = this.dfg): InputSource | undefined {
 		const vtx = ref === undefined ? undefined : graph.getVertex(ref);
-		return vtx ? this.classifyEntry(vtx) : undefined;
+		/* what the criterion's function reads through a template (`glue("{x}")`) is no node of its code */
+		return vtx ? this.classifyEntry(vtx) : ref !== undefined && graph === this.dfg ? this.classifyInFullGraph(ref) : undefined;
+	}
+
+	/** classifies an argument as written: the name a `get` looks up, the function `do.call` is handed */
+	public classifyArgument(call: DataflowGraphVertexFunctionCall, ref: NodeId | undefined): InputSource | undefined {
+		const node = ref === undefined ? undefined : this.dfg.idMap?.get(ref);
+		const parent = node?.info.parent === undefined ? undefined : this.dfg.idMap?.get(node.info.parent);
+		const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref);
+		if(ref === undefined || !RSymbol.is(node)) {
+			return this.classifyAt(ref);
+		} else if(call.origin.includes(BuiltInProcName.Get) && parent !== undefined && !RArgument.is(parent)) {
+			const written = RString.is(parent) ? compactRecord({ ...sourceOf(ref, InputType.Constant), value: parent.content.str }) : this.classifyAt(parent.info.id);
+			return written && { ...written, id: ref };
+		} else if(call.origin.includes(BuiltInProcName.Apply) && DfgVertex.isFunctionCall(vtx) && edgeTargets(this.dfg, ref, EdgeType.Reads).every(t => NodeId.isBuiltIn(t) || !this.functionDefinitionsAt(t).next().done)) {
+			/* a name of a function the code defines or flowR knows */
+			return sourceOf(ref, InputType.Constant);
+		}
+		return this.classifyAt(ref);
 	}
 
 	/**
@@ -297,6 +329,13 @@ class InputClassifier {
 		const parameters = new Set(enclosing.flatMap(fn => fn.parameters.map(p => Identifier.getName(p.name.content))));
 		for(const arg of call.args) {
 			const ref = FunctionArgument.getReference(arg);
+			/* an evaluated argument (`parse_expr(text)`) is code only as far as its value is */
+			if(ref !== undefined && hasEdgeOfType(this.whole, call.id, ref, EdgeType.Reads)) {
+				if(!this.classifyAt(ref)?.types.every(isConstantLike)) {
+					return false;
+				}
+				continue;
+			}
 			const within = RNode.collectAllIds(ref === undefined ? undefined : idMap.get(ref));
 			for(const id of within) {
 				const node = idMap.get(id);
@@ -346,20 +385,61 @@ class InputClassifier {
 		return undefined;
 	}
 
-	/** the argument a built-in hands on: the value of a block or `get` (then `renamed`), the condition of a branch or loop */
+	/** the argument a built-in hands on: the value of a block or `get` (then `renamed`), the condition of a loop */
 	private passedOn(call: DataflowGraphVertexFunctionCall): { via: FunctionArgument | undefined, renamed: boolean } | undefined {
 		if(call.origin.includes(BuiltInProcName.ExpressionList)) {
 			// `{ a; b }` evaluates to its last expression, just like in R
 			return { via: call.args.findLast(a => !FunctionArgument.isEmpty(a)), renamed: true };
-		} else if(call.origin.includes(BuiltInProcName.IfThenElse) || call.origin.includes(BuiltInProcName.WhileLoop)) {
+		} else if(call.origin.includes(BuiltInProcName.WhileLoop)) {
 			return { via: call.args[0], renamed: false };
 		} else if(call.origin.includes(BuiltInProcName.ForLoop)) {
 			return { via: call.args[1], renamed: false };
-		} else if(call.origin.includes(BuiltInProcName.Get) && !this.whole.unknownSideEffects.has(NodeId.normalize(call.id))) {
+		} else if(call.origin.includes(BuiltInProcName.Get) && !this.whole.unknownSideEffects.has(NodeId.normalize(call.id))
+			&& edgeTargets(this.whole, call.id, EdgeType.Returns).length > 0) {
 			// a statically resolved `get("x")` yields the value of the retrieved variable, read via its first argument
 			return { via: call.args[0], renamed: true };
 		}
 		return undefined;
+	}
+
+	/** an `if` or `switch` yields one of its branches (`NULL` without a matching one), its condition only picks which */
+	private classifyBranches(call: DataflowGraphVertexFunctionCall): InputSource {
+		const acc = new ClassificationAccumulator();
+		const isSwitch = call.origin.includes(BuiltInProcName.Switch);
+		const condition = conditionArgument(call);
+		const branches = call.args.filter(a => a !== condition);
+		for(const ref of branches.map(FunctionArgument.getReference)) {
+			/* a branch flowR found dead is in no graph */
+			const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref) ?? this.whole.getVertex(ref);
+			if(vtx !== undefined) {
+				acc.merge(this.classifyEntry(vtx));
+			}
+		}
+		if(isSwitch || branches.length < 2 || branches.some(FunctionArgument.isEmpty)) {
+			acc.push(InputType.Constant, null);
+		}
+		acc.cds.push(...condition === undefined ? [] : this.dependencies(FunctionArgument.getReference(condition), []));
+		return acc.build(call.id);
+	}
+
+	/** the arguments of a sanitizer it takes as code rather than escaping, see {@link InputClassifierConfig.templates} */
+	private templateArguments(call: DataflowGraphVertexFunctionCall): (NodeId | undefined)[] {
+		return (this.config.templates ?? []).filter(t => this.matches(call, [t.call])).flatMap(t => t.argName === '...'
+			? call.args.filter(a => !FunctionArgument.isNamed(a)).map(FunctionArgument.getReference)
+			: [this.argumentReference(call, t.argIdx, t.argName)]);
+	}
+
+	/** the types and control dependencies of what `ref` yields, `unknown` when it cannot be classified */
+	private dependencies(ref: NodeId | undefined, unknown: readonly InputType[] = [InputType.Unknown]): readonly InputType[] {
+		const c = this.classifyAt(ref);
+		return c ? [...c.types, ...c.cds ?? []] : unknown;
+	}
+
+	/** what a control dependency on the given id depends on: the condition of an `if` or `switch`, else the id itself */
+	private conditionOf(id: NodeId): NodeId | undefined {
+		const vtx = this.dfg.getVertex(id);
+		const condition = DfgVertex.isFunctionCall(vtx) ? conditionArgument(vtx) : undefined;
+		return condition === undefined ? id : FunctionArgument.getReference(condition);
 	}
 
 	private classifyFunctionCall(call: DataflowGraphVertexFunctionCall): InputSource {
@@ -367,27 +447,36 @@ class InputClassifier {
 		if(linkedAccess) {
 			return this.classifyCdsAndReturn(call, linkedAccess);
 		}
+		if(call.origin.includes(BuiltInProcName.IfThenElse) || call.origin.includes(BuiltInProcName.Switch)) {
+			return this.classifyCdsAndReturn(call, this.classifyBranches(call));
+		}
 		const handed = this.passedOn(call);
 		const passed = this.classifyAt(handed?.via === undefined ? undefined : FunctionArgument.getReference(handed.via));
 		if(passed) {
 			return this.classifyCdsAndReturn(call, handed?.renamed ? { ...passed, id: call.id } : passed);
 		}
-		// a narrowing function returns a bounded value: either one of a specific argument's values (e.g. `match.arg`
-		// -> its `choices`), or - with no bounding argument - a content-independent value like a count/index/logical
+		if(this.matches(call, this.config.sanitizers)) {
+			const acc = new ClassificationAccumulator();
+			acc.push(InputType.DerivedConstant);
+			this.templateArguments(call).forEach(t => acc.merge(this.classifyAt(t)));
+			return this.classifyCdsAndReturn(call, acc.build(call.id));
+		}
+		// a narrowing function returns one of a specific argument's values (e.g. `match.arg` -> its `choices`)
 		for(const narrow of this.config.narrowing ?? []) {
 			if(!this.matches(call, [narrow.call])) {
 				continue;
 			}
-			if(narrow.argIdx === undefined) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.DerivedConstant], trace: InputTraceType.Pure });
-			}
-			const narrowed = this.classifyAt(this.argumentReference(call, narrow.argIdx, narrow.argName ?? ''));
+			const bound = this.argumentReference(call, narrow.argIdx, narrow.argName);
+			const narrowed = this.classifyAt(bound);
 			if(narrowed) {
-				return this.classifyCdsAndReturn(call, { ...narrowed, id: call.id });
+				/* which of the values it is depends on the other arguments */
+				const cds = call.args.map(FunctionArgument.getReference).filter(a => a !== bound).flatMap(a => this.dependencies(a));
+				return this.classifyCdsAndReturn(call, { ...narrowed, id: call.id, cds: uniqueArray([...narrowed.cds ?? [], ...cds]) });
 			}
 		}
 
-		if(!this.matches(call, this.config.pure)) {
+		const evaluates = this.matches(call, this.config.evaluating);
+		if(!evaluates && !this.matches(call, this.config.pure)) {
 			const types = Record.values(InputType).filter(type => this.matches(call, this.config[type]));
 			// if a File-typed call reads from a temp path, replace File with TempFile
 			const readsFile = types.includes(InputType.File) && !types.includes(InputType.TempFile);
@@ -402,7 +491,19 @@ class InputClassifier {
 			if(types.length === 0) {
 				/* a call of something the code produced (a shiny `reactive()`) or defines yields what that produced or returns */
 				const produced = this.classifyCallee(call) ?? this.classifyDefinitionResult(call);
-				if(produced !== undefined) {
+				if(produced !== undefined && call.origin.includes(BuiltInProcName.Try)) {
+					/* the handlers only answer for a failing block, which may just as well succeed */
+					const acc = new ClassificationAccumulator();
+					const block = this.argumentReference(call, 0, 'expr');
+					acc.merge(produced);
+					acc.merge(this.classifyAt(block));
+					/* and whether they answer depends on everything the block does */
+					const statements = block === undefined ? undefined : this.whole.getVertex(block);
+					for(const arg of DfgVertex.isFunctionCall(statements) && DfgVertex.hasOrigin(statements, BuiltInProcName.ExpressionList) ? statements.args : []) {
+						acc.cds.push(...this.dependencies(FunctionArgument.getReference(arg)));
+					}
+					return this.classifyCdsAndReturn(call, acc.build(call.id));
+				} else if(produced !== undefined) {
 					return this.classifyCdsAndReturn(call, { ...produced, id: call.id });
 				}
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
@@ -411,10 +512,18 @@ class InputClassifier {
 			return this.classifyCdsAndReturn(call, { id: call.id, types, trace: InputTraceType.Unknown });
 		}
 
-		const argTypes: InputType[] = [];
+		const argTypes: InputType[] = evaluates ? [InputType.Unknown] : [];
 		const cdTypes: InputType[] = [];
-		for(const arg of call.args.filter(FunctionArgument.isNotEmpty)) {
-			const classified = this.classifyAt(FunctionArgument.getReference(arg));
+		const interpolated = this.templateReads(call);
+		/* cutting into what a sanitizer escaped undoes the escape */
+		const edits = this.matches(call, this.config.editing);
+		const of = edits && this.config.sanitizers !== undefined ? this.unsanitized ??= new InputClassifier(this.dfg, { ...this.config, sanitizers: undefined }, this.fullDfg, this.packages) : this;
+		for(const ref of uniqueArray([...call.args.filter(FunctionArgument.isNotEmpty).map(FunctionArgument.getReference), ...interpolated])) {
+			/* a function handed in (`sapply(x, function(i) runif(1))`) contributes what it returns */
+			const vtx = ref === undefined ? undefined : this.whole.getVertex(ref);
+			const fns = vtx === undefined || DfgVertex.isFunctionCall(vtx) ? [] : [...this.functionDefinitionsAt(ref)];
+			const classified = fns.length > 0 ? this.classifyExits(fns, ref as NodeId)
+				: DfgVertex.isFunctionCall(vtx) && Identifier.getName(vtx.name) === '~' && hasEdgeOfType(this.whole, call.id, vtx.id, EdgeType.Calls) ? this.classifyFormula(vtx) : of.classifyAt(ref);
 			argTypes.push(...classified?.types ?? [InputType.Unknown]);
 			cdTypes.push(...classified?.cds ?? []);
 		}
@@ -423,7 +532,7 @@ class InputClassifier {
 		return this.classifyCdsAndReturn(call, compactRecord({
 			id:    call.id,
 			types: constLike ? [InputType.DerivedConstant] : uniqueArray([...argTypes, InputType.DerivedConstant]),
-			trace: constLike ? InputTraceType.Pure : InputTraceType.Known,
+			trace: constLike ? InputTraceType.Pure : evaluates || edits || interpolated.length > 0 ? InputTraceType.Unknown : InputTraceType.Known,
 			cds:   cdTypes.length > 0 ? uniqueArray(cdTypes) : undefined
 		}));
 	}
@@ -434,8 +543,25 @@ class InputClassifier {
 	 * when the call names no definition here or when none of them says anything about what it returns.
 	 */
 	private classifyDefinitionResult(call: DataflowGraphVertexFunctionCall): InputSource | undefined {
+		return this.classifyExits(this.functionDefinitionsAt(call.id), call.id);
+	}
+
+	/** what a string template like `glue("{x}")` evaluates and reads, which is no argument, but flows in all the same */
+	private templateReads(call: DataflowGraphVertexFunctionCall): NodeId[] {
+		return call.origin.includes(BuiltInProcName.StringTemplate) ? edgeTargets(this.whole, call.id, EdgeType.Reads).filter(t => this.whole.hasVertex(t) && !DfgVertex.hasOrigin(this.whole.getVertex(t), BuiltInProcName.Library)) : [];
+	}
+
+	/** a formula called as a function (`purrr::map(x, ~ runif(1))`) yields what its body does */
+	private classifyFormula(formula: DataflowGraphVertexFunctionCall): InputSource {
 		const acc = new ClassificationAccumulator();
-		for(const fn of this.functionDefinitionsAt(call.id)) {
+		formula.args.forEach(a => acc.merge(this.classifyAt(FunctionArgument.getReference(a))));
+		return acc.build(formula.id);
+	}
+
+	/** what the exit points of the given function definitions yield, see {@link classifyDefinitionResult} */
+	private classifyExits(fns: Iterable<NodeId>, id: NodeId): InputSource | undefined {
+		const acc = new ClassificationAccumulator();
+		for(const fn of fns) {
 			const definition = this.whole.getVertex(fn);
 			for(const { nodeId } of DfgVertex.isFunctionDefinition(definition) ? definition.exitPoints : []) {
 				for(const value of this.exitValues(nodeId)) {
@@ -452,7 +578,7 @@ class InputClassifier {
 		if(acc.values.length === 0) {
 			return undefined;
 		}
-		const built = acc.build(call.id);
+		const built = acc.build(id);
 		return built.types.includes(InputType.Unknown) ? undefined : built;
 	}
 
@@ -492,7 +618,10 @@ class InputClassifier {
 				continue;
 			}
 			const classified = this.classifyAt(o.id) ?? this.classifyInFullGraph(o.id);
-			if(classified !== undefined && !classified.types.includes(InputType.Unknown)) {
+			if(classified?.types.every(isConstantLike)) {
+				/* a constant held as a function (`get("readLines")`, a body set to quoted code) says nothing about what calling it yields */
+				return sourceOf(call.id, InputType.Unknown);
+			} else if(classified !== undefined && !classified.types.includes(InputType.Unknown)) {
 				return classified;
 			}
 		}
@@ -525,14 +654,37 @@ class InputClassifier {
 				acc.merge(undefined);
 			}
 		}
+		if(this.mayBeRebound(vtx.id, origins.map(o => o.id))) {
+			acc.merge(undefined);
+		}
 		return this.classifyCdsAndReturn(vtx, acc.build(vtx.id));
+	}
+
+	/** what the default of a parameter yields when a call leaves the parameter out */
+	private defaultTypes(id: NodeId): readonly InputType[] {
+		const idMap = this.whole.idMap;
+		const param = idMap?.get(idMap.get(id)?.info.parent as NodeId);
+		return RParameter.is(param) && param.defaultValue !== undefined ? this.classifyInFullGraph(param.defaultValue.info.id)?.types ?? [InputType.Unknown] : [];
 	}
 
 	private parameterType(id: NodeId): InputType | undefined {
 		if(this.dfg.idMap?.get(id)?.info.role !== RoleInParent.ParameterName) {
 			return undefined;
 		}
-		return this.matchWholeLinkedObject(id)?.type ?? InputType.Parameter;
+		return this.matchWholeLinkedObject(id)?.type ?? (this.isPlumberEndpointParameter(id) ? InputType.User : InputType.Parameter);
+	}
+
+	/** plumber hands each parameter of a function with a `#*` route annotation what a request sends */
+	private isPlumberEndpointParameter(id: NodeId): boolean {
+		const idMap = this.whole.idMap as AstIdMap;
+		for(const node of RNode.iterateParents(idMap.get(id), idMap)) {
+			if(node.info.adToks?.some(t => RComment.is(t) && PlumberEndpoint.test(t.lexeme ?? ''))) {
+				return true;
+			} else if(node.info.parent === undefined || (RFunctionDefinition.is(node) && node.info.adToks?.length)) {
+				return false;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -552,7 +704,7 @@ class InputClassifier {
 			const callers = onCall.map(t => this.classifyInFullGraph(t)).filter(isNotUndefined);
 			const known = callers.filter(c => !c.types.includes(InputType.Unknown));
 			known.forEach(c => acc.merge(c));
-			if(known.length > 0 && known.length === callers.length) {
+			if(known.length > 0 && known.length === callers.length && !this.escapes(v.id)) {
 				return;
 			}
 			acc.push(InputType.Scope);
@@ -561,15 +713,53 @@ class InputClassifier {
 		const parameter = DfgVertex.isVariableDefinition(v) ? this.parameterType(v.id) : undefined;
 		if(parameter !== undefined) {
 			acc.push(parameter);
+			acc.types.push(...this.defaultTypes(v.id));
 		} else {
 			acc.merge(this.classifyEntry(v));
 		}
 	}
 
+	/** whether the function binding the parameter is used as a value, so it may be called with anything the visible callers do not pass */
+	private escapes(parameter: NodeId): boolean {
+		const idMap = this.whole.idMap;
+		const fn = idMap === undefined ? undefined : RNode.iterateParents(idMap.get(parameter), idMap).find(RFunctionDefinition.is);
+		const holders = fn === undefined ? [] : edgeSources(this.whole, fn.info.id, EdgeType.DefinedBy);
+		return holders.length === 0 || holders.some(h => edgeSources(this.whole, h, EdgeType.Reads)
+			.some(r => !RFunctionCall.is(idMap?.get(r)) || !hasEdgeOfType(this.whole, r, fn?.info.id as NodeId, EdgeType.Calls)));
+	}
+
+	/** whether code flowR cannot follow (`load`, `eval`, `e$x <-`) may rebind the variable before the use */
+	private mayBeRebound(use: NodeId, definitions: readonly NodeId[]): boolean {
+		const idMap = this.whole.idMap as AstIdMap;
+		const node = idMap.get(use);
+		const fn = RNode.iterateParents(node, idMap).find(RFunctionDefinition.is);
+		const within = (id: NodeId) => fn !== undefined && RNode.iterateParents(idMap.get(id), idMap).some(p => p === fn);
+		const local = definitions.length > 0 && definitions.every(within);
+		/* an unconditional definition after the effect binds anew */
+		const overwritten = (e: NodeId) => definitions.length > 0 && definitions.every(d => !this.whole.getVertex(d)?.cds?.length
+			&& runsAfter(idMap.get(idMap.get(d)?.info.parent as NodeId), idMap.get(e), idMap));
+		return this.rebinders().some(([e, fields]) => (fields === undefined || fields.some(f => f === undefined || f === RNode.lexeme(node)))
+			&& (!local || within(e)) && !overwritten(e) && !((fn === undefined || local) && runsAfter(idMap.get(e), node, idMap)));
+	}
+
+	/** the unknown side effects, and the replacements `e$x <- v` with the names they may bind (`undefined` for any) */
+	private rebinders(): (readonly [NodeId, readonly (ConstantValue | undefined)[] | undefined])[] {
+		const name = (a: FunctionArgument) => {
+			const ref = FunctionArgument.getReference(a);
+			return ref === undefined ? undefined : this.extractConstantValue(ref) ?? RNode.lexeme(this.whole.idMap?.get(ref));
+		};
+		return this.rebinding ??= [
+			...[...this.whole.unknownSideEffects].filter(e => !UnknownSideEffect.isLinked(e)).map(e => [UnknownSideEffect.id(e), undefined] as const),
+			...this.whole.verticesOfType(VertexType.FunctionCall)
+				.filter(([, c]) => c.origin.includes(BuiltInProcName.Replacement) && FieldReplacements.has(Identifier.getName(c.name)))
+				.map(([id, c]) => [id, c.args.slice(1, -1).map(name)] as const)
+		];
+	}
+
 	private classifyVariableDefinition(vtx: DataflowGraphVertexVariableDefinition): InputSource {
 		const parameter = this.parameterType(vtx.id);
 		if(parameter !== undefined) {
-			return this.classifyCdsAndReturn(vtx, sourceOf(vtx.id, parameter));
+			return this.classifyCdsAndReturn(vtx, { ...sourceOf(vtx.id, parameter), types: uniqueArray([parameter, ...this.defaultTypes(vtx.id)]) });
 		} else if(!vtx.source?.length) {
 			// fallback to unknown if we cannot find the value
 			return this.classifyCdsAndReturn(vtx, sourceOf(vtx.id, InputType.Unknown));
@@ -582,10 +772,7 @@ class InputClassifier {
 	private classifyCdsAndReturn(vtx: DataflowGraphVertexArgument, src: InputSource): InputSource {
 		if(vtx.cds) {
 			/* running only once a call forces it is no condition on the data */
-			const cds = uniqueArray(vtx.cds.filter(c => c.byPromise !== true).flatMap(c => {
-				const e = this.classifyAt(c.id);
-				return e ? [...e.types, ...e.cds ?? []] : [];
-			}).concat(src.cds ?? []));
+			const cds = uniqueArray(vtx.cds.filter(c => c.byPromise !== true).flatMap(c => this.dependencies(this.conditionOf(c.id), [])).concat(src.cds ?? []));
 			if(cds.length > 0) {
 				src.cds = cds;
 			}
@@ -648,11 +835,19 @@ export interface LinkedInputEntryPoint {
 
 /** A function whose result is bounded by one argument (e.g. `match.arg` by its `choices`), classified by that argument alone. */
 export interface NarrowingFunction {
-	readonly call:     Identifier,
-	/** the name of the bounding argument; omit (with `argIdx`) for a result that is always a bounded, content-independent value */
-	readonly argName?: string,
-	/** the index of the bounding argument; omit (with `argName`) for an always-`DerivedConstant` result */
-	readonly argIdx?:  number
+	readonly call:    Identifier,
+	/** the name of the bounding argument */
+	readonly argName: string,
+	/** the index of the bounding argument when it is passed positionally */
+	readonly argIdx:  number
+}
+
+/** the condition of an `if` or `switch`; with named arguments to an `if`, we do not know which it is */
+function conditionArgument(call: DataflowGraphVertexFunctionCall): FunctionArgument | undefined {
+	if(call.origin.includes(BuiltInProcName.Switch)) {
+		return call.args.find(a => FunctionArgument.hasName(a, 'EXPR')) ?? call.args.find(a => !FunctionArgument.isNamed(a));
+	}
+	return call.origin.includes(BuiltInProcName.IfThenElse) && !call.args.some(FunctionArgument.isNamed) ? call.args[0] : undefined;
 }
 
 /** the function definitions the given node is nested in, innermost first */
@@ -676,6 +871,23 @@ function isBoundAsLinkedObject(node: RNode<ParentInformation>, obj: LinkedInputO
 		}
 	}
 	return false;
+}
+
+const PlumberEndpoint = /^#\*\s*@(?:get|post|put|delete|patch|head|options|any|use)\b/i;
+
+/** the replacements that may write a binding of an environment, as `e$x <- v` does */
+const FieldReplacements: ReadonlySet<string> = new Set(['$<-', '[[<-']);
+
+const LoopTypes: ReadonlySet<RType> = new Set([RType.ForLoop, RType.WhileLoop, RType.RepeatLoop]);
+
+/** whether `later` surely runs after `node`: later in the same file, in no shared loop, not deferred into a function apart from it */
+function runsAfter(later: RNode<ParentInformation> | undefined, node: RNode<ParentInformation> | undefined, idMap: AstIdMap): boolean {
+	const [first, second] = [RNode.span(node), RNode.span(later)];
+	if(first === undefined || second === undefined || node?.info.file !== later?.info.file || !(SourceRange.startsCompletelyBefore(first, second) || SourceRange.isSubsetOf(first, second))) {
+		return false;
+	}
+	const around = new Set(RNode.iterateParents(later, idMap));
+	return RNode.iterateParents(node, idMap).every(p => RFunctionDefinition.is(p) ? around.has(p) : !LoopTypes.has(p.type) || !around.has(p));
 }
 
 function declarationKey(object: string, field: string): string {
@@ -763,6 +975,14 @@ export interface InputClassifierConfig<Functions extends InputClassifierFunction
 	 * @see {@link NarrowingFunction}
 	 */
 	narrowing?:             readonly NarrowingFunction[]
+	/** Functions whose result counts as a {@link InputType.DerivedConstant} whatever flows in, like a linter's escaping functions. */
+	sanitizers?:            Functions
+	/** The arguments a {@link sanitizers|sanitizer} takes as code rather than escaping, like the template of `sqlInterpolate`, whose data still flows. */
+	templates?:             readonly NarrowingFunction[]
+	/** Functions that evaluate code or look names up at run time (`eval`, `do.call`, `exists`), so their result is never constant. */
+	evaluating?:            Functions
+	/** Functions that cut or replace parts of a string (`gsub`), undoing what a {@link sanitizers|sanitizer} escaped. */
+	editing?:               Functions
 }
 
 /**
@@ -782,7 +1002,7 @@ export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClass
 	}
 	const ret: InputSources = [];
 	for(const arg of vtx.args) {
-		const entry = c.classifyAt(FunctionArgument.getReference(arg));
+		const entry = c.classifyArgument(vtx, FunctionArgument.getReference(arg));
 		if(entry === undefined) {
 			continue;
 		}

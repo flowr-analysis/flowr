@@ -10,7 +10,7 @@ import { SourceFunctions } from '../../queries/catalog/dependencies-query/functi
 import { writeFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { Dataflow } from '../../dataflow/graph/df-helper';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { MergeableRecord } from '../../util/objects';
 import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import type { BuiltInIndex, BuiltInParam } from '../../dataflow/environments/query-fn-props';
@@ -43,7 +43,7 @@ export interface NetworkFunction extends MergeableRecord {
  * What an address looks like when one is written down. A call is only a network operation for the argument it
  * is actually handed, so this is what decides that per call site rather than the name alone.
  */
-const UrlPattern = /^(https?|ftps?):\/\//;
+const UrlPattern = /^(https?|ftps?|sftp|scp|wss?):\/\//;
 
 /** the parameter names that mean "the address", preferred over any other resource the same call names */
 const AddressNames: ReadonlySet<string> = new Set(['url', 'urls', 'uri', 'href', 'link', 'address', 'repo', 'repo_spec', 'pull']);
@@ -59,16 +59,17 @@ function addressParam(params: readonly BuiltInParam[]): BuiltInParam {
 
 /**
  * Every built-in that may reach the network, read back from the {@link DefaultBuiltinConfig}: the ones labeled
- * {@link SemanticCallTag.Network} always do, and any call naming an {@link ArgProp.Resource} does whenever that
- * resource is a url rather than a path -- which is what {@link UrlPattern} decides per call site. Label a
- * built-in `Network` or give it a resource parameter and it shows up here; nothing is listed twice.
+ * {@link SemanticCallTag.Network} always do unless they may open a local {@link SemanticCallTag.File} instead,
+ * and any call naming an {@link ArgProp.Resource} does whenever that resource is a url rather than a path --
+ * which is what {@link UrlPattern} decides per call site. Label a built-in `Network` or give it a resource
+ * parameter and it shows up here; nothing is listed twice.
  */
 export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 	const resources = new Map<string, BuiltInParam[]>();
 	for(const param of index.params(ArgProp.Resource)) {
-		/* R opens a path it writes to as a local file (or a `|` pipe), never as a url */
+		/* R opens a path it writes to as a local file (or a `|` pipe), never as a url, and a command is no address either */
 		const tags = index.get(param.call)?.tags;
-		if(tags?.includes(SemanticCallTag.Writes) && !tags.includes(SemanticCallTag.Reads)) {
+		if((tags?.includes(SemanticCallTag.Writes) && !tags.includes(SemanticCallTag.Reads)) || tags?.includes(SemanticCallTag.Process)) {
 			continue;
 		}
 		const key = Identifier.toString(param.call);
@@ -83,10 +84,11 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 	return [...names].map(([key, name]) => {
 		const params = resources.get(key);
 		const address = params === undefined ? undefined : addressParam(params);
+		const tags = index.get(name)?.tags;
 		return {
 			name,
 			...(address === undefined ? {} : { info: { argIdx: address.index, argName: address.name, resolveValue: true } }),
-			onlyTriggerWithArgument: UrlPattern
+			...(tags?.includes(SemanticCallTag.Network) && !tags.includes(SemanticCallTag.File) ? {} : { onlyTriggerWithArgument: UrlPattern })
 		};
 	});
 }
@@ -94,7 +96,6 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 export const NETWORK_FUNCTIONS = {
 	createSearch:        config => functionFinderUtil.createSearch(config.fns.map(f => Identifier.is(f) ? f : f.name)),
 	processSearchResult: async(e, c, d) => {
-		const df = await d.dataflow();
 		const fnPool = new Map<string, FunctionInfo>([
 			...writeFunctions(d.inspectContext()).concat(readFunctions(d.inspectContext()), SourceFunctions).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
 			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, { name: Identifier.toString(f.name), ...f.info }] as const))
@@ -105,13 +106,14 @@ export const NETWORK_FUNCTIONS = {
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
 				for(const e of es) {
-					const identifier = Dataflow.qualify(e.node.info.id, df.graph, true) ?? (e.node.lexeme !== undefined ? Identifier.parse(e.node.lexeme) : undefined);
-					if(identifier === undefined) {
+					const target = enrichmentContent(e, Enrichment.CallTargets).targets.find(t => typeof t === 'string');
+					if(target === undefined) {
 						continue;
 					}
+					const identifier = Identifier.parse(target);
 					// we allow onlyTriggerLookup to contain non-namespaced functions
 					const requireValue = onlyTriggerLookup.get(Identifier.toString(identifier)) ?? onlyTriggerLookup.get(Identifier.getName(identifier));
-					const val = await functionFinderUtil.requireArgumentValue(e, fnPool, d, requireValue);
+					const val = await functionFinderUtil.requireArgumentValue(e, fnPool, d, requireValue, identifier);
 					if(val === Ternary.Never) {
 						continue;
 					}

@@ -141,10 +141,13 @@ export enum SemanticCallTag {
 	Prints      = 'prints',
 	/**
 	 * the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the
-	 * argument marked {@link ArgProp.Bounds}. So nothing an argument carries reaches the result, which is what
-	 * lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`.
+	 * argument marked {@link ArgProp.Bounds}. So no content of an argument reaches the result, which is what
+	 * lets the input-sources query trace `match.arg(arg, choices)` to its `choices` alone; a count still
+	 * depends on what it counts, so `length(readLines(f))` keeps its file input.
 	 */
 	Narrows     = 'narrows-args',
+	/** cuts or replaces parts of a string (`gsub`, `substr`), so what an escaping function made of it no longer holds */
+	Edits       = 'edits-string',
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
 	Statistics  = 'statistics',
 	/** marked for removal, with a better alternative available, like `dplyr::funs` */
@@ -228,7 +231,7 @@ export const ExclusiveCallProps: readonly (readonly [prop: PropMask, forbidden: 
 export const InputProps: PropMask = getPropMask([
 	CallProp.NonDet | CallProp.Ambient | CallProp.Ffi | CallProp.Lang,
 	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network, SemanticCallTag.Process,
-	SemanticCallTag.User, SemanticCallTag.CommandLine
+	SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.LoadsPackage, SemanticCallTag.ChecksPackage
 ]);
 
 /**

@@ -14,7 +14,7 @@ import { LintingResultCertainty } from '../../../linter/linter-format';
 import { Record } from '../../../util/record';
 import { computeReadFunctions } from '../dependencies-query/function-info/read-functions';
 import { LinkedInputEntryPoints, LinkedInputObjects, narrowingFunctions } from './input-source-functions';
-import { CallProp, FileInputProps, InputProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, FileInputProps, InputProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
 
@@ -37,7 +37,7 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 /**
  * Which functions belong to which input type is stated with the functions themselves, in the built-in configuration
  * the analyzer registered (see {@link ReadOnlyFlowrAnalyzerEnvironmentContext#builtInDefinitions}):
- * a function that states its props and carries none of the {@link InputProps} derives its result from its arguments, the others bring in data of their own, and a {@link SemanticCallTag.Narrows} one bounds its result no matter what flows in. Add a function there (or override its props with your own built-in definitions) and it shows up here.
+ * a function that states its props and carries none of the {@link InputProps} derives its result from its arguments, the others bring in data of their own, and a {@link SemanticCallTag.Narrows} one with an {@link ArgProp.Bounds} parameter is classified by that argument alone. Add a function there (or override its props with your own built-in definitions) and it shows up here.
  */
 export const defaultInputClassifierConfig = (ctx: ReadOnlyFlowrAnalyzerContext): InputClassifierConfig => ctx.env.derive(inputClassifierConfigOf);
 
@@ -53,9 +53,13 @@ const inputClassifierConfigOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): 
 		[InputType.System]:      builtIns.with(SemanticCallTag.Process),
 		[InputType.Ffi]:         builtIns.with(CallProp.Ffi),
 		[InputType.Lang]:        builtIns.with(CallProp.Lang),
-		[InputType.Options]:     builtIns.with(CallProp.Ambient),
+		[InputType.Options]:     builtIns.with([CallProp.Ambient, SemanticCallTag.LoadsPackage, SemanticCallTag.ChecksPackage]),
 		[InputType.CommandLine]: builtIns.with(SemanticCallTag.CommandLine),
 		[InputType.User]:        builtIns.with(SemanticCallTag.User),
+		[InputType.Unknown]:     builtIns.with(CallProp.NonDet),
+		evaluating:              builtIns.with(SemanticCallTag.Eval),
+		editing:                 builtIns.with(SemanticCallTag.Edits),
+		templates:               builtIns.params(ArgProp.Injectable).map(p => ({ call: p.call, argName: p.name, argIdx: p.index })),
 		linkedObjects:           LinkedInputObjects,
 		linkedEntryPoints:       LinkedInputEntryPoints,
 		narrowing:               narrowingFunctions(builtIns)
@@ -111,6 +115,9 @@ export const InputSourcesDefinition = {
 			[InputType.Options]:     Joi.array().items(Joi.string()).optional().description('Functions that access or set global options (e.g., options, getOption).'),
 			[InputType.CommandLine]: Joi.array().items(Joi.string()).optional().description('Functions that hand back what the program was invoked with (e.g., commandArgs).'),
 			[InputType.User]:        Joi.array().items(Joi.string()).optional().description('Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo).'),
+			sanitizers:              Joi.array().items(Joi.string()).optional().description('Functions whose result counts as a derived constant whatever flows in (e.g., an escaping function).'),
+			evaluating:              Joi.array().items(Joi.string()).optional().description('Functions that evaluate code or look up names at run time, whose result is unknown (e.g., eval, do.call, exists).'),
+			editing:                 Joi.array().items(Joi.string()).optional().description('Functions that cut or replace parts of a string, undoing what a sanitizer escaped (e.g., gsub, substr).'),
 			linkedObjects:           Joi.array().items(Joi.object({
 				name:       Joi.string().required().description('Name of the object, e.g. input.'),
 				type:       Joi.string().valid(...Record.values(InputType)).required().description('How reads of the object (or of its fields) are classified.'),

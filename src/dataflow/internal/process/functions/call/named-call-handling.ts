@@ -1,10 +1,15 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
 import { hidesBody, readsAllAmbientState } from './built-in/built-in-ambient-state';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
-import { DataflowInformation } from '../../../../info';
+import { DataflowInformation, type ExitPoint, withCds } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
-import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RParameter } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RExpressionList } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
+import { OperatorDatabase } from '../../../../../r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RBinaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -99,6 +104,38 @@ function rewrittenByReplacement<OtherInfo>(definition: IdentifierDefinition, dat
 	return RFunctionCall.is(node) || (RBinaryOp.is(node) && RFunctionCall.is(node.lhs));
 }
 
+const bindingFrames = new WeakMap<AstIdMap, ReadonlyMap<string, ReadonlySet<NodeId | undefined>>>();
+
+/** for each name the program binds, the functions binding it (`undefined` for the global frame or a `<<-`) */
+function framesBinding(idMap: AstIdMap): ReadonlyMap<string, ReadonlySet<NodeId | undefined>> {
+	let frames = bindingFrames.get(idMap);
+	if(frames === undefined) {
+		const found = new Map<string, Set<NodeId | undefined>>();
+		for(const node of idMap.values()) {
+			const target = RBinaryOp.is(node) && OperatorDatabase[node.operator]?.usedAs === 'assignment' ? (node.operator.startsWith('-') ? node.rhs : node.lhs)
+				: RParameter.is(node) ? node.name : undefined;
+			const name = RSymbol.is(target) ? Identifier.getName(target.content) : RString.is(target) ? target.content.str : undefined;
+			if(name !== undefined) {
+				const global = RBinaryOp.is(node) && (node.operator === '<<-' || node.operator === '->>');
+				const frame = global ? undefined : RNode.findEnclosing(node.info.id, idMap, RFunctionDefinition.is);
+				found.set(name, new Set([...found.get(name) ?? [], frame]));
+			}
+		}
+		bindingFrames.set(idMap, frames = found);
+	}
+	return frames;
+}
+
+/** whether the program binds `name` in a frame enclosing the function the call is in, which a built-in found there leaves out */
+function mayBeShadowed(name: string, call: NodeId, idMap: AstIdMap): boolean {
+	const frames = framesBinding(idMap).get(name);
+	if(frames === undefined || RExpressionList.isImplicit(idMap.get(call))) {
+		return false;
+	}
+	const own = RNode.findEnclosing(call, idMap, RFunctionDefinition.is);
+	return frames.has(undefined) || [...RNode.iterateParents(idMap.get(own as NodeId), idMap)].some(p => frames.has(p.info.id));
+}
+
 /**
  * Processes a named function call within the dataflow analysis.
  * For example, `myFunction(arg1, arg2)`, resolves against the environment.
@@ -111,7 +148,10 @@ export function processNamedCall<OtherInfo>(
 ): DataflowInformation {
 	const args = data.pipedArgument?.rootId === rootId ? [data.pipedArgument.argument, ...callArguments] : callArguments;
 	const resolved = Resolve.byNameAndType(name.content, data.environment, ReferenceType.Function) ?? [];
-	let defaultProcessor = resolved.length === 0;
+	/* a function body sees its enclosing frames only where it is called, so a built-in there may be shadowed by the program */
+	const shadowable = resolved.length > 0 && data.environment.level > 0 && resolved.every(r => r.type === ReferenceType.BuiltInFunction)
+		&& mayBeShadowed(Identifier.getName(name.content), rootId, data.completeAst.idMap);
+	let defaultProcessor = resolved.length === 0 || shadowable;
 
 	/* a call whose meaning a later pass looks up in its environment has to keep it */
 	const keepEnvironment = resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.keepEnvironment === true);
@@ -145,20 +185,35 @@ export function processNamedCall<OtherInfo>(
 	}
 	/* flowR models what a package function does with its arguments, but not which of its options it reads */
 	let packageFn = false;
+	const alternatives: DataflowInformation[] = [];
+	const processDefault = () => {
+		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
+		const sig = resolved.length > 0 ? undefined : FunctionSemantics.call.signature.every;
+		alternatives.push(processKnownFunctionCall({ name, args, rootId, data, sig, origin: 'default' }).information);
+	};
+	/* first, so the arguments keep the promise the shadowing function makes of them, which holds for a forcing built-in, too */
+	if(shadowable) {
+		processDefault();
+	}
 	for(const own of toRun) {
-		information = mergeInformation(information, own.processor(name, args, rootId, data));
+		alternatives.push(own.processor(name, args, rootId, data));
 		const pkg = own.name === undefined ? undefined : Identifier.getNamespace(own.name);
 		/* unless flowR states how it accesses the state, as for `withr::with_options` */
 		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg));
 	}
-
-	if(defaultProcessor) {
-		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
-		const sig = resolved.length > 0 ? undefined : FunctionSemantics.call.signature.every;
-		const call = processKnownFunctionCall({ name, args, rootId, data, sig, origin: 'default' });
-		information = mergeInformation(information, call.information);
-	} else if(information && builtIn) {
+	if(defaultProcessor && !shadowable) {
+		processDefault();
+	}
+	for(const alternative of alternatives) {
+		information = mergeInformation(information, alternative);
+	}
+	if(!defaultProcessor && information && builtIn) {
 		markAsOnlyBuiltIn(information.graph, rootId, keepEnvironment);
+	}
+	/* an exit only some of the possible callees take is not certain */
+	if(information !== undefined && alternatives.length > 1) {
+		const inAll = (e: ExitPoint) => alternatives.every(a => a.exitPoints.some(o => o.nodeId === e.nodeId && o.type === e.type));
+		information = { ...information, exitPoints: information.exitPoints.map(e => inAll(e) ? e : { ...e, cds: withCds(e.cds, [{ id: rootId, when: true }]) }) };
 	}
 	/* a function whose body we do not see may read any option or draw on the device */
 	if(information !== undefined && (unknownBody || packageFn)) {

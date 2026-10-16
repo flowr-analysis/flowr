@@ -20,8 +20,9 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { FunctionArgument } from '../../../../../graph/graph';
-import { DfgVertex } from '../../../../../graph/vertex';
+import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { isNotUndefined } from '../../../../../../util/assert';
 
 interface BuiltInPurrrFormulaConfiguration {
 	/**
@@ -139,6 +140,14 @@ export function processPurrrFormula<OtherInfo>(
 		}
 	} else if(RSymbol.is(formulaNode)) {
 		linkOnSymbol(rootId, filteredCallArgs, formulaNode, information.graph, data);
+		/* like `lapply`, a named function handed over is called with the remaining arguments */
+		if(Resolve.byNameAndType(formulaNode.content, data.environment, ReferenceType.Function)?.length) {
+			const id = formulaNode.info.id;
+			information.graph.updateToFunctionCall({ tag: VertexType.FunctionCall, id, name: formulaNode.content, args: filteredCallArgs, environment: data.environment, onlyBuiltin: false, cds: data.cds, origin: [BuiltInProcName.Function] });
+			for(const arg of filteredCallArgs.map(FunctionArgument.getId).filter(isNotUndefined)) {
+				information.graph.addEdge(id, arg, EdgeType.Argument);
+			}
+		}
 	} else {
 		try {
 			Dataflow.visitDfg(information.graph, formulaNode.info.id, (vtx) => {

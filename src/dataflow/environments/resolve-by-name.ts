@@ -4,6 +4,7 @@ import { type BrandedIdentifier, Identifier, type BrandedNamespace, type Identif
 import { happensInEveryBranch } from '../info';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isBaseRPackage } from '../../util/r-base-packages';
 
 /** how many answers a frozen layer memoizes before it starts over, so the memo cannot grow without bound */
 const TailCacheCap = 4096;
@@ -15,10 +16,16 @@ function layerSkipped(layer: Environment, ns: BrandedNamespace | undefined): boo
 
 /**
  * What the built-in environment states about `pkg::name` for a package nothing attached: `pkg::fn` reaches its
- * package in R whether or not it is on the search path, so a namespaced name has to find it here.
+ * package in R whether or not it is on the search path, so a namespaced name has to find it here. Failing that,
+ * a package outside of base R never hands out a function of base R, so `config::get` is no `base::get`.
  */
 function statedIn(builtIn: Environment, name: BrandedIdentifier, ns: BrandedNamespace | undefined): IdentifierDefinition[] | undefined {
-	return ns === undefined ? undefined : builtIn.namespaces?.get(String(ns))?.get(name);
+	const stated = ns === undefined ? undefined : builtIn.namespaces?.get(String(ns))?.get(name);
+	if(stated !== undefined || ns === undefined || isBaseRPackage(String(ns))) {
+		return stated ?? builtIn.lookup(name);
+	}
+	const foreign = builtIn.lookup(name)?.filter(d => !isBaseRPackage(String(d.name === undefined ? undefined : Identifier.getNamespace(d.name))));
+	return foreign?.length ? foreign : undefined;
 }
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -159,7 +166,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 
 	/* the built-in layer is handed over as it is, except to a value position: `filter(df, c > 2)` means the
 	   column `c`, never `base::c`, and only with nothing left does `ownDefinitions` have its say */
-	const known = statedIn(current, name, ns) ?? current.lookup(name);
+	const known = statedIn(current, name, ns);
 	const builtIns = target === ReferenceType.NonFunction ? known?.filter(wantedType) : known;
 	const result = definitions
 		? (builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns))
@@ -213,7 +220,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 		}
 		current = current.parent;
 	} while(!current.builtInEnv);
-	const builtIns = statedIn(current, name, ns) ?? current.lookup(name);
+	const builtIns = statedIn(current, name, ns);
 	if(definitions === undefined) {
 		return remember(environment, id, builtIns);
 	}

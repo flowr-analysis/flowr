@@ -207,7 +207,6 @@ export const Enrichments = {
 			ast: await data.normalize()
 		},
 		enrichElement: async(e, s, analyzer, args, prev) => {
-			// we don't resolve aliases here yet!
 			const content: CallTargetsContent = { targets: [] };
 			const shared = s.enrichmentContent(Enrichment.CallTargets) as CallTargetsSearchContent | undefined;
 			const df = shared?.dfg ?? await analyzer.dataflow();
@@ -247,8 +246,11 @@ export const Enrichments = {
 							return qualifyIdentifier([o], NodeId.recoverName(o.id, n.idMap)) ?? String(o.id);
 						}
 						return { node: n.idMap.get(o.id) as RNodeWithParent };
-					case OriginType.BuiltInFunctionOrigin:
-						return qualifyIdentifier([o], o.fn.name);
+					case OriginType.BuiltInFunctionOrigin: {
+						/* an alias (`s <- system; s()`) calls the built-in it is linked to rather than its own name */
+						const linked = NodeId.isBuiltIn(o.proc) ? NodeId.toPkgFn(o.proc)?.[1] ?? NodeId.fromBuiltIn(o.proc) : undefined;
+						return qualifyIdentifier([o], linked === undefined || linked === Identifier.getName(o.fn.name) ? o.fn.name : linked);
+					}
 					default:
 						return undefined;
 				}

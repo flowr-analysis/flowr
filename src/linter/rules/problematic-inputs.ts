@@ -9,15 +9,19 @@ import { InputType } from '../../queries/catalog/input-sources-query/simple-inpu
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
-import { type DataflowGraphVertexInfo, DfgVertex } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexInfo, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier } from '../../dataflow/environments/identifier';
-import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { type BuiltInIndex, quotedForWorker } from '../../dataflow/environments/query-fn-props';
 import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
 
+/** what runs a command, and what evaluates code beyond looking up a name (`get`) or calling a function it is handed (`do.call`) */
 function defaultConsider(index: BuiltInIndex): readonly string[] {
-	return ['^eval$', ...index.with(SemanticCallTag.Process).map(n => `^${Identifier.quote(Identifier.getName(n))}$`)];
+	const evaluates = index.with(SemanticCallTag.Eval).filter(n => ((index.propsOf(n) ?? 0) & CallProp.Pure) === 0 && !index.get(n)?.sig?.some(([, p]) => (p & ArgProp.Callee) !== 0));
+	return [...index.with(SemanticCallTag.Process), ...evaluates].map(n => `^${Identifier.quote(Identifier.getName(n))}$`).concat('^fread$');
 }
 
 export interface PipeCommandFunctionSpec {
@@ -28,7 +32,8 @@ export interface PipeCommandFunctionSpec {
 
 const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
 	{ pattern: '^pdf$',        argIdx: 0, argName: 'file' },
-	{ pattern: '^postscript$', argIdx: 0, argName: 'file' }
+	{ pattern: '^postscript$', argIdx: 0, argName: 'file' },
+	{ pattern: '^bitmap$',     argIdx: 0, argName: 'file' }
 ];
 
 function normalizePatternList(cfg: string | readonly string[] = []): RegExp[] {
@@ -91,18 +96,12 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 }
 
 export const PROBLEMATIC_INPUTS = {
-	createSearch: config => {
-		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
-		return Q.fromQuery([
-			...normalizePatternList(config.consider).map((n, i) => toQ(n, `fn-${i}`)),
-			...normalizePipeSpecs(config.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
-		]);
-	},
+	createSearch:        () => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets),
 	processSearchResult: async(elements, config, data) => {
 		const df = await data.dataflow();
 		const results: ProblematicInputsResult[] = [];
 		const seen          = new Set<NodeId>();
-		const defaultAccept = [InputType.Constant, InputType.DerivedConstant];
+		const defaultAccept = [InputType.Constant, InputType.DerivedConstant, InputType.TempFile];
 		const considerPats  = normalizePatternList(config.consider);
 		const pipePats      = normalizePipeSpecs(config.pipeCommandFunctions);
 		for(const element of elements.getElements()) {
@@ -110,7 +109,11 @@ export const PROBLEMATIC_INPUTS = {
 			if(seen.has(nid)) {
 				continue;
 			}
-			const name = element.node.lexeme ?? '';
+			if(Dataflow.isQuoted(nid, df.graph) && !quotedForWorker(nid, df.graph, data.inspectContext().env.builtInIndex)) {
+				continue;
+			}
+			const names = enrichmentContent(element, Enrichment.CallTargets).targets.flatMap(t => typeof t === 'string' ? [Identifier.getName(Identifier.parse(t))] : []);
+			const name = names.find(n => pipePats.some(s => s.pattern.test(n)) || considerPats.some(p => p.test(n))) ?? '';
 			const pipeSpec = pipePats.find(s => s.pattern.test(name));
 			/* a pipe spec checks the file argument of the call, a considered call the call itself */
 			let target: NodeId | undefined;
@@ -122,9 +125,11 @@ export const PROBLEMATIC_INPUTS = {
 			if(target === undefined) {
 				continue;
 			}
-			const criterion = SlicingCriterion.fromId(target);
-			const all = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
-			const sources = all['input-sources']?.results?.[criterion] ?? [];
+			const [criterion, call] = [SlicingCriterion.fromId(target), SlicingCriterion.fromId(nid)];
+			const res = (await data.query([{ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns }]))['input-sources']?.results;
+			const own = res?.[criterion] ?? [];
+			/* a file argument that is an input itself (`pdf(readline())`) only shows as a source of the call */
+			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res?.[call] ?? []).filter(s => s.id === target));
 			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue(sources);
 			if(pipeCommand !== undefined || isProblematicForAllowed(sources, defaultAccept)) {
 				seen.add(nid);

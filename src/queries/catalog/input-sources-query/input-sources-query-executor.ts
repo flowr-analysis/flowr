@@ -86,7 +86,7 @@ function addAll(base: InputClassifierConfig<InputClassifierFunctionIdentifiers>,
 }
 
 /** Config fields that hold structured values (not function searches) and are carried over verbatim. */
-const StructuredConfigKeys = ['linkedObjects', 'linkedEntryPoints', 'narrowing'] as const;
+const StructuredConfigKeys = ['linkedObjects', 'linkedEntryPoints', 'narrowing', 'templates'] as const;
 function isStructuredConfigKey(key: PropertyKey): key is typeof StructuredConfigKeys[number] {
 	return (StructuredConfigKeys as readonly PropertyKey[]).includes(key);
 }

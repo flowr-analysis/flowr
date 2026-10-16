@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-13, 23:21:10 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 17:37:29 UTC (v2.16.1), do not edit directly._
 <h2 id="seeded-randomness">Seeded Randomness&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -903,6 +903,7 @@ rnorm(1)
 
 We expect the linter to report the following:
 
+* uncertain at 1.18-1.21: function = `'runif'`
 * certain at 3.1-3.8: function = `'rnorm'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L128) for the test-case implementation.
@@ -921,7 +922,7 @@ We expect the linter to report the following:
 
 * certain at 2.1-2.8: function = `'runif'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L131) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L132) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_a_32_local_32_.Random.seed_32_does_32_not">Test Case: a local .Random.seed does not</h4>
 
@@ -940,7 +941,7 @@ We expect the linter to report the following:
 
 * certain at 6.1-6.8: function = `'runif'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L134) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L135) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_set_32_in_32_function_32_call">Test Case: set in function call</h4>
 
@@ -956,7 +957,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L139) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L140) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_get_32_in_32_function_32_call">Test Case: get in function call</h4>
 
@@ -971,7 +972,7 @@ We expect the linter to report the following:
 * certain at 1.7-1.14: function = `'runif'`
 * certain at 1.1-1.15: function = `'runif'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L140) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L141) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_some_32_is_32_not_32_a_32_randomness_32_consumer">Test Case: some is not a randomness consumer</h4>
 
@@ -985,7 +986,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L172) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L173) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_with_seed_32_seeds">Test Case: with_seed seeds</h4>
 
@@ -1001,4 +1002,4 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L178) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-seeded-randomness.test.ts#L179) for the test-case implementation.

@@ -1,21 +1,23 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-13, 23:21:10 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 17:37:29 UTC (v2.16.1), do not edit directly._
 <h2 id="no-leaked-credentials">No Leaked Credentials&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
 
 This rule is a `best-effort` rule.
  
-Detects hardcoded credentials assigned to variables whose names suggest they hold passwords, tokens, or API keys, or whose values match known credential formats (AWS, GitHub, Slack, Stripe, SSH).\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L44">src/linter/rules/no-leaked-credentials.ts</a>._
+Detects hardcoded credentials assigned to variables or passed as arguments whose names suggest they hold passwords, tokens, or API keys, handed to authentication functions, or whose values match known credential formats (AWS, GitHub, Slack, Stripe, Google, JWT, SSH, URLs with passwords).\
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L145">src/linter/rules/no-leaked-credentials.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `no-leaked-credentials` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L35"><code><span title="Pattern matched (case-insensitively) against variable names to identify potential credential assignments">credentialNamePattern</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L68"><code><span title="Pattern matched (case-insensitively) against function names whose unnamed arguments are credentials, like httr::authenticate">credentialCallPattern</span></code></a>\
+Pattern matched (case-insensitively) against function names whose unnamed arguments are credentials, like `httr::authenticate`
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L64"><code><span title="Pattern matched (case-insensitively) against variable names to identify potential credential assignments">credentialNamePattern</span></code></a>\
 Pattern matched (case-insensitively) against variable names to identify potential credential assignments
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L37"><code><span title="Pattern matched against string literal values to detect known credential formats (e.g., AWS access key IDs, GitHub tokens)">credentialValuePattern</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/no-leaked-credentials.ts#L66"><code><span title="Pattern matched against string literal values to detect known credential formats (e.g., AWS access key IDs, GitHub tokens)">credentialValuePattern</span></code></a>\
 Pattern matched against string literal values to detect known credential formats (e.g., AWS access key IDs, GitHub tokens)
 
 ### Examples
@@ -32,7 +34,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (0 ms)\
+Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Possible hardcoded credential in `password` at 1.1-8\
@@ -332,3 +334,166 @@ We expect the linter to report the following:
 * uncertain at 1.1-1.7: variableName = `'api_key'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L117) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_credential_32_passed_32_as_32_named_32_argument">Test Case: credential passed as named argument</h4>
+
+Given the following input:
+
+```r
+con <- DBI::dbConnect(drv, password = "hunter2")
+```
+
+We expect the linter to report the following:
+
+* uncertain at 1.28-1.35: variableName = `'password'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L123) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_credential_32_handed_32_to_32_an_32_authentication_32_function">Test Case: credential handed to an authentication function</h4>
+
+Given the following input:
+
+```r
+httr::authenticate("me", "hunter2")
+```
+
+We expect the linter to report the following:
+
+* uncertain at 1.1-1.35: variableName = `'authenticate'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L128) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_credential_32_built_32_from_32_literals">Test Case: credential built from literals</h4>
+
+Given the following input:
+
+```r
+password <- paste0("hun", "ter2")
+```
+
+We expect the linter to report the following:
+
+* uncertain at 1.1-1.8: variableName = `'password'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L133) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_credential_32_through_32_a_32_chained_32_assignment">Test Case: credential through a chained assignment</h4>
+
+Given the following input:
+
+```r
+password <- x <- "hunter2"
+```
+
+We expect the linter to report the following:
+
+* uncertain at 1.1-1.8: variableName = `'password'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L138) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_credential_32_flowing_32_into_32_a_32_named_32_argument">Test Case: credential flowing into a named argument</h4>
+
+Given the following input:
+
+```r
+pw <- "hunter2"
+cfg <- list(password = pw)
+```
+
+We expect the linter to report the following:
+
+* uncertain at 2.13-2.20: variableName = `'password'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L143) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_known_32_token_32_after_32_a_32_prefix">Test Case: known token after a prefix</h4>
+
+Given the following input:
+
+```r
+hdr <- "Bearer ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+```
+
+We expect the linter to report the following:
+
+* uncertain at 1.1-1.3: variableName = `'hdr'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L148) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_url_32_with_32_an_32_embedded_32_password">Test Case: url with an embedded password</h4>
+
+Given the following input:
+
+```r
+m <- mongolite::mongo(url = "mongodb://me:hunter2@host/db")
+```
+
+We expect the linter to report the following:
+
+* uncertain at 1.23-1.25: variableName = `'url'`
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L153) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_prompts_44__32_services_44__32_and_32_auth_32_schemes_32_are_32_no_32_credentials">Test Case: prompts, services, and auth schemes are no credentials</h4>
+
+Given the following input:
+
+```r
+pw <- rstudioapi::askForPassword("DB password")
+keyring::key_set_with_value("db", password = pw)
+httr::add_headers(Authorization = paste("Bearer", Sys.getenv("TOKEN")))
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L158) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_a_32_key_32_looked_32_up_32_by_32_a_32_package_32_function_32_is_32_no_32_credential">Test Case: a key looked up by a package function is no credential</h4>
+
+Given the following input:
+
+```r
+pw <- config::get("password")
+con <- DBI::dbConnect(drv, password = pw)
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L163) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_looked_32_up_32_credentials_32_are_32_not_32_hardcoded">Test Case: looked up credentials are not hardcoded</h4>
+
+Given the following input:
+
+```r
+password <- Sys.getenv("PW")
+assign("api_key", keyring::key_get("svc"))
+httr::authenticate("me", Sys.getenv("PW"))
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L168) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_placeholders_32_and_32_descriptions_32_of_32_credentials_32_are_32_not_32_flagged">Test Case: placeholders and descriptions of credentials are not flagged</h4>
+
+Given the following input:
+
+```r
+api_key <- "<your-key>"
+password <- "xxx"
+password_label <- "Password:"
+credentials_file <- "~/.aws/credentials"
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-no-leaked-credentials.test.ts#L173) for the test-case implementation.

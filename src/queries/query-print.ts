@@ -20,7 +20,7 @@ function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: O
 	if(node === undefined) {
 		return `UNKNOWN: ${id} (info: ${JSON.stringify(info)})`;
 	}
-	return `${italic('`' + (RNode.lexeme(node) ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
+	return `${italic('`' + (RNode.lexeme(node) ?? 'UNKNOWN') + '`', formatter)} (L.${SourceRange.getStartLine(node.location)}${info ? ', ' + JSON.stringify(info) : ''})`;
 }
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {

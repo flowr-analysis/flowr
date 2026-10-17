@@ -3,7 +3,7 @@ import type { NodeId } from '../lang-4.x/ast/model/processing/node-id';
 import type { RoxygenTag, RoxygenTagParam } from './roxygen-ast';
 import { KnownRoxygenTags } from './roxygen-ast';
 import { RType } from '../lang-4.x/ast/model/type';
-import type { RNode } from '../lang-4.x/ast/model/model';
+import { RNode } from '../lang-4.x/ast/model/model';
 import { parseRoxygenComment, parseRoxygenCommentsOfNode } from './roxygen-parse';
 
 export interface DocumentationInfo {
@@ -90,7 +90,7 @@ function expandInheritsOfTags(tags: RoxygenTag | readonly RoxygenTag[], idMap: A
 
 function getDocumentationOfByName(name: string, idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
 	for(const [, node] of idMap) {
-		const nodeName = node.lexeme ?? node.info.fullLexeme;
+		const nodeName = RNode.ownLexeme(node);
 		if(nodeName !== name) {
 			continue;
 		}

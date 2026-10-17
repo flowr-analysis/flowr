@@ -1,3 +1,5 @@
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import { assert, describe, test } from 'vitest';
 import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
 import { withTreeSitter } from '../_helper/shell';
@@ -156,7 +158,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 		queryCase(parser, 'inspect-fn-props', name, code, ({ result, idMap }) => {
 			const found: Record<string, Required<StatedProps>> = {};
 			for(const [id, props] of Object.entries(result.props)) {
-				found[idMap.get(Number(id))?.info.fullLexeme ?? id] = stated(props);
+				found[RNode.lexeme(idMap.get(Number(id))) ?? id] = stated(props);
 			}
 			assertProps(found, Object.fromEntries(Object.entries(expected).map(([k, v]) => [k, stated(v)])), FunctionSemantics.call.props.labels);
 		});

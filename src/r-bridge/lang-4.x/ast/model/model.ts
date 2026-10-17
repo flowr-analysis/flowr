@@ -438,9 +438,18 @@ export const RNode = {
 	/**
 	 * A helper function to retrieve the lexeme of a given node, if available.
 	 * If the `fullLexeme` is available, it will be returned, otherwise the `lexeme` will be returned.
+	 * @see {@link RNode.ownLexeme} - for the token the node is made of
 	 */
 	lexeme<R extends RNode<ParentInformation>>(this: void, node: R | undefined): R extends { lexeme: string } ? string : string | undefined {
 		return node?.info.fullLexeme ?? node?.lexeme as string;
+	},
+	/**
+	 * The lexeme of the token the node is made of, e.g., the name of a call rather than the call as a whole.
+	 * Only if the node has none of its own, the `fullLexeme` is used.
+	 * @see {@link RNode.lexeme} - for the code the node spans
+	 */
+	ownLexeme(this: void, node: RNode<ParentInformation> | undefined): string | undefined {
+		return node?.lexeme ?? node?.info.fullLexeme;
 	},
 	/**
 	 * Return the (roxygen) documentation associated with the given node, if available.

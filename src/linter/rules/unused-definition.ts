@@ -279,7 +279,7 @@ function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<Dataflow
 	if(isStandaloneStatement(statement, ast)) {
 		return yieldsFunctionValue(statement, ast, dfg) ? undefined : [{ type: 'remove', loc: totalRangeToRemove, description }];
 	}
-	const replacement = assignment?.value.info.fullLexeme ?? assignment?.value.lexeme;
+	const replacement = RNode.lexeme(assignment?.value);
 	return replacement === undefined ? undefined : [{ type: 'replace', loc: totalRangeToRemove, replacement, description }];
 }
 

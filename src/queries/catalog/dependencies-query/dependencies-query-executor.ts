@@ -231,7 +231,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 						resolvedValue = info.stringReplacements[value];
 					}
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
-					const lexeme = getLexeme(value, arg);
+					const lexeme = unresolvedArgumentCode(value, arg);
 					finalResults.push(compactRecord({
 						nodeId:             id,
 						functionName,
@@ -251,7 +251,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 
 	return finalResults;
 
-	function getLexeme(argument: string | undefined, id: NodeId | undefined) {
+	function unresolvedArgumentCode(argument: string | undefined, id: NodeId | undefined) {
 		if((argument && argument !== Unknown && argument !== Constant) || !id) {
 			return undefined;
 		}

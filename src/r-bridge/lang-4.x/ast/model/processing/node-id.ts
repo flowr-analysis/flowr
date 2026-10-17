@@ -150,7 +150,7 @@ export const NodeId = {
 		if(node === undefined) {
 			return undefined;
 		}
-		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
+		const lexeme = RNode.ownLexeme(node) ?? '';
 		if(DfgVertex.isUse(vertex)) {
 			return RString.unquote(lexeme);
 		}

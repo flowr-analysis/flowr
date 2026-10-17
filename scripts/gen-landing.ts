@@ -1,3 +1,5 @@
+import { SourceRange } from '../src/util/range';
+import { RNode } from '../src/r-bridge/lang-4.x/ast/model/model';
 /**
  * Generates the landing page at `index.html`, which is what GitHub Pages serves as the site root.
  *
@@ -85,7 +87,7 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 		/* a kept node that closes with a brace keeps the line that brace sits on, the way the
 		   reconstructed slice prints it; without it the block looks cut off in the highlighting */
 		const full = node?.info?.fullRange;
-		if(full !== undefined && full[2] > full[0] && node?.info?.fullLexeme?.trimEnd().endsWith('}')) {
+		if(full !== undefined && full[2] > full[0] && RNode.lexeme(node)?.trimEnd().endsWith('}')) {
 			lines.add(full[2]);
 		}
 	}

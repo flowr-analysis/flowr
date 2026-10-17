@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 17:37:29 UTC (v2.16.1), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2), do not edit directly._
 <h2 id="network-functions">Network Functions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule is used to detect issues that are related to the performance of the code. For example, inefficient algorithms, unnecessary computations, or unoptimized data structures."><a href='#performance'>![performance](https://img.shields.io/badge/performance-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span>
@@ -34,7 +34,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (5 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Function `utils::read.csv` at 2.1-40\
@@ -87,12 +87,12 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-network-functions.test.ts#L13) for the test-case implementation.
 		
-<h4 id="Test_32_Case:_32__96_network_32_funcion_32_with_32_multiple_32_arguments:_32__36__123_prefix_125__96_">Test Case: `network funcion with multiple arguments: ${prefix}`</h4>
+<h4 id="Test_32_Case:_32_network_32_funcion_32_with_32_multiple_32_arguments:_32__36__123_prefix_125_">Test Case: network funcion with multiple arguments: ${prefix}</h4>
 
 Given the following input:
 
 ```r
-`download.file("${prefix}foo.org/bar.csv", "local.csv")`
+download.file("${prefix}foo.org/bar.csv", "local.csv")
 ```
 
 We expect the linter to report the following:

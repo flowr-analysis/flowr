@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-13, 23:21:10 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2), do not edit directly._
 <h2 id="roxygen-arguments">Roxygen Arguments&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments."><a href='#documentation'>![documentation](https://img.shields.io/badge/documentation-teal) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
@@ -62,11 +62,11 @@ These examples are synthesized from the test cases in: [test/functionality/linte
 Given the following input:
 
 ```r
-`#' This is a function.
+#' This is a function.
 #' An interesting function.
 #' @param a some variable
 #' @param b does not exist
-f = function(a){return a;}`
+f = function(a){return a;}
 ```
 
 We expect the linter to report the following:
@@ -80,10 +80,10 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`#' This is a function.
+#' This is a function.
 #' An interesting function.
 #' @param a some variable
-f = function(a, b){return a;}`
+f = function(a, b){return a;}
 ```
 
 We expect the linter to report the following:
@@ -426,9 +426,9 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`#' This is a function.
+#' This is a function.
 #' @param x,y numeric values
-add <- function(x, y) x + y`
+add <- function(x, y) x + y
 ```
 
 We expect the linter to report the following:

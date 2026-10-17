@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-10-15, 15:20:14 UTC (v2.16.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_32_of_32_the_32_Analyzer)  
@@ -398,7 +398,7 @@ For the general structure from an implementation perspective, please have a look
 
 > [!TIP]
 > If you need a context for testing or to create analyses with lower-level components, you can use
-> either <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L373"><code><span title="Lifting requestFromInput to create a full FlowrAnalyzerContext from input requests. Please use this only for a 'quick' setup, or to have compatibility with the pre-project flowR era. Otherwise, refer to a FlowrAnalyzerBuilder to create a fully customized FlowrAnalyzer instance.">contextFromInput</span></code></a> to create a context from input data (which lifts the old <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/retriever.ts#L56"><code>requestFromInput</code></a>) or
+> either <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L373"><code><span title="Lifting requestFromInput to create a full FlowrAnalyzerContext from input requests. Please use this only for a 'quick' setup, or to have compatibility with the pre-project flowR era. Otherwise, refer to a FlowrAnalyzerBuilder to create a fully customized FlowrAnalyzer instance.">contextFromInput</span></code></a> to create a context from input data (which lifts the old <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/retriever.ts#L55"><code>requestFromInput</code></a>) or
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L397"><code><span title="Create a FlowrAnalyzerContext from a set of source code strings.">contextFromSources</span></code></a> to create a context from source files (e.g., if you need a virtual file system).
 
 If for whatever reason you need to reset the context during an analysis, you can use
@@ -612,28 +612,28 @@ that allows you to query for a specific function by name.
 
 <h3 id="Environment_32_Context">Environment Context</h3>
 
-Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L100"><code><span title="Provides the built-in environment, created from the FlowrAnalyzerContext configuration.">FlowrAnalyzerEnvironmentContext</span></code></a> that provides access to the built-in environment:
+Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L99"><code><span title="Provides the built-in environment, created from the FlowrAnalyzerContext configuration.">FlowrAnalyzerEnvironmentContext</span></code></a> that provides access to the built-in environment:
 
- * [FlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L100)   
+ * [FlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L99)   
    Provides the built-in environment, created from the
    <code>FlowrAnalyzerContext</code>
    configuration.
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L100">src/project/context/flowr-analyzer-environment-context.ts#L100</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L99">src/project/context/flowr-analyzer-environment-context.ts#L99</a>)</i>
    
     <details><summary>View more (ReadOnlyFlowrAnalyzerEnvironmentContext)</summary>
 
-   * **[ReadOnlyFlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L18)**   
+   * **[ReadOnlyFlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L17)**   
      Read-only interface to the
      <code>FlowrAnalyzerEnvironmentContext</code>
      .
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L18">src/project/context/flowr-analyzer-environment-context.ts#L18</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L17">src/project/context/flowr-analyzer-environment-context.ts#L17</a>)</i>
      
     </details>
 
 The environment context provides access to the built-in environment via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L218"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L217"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
 It also provides the empty built-in environment, which only contains primitives, via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L232"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L231"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
 
 <h3 id="Meta_32_Context">Meta Context</h3>
 

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-13, 23:21:10 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2), do not edit directly._
 <h2 id="unclosed-connection">Unclosed Connection&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -6,18 +6,18 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Flags connections that are opened but not closed on every path opening them.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L200">src/linter/rules/unclosed-connection.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L199">src/linter/rules/unclosed-connection.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `unclosed-connection` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L45"><code><span title="functions closing the connection they are handed, besides the ones flowR states SemanticCallTag.Closes for">closeFns</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L44"><code><span title="functions closing the connection they are handed, besides the ones flowR states SemanticCallTag.Closes for">closeFns</span></code></a>\
 functions closing the connection they are handed, besides the ones flowR states
 <code>SemanticCallTag.Closes</code>
 for
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L43"><code><span title="functions opening a connection, besides the ones flowR states SemanticCallTag.Opens for">openFns</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unclosed-connection.ts#L42"><code><span title="functions opening a connection, besides the ones flowR states SemanticCallTag.Opens for">openFns</span></code></a>\
 functions opening a connection, besides the ones flowR states
 <code>SemanticCallTag.Opens</code>
 for
@@ -82,14 +82,14 @@ These examples are synthesized from the test cases in: [test/functionality/linte
 Given the following input:
 
 ```r
-`a <- textConnection(A)
+a <- textConnection(A)
 readLines(a, 2)
 file <- file()
 b <- textConnection(B)
 
 close(a)
 close(b)
-close(file)`
+close(file)
 ```
 
 We expect the linter to report the following:
@@ -253,10 +253,10 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`read <- function(){
+read <- function(){
 	con <- file("x")
 	readLines(con)
-}`
+}
 ```
 
 We expect the linter to report the following:
@@ -270,14 +270,14 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`a <- textConnection(AB)
+a <- textConnection(AB)
 b <- a
 if(x){
 	b <- textConnection(LETTERS)
 	close(b)
 	close(b)
 }
-t <- 2`
+t <- 2
 ```
 
 We expect the linter to report the following:
@@ -291,10 +291,10 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`a <- textConnection(AB)
+a <- textConnection(AB)
 b <- a
 c <- b
-close(c)`
+close(c)
 ```
 
 We expect the linter to report the following:
@@ -308,9 +308,9 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`shut <- function(con) close(con)
+shut <- function(con) close(con)
 a <- textConnection(AB)
-shut(a)`
+shut(a)
 ```
 
 We expect the linter to report the following:
@@ -324,9 +324,9 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`make <- function() textConnection(AB)
+make <- function() textConnection(AB)
 a <- make()
-close(a)`
+close(a)
 ```
 
 We expect the linter to report the following:
@@ -340,12 +340,12 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`a <- textConnection(AB)
+a <- textConnection(AB)
 if(x){
 	close(a)
 } else {
 	close(a)
-}`
+}
 ```
 
 We expect the linter to report the following:
@@ -359,12 +359,12 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`read <- function(){
+read <- function(){
 	con <- file("x")
 	on.exit(close(con))
 	readLines(con)
 }
-read()`
+read()
 ```
 
 We expect the linter to report the following:
@@ -378,8 +378,8 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`con <- withr::local_connection(file("x"))
-readLines(con)`
+con <- withr::local_connection(file("x"))
+readLines(con)
 ```
 
 We expect the linter to report the following:
@@ -393,8 +393,8 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`con <- DBI::dbConnect(drv)
-DBI::dbDisconnect(con)`
+con <- DBI::dbConnect(drv)
+DBI::dbDisconnect(con)
 ```
 
 We expect the linter to report the following:
@@ -422,9 +422,9 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`a <- myOpen("x")
+a <- myOpen("x")
 b <- myOpen("y")
-myClose(a)`
+myClose(a)
 ```
 
 And using the following [configuration](#configuration): 
@@ -443,13 +443,13 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`a <- textConnection(AB)
+a <- textConnection(AB)
 b <- textConnection(E)
 if(x){
 	close(a)
 }
 t <- 2
-close(b)`
+close(b)
 ```
 
 We expect the linter to report the following:
@@ -463,10 +463,10 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`if(x){
+if(x){
 	a <- textConnection(A)
 }
-close(a)`
+close(a)
 ```
 
 We expect the linter to report the following:
@@ -480,7 +480,7 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`a <- 4+3
+a <- 4+3
 if(x){
 	a <- textConnection(A)
 	b <- textConnection(B)
@@ -491,7 +491,7 @@ if(x){
 }
 if(y){
 	close(b)
-}`
+}
 ```
 
 We expect the linter to report the following:
@@ -506,14 +506,14 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`a <- 4+3
+a <- 4+3
 if(x){
 	a <- textConnection(A)
 	b <- textConnection(B)
 	if(y){
 	close(a)
 	}
-}`
+}
 ```
 
 We expect the linter to report the following:
@@ -528,11 +528,11 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`for(f in files){
+for(f in files){
 	con <- file(f)
 	readLines(con)
 	close(con)
-}`
+}
 ```
 
 We expect the linter to report the following:
@@ -546,7 +546,7 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`if(x){
+if(x){
 	a <- 4
 	while(a > 0){
 		b <- textConnection(A)
@@ -558,7 +558,7 @@ Given the following input:
 else {
 	a <- textConnection(A)
 	close(a)
-}`
+}
 ```
 
 We expect the linter to report the following:

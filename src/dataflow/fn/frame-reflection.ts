@@ -4,7 +4,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { EdgeType } from '../graph/edge';
 import { Dataflow } from '../graph/df-helper';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { DfgVertex, VertexType } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';

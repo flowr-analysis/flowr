@@ -7,7 +7,7 @@
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { VertexType } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -71,8 +71,8 @@ export function buildSourceInlineMap(ast: NormalizedAst, graph: DataflowGraph): 
 	// dependency, the first vertex under it (its directly sourced block).
 	const sourceArgs = new Map<NodeId, string | undefined>();
 	const firstVertexByCd = new Map<NodeId, NodeId>();
-	for(const [id, vertex] of graph.vertices(true)) {
-		if(DfgVertex.isFunctionCall(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
 			sourceArgs.set(id, sourceArg(ast, id));
 		}
 		const cds = vertex.cds;

@@ -234,8 +234,8 @@ function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] 
 	}
 	const seeds: NodeId[] = [];
 	let generics: Set<string> | undefined;
-	for(const [id, vertex] of graph.vertices(true)) {
-		if(!DfgVertex.isFunctionDefinition(vertex) || reached.has(id)) {
+	for(const [id] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		if(reached.has(id)) {
 			continue;
 		}
 		const node = idMap.get(id);
@@ -304,12 +304,9 @@ export const CallGraph = {
 			if(seen.has(currentId)) {
 				continue;
 			}
-			result.addVertex(currentVtx, undefined as unknown as REnvironmentInformation, true);
-			for(const [tar, e] of graph.edgesFrom(currentId)) {
-				if(DfEdge.includesType(e, EdgeType.Calls)) {
-					result.addEdge(currentId, tar, EdgeType.Calls);
-					toVisit.push(tar);
-				}
+			seen.add(currentId);
+			for(const nextId of graph.edgesFrom(currentId).keys()) {
+				toVisit.push(nextId);
 			}
 		}
 		return false;
@@ -322,8 +319,8 @@ export const CallGraph = {
 		if(idMap === undefined) {
 			return entries;
 		}
-		for(const [id, vertex] of graph.vertices(true)) {
-			const node = DfgVertex.isFunctionCall(vertex) ? idMap.get(id) : undefined;
+		for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+			const node = idMap.get(id);
 			if(node !== undefined && RFunctionDefinition.wrappingFunctionDefinition(node, idMap) === undefined) {
 				entries.add(id);
 			}

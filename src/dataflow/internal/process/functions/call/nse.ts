@@ -153,7 +153,7 @@ export const Nse = {
 
 	/** Whether `id` is a name the data mask supplies, i.e. a use the caller does not bind itself. */
 	suppliedByMask(this: void, graph: DataflowGraph, id: NodeId, vertex: DataflowGraphVertexInfo | undefined = graph.getVertex(id)): boolean {
-		return DfgVertex.isUse(vertex) && !graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads));
+		return DfgVertex.isUse(vertex) && !graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.Reads));
 	},
 
 	/**

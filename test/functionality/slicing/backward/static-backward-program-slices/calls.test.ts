@@ -631,6 +631,8 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		);
 		mapCase('Points Should Link to Plot', 'plot(f)\npoints(g)', '2@points', 'plot(f)\npoints(g)');
 		mapCase('Custom plot should have no links', 'plot <- function() {}\nplot(f)\npoints(g)', '3@points', 'points(g)');
+		mapCase('A call after the criterion does not define for it', 'f <- function() { x <<- 1 }\nf()\ny <- x\nf()', '3@y', 'f <- function() x <<- 1\nf()\ny <- x');
+		mapCase('A draw after the criterion does not advance it', 'h <- function() runif(1)\nh()\ny <- runif(1)\nh()', '3@y', 'h <- function() runif(1)\nh()\ny <- runif(1)');
 		describe('options', () => {
 			const optionCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'built-in-options', 'name-normal', 'call-normal', 'named-arguments', 'newlines'];
 			function optionCase(name: string, code: string, criterion: SlicingCriterion, expected: string) {

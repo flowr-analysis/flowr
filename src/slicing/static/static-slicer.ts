@@ -11,7 +11,7 @@ import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../dat
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
+import type { DataflowGraph, ReadonlyOutgoingEdges } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
@@ -89,6 +89,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const basePrint = ctx.env.getCleanEnvFingerprint();
 	const queue = new VisitingQueue(options.threshold ?? 75, cache, graph, ctx.gas.scope(options.gas), [emptyEnv, basePrint]);
 	const enclosingHandled = new Set<NodeId | undefined>();
+	const missesSeeds = direction === SliceDirection.Backward && sliceGraph === undefined ? afterSeeds(ids, idMap) : undefined;
 	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
 		if(!queue.hasId(id)) {
 			queue.add(id, env, print, true);
@@ -132,8 +133,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			slicerLogger.warn(`id: ${id} must be in graph but can not be found, keep in slice to be sure`);
 			return;
 		}
-		const [currentVertex, currentEdges] = currentInfo;
+		const [currentVertex, allEdges] = currentInfo;
 		const strictlyEnclosing = RNode.strictlyEnclosingFunction(id, idMap);
+		/* code in a function links to what it meets at all its calls, so also to what cannot meet the seeds */
+		const currentEdges = missesSeeds !== undefined && strictlyEnclosing !== undefined ? withoutMissed(allEdges, missesSeeds) : allEdges;
 		if(!enclosingHandled.has(strictlyEnclosing)) {
 			enclosingHandled.add(strictlyEnclosing);
 			definitionWithHolders(strictlyEnclosing, idMap, graph, trackCallees ? undefined : openedBodies).forEach(outer => enqueue(outer, emptyEnv, basePrint));
@@ -205,6 +208,50 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const status = queue.status();
 	const result = ctx.config.solver.slicer?.autoExtend ? extendSlices(status.result, idMap) : status.result;
 	return { ...status, slicedFor: ids, result, freeNames: freeNamesOf(result, info.graph) };
+}
+
+/** The `edges` without those to what `misses` names. */
+function withoutMissed(edges: ReadonlyOutgoingEdges, misses: (id: NodeId) => boolean): ReadonlyOutgoingEdges {
+	for(const [target] of edges) {
+		if(misses(target)) {
+			return new Map([...edges].filter(([t]) => !misses(t)));
+		}
+	}
+	return edges;
+}
+
+/** The top-level statement `id` is part of, as its file root and its index there. */
+function topLevelStatement(id: NodeId, idMap: AstIdMap): [NodeId, number] | undefined {
+	let node = idMap.get(id);
+	for(let parent = node && RNode.directParent(node, idMap); node !== undefined && parent !== undefined; node = parent, parent = RNode.directParent(parent, idMap)) {
+		if(parent.info.parent === undefined) {
+			return [parent.info.id, node.info.index];
+		}
+	}
+	return undefined;
+}
+
+/** Whether a node runs only after every seed, as its top-level statement follows theirs; `undefined` if a seed is in a function, which may run any time. */
+function afterSeeds(ids: readonly NodeId[], idMap: AstIdMap): ((id: NodeId) => boolean) | undefined {
+	const last = new Map<NodeId, number>();
+	for(const id of ids) {
+		const at = topLevelStatement(id, idMap);
+		if(at === undefined || RNode.findEnclosing(id, idMap, RFunctionDefinition.is) !== undefined) {
+			return undefined;
+		}
+		last.set(at[0], Math.max(last.get(at[0]) ?? at[1], at[1]));
+	}
+	const known = new Map<NodeId, boolean>();
+	return id => {
+		let after = known.get(id);
+		if(after === undefined) {
+			const at = topLevelStatement(id, idMap);
+			const bound = at === undefined ? undefined : last.get(at[0]);
+			after = at !== undefined && bound !== undefined && at[1] > bound;
+			known.set(id, after);
+		}
+		return after;
+	};
 }
 
 /** The calls writing output (`cat`, `print`, ...: a side effect linked to `sink`) within the functions the call `seeds` run, transitively. */

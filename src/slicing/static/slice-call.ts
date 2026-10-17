@@ -5,7 +5,7 @@ import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import { type DataflowGraph, FunctionArgument, type OutgoingEdges } from '../../dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument, type ReadonlyOutgoingEdges } from '../../dataflow/graph/graph';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -160,7 +160,7 @@ export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph
 
 const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument;
 /** Returns true if we found at least one return edge */
-export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
+export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: ReadonlyOutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
 	if(![...currentEdges.values()].some(edge => DfEdge.includesType(edge, EdgeType.Returns))) {
 		return false;
 	}

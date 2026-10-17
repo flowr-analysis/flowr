@@ -23,7 +23,7 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { type RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -481,7 +481,7 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 		return stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
 	}
 	// a selected source() that we could not link to a file (dynamic/missing path): keep it verbatim
-	if(call.named && call.functionName.lexeme === 'source') {
+	if(RFunctionCall.isNamed(call, 'source')) {
 		const arg = call.arguments[0];
 		const path = arg !== undefined && arg !== EmptyArgument && RString.is(arg.value) ? arg.value.content.str : undefined;
 		config.warnings?.push({ kind: 'unresolved', callId: id, path });

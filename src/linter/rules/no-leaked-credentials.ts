@@ -107,7 +107,7 @@ class CredentialContexts {
 			if(RFunctionDefinition.is(current)) {
 				break;
 			}
-			const fn = RFunctionCall.isNamed(current) ? current.functionName.content : '';
+			const fn = RFunctionCall.calledName(current) ?? '';
 			const name = Identifier.getName(fn);
 			/* only a value built from its arguments carries a literal on to where it is assigned, `assign` assigns its own */
 			const opaque = RFunctionCall.is(current) && RArgument.is(child) && !this.pure.has(Identifier.getNamespace(fn) === undefined ? name : Identifier.toString(fn));

@@ -1980,7 +1980,7 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 
 	for(const arg of args) {
 		if(arg !== undefined && RArgument.isNotEmpty(arg)) {
-			if(RFunctionCall.isNamed(arg.value) && Identifier.getName(arg.value.functionName.content) === 'c') {
+			if(RFunctionCall.isNamed(arg.value, 'c')) {
 				const result = getSelectedColumns(arg.value.arguments, info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);

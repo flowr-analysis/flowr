@@ -30,6 +30,9 @@ import { Resolve } from '../../../../../environments/resolve-helper';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
+const ListConstructors: ReadonlySet<string> = new Set(['list', 'c']);
+import { uniqueArrayMerge } from '../../../../../../util/collections/arrays';
+
 /**
  * Graphics parameters and options, tracked as global pseudo variables (`#...`) so readers link to the calls that set them.
  * Accumulating states only grow: `par(mar = ...)` keeps an earlier `par(mfrow = ...)`.
@@ -816,7 +819,7 @@ function scopedWrites<OtherInfo>(scope: AmbientScope, args: readonly Potentially
 	/* what falls to `...` names options, it is no formal of its own */
 	const formals = new Set([...bound.entries()].filter(([param]) => param !== '...').map(([, arg]) => arg.info.id));
 	const fromList = (value: RNode<OtherInfo & ParentInformation> | undefined) => {
-		if(RFunctionCall.isNamed(value) && ['list', 'c'].includes(Identifier.getName(value.functionName.content))) {
+		if(RFunctionCall.isNamed(value, ListConstructors)) {
 			for(const entry of value.arguments) {
 				if(entry === EmptyArgument) {
 					continue;
@@ -936,7 +939,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 			sites.push(node.info.id);
 		} else if(RFunctionCall.is(node)) {
 			const targets = node.named ? Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function) ?? [] : [];
-			if(node.named && Identifier.getName(node.functionName.content) === 'suppressWarnings' && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
+			if(RFunctionCall.isNamed(node, 'suppressWarnings') && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
 				return true;
 			}
 			const handlers = muffledHandlers(node, graph, data);

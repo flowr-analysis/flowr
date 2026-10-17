@@ -10,7 +10,7 @@ import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-stri
 import { RExpressionList } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { OperatorDatabase } from '../../../../../r-bridge/lang-4.x/ast/model/operators';
-import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RBinaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';

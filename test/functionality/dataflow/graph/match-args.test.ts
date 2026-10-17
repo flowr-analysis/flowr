@@ -16,7 +16,7 @@ describe('FunctionSemantics.call.match.toDefinition', withTreeSitter(parser => {
 		const ast = await analyzer.normalize();
 		let found: RFunctionCall<ParentInformation> | undefined;
 		RProject.visitAst(ast.ast, node => {
-			if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === name) {
+			if(RFunctionCall.isNamed(node, name)) {
 				found ??= node;
 			}
 			return false;

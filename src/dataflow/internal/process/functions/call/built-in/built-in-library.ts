@@ -194,7 +194,7 @@ function stringLiterals<Info>(node: RNode<Info>): string[] {
 	if(RString.is(node)) {
 		return [node.content.str];
 	}
-	return RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'c'
+	return RFunctionCall.isNamed(node, 'c')
 		? node.arguments.flatMap(a => a !== EmptyArgument && RString.is(a.value) ? [a.value.content.str] : [])
 		: [];
 }

@@ -58,8 +58,7 @@ function fixedStackEnv(kind: StackEnvKind | undefined, data: StackEnvContext): R
 /** The kind of stack environment `node` denotes, if it does; a user definition of the same name shadows the built-in. */
 export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: StackEnvContext): StackEnvKind | undefined {
 	const symbol = RSymbol.is(node) ? node.content
-		: RFunctionCall.isNamed(node) && RSymbol.is(node.functionName) ? node.functionName.content
-			: undefined;
+		: RFunctionCall.calledName(node);
 	const kind = symbol !== undefined ? stackEnvKind(String(symbol)) : undefined;
 	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
 		return undefined;

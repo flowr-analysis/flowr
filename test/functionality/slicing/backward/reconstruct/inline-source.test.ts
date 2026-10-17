@@ -16,7 +16,7 @@ import { RFunctionCall } from '../../../../../src/r-bridge/lang-4.x/ast/model/no
 
 /** force-select every named `source()` call so the inlining recursion is exercised regardless of what the slice pulls in */
 function selectSourceCalls(node: RNode<ParentInformation>): boolean {
-	return RFunctionCall.isNamed(node) && node.functionName.lexeme === 'source';
+	return RFunctionCall.isNamed(node, 'source');
 }
 
 async function run(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria) {

@@ -541,7 +541,7 @@ function fieldAssignmentOf(readId: NodeId, idMap: AstIdMap): NodeId | undefined 
 	const access = read === undefined ? undefined : RNode.directParent(read, idMap);
 	/* `assign("f", v, envir = x)` writes into `x` as well */
 	const call = access === undefined ? undefined : RNode.directParent(access, idMap);
-	if(RFunctionCall.isNamed(call) && Identifier.getName(call.functionName.content) === 'assign' && call.arguments.indexOf(access as never) >= 2) {
+	if(RFunctionCall.isNamed(call, 'assign') && call.arguments.indexOf(access as never) >= 2) {
 		return call.info.id;
 	}
 	if(!RAccess.is(access) || access.accessed.info.id !== readId) {
@@ -568,7 +568,7 @@ export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState
 	if(!RAccess.is(access) || access.accessed.info.id !== readId) {
 		return;
 	}
-	const fieldName = accessedFieldName(unpackArg(access.access[0]), RAccess.isNamed(access));
+	const fieldName = accessedFieldName(RArgument.valueOf(access.access[0]), RAccess.isNamed(access));
 	linkFieldReads(graph, access.info.id, fieldName ? envState.current.memory.get(fieldName) : undefined, true);
 }
 

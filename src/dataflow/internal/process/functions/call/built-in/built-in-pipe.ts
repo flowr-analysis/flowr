@@ -169,7 +169,7 @@ export function processPipe<OtherInfo>(
 			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
 		}
 
-		if(RFunctionCall.isNamed(rhs) && DataMaskingFunctionNames.has(Identifier.getName(rhs.functionName.content))) {
+		if(RFunctionCall.isNamed(rhs, DataMaskingFunctionNames)) {
 			markPipedDataMask(rhs, information.graph);
 		}
 

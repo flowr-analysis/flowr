@@ -42,7 +42,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 		foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | typeof EmptyArgument)[]) => {
 			const args = b.flatMap(b => b !== EmptyArgument ? b.flat() : []);
 			if(c.named) {
-				return Identifier.getName(c.functionName.content) === 'library' ? args.slice(1) : args;
+				return RFunctionCall.isNamed(c, 'library') ? args.slice(1) : args;
 			} else {
 				return [...a.filter(x => x !== EmptyArgument), ...args];
 			}

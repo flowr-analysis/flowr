@@ -5,6 +5,7 @@ import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../
 import { isNotUndefined } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
+import type { MemoryView } from '../../../../../environments/frame-memory';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
@@ -222,6 +223,17 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 	return [{ functionCall: id, called, propagateExitPoints: [] }];
 }
 
+/** The bindings of every package layer `env` sees, which a callee's environment shares while nothing writes to them. */
+function packageLayersOf(env: REnvironmentInformation): Set<MemoryView> {
+	const layers = new Set<MemoryView>();
+	for(const current of REnvironment.frames(env.current)) {
+		if(current.t !== undefined) {
+			layers.add(current.memory);
+		}
+	}
+	return layers;
+}
+
 function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap) {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall)?.cds;
@@ -245,9 +257,15 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 				}
 			}
 			let hasUpdate = false;
-			for(let current = environment.current; !current.builtInEnv; current = current.parent) {
-				/* a package attached inside the body (library()) propagates to the caller, like R attaching globally */
-				hasUpdate ||= current.t !== undefined;
+			const seenByCaller = packageLayersOf(inputEnvironment);
+			for(const current of REnvironment.frames(environment.current)) {
+				if(current.t !== undefined) {
+					/* the callee sees the caller's packages too, but only one attached inside the body (library()) is its doing, and propagates like R attaching globally */
+					if(seenByCaller.has(current.memory)) {
+						continue;
+					}
+					hasUpdate = true;
+				}
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!NodeId.isBuiltIn(def.definedAt)) {

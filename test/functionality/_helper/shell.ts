@@ -850,7 +850,7 @@ async function skipWithoutRPackages(code: string, skip: (condition: boolean, not
 		available: new Set((await printedByR('cat(.packages(all.available = TRUE), sep = "\\n")')).split('\n'))
 	}))();
 	const { listed, available } = await ciRPackages;
-	const missing = [...new Set(used)].filter(p => listed.includes(p) && !available.has(p));
+	const missing = uniqueArray(used).filter(p => listed.includes(p) && !available.has(p));
 	skip(missing.length > 0, `R ${globalThis.rVersion?.raw ?? '?'} lacks ${missing.join(', ')}`);
 }
 

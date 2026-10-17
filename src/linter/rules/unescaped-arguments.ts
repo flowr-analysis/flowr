@@ -31,6 +31,8 @@ import { Record } from '../../util/record';
 import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { uniqueArray } from '../../util/collections/arrays';
 
 /**
  * The kinds of critical operations to check for unescaped arguments.
@@ -351,7 +353,7 @@ async function getUnescapedSources(
 	let entries: CriticalTargetEntry[] = targets.map(target => ({ target, call: target.call.id, only: new Set([target.arg]), depth: 0 }));
 
 	while(entries.length > 0) {
-		const criteria = [...new Set(entries.map(entry => SlicingCriterion.fromId(entry.call)))];
+		const criteria = uniqueArray(entries.map(entry => SlicingCriterion.fromId(entry.call)));
 		const queryResult = await data.query([{ type: 'input-sources', criterion: criteria, config: queryConfig }]);
 		const classified = queryResult['input-sources']?.results ?? {};
 		const next: CriticalTargetEntry[] = [];
@@ -417,7 +419,7 @@ function createResult(target: CriticalTarget, sources: InputSource[], config: Un
 		category:   target.category,
 		function:   target.callee ?? Identifier.toString(target.call.name),
 		sources,
-		input:      [...new Set(sources.flatMap(source => source.types).filter(type => !config.acceptedInputs.includes(type)))],
+		input:      uniqueArray(sources.flatMap(source => source.types).filter(type => !config.acceptedInputs.includes(type))),
 		...(quickFix.length > 0 ? { quickFix } : {})
 	};
 }
@@ -425,7 +427,7 @@ function createResult(target: CriticalTarget, sources: InputSource[], config: Un
 export const UNESCAPED_ARGUMENTS = {
 	createSearch: (config, data) => Q.fromQuery({
 		type:        'call-context',
-		callName:    [...new Set(getEnabledCriticalCalls(config, data.inspectContext().env.builtInIndex).map(({ name }) => Identifier.getName(name)))],
+		callName:    uniqueArray(getEnabledCriticalCalls(config, data.inspectContext().env.builtInIndex).map(({ name }) => Identifier.getName(name))),
 		callTargets: CallTargets.MustIncludeGlobal
 	}),
 	processSearchResult: async(elements, config, data) => {

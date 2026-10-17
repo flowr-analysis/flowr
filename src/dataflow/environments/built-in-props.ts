@@ -1,6 +1,7 @@
 import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
 import { Ternary } from '../../util/logic';
+import { uniqueArrayMerge } from '../../util/collections/arrays';
 
 /**
  * What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault}
@@ -325,7 +326,7 @@ export const CallProps = {
 	join(this: void, props1: StatedProps | undefined, props2: StatedProps | undefined): StatedProps {
 		const props = props1?.props === undefined ? props2?.props : (props2?.props === undefined ? props1.props : props1.props | props2.props);
 		const tags = props1?.tags === undefined ? props2?.tags :
-			(props2?.tags === undefined ? props1.tags : [...new Set([...props1.tags, ...props2.tags])]);
+			(props2?.tags === undefined ? props1.tags : uniqueArrayMerge(props1.tags, props2.tags));
 		return { props, tags };
 	},
 	/** Keep only the properties in the stated properties that are in the property selector. */

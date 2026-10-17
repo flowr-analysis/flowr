@@ -12,6 +12,7 @@ import type { StatedProps } from '../../../dataflow/environments/built-in-props'
 import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { enumMembers } from '../../../util/objects';
 import { DefaultDepth } from '../../../dataflow/fn/argument-roles';
+import { uniqueArrayMerge } from '../../../util/collections/arrays';
 
 
 /** refuses a query that can only answer with nothing: `formals` narrowing an answer that carries none, or `props` naming only properties the single half it asks for cannot state */
@@ -80,6 +81,6 @@ export const InspectFnPropsQueryDefinition = {
 	}).custom(rejectEmptyAnswer).description('Either returns all function definitions alongside what they and their formals do, or just those matching the filters.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'inspect-fn-props'>['inspect-fn-props'];
-		return [...new Set([...Object.keys(out.roles), ...Object.keys(out.props)])];
+		return uniqueArrayMerge(Object.keys(out.roles), Object.keys(out.props));
 	}
 } as const satisfies SupportedQuery<'inspect-fn-props'>;

@@ -11,6 +11,7 @@ import { Playground } from '../util/text/playground-link';
 import { OperatorDatabase } from '../r-bridge/lang-4.x/ast/model/operators';
 import { highlightR, renderRToken, escapeHtml, type KnownNames } from '../util/text/r-highlight';
 import { DefaultMap } from '../util/collections/defaultmap';
+import { uniqueArray } from '../util/collections/arrays';
 
 const testSuites = Object.values(TestSuites);
 const maxSignatureTests = 3;
@@ -53,7 +54,7 @@ function claimedCapabilities(array: string): string[] {
 	for(const [, , operator] of array.matchAll(operatorSpreadRegex)) {
 		ids.push(...OperatorDatabase[operator]?.capabilities ?? []);
 	}
-	return [...new Set(ids)];
+	return uniqueArray(ids);
 }
 
 /** a test name as the source spells it, with its escapes (`\\name`) resolved */

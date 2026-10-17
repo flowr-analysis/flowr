@@ -27,6 +27,7 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { collectImplicitEchoes } from './implicit-echo';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
+import { uniqueArrayMerge } from '../../../util/collections/arrays';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
@@ -243,8 +244,7 @@ export function getAllCategories(queries: readonly DependenciesQuery[], ctx: Rea
 
 /** every category a set of queries reports on, which is what the results are keyed by; no built-in has to be read for that */
 export function getAllCategoryNames(queries: readonly DependenciesQuery[]): DependencyCategoryName[] {
-	return [...new Set<DependencyCategoryName>([...DefaultDependencyCategoryNames,
-		...queries.flatMap(query => Object.keys(query.additionalCategories ?? {}))])];
+	return uniqueArrayMerge(DefaultDependencyCategoryNames, queries.flatMap(query => Object.keys(query.additionalCategories ?? {})));
 }
 
 const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({

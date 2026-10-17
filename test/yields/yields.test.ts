@@ -10,6 +10,7 @@ import type { YieldSnippet } from '../../scripts/extract-yield-snippets';
 import { sigDbCacheDir } from '../../src/project/sigdb/decompress';
 import snippets from './snippets.json';
 import { sliceOf } from '../functionality/_helper/shell';
+import { uniqueArray } from '../../src/util/collections/arrays';
 
 /*
  * R has to print every stated :yields: value, and so has the flowR slice; refresh snippets.json with
@@ -50,7 +51,7 @@ describe('Snippets that state what they yield', () => {
 	beforeAll(async() => {
 		await TreeSitterExecutor.initTreeSitter();
 		/* a package that does not install leaves its checks to skip */
-		const missing = await missingOf([...new Set((snippets as YieldSnippet[]).flatMap(s => s.libraries))]);
+		const missing = await missingOf(uniqueArray((snippets as YieldSnippet[]).flatMap(s => s.libraries)));
 		if(missing.length > 0) {
 			await fs.promises.mkdir(packageLibrary, { recursive: true })
 				.then(() => printed(`install.packages(c(${missing.map(p => `"${p}"`).join(', ')}), lib = "${packageLibrary.replaceAll('\\', '/')}", repos = "https://cloud.r-project.org/", quiet = TRUE)`))

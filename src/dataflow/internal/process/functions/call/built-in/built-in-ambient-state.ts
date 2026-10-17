@@ -132,7 +132,7 @@ function withAccess<OtherInfo>(
 	}
 	const cds = data.cds ? [...data.cds] : undefined;
 	const maybeWritten = writes.flatMap(w => typeof w === 'object' && w.mode === 'maybe' ? [w.name] : []);
-	const readRefs: IdentifierReference[] = [...new Set([...reads, ...maybeWritten])].map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
+	const readRefs: IdentifierReference[] = uniqueArrayMerge(reads, maybeWritten).map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
 	/* the writes stay out of `out`: an assignment reads whatever else its source writes (`x <- y <- 3`) */
 	return {
 		...res,

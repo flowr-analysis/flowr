@@ -44,7 +44,7 @@ import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
 import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
 import { languageOf, notebookAsScript, notebookCells } from './notebook';
-import { arraySum } from '../../src/util/collections/arrays';
+import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -584,7 +584,7 @@ function showPointed(name: string, said: string | undefined, known?: ReturnType<
 }
 
 /** the names flowR knows without any package, offered alongside whatever the script defines */
-const builtInNames = [...new Set(DefaultBuiltinConfig.flatMap(d => d.names.map(id => String(Identifier.getName(id)))))]
+const builtInNames = uniqueArray(DefaultBuiltinConfig.flatMap(d => d.names.map(id => String(Identifier.getName(id)))))
 	.filter(n => /^[A-Za-z.][\w._]*$/.test(n));
 
 /** the exports of every package this page carries, `package -> names`, written in by the build */
@@ -685,7 +685,7 @@ function complete(context: CompletionContext): CompletionResult | null {
 	/* only what R would find at this position: what the script binds, what it attached, and the rest of
 	   the search path. A package name is not bound to anything, so it belongs in `library()` alone */
 	const needle = word.text;
-	const defined = [...new Set([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]))];
+	const defined = uniqueArray([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
 	return {
 		from:    word.from,
 		options: ranked([
@@ -1397,7 +1397,7 @@ pane.addEventListener('drop', event => {
 async function packagesOf(code?: string): Promise<readonly string[]> {
 	const answer = await (await analyzer(code)).query([{ type: 'dependencies' }] as never) as unknown as { dependencies?: { library?: readonly Dependency[] } };
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
-	return [...new Set(found)].filter(p => !BaseRPackages.has(p));
+	return uniqueArray(found).filter(p => !BaseRPackages.has(p));
 }
 async function toRun(): Promise<RunInput> {
 	const name = files[active].name;
@@ -1903,7 +1903,7 @@ async function describe(criterion: string): Promise<Known> {
 			: undefined;
 		/* a value is the most useful answer, but every name has an origin, so that is the fallback */
 		const origins = answers.origin?.results?.[criterion] ?? [];
-		const from = [...new Set((await originLines(origins)).map(o => o.file === undefined ? String(o.line) : `${o.file}:${o.line}`))];
+		const from = uniqueArray((await originLines(origins)).map(o => o.file === undefined ? String(o.line) : `${o.file}:${o.line}`));
 		/* `filter` is dplyr's once dplyr is attached, and flowR says so: `built-in:dplyr:filter` */
 		const attached = origins.map(o => /^built-in:([^:]+):/.exec(o.proc ?? '')?.[1]).find(p => p !== undefined);
 		answer = {
@@ -2253,7 +2253,7 @@ async function analyze(): Promise<number> {
 	const acts = el('span', 'acts');
 	if(fixable.length > 0) {
 		acts.append(fixButton(fixable, `fix ${fixable.length}`,
-			[...new Set(fixable.map(fix => fix.description))].join('\n')));
+			uniqueArray(fixable.map(fix => fix.description)).join('\n')));
 	}
 	acts.append(suggestRule());
 	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints, undefined, acts);

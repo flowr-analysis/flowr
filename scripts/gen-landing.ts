@@ -18,7 +18,7 @@ import { OriginType } from '../src/dataflow/origin/dfg-get-origin';
 import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
 import { explain } from './page-lib/lint-text';
-import { arraySum } from '../src/util/collections/arrays';
+import { arraySum, uniqueArray  } from '../src/util/collections/arrays';
 import { highlightR, renderRToken, tokenizeR, escapeHtml as escape } from '../src/util/text/r-highlight';
 
 /**
@@ -154,8 +154,8 @@ async function valueLines(code: string): Promise<string[][]> {
 	const resolved: string[][] = [];
 	for(const criterion of ValueNames) {
 		const answer = await analyzer.query([{ type: 'resolve-value', criteria: [criterion] }]);
-		const values = [...new Set(Object.values(answer['resolve-value'].results)
-			.flatMap(found => found.values.map(v => stringifyValue(v))))].filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
+		const values = uniqueArray(Object.values(answer['resolve-value'].results)
+			.flatMap(found => found.values.map(v => stringifyValue(v)))).filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
 		if(values.length > 0) {
 			/* the comment says what it means, the tooltip keeps flowR's own form (`[6L, 6L]`) */
 			resolved.push([criterion, values.map(plain).join(', '), values.join(', ')]);
@@ -531,7 +531,7 @@ function render(data: PageData): string {
 	}).join('\n');
 
 	const kindsOn = (pairs: string[][], line: number): string[] =>
-		[...new Set(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind))];
+		uniqueArray(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind));
 	const depSource = (code: string, pairs: string[][]): string => code.split('\n').map((line, index) => {
 		const number = index + 1;
 		const mine = pairs.filter(([, , at]) => at === String(number));

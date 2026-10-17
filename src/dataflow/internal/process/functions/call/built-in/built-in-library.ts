@@ -395,7 +395,8 @@ function selectExports(callables: readonly string[], spec: AttachSpec): Attached
  */
 function lazyExports(pack: string, exports: readonly AttachedExport[], ctx: FlowrAnalyzerContext, definedAt: NodeId | undefined): LazyBindings {
 	const byName = new Map(exports.map(exp => [Identifier.getName(Identifier.make(exp.as, pack)), exp] as const));
-	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt)]);
+	const aliases = exports.filter(exp => exp.as !== exp.exported).map(exp => `${exp.as}=${exp.exported}`);
+	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt)], `${pack}|${String(definedAt)}|${aliases.join(',')}`);
 }
 
 /**

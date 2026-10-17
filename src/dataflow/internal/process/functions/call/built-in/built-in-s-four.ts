@@ -9,11 +9,11 @@ import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ClassArgRef, argForImpl, ClassSystem } from '../../../../../fn/class-declaration';
 import { type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { define } from '../../../../../environments/define';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { REnvironment } from '../../../../../environments/environment';
 
 /** shorthand for the decorated-info generics every helper below carries through */
 type Data<O> = DataflowProcessorInformation<O & ParentInformation>;
@@ -41,7 +41,7 @@ export interface S4UseConfig {
 
 
 /** The names an argument states, looking through the `c(...)`/`signature(...)` wrappers a signature may use. */
-function namesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly string[] {
+function classNamesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly string[] {
 	const known = node === undefined ? [] : NodeValue.knownStringsOf(node.info.id, data);
 	if(known.length > 0 || !RFunctionCall.isNamed(node)) {
 		return known;
@@ -58,18 +58,18 @@ function readNames<O>(info: DataflowInformation, rootId: NodeId, names: readonly
 
 /** Defines `name` in the environment and records it as an out-reference of the call at `rootId`. */
 function defineOut<O>(info: DataflowInformation, rootId: NodeId, name: Identifier, type: InGraphReferenceType, data: Data<O>): void {
-	info.environment = define({ name, nodeId: rootId, type, definedAt: rootId, cds: data.cds }, false, info.environment);
+	info.environment = REnvironment.define({ name, nodeId: rootId, type, definedAt: rootId, cds: data.cds }, false, info.environment);
 	info.out = [...info.out, { nodeId: rootId, name, type, cds: data.cds }];
 }
 
 /** wires the S4 registrations a call *uses* (the classes and generic its arguments name by string), read against the registry so the call depends on whatever `setClass`/`setGeneric` wrote them */
 export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: NodeId, data: Data<O>, config: S4UseConfig): void {
 	for(const ref of config.classArgs ?? []) {
-		readNames(info, rootId, namesOf(argForImpl(args, ref), data).map(s4ClassName), ReferenceType.Variable, data);
+		readNames(info, rootId, classNamesOf(argForImpl(args, ref), data).map(s4ClassName), ReferenceType.Variable, data);
 	}
-	const generics = namesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? ''));
+	const generics = classNamesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? ''));
 	readNames(info, rootId, generics, ReferenceType.Function, data);
-	const registered = namesOf(argForImpl(args, config.registersArg), data).map(s4ClassName);
+	const registered = classNamesOf(argForImpl(args, config.registersArg), data).map(s4ClassName);
 	readNames(info, rootId, registered, ReferenceType.Variable, data);
 	for(const cls of registered) {
 		defineOut(info, rootId, cls, ReferenceType.Variable, data);

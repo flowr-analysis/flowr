@@ -15,14 +15,13 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
 import { applyKills } from '../../../../../environments/apply-kill';
-import { define } from '../../../../../environments/define';
 import type { EnvirResolution } from './built-in-envir-utils';
 import { envirOf, resolveArgToEnvirOrAmbiguous } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { cleanEnvOf } from '../../../../../environments/scoping';
 import { ambientWritesOfRelease } from './built-in-ambient-state';
+import { REnvironment } from '../../../../../environments/environment';
 
 /** The variables an `rm` call targets for removal, and the frame it removes them from. */
 interface RmTargets<OtherInfo> {
@@ -190,7 +189,7 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDepend
 /** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
 function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: ControlDependency[] | undefined): DataflowInformation {
 	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId));
-	const environment = define({ ...envir.envDef, definedAt: rootId, envState: newEnvState }, false, res.environment);
+	const environment = REnvironment.define({ ...envir.envDef, definedAt: rootId, envState: newEnvState }, false, res.environment);
 	return { ...res, environment };
 }
 
@@ -225,7 +224,7 @@ export function processRm<OtherInfo>(
 		name, args, rootId, data,
 		origin:    BuiltInProcName.Rm,
 		/* an unevaluated name must not resolve against the environment */
-		patchData: (d, i) => nse.has(i) ? { ...d, environment: cleanEnvOf(d.environment) } : d
+		patchData: (d, i) => nse.has(i) ? { ...d, environment: REnvironment.cleanOf(d.environment) } : d
 	});
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [...nse]);
 

@@ -12,7 +12,6 @@ import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { makeAmbientWritesMaybe } from './built-in-ambient-state';
-import { appendEnvironment } from '../../../../../environments/append';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -22,6 +21,7 @@ import { RNode, RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { REnvironment } from '../../../../../environments/environment';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
@@ -126,7 +126,7 @@ export function processIfThenElse<OtherInfo>(
 	} else if(alwaysTrue) {
 		finalEnvironment = thenEnvironment;
 	} else {
-		finalEnvironment = appendEnvironment(thenEnvironment, otherwiseEnvironment);
+		finalEnvironment = REnvironment.append(thenEnvironment, otherwiseEnvironment);
 	}
 
 	const whenTrue: ControlDependency = { id: rootId, when: true };

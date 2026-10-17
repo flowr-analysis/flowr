@@ -11,8 +11,6 @@ import { Identifier, type IdentifierDefinition, type IdentifierReference, Refere
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
-import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -239,7 +237,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
 			if(environment.level > inputEnvironment.level) {
 				/* the callee's own frame dies with the call */
-				environment = popLocalEnvironment(environment);
+				environment = REnvironment.popLocal(environment);
 				/* frames above the caller are ones its closure captured, so fold them back instead of losing their writes */
 				while(environment.level > inputEnvironment.level) {
 					environment = foldFrameIntoParent(environment);
@@ -269,7 +267,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 				};
 			}
 			const dependencies = cds === undefined ? callDependencies : [...callDependencies ?? [], ...cds];
-			inputEnvironment = overwriteEnvironment(inputEnvironment, environment, dependencies);
+			inputEnvironment = REnvironment.overwrite(inputEnvironment, environment, dependencies);
 		}
 	}
 	return inputEnvironment;
@@ -356,7 +354,7 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		addNonDefaultExitPoints(exitPoints, invertExitCds, data.cds, processed.exitPoints);
-		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
+		environment = exitPoints.length > 0 ? REnvironment.overwrite(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, idMap);
 

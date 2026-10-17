@@ -101,7 +101,7 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 	}
 	if(name.startsWith(SearchPathPackagePrefix)) {
 		const pkg = name.slice(SearchPathPackagePrefix.length);
-		for(let env: Environment | undefined = REnvironment.findGlobal(data.environment.current).parent; env !== undefined && !env.builtInEnv; env = env.parent) {
+		for(const env of REnvironment.searchPath(data.environment.current)) {
 			if(env.n === pkg && env.t === EnvType.Namespace) {
 				return { current: env, level: 0 };
 			}

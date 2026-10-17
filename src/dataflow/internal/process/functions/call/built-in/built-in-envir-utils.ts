@@ -8,7 +8,6 @@ import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
-import { define } from '../../../../../environments/define';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
@@ -76,7 +75,7 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 			for(const varDef of varDefs) {
 				const named = varDef as InGraphIdentifierDefinition & { name: Identifier };
 				if(named.name !== undefined) {
-					mergedEnvState = define(named, false, mergedEnvState);
+					mergedEnvState = REnvironment.define(named, false, mergedEnvState);
 				}
 			}
 		}
@@ -349,7 +348,7 @@ function routeWrittenToCustomEnv(
 	/* only a binding the write made here moves into the environment, `local(y <- 2, envir = e)` leaves the caller's `y` alone */
 	const namesToRemove = written.filter(w => result.environment.current.lookup(Identifier.getName(w.name))?.some(d => d.nodeId === w.nodeId)).map(w => ({ name: w.name }));
 	for(const w of written) {
-		newEnvState = define(w, false, newEnvState);
+		newEnvState = REnvironment.define(w, false, newEnvState);
 	}
 
 	const stripped = { current: result.environment.current.removeAll(namesToRemove), level: result.environment.level };
@@ -360,7 +359,7 @@ function routeWrittenToCustomEnv(
 export function rebindHolders(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
 	for(const holder of holdersOf(environment, envDef)) {
 		/* a holder bound in an enclosing frame is updated there, so the write escapes the function like a `<<-` */
-		environment = define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
+		environment = REnvironment.define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
 	}
 	return environment;
 }
@@ -378,7 +377,7 @@ export function routeWrittenToStackEnv(
 	const written = writtenDefinitionsOf(result, definedAt);
 	let environment = into;
 	for(const w of written) {
-		environment = define(w, true, environment);
+		environment = REnvironment.define(w, true, environment);
 		result.graph.addEdge(w.nodeId, rootId, EdgeType.Reads);
 	}
 	return { ...result, environment };

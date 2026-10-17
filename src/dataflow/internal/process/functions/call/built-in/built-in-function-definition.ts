@@ -2,7 +2,7 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
-import { bindAccessedField, getAllFunctionCallTargets, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
+import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
@@ -16,12 +16,11 @@ import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { s3DispatchClassesOf } from '../../../../../fn/class-declaration';
 import { createFreshEnvState } from './built-in-new-env';
-import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import type { Environment, IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
+import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
+import { REnvironment } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
@@ -83,7 +82,7 @@ export function processFunctionDefinition<OtherInfo>(
 		const read = processed.in.concat(processed.unknownReferences);
 		allParameterReads.push(...read);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		(data as { environment: REnvironmentInformation }).environment = overwriteEnvironment(data.environment, processed.environment);
+		(data as { environment: REnvironmentInformation }).environment = REnvironment.overwrite(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
 
@@ -97,7 +96,7 @@ export function processFunctionDefinition<OtherInfo>(
 		const targetLevel = offset === 0 ? 0 : originalEnvironment.level + 1 + offset;
 		let targetEnv = originalEnvironment;
 		while(targetEnv.level > targetLevel && targetEnv.level > 0) {
-			targetEnv = popLocalEnvironment(targetEnv);
+			targetEnv = REnvironment.popLocal(targetEnv);
 		}
 		if(targetEnv.level !== targetLevel) {
 			continue;
@@ -153,7 +152,7 @@ export function processFunctionDefinition<OtherInfo>(
 	}
 
 	// parameter names are unique, so overwriting their environments here is correct even with non-`=` arguments
-	let outEnvironment = overwriteEnvironment(paramsEnvironments, body.environment);
+	let outEnvironment = REnvironment.overwrite(paramsEnvironments, body.environment);
 
 	for(const read of remainingRead) {
 		if(read.name) {
@@ -188,9 +187,9 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 		let hookEnvironment = vert.subflow.environment;
 		while(hookEnvironment.level > outEnvironment.level) {
-			hookEnvironment = popLocalEnvironment(hookEnvironment);
+			hookEnvironment = REnvironment.popLocal(hookEnvironment);
 		}
-		outEnvironment = overwriteEnvironment(outEnvironment, hookEnvironment);
+		outEnvironment = REnvironment.overwrite(outEnvironment, hookEnvironment);
 		/* the jumps and errors of an exit hook overrule the exit points of the body */
 		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
 		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);
@@ -237,7 +236,7 @@ export function processFunctionDefinition<OtherInfo>(
 	graph.addVertex({
 		tag:         VertexType.FunctionDefinition,
 		id:          name.info.id,
-		environment: popLocalEnvironment(outEnvironment),
+		environment: REnvironment.popLocal(outEnvironment),
 		cds:         data.cds,
 		params:      readParams,
 		subflow:     flow,
@@ -290,12 +289,12 @@ function envStateReturnedAt<OtherInfo>(
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
 	callerEnvironment ??= ctx.env.makeCleanEnv();
 	while(baseEnvironment.level < callerEnvironment.level) {
-		baseEnvironment = pushLocalEnvironment(baseEnvironment);
+		baseEnvironment = REnvironment.pushLocal(baseEnvironment);
 	}
 	while(baseEnvironment.level > callerEnvironment.level) {
-		callerEnvironment = pushLocalEnvironment(callerEnvironment);
+		callerEnvironment = REnvironment.pushLocal(callerEnvironment);
 	}
-	return overwriteEnvironment(baseEnvironment, callerEnvironment);
+	return REnvironment.overwrite(baseEnvironment, callerEnvironment);
 }
 
 /**
@@ -415,7 +414,7 @@ interface NamesOfInterest {
 function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfInterest {
 	const shadowing = new Set<string>();
 	const generics = new Set<string>();
-	for(let env: IEnvironment | undefined = environment.current; env !== undefined && !env.builtInEnv; env = env.parent) {
+	for(const env of REnvironment.frames(environment.current)) {
 		for(const [identifier, definitions] of env.memory) {
 			if(definitions.every(d => NodeId.isBuiltIn(d.nodeId))) {
 				continue;
@@ -457,10 +456,10 @@ function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifie
 		/* the dispatch looks the method up by name, just like a call written out would */
 		graph.addEdge(call.id, def.nodeId, EdgeType.Reads);
 	}
-	return linkedDefinitions(dispatched, graph);
+	return linkedFunctionIds(dispatched, graph);
 }
 
-function linkedDefinitions(defs: readonly IdentifierDefinition[], graph: DataflowGraph): NodeId[] {
+function linkedFunctionIds(defs: readonly IdentifierDefinition[], graph: DataflowGraph): NodeId[] {
 	return getAllLinkedFunctionDefinitions(new Set(defs.map(d => d.nodeId)), graph)[0].values().map(d => d.id).toArray();
 }
 
@@ -497,7 +496,7 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 			}
 		}
 	}
-	const callsNext = linkedDefinitions([...picked], graph).some(d => {
+	const callsNext = linkedFunctionIds([...picked], graph).some(d => {
 		const v = graph.getVertex(d);
 		return DfgVertex.isFunctionDefinition(v) && callsIn(v, graph).some(([, c]) => c.origin.includes(BuiltInProcName.S3DispatchNext));
 	});
@@ -522,7 +521,7 @@ export function updateNestedFunctionCalls(
 	const runsOnceAt = memoize((id: NodeId) => ProgramOrder.runsOnceAt(id, graph));
 	const environmentAt = memoize((id: NodeId) => {
 		const environment = (graph.getVertex(id) as DataflowGraphVertexFunctionCall).environment;
-		return environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
+		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;
 	});
 	for(let i = 0; i < calls.length; i++) {
 		const [id, vertex] = calls[i];
@@ -729,9 +728,9 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 	for(let frame = data.environment.current; enclosing.length < level; frame = frame.parent) {
 		enclosing.push(frame);
 	}
-	let env = cleanEnvOf(data.environment);
+	let env = REnvironment.cleanOf(data.environment);
 	for(let i = 0; i < level + 1; i++) {
-		env = pushLocalEnvironment(env);
+		env = REnvironment.pushLocal(env);
 		if(i === level) {
 			env.current.setClosureNodeId(rootId);
 		} else {

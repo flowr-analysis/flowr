@@ -16,6 +16,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { REnvironment } from '../../../../../environments/environment';
 
 
 export interface LocalFunctionConfiguration {
@@ -68,7 +69,7 @@ export function processLocal<OtherInfo>(
 
 	const baseEnvironment = envirResolution
 		? envirResolution.envirData.environment     // evaluate in the tracked custom env
-		: pushLocalEnvironment(data.environment);   // normal new local scope
+		: REnvironment.pushLocal(data.environment);   // normal new local scope
 
 	const dfExpr = processDataflowFor(expr, { ...data, environment: baseEnvironment });
 	patchFunctionCall({
@@ -80,7 +81,7 @@ export function processLocal<OtherInfo>(
 		origin:                BuiltInProcName.Local
 	});
 
-	const resultEnvironment = envirResolution ? data.environment : popLocalEnvironment(dfExpr.environment);
+	const resultEnvironment = envirResolution ? data.environment : REnvironment.popLocal(dfExpr.environment);
 	/* definitions of the local scope vanish with it, only what escaped it (e.g. via `<<-`) may bubble up */
 	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
 		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)

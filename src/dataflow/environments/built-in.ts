@@ -77,7 +77,7 @@ import { processStringTemplate } from '../internal/process/functions/call/built-
 import { ArgProp, type BuiltInFnInfo, type FnSig, SemanticCallTag } from './built-in-props';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { AttachedBasePackageSet } from '../../util/r-base-packages';
-import { cleanEnvOf } from './scoping';
+import { REnvironment } from './environment';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -201,7 +201,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		patchData:   nsePositions === undefined ? undefined : (d, index) => {
 			if(nsePositions.has(index) && !inPlace) {
 				lastEnv = d.environment;
-				return { ...d, environment: cleanEnvOf(d.environment) };
+				return { ...d, environment: REnvironment.cleanOf(d.environment) };
 			}
 			return { ...d, environment: lastEnv };
 		}

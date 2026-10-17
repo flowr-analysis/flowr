@@ -21,7 +21,6 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { AmbientStateName, ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
-import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
@@ -414,7 +413,7 @@ function valueEntryPointOf(sourceInfo: DataflowInformation): NodeId | undefined 
 			return undefined;
 		}
 		seen.add(id);
-		id = returns[0][0];
+		id = returns[0];
 	}
 }
 
@@ -460,7 +459,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		definedAt: normalResult.entryPoint,
 		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
-	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
+	const newEnvState = REnvironment.define(fieldDef, false, envirResolution.envDef.envState);
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier, envState: REnvironmentInformation } = {
 		...envirResolution.envDef,
 		nodeId:    target.accessed.info.id,
@@ -472,7 +471,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		level:   normalResult.environment.level
 	};
 	normalResult.graph.addEdge(normalResult.entryPoint, target.accessed.info.id, EdgeType.Reads);
-	const environment = define(updatedEnvDef, false, strippedEnv);
+	const environment = REnvironment.define(updatedEnvDef, false, strippedEnv);
 	if(updatedEnvDef.envId === undefined) {
 		return { ...normalResult, environment };
 	}
@@ -545,7 +544,7 @@ export function processDefineArgument<OtherInfo>(
 	const formals = config.sig ?? [];
 	const bound = matchArgumentsToParameters(args.map(a => RArgument.isEmpty(a) ? undefined : a.name?.content), formals.map(([f]) => f));
 	const defineByCall = (node: InGraphIdentifierDefinition & { name: Identifier }) => {
-		info.environment = define(node, config.superAssignment, info.environment);
+		info.environment = REnvironment.define(node, config.superAssignment, info.environment);
 		/* defined by the call; the read edge is left intact */
 		if(node.nodeId !== rootId) {
 			info.graph.setDefinitionOfVertex(node, [rootId]);
@@ -586,7 +585,7 @@ export function markAsAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
+	information.environment = REnvironment.define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
 	information.environment = ambientWritesOfAssignment(information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
 	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);
 	const nid = nodeToDefine.nodeId;
@@ -675,7 +674,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	];
 
 	/* a quoted source (`delayedAssign`) writes nothing yet, its writes happen where it is forced (see `Deferred`) */
-	information.environment = quoteSource ? data.environment : overwriteEnvironment(sourceArg.environment, targetArg.environment);
+	information.environment = quoteSource ? data.environment : REnvironment.overwrite(sourceArg.environment, targetArg.environment);
 	if(config.beforeDefine) {
 		information.environment = config.beforeDefine(information);
 	}
@@ -684,7 +683,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		markAsAssignment(information, write, useSourceIds, rootId, data, config);
 	}
 	if(copied?.name !== undefined && copied.envId === undefined && information.environment.current.lookup(Identifier.getName(copied.name))?.includes(copied)) {
-		information.environment = define({ ...copied, name: copied.name, envId: copied.nodeId }, false, information.environment);
+		information.environment = REnvironment.define({ ...copied, name: copied.name, envId: copied.nodeId }, false, information.environment);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

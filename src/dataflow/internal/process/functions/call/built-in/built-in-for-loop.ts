@@ -14,9 +14,6 @@ import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { define } from '../../../../../environments/define';
-import { appendEnvironment } from '../../../../../environments/append';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -32,6 +29,7 @@ import type { Value } from '../../../../../eval/values/r-value';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { DfgVertex } from '../../../../../graph/vertex';
+import { REnvironment } from '../../../../../environments/environment';
 
 
 const ScalarTypes: ReadonlySet<Value['type']> = new Set(['interval', 'number', 'string', 'logical']);
@@ -94,7 +92,7 @@ export function processForLoop<OtherInfo>(
 	/* resolved before the loop variable is bound, as it may share the name of what the vector reads */
 	const nonEmpty = iteratesAtLeastOnce(vectorArg, vector, data);
 	const variable = processDataflowFor(variableArg, data);
-	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment);
+	let headEnvironments = REnvironment.overwrite(vector.environment, variable.environment);
 	/* only the vector's references and entry point are read past this, its graph is not */
 	const headGraph = variable.graph.mergeWith(vector.graph, true, true);
 
@@ -107,7 +105,7 @@ export function processForLoop<OtherInfo>(
 			value:     [vectorArg.info.id],
 			iterated:  true
 		} as IdentifierDefinition & { name: string };
-		headEnvironments = define(definition, false, headEnvironments);
+		headEnvironments = REnvironment.define(definition, false, headEnvironments);
 	}
 	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
 
@@ -164,7 +162,7 @@ export function processForLoop<OtherInfo>(
 
 	// unless the body certainly runs, a removal within it only happens maybe; apply it as the merge cannot represent it
 	const loopKill = body.kill?.length ? (once ? body.kill : makeKillsMaybe(body.kill, cd)) : undefined;
-	const loopEnvironment = once ? body.environment : appendEnvironment(origEnv, appendEnvironment(headEnvironments, body.environment));
+	const loopEnvironment = once ? body.environment : REnvironment.append(origEnv, REnvironment.append(headEnvironments, body.environment));
 
 	return {
 		unknownReferences: [],

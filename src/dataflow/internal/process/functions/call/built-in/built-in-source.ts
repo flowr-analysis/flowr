@@ -1,6 +1,5 @@
 import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { appendEnvironment } from '../../../../../environments/append';
 import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -17,7 +16,6 @@ import type {
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { expensiveTrace, log, LogLevel } from '../../../../../../util/log';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
@@ -35,6 +33,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ControlFlow } from '../../../../control-flow';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -315,7 +314,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 
 	return {
 		...information,
-		environment:       overwriteEnvironment(information.environment, dataflow.environment),
+		environment:       REnvironment.overwrite(information.environment, dataflow.environment),
 		graph,
 		in:                information.in.concat(dataflow.in),
 		out:               information.out.concat(dataflow.out),
@@ -359,7 +358,7 @@ export function mergeSourced(information: DataflowInformation, sourced: readonly
 	return {
 		...information,
 		graph:             sourced.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
-		environment:       sourced.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
+		environment:       sourced.reduce((acc, r) => REnvironment.append(acc, r.environment), information.environment),
 		in:                information.in.concat(sourced.flatMap(r => r.in)),
 		out:               information.out.concat(sourced.flatMap(r => r.out)),
 		unknownReferences: information.unknownReferences.concat(sourced.flatMap(r => r.unknownReferences)),

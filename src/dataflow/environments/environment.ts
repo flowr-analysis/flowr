@@ -14,7 +14,11 @@ import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
 import { Identifier, PkgName } from './identifier';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
-import { uniqueMergeValuesInDefinitions } from './append';
+import { appendEnvironment, uniqueMergeValuesInDefinitions } from './append';
+import { define as defineInEnvironment } from './define';
+import { overwriteEnvironment } from './overwrite';
+import { cloneEnvironmentInformation } from './clone';
+import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from './scoping';
 import { Frame } from './frame-memory';
 import type { MemoryView } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -481,6 +485,18 @@ function findGlobalEnvironment(this: void, env: Environment): Environment {
 	return current;
 }
 
+/** The frames from `env` outwards, excluding the built-in environment. */
+function* framesOf(this: void, env: Environment): Generator<Environment, void, undefined> {
+	for(let e = env; !e.builtInEnv; e = e.parent) {
+		yield e;
+	}
+}
+
+/** The frames below the global environment of `env`, i.e. the layers of the `search()` path, innermost first. */
+function searchPathOf(this: void, env: Environment): Generator<Environment, void, undefined> {
+	return framesOf(findGlobalEnvironment(env).parent);
+}
+
 /** Walks up to the built-in environment. */
 function findBuiltInEnvironment(this: void, env: Environment): Environment {
 	let current = env;
@@ -532,7 +548,7 @@ function searchPositionOf(this: void, env: Environment, name: string): number | 
 		return 1;
 	}
 	let pos = 1;
-	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+	for(const e of searchPathOf(env)) {
 		if(e.t === EnvType.Imports) {
 			continue; // internal layer, not a search-path entry
 		}
@@ -550,7 +566,7 @@ function searchPositionOf(this: void, env: Environment, name: string): number | 
  */
 function attachedPackagesOf(this: void, env: Environment): Set<string> {
 	const attached = new Set<string>([PkgName.Base]);
-	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+	for(const e of searchPathOf(env)) {
 		if(e.t !== EnvType.Imports && e.n !== undefined) {
 			attached.add(e.n);
 		}
@@ -568,12 +584,30 @@ export const REnvironment = {
 	findGlobal:       findGlobalEnvironment,
 	/** Walks up to the built-in environment; see {@link findBuiltInEnvironment}. */
 	findBuiltIn:      findBuiltInEnvironment,
+	/** The frames from an environment outwards, without the built-in one; see {@link framesOf}. */
+	frames:           framesOf,
+	/** The layers below the global environment, innermost first; see {@link searchPathOf}. */
+	searchPath:       searchPathOf,
 	/** Attaches a package block at a `search()` position, below the global by default; see {@link attachPackageAt}. */
 	attachAt:         attachPackageAt,
 	/** The `search()` position of a named entry; see {@link searchPositionOf}. */
 	searchPosition:   searchPositionOf,
 	/** The packages on the search path; see {@link attachedPackagesOf}. */
 	attachedPackages: attachedPackagesOf,
+	/** Defines an identifier in the environment, as a super assignment if asked; returns the new environment information. */
+	define:           defineInEnvironment,
+	/** Adds all writes of `next` to `base` as things that might happen; see {@link appendEnvironment}. */
+	append:           appendEnvironment,
+	/** Lets the definitions of `next` replace those of `base` by name; see {@link overwriteEnvironment}. */
+	overwrite:        overwriteEnvironment,
+	/** Clones the environment information, with or without its parents; see {@link cloneEnvironmentInformation}. */
+	clone:            cloneEnvironmentInformation,
+	/** Adds a local scope on top, see {@link REnvironment.popLocal} for the counterpart; see {@link pushLocalEnvironment}. */
+	pushLocal:        pushLocalEnvironment,
+	/** Removes the top local scope, see {@link REnvironment.pushLocal} for the counterpart; see {@link popLocalEnvironment}. */
+	popLocal:         popLocalEnvironment,
+	/** The search path of the environment with an empty global frame: attached packages stay visible, global binds do not; see {@link cleanEnvOf}. */
+	cleanOf:          cleanEnvOf,
 } as const;
 
 /**

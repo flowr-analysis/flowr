@@ -29,7 +29,6 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { appendEnvironment } from '../../../../../environments/append';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { type BuiltInLookup, calledDefinitions, hasEdgeOfType } from '../../../../../fn/frame-reflection';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -187,7 +186,7 @@ export function processTryCatch<OtherInfo>(
 			call.cds = [...call.cds ?? [], { id: rootId, when: true }];
 		}
 	}
-	const environment = mayAbort ? appendEnvironment(data.environment, info.environment) : info.environment;
+	const environment = mayAbort ? REnvironment.append(data.environment, info.environment) : info.environment;
 	return {
 		...info,
 		out:         info.out.concat(mayAbort ? makeAllMaybe(escaping, info.graph, environment, true) : escaping),

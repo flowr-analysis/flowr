@@ -24,7 +24,8 @@ import { updateNestedFunctionCalls } from './internal/process/functions/call/bui
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import { orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
 import { getAllLinkedFunctionDefinitions, separateClosureInstances } from './internal/linker';
-import type { Environment, REnvironmentInformation } from './environments/environment';
+import type { REnvironmentInformation } from './environments/environment';
+import { REnvironment } from './environments/environment';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -122,7 +123,7 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 }
 
 function tracksAnyEnvironment(environment: REnvironmentInformation): boolean {
-	for(let e: Environment | undefined = environment.current; e !== undefined && !e.builtInEnv; e = e.parent) {
+	for(const e of REnvironment.frames(environment.current)) {
 		if(e.memory.values().some(defs => defs.some(hasEnvState))) {
 			return true;
 		}

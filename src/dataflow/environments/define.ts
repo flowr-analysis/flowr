@@ -5,6 +5,7 @@ import { Identifier, type IdentifierDefinition } from './identifier';
  * Define an identifier in the environment, possibly as a super assignment.
  * This recalculates the level.
  * With `append`, a super assignment keeps the definitions the name already has instead of replacing them.
+ * @useInstead {@link REnvironment.define}
  */
 export function define(definition: IdentifierDefinition & { name: Identifier }, superAssign: boolean | undefined, { level, current }: REnvironmentInformation, append = false): REnvironmentInformation {
 	const newEnv = superAssign ? current.defineSuper(definition, append) : current.define(definition);

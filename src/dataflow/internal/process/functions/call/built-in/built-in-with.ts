@@ -9,7 +9,6 @@ import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../..
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { define } from '../../../../../environments/define';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
@@ -20,6 +19,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
+import { REnvironment } from '../../../../../environments/environment';
 
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
 const withParamsFallback = ['data', 'expr'] as const;
@@ -159,7 +159,7 @@ function mayWriteInto<OtherInfo>(
 	if(!RSymbol.is(dataNode) || Resolve.byNameAndType(dataNode.content, result.environment, ReferenceType.Variable) === undefined) {
 		return result;
 	}
-	return { ...result, environment: define({ name: dataNode.content, nodeId: rootId, definedAt: rootId, type: ReferenceType.Variable, cds: data.cds }, false, result.environment) };
+	return { ...result, environment: REnvironment.define({ name: dataNode.content, nodeId: rootId, definedAt: rootId, type: ReferenceType.Variable, cds: data.cds }, false, result.environment) };
 }
 
 /** a write in `expr` only happens because the call evaluates it */

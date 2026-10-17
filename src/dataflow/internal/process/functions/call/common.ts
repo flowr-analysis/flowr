@@ -16,7 +16,6 @@ import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processi
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { AmbientStateName } from './built-in/built-in-ambient-state';
-import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { processFunctionArgument } from '../process-argument';
 import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
@@ -24,7 +23,7 @@ import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { DfgVertex } from '../../../../graph/vertex';
-import { appendEnvironment } from '../../../../environments/append';
+import { REnvironment } from '../../../../environments/environment';
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	/** which of the arguments the call evaluates, as {@link FunctionSemantics.call.signature.forced} answers it for the signature */
@@ -144,9 +143,9 @@ export function processAllArguments<OtherInfo>(
 		}
 		processedArguments.push(processed);
 
-		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
+		finalEnv = REnvironment.overwrite(finalEnv, processed.environment);
 		if(beforeAlternatives !== undefined) {
-			afterAlternatives = appendEnvironment(afterAlternatives ?? beforeAlternatives, finalEnv);
+			afterAlternatives = REnvironment.append(afterAlternatives ?? beforeAlternatives, finalEnv);
 		}
 		/* nothing reads the argument's own graph past this point, only its entry point and references */
 		finalGraph.mergeWith(processed.graph, true, precomputed === undefined);

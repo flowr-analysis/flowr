@@ -42,7 +42,7 @@ export function processQuote<OtherInfo>(
 		patchData(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, index: number): DataflowProcessorInformation<OtherInfo & ParentInformation> {
 			if(index === config.quoteArgumentsWithIndex) {
 				lastEnv = data.environment;
-				return { ...data, environment: cleanEnvOf(data.environment) };
+				return { ...data, environment: REnvironment.cleanOf(data.environment) };
 			} else {
 				return { ...data, environment: lastEnv };
 			}

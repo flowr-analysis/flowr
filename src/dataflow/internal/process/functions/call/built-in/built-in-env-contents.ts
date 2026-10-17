@@ -16,7 +16,7 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { define } from '../../../../../environments/define';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Processes a call listing what an environment holds (`ls`, `objects`), which reads every binding in it: the
@@ -116,7 +116,7 @@ export function processListToEnv<OtherInfo>(
 
 	let environment = result.environment;
 	for(const definition of written) {
-		environment = define(definition, false, environment);
+		environment = REnvironment.define(definition, false, environment);
 	}
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 

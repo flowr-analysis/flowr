@@ -1,8 +1,7 @@
 import { singleCriterionLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
@@ -76,7 +75,7 @@ export const InputSourcesDefinition = {
 	executor:        executeInputSourcesQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'input-sources'>['input-sources'];
-		result.push(`Query: ${bold('input-sources', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('input-sources', formatter, out['.meta'].timing));
 		const nast = (await analyzer.normalize()).idMap;
 		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);

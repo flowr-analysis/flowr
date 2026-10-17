@@ -1,6 +1,5 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
 import { ReplClipboard } from './repl-clipboard';
 import { VertexType } from '../../../dataflow/graph/vertex';
@@ -12,11 +11,6 @@ import { Identifier, ReferenceType } from '../../../dataflow/environments/identi
 import type { KillReference } from '../../../dataflow/info';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SourceLocation } from '../../../util/range';
-
-function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
-	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${meta['.meta'].timing + 'ms'}).`,
-		{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
-}
 
 interface ReferenceRow {
 	readonly id:     string;
@@ -115,33 +109,27 @@ function printReferenceSections(output: ReplOutput, sections: readonly Reference
 	}
 }
 
-export const dataflowCommand: ReplCodeCommand = {
-	description:   'Get mermaid code for the dataflow graph',
-	isCodeCommand: true,
-	usageExample:  ':dataflow',
-	aliases:       ['d', 'df'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
-		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid code', result));
-	}
-};
+function mermaidCommand(description: string, usageExample: string, aliases: string[], url: boolean, simplified: boolean): ReplCodeCommand {
+	return {
+		description,
+		isCodeCommand: true,
+		usageExample,
+		aliases,
+		script:        false,
+		argsParser:    (args: string) => handleString(args),
+		fn:            async({ output, analyzer }) => {
+			const result = await analyzer.dataflow();
+			const qualifyBaseR = isSigDbEnabled(analyzer.flowrConfig);
+			const mermaid = url ? Dataflow.visualize.mermaid.url(result.graph, false, undefined, simplified, qualifyBaseR)
+				: Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: simplified || undefined, qualifyBaseR }).string;
+			await ReplClipboard.print(output, mermaid, ReplClipboard.note(output, url ? 'mermaid url' : 'mermaid code', 'dataflow', result['.meta'].timing));
+		}
+	};
+}
 
-export const dataflowStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':dataflow*',
-	aliases:       ['d*', 'df*'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, false, isSigDbEnabled(analyzer.flowrConfig));
-		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
-	}
-};
+export const dataflowCommand = mermaidCommand('Get mermaid code for the dataflow graph', ':dataflow', ['d', 'df'], false, false);
+
+export const dataflowStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflow*', ['d*', 'df*'], true, false);
 
 export const dataflowAsciiCommand: ReplCodeCommand = {
 	description:   'Returns an ASCII representation of the dataflow graph',
@@ -192,30 +180,6 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 };
 
 
-export const dataflowSimplifiedCommand: ReplCodeCommand = {
-	description:   'Get mermaid code for the simplified dataflow graph',
-	isCodeCommand: true,
-	usageExample:  ':dataflowsimple',
-	aliases:       ['ds', 'dfs'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
-		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid code', result));
-	}
-};
+export const dataflowSimplifiedCommand = mermaidCommand('Get mermaid code for the simplified dataflow graph', ':dataflowsimple', ['ds', 'dfs'], false, true);
 
-export const dataflowSimpleStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':dataflowsimple*',
-	aliases:       ['ds*', 'dfs*'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true, isSigDbEnabled(analyzer.flowrConfig));
-		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
-	}
-};
+export const dataflowSimpleStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflowsimple*', ['ds*', 'dfs*'], true, true);

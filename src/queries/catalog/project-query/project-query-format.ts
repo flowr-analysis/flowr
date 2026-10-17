@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeProjectQuery } from './project-query-executor';
-import { bold, ColorEffect, Colors } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { queryHeader } from '../../query-print';
+import { ColorEffect, Colors } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { RAuthorInfo } from '../../../util/r-author';
@@ -72,7 +72,7 @@ export const ProjectQueryDefinition = {
 	executor:        executeProjectQuery,
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'project'>['project'];
-		result.push(`Query: ${bold('project', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('project', formatter, out['.meta'].timing));
 		if(out.name) {
 			result.push(`   ╰ Project Name: ${out.name}`);
 		}

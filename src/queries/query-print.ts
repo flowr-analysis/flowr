@@ -10,6 +10,11 @@ import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
+/** The first line of a query's ascii summary: its name and how long it took. */
+export function queryHeader(name: string, formatter: OutputFormatter, timing: number): string {
+	return `Query: ${bold(name, formatter)} (${printAsMs(timing, 0)})`;
+}
+
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
 	const id = isObj ? nodeId?.id : nodeId;

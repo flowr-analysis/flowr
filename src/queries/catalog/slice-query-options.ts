@@ -13,6 +13,8 @@ import { type InlineFull, type ReconstructionResult, reconstructToCode } from '.
 import { buildSourceInlineMap } from '../../reconstruct/inline/source-inline-map';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../reconstruct/auto-select/magic-comments';
+import type { OutputFormatter } from '../../util/text/ansi';
+import { summarizeIdsIfTooLong, queryHeader } from '../query-print';
 
 /** The options every slicing query understands, independent of how it picks the nodes to keep. */
 export interface SliceQueryOptions {
@@ -143,4 +145,41 @@ export function timedSliceEntry<Slice extends object>(
 	const start = Date.now();
 	const result = reconstruct();
 	return { slice: timedSlice, reconstruct: { ...result, '.meta': { timing: Date.now() - start } } };
+}
+
+interface SliceSummaryInput {
+	readonly results: Readonly<Record<string, {
+		readonly slice:        { readonly result: ReadonlySet<NodeId> },
+		readonly reconstruct?: { readonly code: string | readonly string[] }
+	}>>
+	readonly '.meta': { readonly timing: number }
+}
+
+/** The ascii summary shared by the slicing queries; `describe` names what a result key slices, given its options if serialized. */
+export function summarizeSliceResults<Q extends SliceQueryOptions>(
+	formatter: OutputFormatter, name: string, out: SliceSummaryInput, result: string[],
+	describe: (key: string, query: Q | undefined) => string
+): boolean {
+	const entries = Object.entries(out.results);
+	if(entries.length === 1) {
+		const code = entries[0][1].reconstruct?.code;
+		if(typeof code === 'string' || code?.length === 1) {
+			result.push(typeof code === 'string' ? code : code[0]);
+			return true;
+		}
+	}
+	result.push(queryHeader(name, formatter, out['.meta'].timing));
+	for(const [key, obj] of entries) {
+		/* a named slice is keyed by its name, so there is nothing to parse */
+		const query = isSerializedQuery(key) ? JSON.parse(key) as Q : undefined;
+		const addons = [query?.noReconstruction && 'no reconstruction', query?.noMagicComments && 'no magic comments'].filter(Boolean);
+		result.push(`   ╰ ${describe(key, query)} ${addons.join(', ')}`);
+		if(obj.reconstruct) {
+			const code = typeof obj.reconstruct.code === 'string' ? [obj.reconstruct.code] : obj.reconstruct.code;
+			result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + code.flatMap(c => c.split('\n')).join('\\n') + '</code>');
+		} else {
+			result.push(`     ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...obj.slice.result])}}`);
+		}
+	}
+	return true;
 }

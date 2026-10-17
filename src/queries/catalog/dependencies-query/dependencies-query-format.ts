@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { queryHeader } from '../../query-print';
 import type { SupportedQuery } from '../../query';
 import { bold, faint, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
@@ -259,7 +259,7 @@ export const DependenciesQueryDefinition = {
 	executor:        executeDependenciesQuery,
 	asciiSummarizer: (formatter, analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
-		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('dependencies', formatter, out['.meta'].timing));
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[], analyzer.inspectContext()))) {
 			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
 		}

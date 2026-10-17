@@ -1,5 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
+import { queryHeader } from '../../query-print';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
 import {
@@ -17,7 +18,6 @@ import { type LintingResultsError,
 	type LintingRule
 } from '../../../linter/linter-format';
 import { bold, italic, ColorEffect, Colors, FontStyles, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import type { FlowrConfig } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
@@ -137,7 +137,7 @@ export const LinterQueryDefinition = {
 			result.push(out.formatted);
 			return true;
 		}
-		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('linter', formatter, out['.meta'].timing));
 		const allDidFail = Object.values(out.results).every(LintingResults.isError);
 		if(allDidFail) {
 			result.push('All linting rules failed to execute.');

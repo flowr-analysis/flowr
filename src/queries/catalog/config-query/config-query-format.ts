@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeConfigQuery } from './config-query-executor';
+import { queryHeader } from '../../query-print';
 import { bold, italic, voidFormatter, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { FlowrConfig } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
@@ -323,7 +323,7 @@ export const ConfigQueryDefinition = {
 	executor:        executeConfigQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;
-		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('config', formatter, out['.meta'].timing));
 		const configQueries = queries.filter(q => q.type === 'config');
 		const inspects = configQueries.filter(q => q.inspect).map(q => q.inspect as readonly string[]);
 		if(configQueries.some(q => q.reset)) {

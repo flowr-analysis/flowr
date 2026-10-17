@@ -2,16 +2,14 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
 import { executeDiceQuery } from './dice-query-executor';
-import { summarizeIdsIfTooLong } from '../../query-print';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import type { FlowrConfig } from '../../../config';
 import { SharedSliceFlags, diceCriteriaParser, queryLineCode, sliceFlagCompletions, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
-import { type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
+import { type SliceQueryOptions, SliceQueryOptionsSchema, summarizeSliceResults } from '../slice-query-options';
 
 /**
  * Computes a program dice: only those parts that lie on a path from the given start nodes to the given end nodes.
@@ -87,40 +85,10 @@ function diceQueryCompleter(line: readonly string[], startingNewArg: boolean, _c
 export const DiceQueryDefinition = {
 	title:           'Dice Query',
 	executor:        executeDiceQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
-		const out = queryResults as QueryResults<'dice'>['dice'];
-		if(Object.keys(out.results).length === 1) {
-			const [, obj] = Object.entries(out.results)[0];
-			const rec = obj.reconstruct;
-			if(rec !== undefined) {
-				const code = Array.isArray(rec.code) ? rec.code : [rec.code];
-				if(code.length === 1) {
-					result.push(code[0]);
-					return true;
-				}
-			}
-		}
-		result.push(`Query: ${bold('dice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [fingerprint, obj] of Object.entries(out.results)) {
-			const { from, to, noReconstruction, noMagicComments } = JSON.parse(fingerprint) as DiceQuery;
-			const addons = [];
-			if(noReconstruction) {
-				addons.push('no reconstruction');
-			}
-			if(noMagicComments) {
-				addons.push('no magic comments');
-			}
-			result.push(`   ╰ Dice from {${from.join(', ')}} to {${to.join(', ')}} ${addons.join(', ')}`);
-			const rec = obj.reconstruct;
-			if(rec !== undefined) {
-				const code = Array.isArray(rec.code) ? rec.code : [rec.code];
-				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + code.flatMap(c => c.split('\n')).join('\\n') + '</code>');
-			} else {
-				result.push(`     ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...obj.slice.result])}}`);
-			}
-		}
-		return true;
-	},
+	asciiSummarizer: (formatter, _analyzer, queryResults, result): boolean => summarizeSliceResults<DiceQuery>(
+		formatter, 'dice', queryResults as QueryResults<'dice'>['dice'], result,
+		(_, q) => q ? `Dice from {${q.from.join(', ')}} to {${q.to.join(', ')}}` : 'Dice'
+	),
 	fromLine:  diceQueryLineParser,
 	completer: diceQueryCompleter,
 	syntax:    '@dice (<crit>;...->crit;...)[iIcB] <code | file://path>',

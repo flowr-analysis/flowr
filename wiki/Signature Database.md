@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-10-17, 21:45:25 UTC (v2.16.2, R v4.6.1), do not edit directly._
 
 # Signature Database
 
@@ -67,7 +67,7 @@ function fromTheAnalyzer(analyzer: FlowrAnalyzer) {
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L30">src/documentation/wiki-signature-database.ts#L30</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L28">src/documentation/wiki-signature-database.ts#L28</a></i>
 
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/signature-db.ts#L29"><code><span title="The signature database as the analyzed project sees it. A PackageSignatureSource answers for a version you name, and falls back to whatever it holds as newest when you name none. This adds the step above that, taking the version from what flowR resolved for the project, which is where solver.sigdb.versionOverrides, solver.sigdb.versionSelection and solver.sigdb.assumedRVersion have already been ap...">SignatureDb</span></code></a> it hands back is every loaded source as one database, answering for the version
 *the analyzed project* assumes for each package, which is the version `solver.sigdb.versionOverrides`,
@@ -96,7 +96,7 @@ cover, and reaches the same functions directly.
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L41">src/documentation/wiki-signature-database.ts#L41</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L39">src/documentation/wiki-signature-database.ts#L39</a></i>
 
 To check what a project can resolve against without touching the raw sources, a [context](https://github.com/flowr-analysis/flowr/wiki/Analyzer) exposes
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L162"><code>FlowrAnalyzerDependenciesContext::<b>hasSignatureDatabase</b></code></a> (a cheap presence check) and
@@ -118,7 +118,7 @@ function usePackageDatabase(parser: KnownParser) {
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L24">src/documentation/wiki-signature-database.ts#L24</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L22">src/documentation/wiki-signature-database.ts#L22</a></i>
 
 File sources load lazily on the first package load, so a script with no `library()` or `use()` calls
 never pays to parse them. Set <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Parse the database up front rather than on the first package load (default false, ignored if disabled).">solver.sigdb.eagerlyLoad</a> to mount the database up front instead, or
@@ -152,11 +152,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 430 µs |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 3.8 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 8.5 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 130 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 240 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 620 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 4.8 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 20 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 220 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 420 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from

@@ -9,7 +9,6 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { unpackArg } from '../argument/unpack-argument';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -50,11 +49,11 @@ export function processS3Dispatch<OtherInfo>(
 		[config.args.object]:  'object',
 		'...':                 '...'
 	});
-	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
+	const generic = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const obj = unpackArg(RArgument.getWithId(args, argMaps.get('object')?.[0]));
+	const obj = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('object')?.[0]));
 	const dfObj = obj ? processDataflowFor(obj, data) : DataflowInformation.initialize(rootId, data);
 	const fnRef = { nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function };
 

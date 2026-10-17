@@ -46,7 +46,7 @@ function namesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O
 	if(known.length > 0 || !RFunctionCall.isNamed(node)) {
 		return known;
 	}
-	return node.arguments.flatMap(arg => namesOf(RArgument.valueOf(arg), data));
+	return node.arguments.flatMap(arg => classNamesOf(RArgument.valueOf(arg), data));
 }
 
 /** Adds a read of every given name to the call, so the call depends on whatever registered them. */

@@ -1,7 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -87,7 +86,7 @@ export function processListToEnv<OtherInfo>(
 		return result;
 	}
 
-	const first = args.length >= 1 && args[0] !== EmptyArgument ? unpackArg(args[0]) : undefined;
+	const first = args.length >= 1 && args[0] !== EmptyArgument ? RArgument.valueOf(args[0]) : undefined;
 	const literal = listLiteralOf(first, data);
 	if(literal === undefined) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);

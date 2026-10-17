@@ -6,7 +6,6 @@ import { Unquote } from '../nse';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { log, LogLevel } from '../../../../../../util/log';
-import { unpackArg } from '../argument/unpack-argument';
 import { toUnnamedArgument, wrapArgumentsUnnamed } from '../argument/make-argument';
 import type {
 	ParentInformation,
@@ -212,7 +211,7 @@ function processMaskedNamePair<OtherInfo>(
 	const target = args[0];
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.First, {
 		kind:      NseKind.DataMasked,
-		evaluated: FunctionSemantics.call.nse.unquoted(RArgument.isEmpty(target) ? undefined : target?.value, Unquote.Rlang)
+		evaluated: FunctionSemantics.call.nse.unquoted(RArgument.valueOf(target), Unquote.Rlang)
 	});
 	return information;
 }
@@ -230,7 +229,7 @@ export function processAssignment<OtherInfo>(
 	config: AssignmentConfiguration
 ): DataflowInformation {
 	const information = processAssignmentTarget(name, args, rootId, data, config);
-	const source = config.callsSource ? unpackArg(args[config.swapSourceAndTarget ? 0 : 1]) : undefined;
+	const source = config.callsSource ? RArgument.valueOf(args[config.swapSourceAndTarget ? 0 : 1]) : undefined;
 	const vertex = source ? information.graph.getVertex(source.info.id) : undefined;
 	/* the function runs when the name is read, so what it reads is resolved there and not where it is bound */
 	if(DfgVertex.isFunctionDefinition(vertex)) {
@@ -266,8 +265,8 @@ function processAssignmentTarget<OtherInfo>(
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>]);
-	const target = unpackArg(effectiveArgs[0]);
-	const source = unpackArg(effectiveArgs[1]);
+	const target = RArgument.valueOf(effectiveArgs[0]);
+	const source = RArgument.valueOf(effectiveArgs[1]);
 
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an undefined target or source, skipping`);
@@ -448,7 +447,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	if(!envirResolution) {
 		return undefined;
 	}
-	const fieldNode = unpackArg(target.access[0]);
+	const fieldNode = RArgument.valueOf(target.access[0]);
 	if(!fieldNode) {
 		return undefined;
 	}

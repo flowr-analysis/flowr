@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
@@ -12,7 +13,6 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import { mergeSourced, sourceRequest } from './built-in-source';
 import { EdgeType } from '../../../../../graph/edge';
-import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -168,9 +168,9 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(
 			RFunctionCall.isNamed(val, 'parse')
 		) {
-			const arg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'text');
-			const nArg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'n');
-			if(nArg !== undefined || arg === undefined || RArgument.isEmpty(arg)) {
+			const arg = RArgument.findNamed(val.arguments, 'text');
+			const nArg = RArgument.findNamed(val.arguments, 'n');
+			if(nArg !== undefined || arg === undefined) {
 				return undefined;
 			}
 			if(RFunctionCall.isNamed(arg.value, PasteFunctions)) {
@@ -211,7 +211,7 @@ function getAsString<OtherInfo>(val: RNode<ParentInformation> | undefined, data:
 }
 
 function handlePaste<OtherInfo>(args: readonly PotentiallyEmptyRArgument<ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sepDefault: string[]): string[] | undefined {
-	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
+	const sepArg = RArgument.findNamed(args, 'sep');
 	if(sepArg) {
 		const res = sepArg.value ? getAsString(sepArg.value, data) : undefined;
 		if(!res) {

@@ -400,7 +400,7 @@ export function applyAmbientStateAccess<OtherInfo>(
 		}
 		case AmbientStateAccessType.GetOption: {
 			const first = args.find(a => a !== EmptyArgument && (a.name === undefined || Identifier.getName(a.name.content) === 'x'));
-			reads.push(...optionReads(first === undefined || first === EmptyArgument ? undefined : stringsOf(first.value, data)));
+			reads.push(...optionReads(stringValuesOf(RArgument.valueOf(first), data)));
 			break;
 		}
 		case AmbientStateAccessType.SetOptions:

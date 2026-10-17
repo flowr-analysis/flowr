@@ -118,7 +118,7 @@ export function argForImpl<Info>(args: readonly PotentiallyEmptyRArgument<Info &
 	if(ref === undefined) {
 		return undefined;
 	}
-	const named = ref.name === undefined ? undefined : args.find(a => !RArgument.isEmpty(a) && a.name?.content === ref.name);
+	const named = ref.name === undefined ? undefined : RArgument.findNamed(args, ref.name);
 	if(named !== undefined) {
 		return RArgument.valueOf(named);
 	}

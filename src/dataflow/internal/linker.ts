@@ -1,3 +1,4 @@
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../fn/function-semantics';
@@ -17,7 +18,6 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { unpackArg } from './process/functions/call/argument/unpack-argument';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';

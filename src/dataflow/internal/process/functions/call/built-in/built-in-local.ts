@@ -11,8 +11,6 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { unpackArg } from '../argument/unpack-argument';
-import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -46,8 +44,8 @@ export function processLocal<OtherInfo>(
 		'...':              '...'
 	});
 	const envArg = RArgument.getWithId(args, argMaps.get('env')?.[0]);
-	const env = unpackArg(envArg);
-	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
+	const env = RArgument.valueOf(envArg);
+	const expr = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
 	if(!expr) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}

@@ -4,7 +4,6 @@ import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
 import { bindAccessedField, getAllFunctionCallTargets, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -59,7 +58,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1);
-	const bodyArg = unpackNonameArg(args.at(-1));
+	const bodyArg = RArgument.unnamedValueOf(args.at(-1));
 	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has no body! This is bad!`);
 
 	const originalEnvironment = data.environment;

@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowProcessorInformation } from '../../../../processor';
 import { hidesBody, readsAllAmbientState } from './built-in/built-in-ambient-state';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
@@ -88,7 +89,7 @@ const HandedFunction = ReferenceType.Function | ReferenceType.Parameter | Refere
 
 /** Whether `arg` hands over a function that may draw: a symbol bound to data (`d <- read.csv(f)`, `NA`) does not, nor does a built-in stating it does not (`mean`) */
 function handsOverFunction<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	const value = arg === EmptyArgument ? undefined : arg.value;
+	const value = RArgument.valueOf(arg);
 	if(!RSymbol.is(value)) {
 		return RFunctionDefinition.is(value);
 	}

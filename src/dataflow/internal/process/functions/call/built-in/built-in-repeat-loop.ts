@@ -4,7 +4,6 @@ import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from
 import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap, reapplyLoopExitPoints } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type {
 	PotentiallyEmptyRArgument
@@ -38,7 +37,7 @@ export function processRepeatLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const unpacked = unpackNonameArg(args[0]);
+	const unpacked = RArgument.unnamedValueOf(args[0]);
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
 		args:      unpacked ? [unpacked] : args,

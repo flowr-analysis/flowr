@@ -4,7 +4,6 @@ import type { ControlDependency, DataflowInformation, KillReference } from '../.
 import { onlyLiterals } from '../../../../../eval/resolve/resolve';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { unpackArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -36,12 +35,12 @@ export interface IfThenElseConfig {
 	}
 }
 
-function getArguments<OtherInfo>(
+function conditionalArgsOf<OtherInfo>(
 	config: IfThenElseConfig | undefined,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]
 ): (RNode<OtherInfo & ParentInformation> | undefined)[] {
 	if(!config?.args) {
-		return args.map(e => unpackArg(e));
+		return args.map(e => RArgument.valueOf(e));
 	}
 	const params = {
 		[config.args.cond]: 'cond',
@@ -50,7 +49,7 @@ function getArguments<OtherInfo>(
 		'...':              '...'
 	};
 	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
-	return (['cond', 'yes', 'no'] as const).map(k => unpackArg(RArgument.getWithId(args, argMaps.get(k)?.[0])));
+	return (['cond', 'yes', 'no'] as const).map(k => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(k)?.[0])));
 }
 
 /** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
@@ -76,7 +75,7 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const [condArg, thenArg, otherwiseArg] = getArguments(config, args);
+	const [condArg, thenArg, otherwiseArg] = conditionalArgsOf(config, args);
 	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${Identifier.toString(name.content)} has empty condition or then case in ${JSON.stringify(args)}, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

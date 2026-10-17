@@ -3,7 +3,6 @@ import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThro
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { isNotUndefined } from '../../../../../../util/assert';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -307,7 +306,7 @@ export function processExpressionList<OtherInfo>(
 	const hooks: DataflowInformation['hooks'] = [];
 
 	for(const arg of args) {
-		const expression = unpackNonameArg(arg);
+		const expression = RArgument.unnamedValueOf(arg);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
 			continue;

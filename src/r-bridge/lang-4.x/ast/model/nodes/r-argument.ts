@@ -67,9 +67,33 @@ export const RArgument = {
 	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RUnnamedArgument<Info> {
 		return node !== EmptyArgument && RArgument.is(node) && node.name === undefined && node.value !== undefined;
 	},
-	/** The value of an argument, the node itself for anything else, `undefined` for an empty argument. */
+	/**
+	 * The value of an argument, the node itself for anything else, `undefined` for an empty argument.
+	 * @see {@link RArgument.unnamedValueOf} - to only accept unnamed arguments
+	 */
 	valueOf<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): RNode<Info> | undefined {
 		return node === EmptyArgument ? undefined : RArgument.is(node) ? node.value : node;
+	},
+	/**
+	 * The value of an unnamed argument, `undefined` if the argument is named, empty, or absent.
+	 * @see {@link RArgument.valueOf} - to also accept named arguments
+	 */
+	unnamedValueOf<Info = NoInfo>(this: void, arg: PotentiallyEmptyRArgument<Info> | undefined): RNode<Info> | undefined {
+		return arg === EmptyArgument || arg?.name !== undefined ? undefined : arg?.value;
+	},
+	/**
+	 * The value of an unnamed argument, or the argument itself if it is named or empty.
+	 * @see {@link RArgument.unnamedValueOf}
+	 */
+	unnamedValueOrArg<Info = NoInfo>(this: void, arg: PotentiallyEmptyRArgument<Info>): RNode<Info> | PotentiallyEmptyRArgument<Info> {
+		return RArgument.unnamedValueOf<Info>(arg) ?? arg;
+	},
+	/**
+	 * The non-empty argument with exactly the given `name`, `undefined` if there is none.
+	 */
+	findNamed<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], name: string): RArgument<Info> | undefined {
+
+		return args.find((a): a is RArgument<Info> => a !== EmptyArgument && a.name?.content === name);
 	},
 	/**
 	 * Type guard for arguments with a value, i.e. arguments that are not just placeholders without a value.

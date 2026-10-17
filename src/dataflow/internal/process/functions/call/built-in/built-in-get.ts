@@ -1,7 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -88,7 +87,7 @@ export function processGet<OtherInfo>(
 ): DataflowInformation {
 	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', ...EnvirPositionFormals]);
 
-	const retrieve = unpackNonameArg(args[0]);
+	const retrieve = RArgument.unnamedValueOf(args[0]);
 	const targets = retrieve === undefined ? [] : synthesizeTargets(retrieve, name, rootId, data);
 	if(targets.length === 0) {
 		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has no resolvable name argument, skipping`);

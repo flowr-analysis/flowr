@@ -10,7 +10,6 @@ import {
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isUndefined } from '../../../../../../util/assert';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type {
 	PotentiallyEmptyRArgument
@@ -44,7 +43,7 @@ export function processWhileLoop<OtherInfo>(
 		dataflowLogger.warn(`While-Loop ${Identifier.toString(name.content)} does not have 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const unpackedArgs = args.map(e => unpackNonameArg(e));
+	const unpackedArgs = args.map(e => RArgument.unnamedValueOf(e));
 	if(unpackedArgs.some(isUndefined)) {
 		dataflowLogger.warn(`While-Loop ${Identifier.toString(name.content)} has empty arguments in ${JSON.stringify(args)}, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

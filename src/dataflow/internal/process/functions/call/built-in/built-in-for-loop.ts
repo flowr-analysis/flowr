@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
@@ -9,7 +10,6 @@ import {
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -81,7 +81,7 @@ export function processForLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackNonameArg(e));
+	const [variableArg, vectorArg, bodyArg] = args.map(e => RArgument.unnamedValueOf(e));
 	/* merged back in case the loop never runs */
 	const origEnv = data.environment;
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);

@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
@@ -16,8 +17,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { FunctionArgument } from '../../../../../graph/graph';
 import { Unquote } from '../nse';
 import { linkInputs } from '../../../../linker';
-import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { cleanEnvOf } from '../../../../../environments/scoping';
+import { REnvironment } from '../../../../../environments/environment';
 
 interface QuoteConfig {
 	quoteArgumentsWithIndex: number
@@ -52,7 +52,7 @@ export function processQuote<OtherInfo>(
 	const others = processedArguments.filter((p, i) => p !== undefined && i !== config.quoteArgumentsWithIndex) as DataflowInformation[];
 	const inRefs: IdentifierReference[] = [fnRef, ...others.flatMap(p => p.in)];
 	const quotedArg = args[config.quoteArgumentsWithIndex];
-	const evaluated = FunctionSemantics.call.nse.unquoted(RArgument.isEmpty(quotedArg) ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
+	const evaluated = FunctionSemantics.call.nse.unquoted(RArgument.valueOf(quotedArg), config.unquote ?? Unquote.None);
 	const quotedProcessed = processedArguments[config.quoteArgumentsWithIndex];
 	if(quotedProcessed) {
 		markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [config.quoteArgumentsWithIndex], { evaluated });

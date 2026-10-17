@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RUnaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { EmptyArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -8,7 +9,6 @@ import { DataMaskingFunctionNames } from '../../../../environments/data-masking-
 import type { DataflowGraph } from '../../../../graph/graph';
 import { type DataflowGraphVertexInfo, DfgVertex } from '../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
-import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /** The escape a quoting function offers, a property of the function: `quote(!!x)` negates, `expr(!!x)` splices. */
 export enum Unquote {
@@ -27,7 +27,7 @@ function unquotedOperandOf<Info>(node: RNode<Info>, style: Unquote): RNode<Info>
 			return undefined;
 		}
 		const arg = node.arguments[0];
-		return RArgument.isEmpty(arg) ? undefined : arg.value;
+		return RArgument.valueOf(arg);
 	}
 	if(!isNegation(node) || !isNegation(node.operand)) {
 		return undefined;

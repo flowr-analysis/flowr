@@ -12,7 +12,6 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs } from '../../../../linker';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
-import { tryUnpackNoNameArg } from '../argument/unpack-argument';
 import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from '../../../../../graph/graph';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
@@ -52,7 +51,7 @@ export function processTryCatch<OtherInfo>(
 		aborts?: boolean
 	}
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
+	const res = processKnownFunctionCall({ name, args: args.map(RArgument.unnamedValueOrArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
 	if(args.length < 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;

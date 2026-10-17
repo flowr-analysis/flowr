@@ -30,8 +30,10 @@ import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/n
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
-import { type BuiltInLookup, calledDefinitions, hasEdgeOfType } from '../../../../../fn/frame-reflection';
+import type { BuiltInLookup } from '../../../../../fn/frame-reflection';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../../graph/df-helper';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Process a built-in try-catch or similar handler.
@@ -199,7 +201,7 @@ export function processTryCatch<OtherInfo>(
 export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext): void {
 	const ordered = new Set<NodeId>();
 	const reach = (node: RNode<ParentInformation>) => {
-		for(const id of RFunctionDefinition.is(node) ? [node.info.id] : calledDefinitions(graph, node.info.id)) {
+		for(const id of RFunctionDefinition.is(node) ? [node.info.id] : Dataflow.calleeIdsOf(graph, node.info.id)) {
 			const definition = idMap.get(id);
 			if(!ordered.has(id) && RFunctionDefinition.is(definition)) {
 				ordered.add(id);
@@ -211,7 +213,7 @@ export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: F
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const call = DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) ? idMap.get(id) : undefined;
 		for(const arg of RFunctionCall.is(call) ? call.arguments : []) {
-			if(arg !== EmptyArgument && !hasEdgeOfType(graph, id, arg.info.id, EdgeType.Calls)) {
+			if(arg !== EmptyArgument && !Dataflow.hasEdge(graph, id, arg.info.id, EdgeType.Calls)) {
 				RNode.visitAst(arg, n => {
 					reach(n);
 					return RFunctionDefinition.is(n);

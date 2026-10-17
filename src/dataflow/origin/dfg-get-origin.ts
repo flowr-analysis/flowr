@@ -2,10 +2,10 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../graph/vertex';
 import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
-import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import type { Identifier } from '../environments/identifier';
 import { DfgVertex } from '../graph/vertex';
+import { Dataflow } from '../graph/df-helper';
 
 export const enum OriginType {
 	ReadVariableOrigin = 0,
@@ -181,7 +181,7 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 		proc: o
 	})) : undefined;
 
-	const targets = new Set(getAllFunctionCallTargets(call.id, dfg));
+	const targets = new Set(Dataflow.callTargetsOf(call.id, dfg));
 	if(targets.size === 0) {
 		// resolve via variable use origin
 		return origins?.length === 0 ? getVariableUseOrigin(dfg, call) : origins;

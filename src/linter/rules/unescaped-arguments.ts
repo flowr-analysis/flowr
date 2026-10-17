@@ -14,7 +14,6 @@ import { contentFreeFunctions, narrowingFunctions } from '../../queries/catalog/
 import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputTraceType, InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import { edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { RConstant, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -251,13 +250,13 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 			return means(value, receiver, depth - 1);
 		}
 		return DfgVertex.isFunctionCall(made) && (Identifier.matches(made.name, receiver)
-			|| (depth > 0 && edgeTargets(graph, v, EdgeType.Returns).some(r => holds(r, receiver, depth - 1))));
+			|| (depth > 0 && Dataflow.targetsOf(graph, v, EdgeType.Returns).some(r => holds(r, receiver, depth - 1))));
 	};
 	/* the named object where no binding of the program surely shadows it, otherwise what a binding holds */
 	const means = (symbol: RSymbol<ParentInformation>, receiver: Identifier, depth = 4): boolean => {
-		const defs = edgeTargets(graph, symbol.info.id, EdgeType.Reads).filter(d => !NodeId.isBuiltIn(d));
+		const defs = Dataflow.targetsOf(graph, symbol.info.id, EdgeType.Reads).filter(d => !NodeId.isBuiltIn(d));
 		return (defs.every(d => graph.getVertex(d)?.cds?.length) && Identifier.matches(symbol.content, receiver))
-			|| (depth > 0 && defs.some(def => edgeTargets(graph, def, EdgeType.DefinedBy).some(v => holds(v, receiver, depth))));
+			|| (depth > 0 && defs.some(def => Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(v => holds(v, receiver, depth))));
 	};
 	return graph.verticesOfType(VertexType.FunctionCall).flatMap(([id, call]) => {
 		const node = graph.idMap?.get(id);
@@ -273,13 +272,13 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 
 /** The names of the built-ins `id` links to with an edge of the given type, none if it may link to anything else (a closure checked where its body calls them) */
 function linkedBuiltIns(graph: DataflowGraph, id: NodeId, type: EdgeType): string[] {
-	const linked = graph.outgoingEdges(id)?.entries().filter(([, edge]) => DfEdge.includesType(edge, type)).map(([to]) => to).toArray() ?? [];
+	const linked = Dataflow.targetsOf(graph, id, type);
 	return linked.every(NodeId.isBuiltIn) ? linked.map(NodeId.fromBuiltIn) : [];
 }
 
 /** the built-ins handed to the call a called variable holds the result of, as `p` holds `purrr::partial(system)` */
 function wrappedBuiltIns(graph: DataflowGraph, id: NodeId): string[] {
-	return edgeTargets(graph, id, EdgeType.Reads).flatMap(v => DfgVertex.isVariableDefinition(graph.getVertex(v)) ? edgeTargets(graph, v, EdgeType.DefinedBy) : [])
+	return Dataflow.targetsOf(graph, id, EdgeType.Reads).flatMap(v => DfgVertex.isVariableDefinition(graph.getVertex(v)) ? Dataflow.targetsOf(graph, v, EdgeType.DefinedBy) : [])
 		.flatMap(w => {
 			const wrapper = graph.getVertex(w);
 			return DfgVertex.isFunctionCall(wrapper) ? wrapper.args.flatMap(a => linkedBuiltIns(graph, FunctionArgument.getReference(a) ?? '', EdgeType.Reads)) : [];

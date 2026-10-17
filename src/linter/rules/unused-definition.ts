@@ -5,7 +5,6 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import { edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
@@ -30,6 +29,7 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -260,7 +260,7 @@ function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<Dataflow
 		// this is an access or a for variable, we can not remove it currently
 		return undefined;
 	}
-	const definedBys = edgeTargets(dfg, variable.info.id, EdgeType.DefinedBy);
+	const definedBys = Dataflow.targetsOf(dfg, variable.info.id, EdgeType.DefinedBy);
 	if(hasImportantArgs(definedBys, df, variable.info.parent)) {
 		return undefined;
 	}

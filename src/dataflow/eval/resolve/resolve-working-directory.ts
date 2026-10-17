@@ -11,12 +11,12 @@ import { isAbsolutePath } from '../../../util/text/strings';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { ControlDependency, negateControlDependency } from '../../info';
 import { EdgeType } from '../../graph/edge';
-import { edgeSources } from '../../fn/frame-reflection';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { RPath } from '../../../util/files';
 import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { Dataflow } from '../../graph/df-helper';
 
 /** a resolved `setwd`-style call: its `dir` is `undefined` when it cannot be determined statically */
 export interface WorkingDirectoryChange {
@@ -164,7 +164,7 @@ function collect(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Worki
 	// a function's setwd is propagated to its call sites; only a lone unconditional setwd has a site-independent effect
 	for(const [fn, setwds] of byFn.entries()) {
 		const net = setwds.length === 1 && setwds[0].cds.length === 0 && !setwds[0].iterated ? setwds[0].dir : undefined;
-		for(const site of edgeSources(graph, fn, EdgeType.Calls)) {
+		for(const site of Dataflow.sourcesOf(graph, fn, EdgeType.Calls)) {
 			const cds = graph.getVertex(site)?.cds ?? [];
 			out.push({ id: site, dir: net, cds, iterated: isIterated(cds, graph.idMap), enclosedInFunction: enclosingFunction(graph.idMap, site) !== undefined });
 		}

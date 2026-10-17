@@ -12,7 +12,7 @@ import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefini
 import { DfgVertex } from '../graph/vertex';
 import type { ArgProps, FnSig } from '../environments/built-in-props';
 import { ArgProp } from '../environments/built-in-props';
-import { callsIn, edgeTargets, reflectiveRolesOf, type BuiltInLookup } from './frame-reflection';
+import { reflectiveRolesOf, type BuiltInLookup } from './frame-reflection';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -45,7 +45,7 @@ export interface ArgumentRolesOptions {
  * @useInstead {@link FunctionSemantics.argumentRoles}
  */
 export function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, options: ArgumentRolesOptions = {}): Record<NodeId, FunctionArgumentRoles> {
-	const state = makeState(graph, options);
+	const state = roleStateOf(graph, options);
 	const all: Record<NodeId, FunctionArgumentRoles> = {};
 	for(const id of ids) {
 		const roles = rolesOf(id, state);
@@ -68,13 +68,13 @@ export interface LookupState {
 interface RoleState extends LookupState {
 	readonly maxDepth: number
 	/**
-	 * What {@link argumentProps} answered for a call, as the walks ask the same calls over and over and matching
+	 * What {@link rolesOfCall} answered for a call, as the walks ask the same calls over and over and matching
 	 * arguments to formals is the expensive part. Lives for the one run and is dropped with it.
 	 */
 	readonly args:     Map<NodeId, ArgumentProps>
 }
 
-function makeState(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: ArgumentRolesOptions): RoleState {
+function roleStateOf(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: ArgumentRolesOptions): RoleState {
 	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map() };
 }
 
@@ -141,7 +141,7 @@ function intersect(sets: readonly ReadonlySet<NodeId>[]): Set<NodeId> {
 function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {
 	const graph = state.graph;
 	const vertex = graph.getVertex(node);
-	const returns = takesApart(vertex) ? [] : edgeTargets(graph, node, EdgeType.Returns);
+	const returns = takesApart(vertex) ? [] : Dataflow.targetsOf(graph, node, EdgeType.Returns);
 	if(DfgVertex.isFunctionCall(vertex)) {
 		const alias = argumentsWith(vertex, state, ArgProp.Alias);
 		if(missesItsElse(vertex, state)) {
@@ -156,14 +156,14 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 		return origins.length > 1 ? [origins, []] : [[], origins];
 	} else if(DfgVertex.isVariableDefinition(vertex)) {
 		/* what the name was given, a call included: what that yields in turn is for the next step to say */
-		return [[], edgeTargets(graph, node, EdgeType.DefinedBy)];
+		return [[], Dataflow.targetsOf(graph, node, EdgeType.DefinedBy)];
 	}
 	return [[], []];
 }
 
 /** Whether the call is an `if` that may skip its branch: no `else` was written and the condition is no `TRUE`. */
 function missesItsElse(vertex: DataflowGraphVertexFunctionCall, state: RoleState): boolean {
-	if(!vertex.origin.includes(BuiltInProcName.IfThenElse) || FunctionArgument.isNotEmpty(vertex.args[2])) {
+	if(!DfgVertex.hasOrigin(vertex, BuiltInProcName.IfThenElse) || FunctionArgument.isNotEmpty(vertex.args[2])) {
 		return false;
 	}
 	const condition = vertex.args[0];
@@ -173,7 +173,7 @@ function missesItsElse(vertex: DataflowGraphVertexFunctionCall, state: RoleState
 /** Whether the call hands back a part of what it was given (`x$a`, `x[1]`, `pkg::name`) rather than the thing. */
 function takesApart(vertex: DataflowGraphVertexInfo | undefined): boolean {
 	return DfgVertex.isFunctionCall(vertex)
-		&& (vertex.origin.includes(BuiltInProcName.Access) || vertex.origin.includes(BuiltInProcName.NamespaceAccess));
+		&& (DfgVertex.hasOrigin(vertex, BuiltInProcName.Access) || DfgVertex.hasOrigin(vertex, BuiltInProcName.NamespaceAccess));
 }
 
 /** The roles the calls inside a definition give to what they are handed, as one mask per node reached. */
@@ -181,17 +181,17 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	const byName = formalsByName(definition, state);
 	const roles = new Map<NodeId, ArgProps>();
 	const add = (node: NodeId, props: ArgProps): void => {
-		for(const formal of resolvesTo(node, byName, state)) {
+		for(const formal of aliasTargets(node, byName, state)) {
 			roles.set(formal, (roles.get(formal) ?? 0) | props);
 		}
 	};
-	for(const [node, vertex] of callsIn(definition, state.graph)) {
+	for(const [node, vertex] of Dataflow.callsIn(definition, state.graph)) {
 		/* a formal the body calls is what it is used as, whether or not any built-in says so */
 		for(const callee of calledNames(node, vertex, state)) {
 			add(callee, ArgProp.Callee);
 		}
 		const notStated = happensInEveryBranch(vertex.cds) ? NotStatedByACall : NotStatedByACall | ArgProp.Forced;
-		for(const [props, argument] of argumentProps(vertex, state)) {
+		for(const [props, argument] of rolesOfCall(vertex, state)) {
 			const stated = props & ~notStated;
 			if(stated !== 0) {
 				add(argument, stated);
@@ -223,7 +223,7 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
  * Which definitions an argument stands for: what a name refers to, not what a value is (collects *may*, not
  * identity). An argument a call never evaluates has no origin to follow (`quote(x)`), so its written name answers.
  */
-function resolvesTo(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): Set<NodeId> {
+function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): Set<NodeId> {
 	const found = new Set<NodeId>([node]);
 	const queue: [NodeId, number][] = [[node, 0]];
 	for(let at = 0; at < queue.length; at++) {
@@ -261,11 +261,11 @@ function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state:
 
 /** The arguments of a call carrying any of `props`, as the nodes they are. */
 function argumentsWith(vertex: DataflowGraphVertexFunctionCall, state: RoleState, props: ArgProps): NodeId[] {
-	return argumentProps(vertex, state).filter(([had]) => (had & props) !== 0).map(([, argument]) => argument);
+	return rolesOfCall(vertex, state).filter(([had]) => (had & props) !== 0).map(([, argument]) => argument);
 }
 
 /** What the call states about each of its arguments, paired with the node the argument is (`...` bound by R's own matching). */
-function argumentProps(vertex: DataflowGraphVertexFunctionCall, state: RoleState): ArgumentProps {
+function rolesOfCall(vertex: DataflowGraphVertexFunctionCall, state: RoleState): ArgumentProps {
 	const known = state.args.get(vertex.id);
 	if(known !== undefined) {
 		return known;
@@ -275,7 +275,7 @@ function argumentProps(vertex: DataflowGraphVertexFunctionCall, state: RoleState
 	return found;
 }
 
-/** @see {@link argumentProps}, which answers from what this worked out once per call. */
+/** @see {@link rolesOfCall}, which answers from what this worked out once per call. */
 function matchArgumentProps(vertex: DataflowGraphVertexFunctionCall, state: RoleState): ArgumentProps {
 	const sig: FnSig | undefined = state.info(vertex.name)?.sig;
 	if(sig === undefined) {

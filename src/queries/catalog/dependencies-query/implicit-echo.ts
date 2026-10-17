@@ -13,7 +13,6 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RLineDirective } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
 import { DfgVertex } from '../../../dataflow/graph/vertex';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
@@ -101,21 +100,17 @@ function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfo
 	}
 	const props = queryFnProps(name, { environment: dataflow.environment });
 	return FunctionSemantics.call.props.hasAny(props, [CallProp.Invisible, SemanticCallTag.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
-		|| (props === undefined && returnsInvisibly(node.info.id, dataflow, seen)) ? undefined : name;
+		|| (props === undefined && calleesReturnInvisibly(node.info.id, dataflow, seen)) ? undefined : name;
 }
 
-function returnsInvisibly(id: NodeId, dataflow: DataflowInformation, seen: Set<NodeId>): boolean {
+function calleesReturnInvisibly(id: NodeId, dataflow: DataflowInformation, seen: Set<NodeId>): boolean {
 	const idMap = dataflow.graph.idMap;
 	if(idMap === undefined || seen.has(id)) {
 		return false;
 	}
 	seen.add(id);
 	let callee = false;
-	for(const [target, edge] of dataflow.graph.edgesFrom(id)) {
-		const definition = DfEdge.includesType(edge, EdgeType.Calls) ? dataflow.graph.getVertex(target) : undefined;
-		if(!DfgVertex.isFunctionDefinition(definition)) {
-			continue;
-		}
+	for(const definition of Dataflow.calleesOf(dataflow.graph, id)) {
 		callee = true;
 		for(const exit of definition.exitPoints) {
 			const last = idMap.get(exit.nodeId);

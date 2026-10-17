@@ -8,7 +8,6 @@ import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../dataflow/graph/vertex';
-import { calledDefinitions, callsIn, edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -223,11 +222,11 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 	const seen = new Set<NodeId>();
 	const calls = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id)));
 	while(calls.length > 0) {
-		for(const target of calledDefinitions(graph, calls.pop() as NodeId).filter(t => !seen.has(t))) {
+		for(const target of Dataflow.calleeIdsOf(graph, calls.pop() as NodeId).filter(t => !seen.has(t))) {
 			seen.add(target);
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
 			found.push(...[...callee.subflow.graph].filter(inner => writers.has(inner)));
-			calls.push(...[...callsIn(callee, graph)].map(([inner]) => inner));
+			calls.push(...[...Dataflow.callsIn(callee, graph)].map(([inner]) => inner));
 		}
 	}
 	return found;
@@ -245,7 +244,7 @@ function definitionWithHolders(definition: NodeId | undefined, idMap: AstIdMap, 
 	const outer = [definitionNode.info.id];
 	for(const node of RNode.iterateParents(definitionNode, idMap)) {
 		if(RFunctionDefinition.is(node) || (RExpressionList.is(node) && node.grouping?.[0].lexeme !== '(')
-			|| (opened !== undefined && RArgument.is(node) && (opened.has(definitionNode.info.id) || edgeTargets(graph, node.info.parent ?? '', EdgeType.Calls).some(fn => opened.has(fn))))) {
+			|| (opened !== undefined && RArgument.is(node) && (opened.has(definitionNode.info.id) || Dataflow.targetsOf(graph, node.info.parent ?? '', EdgeType.Calls).some(fn => opened.has(fn))))) {
 			break;
 		}
 		if(graph.hasVertex(node.info.id)) {
@@ -266,7 +265,7 @@ function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly
 		if(!DfgVertex.isUse(graph.getVertex(id))) {
 			continue;
 		}
-		const defined = edgeTargets(graph, id, EdgeType.Reads).some(t => slice.has(t) || NodeId.isBuiltIn(t));
+		const defined = Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => slice.has(t) || NodeId.isBuiltIn(t));
 		const name = defined ? undefined : NodeId.recoverName(id, graph.idMap);
 		if(name !== undefined) {
 			free.add(name);

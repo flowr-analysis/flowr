@@ -11,9 +11,9 @@ import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-
 import { firstOnSomePath, reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { linkCallToDefinitions } from '../../../linker';
-import { edgeSources } from '../../../../fn/frame-reflection';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
+import { Dataflow } from '../../../../graph/df-helper';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -51,7 +51,7 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
-				for(const def of edgeSources(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
+				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
 					const name = NodeId.recoverName(def, idMap);
 					if(name !== undefined) {
 						names.push([def, RString.unquote(name), true]);
@@ -95,11 +95,11 @@ export const Deferred = {
 	 * With `viaClosures`, a closure reading a `delayedAssign` binding forces it when called.
 	 */
 	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph, viaClosures = false): readonly NodeId[] {
-		const reads = edgeSources(graph, binding, EdgeType.Reads);
+		const reads = Dataflow.sourcesOf(graph, binding, EdgeType.Reads);
 		const readSet = new Set(reads);
 		/* a closure reading it and the call of that closure may skip the read, so they never rule out a later force */
 		const calls = viaClosures
-			? edgeSources(graph, binding, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall).filter(r => !readSet.has(r))
+			? Dataflow.sourcesOf(graph, binding, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall).filter(r => !readSet.has(r))
 			: [];
 		if(reads.length < 2) {
 			return reads.concat(calls);

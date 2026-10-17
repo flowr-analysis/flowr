@@ -9,6 +9,7 @@ import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { collectCalledNames, isS3MethodName } from './unused-definition';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export enum CasingConvention {
 	CamelCase       = 'camelCase',
@@ -157,7 +158,7 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
  * Creates quick fixes for renaming all references to the given node to match the provided replacement.
  */
 export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
-	const refs = getAllRefsToSymbol(graph, nodeId);
+	const refs = Dataflow.refsToSymbol(graph, nodeId);
 	const idMap = graph.idMap;
 	if(refs === undefined || idMap === undefined) {
 		return undefined;

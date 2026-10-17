@@ -29,8 +29,9 @@ import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { compactRecord } from '../../../../../../util/objects';
-import { callsIn, edgeTargets } from '../../../../../fn/frame-reflection';
 import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
+import { Dataflow } from '../../../../../graph/df-helper';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
@@ -46,7 +47,7 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 
 /** Whether reading the variable defined at `id` calls a function, as for an active binding. */
 function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
-	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && edgeTargets(graph, id, EdgeType.Calls).length > 0;
+	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && Dataflow.targetsOf(graph, id, EdgeType.Calls).length > 0;
 }
 
 /** @returns whether `read` sees a definition */
@@ -111,7 +112,7 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 		}
 		seen.add(fn.id);
 		yield { fn, direct, cds };
-		for(const [, call] of callsIn(fn, graph)) {
+		for(const [, call] of Dataflow.callsIn(fn, graph)) {
 			if(call.onlyBuiltin || call.name === undefined) {
 				continue;
 			}

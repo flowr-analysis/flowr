@@ -26,7 +26,6 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import { ControlDependency, happensInEveryBranch } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { EdgeType } from '../../dataflow/graph/edge';
-import { edgeSources, edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Ternary } from '../../util/logic';
@@ -34,6 +33,7 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import { CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -129,13 +129,13 @@ export const SEEDED_RANDOMNESS = {
 		}
 		/** a call of a draw by another name, like a parameter `f` bound to `runif` */
 		const drawsThrough = (call: NodeId): 'draw' | undefined =>
-			edgeTargets(graph, call, EdgeType.Calls).some(t => NodeId.isBuiltIn(t) && consumers.has(NodeId.fromBuiltIn(t))) ? 'draw' : undefined;
+			Dataflow.targetsOf(graph, call, EdgeType.Calls).some(t => NodeId.isBuiltIn(t) && consumers.has(NodeId.fromBuiltIn(t))) ? 'draw' : undefined;
 		/** the writes a draw reads the generator state from: its own, and those of the calls running the function it sits in, which link what was written before them */
 		const statesReadBy = (id: NodeId): NodeId[] => {
 			const within = idMap === undefined ? undefined : RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
-			const callers = within === undefined ? [] : edgeSources(graph, within, EdgeType.Calls);
-			const ownReads = edgeTargets(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall);
-			return [...ownReads, ...callers.flatMap(c => edgeTargets(graph, c, EdgeType.DefinedByOnCall))];
+			const callers = within === undefined ? [] : Dataflow.sourcesOf(graph, within, EdgeType.Calls);
+			const ownReads = Dataflow.targetsOf(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall);
+			return [...ownReads, ...callers.flatMap(c => Dataflow.targetsOf(graph, c, EdgeType.DefinedByOnCall))];
 		};
 		/** follows the draws behind the generator state `id` reads back to where it was seeded */
 		const collectSeeding = (id: NodeId, visiting: ReadonlySet<NodeId>, seeding: Seeding): Seeding => {

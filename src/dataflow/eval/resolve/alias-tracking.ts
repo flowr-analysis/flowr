@@ -25,6 +25,7 @@ import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/mod
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { Resolve } from '../../environments/resolve-helper';
 import { NodeValue } from './node-value';
+import { Dataflow } from '../../graph/df-helper';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -351,9 +352,8 @@ function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMa
 	if(!RParameter.is(bound) || bound.info.parent === undefined) {
 		return 'applies';
 	}
-	const count = (edges: Iterable<[NodeId, DfEdge]>, type: EdgeType) => [...edges].filter(([, e]) => DfEdge.includesType(e, type)).length;
-	const calls = count(graph.edgesTo(bound.info.parent), EdgeType.Calls);
-	return calls === 0 ? 'unknown' : count(graph.edgesFrom(bound.name.info.id), EdgeType.DefinedByOnCall) >= calls ? 'overridden' : 'applies';
+	const calls = Dataflow.sourcesOf(graph, bound.info.parent, EdgeType.Calls).length;
+	return calls === 0 ? 'unknown' : Dataflow.targetsOf(graph, bound.name.info.id, EdgeType.DefinedByOnCall).length >= calls ? 'overridden' : 'applies';
 }
 
 /**

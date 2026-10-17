@@ -105,7 +105,7 @@ function applyEnvListReplacement(information: DataflowInformation, env: Dataflow
 			if(!DfgVertex.isFunctionCall(vtx)) {
 				return;
 			}
-			if(!vtx.origin.includes(BuiltInProcName.List)) {
+			if(!DfgVertex.hasOrigin(vtx, BuiltInProcName.List)) {
 				return true;
 			}
 			useMap ??= usesByName(expr);

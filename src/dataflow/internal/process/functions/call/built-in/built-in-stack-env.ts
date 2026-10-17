@@ -120,11 +120,11 @@ export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: S
 		return undefined;
 	}
 	const kind = stackEnvKind(String(vertex.name));
-	if(vertex.origin.includes(BuiltInProcName.StackEnv)) {
+	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.StackEnv)) {
 		return fixedStackEnv(kind, data);
 	}
 	/* `environment()` goes through the default processor; with an argument it denotes a closure's env instead */
-	return kind === StackEnvKind.Current && vertex.args.length === 0 && vertex.origin.includes(BuiltInProcName.Default)
+	return kind === StackEnvKind.Current && vertex.args.length === 0 && DfgVertex.hasOrigin(vertex, BuiltInProcName.Default)
 		? { current: data.environment.current, level: data.environment.level }
 		: undefined;
 }

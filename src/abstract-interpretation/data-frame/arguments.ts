@@ -1,5 +1,4 @@
 import { EdgeType } from '../../dataflow/graph/edge';
-import { edgeSources } from '../../dataflow/fn/frame-reflection';
 import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
@@ -191,7 +190,7 @@ export function getUnresolvedSymbolsInExpression(
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
 			/* a masked name a call runs, like the function in `across(everything(), as.character)`, falls back to the function without such a column */
-			const masked = FunctionSemantics.call.nse.maskedName(dfg, node.info.id) && edgeSources(dfg, node.info.id, EdgeType.Calls).length === 0;
+			const masked = FunctionSemantics.call.nse.maskedName(dfg, node.info.id) && Dataflow.sourcesOf(dfg, node.info.id, EdgeType.Calls).length === 0;
 			if(DfgVertex.isUse(vertex) && (edges?.size === 0 || masked) && symbolNamespace === undefined && symbolName !== '.') {
 				unresolvedSymbols.push(symbolName);
 			}

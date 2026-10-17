@@ -13,9 +13,9 @@ import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { edgeSources } from '../../dataflow/fn/frame-reflection';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 const defaultCredentialNamePattern =
 	'(?:passw(?:or)?d|authorization|passphrase|(?:^|[_.])pass(?:$|[_.])|pwd|secret|api[_.]?key|access[_.]?key|(?:^|[_.])token$|api[_.]?token|access[_.]?token|auth[_.]?token|bearer[_.]?token|private[_.]?key|credential|(?:^|[_.])pat$)';
@@ -111,7 +111,7 @@ class CredentialContexts {
 			const name = Identifier.getName(fn);
 			/* only a value built from its arguments carries a literal on to where it is assigned, `assign` assigns its own */
 			const opaque = RFunctionCall.is(current) && RArgument.is(child) && !this.pure.has(Identifier.getNamespace(fn) === undefined ? name : Identifier.toString(fn));
-			for(const def of edgeSources(this.dfg, current.info.id, EdgeType.DefinedBy)) {
+			for(const def of Dataflow.sourcesOf(this.dfg, current.info.id, EdgeType.DefinedBy)) {
 				const defNode = this.idMap.get(def);
 				if(defNode !== undefined && DfgVertex.isVariableDefinition(this.dfg.getVertex(def)) && !seen.has(def) && (!opaque || RNode.iterateParents(defNode, this.idMap).some(p => p === current))) {
 					seen.add(def);
@@ -135,7 +135,7 @@ class CredentialContexts {
 	}
 
 	private usesOf(def: NodeId, hops: number, seen: Set<NodeId>): CredentialContext[] {
-		return hops >= MaxCredentialHops ? [] : edgeSources(this.dfg, def, EdgeType.Reads).flatMap(r => {
+		return hops >= MaxCredentialHops ? [] : Dataflow.sourcesOf(this.dfg, def, EdgeType.Reads).flatMap(r => {
 			const reader = this.idMap.get(r);
 			return reader === undefined ? [] : this.of(reader, hops + 1, seen);
 		});

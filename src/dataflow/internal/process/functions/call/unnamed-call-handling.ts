@@ -15,7 +15,7 @@ import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RAccess } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { edgeTargets } from '../../../../fn/frame-reflection';
+import { Dataflow } from '../../../../graph/df-helper';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 
@@ -26,7 +26,7 @@ export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
  */
 function accessResolvesToField(graph: DataflowGraph, accessId: NodeId, accessedId: NodeId): boolean {
 	const base = NodeId.normalize(accessedId);
-	return edgeTargets(graph, accessId, EdgeType.Returns).some(target => NodeId.normalize(target) !== base);
+	return Dataflow.targetsOf(graph, accessId, EdgeType.Returns).some(target => NodeId.normalize(target) !== base);
 }
 
 /**

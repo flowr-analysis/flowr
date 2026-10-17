@@ -1,7 +1,7 @@
 import type { DataflowGraph } from '../graph/graph';
 import { FunctionArgument } from '../graph/graph';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
-import { DfEdge, EdgeType } from '../graph/edge';
+import { EdgeType } from '../graph/edge';
 import { Dataflow } from '../graph/df-helper';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { DfgVertex, VertexType } from '../graph/vertex';
@@ -27,7 +27,7 @@ export interface FrameReflectionOptions {
  */
 export function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, { known }: FrameReflectionOptions): ArgProps {
 	let roles = 0;
-	for(const [node, vertex] of callsIn(definition, graph)) {
+	for(const [node, vertex] of Dataflow.callsIn(definition, graph)) {
 		const info = known(vertex.name);
 		const frame = info?.frame ?? 0;
 		if(frame === 0 || (roles & frame) === frame || handedAnotherFrame(vertex, info)) {
@@ -50,8 +50,8 @@ function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFuncti
 	const formals = new Set(Dataflow.parametersOf(definition));
 	const carrying = carriersOf(frame, definition, graph);
 	let consumers = 0;
-	for(const [node, vertex] of callsIn(definition, graph)) {
-		const args = argumentsOf(vertex);
+	for(const [node, vertex] of Dataflow.callsIn(definition, graph)) {
+		const args = argumentIdsOf(vertex);
 		if(carrying.has(node) || !args.some(id => carrying.has(id))) {
 			continue;
 		}
@@ -66,7 +66,7 @@ function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFuncti
 /** Whether the consuming `call` itself, or one of its arguments naming what it looks up by a fixed name, reads a formal. */
 function resolvedToAFormal(call: NodeId, args: readonly NodeId[], formals: ReadonlySet<NodeId>, graph: DataflowGraph): boolean {
 	const fixed = args.filter(id => isFixedName(id, graph));
-	return [call, ...fixed].some(id => edgeTargets(graph, id, EdgeType.Reads).some(to => formals.has(to)));
+	return [call, ...fixed].some(id => Dataflow.targetsOf(graph, id, EdgeType.Reads).some(to => formals.has(to)));
 }
 
 function isFixedName(node: NodeId, graph: DataflowGraph): boolean {
@@ -84,9 +84,9 @@ function carriersOf(frame: NodeId, definition: DataflowGraphVertexFunctionDefini
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
 		/* a call reading the frame is what uses it, so it is a consumer rather than another name for it, and carries nothing on */
-		successors.set(node, DfgVertex.isFunctionCall(vertex) && !passesOn(vertex) ? [] : edgeTargets(graph, node, CarryingEdges));
+		successors.set(node, DfgVertex.isFunctionCall(vertex) && !passesOn(vertex) ? [] : Dataflow.targetsOf(graph, node, CarryingEdges));
 	}
-	propagateToFixpoint(successors.keys(), successors, id => {
+	Dataflow.propagateToFixpoint(successors.keys(), successors, id => {
 		if(carrying.has(id) || !(successors.get(id) ?? []).some(to => carrying.has(to))) {
 			return false;
 		}
@@ -98,11 +98,11 @@ function carriersOf(frame: NodeId, definition: DataflowGraphVertexFunctionDefini
 
 /** Whether the call hands what it was given straight on: storing a frame under a name is no use of it. */
 function passesOn(vertex: DataflowGraphVertexFunctionCall): boolean {
-	return vertex.origin.includes(BuiltInProcName.Assignment) || vertex.origin.includes(BuiltInProcName.ExpressionList);
+	return DfgVertex.hasOrigin(vertex, BuiltInProcName.Assignment) || DfgVertex.hasOrigin(vertex, BuiltInProcName.ExpressionList);
 }
 
 /** The nodes a call was handed, whatever way the arguments were written. */
-function argumentsOf(vertex: DataflowGraphVertexFunctionCall): NodeId[] {
+function argumentIdsOf(vertex: DataflowGraphVertexFunctionCall): NodeId[] {
 	return vertex.args.filter(FunctionArgument.isNotEmpty)
 		.flatMap(a => FunctionArgument.isNamed(a) && a.valueId !== undefined ? [a.nodeId, a.valueId] : [a.nodeId]);
 }

@@ -18,7 +18,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
-import { DfEdge, EdgeType } from '../dataflow/graph/edge';
+import { EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -489,17 +489,11 @@ export class SemanticCfgGuidedVisitor<
 	protected onPurrFormulaCall(_data: OnCall) {}
 
 	protected getSourceAndTarget(call: DataflowGraphVertexFunctionCall): { target: NodeId | undefined, source: NodeId | undefined } {
-		const outgoing = this.config.dfg.outgoingEdges(call.id);
-		if(outgoing !== undefined) {
-			const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
-			if(target.length === 1) {
-				const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
-				if(targetOut !== undefined) {
-					const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
-					if(source.length === 1) {
-						return { target: target[0][0], source: source[0][0] };
-					}
-				}
+		const target = Dataflow.targetsOf(this.config.dfg, call.id, EdgeType.Returns);
+		if(target.length === 1) {
+			const source = Dataflow.targetsOf(this.config.dfg, target[0], EdgeType.DefinedBy).filter(t => t !== call.id);
+			if(source.length === 1) {
+				return { target: target[0], source: source[0] };
 			}
 		}
 		return { target: undefined, source: undefined };

@@ -22,7 +22,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { NodeValue } from '../eval/resolve/node-value';
 import { collectStrings } from '../eval/values/string/string-constants';
 import { isValue } from '../eval/values/r-value';
-import { edgeTargets, hasEdgeOfType } from './frame-reflection';
+import { Dataflow } from '../graph/df-helper';
 
 /** The object system a declaration belongs to. */
 export const enum ClassSystem {
@@ -281,7 +281,7 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
 		if(lexeme === undefined) {
 			continue;
 		}
-		for(const target of edgeTargets(graph, id, EdgeType.DefinedBy)) {
+		for(const target of Dataflow.targetsOf(graph, id, EdgeType.DefinedBy)) {
 			const cls = classOfId.get(target);
 			if(cls !== undefined) {
 				generators.set(lexeme, cls);
@@ -337,7 +337,7 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 /** The class vector S3 dispatch sees for the value at `id`: a `structure(..., class = )` or a constant, `undefined` if not statically known. */
 function s3ClassOfValue(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly string[] | undefined {
 	const node = info.idMap.get(id);
-	if(RFunctionCall.is(node) && hasEdgeOfType(info.graph, id, NodeId.toBuiltIn('structure'), EdgeType.Calls)) {
+	if(RFunctionCall.is(node) && Dataflow.hasEdge(info.graph, id, NodeId.toBuiltIn('structure'), EdgeType.Calls)) {
 		const cls = NodeValue.soleOf(argForImpl(node.arguments, { name: 'class' }), info);
 		const strings = cls?.type === 'string' ? collectStrings([cls]) : cls?.type === 'vector' && isValue(cls.elements) ? collectStrings(cls.elements) : undefined;
 		return strings?.length ? strings : undefined;
@@ -356,7 +356,7 @@ function s3ClassOfValue(id: NodeId, info: ResolveInfo & { readonly graph: Datafl
 /** The value a plain assignment binds to the definition `def`, `undefined` for any other kind of definition (`class(x) <- `, `assign`, a parameter, ...). */
 function assignedValueOf(def: NodeId, graph: DataflowGraph): NodeId | undefined {
 	const vertex = graph.getVertex(def);
-	const byAssignment = edgeTargets(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
+	const byAssignment = Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
 	return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
 }
 
@@ -365,7 +365,7 @@ export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly g
 	const { graph } = info;
 	const value = RArgument.valueOf(info.idMap.get(id))?.info.id;
 	const isRead = value !== undefined && DfgVertex.isUse(graph.getVertex(value));
-	const values = isRead ? edgeTargets(graph, value, EdgeType.Reads).map(def => assignedValueOf(def, graph)) : [value];
+	const values = isRead ? Dataflow.targetsOf(graph, value, EdgeType.Reads).map(def => assignedValueOf(def, graph)) : [value];
 	const classes = values.map(v => v === undefined ? undefined : s3ClassOfValue(v, info));
 	return classes.length > 0 && classes.every(isNotUndefined) ? classes : undefined;
 }

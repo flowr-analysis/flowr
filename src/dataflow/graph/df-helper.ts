@@ -23,6 +23,8 @@ import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
  * - {@link Dataflow.visualize} - for visualization helpers (e.g., rendering the DFG as a mermaid graph),
  * - {@link Dataflow.qualify}/{@link Dataflow.qualifyAll} - for the package-qualified `pkg::fn` identifier of a call
  * from its id and graph, or of every call of a graph at once,
+ * - {@link Dataflow.targetsOf}/{@link Dataflow.sourcesOf}/{@link Dataflow.hasEdge} - for the neighbors of a vertex by edge type,
+ * - {@link Dataflow.calleesOf}/{@link Dataflow.calleeIdsOf}/{@link Dataflow.callTargetsOf}/{@link Dataflow.callsIn} - for what a call calls and what a definition calls,
  * - {@link Dataflow.packagesOf} - for the packages a set of nodes (e.g. a slice) calls into,
  * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
  *

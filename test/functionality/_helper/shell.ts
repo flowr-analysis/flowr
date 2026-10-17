@@ -60,7 +60,7 @@ import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { EdgeType } from '../../../src/dataflow/graph/edge';
-import { edgeTargets } from '../../../src/dataflow/fn/frame-reflection';
+import { uniqueArray } from '../../../src/util/collections/arrays';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -800,7 +800,7 @@ export function assertCallTargets(name: string, parser: KnownParser, code: strin
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(code);
 		const { idMap } = await analyzer.normalize();
-		const targets = new Set(edgeTargets((await analyzer.dataflow()).graph, SlicingCriterion.parse(criterion, idMap), EdgeType.Calls));
+		const targets = new Set(Dataflow.targetsOf((await analyzer.dataflow()).graph, SlicingCriterion.parse(criterion, idMap), EdgeType.Calls));
 		for(const r of reaches) {
 			assert.isTrue(targets.has(SlicingCriterion.parse(r, idMap)), `${criterion} should call ${r}`);
 		}

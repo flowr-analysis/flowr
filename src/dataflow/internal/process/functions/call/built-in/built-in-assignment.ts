@@ -25,8 +25,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
-import { define } from '../../../../../environments/define';
-import { DfEdge, EdgeType } from '../../../../../graph/edge';
+import { EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
@@ -43,6 +42,8 @@ import { holdsFunction, resolveListToEnvState } from './built-in-list';
 import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
 import { stackEnvStateFromSource } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { Dataflow } from '../../../../../graph/df-helper';
+import { REnvironment } from '../../../../../environments/environment';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -406,7 +407,7 @@ function valueEntryPointOf(sourceInfo: DataflowInformation): NodeId | undefined 
 	const seen = new Set<NodeId>();
 	let id = sourceInfo.entryPoint;
 	while(true) {
-		const returns = [...sourceInfo.graph.edgesFrom(id)].filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Returns));
+		const returns = Dataflow.targetsOf(sourceInfo.graph, id, EdgeType.Returns);
 		if(returns.length === 0) {
 			return id;
 		} else if(returns.length > 1 || seen.has(id)) {

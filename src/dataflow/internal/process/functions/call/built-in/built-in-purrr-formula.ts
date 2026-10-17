@@ -152,7 +152,7 @@ export function processPurrrFormula<OtherInfo>(
 				if(DfgVertex.isFunctionCall(vtx)) {
 					information.graph.addEdge(rootId, vtx.id, EdgeType.Calls);
 
-					const targets = getAllFunctionCallTargets(vtx.id, information.graph, vtx.environment);
+					const targets = Dataflow.callTargetsOf(vtx.id, information.graph, vtx.environment);
 					for(const t of targets) {
 						information.graph.addEdge(rootId, t, EdgeType.Calls);
 						const linked = data.completeAst.idMap.get(t) as RFunctionDefinition<ParentInformation> | undefined;
@@ -169,7 +169,7 @@ export function processPurrrFormula<OtherInfo>(
 							}
 						}
 					}
-					return !vtx.origin.includes(BuiltInProcName.List);
+					return !DfgVertex.hasOrigin(vtx, BuiltInProcName.List);
 				} else if(DfgVertex.isUse(vtx)) {
 					const node = data.completeAst.idMap.get(vtx.id);
 					if(RSymbol.is(node)) {

@@ -33,7 +33,6 @@ import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { calledDefinitions, edgeSources, edgeTargets, hasEdgeOfType } from '../../../dataflow/fn/frame-reflection';
 import { SourceRange } from '../../../util/range';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 
@@ -116,7 +115,7 @@ class InputClassifier {
 
 	/** whether the callee is a definition of the code rather than one handed in as an argument */
 	private callsDefinition(call: DataflowGraphVertexFunctionCall): boolean {
-		return calledDefinitions(this.whole, call.id).some(d => !hasEdgeOfType(this.whole, call.id, d, EdgeType.Argument));
+		return Dataflow.calleeIdsOf(this.whole, call.id).some(d => !Dataflow.hasEdge(this.whole, call.id, d, EdgeType.Argument));
 	}
 
 	/** whether the package the given entry needs is attached (unknown package information lets everything through) */
@@ -137,10 +136,10 @@ class InputClassifier {
 		const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref);
 		if(ref === undefined || !RSymbol.is(node)) {
 			return this.classifyAt(ref);
-		} else if(call.origin.includes(BuiltInProcName.Get) && parent !== undefined && !RArgument.is(parent)) {
+		} else if(DfgVertex.hasOrigin(call, BuiltInProcName.Get) && parent !== undefined && !RArgument.is(parent)) {
 			const written = RString.is(parent) ? compactRecord({ ...sourceOf(ref, InputType.Constant), value: parent.content.str }) : this.classifyAt(parent.info.id);
 			return written && { ...written, id: ref };
-		} else if(call.origin.includes(BuiltInProcName.Apply) && DfgVertex.isFunctionCall(vtx) && edgeTargets(this.dfg, ref, EdgeType.Reads).every(t => NodeId.isBuiltIn(t) || !this.functionDefinitionsAt(t).next().done)) {
+		} else if(DfgVertex.hasOrigin(call, BuiltInProcName.Apply) && DfgVertex.isFunctionCall(vtx) && Dataflow.targetsOf(this.dfg, ref, EdgeType.Reads).every(t => NodeId.isBuiltIn(t) || !this.functionDefinitionsAt(t).next().done)) {
 			/* a name of a function the code defines or flowR knows */
 			return sourceOf(ref, InputType.Constant);
 		}
@@ -330,7 +329,7 @@ class InputClassifier {
 		for(const arg of call.args) {
 			const ref = FunctionArgument.getReference(arg);
 			/* an evaluated argument (`parse_expr(text)`) is code only as far as its value is */
-			if(ref !== undefined && hasEdgeOfType(this.whole, call.id, ref, EdgeType.Reads)) {
+			if(ref !== undefined && Dataflow.hasEdge(this.whole, call.id, ref, EdgeType.Reads)) {
 				if(!this.classifyAt(ref)?.types.every(isConstantLike)) {
 					return false;
 				}
@@ -342,9 +341,9 @@ class InputClassifier {
 				if(RSymbol.is(node) && parameters.has(Identifier.getName(node.content))) {
 					return false;
 				}
-				for(const target of edgeTargets(this.dfg, id, EdgeType.Reads | EdgeType.DefinedByOnCall)) {
+				for(const target of Dataflow.targetsOf(this.dfg, id, EdgeType.Reads | EdgeType.DefinedByOnCall)) {
 					/* the call evaluating the code is no input to it */
-					if(!within.has(target) && !NodeId.isBuiltIn(target) && !hasEdgeOfType(this.dfg, target, id, EdgeType.Returns)) {
+					if(!within.has(target) && !NodeId.isBuiltIn(target) && !Dataflow.hasEdge(this.dfg, target, id, EdgeType.Returns)) {
 						return false;
 					}
 				}
@@ -358,7 +357,7 @@ class InputClassifier {
 	 * carrying the accessed field as its {@link InputSource.name|name}.
 	 */
 	private classifyLinkedObjectAccess(call: DataflowGraphVertexFunctionCall): InputSource | undefined {
-		if(!call.origin.includes(BuiltInProcName.Access)) {
+		if(!DfgVertex.hasOrigin(call, BuiltInProcName.Access)) {
 			return undefined;
 		}
 		const accessed = FunctionArgument.getReference(call.args[0]);
@@ -387,15 +386,15 @@ class InputClassifier {
 
 	/** the argument a built-in hands on: the value of a block or `get` (then `renamed`), the condition of a loop */
 	private passedOn(call: DataflowGraphVertexFunctionCall): { via: FunctionArgument | undefined, renamed: boolean } | undefined {
-		if(call.origin.includes(BuiltInProcName.ExpressionList)) {
+		if(DfgVertex.hasOrigin(call, BuiltInProcName.ExpressionList)) {
 			// `{ a; b }` evaluates to its last expression, just like in R
 			return { via: call.args.findLast(a => !FunctionArgument.isEmpty(a)), renamed: true };
-		} else if(call.origin.includes(BuiltInProcName.WhileLoop)) {
+		} else if(DfgVertex.hasOrigin(call, BuiltInProcName.WhileLoop)) {
 			return { via: call.args[0], renamed: false };
-		} else if(call.origin.includes(BuiltInProcName.ForLoop)) {
+		} else if(DfgVertex.hasOrigin(call, BuiltInProcName.ForLoop)) {
 			return { via: call.args[1], renamed: false };
-		} else if(call.origin.includes(BuiltInProcName.Get) && !this.whole.unknownSideEffects.has(NodeId.normalize(call.id))
-			&& edgeTargets(this.whole, call.id, EdgeType.Returns).length > 0) {
+		} else if(DfgVertex.hasOrigin(call, BuiltInProcName.Get) && !this.whole.unknownSideEffects.has(NodeId.normalize(call.id))
+			&& Dataflow.targetsOf(this.whole, call.id, EdgeType.Returns).length > 0) {
 			// a statically resolved `get("x")` yields the value of the retrieved variable, read via its first argument
 			return { via: call.args[0], renamed: true };
 		}
@@ -405,7 +404,7 @@ class InputClassifier {
 	/** an `if` or `switch` yields one of its branches (`NULL` without a matching one), its condition only picks which */
 	private classifyBranches(call: DataflowGraphVertexFunctionCall): InputSource {
 		const acc = new ClassificationAccumulator();
-		const isSwitch = call.origin.includes(BuiltInProcName.Switch);
+		const isSwitch = DfgVertex.hasOrigin(call, BuiltInProcName.Switch);
 		const condition = conditionArgument(call);
 		const branches = call.args.filter(a => a !== condition);
 		for(const ref of branches.map(FunctionArgument.getReference)) {
@@ -447,7 +446,7 @@ class InputClassifier {
 		if(linkedAccess) {
 			return this.classifyCdsAndReturn(call, linkedAccess);
 		}
-		if(call.origin.includes(BuiltInProcName.IfThenElse) || call.origin.includes(BuiltInProcName.Switch)) {
+		if(DfgVertex.hasOrigin(call, BuiltInProcName.IfThenElse) || DfgVertex.hasOrigin(call, BuiltInProcName.Switch)) {
 			return this.classifyCdsAndReturn(call, this.classifyBranches(call));
 		}
 		const handed = this.passedOn(call);
@@ -491,7 +490,7 @@ class InputClassifier {
 			if(types.length === 0) {
 				/* a call of something the code produced (a shiny `reactive()`) or defines yields what that produced or returns */
 				const produced = this.classifyCallee(call) ?? this.classifyDefinitionResult(call);
-				if(produced !== undefined && call.origin.includes(BuiltInProcName.Try)) {
+				if(produced !== undefined && DfgVertex.hasOrigin(call, BuiltInProcName.Try)) {
 					/* the handlers only answer for a failing block, which may just as well succeed */
 					const acc = new ClassificationAccumulator();
 					const block = this.argumentReference(call, 0, 'expr');
@@ -523,7 +522,7 @@ class InputClassifier {
 			const vtx = ref === undefined ? undefined : this.whole.getVertex(ref);
 			const fns = vtx === undefined || DfgVertex.isFunctionCall(vtx) ? [] : [...this.functionDefinitionsAt(ref)];
 			const classified = fns.length > 0 ? this.classifyExits(fns, ref as NodeId)
-				: DfgVertex.isFunctionCall(vtx) && Identifier.getName(vtx.name) === '~' && hasEdgeOfType(this.whole, call.id, vtx.id, EdgeType.Calls) ? this.classifyFormula(vtx) : of.classifyAt(ref);
+				: DfgVertex.isFunctionCall(vtx) && Identifier.getName(vtx.name) === '~' && Dataflow.hasEdge(this.whole, call.id, vtx.id, EdgeType.Calls) ? this.classifyFormula(vtx) : of.classifyAt(ref);
 			argTypes.push(...classified?.types ?? [InputType.Unknown]);
 			cdTypes.push(...classified?.cds ?? []);
 		}
@@ -548,7 +547,7 @@ class InputClassifier {
 
 	/** what a string template like `glue("{x}")` evaluates and reads, which is no argument, but flows in all the same */
 	private templateReads(call: DataflowGraphVertexFunctionCall): NodeId[] {
-		return call.origin.includes(BuiltInProcName.StringTemplate) ? edgeTargets(this.whole, call.id, EdgeType.Reads).filter(t => this.whole.hasVertex(t) && !DfgVertex.hasOrigin(this.whole.getVertex(t), BuiltInProcName.Library)) : [];
+		return DfgVertex.hasOrigin(call, BuiltInProcName.StringTemplate) ? Dataflow.targetsOf(this.whole, call.id, EdgeType.Reads).filter(t => this.whole.hasVertex(t) && !DfgVertex.hasOrigin(this.whole.getVertex(t), BuiltInProcName.Library)) : [];
 	}
 
 	/** a formula called as a function (`purrr::map(x, ~ runif(1))`) yields what its body does */
@@ -593,11 +592,11 @@ class InputClassifier {
 			yield id;
 			return;
 		}
-		const isLoop = vtx.origin.includes(BuiltInProcName.WhileLoop) || vtx.origin.includes(BuiltInProcName.ForLoop)
-			|| vtx.origin.includes(BuiltInProcName.RepeatLoop);
+		const isLoop = DfgVertex.hasOrigin(vtx, BuiltInProcName.WhileLoop) || DfgVertex.hasOrigin(vtx, BuiltInProcName.ForLoop)
+			|| DfgVertex.hasOrigin(vtx, BuiltInProcName.RepeatLoop);
 		if(isLoop) {
 			yield undefined;
-		} else if(vtx.origin.includes(BuiltInProcName.IfThenElse) && depth <= MaxFunctionResolveDepth) {
+		} else if(DfgVertex.hasOrigin(vtx, BuiltInProcName.IfThenElse) && depth <= MaxFunctionResolveDepth) {
 			for(const branch of vtx.args.slice(1)) {
 				const ref = FunctionArgument.getReference(branch);
 				if(ref === undefined) {
@@ -635,7 +634,7 @@ class InputClassifier {
 		}
 		const origins = Dataflow.origin(this.dfg, vtx.id);
 		if(origins === undefined || origins.length === 0) {
-			if(edgeTargets(this.whole, vtx.id, EdgeType.DefinedByOnCall).length > 0) {
+			if(Dataflow.targetsOf(this.whole, vtx.id, EdgeType.DefinedByOnCall).length > 0) {
 				return this.classifyCdsAndReturn(vtx, sourceOf(vtx.id, InputType.Scope));
 			}
 			// the definition is not part of the criterion's function, so it has to come from an enclosing scope
@@ -699,7 +698,7 @@ class InputClassifier {
 		}
 		// if the referenced definition is linked via defined-by-on-call to another id (e.g., a parameter linked to a
 		// caller argument), follow it into the caller; only if that leads nowhere is it an opaque Scope origin
-		const onCall = edgeTargets(this.whole, v.id, EdgeType.DefinedByOnCall);
+		const onCall = Dataflow.targetsOf(this.whole, v.id, EdgeType.DefinedByOnCall);
 		if(onCall.length > 0) {
 			const callers = onCall.map(t => this.classifyInFullGraph(t)).filter(isNotUndefined);
 			const known = callers.filter(c => !c.types.includes(InputType.Unknown));
@@ -723,9 +722,9 @@ class InputClassifier {
 	private escapes(parameter: NodeId): boolean {
 		const idMap = this.whole.idMap;
 		const fn = idMap === undefined ? undefined : RNode.iterateParents(idMap.get(parameter), idMap).find(RFunctionDefinition.is);
-		const holders = fn === undefined ? [] : edgeSources(this.whole, fn.info.id, EdgeType.DefinedBy);
-		return holders.length === 0 || holders.some(h => edgeSources(this.whole, h, EdgeType.Reads)
-			.some(r => !RFunctionCall.is(idMap?.get(r)) || !hasEdgeOfType(this.whole, r, fn?.info.id as NodeId, EdgeType.Calls)));
+		const holders = fn === undefined ? [] : Dataflow.sourcesOf(this.whole, fn.info.id, EdgeType.DefinedBy);
+		return holders.length === 0 || holders.some(h => Dataflow.sourcesOf(this.whole, h, EdgeType.Reads)
+			.some(r => !RFunctionCall.is(idMap?.get(r)) || !Dataflow.hasEdge(this.whole, r, fn?.info.id as NodeId, EdgeType.Calls)));
 	}
 
 	/** whether code flowR cannot follow (`load`, `eval`, `e$x <-`) may rebind the variable before the use */
@@ -751,7 +750,7 @@ class InputClassifier {
 		return this.rebinding ??= [
 			...[...this.whole.unknownSideEffects].filter(e => !UnknownSideEffect.isLinked(e)).map(e => [UnknownSideEffect.id(e), undefined] as const),
 			...this.whole.verticesOfType(VertexType.FunctionCall)
-				.filter(([, c]) => c.origin.includes(BuiltInProcName.Replacement) && FieldReplacements.has(Identifier.getName(c.name)))
+				.filter(([, c]) => DfgVertex.hasOrigin(c, BuiltInProcName.Replacement) && FieldReplacements.has(Identifier.getName(c.name)))
 				.map(([id, c]) => [id, c.args.slice(1, -1).map(name)] as const)
 		];
 	}
@@ -844,10 +843,10 @@ export interface NarrowingFunction {
 
 /** the condition of an `if` or `switch`; with named arguments to an `if`, we do not know which it is */
 function conditionArgument(call: DataflowGraphVertexFunctionCall): FunctionArgument | undefined {
-	if(call.origin.includes(BuiltInProcName.Switch)) {
+	if(DfgVertex.hasOrigin(call, BuiltInProcName.Switch)) {
 		return call.args.find(a => FunctionArgument.hasName(a, 'EXPR')) ?? call.args.find(a => !FunctionArgument.isNamed(a));
 	}
-	return call.origin.includes(BuiltInProcName.IfThenElse) && !call.args.some(FunctionArgument.isNamed) ? call.args[0] : undefined;
+	return DfgVertex.hasOrigin(call, BuiltInProcName.IfThenElse) && !call.args.some(FunctionArgument.isNamed) ? call.args[0] : undefined;
 }
 
 /** the function definitions the given node is nested in, innermost first */

@@ -2,6 +2,7 @@
  * The playground: a CodeMirror editor on the left, and on the right what flowR makes of it, all in
  * the browser. The wasm rides along inside this bundle, so the page fetches nothing.
  */
+import { SourceRange } from '../../src/util/range';
 import { EditorView, basicSetup } from 'codemirror';
 import { Decoration, hoverTooltip, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { Compartment, EditorState, StateEffect, StateField, type StateEffectType, type Transaction } from '@codemirror/state';
@@ -1923,7 +1924,7 @@ async function originLines(origins: { id: string | number }[] | undefined): Prom
 	const map = (await (await analyzer()).normalize()).idMap;
 	return origins.flatMap(o => {
 		const node = map.get(o.id as never);
-		const line = node?.location?.[0];
+		const line = SourceRange.getStartLine(node?.location);
 		return line === undefined ? [] : [{ line, file: elsewhere(node) }];
 	});
 }
@@ -2019,9 +2020,9 @@ async function analyze(): Promise<number> {
 
 	const sliced = Object.values(answers['static-slice']?.results ?? {})[0];
 	const code = sliced?.reconstruct?.code;
-	const keptLines = [...new Set([...(sliced?.slice?.result ?? [])]
-		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => node?.location?.[0])
-		.filter((l): l is number => typeof l === 'number'))];
+	const keptLines = uniqueArray([...(sliced?.slice?.result ?? [])]
+		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => SourceRange.getStartLine(node?.location))
+		.filter((l): l is number => typeof l === 'number'));
 	lastKept = keptLines;
 	editor.dispatch({ effects: setSlice.of(dimOutside && keptLines.length > 0 ? keptLines : undefined) });
 

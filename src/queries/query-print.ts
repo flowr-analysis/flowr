@@ -1,3 +1,4 @@
+import { SourceRange } from '../util/range';
 import { type OutputFormatter, bold, italic, markdownFormatter } from '../util/text/ansi';
 import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes, SupportedQueries } from './query';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';

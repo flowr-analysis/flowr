@@ -227,8 +227,19 @@ export const SourceRange = {
 		return ranges.filter((range, i) => !ranges.some((other, j) => i !== j
 			&& (SourceRange.isStrictSubsetOf(range, other) || (j < i && SourceRange.equals(range, other)))));
 	},
+	/**
+	 * The range of the code a node spans, its own token's range if it has no full range.
+	 * @see {@link SourceRange.ownFromNode} - for the range of the token the node is made of
+	 */
 	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceRange | undefined {
 		return node?.info.fullRange ?? node?.location;
+	},
+	/**
+	 * The range of the token a node is made of (the `<-` of an assignment), the range it spans if it has no token of its own.
+	 * @see {@link SourceRange.fromNode} - for the range of the code the node spans
+	 */
+	ownFromNode<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceRange | undefined {
+		return node?.location ?? node?.info.fullRange;
 	},
 	/**
 	 * Wraps the range in a {@link SourceLocationView|view} offering property access (`range.startLine`) and methods.

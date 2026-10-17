@@ -79,7 +79,7 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 	const lines = new Set<number>();
 	for(const id of ids) {
 		const node = map?.get(id as never);
-		const start = node?.location?.[0];
+		const start = SourceRange.getStartLine(node?.location);
 		if(typeof start !== 'number') {
 			continue;
 		}
@@ -104,7 +104,7 @@ async function dependencyLines(code: string): Promise<string[][]> {
 		.flatMap(([key, label]) => (found[key] ?? []).map(entry => [
 			label,
 			entry.value ?? '?',
-			String(idMap?.get(entry.nodeId as never)?.location?.[0] ?? 0)
+			String(SourceRange.getStartLine(idMap?.get(entry.nodeId as never)?.location) ?? 0)
 		]));
 }
 
@@ -200,7 +200,7 @@ async function originLines(code: string): Promise<string[][]> {
 		const result = await analyzer.query([{ type: 'origin', criterion }]);
 		for(const origin of result.origin.results[criterion] ?? []) {
 			const at = idMap?.get(origin.id);
-			const line = at?.location?.[0];
+			const line = SourceRange.getStartLine(at?.location);
 			const what = at?.lexeme ?? String(origin.id);
 			lines.push([criterion, phrase(origin.type, what, line, origin.type === OriginType.BuiltInFunctionOrigin ? String(origin.fn.name) : what), String(line ?? 0),
 				origin.type === OriginType.FunctionCallOrigin ? 'call' : 'read']);

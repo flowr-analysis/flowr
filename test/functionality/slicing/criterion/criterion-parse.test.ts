@@ -1,3 +1,4 @@
+import { SourceRange } from '../../../../src/util/range';
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
@@ -32,19 +33,19 @@ describe('Slicing criteria', withTreeSitter(ts => {
 			const idMap = await idMapOf(ts, 'h <- function() 1\nh <- h()');
 			const call = nodeOf('2@[2]h', idMap);
 			expect(call?.type).toBe(RType.FunctionCall);
-			expect(call?.location?.[1]).toBe(6);
+			expect(SourceRange.getStartColumn(call?.location)).toBe(6);
 		});
 
 		test('the bare form is exactly [1]', async() => {
 			const idMap = await idMapOf(ts, 'h <- function() 1\nh <- h()');
 			expect(nodeOf('2@h', idMap)?.info.id).toBe(nodeOf('2@[1]h', idMap)?.info.id);
 			// i.e. the leftmost occurrence, here the assignment target in column 1
-			expect(nodeOf('2@h', idMap)?.location?.[1]).toBe(1);
+			expect(SourceRange.getStartColumn(nodeOf('2@h', idMap)?.location)).toBe(1);
 		});
 
 		test('an [n] prefix picks the n-th occurrence in the line, [1] being the first', async() => {
 			const idMap = await idMapOf(ts, 'a <- 1\nb <- a + a + a');
-			const columnOf = (criterion: SlicingCriterion) => nodeOf(criterion, idMap)?.location?.[1];
+			const columnOf = (criterion: SlicingCriterion) => SourceRange.getStartColumn(nodeOf(criterion, idMap)?.location);
 			const columns = [columnOf('2@[1]a'), columnOf('2@[2]a'), columnOf('2@[3]a')];
 			expect(columns.every(c => c !== undefined)).toBe(true);
 			expect(new Set(columns).size).toBe(3);

@@ -17,6 +17,7 @@ export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
 
 /**
  * Helper for working with {@link RString} AST nodes.
+ * @helper ast
  */
 export const RString = {
 	...RNode,

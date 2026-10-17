@@ -29,6 +29,7 @@ export interface RUnnamedArgument<Info = NoInfo> extends RArgument<Info> {
 
 /**
  * Helper for working with {@link RArgument} AST nodes.
+ * @helper ast
  */
 export const RArgument = {
 	...RNode,

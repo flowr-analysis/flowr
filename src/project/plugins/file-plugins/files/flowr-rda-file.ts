@@ -378,23 +378,21 @@ export class RDAParser {
 
 		switch(compressionType) {
 			case CompressionType.CompGz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const zlib = require('zlib');
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, so bundles without gzip files do not pull in zlib
+				const zlib = require('zlib') as typeof import('zlib');
 				try {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 					buffer = zlib.gunzipSync(fileContent, { maxOutputLength: limit });
 				} catch(e) {
 					if((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') {
 						throw e;
 					}
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 					buffer = zlib.inflateSync(fileContent, { maxOutputLength: limit });
 				}
 				break;
 			}
 
 			case CompressionType.CompBz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- the untyped `bzip2` package has no module declaration, and is loaded on demand
 				const bzip2 = require('bzip2') as Bzip2;
 				buffer = bunzip(bzip2, fileContent, limit);
 				break;
@@ -1633,12 +1631,9 @@ export class RDAParser {
 					this.skipInteger();
 					type = this.assertInteger(this.inInteger());
 				}
-				/* eslint-disable no-useless-assignment -- mirrors the read path */
-				switch(type) {
-					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
-					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
+				if(type === SexpType.AltLangSxp || type === SexpType.AttrListSxp) {
+					hasAttr = true;
 				}
-				/* eslint-enable no-useless-assignment */
 
 				this.currentDepth++;
 				if(hasAttr) {

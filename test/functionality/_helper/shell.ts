@@ -116,7 +116,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 }
 
 function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
-	return JSON.parse(JSON.stringify(obj, (key, value) => {
+	return JSON.parse(JSON.stringify(obj, (key, value: unknown) => {
 		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nest')) {
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
@@ -127,14 +127,13 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 			// we ignore tree-sitter-specific metadata
 			return undefined;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;
 	})) as T;
 }
 
 function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
-	// eslint-disable-next-line flowr/replacement-pattern
+	// eslint-disable-next-line flowr/replacement-pattern -- `expected` may be a project, which `RExpressionList.is` does not accept, and `RProject` has no `is`
 	if(expected.type === RType.ExpressionList) {
 		expected = {
 			type: RType.Project,
@@ -377,7 +376,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	/** Whether to test the call graph instead of the dataflow graph */
 	context:               'dataflow' | 'call-graph',
 	/** Allows you to modify the analyzer before running the test (assumes side-effects and reuses the same object if you return undefined). */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- a modifier that works in place returns nothing
 	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined | void
 }
 

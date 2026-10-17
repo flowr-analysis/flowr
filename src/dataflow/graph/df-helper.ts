@@ -350,7 +350,7 @@ export const Dataflow = {
 	 * @param start    - The start id of the visitation.
 	 * @param onVertex - The function to execute for each vertex, if this returns `true` the visitation will stop from this vertex.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 	visitDfg(this: void, graph: DataflowGraph, start: NodeId, onVertex: (vtx: DataflowGraphVertexInfo) => (boolean | void)) {
 		const queue = [start];
 		const visited = new Set<NodeId>();

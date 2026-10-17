@@ -538,7 +538,7 @@ class RShellSession {
 		this.bareSession.stdin.on('error', callback);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the listener signature is dictated by node's EventEmitter
 	private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both';
 		if(both || from === 'stdout') {
@@ -549,7 +549,7 @@ class RShellSession {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the listener signature is dictated by node's EventEmitter
 	private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both';
 		if(both || from === 'stdout') {

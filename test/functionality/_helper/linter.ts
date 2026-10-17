@@ -201,8 +201,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 			throw e;
 		}
 		if(expectedMetadata !== undefined) {
-			// eslint-disable-next-line unused-imports/no-unused-vars
-			const { searchTimeMs, processTimeMs, ...strippedMeta } = results['.meta'];
+			const { searchTimeMs: _searchTimeMs, processTimeMs: _processTimeMs, ...strippedMeta } = results['.meta'];
 			assert.deepEqual(strippedMeta as unknown as LintingRuleMetadata<Name>, expectedMetadata,
 				`Expected ${ruleName} to have metadata ${JSON.stringify(expectedMetadata)}, but got ${JSON.stringify(results['.meta'])}`);
 		}

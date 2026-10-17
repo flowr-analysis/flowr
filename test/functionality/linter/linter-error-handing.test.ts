@@ -15,8 +15,7 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 describe('flowR linter', withTreeSitter(parser => {
 	test('Error Handling', async() => {
 		// Add a new dummy rule that always throws to the ruleset
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-		(LintingRules as any)['dummy'] = {
+		(LintingRules as Record<string, unknown>)['dummy'] = {
 			createSearch:        () => Q.all(),
 			processSearchResult: () => {
 				throw new Error('Hello World');

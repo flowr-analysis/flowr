@@ -67,7 +67,6 @@ export function assertQuery<
 				if(value instanceof RegExp) {
 					return value.toString();
 				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				return value;
 			});
 			const validationResult = queryType.schema.validate(JSON.parse(queryString));
@@ -99,7 +98,6 @@ export function assertQuery<
 
 		/* expect them to be deeply equal */
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(
 				{
 					parse:     await analyzer.parse(),

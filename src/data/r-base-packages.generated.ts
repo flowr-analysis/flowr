@@ -1,4 +1,3 @@
-/* eslint-disable */
 /*
  * GENERATED from the flowr-sigdb bundle by scripts/gen-base-packages.ts on 2026-09-16 -- do not edit.
  * bundle: v8|2026-07-19|a3cdbf4d8e58dde2,cc4093180737bbaf,e1390711ba58c661,c0a7ca9838d56152

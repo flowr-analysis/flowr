@@ -27,7 +27,7 @@ function defineRule() {
 
 	type MyRuleConfig = MergeableRecord;
 
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- rule objects are named in upper snake case, as the text below says
 	const MY_NEW_RULE = {
 		createSearch: (_config) => Q.all(),
 

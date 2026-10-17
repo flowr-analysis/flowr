@@ -69,7 +69,7 @@ export interface IPipelineStepOrder<
  */
 export interface IPipelineStep<
 	Name extends PipelineStepName = PipelineStepName,
-	// eslint-disable-next-line -- by default, we assume nothing about the function shape
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- by default, we assume nothing about the function shape
 	Fn extends StepProcessingFunction = (...args: any[]) => any,
 > extends MergeableRecord, IPipelineStepOrder<Name> {
 	/** Human-readable name of this step */

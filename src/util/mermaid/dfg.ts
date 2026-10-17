@@ -245,9 +245,8 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
 		return;
 	}
-	// eslint-disable-next-line prefer-const
-	for(let [target, edge] of edges) {
-		if(includeOnlyIds && !includeOnlyIds.has(target)) {
+	for(const [originalTarget, edge] of edges) {
+		if(includeOnlyIds && !includeOnlyIds.has(originalTarget)) {
 			continue;
 		}
 

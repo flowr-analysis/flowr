@@ -90,8 +90,7 @@ export interface WithChildren<Info, Children extends RAstNodeBase<Info, string |
  * as it is equivalent to the {@link RAstNodeBase} interface.
  * It is intended to help humans understand the code.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface Leaf<Info = NoInfo, LexemeType = string> extends RAstNodeBase<Info, LexemeType> {}
+export type Leaf<Info = NoInfo, LexemeType = string> = RAstNodeBase<Info, LexemeType>;
 
 /**
  * Indicates, that the respective {@link RAstNodeBase} node has known source code

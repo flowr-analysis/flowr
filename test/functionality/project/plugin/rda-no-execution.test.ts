@@ -44,7 +44,7 @@ describe('Reading serialized R files runs no R', () => {
 	test(label('bzip2 decompression can be bounded', ['name-normal'], ['other']), () => {
 		/* 600 MB of zeros, compressed with `bzip2 -9`; the bzip2 package yields 900 kB per block of it */
 		const bomb = Buffer.from('QlpoOTFBWSZTWQ4J4t8BX45AAMAAAAggADCATUZCoCWpCoCXMUFZJlNZDgni3wFfjkAAwAAACCAAMIBNRkKgJakKgJcxQVkmU1kOCeLfAV+OQADAAAAIIAAwgE1GQqAlqQqAlzFBWSZTWQ4J4t8BX45AAMAAAAggADCATUZCoCWpCoCXMUFZJlNZDgni3wFfjkAAwAAACCAAMIBNRkKgJakKgJcxQVkmU1kOCeLfAV+OQADAAAAIIAAwgE1GQqAlqQqAlzFBWSZTWQ4J4t8BX45AAMAAAAggADCATUZCoCWpCoCXMUFZJlNZDgni3wFfjkAAwAAACCAAMIBNRkKgJakKgJcxQVkmU1kOCeLfAV+OQADAAAAIIAAwgE1GQqAlqQqAlzFBWSZTWQ4J4t8BX45AAMAAAAggADCATUZCoCWpCoCXMUFZJlNZDgni3wFfjkAAwAAACCAAMIBNRkKgJakKgJcxQVkmU1kOCeLfAV+OQADAAAAIIAAwgE1GQqAlqQqAlzFBWSZTWQ4J4t8BX45AAMAAAAggADCATUZCoCWpCoCXMUFZJlNZJMxqJQAZWlAAwAAAIAAIIAAwzAUppiUkWxJSReLuSKcKEgDqDQYg', 'base64');
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- the untyped `bzip2` package has no module declaration, so it cannot be imported
 		const bzip2 = require('bzip2') as Bzip2;
 		assert.throws(() => bunzip(bzip2, bomb, 1_000_000), RangeError);
 		assert.strictEqual(bunzip(bzip2, bomb, 20_000_000).length, 14 * 900_000, 'below the limit, everything is decompressed');

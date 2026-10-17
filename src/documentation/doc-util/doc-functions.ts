@@ -19,7 +19,7 @@ export interface FunctionElementInSource {
 	comments?:  string[];
 }
 
-function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetFunctionsWithProgramOption, fname?: RegExp): FunctionElementInSource[] {
+function collectFunctionHierarchy(sourceFiles: readonly ts.SourceFile[], options: GetFunctionsWithProgramOption, fname?: RegExp): FunctionElementInSource[] {
 	const hierarchyList: FunctionElementInSource[] = [];
 	const visit = (node: ts.Node | undefined, sourceFile: ts.SourceFile) => {
 		if(!node) {
@@ -86,7 +86,7 @@ export function getFunctionsFromFolder(options: GetFunctionsOption): FunctionsRe
 	const { files, program } = getTypeScriptSourceFiles(fileNames);
 	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
-	const hierarchyList = collectHierarchyInformation(files, withProgram, options.fname);
+	const hierarchyList = collectFunctionHierarchy(files, withProgram, options.fname);
 	return {
 		info: hierarchyList,
 		program

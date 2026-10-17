@@ -31,7 +31,7 @@ function analyzerHasTarget(analyzer: ReadonlyFlowrAnalysisProvider, input: strin
 }
 
 
-function printHelp(output: ReplOutput) {
+function printQueryHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
 	output.stdout('Queries starting with \'@<type>\' are interpreted as a query of the given type.');
 	output.stdout(`Start with '?<type>' instead to see documentation on a query, e.g. ${bold(':query ?guess-dep-versions', output.formatter)} (a bare ${bold(':query ?', output.formatter)} lists them all).`);
@@ -55,7 +55,7 @@ interface QuerySchemaDescription {
 }
 
 /** the single boundary cast for Joi's untyped {@link Joi.Description}, shared by the doc and template renderers */
-function describeSchema(schema: SupportedQuery['schema']): QuerySchemaDescription {
+function describeQuerySchema(schema: SupportedQuery['schema']): QuerySchemaDescription {
 	return schema.describe();
 }
 
@@ -71,7 +71,7 @@ function printQueryDoc(output: ReplOutput, name: string): void {
 		output.stderr(`Unknown query ${italic(name, output.formatter)}; use ${bold(':query ?', output.formatter)} to list every query.`);
 		return;
 	}
-	const desc = describeSchema(def.schema);
+	const desc = describeQuerySchema(def.schema);
 	output.stdout(`${bold('@' + name, output.formatter)}${desc.flags?.description ? ` ${faint('— ' + desc.flags.description, output.formatter)}` : ''}`);
 	const params = Object.entries(desc.keys ?? {}).filter(([key]) => key !== 'type');
 	if(params.length === 0) {
@@ -91,7 +91,7 @@ function printQueryDoc(output: ReplOutput, name: string): void {
 
 /** A copy-pasteable JSON template for a query type: its `type` plus each required field as a placeholder. */
 function queryTemplate(type: string, schema: SupportedQuery['schema']): string {
-	const keys = describeSchema(schema).keys ?? {};
+	const keys = describeQuerySchema(schema).keys ?? {};
 	const fields = [`\\"type\\": \\"${type}\\"`];
 	for(const [key, value] of Object.entries(keys)) {
 		if(key !== 'type' && value.flags?.presence === 'required') {
@@ -133,7 +133,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		return;
 	}
 	if(query === 'help') {
-		printHelp(output);
+		printQueryHelp(output);
 		return;
 	}
 	// `?<type>` (or `? <type>`) documents a query instead of running it; a bare `?` lists them all
@@ -170,7 +170,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 
 	if(input) {
-		input = unquoteWhole(input);
+		input = unwrapQuotedInput(input);
 		input = handlePathLikeInput(output, input, analyzer.flowrConfig);
 		// reuse a prior analysis (e.g. a dataflow from :df#) when the target is unchanged
 		if(!analyzerHasTarget(analyzer, input)) {
@@ -198,7 +198,7 @@ const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;
  * generic tokenizer would otherwise strip quotes out of a `+path=["a"]` value.
  * @param line - The input line
  */
-function parseArgs(line: string) {
+function parseQueryArgs(line: string) {
 	const configMatch = ConfigLineRegex.exec(line);
 	if(configMatch) {
 		const [, name, rest] = configMatch;
@@ -216,7 +216,7 @@ function parseArgs(line: string) {
  * Undoes a wrapping of the whole code in quotes, as `:query \@dependencies "library(x)"` writes it. A quote the
  * code itself contains ends the wrapping early, so it is left alone.
  */
-function unquoteWhole(code: string): string {
+function unwrapQuotedInput(code: string): string {
 	const quote = code[0];
 	if((quote !== '"' && quote !== '\'') || code.length < 2 || code[code.length - 1] !== quote) {
 		return code;
@@ -253,7 +253,7 @@ export const queryCommand: ReplCodeCommand = {
 	usageExample:  ':query "<query>" <code>',
 	aliases:       [],
 	script:        false,
-	argsParser:    parseArgs,
+	argsParser:    parseQueryArgs,
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const totalStart = Date.now();
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
@@ -270,7 +270,7 @@ export const queryStarCommand: ReplCodeCommand = {
 	usageExample:  ':query* <query> <code>',
 	aliases:       [],
 	script:        false,
-	argsParser:    parseArgs,
+	argsParser:    parseQueryArgs,
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		if(results) {

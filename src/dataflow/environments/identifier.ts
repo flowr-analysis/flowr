@@ -3,7 +3,7 @@ import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './b
 import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
-import { startAndEndsWith } from '../../util/text/strings';
+import { escapeRegex } from '../../util/text/strings';
 import { baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
@@ -192,7 +192,7 @@ export const Identifier = {
 		// if the passed identifier is not namespaced, we match against *any* namespace. if it is namespaced, we match against the correct namespace or no namespace
 		return new RegExp(`^(${identifiers.map(i => {
 			const namespace = Identifier.getNamespace(i);
-			return `(${namespace === undefined ? '.+' : Identifier.quote(namespace)}:::?)?${Identifier.quote(Identifier.getName(i))}`;
+			return `(${namespace === undefined ? '.+' : escapeRegex(namespace)}:::?)?${escapeRegex(Identifier.getName(i))}`;
 		}).join('|')})$`);
 	},
 	/** Special identifier for the `...` argument */

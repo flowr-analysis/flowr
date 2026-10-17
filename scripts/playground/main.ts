@@ -26,6 +26,7 @@ import { DefaultDependencyCategoryNames } from '../../src/queries/catalog/depend
 import { SliceDirection } from '../../src/util/slice-direction';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
+import { escapeRegex, compareByCodeUnit  } from '../../src/util/text/strings';
 import { computeCompletions, replProcessAnswer } from '../../src/cli/repl/core';
 import { getCommand } from '../../src/cli/repl/commands/repl-commands';
 import { splitAtEscapeSensitive } from '../../src/util/text/args';
@@ -1095,7 +1096,7 @@ function putFile(name: string, text: string): void {
 }
 
 function scoped(criterion: string): string {
-	return files.length < 2 ? criterion : `${criterion}(^${files[active].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$)`;
+	return files.length < 2 ? criterion : `${criterion}(^${escapeRegex(files[active].name)}$)`;
 }
 
 marks.splice(0, marks.length, ...marks.map(mark => /^\d/.test(mark) ? scoped(mark) as Mark : mark));

@@ -11,7 +11,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
 import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, descriptionPaths, firstUnknownSchemaSegment } from '../../../util/schema';
 import type { ProjectKind } from '../../../project/context/project-kind';
-import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
+import { escapeRegex, matchByPrefixOrSubsequence } from '../../../util/text/strings';
 
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
@@ -113,7 +113,7 @@ function configGlobMatcher(pattern: string): (path: readonly string[]) => boolea
 		if(segments[i] === '**') {
 			regex += last ? '[^.]+(?:\\.[^.]+)*' : '(?:[^.]+\\.)*';
 		} else {
-			regex += segments[i].split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^.]*') + (last ? '' : '\\.');
+			regex += segments[i].split('*').map(part => escapeRegex(part)).join('[^.]*') + (last ? '' : '\\.');
 		}
 	}
 	const matches = new RegExp(regex + '$');

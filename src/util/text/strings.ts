@@ -1,6 +1,12 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+/** The text as a regex matches it literally */
+export function escapeRegex(text: string): string {
+
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Check if the given string starts and ends with the given letter
  */

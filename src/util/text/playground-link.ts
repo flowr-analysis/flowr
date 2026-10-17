@@ -1,4 +1,5 @@
 import { packForUrl, unpackFromUrl } from './url-encoding';
+import { escapeRegex } from './strings';
 import { uniqueArray } from '../collections/arrays';
 
 /** the parts of the page a mark can point at, rather than a place in the script */
@@ -262,7 +263,7 @@ export const Playground = {
 	},
 	/** where a name stands in a line, as a name rather than as a substring of a longer one */
 	nameIndexIn(this: void, text: string, name: string): number | undefined {
-		for(const found of text.matchAll(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))) {
+		for(const found of text.matchAll(new RegExp(escapeRegex(name), 'g'))) {
 			const before = text[found.index - 1];
 			const after = text[found.index + name.length];
 			if(!/[\w._]/.test(before ?? ' ') && !/[\w._]/.test(after ?? ' ')) {

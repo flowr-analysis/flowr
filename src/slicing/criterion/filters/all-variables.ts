@@ -4,8 +4,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { type FoldFunctions, foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
 	minimumSize: 1,

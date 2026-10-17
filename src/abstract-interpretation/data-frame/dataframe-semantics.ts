@@ -1,6 +1,6 @@
 import { VariableResolve } from '../../config';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { Identifier, type IdentifierString } from '../../dataflow/environments/identifier';
+import type { IdentifierString } from '../../dataflow/environments/identifier';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';

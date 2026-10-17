@@ -1,3 +1,4 @@
+import { Identifier } from '../../../../../dataflow/environments/identifier';
 import type { RAstNodeBase, Location, NoInfo } from '../model';
 import { RNode } from '../model';
 import { RType } from '../type';

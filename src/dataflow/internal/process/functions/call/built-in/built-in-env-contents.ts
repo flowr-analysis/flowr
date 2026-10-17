@@ -9,7 +9,7 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';

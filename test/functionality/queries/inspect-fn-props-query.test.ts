@@ -27,7 +27,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 			const found: Record<string, ArgProps> = {};
 			for(const roles of Object.values(result.roles)) {
 				for(const [formal, props] of Object.entries(roles)) {
-					found[idMap.get(Number(formal))?.lexeme ?? formal] = props;
+					found[NodeId.recoverName(Number(formal), idMap) ?? formal] = props;
 				}
 			}
 			assertProps(found, expected, FunctionSemantics.call.argument.words);

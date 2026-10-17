@@ -117,11 +117,9 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 	if(idMap === undefined) {
 		return byScope;
 	}
-	for(const [id, vtx] of graph.vertices(true)) {
-		if(!DfgVertex.isVariableDefinition(vtx)) {
-			continue;   // function bindings/params surface as variable definitions of their name symbol
-		}
-		const name = idMap.get(id)?.lexeme;
+	/* function bindings/params surface as variable definitions of their name symbol */
+	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
+		const name = NodeId.recoverName(id, idMap);
 		if(name === undefined) {
 			continue;
 		}

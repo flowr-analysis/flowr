@@ -215,7 +215,7 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 	const called = Identifier.getName(vertex.name);
 	return [...state.graph.edgesFrom(id)]
 		.filter(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !handed.has(target) && !NodeId.isBuiltIn(target)
-			&& state.graph.idMap?.get(target)?.lexeme === called)
+			&& NodeId.recoverName(target, state.graph.idMap) === called)
 		.map(([target]) => target);
 }
 
@@ -251,7 +251,7 @@ function resolvesTo(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: Ro
 function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<string, NodeId> {
 	const byName = new Map<string, NodeId>();
 	for(const formal of Object.keys(definition.params)) {
-		const name = state.graph.idMap?.get(NodeId.normalize(formal))?.lexeme;
+		const name = NodeId.recoverName(NodeId.normalize(formal), state.graph.idMap);
 		if(name !== undefined) {
 			byName.set(name, NodeId.normalize(formal));
 		}

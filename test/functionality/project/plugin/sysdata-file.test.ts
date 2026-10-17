@@ -1,3 +1,4 @@
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assert, test } from 'vitest';
 import { decorateLabelContext, label, type TestLabel } from '../../_helper/label';
 import fs from 'fs';
@@ -10,7 +11,6 @@ import { rPath } from '../../_helper/r-path';
 import { SexpType } from '../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { writeFilesUnder } from './plugin-test-helper';
 
 const tempFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sysdata-test-'));
@@ -57,7 +57,7 @@ function testSysdata(name: string | TestLabel, projectName: string, files: Recor
 		if(expected.reads) {
 			const [read, targets] = expected.reads;
 			const idMap = (await analyzer.normalize()).idMap;
-			assert.deepEqual(readsOf(dataflow.graph, id => idMap.get(id)?.lexeme, read).filter(r => r.startsWith('built-in:')), targets);
+			assert.deepEqual(readsOf(dataflow.graph, id => NodeId.recoverName(id, idMap), read).filter(r => NodeId.isBuiltIn(r)), targets);
 		}
 	});
 }

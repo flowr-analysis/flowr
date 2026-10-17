@@ -277,7 +277,7 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
 	const classOfId = new Map(classes.values().map(d => [d.id, d.name] as const));
 	const generators = new Map<string, string>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
-		const lexeme = graph.idMap?.get(id)?.lexeme;
+		const lexeme = NodeId.recoverName(id, graph.idMap);
 		if(lexeme === undefined) {
 			continue;
 		}

@@ -21,7 +21,7 @@ import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { cfgVisitorConfig, DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
@@ -569,7 +569,7 @@ so the vertex of an expression *is* its exit point &dash; there are no separate 
 ${details('Example: Where an if joins again', await (async function() {
 	const expr = 'if(u) 3 else 2';
 	const cfg = await getCfg(shell, expr);
-	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => cfg.ast.idMap.get(n)?.lexeme === 'if')[0];
+	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => NodeId.recoverName(n, cfg.ast.idMap) === 'if')[0];
 	guard(CfgVertex.isStatement(ifVertex) || CfgVertex.isExpression(ifVertex));
 
 	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart LR\n', ctx })}

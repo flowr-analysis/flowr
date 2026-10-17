@@ -61,7 +61,7 @@ export const InspectFnPropsQueryDefinition = {
 			const node = idMap.get(NodeId.normalize(id));
 			const loc = node ? SourceLocation.fromNode(node) : undefined;
 			const formals = Object.entries(out.roles[id] ?? {})
-				.map(([formal, props]) => `${idMap.get(NodeId.normalize(formal))?.lexeme ?? formal}: ${FunctionSemantics.call.argument.words(props).join(', ')}`)
+				.map(([formal, props]) => `${NodeId.recoverName(NodeId.normalize(formal), idMap) ?? formal}: ${FunctionSemantics.call.argument.words(props).join(', ')}`)
 				.join(', ');
 			const states = FunctionSemantics.call.props.labels(out.props[id]).join(', ');
 			result.push(`  - Function ${bold(id, formatter)} (${SourceLocation.format(loc)}) ${formals}${states.length > 0 ? ` [${states}]` : ''}`);

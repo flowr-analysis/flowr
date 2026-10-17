@@ -2,8 +2,6 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { getAllRefsToSymbol } from '../../dataflow/origin/dfg-get-symbol-refs';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Q } from '../../search/flowr-search-builder';
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';

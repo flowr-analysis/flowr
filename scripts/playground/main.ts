@@ -602,7 +602,7 @@ const bakedPackages: Readonly<Record<string, readonly string[]>> = (() => {
 const exportsFrom = (entry: readonly string[] = []): readonly string[] => entry.slice(2);
 
 /** the packages whose names a `library()` call may ask for */
-const packageNames = Object.keys(bakedPackages).sort((a, b) => a.localeCompare(b));
+const packageNames = Object.keys(bakedPackages).sort(compareByCodeUnit);
 
 /** a package's exports as a set, so telling `print.foo` from `print` costs nothing per keystroke */
 const exportSets = new Map<string, ReadonlySet<string>>();

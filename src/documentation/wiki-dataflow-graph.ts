@@ -49,6 +49,7 @@ import { MatchArgs } from '../dataflow/graph/match-args';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { enumMembers } from '../util/objects';
+import { compareByCodeUnit } from '../util/text/strings';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -1332,7 +1333,7 @@ ${ctx.hierarchy('Origin', { openTop: true })}
 Their respective uses are documented alongside their implementation:
 
 ${
-		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort((a, b) => a.localeCompare(b)).map(
+		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort(compareByCodeUnit).map(
 			key => `- ${ctx.link(key)}\\\n${ctx.doc(key, { type: 'interface' })}`
 		).join('\n')
 		}

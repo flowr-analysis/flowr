@@ -210,4 +210,9 @@ plot(b$v)`;
 		assertSlicedF(label('one of two reads taints only the plot using it', ['name-normal', 'function-calls', 'dollar-access', ...OperatorDatabase['<-'].capabilities]),
 			shell, code, ['1@a'], 'a <- read.csv("a.csv")\nplot(a$v)');
 	});
+	describe('Globals read in a function', () => {
+		const caps = ['name-normal', 'function-calls', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines'] as const;
+		assertSlicedF(label('reach the calls after the definition', [...caps]),
+			shell, 'f <- function() print(x)\nf()\nx <- 1\nf()', ['3@x'], 'f <- function() print(x)\nx <- 1\nf()');
+	});
 }));

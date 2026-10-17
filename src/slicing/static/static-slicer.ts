@@ -9,7 +9,7 @@ import type { REnvironmentInformation } from '../../dataflow/environments/enviro
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../dataflow/graph/vertex';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
-import { EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { DataflowGraph, ReadonlyOutgoingEdges } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -89,7 +89,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const basePrint = ctx.env.getCleanEnvFingerprint();
 	const queue = new VisitingQueue(options.threshold ?? 75, cache, graph, ctx.gas.scope(options.gas), [emptyEnv, basePrint]);
 	const enclosingHandled = new Set<NodeId | undefined>();
-	const missesSeeds = direction === SliceDirection.Backward && sliceGraph === undefined ? afterSeeds(ids, idMap) : undefined;
+	const missesSeeds = sliceGraph === undefined ? outsideSeedRun(ids, idMap, direction, graph) : undefined;
 	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
 		if(!queue.hasId(id)) {
 			queue.add(id, env, print, true);
@@ -135,8 +135,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 		const [currentVertex, allEdges] = currentInfo;
 		const strictlyEnclosing = RNode.strictlyEnclosingFunction(id, idMap);
-		/* code in a function links to what it meets at all its calls, so also to what cannot meet the seeds */
-		const currentEdges = missesSeeds !== undefined && strictlyEnclosing !== undefined ? withoutMissed(allEdges, missesSeeds) : allEdges;
+		/* code in a function links to what it meets at all its calls, so also to what cannot meet the seeds; forward,
+		   a function links to all its calls, and none running before the seeds can */
+		const currentEdges = missesSeeds !== undefined && (strictlyEnclosing !== undefined || direction === SliceDirection.Forward)
+			? withoutMissed(allEdges, missesSeeds) : allEdges;
 		if(!enclosingHandled.has(strictlyEnclosing)) {
 			enclosingHandled.add(strictlyEnclosing);
 			definitionWithHolders(strictlyEnclosing, idMap, graph, trackCallees ? undefined : openedBodies).forEach(outer => enqueue(outer, emptyEnv, basePrint));
@@ -169,6 +171,12 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 		if(DfgVertex.isFunctionCall(currentVertex)) {
 			sliceForCall(current, currentVertex, info, queue, ctx);
+		}
+		/* forward, a definition a call hands to a read in its body has both edges itself */
+		if(direction === SliceDirection.Forward) {
+			for(const target of handedOnCall(currentEdges)) {
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false);
+			}
 		}
 		if(!onlyForSideEffects && handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment)) {
 			return;
@@ -220,6 +228,23 @@ function withoutMissed(edges: ReadonlyOutgoingEdges, misses: (id: NodeId) => boo
 	return edges;
 }
 
+/** The calls handing a definition over and the reads it is handed to, if its edges have both. */
+function handedOnCall(edges: ReadonlyOutgoingEdges): NodeId[] {
+	let defines = false;
+	let definedBy = false;
+	const targets: NodeId[] = [];
+	for(const [target, e] of edges) {
+		if(DfEdge.includesType(e, EdgeType.DefinesOnCall)) {
+			defines = true;
+			targets.push(target);
+		} else if(DfEdge.includesType(e, EdgeType.DefinedByOnCall)) {
+			definedBy = true;
+			targets.push(target);
+		}
+	}
+	return defines && definedBy ? targets : [];
+}
+
 /** The top-level statement `id` is part of, as its file root and its index there. */
 function topLevelStatement(id: NodeId, idMap: AstIdMap): [NodeId, number] | undefined {
 	let node = idMap.get(id);
@@ -231,26 +256,33 @@ function topLevelStatement(id: NodeId, idMap: AstIdMap): [NodeId, number] | unde
 	return undefined;
 }
 
-/** Whether a node runs only after every seed, as its top-level statement follows theirs; `undefined` if a seed is in a function, which may run any time. */
-function afterSeeds(ids: readonly NodeId[], idMap: AstIdMap): ((id: NodeId) => boolean) | undefined {
-	const last = new Map<NodeId, number>();
+/**
+ * Whether a node cannot meet the seeds: backward, it runs only after them, as its top-level statement follows
+ * theirs; forward, it is a call running only before them, outside of any function. `undefined` if a seed is in a
+ * function, which may run any time.
+ */
+function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: SliceDirection, graph: DataflowGraph): ((id: NodeId) => boolean) | undefined {
+	const backward = direction === SliceDirection.Backward;
+	const bounds = new Map<NodeId, number>();
 	for(const id of ids) {
 		const at = topLevelStatement(id, idMap);
 		if(at === undefined || RNode.findEnclosing(id, idMap, RFunctionDefinition.is) !== undefined) {
 			return undefined;
 		}
-		last.set(at[0], Math.max(last.get(at[0]) ?? at[1], at[1]));
+		const bound = bounds.get(at[0]) ?? at[1];
+		bounds.set(at[0], backward ? Math.max(bound, at[1]) : Math.min(bound, at[1]));
 	}
 	const known = new Map<NodeId, boolean>();
 	return id => {
-		let after = known.get(id);
-		if(after === undefined) {
+		let misses = known.get(id);
+		if(misses === undefined) {
 			const at = topLevelStatement(id, idMap);
-			const bound = at === undefined ? undefined : last.get(at[0]);
-			after = at !== undefined && bound !== undefined && at[1] > bound;
-			known.set(id, after);
+			const bound = at === undefined ? undefined : bounds.get(at[0]);
+			misses = at !== undefined && bound !== undefined && (backward ? at[1] > bound
+				: at[1] < bound && DfgVertex.isFunctionCall(graph.getVertex(id)) && RNode.findEnclosing(id, idMap, RFunctionDefinition.is) === undefined);
+			known.set(id, misses);
 		}
-		return after;
+		return misses;
 	};
 }
 

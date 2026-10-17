@@ -11,7 +11,6 @@ import { Identifier, PkgName, ReferenceType } from '../../../../../environments/
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { findSource } from './built-in-source';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -67,7 +66,7 @@ export function processLoadCall<OtherInfo>(
 	let sourceFile: string[] | undefined;
 
 	if(RString.is(fileArg)) {
-		sourceFile = [removeRQuotes(fileArg.lexeme)];
+		sourceFile = [RString.unquote(fileArg.lexeme)];
 	} else {
 		const resolved = NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment });
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
@@ -75,7 +74,7 @@ export function processLoadCall<OtherInfo>(
 
 	if(sourceFile) {
 		for(const candidate of sourceFile) {
-			const path = removeRQuotes(candidate);
+			const path = RString.unquote(candidate);
 			let filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : path;
 
 			if(Array.isArray(filepath)) {

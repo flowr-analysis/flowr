@@ -1,3 +1,4 @@
+import { RString } from '../../../../model/nodes/r-string';
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { retrieveMetaStructure } from '../../normalize-meta';
@@ -9,7 +10,6 @@ import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
-import { startAndEndsWith } from '../../../../../../../util/text/strings';
 
 
 /**
@@ -37,7 +37,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		name =    {
 			type:    RType.Symbol,
 			location,
-			content: symbolOrExpr.name === RawRType.StringConst ? content.slice(1, -1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
+			content: RString.unquote(content),
 			lexeme:  content,
 			info:    {
 				fullRange:  location,

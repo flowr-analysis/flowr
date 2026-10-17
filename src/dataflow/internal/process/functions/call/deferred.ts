@@ -1,9 +1,9 @@
+import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../../environments/identifier';
-import { removeRQuotes } from '../../../../../r-bridge/retriever';
 import { EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
@@ -35,7 +35,7 @@ interface NameIndex {
 /** The vertices of `type` by their unquoted name. */
 export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idMap: AstIdMap<Info & ParentInformation>): Map<string, NodeId[]> {
 	const named = graph.vertexIdsOfType(type).filter(id => NodeId.recoverName(id, idMap) !== undefined);
-	return Map.groupBy(named, id => removeRQuotes(NodeId.recoverName(id, idMap) as string));
+	return Map.groupBy(named, id => RString.unquote(NodeId.recoverName(id, idMap) as string));
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
@@ -54,7 +54,7 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 				for(const def of edgeSources(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
 					const name = NodeId.recoverName(def, idMap);
 					if(name !== undefined) {
-						names.push([def, removeRQuotes(name), true]);
+						names.push([def, RString.unquote(name), true]);
 					}
 				}
 			}
@@ -168,7 +168,7 @@ export const Deferred = {
 			return always;
 		};
 		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
-		const bindingName = forces === undefined ? undefined : removeRQuotes(NodeId.recoverName(forces.binding, idMap) ?? '');
+		const bindingName = forces === undefined ? undefined : RString.unquote(NodeId.recoverName(forces.binding, idMap) ?? '');
 		for(const [node, name, writes] of within) {
 			if(writes) {
 				/* a write of the bound name replaces the binding, so a read it definitely reaches sees only it */

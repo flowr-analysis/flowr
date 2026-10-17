@@ -4,7 +4,7 @@ import { appendEnvironment } from '../../../../../environments/append';
 import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { removeRQuotes, type RParseRequest, type RParseRequestFromText } from '../../../../../../r-bridge/retriever';
+import type { RParseRequest, RParseRequestFromText } from '../../../../../../r-bridge/retriever';
 import {
 	type IdGenerator,
 	type NormalizedAst,
@@ -180,11 +180,11 @@ export function processSourceCall<OtherInfo>(
 
 	let sourceFile: string[] | undefined;
 	if(sourceFileArgument !== EmptyArgument && RString.is(sourceFileArgument?.value)) {
-		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
+		sourceFile = [RString.unquote(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
 		sourceFile = NodeValue.knownStringsOf(sourceFileArgument.info.id, data);
 	}
-	const path = sourceFile?.length === 1 ? removeRQuotes(sourceFile[0]) : undefined;
+	const path = sourceFile?.length === 1 ? RString.unquote(sourceFile[0]) : undefined;
 	const filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : undefined;
 	if(filepath !== undefined && filepath.length > 0) {
 		let result = information;

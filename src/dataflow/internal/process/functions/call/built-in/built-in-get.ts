@@ -7,7 +7,6 @@ import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../..
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -50,7 +49,7 @@ function synthesizeTargets<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): RSymbol<OtherInfo & ParentInformation>[] {
 	const literal = RString.is(retrieve);
-	const names = literal ? [removeRQuotes(retrieve.lexeme)] : namesDenotedBy(retrieve, data);
+	const names = literal ? [RString.unquote(retrieve.lexeme)] : namesDenotedBy(retrieve, data);
 	const location = literal ? retrieve.location : retrieve.location ?? name.location ?? SourceRange.invalid();
 	const literalLexeme = literal ? retrieve.lexeme : undefined;
 	return names.map((resolvedName, i) => {

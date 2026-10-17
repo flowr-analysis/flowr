@@ -1,7 +1,7 @@
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { splitAtEscapeSensitive, splitOnNestingSensitive } from './text/args';
 import { isNotUndefined } from './assert';
 import { compactRecord } from './objects';
-import { removeRQuotes } from '../r-bridge/retriever';
 
 /** https://r-pkgs.org/description.html#sec-description-authors-at-r */
 export enum AuthorRole {
@@ -132,7 +132,7 @@ function parseRoles(roleStr: string | undefined): AuthorRole[] {
 	const parts = splitVector(roleStr);
 	for(const part of parts) {
 		const trimmed = part.trim();
-		const roleValue = removeRQuotes(trimmed);
+		const roleValue = RString.unquote(trimmed);
 		if(Object.values(AuthorRole).includes(roleValue as AuthorRole)) {
 			roles.push(roleValue as AuthorRole);
 		}
@@ -150,11 +150,11 @@ function parseComments(commentStr: string | undefined): { contents: string[], or
 	let orcid: string | undefined = undefined;
 	for(const part of parts) {
 		const trimmed = part.trim();
-		const commentValue = removeRQuotes(trimmed);
+		const commentValue = RString.unquote(trimmed);
 		if(/ORCID\s*=/ig.test(commentValue)) {
 			const orcidIndex = commentValue.indexOf('=');
 			if(orcidIndex !== -1) {
-				orcid = removeRQuotes(commentValue.slice(orcidIndex + 1).trim());
+				orcid = RString.unquote(commentValue.slice(orcidIndex + 1).trim());
 			}
 			continue;
 		}
@@ -169,7 +169,7 @@ function assignArg(argMap: Map<string, string | undefined>, split: {
 }) {
 	argMap.set(
 		split.name as (typeof defaultPosArgNames)[number],
-		split.value === undefined || split.value?.length === 0 ? undefined : removeRQuotes(split.value)
+		split.value === undefined || split.value?.length === 0 ? undefined : RString.unquote(split.value)
 	);
 }
 

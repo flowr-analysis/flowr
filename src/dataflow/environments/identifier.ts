@@ -1,3 +1,4 @@
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
 import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -54,8 +55,9 @@ export const Identifier = {
 	 * Prefer {@link Identifier.from} for static config entries where namespace is always present and name has no backticks.
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
-		if(startAndEndsWith(name, '`')) {
-			name = name.slice(1, -1);
+		const split = RString.splitQuotes(name);
+		if(split.quote === '`') {
+			name = split.content;
 		}
 		return namespace ? [name, namespace, internal] : name;
 	},
@@ -182,10 +184,6 @@ export const Identifier = {
 		}
 		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
 		return Identifier.accessesInternal(target) !== true;
-	},
-	/** The text as a regex matches it literally: `[`, `$` and `.` name functions in R, they are not pattern syntax. */
-	quote(this: void, text: string): string {
-		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	},
 	/**
 	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.

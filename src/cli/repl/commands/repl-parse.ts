@@ -1,8 +1,8 @@
+import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { ReplCodeCommand } from './repl-main';
 import { type OutputFormatter, FontStyles } from '../../../util/text/ansi';
 import { type JsonEntry, convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import { extractLocation, getTokenType } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
-import { removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
 import type { SyntaxNode } from 'web-tree-sitter';
 import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
@@ -161,7 +161,7 @@ export const parseCommand: ReplCodeCommand = {
 	argsParser:    (line: string) => {
 		return {
 			// Threat the whole input line as R code
-			rCode:     removeRQuotes(line.trim()),
+			rCode:     RString.unquote(line.trim()),
 			remaining: []
 		};
 	},

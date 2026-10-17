@@ -1,3 +1,5 @@
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { getAllRefsToSymbol } from '../../dataflow/origin/dfg-get-symbol-refs';
@@ -153,11 +155,6 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
 	}
 }
 
-function unquoteName(lexeme: string): { quote: string, name: string } {
-	const quoted = /^(["'`])(.*)\1$/s.exec(lexeme);
-	return quoted ? { quote: quoted[1], name: quoted[2] } : { quote: '', name: lexeme };
-}
-
 /**
  * Creates quick fixes for renaming all references to the given node to match the provided replacement.
  */
@@ -168,8 +165,8 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 		return undefined;
 	}
 	/* the name as it is written, which is the only text a rename may overwrite */
-	const lexeme = idMap.get(nodeId)?.lexeme;
-	const original = lexeme === undefined ? undefined : unquoteName(lexeme).name;
+	const lexeme = NodeId.recoverName(nodeId, idMap);
+	const original = lexeme === undefined ? undefined : RString.splitQuotes(lexeme).content;
 	if(original === undefined || original === replacement) {
 		/* a replacement equal to what is already there is no fix at all */
 		return undefined;
@@ -177,19 +174,20 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 	const result: LintQuickFixReplacement[] = [];
 	for(const ref of refs) {
 		const node = idMap.get(ref);
-		const written = node?.lexeme === undefined ? undefined : unquoteName(node.lexeme);
-		if(node?.lexeme === undefined || written?.name !== original) {
+		const written = node?.lexeme === undefined ? undefined : RString.splitQuotes(node.lexeme);
+		if(node?.lexeme === undefined || written?.content !== original) {
 			/* a reference reached through something else, as `myfield(x) <- v` reaches `x` through the call it
 			   names, sits at a place holding another name, and writing over it would rename that one instead */
 			continue;
 		}
+		const quote = written.quote ?? '';
 		const loc = SourceLocation.fromNode(node);
 		if(loc) {
 			// In case of a function call we only need to include the name, not the '()'
 			loc[3] = loc[1] + node.lexeme.length - 1;
 			result.push({
 				type:        'replace',
-				replacement: `${written.quote}${replacement}${written.quote}`,
+				replacement: `${quote}${replacement}${quote}`,
 				description: `Rename to match naming convention ${conv}`,
 				loc
 			});
@@ -206,7 +204,7 @@ export const NAMING_CONVENTION = {
 		const called = collectCalledNames(dataflow.graph);
 		const symbols = elements.getElements()
 			.map(m => {
-				const name = unquoteName(m.node.lexeme as string).name;
+				const name = RString.splitQuotes(m.node.lexeme as string).content;
 				return {
 					certainty:      LintingResultCertainty.Certain,
 					detectedCasing: detectCasing(name, config.ignorePrefix),
@@ -221,8 +219,8 @@ export const NAMING_CONVENTION = {
 		const unambiguous = symbols.filter(s => detectPotentialCasings(s.name, config.ignorePrefix).length === 1);
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(unambiguous) : config.caseing;
 		const taken = new Set(dataflow.graph.vertices(true).map(([id]) => {
-			const lexeme = dataflow.graph.idMap?.get(id)?.lexeme;
-			return lexeme === undefined ? undefined : unquoteName(lexeme).name;
+			const lexeme = NodeId.recoverName(id, dataflow.graph.idMap);
+			return lexeme === undefined ? undefined : RString.splitQuotes(lexeme).content;
 		}));
 		const results = casing === CasingConvention.Unknown ? [] : symbols
 			/* a name that already reads as the wanted convention is no violation, whatever else it could also be

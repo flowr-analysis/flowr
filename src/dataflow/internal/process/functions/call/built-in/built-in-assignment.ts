@@ -23,7 +23,6 @@ import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifi
 import { AmbientStateName, ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
@@ -349,7 +348,7 @@ function processAssignmentTarget<OtherInfo>(
 		const symbol: RSymbol<OtherInfo & ParentInformation> = {
 			type:     RType.Symbol,
 			info:     target.info,
-			content:  removeRQuotes(target.lexeme) + (config.targetSuffix ?? ''),
+			content:  RString.unquote(target.lexeme) + (config.targetSuffix ?? ''),
 			lexeme:   target.lexeme,
 			location: target.location,
 		};

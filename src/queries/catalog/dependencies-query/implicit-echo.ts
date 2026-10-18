@@ -12,13 +12,11 @@ import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RLineDirective } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
-import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
-import { EdgeType } from '../../../dataflow/graph/edge';
+import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
 import { callOnlyQueries } from '../../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
-import { GgPlotImplicitAddons, PlotObjectCreate } from '../../../dataflow/environments/default-builtin-config';
+import { callIdentifierOf, isPlot } from './plot-objects';
 import { ExpectFunctionNames } from './function-info/test-functions';
 import type { FunctionInfo } from './function-info/function-info';
 
@@ -60,37 +58,6 @@ function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: Dataf
 	}
 }
 
-const GgPlotComponents: ReadonlySet<string> = new Set(GgPlotImplicitAddons);
-
-/**
- * Whether the value is a plot, which printing draws rather than writes: a call returning one, a `+` chain adding
- * to one (as ggplot builds them), or a variable bound to either.
- */
-function isPlot(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, seen = new Set<NodeId>()): boolean {
-	if(node === undefined || seen.has(node.info.id)) {
-		return false;
-	}
-	seen.add(node.info.id);
-	switch(node.type) {
-		case RType.FunctionCall:
-			return isPlotCall(node, dataflow, PlotObjectCreate);
-		case RType.BinaryOp:
-			return node.operator === '+' && [node.lhs, node.rhs].some(o => isPlot(o, dataflow, seen) || isPlotCall(o, dataflow, GgPlotComponents));
-		case RType.Symbol:
-			return Dataflow.targetsOf(dataflow.graph, node.info.id, EdgeType.Reads).some(def =>
-				Dataflow.targetsOf(dataflow.graph, def, EdgeType.DefinedBy).some(value => isPlot(dataflow.graph.idMap?.get(value), dataflow, seen)));
-		default:
-			return false;
-	}
-}
-
-/** whether the node calls one of the given graphics functions */
-function isPlotCall(node: RNode<ParentInformation>, dataflow: DataflowInformation, among: ReadonlySet<string>): boolean {
-	const name = RFunctionCall.is(node) ? qualifiedName(node, dataflow) : undefined;
-	return name !== undefined && among.has(Identifier.getName(name))
-		&& FunctionSemantics.call.props.hasAny(queryFnProps(name, { environment: dataflow.environment }), [SemanticCallTag.Graphics]);
-}
-
 /** whether the list is a `( )` group rather than a `{ }` block, which is what makes its value visible */
 function grouped(node: RExpressionList<ParentInformation>): boolean {
 	return node.grouping?.[0].content === '(';
@@ -121,15 +88,8 @@ function lastStatement<Info>(node: RExpressionList<Info>): RNode<Info> | undefin
 	return undefined;
 }
 
-/** the name the call goes by, with its package when it has one */
-function qualifiedName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation): Identifier | undefined {
-	const vertex = dataflow.graph.getVertex(node.info.id);
-	return DfgVertex.isFunctionCall(vertex)
-		? Dataflow.qualify(node.info.id, dataflow.graph, false) ?? vertex.name : undefined;
-}
-
 function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen = new Set<NodeId>()): Identifier | undefined {
-	const name = qualifiedName(node, dataflow);
+	const name = callIdentifierOf(node, dataflow);
 	if(name === undefined) {
 		return undefined;
 	}
@@ -170,7 +130,7 @@ function calleesReturnInvisibly(id: NodeId, dataflow: DataflowInformation, invis
 function echoName(node: RNode<ParentInformation>, dataflow: DataflowInformation): Identifier {
 	switch(node.type) {
 		case RType.FunctionCall:
-			return qualifiedName(node, dataflow) ?? '';
+			return callIdentifierOf(node, dataflow) ?? '';
 		case RType.BinaryOp:
 		case RType.UnaryOp:
 		case RType.Access:

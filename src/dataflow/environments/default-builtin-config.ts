@@ -1064,7 +1064,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['environment', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, frame: ArgProp.Value, sig: [['fun', ArgProp.Handle | ArgProp.Forced]] }, assumePrimitive: true },
 	{
 		type:      'function',
-		names:     Identifier.fromAll(PkgName.Base, ['.Call', '.External', '.C', '.Fortran']),
+		names:     Identifier.fromAll(PkgName.Base, ['.Call', '.External', '.C', '.Fortran', '.External2', '.Call.graphics', '.External.graphics']),
 		processor: BuiltInProcName.Default,
 		config:    {
 			hasUnknownSideEffects: true,
@@ -1072,10 +1072,14 @@ export const WrittenBuiltinDefinitions = [
 			/* the routine usually comes from useDynLib, but it may be a variable holding a symbol */
 			markArgsAsMasked:      NseArguments.First,
 			treatAsFnCall:         {
-				'.Call':     ['.NAME'],
-				'.External': ['.NAME'],
-				'.C':        ['.NAME'],
-				'.Fortran':  ['.NAME']
+				'.Call':              ['.NAME'],
+				'.External':          ['.NAME'],
+				'.C':                 ['.NAME'],
+				'.Fortran':           ['.NAME'],
+				/* the entry points R's graphics engine and internal code call foreign routines through */
+				'.External2':         ['.NAME'],
+				'.Call.graphics':     ['.NAME'],
+				'.External.graphics': ['.NAME']
 			},
 			props: CallProp.Ffi
 		},

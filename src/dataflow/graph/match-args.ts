@@ -134,7 +134,7 @@ export const MatchArgs = {
 	 *
 	 * `graph` is what says which definition a name reaches here, because scoping, shadowing and control flow
 	 * decide that and a name alone cannot. It therefore needs a finished graph rather than one under
-	 * construction, and it is what says which arguments the call has (see {@link argumentsOf}). Cost is one
+	 * construction, and it is what says which arguments the call has (see {@link callArgumentsOf}). Cost is one
 	 * {@link Dataflow.origin} lookup plus, for a package call, decoding that one function.
 	 * @param call  - The call whose arguments are to be bound.
 	 * @param graph - The finished graph the call was analyzed into.
@@ -143,7 +143,7 @@ export const MatchArgs = {
 	 */
 	toDefinition<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<string, RArgument<Info>> | undefined {
 		const names = formalsOf(call, graph, ctx);
-		return names === undefined ? undefined : MatchArgs.toNames(argumentsOf(call, graph), names);
+		return names === undefined ? undefined : MatchArgs.toNames(callArgumentsOf(call, graph), names);
 	},
 	/** The formal names a call binds against, whichever of flowR's sources knows them; see {@link formalsOf}. */
 	formalsOf,
@@ -231,7 +231,7 @@ function searchPathPosition(name: Identifier): typeof SearchPath[number] {
 }
 
 /** The arguments the call binds, taken from the graph so that `x |> f(y)` binds `f(x, y)`. */
-function argumentsOf<Info extends ParentInformation>(call: RFunctionCall<Info>, graph: DataflowGraph): readonly PotentiallyEmptyRArgument<Info>[] {
+function callArgumentsOf<Info extends ParentInformation>(call: RFunctionCall<Info>, graph: DataflowGraph): readonly PotentiallyEmptyRArgument<Info>[] {
 	const vertex = graph.getVertex(call.info.id);
 	if(!DfgVertex.isFunctionCall(vertex) || vertex.args.length !== call.arguments.length + 1) {
 		return call.arguments;

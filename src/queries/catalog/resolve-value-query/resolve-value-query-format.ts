@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
 import { executeResolveValueQuery } from './resolve-value-query-executor';
 import { stringifyValue } from '../../../dataflow/eval/values/r-value';
@@ -51,7 +51,7 @@ export const ResolveValueQueryDefinition = {
 			);
 			return true;
 		}
-		result.push(`Query: ${bold('resolve-value', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('resolve-value', formatter, out['.meta'].timing));
 		for(const [fingerprint, obj] of Object.entries(out.results)) {
 			const { criteria } = JSON.parse(fingerprint) as ResolveValueQuery;
 			result.push(`   ╰ Values for {${criteria.join(', ')}}`);

@@ -5,9 +5,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../project/sigdb/reader';
-// FnProp is a const enum referenced only via `typeof` (for linkE's member typing); a type-only import would break `typeof`
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { FnProp, SigDbSchema } from '../project/sigdb/schema';
+import { type FnProp, SigDbSchema } from '../project/sigdb/schema';
 import type { ArgProp } from '../dataflow/environments/built-in-props';
 import { defaultSigDbPath, defaultSigDbPaths, readManifestFile, type SigDbShardRef } from '../project/sigdb/manifest';
 import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec';

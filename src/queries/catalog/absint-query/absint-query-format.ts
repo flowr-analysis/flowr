@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import type { AbsintAnalysis } from '../../../abstract-interpretation/absint-inference';
+import { queryHeader } from '../../query-print';
 import { DataFrameShapeAnalysis } from '../../../abstract-interpretation/data-frame/shape-inference';
 import { AbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
 import { BottomSymbol, TopSymbol } from '../../../abstract-interpretation/domains/lattice';
@@ -15,8 +16,7 @@ import { fileProtocol } from '../../../r-bridge/retriever';
 import { SlicingCriterion, type SlicingCriteria } from '../../../slicing/criterion/parse';
 import { isNotUndefined } from '../../../util/assert';
 import { Record } from '../../../util/record';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeAbsintQuery } from './absint-query-executor';
@@ -113,7 +113,7 @@ export const AbsintQueryDefinition = {
 	executor:        executeAbsintQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'absint'>['absint'];
-		result.push(`Query: ${bold('absint', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('absint', formatter, out['.meta'].timing));
 
 		if(out.result instanceof AbstractDomain) {
 			if(out.result.isBottom()) {

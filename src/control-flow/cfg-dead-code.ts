@@ -160,7 +160,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		let result = false;
 		for(let node = this.getNormalizedAst(id)?.info.parent; node !== undefined;) {
 			const vertex = this.getDataflowGraph(node);
-			if(DfgVertex.isFunctionCall(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Try)) {
+			if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Try)) {
 				result = true;
 				break;
 			}
@@ -172,7 +172,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	private switchArmDefinitelyNotTaken(cause: NodeId, from: NodeId): boolean {
 		const v = this.config.dfg.getVertex(cause);
-		if(!DfgVertex.isFunctionCall(v) || !v.origin.includes(BuiltInProcName.Switch)) {
+		if(!DfgVertex.isFunctionCall(v) || !DfgVertex.hasOrigin(v, BuiltInProcName.Switch)) {
 			return false;
 		}
 		const selected = this.selectedSwitchArm(v);

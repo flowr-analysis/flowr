@@ -11,7 +11,6 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { Identifier, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { applyCdsToDefinitions } from '../../../../../environments/reference-to-maybe';
-import { define } from '../../../../../environments/define';
 import { RConstant, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RUnaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
@@ -29,6 +28,9 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+
+const ListConstructors: ReadonlySet<string> = new Set(['list', 'c']);
+import { uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 
 /**
  * Graphics parameters and options, tracked as global pseudo variables (`#...`) so readers link to the calls that set them.
@@ -130,7 +132,7 @@ function withAccess<OtherInfo>(
 	}
 	const cds = data.cds ? [...data.cds] : undefined;
 	const maybeWritten = writes.flatMap(w => typeof w === 'object' && w.mode === 'maybe' ? [w.name] : []);
-	const readRefs: IdentifierReference[] = [...new Set([...reads, ...maybeWritten])].map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
+	const readRefs: IdentifierReference[] = uniqueArrayMerge(reads, maybeWritten).map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
 	/* the writes stay out of `out`: an assignment reads whatever else its source writes (`x <- y <- 3`) */
 	return {
 		...res,
@@ -155,7 +157,7 @@ function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds
 			cds:       isMaybe ? cds ?? [] : cds
 		};
 		/* the state is global, wherever the call happens, unless the call scopes it to the current frame */
-		environment = define(def, mode !== 'local', environment, keep);
+		environment = REnvironment.define(def, mode !== 'local', environment, keep);
 	}
 	return environment;
 }
@@ -234,7 +236,7 @@ function setAmbient(environment: REnvironmentInformation, name: string, definiti
 		return { ...environment, current: environment.current.removeAll([{ name }]) };
 	}
 	for(const [i, def] of definitions.entries()) {
-		environment = define({ ...def, name }, true, environment, keep || i > 0);
+		environment = REnvironment.define({ ...def, name }, true, environment, keep || i > 0);
 	}
 	return environment;
 }
@@ -376,7 +378,7 @@ export function applyAmbientStateAccess<OtherInfo>(
 		case AmbientStateAccessType.SetGraphics:
 			/* the call returns the previous state */
 			reads.push(AmbientStateName.graphics);
-			if(args.length === 0 || (access.queryOnUnnamedStrings && isQuery(args))) {
+			if(onlyQueries(access, args)) {
 				if(access.queryLinksTo) {
 					handleUnknownSideEffect(res.graph, res.environment, rootId, access.queryLinksTo);
 				}
@@ -386,7 +388,7 @@ export function applyAmbientStateAccess<OtherInfo>(
 			break;
 		case AmbientStateAccessType.SetPalette:
 			reads.push(AmbientStateName.palette);
-			if(args.length > 0) {
+			if(!onlyQueries(access, args)) {
 				writes.push(AmbientStateName.palette);
 			}
 			break;
@@ -397,7 +399,7 @@ export function applyAmbientStateAccess<OtherInfo>(
 		}
 		case AmbientStateAccessType.GetOption: {
 			const first = args.find(a => a !== EmptyArgument && (a.name === undefined || Identifier.getName(a.name.content) === 'x'));
-			reads.push(...optionReads(first === undefined || first === EmptyArgument ? undefined : stringsOf(first.value, data)));
+			reads.push(...optionReads(stringValuesOf(RArgument.valueOf(first), data)));
 			break;
 		}
 		case AmbientStateAccessType.SetOptions:
@@ -462,18 +464,18 @@ function registerFinalizer<OtherInfo>(res: DataflowInformation, args: readonly P
 		return DfgVertex.isFunctionDefinition(definition) ? ambientWritesBetween(definition.subflow.environment, data.environment) : [];
 	});
 	const definition = { nodeId: rootId, name: AmbientStateName.finalizers, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : [], value, writes, holder: RSymbol.is(holder) ? Identifier.getName(holder.content) : undefined } as const;
-	return { ...res, environment: define(definition, true, res.environment, true) };
+	return { ...res, environment: REnvironment.define(definition, true, res.environment, true) };
 }
 
 /** `textConnection(object, open, local)` opened for writing binds `object` globally, or locally with `local = TRUE`. */
 function openTextConnection<OtherInfo>(res: DataflowInformation, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const bound = MatchArgs.toNames(args, ['object', 'open', 'local', 'name', 'encoding']);
 	const open = bound.get('open');
-	const modes = open === undefined ? ['r'] : stringsOf(open, data);
+	const modes = open === undefined ? ['r'] : stringValuesOf(open, data);
 	if(modes?.every(m => m.startsWith('r'))) {
 		return res;
 	}
-	const names = stringsOf(bound.get('object'), data);
+	const names = stringValuesOf(bound.get('object'), data);
 	if(names === undefined) {
 		handleUnknownSideEffect(res.graph, res.environment, rootId);
 		return res;
@@ -484,7 +486,7 @@ function openTextConnection<OtherInfo>(res: DataflowInformation, args: readonly 
 	let environment = res.environment;
 	for(const name of names) {
 		for(const [i, inFrame] of (scopes ?? [true, false]).entries()) {
-			environment = define({ nodeId: rootId, name, type: ReferenceType.Variable, definedAt: rootId, cds }, !inFrame, environment, i > 0 || names.length > 1);
+			environment = REnvironment.define({ nodeId: rootId, name, type: ReferenceType.Variable, definedAt: rootId, cds }, !inFrame, environment, i > 0 || names.length > 1);
 		}
 	}
 	markForcing(environment);
@@ -707,13 +709,35 @@ function setOptions<OtherInfo>(
 	return withAccess(res, rootId, data, reads, writes);
 }
 
+/**
+ * Whether the call to `fn` only queries the state it may set, as `par("mar")`, `options("digits")` and `palette()`
+ * do, which hand that state back visibly where setting it returns the previous one invisibly.
+ */
+export function callOnlyQueries<OtherInfo>(fn: Identifier, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], environment: REnvironmentInformation): boolean {
+	const targets = Resolve.byNameAndType(fn, environment, ReferenceType.Function) ?? [];
+	return targets.length > 0 && targets.every(t => hiddenAccess(t).some(a => onlyQueries(a, args)));
+}
+
+function onlyQueries<OtherInfo>(access: AmbientStateAccess, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): boolean {
+	switch(access.type) {
+		case AmbientStateAccessType.SetGraphics:
+			return args.length === 0 || (access.queryOnUnnamedStrings === true && isQuery(args));
+		case AmbientStateAccessType.SetOptions:
+			return isQuery(args);
+		case AmbientStateAccessType.SetPalette:
+			return args.length === 0;
+		default:
+			return false;
+	}
+}
+
 /** `par()`, `par("mar", "usr")`, and `par(no.readonly = TRUE)` only query the graphics state */
 function isQuery<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): boolean {
 	return args.every(a => a === EmptyArgument
 		|| (a.name === undefined ? RString.is(a.value) : Identifier.getName(a.name.content) === 'no.readonly'));
 }
 
-function stringsOf<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+function stringValuesOf<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
 	if(value === undefined) {
 		return undefined;
 	} else if(RString.is(value)) {
@@ -816,7 +840,7 @@ function scopedWrites<OtherInfo>(scope: AmbientScope, args: readonly Potentially
 	/* what falls to `...` names options, it is no formal of its own */
 	const formals = new Set([...bound.entries()].filter(([param]) => param !== '...').map(([, arg]) => arg.info.id));
 	const fromList = (value: RNode<OtherInfo & ParentInformation> | undefined) => {
-		if(RFunctionCall.isNamed(value) && ['list', 'c'].includes(Identifier.getName(value.functionName.content))) {
+		if(RFunctionCall.isNamed(value, ListConstructors)) {
 			for(const entry of value.arguments) {
 				if(entry === EmptyArgument) {
 					continue;
@@ -936,7 +960,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 			sites.push(node.info.id);
 		} else if(RFunctionCall.is(node)) {
 			const targets = node.named ? Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function) ?? [] : [];
-			if(node.named && Identifier.getName(node.functionName.content) === 'suppressWarnings' && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
+			if(RFunctionCall.isNamed(node, 'suppressWarnings') && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
 				return true;
 			}
 			const handlers = muffledHandlers(node, graph, data);
@@ -966,7 +990,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 /** The handlers of a `withCallingHandlers` whose first handler muffles every `warning` of its `expr`, `undefined` otherwise. */
 function muffledHandlers<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation>[] | undefined {
 	const vertex = graph.getVertex(call.info.id);
-	if(!DfgVertex.isFunctionCall(vertex) || !resolvesTo(call, 'withCallingHandlers', BuiltInProcName.Try, graph, data)) {
+	if(!DfgVertex.isFunctionCall(vertex) || !callsBuiltIn(call, 'withCallingHandlers', BuiltInProcName.Try, graph, data)) {
 		return undefined;
 	}
 	const handlers = MatchArgs.toSpec(vertex.args, { expr: 'expr', '...': '...' }).get('...') ?? [];
@@ -975,13 +999,13 @@ function muffledHandlers<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInform
 	const fn = RArgument.is(handler) ? handler.value : undefined;
 	const body = RFunctionDefinition.is(fn) ? fn.body : undefined;
 	const start = RExpressionList.is(body) ? body.children[0] : body;
-	const restart = RFunctionCall.is(start) && resolvesTo(start, 'invokeRestart', BuiltInProcName.Default, graph, data) && start.arguments.length === 1 ? start.arguments[0] : undefined;
+	const restart = RFunctionCall.is(start) && callsBuiltIn(start, 'invokeRestart', BuiltInProcName.Default, graph, data) && start.arguments.length === 1 ? start.arguments[0] : undefined;
 	const muffles = NodeValue.stringsOf(RArgument.valueOf(restart)?.info.id, data)?.join() === 'muffleWarning';
 	return muffles ? handlers.map(h => data.completeAst.idMap.get(h)).filter(isNotUndefined) : undefined;
 }
 
 /** whether `call` surely calls the built-in `name`, its `origin` telling that nothing in between shadows it */
-function resolvesTo<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInformation>, name: string, origin: BuiltInProcName, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+function callsBuiltIn<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInformation>, name: string, origin: BuiltInProcName, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	if(!DfgVertex.hasOrigin(graph.getVertex(call.info.id), origin)) {
 		return false;
 	}

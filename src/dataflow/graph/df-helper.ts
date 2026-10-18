@@ -7,11 +7,14 @@ import { CallGraph } from './call-graph';
 import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
-import type { DataflowGraphVertexInfo } from './vertex';
-import { DfgVertex } from './vertex';
+import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 import { isBaseRPackage } from '../../util/r-base-packages';
+import { DefaultMap } from '../../util/collections/defaultmap';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { getAllFunctionCallTargets } from '../internal/linker';
+import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -19,6 +22,8 @@ import { isBaseRPackage } from '../../util/r-base-packages';
  * - {@link Dataflow.visualize} - for visualization helpers (e.g., rendering the DFG as a mermaid graph),
  * - {@link Dataflow.qualify}/{@link Dataflow.qualifyAll} - for the package-qualified `pkg::fn` identifier of a call
  * from its id and graph, or of every call of a graph at once,
+ * - {@link Dataflow.targetsOf}/{@link Dataflow.sourcesOf}/{@link Dataflow.hasEdge} - for the neighbors of a vertex by edge type,
+ * - {@link Dataflow.calleesOf}/{@link Dataflow.calleeIdsOf}/{@link Dataflow.callTargetsOf}/{@link Dataflow.callsIn} - for what a call calls and what a definition calls,
  * - {@link Dataflow.packagesOf} - for the packages a set of nodes (e.g. a slice) calls into,
  * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
  *
@@ -129,6 +134,115 @@ export const Dataflow = {
 		return false;
 	},
 	/**
+	 * The ids at the far end of the outgoing edges of `node` that carry any of `types` (empty if there are none).
+	 * @see {@link Dataflow.sourcesOf} - for the incoming direction
+	 * @see {@link Dataflow.calleeIdsOf} - for the function definitions a call resolves to
+	 */
+	targetsOf(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
+		const found: NodeId[] = [];
+		for(const [target, edge] of graph.edgesFrom(node)) {
+			if(DfEdge.includesType(edge, types)) {
+				found.push(target);
+			}
+		}
+		return found;
+	},
+	/**
+	 * The ids at the near end of the incoming edges of `node` that carry any of `types` (empty if there are none).
+	 * @see {@link Dataflow.targetsOf} - for the outgoing direction
+	 */
+	sourcesOf(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
+		const found: NodeId[] = [];
+		for(const [source, edge] of graph.edgesTo(node)) {
+			if(DfEdge.includesType(edge, types)) {
+				found.push(source);
+			}
+		}
+		return found;
+	},
+	/** Whether there is an edge from `from` to `to` that carries any of `types`. */
+	hasEdge(this: void, graph: DataflowGraph, from: NodeId, to: NodeId, types: EdgeType): boolean {
+		const edge = graph.edgesFrom(from).get(to);
+		return edge !== undefined && DfEdge.includesType(edge, types);
+	},
+	/**
+	 * The ids of the function definitions a call is linked to by a {@link EdgeType.Calls} edge (empty if none, e.g. for built-ins).
+	 * @see {@link Dataflow.calleesOf} - for the definition vertices instead of their ids
+	 * @see {@link Dataflow.callTargetsOf} - which also follows aliases and includes built-ins
+	 * @see {@link Dataflow.targetsOf} - for the raw edge targets
+	 */
+	calleeIdsOf(this: void, graph: DataflowGraph, call: NodeId): NodeId[] {
+		return Dataflow.targetsOf(graph, call, EdgeType.Calls).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	},
+	/**
+	 * All known targets of a call, as well as the name sources which define them (empty if there are none).
+	 * Prefer this over {@link Dataflow.calleeIdsOf} if the call may go through a read, an alias, or a built-in.
+	 * @param call        - The id of the call
+	 * @param graph       - The graph the call is part of
+	 * @param environment - The environment to resolve the call name in, if the call does not carry one itself
+	 */
+	callTargetsOf(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): NodeId[] {
+		return getAllFunctionCallTargets(call, graph, environment);
+	},
+	/**
+	 * The calls within the body of a function definition, id and vertex paired.
+	 * @see {@link Dataflow.calleeIdsOf} - for what a single call calls
+	 */
+	* callsIn(this: void, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): Generator<[NodeId, DataflowGraphVertexFunctionCall]> {
+		for(const node of definition.subflow.graph) {
+			const vertex = graph.getVertex(node);
+			if(DfgVertex.isFunctionCall(vertex)) {
+				yield [node, vertex];
+			}
+		}
+	},
+	/** Every variable definition of the graph by its unquoted name, in a single pass. */
+	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {
+		const byName = new DefaultMap<string, NodeId[]>(() => []);
+		for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
+			const name = NodeId.recoverName(id, graph.idMap);
+			if(name !== undefined) {
+				byName.get(RString.unquote(name)).push(id);
+			}
+		}
+		return byName;
+	},
+	/**
+	 * The definitions and references to the symbol with the given id (including itself), or `undefined` if it is no symbol of the graph.
+	 * The symbol is the one defined or used at `id`, and the result lists its definition and every later use that definition reaches for sure.
+	 */
+	refsToSymbol(this: void, graph: DataflowGraph, id: NodeId): NodeId[] | undefined {
+		return getAllRefsToSymbol(graph, id);
+	},
+	/**
+	 * Recomputes `recompute(id)` for every node reachable from `seed` along the reverse of `successors`, so a
+	 * change at a node is carried on to whatever points at it, until nothing grows anymore. `recompute` updates
+	 * its node's value itself and reports whether it grew.
+	 */
+	propagateToFixpoint(this: void, seed: Iterable<NodeId>, successors: ReadonlyMap<NodeId, readonly NodeId[]>, recompute: (id: NodeId) => boolean): void {
+		const callers = new DefaultMap<NodeId, NodeId[]>(() => []);
+		for(const [id, next] of successors) {
+			for(const to of next) {
+				callers.get(to).push(id);
+			}
+		}
+		const pending = [...seed];
+		const queued = new Set<NodeId>(pending);
+		while(pending.length > 0) {
+			const id = pending.pop() as NodeId;
+			queued.delete(id);
+			if(!recompute(id)) {
+				continue;
+			}
+			for(const caller of callers.get(id)) {
+				if(!queued.has(caller)) {
+					queued.add(caller);
+					pending.push(caller);
+				}
+			}
+		}
+	},
+	/**
 	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
 	 */
 	sideEffects: {
@@ -236,7 +350,7 @@ export const Dataflow = {
 	 * @param start    - The start id of the visitation.
 	 * @param onVertex - The function to execute for each vertex, if this returns `true` the visitation will stop from this vertex.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 	visitDfg(this: void, graph: DataflowGraph, start: NodeId, onVertex: (vtx: DataflowGraphVertexInfo) => (boolean | void)) {
 		const queue = [start];
 		const visited = new Set<NodeId>();

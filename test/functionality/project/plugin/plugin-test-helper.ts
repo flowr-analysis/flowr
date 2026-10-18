@@ -18,8 +18,7 @@ export type TestPluginFileType = new (file: FlowrFileProvider<string>) => FlowrF
 type LoadFn = (analyzer: FlowrAnalyzer) => void;
 type TestCaseEntries = [string, LoadFn][];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ConstructTo<T> = new (...args: any) => T;
+type ConstructTo<T> = new (...args: never[]) => T;
 
 /** Tests loading `testFilePath` (which `pluginType` registers as a `pluginFileType`) via the file protocol, a direct path, and a duplicate request; `expectedContent` is what `content()` should then report, `supp` labels the case. */
 export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P extends ConstructTo<FlowrAnalyzerFilePlugin>>(pluginType: P, pluginFileType: F, testFilePath: string, expectedContent: string, supp: FlowrCapabilityId[]) {

@@ -21,7 +21,6 @@ import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { Identifier, ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
-import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { applyKills } from '../dataflow/environments/apply-kill';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -50,6 +49,7 @@ import { MatchArgs } from '../dataflow/graph/match-args';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { enumMembers } from '../util/objects';
+import { compareByCodeUnit } from '../util/text/strings';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -409,8 +409,8 @@ For starters, let's have a look at the environment of the call to \`<-\` in the 
 ${printEnvironmentToMarkdown(env.current)}
 
 Great, you should see a definition of \`<-\` which is constraint by the [control dependency](#branches) to the \`if\`.
-Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)} (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}) with the id \`${id}\` of the call as starting point will present you with
-the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
+Hence, trying to re-resolve the call using ${ctx.link(Dataflow.callTargetsOf)} (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}) with the id \`${id}\` of the call as starting point will present you with
+the following target ids: { \`${[...Dataflow.callTargetsOf(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with ${ctx.link(Resolve.byNameAndType)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
 { \`${Resolve.byName(Identifier.make(name), env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
@@ -421,7 +421,7 @@ Similarly, trying to resolve the name with ${ctx.link(Resolve.byNameAndType)}\` 
 `)}
 
 
-Similar to finding the definitions read by a variable use, please use the ${ctx.link(getAllFunctionCallTargets)} function to find all possible definitions of a function call,
+Similar to finding the definitions read by a variable use, please use the ${ctx.link(Dataflow.callTargetsOf)} function to find all possible definitions of a function call,
 as explained in the ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')} section.`
 	})
 }
@@ -636,7 +636,7 @@ ${
 		content: `
 A ${linkEdgeName(EdgeType.Reads)} edge is not a transitive closure and only links the "directly read" definition(s).
 Our abstract domains resolving transitive ${linkEdgeName(EdgeType.Reads)} edges (and for that matter, following ${linkEdgeName(EdgeType.Returns)} as well)
-are currently tailored to what we need in _flowR_. Hence, we offer a function like ${ctx.link(getAllFunctionCallTargets)},
+are currently tailored to what we need in _flowR_. Hence, we offer a function like ${ctx.link(Dataflow.callTargetsOf)},
 as well as ${ctx.link(Resolve.toBuiltIn)} which do this for specific cases.
 Refer to ${ctx.link(Dataflow.origin)} for a more general solution, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')}.
 
@@ -1333,7 +1333,7 @@ ${ctx.hierarchy('Origin', { openTop: true })}
 Their respective uses are documented alongside their implementation:
 
 ${
-		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort((a, b) => a.localeCompare(b)).map(
+		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort(compareByCodeUnit).map(
 			key => `- ${ctx.link(key)}\\\n${ctx.doc(key, { type: 'interface' })}`
 		).join('\n')
 		}

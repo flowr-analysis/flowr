@@ -50,7 +50,7 @@ describe('Recovering packages from an installed copy', withTreeSitter(parser => 
 	test(label('so a bare call of one of them names the package', ['name-normal'], ['other']), async() => {
 		const analyzer = await analyze(code, true);
 		const { graph } = await analyzer.dataflow();
-		const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && v.name === 'readShapePoly');
+		const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === 'readShapePoly');
 		assert.isDefined(call);
 		assert.strictEqual(Identifier.getNamespace(Dataflow.qualify(call[0], graph, false) ?? ''), 'maptools');
 	});

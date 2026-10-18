@@ -16,6 +16,7 @@ export interface RWhileLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location 
 
 /**
  * Helper for working with {@link RWhileLoop} AST nodes.
+ * @helper ast
  */
 export const RWhileLoop = {
 	...RNode,

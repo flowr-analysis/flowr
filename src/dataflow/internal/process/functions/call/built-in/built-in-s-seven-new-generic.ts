@@ -8,7 +8,6 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments } from '../common';
-import { unpackArg } from '../argument/unpack-argument';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -60,7 +59,7 @@ export function processS7NewGeneric<OtherInfo>(
 		[config.args.fun]:  'fun',
 		'...':              '...'
 	});
-	const argNamed = (formal: 'name' | 'dispatchArg' | 'fun') => unpackArg(RArgument.getWithId(args, argMaps.get(formal)?.[0]));
+	const argNamed = (formal: 'name' | 'dispatchArg' | 'fun') => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(formal)?.[0]));
 	const genName = argNamed('name');
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

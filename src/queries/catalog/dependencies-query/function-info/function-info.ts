@@ -36,4 +36,6 @@ export interface FunctionInfo extends FunctionArgInfo {
 	additionalArgs?:     Record<string, FunctionArgInfo>
 	/** string replacements to apply to resolved values, e.g. `{ '': 'stdin' }` */
 	stringReplacements?: Record<string, string>
+	/** the call hands back its result invisibly, so a top-level one prints nothing, even with its package not loaded */
+	invisible?:          true
 }

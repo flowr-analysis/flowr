@@ -138,7 +138,7 @@ function indexAlways(always: readonly Identifier[]): Map<string, (BrandedNamespa
 }
 
 /** The packages the code attaches; `undefined` when one of them cannot be named, so nothing is ruled out. */
-async function attachedPackages(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): Promise<ReadonlySet<string> | undefined> {
+async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): Promise<ReadonlySet<string> | undefined> {
 	const attached = new Set<string>();
 	for(const lib of (await analyzer.query([{ type: 'dependencies', enabledCategories: ['library'] }]))['dependencies'].library) {
 		if(lib.value === undefined || lib.value === Unknown) {
@@ -209,7 +209,7 @@ export const DEPRECATED_FUNCTIONS = {
 			owners:      always.get(Identifier.getName(candidate.target))
 		})).filter(m => m.conditional !== undefined || m.owners !== undefined);
 		/* only asked once something matched, so a clean file queries nothing */
-		const attached = matched.length === 0 ? undefined : await attachedPackages(data);
+		const attached = matched.length === 0 ? undefined : await librariesAttachedBy(data);
 		const packageVersions = await inferPackageVersions(data, matched.map(m => m.conditional));
 		const results: DeprecatedFunctionRuleResult[] = matched.map(({ candidate, conditional, owners }) => {
 			if(conditional !== undefined) {
@@ -381,7 +381,7 @@ function renameFix(node: RNode<ParentInformation> | undefined, replacedBy: strin
 }
 
 /** The name to rename, `undefined` for `pkg::fn` as the replacement states no package to put back. */
-function calledName(node: RNode<ParentInformation>): RNode<ParentInformation> | undefined {
+function renamableCallee(node: RNode<ParentInformation>): RNode<ParentInformation> | undefined {
 	return RFunctionCall.isNamed(node) && Identifier.getNamespace(node.functionName.content) === undefined
 		? node.functionName : undefined;
 }
@@ -454,7 +454,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 				state:        info.state,
 				replacedBy:   info.replacedBy,
 				sinceVersion: fnSinceVersion,
-				quickFix:     renameFix(calledName(candidate.node), info.replacedBy, 'the call')
+				quickFix:     renameFix(renamableCallee(candidate.node), info.replacedBy, 'the call')
 			} satisfies DeprecatedFunctionResult);
 		}
 	}

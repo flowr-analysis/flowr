@@ -60,7 +60,7 @@ import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { EdgeType } from '../../../src/dataflow/graph/edge';
-import { edgeTargets } from '../../../src/dataflow/fn/frame-reflection';
+import { uniqueArray } from '../../../src/util/collections/arrays';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -116,7 +116,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 }
 
 function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
-	return JSON.parse(JSON.stringify(obj, (key, value) => {
+	return JSON.parse(JSON.stringify(obj, (key, value: unknown) => {
 		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nest')) {
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
@@ -127,14 +127,13 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 			// we ignore tree-sitter-specific metadata
 			return undefined;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;
 	})) as T;
 }
 
 function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
-	// eslint-disable-next-line flowr/replacement-pattern
+	// eslint-disable-next-line flowr/replacement-pattern -- `expected` may be a project, which `RExpressionList.is` does not accept, and `RProject` has no `is`
 	if(expected.type === RType.ExpressionList) {
 		expected = {
 			type: RType.Project,
@@ -377,7 +376,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	/** Whether to test the call graph instead of the dataflow graph */
 	context:               'dataflow' | 'call-graph',
 	/** Allows you to modify the analyzer before running the test (assumes side-effects and reuses the same object if you return undefined). */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- a modifier that works in place returns nothing
 	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined | void
 }
 
@@ -800,7 +799,7 @@ export function assertCallTargets(name: string, parser: KnownParser, code: strin
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(code);
 		const { idMap } = await analyzer.normalize();
-		const targets = new Set(edgeTargets((await analyzer.dataflow()).graph, SlicingCriterion.parse(criterion, idMap), EdgeType.Calls));
+		const targets = new Set(Dataflow.targetsOf((await analyzer.dataflow()).graph, SlicingCriterion.parse(criterion, idMap), EdgeType.Calls));
 		for(const r of reaches) {
 			assert.isTrue(targets.has(SlicingCriterion.parse(r, idMap)), `${criterion} should call ${r}`);
 		}
@@ -850,7 +849,7 @@ async function skipWithoutRPackages(code: string, skip: (condition: boolean, not
 		available: new Set((await printedByR('cat(.packages(all.available = TRUE), sep = "\\n")')).split('\n'))
 	}))();
 	const { listed, available } = await ciRPackages;
-	const missing = [...new Set(used)].filter(p => listed.includes(p) && !available.has(p));
+	const missing = uniqueArray(used).filter(p => listed.includes(p) && !available.has(p));
 	skip(missing.length > 0, `R ${globalThis.rVersion?.raw ?? '?'} lacks ${missing.join(', ')}`);
 }
 

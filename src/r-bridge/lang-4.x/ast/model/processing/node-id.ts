@@ -1,7 +1,8 @@
+import { RString } from '../nodes/r-string';
 import type { AstIdMap } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { DfgVertex } from '../../../../../dataflow/graph/vertex';
-import { removeRQuotes } from '../../../../retriever';
+import { RNode } from '../model';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
 import { compareByCodeUnit } from '../../../../../util/text/strings';
@@ -79,6 +80,7 @@ export const NodeId = {
 	 * @see {@link fromBuiltIn} - to recover the built-in function or operator name from a built-in id
 	 */
 	toBuiltIn<T extends string>(this: void, name: T): BuiltIn<T> {
+
 		return `built-in:${name}`;
 	},
 	/**
@@ -131,6 +133,7 @@ export const NodeId = {
 	 * @see {@link NodeId.recoverContent} - for what a call or a use stands for rather than how it is written
 	 */
 	recoverName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
+
 		return idMap?.get(id)?.lexeme;
 	},
 	/**
@@ -147,9 +150,9 @@ export const NodeId = {
 		if(node === undefined) {
 			return undefined;
 		}
-		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
+		const lexeme = RNode.ownLexeme(node) ?? '';
 		if(DfgVertex.isUse(vertex)) {
-			return removeRQuotes(lexeme);
+			return RString.unquote(lexeme);
 		}
 		return lexeme;
 	}

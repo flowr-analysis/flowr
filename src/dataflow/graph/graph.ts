@@ -10,11 +10,11 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Environment, type EnvType, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
+import { REnvironment } from '../environments/environment';
 
 /**
  * Describes the information we store per function body.
@@ -544,7 +544,7 @@ export class DataflowGraph<
 		/* keep a clone of the original environment, isolating the snapshot from later updates */
 		let environment: REnvironmentInformation | undefined;
 		if(vertex.environment) {
-			environment = cloneEnvironmentInformation(vertex.environment);
+			environment = REnvironment.clone(vertex.environment);
 		} else if(vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin)) {
 			/* only here is a fallback wanted, so a thunk spares every other vertex one it would discard */
 			environment = typeof fallbackEnv === 'function' ? fallbackEnv() : fallbackEnv;

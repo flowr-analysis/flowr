@@ -1,8 +1,7 @@
+import { RString } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
-import { removeRQuotes } from '../../../../r-bridge/retriever';
-import { startAndEndsWith } from '../../../../util/text/strings';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
 import type {
@@ -282,11 +281,6 @@ function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RF
 		arguments: [toUnnamedArgument(node, idMap)]
 	};
 }
-/** the name a NAMESPACE directive lists, without the quotes or backticks R allows around it */
-function unquoteName(name: string): string {
-	return startAndEndsWith(name, '`') ? name.slice(1, -1) : removeRQuotes(name);
-}
-
 /** Unquotes every lexeme of `args` (dropping empty/nameless arguments) and pushes the result onto `target`. */
 function pushUnquotedLexemes(target: string[], args: readonly PotentiallyEmptyRArgument<ParentInformation>[], unquote: (s: string) => string): void {
 	target.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquote(a.lexeme) : undefined).filter(isNotUndefined));
@@ -316,7 +310,7 @@ function markSideEffectLoader(fmt: NamespaceFormat, pkg: string): void {
 }
 
 function handleExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	pushUnquotedLexemes(g.current.exportedSymbols, args, unquoteName);
+	pushUnquotedLexemes(g.current.exportedSymbols, args, RString.unquote);
 	return g;
 }
 function handleExportPatternCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
@@ -333,14 +327,14 @@ function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyR
 	if(RArgument.isEmpty(pkgArg) || RArgument.isEmpty(funcArg) || !pkgArg.lexeme || !funcArg.lexeme) {
 		return g;
 	}
-	arrayAt(g.current.exportS3Generics, unquoteName(pkgArg.lexeme)).push(unquoteName(funcArg.lexeme));
+	arrayAt(g.current.exportS3Generics, RString.unquote(pkgArg.lexeme)).push(RString.unquote(funcArg.lexeme));
 	return g;
 }
 function handleImportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	/* `import(a, b)` imports both; a named argument like `except =` names no package */
 	for(const arg of args) {
 		if(arg !== EmptyArgument && arg.name === undefined && arg.lexeme) {
-			g.current.importedPackages?.set(unquoteName(arg.lexeme), 'all');
+			g.current.importedPackages?.set(RString.unquote(arg.lexeme), 'all');
 		}
 	}
 	return g;
@@ -354,13 +348,13 @@ function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmpt
 	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
-	const arr = importArrayAt(g.current.importedPackages, unquoteName(pkgArg.lexeme));
+	const arr = importArrayAt(g.current.importedPackages, RString.unquote(pkgArg.lexeme));
 	for(let i = 1; i < args.length; i++) {
 		const symArg = args[i];
 		if(RArgument.isEmpty(symArg) || !symArg.lexeme) {
 			continue;
 		}
-		arr.push(unquoteName(symArg.lexeme));
+		arr.push(RString.unquote(symArg.lexeme));
 	}
 	return g;
 }
@@ -372,12 +366,12 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
-	markSideEffectLoader(g, unquoteName(pkgArg.lexeme));
+	markSideEffectLoader(g, RString.unquote(pkgArg.lexeme));
 	return g;
 }
 /** `exportClasses(A, B)` / `exportMethods(show, summary)`: a directive may list several names, and each goes to `into`. */
 function handleS4ExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], into: 'exportedS4Classes' | 'exportedS4Methods'): NamespaceFormat {
-	pushUnquotedLexemes(g.current[into], args, unquoteName);
+	pushUnquotedLexemes(g.current[into], args, RString.unquote);
 	return g;
 }
 const cleanLineCommentRegex = /^#.*$/gm;
@@ -493,7 +487,7 @@ function splitNamespaceArgs(args: string): string[] {
 			const part = args.slice(start, i).trim();
 			start = i + 1;
 			if(part.length > 0 && !namedArgument.test(part)) {
-				names.push(unquoteName(part));
+				names.push(RString.unquote(part));
 			}
 		}
 	}

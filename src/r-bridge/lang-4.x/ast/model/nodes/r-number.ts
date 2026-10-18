@@ -16,6 +16,7 @@ export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
 
 /**
  * Helper for working with {@link RNumber} AST nodes.
+ * @helper ast
  */
 export const RNumber = {
 	...RNode,

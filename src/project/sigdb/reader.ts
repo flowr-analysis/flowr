@@ -69,23 +69,6 @@ function dictionaryIdOf(strings: SigDict, name: string): number {
 	return -1;
 }
 
-/** the dictionary a bundle's `d` lines spell out */
-function readDictSection(buf: Buffer): SigDict {
-	const runs: { start: number, names: string }[] = [];
-	let off = 0;
-	while(off < buf.length) {
-		let nl = buf.indexOf(0x0a, off);
-		if(nl < 0) {
-			nl = buf.length;
-		}
-		if(nl > off) {
-			runs.push(dictLineRun(buf.toString('utf8', off, nl)));
-		}
-		off = nl + 1;
-	}
-	return SigDict.ofRuns(runs);
-}
-
 /** stream-read a whole bundle into a {@link SigDb} (any size; never one string). Prefer {@link SigDatabase} for partial access. */
 export async function readSignatureDb(file: string): Promise<SigDb> {
 	const rl = readline.createInterface({ input: sigDbStream(file), crlfDelay: Infinity });
@@ -528,7 +511,7 @@ export class SigDatabase implements PackageSignatureSource {
 			if(dictBytes > 0) {
 				const buf = Buffer.allocUnsafe(dictBytes);
 				fs.readSync(fd, buf, 0, dictBytes, dictStart);
-				strings = readDictSection(buf);
+				strings = SigDict.ofLines(buf);
 			} else {
 				strings = SigDict.of([]);
 			}
@@ -992,7 +975,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 			const [start, bytes] = ref.range;
 			const buf = Buffer.allocUnsafe(bytes);
 			fs.readSync(fd, buf, 0, bytes, start);
-			strings = readDictSection(buf);
+			strings = SigDict.ofLines(buf);
 		} finally {
 			fs.closeSync(fd);
 		}

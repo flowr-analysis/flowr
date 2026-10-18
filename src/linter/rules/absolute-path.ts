@@ -21,6 +21,7 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { OtherPathFunctions } from '../../queries/catalog/dependencies-query/function-info/other-path-functions';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -70,7 +71,7 @@ function inferWd(file: string | undefined, wd: SupportedWd, ctx: ReadOnlyFlowrAn
 }
 
 // this can be improved by respecting raw strings and supporting more scenarios
-function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
+function quickFixForPath(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
 	const loc = SourceLocation.fromNode(str);
 	if(!wd || !str || !RString.is(str) || loc === undefined) {
 		/* a fix that names no place cannot be carried out, so none is offered */
@@ -157,7 +158,7 @@ export const ABSOLUTE_PATH = {
 			certainty,
 			filePath,
 			loc:      SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-			quickFix: buildQuickFix(node, filePath, wd)
+			quickFix: quickFixForPath(node, filePath, wd)
 		}) as AbsoluteFilePathResult;
 		return {
 			results: withoutNested(elements.getElements().flatMap(element => {
@@ -186,7 +187,7 @@ export const ABSOLUTE_PATH = {
 					const vertex = graph.getVertex(node.info.id);
 					if(DfgVertex.isFunctionCall(vertex)) {
 						/* `file.path` is the only supported function that returns a file path */
-						const strings = vertex.name === 'file.path' ? filePathStrings(graph, vertex, ctx) : [];
+						const strings = Identifier.getName(vertex.name) === 'file.path' ? filePathStrings(graph, vertex, ctx) : [];
 						if(strings) {
 							return strings.map(absolute).filter(isNotUndefined).map(path => finding(LintingResultCertainty.Uncertain, path, node));
 						}

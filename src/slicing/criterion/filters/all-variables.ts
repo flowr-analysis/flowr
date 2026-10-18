@@ -4,8 +4,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { type FoldFunctions, foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
 	minimumSize: 1,
@@ -42,7 +41,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 		foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | typeof EmptyArgument)[]) => {
 			const args = b.flatMap(b => b !== EmptyArgument ? b.flat() : []);
 			if(c.named) {
-				return Identifier.getName(c.functionName.content) === 'library' ? args.slice(1) : args;
+				return RFunctionCall.isNamed(c, 'library') ? args.slice(1) : args;
 			} else {
 				return [...a.filter(x => x !== EmptyArgument), ...args];
 			}

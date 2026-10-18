@@ -901,7 +901,7 @@ export const FlowrConfig = {
 	/**
 	 * Creates a new flowr config that has the updated values.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
 	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
 		return amendmentFunc(newConfig) ?? newConfig;

@@ -1,3 +1,4 @@
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
@@ -213,12 +214,12 @@ These examples are synthesized from the test cases in: ${linkFlowRSourceFile('te
 			continue;
 		}
 		// drop any quotes around the test name
-		const testNameClean = testName.replace(/^['"]|['"]$/g, '');
+		const testNameClean = RString.unquote(testName);
 		result += `\n${section('Test Case: ' + testNameClean, 4)}
 
 ${report.comments ? report.comments.map(c => `> ${c}`).join('\n') + '\n' : ''}
 Given the following input:
-${codeBlock('r', args[2].getText(report.source).replace(/^['"]|['"]$/g, '').replace(/\\n/g, '\n'))}
+${codeBlock('r', RString.unquote(args[2].getText(report.source)).replace(/\\n/g, '\n'))}
 ${args.length >= 7 ? `\nAnd using the following [configuration](#configuration): ${codeBlock('ts', prettyPrintExpectedOutput(args[6].getText(report.source)))}` : ''}
 
 We expect the linter to report the following:

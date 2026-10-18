@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { queryHeader } from '../../query-print';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { executeHappensBefore } from './happens-before-query-executor';
@@ -40,7 +40,7 @@ export const HappensBeforeQueryDefinition = {
 	executor:        executeHappensBefore,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'happens-before'>['happens-before'];
-		result.push(`Query: ${bold('happens-before', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('happens-before', formatter, out['.meta'].timing));
 		for(const [fingerprint, value] of Object.entries(out.results)) {
 			const { a, b } = HappensBeforeKey.criteria(fingerprint);
 			result.push(`   ╰ ${bold(a, formatter)} happens before ${bold(b, formatter)}: ${value}`);

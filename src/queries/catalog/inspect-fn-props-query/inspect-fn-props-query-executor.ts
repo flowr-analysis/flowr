@@ -20,7 +20,7 @@ function keepRoles(all: Record<NodeId, FunctionArgumentRoles>, graph: DataflowGr
 	for(const [id, roles] of Object.entries(all)) {
 		const some: FunctionArgumentRoles = {};
 		for(const [formal, props] of Object.entries(roles)) {
-			const named = graph.idMap?.get(NodeId.normalize(formal))?.lexeme;
+			const named = NodeId.recoverName(NodeId.normalize(formal), graph.idMap);
 			if((formals === undefined || (named !== undefined && formals.has(named))) && (props & mask) !== 0) {
 				some[formal] = props & mask;
 			}

@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
 import { bold, faint, italic, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
@@ -55,7 +55,7 @@ export const FunctionInfoQueryDefinition = {
 	syntax:          '@function-info <name> [<package>...]',
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer, queryResults, result) => {
 		const out = queryResults as FunctionInfoQueryResult;
-		result.push(`Query: ${bold('function-info', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('function-info', formatter, out['.meta'].timing));
 		if(out.packages.length === 0 && out.builtin.length === 0) {
 			result.push(`   ╰ ${italic(`No package or built-in definition known for ${out.name}`, formatter)}`);
 			return true;

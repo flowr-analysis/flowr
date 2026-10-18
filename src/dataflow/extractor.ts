@@ -24,7 +24,8 @@ import { updateNestedFunctionCalls } from './internal/process/functions/call/bui
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import { orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
 import { getAllLinkedFunctionDefinitions, separateClosureInstances } from './internal/linker';
-import type { Environment, REnvironmentInformation } from './environments/environment';
+import type { REnvironmentInformation } from './environments/environment';
+import { REnvironment } from './environments/environment';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -53,7 +54,6 @@ import { callFnProps, queryFnProps } from './environments/query-fn-props';
 import { Resolve } from './environments/resolve-helper';
 import { reachableTo } from '../control-flow/happens-before';
 import { guardNesting } from '../util/assert';
-import { calledDefinitions, definitionsByName, edgeSources, edgeTargets, hasEdgeOfType } from './fn/frame-reflection';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -110,7 +110,7 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 				if(!holdsEnvironment(graph, argument, environment)) {
 					continue;
 				}
-				for(const call of edgeSources(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)))) {
+				for(const call of Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)))) {
 					handleUnknownSideEffect(graph, environment, call);
 					for(const write of writes) {
 						graph.addEdge(call, write, EdgeType.Reads);
@@ -122,7 +122,7 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 }
 
 function tracksAnyEnvironment(environment: REnvironmentInformation): boolean {
-	for(let e: Environment | undefined = environment.current; e !== undefined && !e.builtInEnv; e = e.parent) {
+	for(const e of REnvironment.frames(environment.current)) {
 		if(e.memory.values().some(defs => defs.some(hasEnvState))) {
 			return true;
 		}
@@ -135,8 +135,8 @@ function writesOfParameters(graph: DataflowGraph, definition: DataflowGraphVerte
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
 		if(DfgVertex.isVariableDefinition(vertex) && vertex.par) {
-			const replacements = edgeTargets(graph, node, EdgeType.DefinedBy).filter(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Replacement));
-			for(const parameter of edgeTargets(graph, node, EdgeType.Reads).filter(t => parameters.has(t))) {
+			const replacements = Dataflow.targetsOf(graph, node, EdgeType.DefinedBy).filter(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Replacement));
+			for(const parameter of Dataflow.targetsOf(graph, node, EdgeType.Reads).filter(t => parameters.has(t))) {
 				written.get(parameter).push(...replacements);
 			}
 		} else if(DfgVertex.isFunctionCall(vertex) && graph.unknownSideEffects.has(NodeId.normalize(node))) {
@@ -159,7 +159,7 @@ function holdsEnvironment(graph: DataflowGraph, argument: NodeId, environment: R
 function openReadsOfCalledFunctions(graph: DataflowGraph): IdentifierReference[] {
 	const reads = new Map<NodeId, IdentifierReference>();
 	for(const [id, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		if(edgeSources(graph, id, EdgeType.Calls).length > 0) {
+		if(Dataflow.sourcesOf(graph, id, EdgeType.Calls).length > 0) {
 			for(const read of definition.subflow.in) {
 				if(read.name !== undefined && !AmbientStateName.is(read.name) && !Identifier.getName(read.name).startsWith(UnnamedFunctionCallPrefix)) {
 					reads.set(read.nodeId, read);
@@ -176,7 +176,7 @@ function callActiveBindings(graph: DataflowGraph): void {
 	const active = new Set<NodeId>();
 	const bindings = new Map<NodeId, NodeId[]>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
-		const called = edgeTargets(graph, id, EdgeType.Calls);
+		const called = Dataflow.targetsOf(graph, id, EdgeType.Calls);
 		if(called.length > 0) {
 			active.add(id);
 			const fns = called.filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
@@ -188,10 +188,10 @@ function callActiveBindings(graph: DataflowGraph): void {
 	if(active.size === 0) {
 		return;
 	}
-	for(const [, ids] of bindings.size === 0 ? [] : definitionsByName(graph).entries()) {
+	for(const [, ids] of bindings.size === 0 ? [] : Dataflow.definitionsByName(graph).entries()) {
 		const fns = ids.flatMap(id => bindings.get(id) ?? []);
 		for(const id of fns.length === 0 ? [] : ids.filter(id => !bindings.has(id))) {
-			for(const assignment of edgeSources(graph, id, EdgeType.Returns).filter(a => DfgVertex.isFunctionCall(graph.getVertex(a)))) {
+			for(const assignment of Dataflow.sourcesOf(graph, id, EdgeType.Returns).filter(a => DfgVertex.isFunctionCall(graph.getVertex(a)))) {
 				active.add(id);
 				for(const fn of fns) {
 					graph.addEdge(assignment, fn, EdgeType.Calls);
@@ -202,7 +202,7 @@ function callActiveBindings(graph: DataflowGraph): void {
 	}
 	for(const id of graph.vertexIdsOfType(VertexType.Use)) {
 		const node = graph.idMap?.get(id);
-		if(RSymbol.is(node) && edgeTargets(graph, id, EdgeType.Reads).some(def => active.has(def))) {
+		if(RSymbol.is(node) && Dataflow.targetsOf(graph, id, EdgeType.Reads).some(def => active.has(def))) {
 			graph.updateToFunctionCall({ tag: VertexType.FunctionCall, id, name: node.content, args: [], environment: undefined, onlyBuiltin: false, cds: graph.getVertex(id)?.cds, origin: [BuiltInProcName.Function] });
 		}
 	}
@@ -211,9 +211,9 @@ function callActiveBindings(graph: DataflowGraph): void {
 /** A call of what a closure returned that we could not link (`h2 <- h()` with `h` returning `sys.function()`) may run anything. */
 function markCallsOfUnknownValues(graph: DataflowGraph, environment: REnvironmentInformation): void {
 	const fromClosure = (def: NodeId) => DfgVertex.isVariableDefinition(graph.getVertex(def))
-		&& edgeTargets(graph, def, EdgeType.DefinedBy).some(c => calledDefinitions(graph, c).length > 0);
+		&& Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(c => Dataflow.calleeIdsOf(graph, c).length > 0);
 	for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(!call.onlyBuiltin && edgeTargets(graph, id, EdgeType.Calls).length === 0 && edgeTargets(graph, id, EdgeType.Reads).some(fromClosure)) {
+		if(!call.onlyBuiltin && Dataflow.targetsOf(graph, id, EdgeType.Calls).length === 0 && Dataflow.targetsOf(graph, id, EdgeType.Reads).some(fromClosure)) {
 			handleUnknownSideEffect(graph, environment, id);
 		}
 	}
@@ -226,7 +226,7 @@ function readFramesThroughEnvironment(graph: DataflowGraph): void {
 		return;
 	}
 	const environmentCall = NodeId.toBuiltIn('environment');
-	const callsEnvironment = (id: NodeId) => hasEdgeOfType(graph, id, environmentCall, EdgeType.Calls);
+	const callsEnvironment = (id: NodeId) => Dataflow.hasEdge(graph, id, environmentCall, EdgeType.Calls);
 	/* `environment(fn)` hands out the frame `fn` was created in */
 	const ofClosures = new DefaultMap<NodeId, NodeId[]>(() => []);
 	for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -344,7 +344,7 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 			if(before.has(writer.id)) {
 				graph.addEdge(reader.id, writer.id, EdgeType.Reads);
 				/* whatever is linked to a diverting writer (`print` after `sink(file)`) writes to the resource as well */
-				for(const id of edgeSources(graph, writer.id, EdgeType.Reads)) {
+				for(const id of Dataflow.sourcesOf(graph, writer.id, EdgeType.Reads)) {
 					graph.addEdge(reader.id, id, EdgeType.Reads);
 				}
 			}
@@ -359,9 +359,9 @@ function linkReadsOfDivertedOutput(graph: DataflowGraph, environment: REnvironme
 	}
 	const printsOf = memoize((id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]));
 	const printingCall = (writer: NodeId) => DfgVertex.isFunctionCall(graph.getVertex(writer)) && printsOf(writer);
-	const writersOf = memoize((target: NodeId) => edgeSources(graph, target, EdgeType.Reads).filter(printingCall));
+	const writersOf = memoize((target: NodeId) => Dataflow.sourcesOf(graph, target, EdgeType.Reads).filter(printingCall));
 	for(const [id] of graph.verticesOfType(VertexType.Use)) {
-		for(const target of edgeTargets(graph, id, EdgeType.Reads)) {
+		for(const target of Dataflow.targetsOf(graph, id, EdgeType.Reads)) {
 			const diverting = graph.getVertex(target);
 			if(!DfgVertex.isFunctionCall(diverting) || diverting.args.length === 0) {
 				continue;

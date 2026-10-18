@@ -66,8 +66,7 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 		return undefined;
 	} else if(graph === undefined) {
 		const named = RExpressionList.is(node) ? RExpressionList.groupStart(node)?.content
-			: RFunctionCall.isNamed(node) ? node.functionName.content
-				: (RBinaryOp.is(node) || RUnaryOp.is(node)) && onlyLiterals(node) ? Identifier.make(node.operator) : undefined;
+			: RFunctionCall.calledName(node) ?? ((RBinaryOp.is(node) || RUnaryOp.is(node)) && onlyLiterals(node) ? Identifier.make(node.operator) : undefined);
 		return named !== undefined && environment !== undefined && foldsThroughBuiltIn(named, ctx)
 			&& Resolve.isBuiltIn(named, environment, ReferenceType.Function) ? named : undefined;
 	}

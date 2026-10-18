@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
@@ -12,13 +13,12 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import { mergeSourced, sourceRequest } from './built-in-source';
 import { EdgeType } from '../../../../../graph/edge';
-import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
+import type { InGraphIdentifierDefinition, Identifier } from '../../../../../environments/identifier';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -29,6 +29,8 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import { evaluatesCapturedCode } from './built-in-ambient-state';
 
 const SymbolConstructors: ReadonlySet<string> = new Set(['as.name', 'as.symbol']);
+const PasteFunctions: ReadonlySet<string> = new Set(['paste', 'paste0']);
+const StringParsers: ReadonlySet<string> = new Set(['str2lang', 'str2expression']);
 const SyntacticName = /^[.a-zA-Z][.a-zA-Z0-9_]*$/;
 
 /** the formals of `eval(expr, envir, enclos)` */
@@ -125,8 +127,7 @@ function namesParentFrame<OtherInfo>(
 	envir: RNode<OtherInfo & ParentInformation> | undefined,
 	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): boolean {
-	return RFunctionCall.isNamed(envir)
-		&& Identifier.getName(envir.functionName.content) === 'parent.frame'
+	return RFunctionCall.isNamed(envir, 'parent.frame')
 		&& Resolve.isBuiltIn(envir.functionName.content, data.environment, ReferenceType.Function);
 }
 
@@ -165,21 +166,21 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		return getAsString(val, data);
 	} else {
 		if(
-			RFunctionCall.isNamed(val) && Identifier.getName(val.functionName.content) === 'parse'
+			RFunctionCall.isNamed(val, 'parse')
 		) {
-			const arg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'text');
-			const nArg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'n');
-			if(nArg !== undefined || arg === undefined || RArgument.isEmpty(arg)) {
+			const arg = RArgument.findNamed(val.arguments, 'text');
+			const nArg = RArgument.findNamed(val.arguments, 'n');
+			if(nArg !== undefined || arg === undefined) {
 				return undefined;
 			}
-			if(RFunctionCall.isNamed(arg.value) && ['paste', 'paste0'].includes(Identifier.getName(arg.value.functionName.content))) {
-				return handlePaste(arg.value.arguments, data, Identifier.getName(arg.value.functionName.content) === 'paste' ? [' '] : ['']);
+			if(RFunctionCall.isNamed(arg.value, PasteFunctions)) {
+				return handlePaste(arg.value.arguments, data, RFunctionCall.isNamed(arg.value, 'paste') ? [' '] : ['']);
 			}
 			return getAsString(arg.value, data);
-		} else if(RFunctionCall.isNamed(val) && ['str2lang', 'str2expression'].includes(Identifier.getName(val.functionName.content))) {
+		} else if(RFunctionCall.isNamed(val, StringParsers)) {
 			/* both parse their string, like `parse(text = s)` */
 			return getAsString(RFunctionCall.soleArgument(val.arguments)?.value, data);
-		} else if(RFunctionCall.isNamed(val) && SymbolConstructors.has(Identifier.getName(val.functionName.content))
+		} else if(RFunctionCall.isNamed(val, SymbolConstructors)
 			&& Resolve.isBuiltIn(val.functionName.content, data.environment, ReferenceType.Function)) {
 			const arg = RFunctionCall.soleArgument(val.arguments);
 			const named = arg?.value ? resolveConstantString(arg.value, data) : undefined;
@@ -210,9 +211,9 @@ function getAsString<OtherInfo>(val: RNode<ParentInformation> | undefined, data:
 }
 
 function handlePaste<OtherInfo>(args: readonly PotentiallyEmptyRArgument<ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sepDefault: string[]): string[] | undefined {
-	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
+	const sepArg = RArgument.findNamed(args, 'sep');
 	if(sepArg) {
-		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(sepArg.value, data) : undefined;
+		const res = sepArg.value ? getAsString(sepArg.value, data) : undefined;
 		if(!res) {
 			// sep not resolvable clearly / unknown
 			return undefined;

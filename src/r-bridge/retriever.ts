@@ -1,5 +1,4 @@
 import type { RShell } from './shell';
-import { startAndEndsWith } from '../util/text/strings';
 import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
 import { RShellExecutor } from './shell-executor';
@@ -136,17 +135,6 @@ export async function retrieveNormalizedAstFromRCode(request: RParseRequest, she
 	return normalize({
 		files: [{ parsed: data, filePath: request.request === 'file' ? request.content : undefined }]
 	}, deterministicCountingIdGenerator(0));
-}
-
-/**
- * If the string has (R-)quotes around it, they will be removed; otherwise the string is returned unchanged.
- */
-export function removeRQuotes(str: string): string {
-	if(str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
-		return str.slice(1, -1);
-	} else {
-		return str;
-	}
 }
 
 /**

@@ -1,9 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { summarizeIdsIfTooLong } from '../../query-print';
+import { summarizeIdsIfTooLong, queryHeader } from '../../query-print';
 import type { FlowrSearch } from '../../../search/flowr-search-builder';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeSearch } from './search-query-executor';
@@ -24,7 +22,7 @@ export const SearchQueryDefinition = {
 	executor:        executeSearch,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'search'>['search'];
-		result.push(`Query: ${bold('search', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('search', formatter, out['.meta'].timing));
 		for(const [, { ids, search }] of out.results.entries()) {
 			result.push(`   ╰ [query](${Mermaid.codeToUrl(flowrSearchToMermaid(search))}): {${summarizeIdsIfTooLong(formatter, ids)}}`);
 		}

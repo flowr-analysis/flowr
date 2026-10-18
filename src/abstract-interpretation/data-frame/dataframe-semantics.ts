@@ -1,6 +1,6 @@
 import { VariableResolve } from '../../config';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { Identifier, type IdentifierString } from '../../dataflow/environments/identifier';
+import type { IdentifierString } from '../../dataflow/environments/identifier';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
@@ -1980,7 +1980,7 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 
 	for(const arg of args) {
 		if(arg !== undefined && RArgument.isNotEmpty(arg)) {
-			if(RFunctionCall.isNamed(arg.value) && Identifier.getName(arg.value.functionName.content) === 'c') {
+			if(RFunctionCall.isNamed(arg.value, 'c')) {
 				const result = getSelectedColumns(arg.value.arguments, info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);

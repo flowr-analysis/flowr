@@ -2,6 +2,7 @@
  * The playground: a CodeMirror editor on the left, and on the right what flowR makes of it, all in
  * the browser. The wasm rides along inside this bundle, so the page fetches nothing.
  */
+import { SourceRange } from '../../src/util/range';
 import { EditorView, basicSetup } from 'codemirror';
 import { Decoration, hoverTooltip, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { Compartment, EditorState, StateEffect, StateField, type StateEffectType, type Transaction } from '@codemirror/state';
@@ -25,6 +26,7 @@ import { DefaultDependencyCategoryNames } from '../../src/queries/catalog/depend
 import { SliceDirection } from '../../src/util/slice-direction';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
+import { escapeRegex, compareByCodeUnit  } from '../../src/util/text/strings';
 import { computeCompletions, replProcessAnswer } from '../../src/cli/repl/core';
 import { getCommand } from '../../src/cli/repl/commands/repl-commands';
 import { splitAtEscapeSensitive } from '../../src/util/text/args';
@@ -43,7 +45,7 @@ import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
 import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
 import { languageOf, notebookAsScript, notebookCells } from './notebook';
-import { arraySum } from '../../src/util/collections/arrays';
+import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -583,7 +585,7 @@ function showPointed(name: string, said: string | undefined, known?: ReturnType<
 }
 
 /** the names flowR knows without any package, offered alongside whatever the script defines */
-const builtInNames = [...new Set(DefaultBuiltinConfig.flatMap(d => d.names.map(id => String(Identifier.getName(id)))))]
+const builtInNames = uniqueArray(DefaultBuiltinConfig.flatMap(d => d.names.map(id => String(Identifier.getName(id)))))
 	.filter(n => /^[A-Za-z.][\w._]*$/.test(n));
 
 /** the exports of every package this page carries, `package -> names`, written in by the build */
@@ -600,7 +602,7 @@ const bakedPackages: Readonly<Record<string, readonly string[]>> = (() => {
 const exportsFrom = (entry: readonly string[] = []): readonly string[] => entry.slice(2);
 
 /** the packages whose names a `library()` call may ask for */
-const packageNames = Object.keys(bakedPackages).sort((a, b) => a.localeCompare(b));
+const packageNames = Object.keys(bakedPackages).sort(compareByCodeUnit);
 
 /** a package's exports as a set, so telling `print.foo` from `print` costs nothing per keystroke */
 const exportSets = new Map<string, ReadonlySet<string>>();
@@ -684,7 +686,7 @@ function complete(context: CompletionContext): CompletionResult | null {
 	/* only what R would find at this position: what the script binds, what it attached, and the rest of
 	   the search path. A package name is not bound to anything, so it belongs in `library()` alone */
 	const needle = word.text;
-	const defined = [...new Set([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]))];
+	const defined = uniqueArray([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
 	return {
 		from:    word.from,
 		options: ranked([
@@ -1094,7 +1096,7 @@ function putFile(name: string, text: string): void {
 }
 
 function scoped(criterion: string): string {
-	return files.length < 2 ? criterion : `${criterion}(^${files[active].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$)`;
+	return files.length < 2 ? criterion : `${criterion}(^${escapeRegex(files[active].name)}$)`;
 }
 
 marks.splice(0, marks.length, ...marks.map(mark => /^\d/.test(mark) ? scoped(mark) as Mark : mark));
@@ -1396,7 +1398,7 @@ pane.addEventListener('drop', event => {
 async function packagesOf(code?: string): Promise<readonly string[]> {
 	const answer = await (await analyzer(code)).query([{ type: 'dependencies' }] as never) as unknown as { dependencies?: { library?: readonly Dependency[] } };
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
-	return [...new Set(found)].filter(p => !BaseRPackages.has(p));
+	return uniqueArray(found).filter(p => !BaseRPackages.has(p));
 }
 async function toRun(): Promise<RunInput> {
 	const name = files[active].name;
@@ -1902,7 +1904,7 @@ async function describe(criterion: string): Promise<Known> {
 			: undefined;
 		/* a value is the most useful answer, but every name has an origin, so that is the fallback */
 		const origins = answers.origin?.results?.[criterion] ?? [];
-		const from = [...new Set((await originLines(origins)).map(o => o.file === undefined ? String(o.line) : `${o.file}:${o.line}`))];
+		const from = uniqueArray((await originLines(origins)).map(o => o.file === undefined ? String(o.line) : `${o.file}:${o.line}`));
 		/* `filter` is dplyr's once dplyr is attached, and flowR says so: `built-in:dplyr:filter` */
 		const attached = origins.map(o => /^built-in:([^:]+):/.exec(o.proc ?? '')?.[1]).find(p => p !== undefined);
 		answer = {
@@ -1923,7 +1925,7 @@ async function originLines(origins: { id: string | number }[] | undefined): Prom
 	const map = (await (await analyzer()).normalize()).idMap;
 	return origins.flatMap(o => {
 		const node = map.get(o.id as never);
-		const line = node?.location?.[0];
+		const line = SourceRange.getStartLine(node?.location);
 		return line === undefined ? [] : [{ line, file: elsewhere(node) }];
 	});
 }
@@ -2019,9 +2021,9 @@ async function analyze(): Promise<number> {
 
 	const sliced = Object.values(answers['static-slice']?.results ?? {})[0];
 	const code = sliced?.reconstruct?.code;
-	const keptLines = [...new Set([...(sliced?.slice?.result ?? [])]
-		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => node?.location?.[0])
-		.filter((l): l is number => typeof l === 'number'))];
+	const keptLines = uniqueArray([...(sliced?.slice?.result ?? [])]
+		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => SourceRange.getStartLine(node?.location))
+		.filter((l): l is number => typeof l === 'number'));
 	lastKept = keptLines;
 	editor.dispatch({ effects: setSlice.of(dimOutside && keptLines.length > 0 ? keptLines : undefined) });
 
@@ -2252,7 +2254,7 @@ async function analyze(): Promise<number> {
 	const acts = el('span', 'acts');
 	if(fixable.length > 0) {
 		acts.append(fixButton(fixable, `fix ${fixable.length}`,
-			[...new Set(fixable.map(fix => fix.description))].join('\n')));
+			uniqueArray(fixable.map(fix => fix.description)).join('\n')));
 	}
 	acts.append(suggestRule());
 	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints, undefined, acts);

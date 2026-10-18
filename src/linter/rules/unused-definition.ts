@@ -1,10 +1,10 @@
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import { edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
@@ -17,7 +17,6 @@ import { FileRole } from '../../project/context/flowr-file';
 import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import { removeRQuotes } from '../../r-bridge/retriever';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -30,6 +29,7 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -111,7 +111,7 @@ const GenericDispatchers = new Set<string>(['UseMethod', 'standardGeneric']);
 /** Whether a function body is a single call to a generic dispatcher. */
 function isGenericDispatcherOnlyBody(node: RNode<ParentInformation>): boolean {
 	const isDispatcherCall = (n: RNode<ParentInformation> | undefined) =>
-		RFunctionCall.isNamed(n) && GenericDispatchers.has(Identifier.getName(n.functionName.content));
+		RFunctionCall.isNamed(n, GenericDispatchers);
 	return isDispatcherCall(node) || (RExpressionList.is(node) && node.children.length === 1 && isDispatcherCall(node.children[0]));
 }
 
@@ -143,8 +143,7 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 		return false;
 	}
 	/* non-syntactic definition names (e.g. S3 methods like `"[.irts"`) carry their R quotes or backticks in the lexeme */
-	const unquoted = removeRQuotes(lexeme);
-	const name = unquoted.length > 1 && unquoted.startsWith('`') && unquoted.endsWith('`') ? unquoted.slice(1, -1) : unquoted;
+	const name = RString.unquote(lexeme);
 	/* the dots are a special parameter, and package lifecycle hooks are called by R's package machinery */
 	if(name === DotsParameter || PackageHookFunctions.has(name)) {
 		return true;
@@ -253,7 +252,7 @@ function hasImportantArgs(definedBys: readonly NodeId[], df: Pick<DataflowInform
 		|| dfg.edgesFrom(d).entries().some(([target, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target)));
 }
 
-function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
+function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
 	const dfg = df.graph;
 	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
 	// otherwise we can automatically remove the full definition!
@@ -261,7 +260,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 		// this is an access or a for variable, we can not remove it currently
 		return undefined;
 	}
-	const definedBys = edgeTargets(dfg, variable.info.id, EdgeType.DefinedBy);
+	const definedBys = Dataflow.targetsOf(dfg, variable.info.id, EdgeType.DefinedBy);
 	if(hasImportantArgs(definedBys, df, variable.info.parent)) {
 		return undefined;
 	}
@@ -269,7 +268,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	const totalRangeToRemove = SourceLocation.merge([
 		...definedBys.map(d => SourceLocation.fromNode(ast.idMap.get(d))),
 		SourceLocation.fromNode(assignment?.value),
-		variable.info.fullRange ?? variable.location
+		SourceLocation.fromNode(variable)
 	]);
 	if(totalRangeToRemove === undefined) {
 		/* a fix that names no place cannot be carried out, so none is offered */
@@ -280,7 +279,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	if(isStandaloneStatement(statement, ast)) {
 		return yieldsFunctionValue(statement, ast, dfg) ? undefined : [{ type: 'remove', loc: totalRangeToRemove, description }];
 	}
-	const replacement = assignment?.value.info.fullLexeme ?? assignment?.value.lexeme;
+	const replacement = RNode.lexeme(assignment?.value);
 	return replacement === undefined ? undefined : [{ type: 'replace', loc: totalRangeToRemove, replacement, description }];
 }
 
@@ -303,7 +302,7 @@ function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boole
 	let child = node;
 	for(const parent of RNode.iterateParents(node, idMap)) {
 		if((RParameter.is(parent) && parent.defaultValue?.info.id === child.info.id)
-			|| (RFunctionCall.isNamed(parent) && Identifier.getName(parent.functionName.content) === 'delayedAssign')) {
+			|| (RFunctionCall.isNamed(parent, 'delayedAssign'))) {
 			return true;
 		}
 		child = parent;
@@ -362,7 +361,7 @@ export const UNUSED_DEFINITION = {
 					variableName: node.lexeme,
 					involvedId:   node.info.id,
 					loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-					quickFix:     buildQuickFix(node, dataflow, normalize)
+					quickFix:     quickFixForUnused(node, dataflow, normalize)
 				}] satisfies UnusedDefinitionResult[];
 			})),
 			'.meta': metadata

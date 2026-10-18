@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-13, 23:21:10 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2), do not edit directly._
 <h2 id="undefined-symbol">Undefined Symbol&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
@@ -37,7 +37,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Undefined function `undefined_helper` at 1.1-20\
@@ -460,13 +460,13 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L91) for the test-case implementation.
 		
-<h4 id="Test_32_Case:_32__96__36__123_load_125__32_defines_32_the_32_data_32_set_96_">Test Case: `${load} defines the data set`</h4>
+<h4 id="Test_32_Case:_32__36__123_load_125__32_defines_32_the_32_data_32_set">Test Case: ${load} defines the data set</h4>
 
 Given the following input:
 
 ```r
-`${load}
-print(rat)`
+${load}
+print(rat)
 ```
 
 We expect the linter to report the following:
@@ -475,13 +475,13 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L98) for the test-case implementation.
 		
-<h4 id="Test_32_Case:_32__96__36__123_load_125__32_defines_32_no_32_other_32_data_32_set_96_">Test Case: `${load} defines no other data set`</h4>
+<h4 id="Test_32_Case:_32__36__123_load_125__32_defines_32_no_32_other_32_data_32_set">Test Case: ${load} defines no other data set</h4>
 
 Given the following input:
 
 ```r
-`${load}
-print(mouse)`
+${load}
+print(mouse)
 ```
 
 We expect the linter to report the following:

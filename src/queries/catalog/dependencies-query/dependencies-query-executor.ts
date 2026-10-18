@@ -20,6 +20,10 @@ import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
+import { uniqueArray } from '../../../util/collections/arrays';
+import { attachesPackage } from './function-info/library-functions';
+import { describePlots } from './plot-description';
+import { assignmentOf, inputVariablesOf } from './data-flow';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { AttachedBasePackageSet, attachedBasePackages } from '../../../util/r-base-packages';
 
@@ -69,8 +73,11 @@ export async function executeDependenciesQuery({
 	const g = getAllCategories(queries, ctx);
 	const enabled = query.enabledCategories;
 
+	/* the packages the code attaches decide which package a bare call further down belongs to */
+	const library = getResults(g, { dataflow, config, normalize }, queryResults, 'library', functions.get('library') ?? [], data);
+	const attaching = library.filter(attachesPackage);
 	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
-		const results = getResults(g, { dataflow, config, normalize }, queryResults, c, f, data);
+		const results = c === 'library' ? library : getResults(g, { dataflow, config, normalize }, queryResults, c, f, data, attaching);
 		/* only default categories allow additional analyses */
 		if(enabled === undefined || enabled.includes(c)) {
 			await g[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
@@ -81,6 +88,8 @@ export async function executeDependenciesQuery({
 	/* also without a device: a plot on screen has no file, but still has the addons drawn onto it */
 	if(results.visualize?.length) {
 		linkPlotsToDevices(results.write ?? [], results.visualize, dataflow, normalize);
+		describePlots(results.write ?? [], results.visualize, dataflow, normalize, config, ctx);
+		inheritPlotInputs(results.visualize);
 	}
 
 	if(query.assumedPackages && (enabled === undefined || enabled.includes('library'))) {
@@ -131,6 +140,49 @@ function makeCallContextQuery(this: void, [kind, functions]: [DependencyCategory
 	}));
 }
 
+/** An addon draws the data of the plot it builds (`geom_point()` that of `ggplot(df)`), unless it is given its own. */
+function inheritPlotInputs(plots: DependencyInfo[]): void {
+	const inputsOf = new Map(plots.flatMap(p => p.nodeId === undefined || p.linkedIds?.length ? [] : [[p.nodeId, p.inputVariables ?? []] as const]));
+	for(const [at, plot] of plots.entries()) {
+		const inherited = plot.inputVariables === undefined ? uniqueArray(plot.linkedIds?.flatMap(root => inputsOf.get(root) ?? []) ?? []) : [];
+		if(inherited.length > 0) {
+			plots[at] = { ...plot, inputVariables: inherited };
+		}
+	}
+}
+
+/** the categories whose calls consume data, and the ones that produce it, see {@link DependencyInfo#inputVariables} and {@link DependencyInfo#assignedTo} */
+const ConsumingCategories: ReadonlySet<DependencyCategoryName> = new Set(['write', 'visualize', 'transform']);
+const ProducingCategories: ReadonlySet<DependencyCategoryName> = new Set(['read', 'visualize', 'transform']);
+
+function dataFlowOf(kind: DependencyCategoryName, call: DataflowGraphVertexFunctionCall, dataflow: DataflowInformation, ast: NormalizedAst): Pick<DependencyInfo, 'inputVariables' | 'assignedTo'> {
+	const input = ConsumingCategories.has(kind) ? inputVariablesOf(dataflow, ast, call) : [];
+	return {
+		inputVariables: input.length > 0 ? input : undefined,
+		assignedTo:     ProducingCategories.has(kind) ? assignmentOf(dataflow, ast, call.id)?.name : undefined
+	};
+}
+
+/**
+ * The package a call belongs to: the one written, else the one it resolves to. A bare call that resolves to nothing is
+ * the base package exporting it (`stats` for `filter`), unless the project loads a package the category declares
+ * the name for, which then masks the base one as in R.
+ */
+function namespaceOf(id: NodeId, functionName: Identifier, dfg: DataflowGraph, candidates: readonly FunctionInfo[], isLoaded: (pkg: string) => boolean): string | undefined {
+	const written = Identifier.getNamespace(functionName);
+	if(written !== undefined || candidates.some(c => c.package !== undefined && isLoaded(c.package))) {
+		return written;
+	}
+	const qualified = Dataflow.qualify(id, dfg, true);
+	return qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+}
+
+/** the packages attached by the loader calls the call `id` resolves its definition through */
+function attachingPackagesOf(id: NodeId, dfg: DataflowGraph, attaching: readonly DependencyInfo[]): ReadonlySet<string> {
+	const targets = new Set(Dataflow.callTargetsOf(id, dfg));
+	return new Set(attaching.flatMap(a => a.nodeId !== undefined && a.value !== undefined && targets.has(a.nodeId) ? [a.value] : []));
+}
+
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
@@ -149,7 +201,7 @@ function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: st
 	return candidates.find(c => c.package !== undefined && isLoaded(c.package)) ?? candidates[0];
 }
 
-function getResults(categories: Record<DependencyCategoryName, DependencyCategorySettings>, { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
+function getResults(categories: Record<DependencyCategoryName, DependencyCategorySettings>, { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData, attaching: readonly DependencyInfo[] = []): DependencyInfo[] {
 	const defaultValue = categories[kind].defaultValue;
 	const vars = config.solver.variables;
 	const functionMap = Map.groupBy(functions, f => f.name);
@@ -159,13 +211,17 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 	const d = ictx.deps;
 	/* only asked when a name is declared by more than one package, keeping the resolution it may trigger off the common path */
 	let loadedPackages: ReadonlySet<string> | undefined;
-	const isLoadedPackage = (pkg: string) => (loadedPackages ??= new Set(d.getDependencies().map(p => p.name))).has(pkg);
+	const isLoadedPackage = (pkg: string) => (loadedPackages ??= new Set([...d.getDependencies().map(p => p.name), ...config.solver.assumeAttachedPackages ?? []])).has(pkg);
 	const dfg = dataflow.graph;
 	for(const [name, results] of kindEntries) {
 		for(const { id, linkedIds } of results) {
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
 			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
-			const info = pickFunctionInfo(functionMap.get(name) as readonly FunctionInfo[], Identifier.getNamespace(functionName), isLoadedPackage);
+			const candidates = functionMap.get(name) as readonly FunctionInfo[];
+			/* a package whose attached definition the call resolves to is loaded there, as R resolves the bare name to it */
+			const attachedBy = attachingPackagesOf(id, dfg, attaching);
+			const isLoaded = (pkg: string) => attachedBy.has(pkg) || isLoadedPackage(pkg);
+			const info = pickFunctionInfo(candidates, namespaceOf(id, functionName, dfg, candidates, isLoaded), isLoaded);
 			if(info === undefined) {
 				continue;
 			}
@@ -199,6 +255,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				guard(margs, 'Need additional argument argSet when checking for arg-set');
 				return hasArg(margs.argName, margs.argIdx);
 			};
+			const flow = dataFlowOf(kind, vertex, dataflow, normalize);
 			const foundValues = linkedArgs ?? args;
 			if(!foundValues) {
 				if(info.ignoreIf !== 'arg-missing' && !ignoreOnArgVal() && !ignoreOnArgSet()) {
@@ -207,6 +264,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 						functionName,
 						lexemeOfArgument: undefined,
 						linkedIds:        linked?.length ? linked : undefined,
+						...flow,
 						value:            info.defaultValue ?? defaultValue
 					} as DependencyInfo));
 				}
@@ -231,7 +289,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 						resolvedValue = info.stringReplacements[value];
 					}
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
-					const lexeme = getLexeme(value, arg);
+					const lexeme = unresolvedArgumentCode(value, arg);
 					finalResults.push(compactRecord({
 						nodeId:             id,
 						functionName,
@@ -239,6 +297,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 						argumentId:         lexeme === undefined ? undefined : arg,
 						lexemeOfArgument:   lexeme,
 						linkedIds:          linked?.length ? linked : undefined,
+						...flow,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
 						derivedRange:       dep?.effectiveRange,
@@ -251,7 +310,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 
 	return finalResults;
 
-	function getLexeme(argument: string | undefined, id: NodeId | undefined) {
+	function unresolvedArgumentCode(argument: string | undefined, id: NodeId | undefined) {
 		if((argument && argument !== Unknown && argument !== Constant) || !id) {
 			return undefined;
 		}

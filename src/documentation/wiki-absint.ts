@@ -1,3 +1,4 @@
+import { SourceRange } from '../util/range';
 import { AbstractInterpreter, type AbsintAnalysis } from '../abstract-interpretation/absint-inference';
 import type { AbstractSemantics } from '../abstract-interpretation/abstract-semantics';
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
@@ -87,7 +88,7 @@ async function inferIntervals(): Promise<string> {
 function nodeIdToSlicingCriterion(id: NodeId, idMap: AstIdMap): string {
 	const node = idMap.get(id);
 
-	return `${node?.location?.[0]}@${node?.lexeme}`;
+	return `${SourceRange.getStartLine(node?.location)}@${node?.lexeme}`;
 }
 
 function multiValueExample() {

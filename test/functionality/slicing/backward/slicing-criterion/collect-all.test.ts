@@ -17,11 +17,11 @@ function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: 
 		const decorated = decorateAst(ast.ast, {});
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
 			.flatMap(criteria => SlicingCriterion.decodeAll(criteria, decorated.idMap))
-			.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme }));
+			.map(m => ({ id: NodeId.normalize(m.id), name: NodeId.recoverName(NodeId.normalize(m.id), decorated.idMap) }));
 		const expectedMapped = expected
 			.flatMap(criteria => SlicingCriterion.decodeAll(criteria, decorated.idMap));
 
-		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`);
+		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: NodeId.normalize(m.id), name: NodeId.recoverName(NodeId.normalize(m.id), decorated.idMap) })), `mapped: ${JSON.stringify(expectedMapped)}`);
 	});
 }
 

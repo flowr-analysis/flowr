@@ -7,7 +7,6 @@ import type {
 import { VertexType, DfgVertex } from './vertex';
 import type { REnvironmentInformation } from '../environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getAllFunctionCallTargets } from '../internal/linker';
 import { DfEdge, EdgeType } from './edge';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DefaultMap } from '../../util/collections/defaultmap';
@@ -17,6 +16,7 @@ import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Identifier } from '../environments/identifier';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Dataflow } from './df-helper';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -97,7 +97,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 
 	let addedTarget = false;
 	let addedBiTarget = false;
-	for(const tar of getAllFunctionCallTargets(vid, graph, vtx.environment)) {
+	for(const tar of Dataflow.callTargetsOf(vid, graph, vtx.environment)) {
 		const targetVtx = graph.getVertex(tar);
 		if(NodeId.isBuiltIn(tar)) {
 			result.addEdge(vid, tar, EdgeType.Calls);
@@ -197,11 +197,7 @@ function followCalls(graph: CallGraph, seeds: Iterable<NodeId>, reached: Set<Nod
 			continue;
 		}
 		reached.add(current);
-		for(const [target, edge] of graph.edgesFrom(current)) {
-			if(DfEdge.includesType(edge, EdgeType.Calls)) {
-				toVisit.push(target);
-			}
-		}
+		toVisit.push(...Dataflow.targetsOf(graph, current, EdgeType.Calls));
 	}
 }
 
@@ -238,8 +234,8 @@ function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] 
 	}
 	const seeds: NodeId[] = [];
 	let generics: Set<string> | undefined;
-	for(const [id, vertex] of graph.vertices(true)) {
-		if(!DfgVertex.isFunctionDefinition(vertex) || reached.has(id)) {
+	for(const [id] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		if(reached.has(id)) {
 			continue;
 		}
 		const node = idMap.get(id);
@@ -272,29 +268,48 @@ export const CallGraph = {
 	/** Extracts the sub call graph from the given call graph, starting from the given entry points. */
 	computeSubCallGraph(this: void, graph: CallGraph, entryPoints: Set<NodeId>): CallGraph {
 		const result: CallGraph = new DataflowGraph(graph.idMap);
-		const toVisit: NodeId[] = Array.from(entryPoints);
-		const visited: Set<NodeId> = new Set();
-
-		while(toVisit.length > 0) {
-			const currentId = toVisit.pop() as NodeId;
-			if(visited.has(currentId)) {
+		const reached = new Set<NodeId>();
+		followCalls(graph, entryPoints, reached);
+		for(const id of reached) {
+			const vtx = graph.getVertex(id);
+			if(!vtx) {
 				continue;
 			}
-			visited.add(currentId);
-			const currentVtx = graph.getVertex(currentId);
-			if(!currentVtx) {
-				continue;
-			}
-			result.addVertex(currentVtx, undefined as unknown as REnvironmentInformation, true);
-			for(const [tar, e] of graph.edgesFrom(currentId)) {
-				if(DfEdge.includesType(e, EdgeType.Calls)) {
-					result.addEdge(currentId, tar, EdgeType.Calls);
-					toVisit.push(tar);
-				}
+			result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
+			for(const tar of Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
+				result.addEdge(id, tar, EdgeType.Calls);
 			}
 		}
 
 		return result;
+	},
+
+	/**
+	 * Whether the function definition with the given id (transitively) calls itself; `false` for ids that are no function definition.
+	 * @param id    - The id of the function definition
+	 * @param graph - The call graph to follow
+	 */
+	isRecursive(this: void, id: NodeId, graph: CallGraph): boolean {
+		if(!DfgVertex.isFunctionDefinition(graph.getVertex(id))) {
+			return false;
+		}
+		const seen = new Set<NodeId>();
+		const toVisit: NodeId[] = [id];
+		let gotStart = 0;
+		while(toVisit.length > 0) {
+			const currentId = toVisit.pop() as NodeId;
+			if(currentId === id && gotStart++ > 0) {
+				return true;
+			}
+			if(seen.has(currentId)) {
+				continue;
+			}
+			seen.add(currentId);
+			for(const nextId of graph.edgesFrom(currentId).keys()) {
+				toVisit.push(nextId);
+			}
+		}
+		return false;
 	},
 
 	/** The calls the program makes on its own: those outside of any function definition. */
@@ -304,8 +319,8 @@ export const CallGraph = {
 		if(idMap === undefined) {
 			return entries;
 		}
-		for(const [id, vertex] of graph.vertices(true)) {
-			const node = DfgVertex.isFunctionCall(vertex) ? idMap.get(id) : undefined;
+		for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+			const node = idMap.get(id);
 			if(node !== undefined && RFunctionDefinition.wrappingFunctionDefinition(node, idMap) === undefined) {
 				entries.add(id);
 			}

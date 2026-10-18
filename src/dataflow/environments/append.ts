@@ -18,6 +18,7 @@ export function uniqueMergeValuesInDefinitions(old: readonly IdentifierDefinitio
 
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
+ * @useInstead {@link REnvironment.append}
  */
 export function appendEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation;
 export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation;

@@ -2,7 +2,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { LinkToNestedCall } from './call-context-query-format';
 import type { PromotedLinkTo } from './call-context-query-executor';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { DfgVertex } from '../../../dataflow/graph/vertex';
+import { VertexType } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { CallGraph } from '../../../dataflow/graph/call-graph';
 
@@ -27,10 +27,7 @@ export async function identifyLinkToNestedRelation(
 	const found: NodeId[] = [];
 	const cg = await analyzer.callGraph();
 	const subCg = CallGraph.computeSubCallGraph(cg, new Set([from]));
-	for(const [,t] of subCg.vertices(true)) {
-		if(!DfgVertex.isFunctionCall(t)) {
-			continue;
-		}
+	for(const [, t] of subCg.verticesOfType(VertexType.FunctionCall)) {
 		if(test(Identifier.toString(t.name))) {
 			found.push(t.id);
 		}

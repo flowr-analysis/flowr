@@ -2,6 +2,7 @@ import { DataflowGraph } from '../../dataflow/graph/graph';
 import { type DataflowGraphVertexArgument, VertexType } from '../../dataflow/graph/vertex';
 import { deepMergeObject, type MergeableRecord } from '../objects';
 import type { DeepPartial } from 'ts-essentials';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../assert';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
@@ -36,7 +37,7 @@ function makeFilter(options: ReduceVertexOptions, idMap?: AstIdMap): <T extends 
 		if(!options.tags.includes(arg.tag)) {
 			return undefined;
 		}
-		const lexeme = idMap?.get(arg.id)?.lexeme;
+		const lexeme = NodeId.recoverName(arg.id, idMap);
 		if(lexeme && (nameRegex.test(lexeme) === options.blacklistWithName)) {
 			return undefined;
 		}

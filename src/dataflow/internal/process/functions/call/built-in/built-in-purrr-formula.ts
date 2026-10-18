@@ -6,7 +6,6 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getAllFunctionCallTargets } from '../../../../linker';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -16,7 +15,6 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EdgeType } from '../../../../../graph/edge';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { FunctionArgument } from '../../../../../graph/graph';
@@ -114,7 +112,7 @@ export function processPurrrFormula<OtherInfo>(
 		return information;
 	}
 	const formulaArg = RArgument.getWithId(args, formulaArgId);
-	const formulaNode = formulaArg ? unpackNonameArg(formulaArg) : undefined;
+	const formulaNode = formulaArg ? RArgument.unnamedValueOf(formulaArg) : undefined;
 	if(!formulaNode) {
 		return information;
 	}
@@ -154,7 +152,7 @@ export function processPurrrFormula<OtherInfo>(
 				if(DfgVertex.isFunctionCall(vtx)) {
 					information.graph.addEdge(rootId, vtx.id, EdgeType.Calls);
 
-					const targets = getAllFunctionCallTargets(vtx.id, information.graph, vtx.environment);
+					const targets = Dataflow.callTargetsOf(vtx.id, information.graph, vtx.environment);
 					for(const t of targets) {
 						information.graph.addEdge(rootId, t, EdgeType.Calls);
 						const linked = data.completeAst.idMap.get(t) as RFunctionDefinition<ParentInformation> | undefined;
@@ -171,7 +169,7 @@ export function processPurrrFormula<OtherInfo>(
 							}
 						}
 					}
-					return !vtx.origin.includes(BuiltInProcName.List);
+					return !DfgVertex.hasOrigin(vtx, BuiltInProcName.List);
 				} else if(DfgVertex.isUse(vtx)) {
 					const node = data.completeAst.idMap.get(vtx.id);
 					if(RSymbol.is(node)) {
@@ -200,7 +198,7 @@ export function processPurrrFormula<OtherInfo>(
 					return false;
 				}
 				const arg = RArgument.getWithId(args, pid);
-				const producedNode = arg ? unpackNonameArg(arg) : undefined;
+				const producedNode = arg ? RArgument.unnamedValueOf(arg) : undefined;
 				if(!producedNode) {
 					return false;
 				}
@@ -219,7 +217,7 @@ export function processPurrrFormula<OtherInfo>(
 		const returnArgId = argMaps.get(config.returnArg)?.[0];
 		if(returnArgId) {
 			const returnArg = RArgument.getWithId(args, returnArgId);
-			const producedNode = returnArg ? unpackNonameArg(returnArg) : undefined;
+			const producedNode = returnArg ? RArgument.unnamedValueOf(returnArg) : undefined;
 			if(producedNode) {
 				information.graph.addEdge(rootId, producedNode.info.id, EdgeType.Returns);
 			}

@@ -39,6 +39,8 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> {
 	readonly reverseOrder?:         boolean
 	/** which arguments are {@link NseKind.Reevaluated|reevaluated}, like a loop body */
 	readonly markAsNSE?:            readonly number[]
+	/** see {@link ProcessAllArgumentInput#keepGraphs}, needed to mark what lies within an argument afterward */
+	readonly keepArgumentGraphs?:   boolean
 	/** allows passing a data processor in-between each argument */
 	readonly patchData?:            (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** Does the call have a side effect that we do not know a lot about which may have further consequences? */
@@ -105,18 +107,23 @@ export interface NseMarkOptions {
 	readonly kind?:      NseKind
 	/** ids an unquote escape splices back in, see {@link FunctionSemantics.call.nse.unquoted} */
 	readonly evaluated?: ReadonlySet<NodeId>
+	/** the position of the argument filling the first parameter, see {@link nseArgumentPositions} */
+	readonly first?:     number
 }
 
-/** The positions of the arguments `which` names among `count` arguments. */
-export function nseArgumentPositions(which: NseArguments | readonly number[] | undefined, count: number): readonly number[] {
+/**
+ * The positions of the arguments `which` names among `count` arguments, where `first` is the position of the
+ * argument filling the first parameter (`-1` if none does), as a named one may come later (`mutate(z = 1, .data = d)`).
+ */
+export function nseArgumentPositions(which: NseArguments | readonly number[] | undefined, count: number, first = 0): readonly number[] {
 	if(typeof which !== 'string') {
 		return which ?? [];
 	}
 	const all = Array.from({ length: count }, (_, i) => i);
 	if(which === NseArguments.First) {
-		return all.slice(0, 1);
+		return first >= 0 && first < count ? [first] : [];
 	}
-	return which === NseArguments.AllButFirst ? all.slice(1) : all;
+	return which === NseArguments.AllButFirst ? all.filter(i => i !== first) : all;
 }
 
 /**
@@ -129,9 +136,9 @@ export function markArgumentsAsNonStandardEvaluation(
 	rootId:             NodeId,
 	processedArguments: readonly (DataflowInformation | undefined)[],
 	which:              NseArguments | readonly number[] | undefined,
-	{ kind = NseKind.Quoted, evaluated }: NseMarkOptions = {}
+	{ kind = NseKind.Quoted, evaluated, first }: NseMarkOptions = {}
 ): void {
-	for(const i of nseArgumentPositions(which, processedArguments.length)) {
+	for(const i of nseArgumentPositions(which, processedArguments.length, first)) {
 		if(i < processedArguments.length) {
 			markArgument(graph, rootId, processedArguments[i], kind, evaluated);
 		} else {
@@ -168,7 +175,7 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom, keepArgumentGraphs }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
@@ -187,6 +194,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		data:             origin === 'default' ? ControlFlow.withinPromise(data, rootId) : data,
 		finalGraph,
 		functionRootId:   rootId,
+		keepGraphs:       keepArgumentGraphs,
 		patchData,
 		forced,
 		nonFunction,

@@ -1,7 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { isFunctionRecursive } from '../../../../src/dataflow/fn/recursive-function';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
@@ -26,7 +25,7 @@ describe('is-recursive-function', withTreeSitter(ts => {
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 					try {
-						assert.strictEqual(isFunctionRecursive(id, await analyzer.callGraph()), exp);
+						assert.strictEqual(CallGraph.isRecursive(id, await analyzer.callGraph()), exp);
 					} catch(e) {
 						console.error(`Error while testing criterion ${c} in code:\n${code}`);
 						console.log('CG', CallGraph.visualize.mermaid.url(await analyzer.callGraph()));

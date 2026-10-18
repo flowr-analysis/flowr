@@ -14,6 +14,7 @@ import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { assertUnreachable, guard } from '../util/assert';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { uniqueArray } from '../util/collections/arrays';
 
 /**
  * The type of a {@link CfgVertex} in the {@link ControlFlowGraph}.
@@ -1147,7 +1148,7 @@ export function extractCfg(dataflow: DataflowInformation): ControlFlowInformatio
 		graph,
 		/* a program without a single statement (only comments, say) has nothing to enter or leave */
 		entryPoints: graph.hasVertex(entry) ? [entry] : [],
-		exitPoints:  [...new Set(exitPoints)].filter(e => graph.hasVertex(e)),
+		exitPoints:  uniqueArray(exitPoints).filter(e => graph.hasVertex(e)),
 		returns,
 		breaks,
 		nexts

@@ -5,8 +5,8 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
-import { getAllFunctionCallTargets } from '../../../../../src/dataflow/internal/linker';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 
 assumeLoadedPackages('S7', 'ggplot2');
 
@@ -66,7 +66,7 @@ sample(42)
 			if(call === undefined) {
 				throw new Error(`${callName} call vertex not found`);
 			}
-			const targets = [...getAllFunctionCallTargets(call[0], g)];
+			const targets = [...Dataflow.callTargetsOf(call[0], g)];
 			const resolvesToFdef = targets.some(t => DfgVertex.isFunctionDefinition(g.getVertex(t) ?? { tag: undefined } as never));
 			expect(resolvesToFdef, `${callName}() resolves to a (synthetic) function definition`).toBe(true);
 		}

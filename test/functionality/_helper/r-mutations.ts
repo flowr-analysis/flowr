@@ -1,3 +1,4 @@
+import { escapeRegex } from '../../../src/util/text/strings';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -264,9 +265,6 @@ function renameOccurrences(code: string, places: readonly SourceRange[], to: str
 	return lines.join('\n');
 }
 
-function escapeRegex(text: string): string {
-	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 async function renameCriterionTo(target: MutationTarget, occurrencesOf: Occurrences, to: string): Promise<MutationTarget | undefined> {
 	const at = SlicingCriterion.nameAt(target.criterion);

@@ -3,17 +3,15 @@ import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThro
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { isNotUndefined } from '../../../../../../util/assert';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
+import type { MemoryView } from '../../../../../environments/frame-memory';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
-import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -32,8 +30,9 @@ import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { compactRecord } from '../../../../../../util/objects';
-import { callsIn, edgeTargets } from '../../../../../fn/frame-reflection';
 import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
+import { Dataflow } from '../../../../../graph/df-helper';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
@@ -49,7 +48,7 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 
 /** Whether reading the variable defined at `id` calls a function, as for an active binding. */
 function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
-	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && edgeTargets(graph, id, EdgeType.Calls).length > 0;
+	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && Dataflow.targetsOf(graph, id, EdgeType.Calls).length > 0;
 }
 
 /** @returns whether `read` sees a definition */
@@ -114,7 +113,7 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 		}
 		seen.add(fn.id);
 		yield { fn, direct, cds };
-		for(const [, call] of callsIn(fn, graph)) {
+		for(const [, call] of Dataflow.callsIn(fn, graph)) {
 			if(call.onlyBuiltin || call.name === undefined) {
 				continue;
 			}
@@ -224,6 +223,17 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 	return [{ functionCall: id, called, propagateExitPoints: [] }];
 }
 
+/** The bindings of every package layer `env` sees, which a callee's environment shares while nothing writes to them. */
+function packageLayersOf(env: REnvironmentInformation): Set<MemoryView> {
+	const layers = new Set<MemoryView>();
+	for(const current of REnvironment.frames(env.current)) {
+		if(current.t !== undefined) {
+			layers.add(current.memory);
+		}
+	}
+	return layers;
+}
+
 function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap) {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall)?.cds;
@@ -240,16 +250,22 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
 			if(environment.level > inputEnvironment.level) {
 				/* the callee's own frame dies with the call */
-				environment = popLocalEnvironment(environment);
+				environment = REnvironment.popLocal(environment);
 				/* frames above the caller are ones its closure captured, so fold them back instead of losing their writes */
 				while(environment.level > inputEnvironment.level) {
 					environment = foldFrameIntoParent(environment);
 				}
 			}
 			let hasUpdate = false;
-			for(let current = environment.current; !current.builtInEnv; current = current.parent) {
-				/* a package attached inside the body (library()) propagates to the caller, like R attaching globally */
-				hasUpdate ||= current.t !== undefined;
+			const seenByCaller = packageLayersOf(inputEnvironment);
+			for(const current of REnvironment.frames(environment.current)) {
+				if(current.t !== undefined) {
+					/* the callee sees the caller's packages too, but only one attached inside the body (library()) is its doing, and propagates like R attaching globally */
+					if(seenByCaller.has(current.memory)) {
+						continue;
+					}
+					hasUpdate = true;
+				}
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!NodeId.isBuiltIn(def.definedAt)) {
@@ -270,7 +286,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 				};
 			}
 			const dependencies = cds === undefined ? callDependencies : [...callDependencies ?? [], ...cds];
-			inputEnvironment = overwriteEnvironment(inputEnvironment, environment, dependencies);
+			inputEnvironment = REnvironment.overwrite(inputEnvironment, environment, dependencies);
 		}
 	}
 	return inputEnvironment;
@@ -307,7 +323,7 @@ export function processExpressionList<OtherInfo>(
 	const hooks: DataflowInformation['hooks'] = [];
 
 	for(const arg of args) {
-		const expression = unpackNonameArg(arg);
+		const expression = RArgument.unnamedValueOf(arg);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
 			continue;
@@ -357,7 +373,7 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		addNonDefaultExitPoints(exitPoints, invertExitCds, data.cds, processed.exitPoints);
-		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
+		environment = exitPoints.length > 0 ? REnvironment.overwrite(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, idMap);
 

@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { retrieveMetaStructure, retrieveOpName } from '../../normalize-meta';
+import { retrieveMetaStructure, retrieveOpName, currentSourceInfo } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import { expensiveTrace } from '../../../../../../../util/log';
 import { UnaryOperatorsInRAst } from '../../../../model/operators';
@@ -22,11 +22,7 @@ import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [NamedJsonEntry, NamedJsonEntry]): RNode | undefined {
 	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`);
 
-	if(UnaryOperatorsInRAst.has(operator.name)) {
-		return parseUnaryOp(data, operator, operand);
-	} else {
-		return undefined;
-	}
+	return UnaryOperatorsInRAst.has(operator.name) ? parseUnaryOp(data, operator, operand) : undefined;
 }
 
 function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: NamedJsonEntry): RUnaryOp {
@@ -43,10 +39,6 @@ function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: N
 		operator: operationName,
 		lexeme:   content,
 		operand:  parsedOperand,
-		info:     {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:     currentSourceInfo(data)
 	};
 }

@@ -22,11 +22,7 @@ const CommentRetriever: CommentRetrievers = {
 		if(doc && paramName) {
 			if(Array.isArray(doc)) {
 				const res = (doc as RoxygenTag[]).filter(t => t.type === KnownRoxygenTags.Param && t.value.name === paramName);
-				if(res.length === 1) {
-					return res[0];
-				} else {
-					return res;
-				}
+				return res.length === 1 ? res[0] : res;
 			} else {
 				if((doc as RoxygenTag).type === KnownRoxygenTags.Param && (doc as RoxygenTagParam).value.name === paramName) {
 					return doc;

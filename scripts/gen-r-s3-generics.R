@@ -18,8 +18,17 @@ formalsOf <- function(n) {
   if (is.null(f)) f <- tryCatch(args(getFromNamespace(n, .knownS3Generics[[n]] %||% "base")), error = function(e) NULL)
   if (is.null(f)) character() else names(formals(f))
 }
-q <- function(x) paste0('"', gsub('"', '\\\\"', x), '"')
-line <- function(n, xs) paste0("\t\t", q(n), ": [", paste(q(xs), collapse = ", "), "]")
+q <- function(x) if (length(x) == 0) character() else paste0('"', gsub('"', '\\\\"', x), '"')
+line <- function(n, xs) paste0(q(n), ": [", paste(q(xs), collapse = ", "), "]")
+# packs entries into lines of about 140 characters, so the data stays compact
+pack <- function(entries) {
+  lines <- character(); cur <- ""
+  for (e in entries) {
+    if (nchar(cur) > 0 && nchar(cur) + nchar(e) > 140) { lines <- c(lines, cur); cur <- "" }
+    cur <- if (nchar(cur) == 0) e else paste0(cur, ", ", e)
+  }
+  paste0("\t\t", c(lines, cur), collapse = ",\n")
+}
 entries <- vapply(generics, function(n) line(n, formalsOf(n)), "")
 groups <- list(Ops = c("e1", "e2"), Math = c("x", "..."), Summary = c("...", "na.rm"), Complex = c("z"), matrixOps = c("x", "y"))
 # the stop list is the first expression of tools:::nonS3methods; evaluating it gives every package's entries
@@ -38,13 +47,13 @@ out <- c(
   "\treadonly nonS3Methods:        Readonly<Record<string, readonly string[]>>;",
   "} = {",
   "\tgenericFormals: {",
-  paste(entries, collapse = ",\n"),
+  pack(entries),
   "\t},",
   "\tgroupGenericFormals: {",
-  paste(vapply(names(groups), function(n) line(n, groups[[n]]), ""), collapse = ",\n"),
+  pack(vapply(names(groups), function(n) line(n, groups[[n]]), "")),
   "\t},",
   "\tnonS3Methods: {",
-  paste(vapply(sort(names(stopList)), function(n) line(n, stopList[[n]]), ""), collapse = ",\n"),
+  pack(vapply(sort(names(stopList)), function(n) line(n, stopList[[n]]), "")),
   "\t}",
   "};"
 )

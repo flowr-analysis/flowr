@@ -100,38 +100,31 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 } {
 	let requiresCfg = false;
 	const promotedQueries: PromotedQuery[] = queries.map((q, idx) => {
-		if(isSubCallQuery(q)) {
-			requiresCfg = true;
-			return {
-				...q,
-				callName:   promoteCallName(q.callName, q.callNameExact),
-				exactNames: exactNamesOf(q.callName, q.callNameExact),
-				idx,
-				fileFilter: q.fileFilter && {
-					...q.fileFilter,
-					filter: promoteCallName(q.fileFilter.filter)
-				},
-				linkTo: q.linkTo ? isArray<LinkTo>(q.linkTo) ? q.linkTo.map(l => ({
-					...l,
-					callName: promoteCallName(l.callName)
-				})) : {
-					...q.linkTo,
-					/* we have to add another promotion layer whenever we add something without this call name */
-					callName: promoteCallName(q.linkTo.callName)
-				} : undefined
-			} satisfies PromotedQuery;
-		} else {
-			return {
-				...q,
-				callName:   promoteCallName(q.callName, q.callNameExact),
-				exactNames: exactNamesOf(q.callName, q.callNameExact),
-				idx,
-				fileFilter: q.fileFilter && {
-					...q.fileFilter,
-					filter: promoteCallName(q.fileFilter.filter)
-				}
-			} satisfies PromotedQuery;
+		const promoted = {
+			...q,
+			callName:   promoteCallName(q.callName, q.callNameExact),
+			exactNames: exactNamesOf(q.callName, q.callNameExact),
+			idx,
+			fileFilter: q.fileFilter && {
+				...q.fileFilter,
+				filter: promoteCallName(q.fileFilter.filter)
+			}
+		};
+		if(!isSubCallQuery(q)) {
+			return promoted;
 		}
+		requiresCfg = true;
+		return {
+			...promoted,
+			linkTo: q.linkTo ? isArray<LinkTo>(q.linkTo) ? q.linkTo.map(l => ({
+				...l,
+				callName: promoteCallName(l.callName)
+			})) : {
+				...q.linkTo,
+				/* we have to add another promotion layer whenever we add something without this call name */
+				callName: promoteCallName(q.linkTo.callName)
+			} : undefined
+		} satisfies PromotedQuery;
 	});
 
 	return { promotedQueries, requiresCfg };

@@ -1,5 +1,5 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
+import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDoesCallQuery } from './does-call-query-executor';
@@ -108,9 +108,7 @@ function constraintParser(argument: string | undefined): { call: SlicingCriterio
 function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'does-call'> {
 	const constraint = constraintParser(line[0]);
 	if(!constraint || typeof constraint === 'string') {
-		output.stderr(output.formatter.format(`Invalid does-call query format:\n  ${constraint}`,
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, `Invalid does-call query format:\n  ${constraint}`);
 	}
 
 	return {

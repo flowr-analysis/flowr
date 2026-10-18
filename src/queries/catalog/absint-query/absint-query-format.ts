@@ -16,8 +16,7 @@ import { fileProtocol } from '../../../r-bridge/retriever';
 import { SlicingCriterion, type SlicingCriteria } from '../../../slicing/criterion/parse';
 import { isNotUndefined } from '../../../util/assert';
 import { Record } from '../../../util/record';
-import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeAbsintQuery } from './absint-query-executor';
 
@@ -87,14 +86,12 @@ function absintQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	const type = (line[0] ?? '').toLowerCase();
 
 	if(!Record.has(AbsintQueryInferences, type)) {
-		output.stderr(output.formatter.format(`Invalid inference type "${type}", must be one of ${Record.keys(AbsintQueryInferences).map(type => `"${type}"`).join(', ')}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, `Invalid inference type "${type}", must be one of ${Record.keys(AbsintQueryInferences).map(type => `"${type}"`).join(', ')}`);
 	}
 	const criteria = sliceCriteriaParser(line[1]);
 
 	if(criteria !== undefined && !criteria.every(SlicingCriterion.isValid)) {
-		output.stderr(output.formatter.format(`Invalid slicing criteria "${line[1]}"`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, `Invalid slicing criteria "${line[1]}"`);
 	}
 	const code = queryLineCode(line, criteria ? 2 : 1);
 

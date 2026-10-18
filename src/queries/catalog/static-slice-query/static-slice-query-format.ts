@@ -1,4 +1,4 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
@@ -7,7 +7,6 @@ import type {
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -61,10 +60,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 	const direction = sliceDirectionParser(line[0]);
 	const options = sliceQueryOptionsParser(line[0]);
 	if(!criteria || criteria.length === 0) {
-		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		output.stderr(SliceCriterionHelp);
-		return { query: [] };
+		return invalidQueryLine(output, 'Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"', SliceCriterionHelp);
 	}
 	warnAboutSliceFlags(output, line[0], StaticSliceFlags);
 

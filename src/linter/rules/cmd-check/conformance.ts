@@ -102,7 +102,7 @@ export const CmdCheckConformance: readonly ConformanceArea[] = [
 		entries: [
 			{ check: 'R files for syntax errors', line: 2154, book: 'r-code', rules: ['syntactically-valid'], level: Full },
 			{ check: 'code files for non-ASCII characters', line: 2133, book: 'r-code', rules: ['non-ascii-code'], level: Full, note: 'reports each token, escapes strings as a quick fix' },
-			{ check: 'R code for possible problems', line: 2302, book: 'r-code', rules: ['undefined-symbol', 'call-arguments', 'global-environment-modification', 'class-string-comparison', 'bogus-return', 'package-hooks', 'namespace-tampering', 'obsolete-functions', 'true-false-abbreviation'], level: Full, note: 'codetools usage checks and the tools:::.check_package_code_* notes; resolves calls through the dataflow graph' },
+			{ check: 'R code for possible problems', line: 2302, book: 'r-code', rules: ['undefined-symbol', 'call-arguments', 'global-environment-modification', 'class-string-comparison', 'bogus-return', 'package-hooks', 'namespace-tampering', 'deprecated-functions', 'true-false-abbreviation'], level: Full, note: 'codetools usage checks and the tools:::.check_package_code_* notes; resolves calls through the dataflow graph' },
 			{ check: 'S3 generic/method consistency', line: 2198, book: 'r-code', rules: ['s3-method-consistency'], level: Full },
 			{ check: 'replacement functions', line: 2235, book: 'r-code', rules: ['s3-method-consistency'], level: Full },
 			{ check: 'foreign function calls', line: 2262, book: 'r-code', rules: ['foreign-function-calls'], level: Static, note: 'the routine registration needs the installed package' },

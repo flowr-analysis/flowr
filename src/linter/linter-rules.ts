@@ -36,7 +36,6 @@ import { FOREIGN_FUNCTION_CALLS } from './rules/cmd-check/foreign-function-calls
 import { DEPENDENCY_DECLARATION } from './rules/cmd-check/dependency-declaration';
 import { CALL_ARGUMENTS } from './rules/cmd-check/call-arguments';
 import { COMPILED_CODE } from './rules/cmd-check/compiled-code';
-import { OBSOLETE_FUNCTIONS } from './rules/cmd-check/obsolete-functions';
 import { PACKAGE_METAFILES } from './rules/cmd-check/package-metafiles';
 import { RD_FILES } from './rules/cmd-check/rd-files';
 import { PACKAGE_DATA } from './rules/cmd-check/package-data';
@@ -84,7 +83,6 @@ export const LintingRules = {
 	'call-arguments':                  CALL_ARGUMENTS,
 	'package-structure':               PACKAGE_STRUCTURE,
 	'compiled-code':                   COMPILED_CODE,
-	'obsolete-functions':              OBSOLETE_FUNCTIONS,
 	'package-metafiles':               PACKAGE_METAFILES,
 	'rd-files':                        RD_FILES,
 	'package-data':                    PACKAGE_DATA,

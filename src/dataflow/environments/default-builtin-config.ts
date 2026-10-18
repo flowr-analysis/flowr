@@ -711,7 +711,15 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [...Identifier.fromAll(PkgName.GrDevices, ['png', 'jpeg', 'bmp', 'tiff', 'svg', 'cairo_pdf']), Identifier.from(['raster_pdf', PkgName.RasterPdf]), ...Identifier.fromAll(PkgName.Ragg, ['agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp'])], processor: BuiltInProcName.DefaultReadAllArgs, config: { ambient: OpenDevice, props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['filename', ArgProp.Forced | ArgProp.Resource], ['width', ArgProp.Forced | ArgProp.Value], ['height', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
 	{ type: 'function', names: Identifier.fromAll(PkgName.GrDevices, ['pdf', 'postscript', 'xfig', 'bitmap', 'pictex']), processor: BuiltInProcName.DefaultReadAllArgs, config: { ambient: OpenDevice, props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['file', ArgProp.Forced | ArgProp.Resource], ['type', ArgProp.Forced | ArgProp.Value], ['height', ArgProp.Forced | ArgProp.Value], ['width', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
 	/* devices that draw on the screen or into memory instead */
-	{ type: 'function', names: [...Identifier.fromAll(PkgName.GrDevices, ['X11', 'windows', 'quartz', 'dev.new']), Identifier.from(['trellis.device', PkgName.Lattice])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Configures | CallProp.Invisible, ambient: OpenDevice, tags: [SemanticCallTag.Graphics] }, assumePrimitive: true },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.GrDevices, ['dev.new']), Identifier.from(['trellis.device', PkgName.Lattice])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Configures | CallProp.Invisible, ambient: OpenDevice, tags: [SemanticCallTag.Graphics] }, assumePrimitive: true },
+	/* platform-specific devices, `dev.new()` opens the right one */
+	{
+		type:            'function',
+		names:           Identifier.fromAll(PkgName.GrDevices, ['X11', 'x11', 'windows', 'quartz', 'win.graph', 'win.metafile', 'win.print']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Configures | CallProp.Invisible, ambient: OpenDevice, tags: [SemanticCallTag.Graphics, SemanticCallTag.Deprecated] },
+		assumePrimitive: true
+	},
 	{ type: 'function', names: Identifier.fromAll(PkgName.Magick, ['image_graph', 'image_draw']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Configures, ambient: OpenDevice, tags: [SemanticCallTag.Graphics] }, assumePrimitive: true },
 
 	{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])], processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Forced | ArgProp.Resource], ['header', ArgProp.Forced | ArgProp.Flag], ['sep', ArgProp.Forced | ArgProp.Value], ['quote', ArgProp.Forced | ArgProp.Value], ['dec', ArgProp.Forced | ArgProp.Value], ['fill', ArgProp.Forced | ArgProp.Flag], ['comment.char', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
@@ -1498,6 +1506,19 @@ export const WrittenBuiltinDefinitions = [
 	{ overrides: true, type: 'function', names: [Identifier.from(['writeLines', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: [['text', ArgProp.Forced | ArgProp.Value], ['con', ArgProp.Forced | ArgProp.Resource], ['sep', ArgProp.Forced | ArgProp.Value], ['useBytes', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: false },
 	{ overrides: true, type: 'function', names: [Identifier.from(['write.table', PkgName.Utils])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['x', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['append', ArgProp.Forced | ArgProp.Flag], ['quote', ArgProp.Forced | ArgProp.Flag], ['sep', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ overrides: true, type: 'function', names: [Identifier.from(['download.file', PkgName.Utils])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Invisible, tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['url', ArgProp.Forced | ArgProp.Resource], ['destfile', ArgProp.Forced | ArgProp.Resource], ['method', ArgProp.Forced | ArgProp.Value], ['quiet', ArgProp.Forced | ArgProp.Flag], ['mode', ArgProp.Forced | ArgProp.Value], ['cacheOK', ArgProp.Forced | ArgProp.Flag], ['extra', ArgProp.Forced | ArgProp.Value], ['headers', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
+	/* deprecated and defunct functions of base R */
+	{
+		type:      'function',
+		processor: BuiltInProcName.DefaultReadAllArgs,
+		config:    { tags: [SemanticCallTag.Deprecated] },
+		names:     Identifier.fromAll(PkgName.Base, [
+			'plclust', 'La.eigen', 'tetragamma', 'pentagamma', 'package.description', 'gammaCody', 'manglePackageName',
+			'.readRDS', '.saveRDS', 'mem.limits', 'trySilent', 'traceOn', 'traceOff', 'print.coefmat', 'anovalist.lm',
+			'lm.fit.null', 'lm.wfit.null', 'glm.fit.null', 'tkcmd', 'tkfile.tail', 'tkfile.dir', 'tkopen', 'tkclose',
+			'tkputs', 'tkread', 'Rd_parse', 'CRAN.packages', 'zip.file.extract', 'real', 'as.real', 'is.real',
+			'.find.package', '.path.package'
+		])
+	},
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Dplyr, ['id', 'progress_estimated', 'add_rownames', 'tbl_df', 'src_local', 'summarise_each', 'summarize_', 'summarise_', 'slice_', 'select_vars_', 'select_', 'rename_vars_', 'rename_', 'transmute_', 'tally_', 'mutate_', 'group_indices_', 'group_by_', 'funs_', 'filter_', 'do_', 'distinct_', 'count_', 'arrange_', 'add_tally_', 'add_count_', 'funs', 'combine', 'changes', 'location', 'eval_tbls2', 'eval_tbls', 'compare_tbls2', 'compare_tbls', 'bench_tbls', 'current_vars', 'select_var', 'rename_vars', 'select_vars', 'failwith', 'all_equal'])  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: [Identifier.make('fct_explicit_na', PkgName.Forecats)]  },
 	/* deprecated, but still data-masking: restating the mask keeps the column names out of the variable resolution */

@@ -7,6 +7,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /**
  * Path heuristic for an R package `inst/` resource (installed verbatim, not namespace source). Fallback for
@@ -56,18 +57,15 @@ export function isInSubscript(graph: DataflowGraph, id: NodeId): boolean {
 	if(idMap === undefined) {
 		return false;
 	}
-	let childId: NodeId = id;
-	let parentId = idMap.get(id)?.info.parent;
-	for(let guard = 0; parentId !== undefined && guard < 64; guard++) {
-		const parent = idMap.get(parentId);
-		if(parent === undefined || RFunctionDefinition.is(parent)) {
+	let childId = id;
+	for(const parent of RNode.iterateParents(idMap.get(id), idMap)) {
+		if(RFunctionDefinition.is(parent)) {
 			return false;
 		}
-		if(RAccess.is(parent) && (parent.operator === '[' || parent.operator === '[[') && parent.accessed.info.id !== childId) {
+		if(RAccess.isIndex(parent) && parent.accessed.info.id !== childId) {
 			return true;   // reached from a subscript, not the accessed object
 		}
-		childId = parentId;
-		parentId = parent.info.parent;
+		childId = parent.info.id;
 	}
 	return false;
 }
@@ -81,26 +79,20 @@ export type ScopeDefinedNames = ReadonlyMap<Scope, ReadonlySet<string>>;
 const ConditionalNodeTypes = new Set<RType>([RType.IfThenElse, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop]);
 
 /**
- * Walk from `startParent` up to the nearest enclosing {@link RType.FunctionDefinition} (or the top level),
+ * Walk from the parent of `id` up to the nearest enclosing {@link RType.FunctionDefinition} (or the top level),
  * reporting that scope and whether the walk crossed no `if`/loop block - so a binding at the origin is
  * guaranteed to execute whenever its scope runs. (`cds` is unsuitable: guard clauses like `if(...) stop()`
  * add a control dependency to otherwise-unconditional sibling statements.)
  */
-function enclosingScope(idMap: AstIdMap, startParent: NodeId | undefined): { scope: Scope, unconditional: boolean } {
-	let cur = startParent;
+function enclosingScope(idMap: AstIdMap, id: NodeId): { scope: Scope, unconditional: boolean } {
 	let unconditional = true;
-	for(let guard = 0; cur !== undefined && guard < 256; guard++) {
-		const node = idMap.get(cur);
-		if(node === undefined) {
-			break;
-		}
+	for(const node of RNode.iterateParents(idMap.get(id), idMap)) {
 		if(RFunctionDefinition.is(node)) {
-			return { scope: cur, unconditional };
+			return { scope: node.info.id, unconditional };
 		}
 		if(ConditionalNodeTypes.has(node.type)) {
 			unconditional = false;
 		}
-		cur = node.info.parent;
 	}
 	return { scope: 'top', unconditional };
 }
@@ -123,7 +115,7 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 		if(name === undefined) {
 			continue;
 		}
-		const { scope, unconditional } = enclosingScope(idMap, idMap.get(id)?.info.parent);
+		const { scope, unconditional } = enclosingScope(idMap, id);
 		if(!unconditional) {
 			continue;
 		}
@@ -145,20 +137,14 @@ export function isDefinedInEnclosingScope(graph: DataflowGraph, defined: ScopeDe
 	if(idMap === undefined) {
 		return false;
 	}
-	const own = enclosingScope(idMap, idMap.get(useId)?.info.parent).scope;
+	const own = enclosingScope(idMap, useId).scope;
 	if(own !== 'top' && defined.get('top')?.has(name)) {
 		return true;
 	}
-	let cur = idMap.get(useId)?.info.parent;
-	for(let guard = 0; cur !== undefined && guard < 256; guard++) {
-		const node = idMap.get(cur);
-		if(node === undefined) {
-			break;
-		}
-		if(RFunctionDefinition.is(node) && cur !== own && defined.get(cur)?.has(name)) {
+	for(const node of RNode.iterateParents(idMap.get(useId), idMap)) {
+		if(RFunctionDefinition.is(node) && node.info.id !== own && defined.get(node.info.id)?.has(name)) {
 			return true;
 		}
-		cur = node.info.parent;
 	}
 	return false;
 }

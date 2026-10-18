@@ -412,10 +412,6 @@ function(x) {
 		'f <- function(x) .Call("C_f", x)', tagTypes);
 
 	rule(knownParser,
-		'obsolete-functions', 'ObsoleteFunctionsConfig', 'OBSOLETE_FUNCTIONS', 'cmd-check/lint-obsolete-functions',
-		'f <- function(x) {\n\tx11()\n\tas.real(x)\n}', tagTypes);
-
-	rule(knownParser,
 		'package-metafiles', 'PackageMetafilesConfig', 'PACKAGE_METAFILES', 'cmd-check/lint-package-metafiles',
 		'f <- function() 1', tagTypes);
 
@@ -492,7 +488,7 @@ The linting query can be used to run this rule on the above example:
 
 ${await showQuery(parser, example, [{ type: 'linter', rules: [{ name, config: {} as never }] }], { collapseQuery: true })}
 
-${buildSamplesFromLinterTestCases(parser, `${testfile}.test.ts`)}
+${(rule.info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck) ? `More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/linter/${testfile}.test.ts`)}.` : buildSamplesFromLinterTestCases(parser, `${testfile}.test.ts`)}
 
 		`.trim());
 		}

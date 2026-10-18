@@ -413,6 +413,11 @@ function closesActiveDevice(target: DataflowGraphVertexInfo): boolean {
 	return name === 'graphics.off' || (name === 'dev.off' && target.args.length === 0);
 }
 
+/** what ggplot's `last_plot()` is: the last ggplot created or added to */
+export const LinkToLastGgPlot = {
+	type:     'link-to-last-call',
+	callName: toRegex((GgPlotCreate as readonly string[]).concat(GgPlotImplicitAddons, GgPlotAddons))
+} as const;
 /** what closing or exporting a device links back to: the plot calls that filled it */
 const LinkToLastPlot = {
 	type:     'link-to-last-call',
@@ -851,7 +856,10 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['writeWorksheetToFile', PkgName.XlConnect])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['visSave', PkgName.VisNetwork])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['graph', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['save_graph', PkgName.DiagrammeR])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['graph', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['ggsave', PkgName.GgPlot2])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['filename', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
+	{ type:      'function', names:     [Identifier.from(['ggsave', PkgName.GgPlot2])], processor: BuiltInProcName.DefaultReadAllArgs, config:    { libFn: true, tags:  [SemanticCallTag.File, SemanticCallTag.Writes], sig:   [
+		['filename', ArgProp.Forced | ArgProp.Resource], ['plot', ArgProp.Forced | ArgProp.Value], ['device', ArgProp.Flag], ['path', ArgProp.Resource],
+		['scale', ArgProp.Flag], ['width', ArgProp.Flag], ['height', ArgProp.Flag], ['units', ArgProp.Flag], ['dpi', ArgProp.Flag], ['limitsize', ArgProp.Flag],
+		['bg', ArgProp.Flag], ['create.dir', ArgProp.Flag], ['...', ArgProp.Flag]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['ggsave2', PkgName.Cowplot])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['filename', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['write_json', PkgName.Jsonlite])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['x', ArgProp.Forced | ArgProp.Value], ['path', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['fwrite', PkgName.DataTable])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['x', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },

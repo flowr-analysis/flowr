@@ -2,6 +2,7 @@ import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInf
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
+import { LinkToLastGgPlot } from '../../../../dataflow/environments/default-builtin-config';
 import { computeReadFunctions } from './read-functions';
 import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
@@ -14,6 +15,8 @@ const OutputRedirects = [
 const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'save.image',  argIdx: 0, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'utils', name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
+	/* without a `plot`, it saves `last_plot()` */
+	{ package: 'ggplot2', name: 'ggsave',  argIdx: 0, argName: 'filename', resolveValue: true, linkTo: [LinkToLastGgPlot] },
 	{
 		package:        'base',
 		name:           'try',

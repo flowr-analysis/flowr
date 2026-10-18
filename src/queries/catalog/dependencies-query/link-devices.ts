@@ -72,7 +72,7 @@ export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: De
 		if(device !== undefined) {
 			device.plots.push(id);
 			around.set(id, [device.opener]);
-			plots[plot] = { ...plots[plot], value: device.file };
+			plots[plot] = { ...plots[plot], value: device.file, savedTo: device.file };
 		}
 		const window = device?.opener;
 		const linked = linkOf.get(id);

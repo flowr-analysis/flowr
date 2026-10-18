@@ -190,6 +190,22 @@ export interface DependencyInfo extends Record<string, unknown> {
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
+	/**
+	 * The variables the result of the call is computed from, resolved through the dataflow graph: `df` for
+	 * `df |> filter(x > 1)` (where `x` names a column) and `a`, `b` for `left_join(a, b)`; an addon to a plot draws its
+	 * data. Reported for the `write`, `visualize` and `transform` categories.
+	 */
+	inputVariables?:     readonly string[]
+	/**
+	 * The variable the result of the call is assigned to, following every call that hands it on (a pipe into a call,
+	 * `( )`, a `+` adding to a plot) up to `<-`, `=` or `->`.
+	 * Reported for the `read`, `visualize` and `transform` categories.
+	 */
+	assignedTo?:         string
+	/** for a plot, the title its `ggtitle`, `labs(title = )` or `main =` states */
+	title?:              string
+	/** for a plot, the file it is written to by `ggsave` or by a graphics device open when it is drawn */
+	savedTo?:            string
 	/** the output is not written by a call asking for it: R echoes the top-level statement on its own */
 	implicit?:           boolean
 	versionConstraints?: readonly Range[],

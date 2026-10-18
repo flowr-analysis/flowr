@@ -164,7 +164,7 @@ export const CLASS_STRING_COMPARISON = {
 		name:          'Class String Comparison',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` note *"Found if() conditions comparing class() to string"* (`checking R code for possible problems`). An object may have several classes, so `class(x) == "a"` yields a condition of length > 1 (an error since R 4.2) and misses subclasses; use `inherits(x, "a")` instead. Unlike `R CMD check`, it also spots mirrored comparisons, `while` conditions, and strings flowR resolves through variables, and ignores calls to a redefined `class`.',
+		description:   'Finds `if`/`while` conditions comparing `class(x)` with a string, which fail for objects with several classes. Offers `inherits(x, ...)` as a quick fix.',
 		defaultConfig: () => ({
 			checkWhile:     true,
 			resolveStrings: true

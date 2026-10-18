@@ -352,7 +352,7 @@ export const PACKAGE_METAFILES = {
 		name:          'Package Metafiles',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` notes on the metafiles of a package: *"checking index information"* (empty `INDEX` or `demo/00Index`, demos missing from or without a `demo/00Index` entry), *"checking package subdirectories"* (`inst/CITATION` that does not parse, `citEntry()` or `bibentry()` calls with an invalid entry type or missing required fields, CITATION files in a non-standard place), and *"checking relative paths in package URLs"* (relative links of the README and vignettes to files the package does not contain). Unlike `R CMD check`, no R code is run, and it also reports the citation functions superseded by `bibentry()` or `person()`, which `R CMD check` accepts.',
+		description:   'Checks the demo index, `INDEX`, `inst/CITATION`, and relative links in README, NEWS, and vignettes.',
 		defaultConfig: () => ({
 			index:         true,
 			citation:      true,

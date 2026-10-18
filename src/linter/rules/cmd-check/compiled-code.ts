@@ -735,7 +735,7 @@ export const COMPILED_CODE = {
 		name:          'Compiled Code',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the static checks `R CMD check` makes on `src/` and the build files: `checking compilation flags in Makevars`, `use of PKG_*FLAGS in Makefiles`, `use of SHLIB_OPENMP_*FLAGS in Makefiles`, `for portable use of $(BLAS_LIBS) and $(LAPACK_LIBS)`, `for GNU extensions in Makefiles`, `include directives in Makefiles`, `line endings in Makefiles`, `line endings in C/C++/Fortran sources/headers`, `line endings in shell scripts`, `pragmas in C/C++ headers and code`, `usage of KIND in Fortran files`, `C++ specification`, and the install-time `useDynLib`/`LinkingTo` consistency. R evaluates the Makevars with `make`, flowR expands the variables of the file itself. The binary check `compiled code` (entry points that terminate R, write to stdout, use system RNGs, non-API calls, unregistered routines) is approximated on the sources, so such findings are uncertain. Beyond R it also flags `real*8`-style declarations. The `Rust compilation` check only inspects the install log and is not ported.',
+		description:   'Checks `src/` and the build files: non-portable Makevars flags, BLAS/LAPACK and OpenMP flag use, GNU make extensions, pragmas, line endings, Fortran KIND, the C++ standard, calls to non-API or non-portable entry points, and `useDynLib` against `src/`.',
 		defaultConfig: () => ({
 			skip:                   [],
 			nonPortableFlags:       ['O.*', 'W', 'w', 'W[^l].*', 'ansi', 'pedantic', 'traditional', 'f.*', 'm.*', 'std.*', 'isystem', 'x', 'pipe', 'cpp', 'g', 'q'],

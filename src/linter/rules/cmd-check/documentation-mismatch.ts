@@ -393,7 +393,7 @@ export const DOCUMENTATION_MISMATCH = {
 		name:          'Documentation Mismatch',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Documentation, LintingRuleTag.Bug],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the code/documentation consistency checks of `R CMD check`: `checking for missing documentation entries` (exported objects without an Rd `\\alias`), `checking for code/documentation mismatches` (formals of a function versus its Rd `\\usage`) and `checking Rd \\usage sections` (undocumented `\\usage` arguments, documented arguments not in `\\usage`). Each sub-check can be switched off, default values are only compared if both sides are literals, and the Rd line of a finding is reported.',
+		description:   'Finds exported objects without documentation, functions whose formals differ from their `\\usage`, and arguments missing from or extra in `\\arguments`.',
 		defaultConfig: () => ({
 			checkUndocumented:    true,
 			checkCodoc:           true,

@@ -72,7 +72,7 @@ export const BOGUS_RETURN = {
 		name:          'Bogus Return',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.Exact,
-		description:   'Port of the `R CMD check` note *"Possibly missing \'()\' after \'return\'"* (`checking R code for possible problems`). A bare `return` within a function does not return, it merely evaluates to the function `return`. Unlike `R CMD check`, which reports the enclosing function, flowR reports each bare `return`, offers `return()` as a quick fix, and ignores a `return` the code defines itself.',
+		description:   'Finds a bare `return` (without `()`), which evaluates to the function `return` instead of returning. Offers `return()` as a quick fix.',
 		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<BogusReturnResult, BogusReturnMetadata, BogusReturnConfig>;

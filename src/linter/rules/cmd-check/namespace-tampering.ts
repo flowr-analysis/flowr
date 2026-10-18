@@ -200,7 +200,7 @@ export const NAMESPACE_TAMPERING = {
 		name:          'Namespace Tampering',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Security],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` notes *"Found the following possibly unsafe calls"* (`unlockBinding` and `assignInNamespace` on other namespaces), *"Found .Internal call(s)"*, and on `library.dynam` calls naming the shared object with its extension (all `checking R code for possible problems`). Where `R CMD check` compares the written argument with the package name, flowR resolves the namespace and package names through variables and reports an unknown namespace as uncertain.',
+		description:   'Finds `unlockBinding()` and `assignInNamespace()` on other namespaces, `.Internal()` calls, and `library.dynam()` given a file extension.',
 		defaultConfig: () => ({
 			checkInternal: true
 		})

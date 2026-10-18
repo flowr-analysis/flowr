@@ -105,7 +105,7 @@ export const OBSOLETE_FUNCTIONS = {
 		name:          'Obsolete Functions',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Deprecated, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` note on obsolete functions (`checking R code for possible problems`, *"Found the deprecated function"*, *"Found the defunct/removed function"*, and *"Found the platform-specific device"*): package code calling a deprecated or removed function, or a graphics device that only exists on some platforms. Unlike `R CMD check`, it reports the calls themselves, also namespaced ones like `grDevices::x11()`, with their location, and ignores calls to functions the package defines itself. The functions `R CMD check` knows can be extended per kind.',
+		description:   'Finds calls of deprecated and defunct base functions and of platform-specific graphics devices (`x11()`, `quartz()`, `windows()`).',
 		defaultConfig: () => ({
 			defaults:        true,
 			deprecated:      [],

@@ -139,7 +139,7 @@ export const TRUE_FALSE_ABBREVIATION = {
 		certainty:       LintingRuleCertainty.Exact,
 		/* R CMD check only runs `checkTnF` for a package without a NAMESPACE, which no current package is */
 		activeByDefault: false,
-		description:     'Port of `tools::checkTnF` (*"found T/F in"*), which `R CMD check` only runs for packages without a NAMESPACE, hence off by default. `T` and `F` are ordinary variables that merely default to `TRUE` and `FALSE` and may be rebound by any code. Where `R CMD check` flags every syntactic `T`/`F`, flowR only flags those that resolve to the built-in constants (with a quick fix), reports the top-level definitions that rebind them instead of their (then intended) uses, leaves local ones (parameters, function variables) alone, and leaves `x$T` alone.',
+		description:     'Finds `T` and `F` used for `TRUE` and `FALSE`, and top-level definitions of `T` or `F`. Off by default, as R only checks this for packages without a NAMESPACE.',
 		defaultConfig:   () => ({
 			reportRedefinitions: true
 		})

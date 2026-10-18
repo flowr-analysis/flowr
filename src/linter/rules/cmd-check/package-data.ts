@@ -255,7 +255,7 @@ export const PACKAGE_DATA = {
 		name:          'Package Data',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the data checks of `R CMD check`: `checking contents of \'data\' directory` (including `data/datalist`), `checking LazyData`, `checking data for ASCII and uncompressed saves`, `checking R/sysdata.rda`, `checking serialization versions` and the undocumented data sets of `checking for missing documentation entries`. Saves are read from disk, from their header (compression, ASCII or binary, serialization version), and the objects they hold are read as well. Unlike `R CMD check`, every finding names the data file, the size limit is configurable and undocumented data sets are only checked when a `man` folder exists. Not ported: non-ASCII strings in data sets (the parser does not expose the encoding of strings), re-saving estimates and the sizes of installed lazy-load databases.',
+		description:   'Checks `data/` and `R/sysdata.rda`: allowed file types, LazyData, compression, the serialization version R needs, and undocumented data sets.',
 		defaultConfig: () => ({
 			dataExtensions:      DefaultDataExtensions,
 			maxUncompressedSize: 100_000,

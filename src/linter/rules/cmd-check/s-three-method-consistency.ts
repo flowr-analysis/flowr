@@ -258,7 +258,7 @@ export const S3_METHOD_CONSISTENCY = {
 		name:          'S3 Method Consistency',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` checks `checking S3 generic/method consistency` (a method must take the arguments of its generic, in order, and `...` if the generic does; apparent methods of exported generics must be registered) and `checking replacement functions` (`foo<-` must end in `value`). Beyond `R CMD check`, it reports apparent methods of generics from base R as uncertain, tells functions flowR knows as ordinary (`t.test`) from methods, and also checks replacement methods (`[<-.cls`).',
+		description:   'Finds S3 methods whose formals do not match their generic, methods not registered in the NAMESPACE, and replacement functions whose last formal is not `value`.',
 		defaultConfig: () => ({
 			checkMethods:           true,
 			checkApparentMethods:   true,

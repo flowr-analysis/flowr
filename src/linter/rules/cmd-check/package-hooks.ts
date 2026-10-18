@@ -203,7 +203,7 @@ export const PACKAGE_HOOKS = {
 		name:          'Package Hooks',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Usability],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` notes on package hooks (`checking R code for possible problems`): startup functions (`.onLoad`, `.onAttach`) with a wrong argument list, that change the search path, print messages other than with `packageStartupMessage` (which in turn is out of place in `.onLoad`), or call `installed.packages`; detach functions (`.onDetach`, `.Last.lib`) with a wrong argument list or calling `library.dynam.unload`; `library.dynam` in `.onAttach`; the obsolete `.First.lib`; and an unexported `.Last.lib`. Where `R CMD check` looks for function names, flowR asks which calls attach a package or print, and follows the calls into the package\'s own functions.',
+		description:   'Checks `.onLoad`, `.onAttach`, `.onDetach`, and `.Last.lib`: argument lists, attaching packages, output other than `packageStartupMessage()`, `installed.packages()`, misplaced `library.dynam()` calls, and the obsolete `.First.lib`. Follows calls into the package\'s own functions.',
 		defaultConfig: () => ({
 			startupMessageFunctions: ['packageStartupMessage'],
 			allowedOutput:           ['warning'],

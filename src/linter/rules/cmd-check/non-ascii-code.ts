@@ -132,7 +132,7 @@ export const NON_ASCII_CODE = {
 		name:          'Non-ASCII Code',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` note *"Found the following file with non-ASCII characters"* (`checking code files for non-ASCII characters`). Portable packages must use only ASCII in their R code outside of comments, and `R CMD check` does not exempt string literals. Unlike the check, which names only the file, this reports each string literal and symbol (function, variable or parameter name) holding non-ASCII characters, lists those characters, and offers to escape string literals as `\\uxxxx` (`\\U{xxxxx}` above U+FFFF). Comments are ignored, and the `NAMESPACE` file is checked line by line like the code.',
+		description:   'Finds non-ASCII characters in R code and the NAMESPACE outside of comments. Offers `\\u` escapes for strings as a quick fix.',
 		defaultConfig: () => ({
 			checkStrings: true,
 			checkSymbols: true

@@ -266,7 +266,7 @@ export const CALL_ARGUMENTS = {
 		name:          'Call Arguments',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `codetools` checks `R CMD check` runs in `checking R code for possible problems`: *"possible error in f(): unused argument"*, *"partial argument match of \'a\' to \'abc\'"*, *"... may be used in an incorrect context"*, and *"multiple local function definitions for \'f\' with different formal arguments"*. flowR resolves the function a call reaches through its dataflow (closures and functions bound in branches included, the latter as uncertain), checks calls of other packages against the signature database, and also reports names matching several formals.',
+		description:   'Finds calls with arguments the called function does not take, names that match a formal only partially or match several formals, `...` used in a function without `...`, and local functions defined twice with different formals. Calls are resolved through the dataflow graph.',
 		defaultConfig: () => ({
 			reportPartialMatches:  true,
 			checkPackageFunctions: true

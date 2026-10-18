@@ -1207,7 +1207,7 @@ export const RD_FILES = {
 		name:          'Rd Files',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the Rd checks of `R CMD check`: *"checking Rd files"* (`checkRd`: unbalanced braces, unknown macros, missing, repeated or misplaced sections, empty sections, non-ASCII contents without declared encoding, misused markup, bibentries cited but not shown), *"checking Rd metadata"* (duplicated names and aliases, missing or wrong package aliases), *"checking Rd cross-references"* (links to unknown topics and undeclared packages), *"checking Rd line widths"*, *"checking Rd contents"* and *"checking Rd \\usage sections"* (missing `\\description`, empty argument items, unedited `prompt()` content, S3 methods shown with their full name), the static parts of *"checking examples"* (example code that does not parse, uses `T`/`F`, calls `q()`, changes the directory with `setwd()` or writes files outside `tempdir()`), and what breaks *"checking PDF version of manual"* statically. Unlike `R CMD check`, nothing is installed or run; it also reports pages whose `\\name` differs only by case, optionally keywords that R does not list, and judges links to other packages with flowR\'s signature database.',
+		description:   'Checks the Rd files: syntax, unknown macros, required and duplicated sections, metadata, cross-references, line widths, contents, and the example code.',
 		defaultConfig: () => ({
 			parse:            true,
 			minLevel:         -1,

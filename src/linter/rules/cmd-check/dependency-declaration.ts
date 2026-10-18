@@ -365,7 +365,7 @@ export const DEPENDENCY_DECLARATION = {
 		name:          'Dependency Declaration',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Reproducibility],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of `checking dependencies in R code` of `R CMD check`: *"\'library\' or \'require\' call not declared from"*, *"\'loadNamespace\' or \'requireNamespace\' call not declared from"*, *"\'::\' or \':::\' import not declared from"*, *"\'library\' or \'require\' call to ... which was already attached by Depends"*, *"\'library\' or \'require\' call to ... in package code"*, *"There are ::: calls to the package\'s namespace in its code"*, *"Namespace in Imports field not imported from"*, *"Package in Depends field not imported from"*, and *"package \'methods\' is used but not declared"*. Where `R CMD check` only reads literal package names, flowR resolves them through variables and knows the loaders of other packages (e.g. `pacman::p_load`); a `:::` to another package whose export status is known is left to the `namespace-access` rule.',
+		description:   'Finds packages the code, tests, examples, or vignettes use without the DESCRIPTION declaring them, Imports nothing imports from, `library()` calls in package code, own `:::` calls, and undeclared VignetteBuilder or RdMacros packages. Package names are resolved through variables.',
 		defaultConfig: () => ({
 			reportLibraryCalls:       true,
 			reportDependsNotImported: false,

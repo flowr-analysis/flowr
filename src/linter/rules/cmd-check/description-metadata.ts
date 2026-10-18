@@ -432,7 +432,7 @@ export const DESCRIPTION_METADATA = {
 		name:          'Description Metadata',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the DESCRIPTION checks of `R CMD check`: `checking DESCRIPTION meta-information` (required fields, package name, version, maintainer, dependency fields, `VignetteBuilder`, Title and Description endings, non-ASCII fields, encoding), the duplicate dependency and unused `LinkingTo` notes, the license check, the `Authors@R` checks, the excessive `Depends` check, and the DESCRIPTION style checks of `--as-cran` (title case, Title and Description starts). Every finding names its sub-check in `kind` and points to the lines of the field in the DESCRIPTION file; without a DESCRIPTION there are no findings.',
+		description:   'Checks the DESCRIPTION: required fields, package name, version, maintainer, dependency fields, license, Authors@R, encoding, and the Title and Description style CRAN asks for.',
 		defaultConfig: () => ({
 			cranIncoming: true,
 			maxDepends:   5,

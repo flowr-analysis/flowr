@@ -141,7 +141,7 @@ export const FOREIGN_FUNCTION_CALLS = {
 		name:          'Foreign Function Calls',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` notes of `checking foreign function calls`: calls of `.C`, `.Fortran`, `.Call` or `.External` naming a routine by a string without a `PACKAGE` argument in a package that loads no DLL with `useDynLib`, with an empty `PACKAGE`, or with a `PACKAGE` naming a base package, a different package, or a package the DESCRIPTION does not declare. Unlike `R CMD check`, it recognizes the calls by what flowR knows about them (ignoring a redefined `.Call`), resolves routine and `PACKAGE` through variables, and accepts any DLL the NAMESPACE loads. It does not check the registration of the routines, which needs the installed package.',
+		description:   'Checks `.Call`, `.C`, `.External`, and `.Fortran` calls: a missing or empty `PACKAGE`, calls into base or other packages, and undeclared packages. Routine and package names are resolved through variables.',
 		defaultConfig: () => ({
 			resolveValues: true
 		})

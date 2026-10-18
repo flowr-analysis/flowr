@@ -332,7 +332,7 @@ export const PACKAGE_RUNTIME = {
 		name:          'Package Runtime',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'The static part of the `R CMD check` steps that install, load, or run the package (`whether package can be installed`, `whether the package can be loaded`, `loading without being on the library search path`, `tests`, `running R code from vignettes`, `re-building of vignette outputs`, `for differences from example reference output`, `for non-standard things in the check directory`, `Rust compilation`, `if there is a namespace`, `extension type`, `if this is a source package`): undefined exports and S3 methods registered without a function (installing or loading fails), NAMESPACE imports from undeclared packages or of unexported names, a package attaching itself, tests that never run or run another package, test and vignette code that does not parse, vignettes without index entry or engine, files written into the working directory, orphaned reference output, Rust without its SystemRequirements, a missing NAMESPACE, a Type other than Package, and installed packages in place of sources.',
+		description:   'Finds what makes installing, loading, or running the package fail without doing so: undefined exports, S3 methods without a function, bad NAMESPACE imports, a package attaching itself, tests that never run, test or vignette code that does not parse, missing vignette metadata, and files written into the working directory.',
 		defaultConfig: () => ({
 			checkWrites: true
 		})

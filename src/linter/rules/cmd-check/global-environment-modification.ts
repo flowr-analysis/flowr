@@ -286,7 +286,7 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		name:          'Global Environment Modification',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the `R CMD check` notes *"Found the following assignments to the global environment"*, *"Found the following calls to data() loading into the global environment"*, *"Found the following calls to attach()"*, and the `codetools` note *"no visible binding for \'<<-\' assignment"* (all `checking R code for possible problems`). Beyond `R CMD check`, flowR follows variables bound to the global environment, ignores redefined functions, and reports `<<-` assignments to variables of the package namespace, whose bindings are locked at run time.',
+		description:   'Finds code that changes the global environment: `assign()` or `data()` into it, `attach()`, `<<-` without a binding in an enclosing function, and `<<-` to a package variable, whose binding is locked at run time.',
 		defaultConfig: () => ({
 			checkSuperAssignments: true,
 			allowedGlobals:        ['.Random.seed']

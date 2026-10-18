@@ -707,7 +707,7 @@ export const PACKAGE_STRUCTURE = {
 		name:          'Package Structure',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Port of the file structure checks of `R CMD check`: `checking for portable file names`, `checking for hidden files and directories`, `checking top-level files`, `checking for left-over files`, `checking package subdirectories`, `checking \'build\' directory`, `checking for .dll and .exe files`, `checking for executable files`, `checking for sufficient/correct file permissions`, `checking for future file timestamps`, `checking installed package size`, `checking sizes of PDF files under \'inst/doc\'`, `checking line endings in shell scripts`, `checking for left-overs from vignette generation`, `checking files in \'vignettes\'` and `checking installed files from \'inst/doc\'`. Works on the files `R CMD build` keeps (after `.Rbuildignore`); checks that need file system information only run for packages on disk. Unlike `R CMD check`, every finding names the offending file, thresholds and lists are configurable, executables are recognized by their magic bytes, and the installed size is estimated without installing.',
+		description:   'Checks the package files: portable names, hidden files, top-level files, subdirectories, permissions, executables, timestamps, sizes, line endings of scripts, and vignette leftovers.',
 		defaultConfig: () => ({
 			maxPathLength:         100,
 			maxTarPathLength:      256,

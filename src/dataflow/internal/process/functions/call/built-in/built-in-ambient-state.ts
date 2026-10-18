@@ -378,7 +378,7 @@ export function applyAmbientStateAccess<OtherInfo>(
 		case AmbientStateAccessType.SetGraphics:
 			/* the call returns the previous state */
 			reads.push(AmbientStateName.graphics);
-			if(args.length === 0 || (access.queryOnUnnamedStrings && isQuery(args))) {
+			if(onlyQueries(access, args)) {
 				if(access.queryLinksTo) {
 					handleUnknownSideEffect(res.graph, res.environment, rootId, access.queryLinksTo);
 				}
@@ -388,7 +388,7 @@ export function applyAmbientStateAccess<OtherInfo>(
 			break;
 		case AmbientStateAccessType.SetPalette:
 			reads.push(AmbientStateName.palette);
-			if(args.length > 0) {
+			if(!onlyQueries(access, args)) {
 				writes.push(AmbientStateName.palette);
 			}
 			break;
@@ -707,6 +707,28 @@ function setOptions<OtherInfo>(
 		writes.push(AmbientStateName.allOptions);
 	}
 	return withAccess(res, rootId, data, reads, writes);
+}
+
+/**
+ * Whether the call to `fn` only queries the state it may set, as `par("mar")`, `options("digits")` and `palette()`
+ * do, which hand that state back visibly where setting it returns the previous one invisibly.
+ */
+export function callOnlyQueries<OtherInfo>(fn: Identifier, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], environment: REnvironmentInformation): boolean {
+	const targets = Resolve.byNameAndType(fn, environment, ReferenceType.Function) ?? [];
+	return targets.length > 0 && targets.every(t => hiddenAccess(t).some(a => onlyQueries(a, args)));
+}
+
+function onlyQueries<OtherInfo>(access: AmbientStateAccess, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): boolean {
+	switch(access.type) {
+		case AmbientStateAccessType.SetGraphics:
+			return args.length === 0 || (access.queryOnUnnamedStrings === true && isQuery(args));
+		case AmbientStateAccessType.SetOptions:
+			return isQuery(args);
+		case AmbientStateAccessType.SetPalette:
+			return args.length === 0;
+		default:
+			return false;
+	}
 }
 
 /** `par()`, `par("mar", "usr")`, and `par(no.readonly = TRUE)` only query the graphics state */

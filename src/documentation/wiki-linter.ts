@@ -1,7 +1,7 @@
 import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
-import { CmdCheckConformance } from '../linter/rules/cmd-check/conformance';
+import { CmdCheckConformance, CmdCheckSource, ConformanceLevel, numberedConformance, RPackagesCmdCheck, WritingRExtensionsCmdCheck } from '../linter/rules/cmd-check/conformance';
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { showQuery } from './doc-util/doc-query';
@@ -454,7 +454,7 @@ function(x) {
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
 	**[${rule.info.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
-	${tags}
+	${tags}${cmdCheckStepsOf(name, false) === '' ? '' : `\\\n\t${cmdCheckStepsOf(name, false)}`}
 
 		`.trim()));
 		} else {
@@ -465,6 +465,7 @@ ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">ove
 
 ${tags}
 
+${cmdCheckStepsOf(name, true)}
 
 This rule is a ${certaintyText} rule.
  
@@ -498,6 +499,18 @@ ${buildSamplesFromLinterTestCases(parser, `${testfile}.test.ts`)}
 	}
 
 	return ruleExplanations;
+}
+
+const ConformanceSymbol: Readonly<Record<ConformanceLevel, string>> = {
+	[ConformanceLevel.Full]:    '🟩',
+	[ConformanceLevel.Static]:  '🔷',
+	[ConformanceLevel.Partial]: '🔶'
+};
+
+/** the R CMD check steps a rule covers, as links into the conformance table */
+function cmdCheckStepsOf(name: LintingRuleNames, withCoverage: boolean): string {
+	const steps = numberedConformance().filter(e => e.rules.includes(name));
+	return steps.length === 0 ? '' : `R CMD check: ${steps.map(e => `[#${e.number}](${FlowrWikiBaseRef}/Linter#cmd-check-${e.number})${withCoverage ? ` ${ConformanceSymbol[e.level]}` : ''}`).join(', ')}`;
 }
 
 function getAllLintingRulesWithTag(tag: LintingRuleTag): LintingRuleNames[] {
@@ -557,18 +570,22 @@ ${await (async() => {
 	
 ${section('R CMD check Conformance', 2, 'r-cmd-check-conformance')}
 
-The rules tagged ${makeTagBadge(LintingRuleTag.CmdCheck, tagTypes.info)} port the checks of \`R CMD check\` (as of R 4.6.1), so that flowR finds what
-\`R CMD check\` would report without building, installing, or running the package. As they only make sense for a package,
-they are part of the default rule set only when the analyzed project is one (see the \`linter.disabledTags\` option of the flowR configuration).
-The table below lists every step of \`R CMD check\` (the \`checking ...\` lines of its log) with the rules covering it:
-_full_ covers everything the step reports, _static_ what can be decided without building, installing, or running the package, and _partial_ some of it.
-Wherever the dataflow analysis allows, the rules go beyond \`R CMD check\` (e.g., by resolving values through variables), see each rule for details.
+Rules tagged ${makeTagBadge(LintingRuleTag.CmdCheck, tagTypes.info)} port \`R CMD check\` (R 4.6.1, see [Writing R Extensions](${WritingRExtensionsCmdCheck}) and [R Packages](${RPackagesCmdCheck})).
+They run by default only for packages (config option \`linter.disabledTags\`).
+Below are all steps of \`R CMD check\`, numbered by us (R itself prints them as \`* checking ...\`), each linked to its code in [R's \`check.R\`](${CmdCheckSource}) and its section in R Packages.
 
-${CmdCheckConformance.map(({ area, entries }) => `${section(area, 3)}
+| | Coverage |
+| :-: | :-- |
+| ${ConformanceSymbol.full} | everything the step reports |
+| ${ConformanceSymbol.static} | what can be decided without building, installing, or running the package |
+| ${ConformanceSymbol.partial} | part of what the step reports |
 
-| Step (\`checking ...\`) | Rules | Coverage | Note |
-| :-- | :-- | :-- | :-- |
-${entries.map(e => `| ${e.check.replaceAll('|', '\\|')} | ${e.rules.map(r => linkToRule(r)).join(', ')} | ${e.level} | ${(e.note ?? '').replaceAll('|', '\\|')} |`).join('\n')}`).join('\n\n')}
+${CmdCheckConformance.map(({ area }) => `${section(area, 3)}
+
+| # | Step (\`checking ...\`) | | Rules | Note |
+| --: | :-- | :-: | :-- | :-- |
+${numberedConformance().filter(e => e.area === area).map(e =>
+	`| <a id="cmd-check-${e.number}"></a>${e.number} | [${e.check.replaceAll('|', '\\|')}](${CmdCheckSource}#L${e.line}) ([book](${RPackagesCmdCheck}#${e.book})) | ${ConformanceSymbol[e.level]} | ${e.rules.map(r => linkToRule(r)).join(', ')} | ${(e.note ?? '').replaceAll('|', '\\|')} |`).join('\n')}`).join('\n\n')}
 
 ${section('Quick Fixes', 2, 'quick-fixes')}
 

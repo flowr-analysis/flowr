@@ -78,6 +78,14 @@ describe('flowR linter', withTreeSitter(parser => {
 			assert.includeMembers(keys, cmdCheckRules);
 		});
 
+		test('a query for the cmd-check tag runs exactly the R CMD check rules', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addRequest('cat("hello")');
+			const keys = Object.keys((await executeLinterQuery({ analyzer }, [{ type: 'linter', tags: [LintingRuleTag.CmdCheck] }])).results);
+			const all = (Object.keys(LintingRules) as LintingRuleNames[]).filter(r => (LintingRules[r].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck));
+			assert.deepStrictEqual(keys.sort(), all.sort());
+		});
+
 		test('other tags can be disabled through the config', async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).configure('linter.disabledTags', [LintingRuleTag.Bug]).build();
 			analyzer.addRequest('cat("hello")');

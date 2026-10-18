@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import type { LintingRuleTag } from '../../../linter/linter-tags';
 import type { LinterQuery, LinterQueryResult } from './linter-query-format';
 import { type LintingRuleNames, LintingRules } from '../../../linter/linter-rules';
 import { log } from '../../../util/log';
@@ -26,7 +27,9 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 			const info = LintingRules[name].info as { activeByDefault?: boolean, tags: readonly string[] };
 			return info.activeByDefault !== false && !disabled.has(name) && !info.tags.some(t => disabledTags.has(t));
 		});
-	const flattened = queries.flatMap(q => q.rules ?? defaultRules);
+	const tagged = (tags: readonly LintingRuleTag[]) => (Object.keys(LintingRules) as LintingRuleNames[])
+		.filter(name => (LintingRules[name].info.tags as readonly LintingRuleTag[]).some(t => tags.includes(t)));
+	const flattened = queries.flatMap(q => q.rules ?? (q.tags ? tagged(q.tags) : defaultRules));
 	const distinct = new Set(flattened);
 	if(distinct.size !== flattened.length) {
 		const pretty = [...distinct].filter(r => flattened.indexOf(r) !== flattened.lastIndexOf(r)).map(r => typeof r === 'string' ? r : r.name).join(', ');

@@ -15,6 +15,12 @@ export class FlowrJupyterFile extends FlowrFile {
 		super(wrapped.path(), wrapped.roles ? [...wrapped.roles, FileRole.Source] : [FileRole.Source]);
 	}
 
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
+	}
+
 	/**
 	 * Loads and parses the content of the wrapped file.
 	 * @returns RmdInfo

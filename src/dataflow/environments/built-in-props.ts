@@ -396,6 +396,8 @@ export const FnSig = {
 	layout:  sigLayout,
 	/** The roles of the argument at a position; see {@link argProp}. */
 	propAt:  argProp,
+	/** The parameter each argument fills, honoring names; see {@link argumentSlots}. */
+	slots:   argumentSlots,
 	/** The positions carrying any of the given roles; see {@link argsWith}. */
 	posWith: argsWith,
 	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
@@ -541,6 +543,26 @@ function sigLayout(this: void, sig: FnSig): SigLayout {
 /** The {@link ArgProp} bits of the argument at `index`, with `...` covering every position from where it appears. */
 function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProps {
 	return (rest >= 0 && index >= rest ? props[rest] : props[index]) ?? 0;
+}
+
+/**
+ * The parameter each argument fills, matched as R does: an argument naming a parameter exactly fills it, the unnamed
+ * ones fill the parameters left in order up to `...`, which takes everything else. `-1` marks an argument no
+ * parameter takes. `argNames` holds the name of each argument, `undefined` for an unnamed one.
+ */
+function argumentSlots(this: void, { names, rest }: SigLayout, argNames: readonly (string | undefined)[]): number[] {
+	const named = argNames.map(n => n === undefined ? -1 : names.indexOf(n));
+	const taken = new Set(named.filter(at => at >= 0 && at !== rest));
+	let next = 0;
+	return argNames.map((n, i) => {
+		if(n !== undefined) {
+			return named[i] >= 0 && named[i] !== rest ? named[i] : rest;
+		}
+		while(next < names.length && next !== rest && taken.has(next)) {
+			next++;
+		}
+		return next < names.length && next !== rest ? next++ : rest;
+	});
 }
 
 /**

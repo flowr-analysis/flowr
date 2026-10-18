@@ -38,7 +38,8 @@ export function processQuote<OtherInfo>(
 	const startEnv = data.environment;
 	let lastEnv = startEnv;
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({
-		name, args, rootId, data, origin: BuiltInProcName.Quote, sig: config.sig,
+		keepArgumentGraphs: true,
+		name, args, rootId, data, origin:             BuiltInProcName.Quote, sig:                config.sig,
 		patchData(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, index: number): DataflowProcessorInformation<OtherInfo & ParentInformation> {
 			if(index === config.quoteArgumentsWithIndex) {
 				lastEnv = data.environment;

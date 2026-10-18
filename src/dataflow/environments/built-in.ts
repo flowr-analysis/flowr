@@ -74,7 +74,7 @@ import { processWithEnv } from '../internal/process/functions/call/built-in/buil
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
-import { ArgProp, type BuiltInFnInfo, type FnSig, SemanticCallTag } from './built-in-props';
+import { ArgProp, type BuiltInFnInfo, type FnSig, type SigLayout, SemanticCallTag } from './built-in-props';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { AttachedBasePackageSet } from '../../util/r-base-packages';
 import { REnvironment } from './environment';
@@ -146,6 +146,12 @@ export interface BuiltInEvalHandlerArgs extends ResolveInfo {
 }
 export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
+/** The position of the argument filling the first parameter: by name if one names it, else the first in order. */
+function firstParameterArgument<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], layout: SigLayout | undefined): number {
+	return layout === undefined ? 0 : FunctionSemantics.call.signature.slots(layout,
+		args.map(a => RArgument.isEmpty(a) || a.name === undefined ? undefined : Identifier.getName(a.name.content))).indexOf(0);
+}
+
 /**
  * The symbols handed to an {@link ArgProp.Atomic} argument directly: only data works there, so `id` in `id > 2`
  * names a variable and not a function `id` that happens to be in scope, even though `>` may dispatch on the
@@ -189,16 +195,18 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(layout !== undefined) {
 		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FunctionSemantics.call.signature.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
-	const nsePositions = nse === undefined ? undefined : new Set(nseArgumentPositions(nse, args.length));
+	const first = firstParameterArgument(args, layout);
+	const nsePositions = nse === undefined ? undefined : new Set(nseArgumentPositions(nse, args.length, first));
 	let lastEnv = data.environment;
 	/* `evalq(expr)` runs `expr` right here, in the frame it is called from */
 	const inPlace = args.length === 1 && Identifier.getName(name.content) === 'evalq';
 	const { information: res, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, sig, alternativeArgsFrom,
-		origin:      useAsProcessor,
-		nonFunction: dataArgumentSymbols(args, sig),
+		keepArgumentGraphs: nse !== undefined || masked !== undefined,
+		origin:             useAsProcessor,
+		nonFunction:        dataArgumentSymbols(args, sig),
 		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
-		patchData:   nsePositions === undefined ? undefined : (d, index) => {
+		patchData:          nsePositions === undefined ? undefined : (d, index) => {
 			if(nsePositions.has(index) && !inPlace) {
 				lastEnv = d.environment;
 				return { ...d, environment: REnvironment.cleanOf(d.environment) };
@@ -209,8 +217,8 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(nsePositions !== undefined) {
 		dropQuotedReferences(res, processedArguments, nsePositions, lastEnv);
 	}
-	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
-	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, masked, { kind: NseKind.DataMasked });
+	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse, { first });
+	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, masked, { kind: NseKind.DataMasked, first });
 	if(keepArgumentOut) {
 		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
@@ -294,10 +302,11 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	{ useAsProcessor = BuiltInProcName.Default, markArgsAsNSE: nse, markArgsAsMasked: masked, sig, ambient }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig' | 'ambient'>
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({
-		name, args, rootId, data, sig, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig) });
+		name, args, rootId, data, sig, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig), keepArgumentGraphs: nse !== undefined || masked !== undefined });
 	readArguments(information.graph, rootId, processedArguments);
-	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, nse);
-	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, masked, { kind: NseKind.DataMasked });
+	const first = firstParameterArgument(args, sig === undefined ? undefined : FunctionSemantics.call.signature.layout(sig));
+	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, nse, { first });
+	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, masked, { kind: NseKind.DataMasked, first });
 	return ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, ambient);
 }
 

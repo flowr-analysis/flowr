@@ -221,10 +221,11 @@ export function processRm<OtherInfo>(
 	}
 	const nse = nonStandardArguments(args);
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({
+		keepArgumentGraphs: true,
 		name, args, rootId, data,
-		origin:    BuiltInProcName.Rm,
+		origin:             BuiltInProcName.Rm,
 		/* an unevaluated name must not resolve against the environment */
-		patchData: (d, i) => nse.has(i) ? { ...d, environment: REnvironment.cleanOf(d.environment) } : d
+		patchData:          (d, i) => nse.has(i) ? { ...d, environment: REnvironment.cleanOf(d.environment) } : d
 	});
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [...nse]);
 

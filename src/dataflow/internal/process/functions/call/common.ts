@@ -41,6 +41,8 @@ export interface ProcessAllArgumentInput<OtherInfo> {
 	readonly nonFunction?:      ReadonlySet<NodeId>
 	/** the arguments from this index on are alternatives of which at most one runs (the arms of `switch`) */
 	readonly alternativesFrom?: number
+	/** keep the graph of each processed argument its own, for a caller marking what lies within an argument */
+	readonly keepGraphs?:       boolean
 }
 
 export interface ProcessAllArgumentResult {
@@ -108,7 +110,7 @@ export function isPipedArgument<OtherInfo>(arg: unknown, functionRootId: NodeId,
 
 /** Processes all arguments for a function call, updating the given final graph and environment. */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom, keepGraphs }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	const callArgs: FunctionArgument[] = [];
@@ -147,8 +149,8 @@ export function processAllArguments<OtherInfo>(
 		if(beforeAlternatives !== undefined) {
 			afterAlternatives = REnvironment.append(afterAlternatives ?? beforeAlternatives, finalEnv);
 		}
-		/* nothing reads the argument's own graph past this point, only its entry point and references */
-		finalGraph.mergeWith(processed.graph, true, precomputed === undefined);
+		/* unless asked to keep it, nothing reads the argument's own graph past this point, only its entry point and references */
+		finalGraph.mergeWith(processed.graph, true, precomputed === undefined && !keepGraphs);
 
 		/* resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies */
 		for(const original of [...processed.in, ...processed.unknownReferences]) {

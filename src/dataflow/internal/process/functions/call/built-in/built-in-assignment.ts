@@ -206,7 +206,7 @@ function processMaskedNamePair<OtherInfo>(
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: 'default', keepArgumentGraphs: true });
 	const target = args[0];
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.First, {
 		kind:      NseKind.DataMasked,

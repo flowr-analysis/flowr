@@ -31,7 +31,7 @@ function markAsMaskedFallback<OtherInfo>(
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With });
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With, keepArgumentGraphs: true });
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.AllButFirst, { kind: NseKind.DataMasked });
 	return information;
 }

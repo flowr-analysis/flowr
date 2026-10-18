@@ -9,14 +9,15 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /** the string-literal path argument of a `source()`-like call node, if it has one (else `undefined`) */
-function sourceArg(ast: NormalizedAst, callId: NodeId): string | undefined {
-	const node = ast.idMap.get(callId);
-	const arg = RFunctionCall.is(node) ? node.arguments[0] : undefined;
-	return arg !== undefined && arg !== EmptyArgument && RString.is(arg.value) ? arg.value.content.str : undefined;
+export function sourcePathOf(node: RNode | undefined): string | undefined {
+	const path = RFunctionCall.is(node) ? RArgument.valueOf(node.arguments[0]) : undefined;
+	return RString.is(path) ? path.content.str : undefined;
 }
 
 /**
@@ -73,7 +74,7 @@ export function buildSourceInlineMap(ast: NormalizedAst, graph: DataflowGraph): 
 	const firstVertexByCd = new Map<NodeId, NodeId>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
-			sourceArgs.set(id, sourceArg(ast, id));
+			sourceArgs.set(id, sourcePathOf(ast.idMap.get(id)));
 		}
 		const cds = vertex.cds;
 		if(cds && cds.length > 0 && !firstVertexByCd.has(cds[0].id)) {

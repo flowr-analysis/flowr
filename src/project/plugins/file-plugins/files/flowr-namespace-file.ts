@@ -36,6 +36,8 @@ export interface NamespaceInfo {
 	/** Classes listed by `exportClasses()`: the S4 classes the package owns. Separated like {@link exportedS4Methods}. */
 	exportedS4Classes:    string[];
 	exportS3Generics:     Map<string, string[]>;
+	/** For `S3method(generic, class, fun)`, the function registered as the method `generic.class` when it is not named so. */
+	s3MethodFunctions?:   Map<string, string>;
 	exportedPatterns:     string[];
 	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
@@ -78,6 +80,10 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	 */
 	protected loadContent(): NamespaceFormat {
 		return this.ctx ? parseNamespaceComplex(this.wrapped, this.ctx) : parseNamespaceSimple(this.wrapped);
+	}
+
+	public rawText(): string {
+		return this.wrapped.rawText?.() ?? this.wrapped.content().toString();
 	}
 
 	/** See {@link isExportedInNamespaceFormat}, which this answers for the file's own content. */
@@ -327,7 +333,13 @@ function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyR
 	if(RArgument.isEmpty(pkgArg) || RArgument.isEmpty(funcArg) || !pkgArg.lexeme || !funcArg.lexeme) {
 		return g;
 	}
-	arrayAt(g.current.exportS3Generics, RString.unquote(pkgArg.lexeme)).push(RString.unquote(funcArg.lexeme));
+	const generic = RString.unquote(pkgArg.lexeme);
+	const cls = RString.unquote(funcArg.lexeme);
+	arrayAt(g.current.exportS3Generics, generic).push(cls);
+	const fun = args[2];
+	if(fun !== undefined && !RArgument.isEmpty(fun) && fun.lexeme) {
+		(g.current.s3MethodFunctions ??= new Map()).set(`${generic}.${cls}`, RString.unquote(fun.lexeme));
+	}
 	return g;
 }
 function handleImportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
@@ -452,7 +464,10 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		}
 	}
 
+	const s3MethodFunctions = target.s3MethodFunctions || source.s3MethodFunctions
+		? new Map([...target.s3MethodFunctions ?? [], ...source.s3MethodFunctions ?? []]) : undefined;
 	return {
+		...(s3MethodFunctions ? { s3MethodFunctions } : {}),
 		callable:             [...target.callable, ...source.callable],
 		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
 		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
@@ -521,8 +536,11 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				if(parts.length !== 2 && parts.length !== 3) {
 					continue;
 				}
-				const [pkg, func] = parts;
+				const [pkg, func, fun] = parts;
 				arrayAt(result.current.exportS3Generics, pkg).push(func);
+				if(fun !== undefined) {
+					(result.current.s3MethodFunctions ??= new Map()).set(`${pkg}.${func}`, fun);
+				}
 				break;
 			}
 			case 'export':

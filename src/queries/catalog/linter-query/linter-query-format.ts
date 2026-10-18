@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { queryHeader } from '../../query-print';
+import { missingRootsWithoutRequests, queryHeader } from '../../query-print';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
 import {
@@ -23,7 +23,6 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
-import fs from 'fs';
 import { type LintResultsByRule, LinterOutputFormat } from '../../../linter/linter-output';
 
 export interface LinterQuery extends BaseQueryFormat {
@@ -46,7 +45,7 @@ export interface LinterQueryResult extends BaseQueryResult {
 	readonly formatted?: string
 }
 
-function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): { valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[] } {
+function rulesFromInput(rulesPart: readonly string[]): { valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[] } {
 	return rulesPart
 		.reduce((acc, ruleName) => {
 			ruleName = ruleName.trim();
@@ -83,7 +82,7 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 			format = formatFromInput(output, argument);
 			continue;
 		}
-		const parseResult = rulesFromInput(output, argument.slice(rulesPrefix.length).split(','));
+		const parseResult = rulesFromInput(argument.slice(rulesPrefix.length).split(','));
 		if(parseResult.invalid.length > 0) {
 			output.stderr(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
 				+ `\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
@@ -138,23 +137,18 @@ export const LinterQueryDefinition = {
 			return true;
 		}
 		result.push(queryHeader('linter', formatter, out['.meta'].timing));
+		/* without any code, only the rules checking the project's files have something to say */
+		const missing = missingRootsWithoutRequests(analyzer);
+		if(missing !== undefined && missing.length > 0) {
+			result.push(formatter.format(`Path does not exist: ${missing.map(p => `'${p}'`).join(', ')}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+			return true;
+		} else if(missing !== undefined) {
+			result.push(formatter.format('No R code to lint was found in the analysis.', { color: Colors.Yellow, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		}
 		const allDidFail = Object.values(out.results).every(LintingResults.isError);
 		if(allDidFail) {
 			result.push('All linting rules failed to execute.');
-			const files = analyzer.inspectContext().files;
-			if(files.loadingOrder.getUnorderedRequests().length === 0) {
-				const missing = files.getRequestedRoots().filter(p => !fs.existsSync(p));
-				if(missing.length > 0) {
-					result.push(formatter.format(`Path does not exist: ${missing.map(p => `'${p}'`).join(', ')}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-					return true;
-				}
-				result.push(
-					formatter.format('No requests to lint for were found in the analysis.', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold })
-				);
-				result.push(
-					'If you consider this an error, please report a bug: ' + getGuardIssueUrl('analyzer found no requests to lint for')
-				);
-			} else if(Object.values(out.results).length === 1) {
+			if(Object.values(out.results).length === 1) {
 				const fst = Object.values(out.results)[0] as LintingResultsError;
 				result.push('Error: ' + LintingResults.stringifyError(fst));
 				if(fst.error instanceof Error) {
@@ -206,9 +200,8 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	const header = `${bold(rule.info.name, formatter)} (${ruleName})`;
 
 	if(LintingResults.isError(results)) {
-		const error = LintingResults.stringifyError(results).includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + LintingResults.stringifyError(results);
 		result.push(`   ╰ ${header}:`);
-		result.push(`       ╰ ${error}`);
+		result.push(`       ╰ Error during execution of rule: ${LintingResults.stringifyError(results)}`);
 		return;
 	}
 

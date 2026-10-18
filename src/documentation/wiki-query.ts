@@ -659,6 +659,13 @@ registerQueryDocumentation('dependencies', {
 	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R script',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'library(x)';
+		const transformCode = `
+library(dplyr)
+library(ggplot2)
+small <- measurements |> filter(x > 1) |> select(x, y)
+p <- ggplot(small, aes(x, y)) + geom_point() + ggtitle("Small")
+ggsave("small.png", plot = p)
+		`;
 		const longerCode = `
 source("sample.R")
 foo <- loadNamespace("bar")
@@ -713,6 +720,25 @@ ${
 convention and \`R_DEFAULT_PACKAGES\` (or \`options(defaultPackages=)\`) can drop any of them, whereas \`base\` is always
 there and cannot be detached -- so it is never something the script could have asked for, and never something to
 suggest a \`library\` call for.
+
+Beyond libraries, files and outputs, the query knows the \`visualize\` category (plots) and the \`transform\` category
+(\`Data Transformations\`): the calls that reshape, filter, join or aggregate data, like \`dplyr::filter\`, \`tidyr::pivot_longer\`,
+\`merge\`, \`aggregate\` or \`data.table::setDT\`. Every entry names its package, so \`filter\` is only a transformation when it
+resolves to \`dplyr\` and never for the time-series \`stats::filter\`.
+
+The \`read\`, \`write\`, \`visualize\`, and \`transform\` entries additionally state how data flows through the call,
+resolved with the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} instead of the syntax:
+* \`inputVariables\` (for \`write\`, \`visualize\`, and \`transform\`) are the variables the result is computed from, through every call
+  in between. What an argument's role in the signature excludes (a file, a flag, a callee) is no input, nor is what a call quotes or
+  looks up in a data mask: \`df\` for \`df |> filter(x > 1)\`, both \`a\` and \`b\` for \`left_join(a, b)\`. An addon to a plot draws its data.
+* \`assignedTo\` (for \`read\`, \`visualize\`, and \`transform\`) is the variable the result is stored in, following every call that hands
+  it on (a pipe into a call, parentheses, a \`+\` adding to a plot) up to \`<-\`, \`=\` or \`->\`: \`small\` for \`small <- filter(df, x > 1)\`, and
+  nothing for \`f(filter(df, x > 1))\`.
+* Every plot additionally carries its \`title\` (from \`ggtitle\`, \`labs(title = )\` or \`main =\`) and the file it is written to as \`savedTo\`
+  (by \`ggsave\`, which names its \`plot\` or saves \`last_plot()\`, or by the graphics device open when it is drawn).
+${
+	await showQuery(shell, transformCode, [{ type: 'dependencies', enabledCategories: ['transform', 'visualize'] }], { showCode: true, collapseQuery: true, collapseResult: false, ctx })
+}
 		`;
 	}
 });

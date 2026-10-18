@@ -1,6 +1,6 @@
 import path from 'path';
 import type { SyntaxNode } from 'web-tree-sitter';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { LintingPrettyPrintContext, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -13,7 +13,8 @@ import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { type CmdCheckResult, packageInfo, projectNodes } from './cmd-check-util';
+import { packageInfo, projectNodes } from './cmd-check-util';
+import { type FileResult, fileFindings } from './file-checks';
 import { type PackageFiles, packageFiles } from './package-files';
 
 /** what is wrong with a package file, named after the `R CMD check` finding it corresponds to */
@@ -29,11 +30,7 @@ export type PackageMetafilesKind =
 	| 'citation-superseded'
 	| 'relative-link';
 
-export interface PackageMetafilesResult extends CmdCheckResult {
-	readonly kind: PackageMetafilesKind
-	/** the package file the finding is about, relative to the package root */
-	readonly file: string
-}
+export type PackageMetafilesResult = FileResult<PackageMetafilesKind>;
 
 export interface PackageMetafilesConfig extends MergeableRecord {
 	/** check the `INDEX` and the `demo/00Index` of the package (default `true`) */
@@ -198,11 +195,7 @@ function firstError(node: SyntaxNode): SyntaxNode | undefined {
 	return undefined;
 }
 
-/**
- * Checks `inst/CITATION` as `R CMD check` does (`tools:::.check_citation`): it has to parse, and each top-level
- * `citEntry()` or `bibentry()` needs a known entry type and the fields that type requires. Superseded citation
- * functions are reported as well. Returns the number of files read (0 or 1).
- */
+/** Checks `inst/CITATION` (`tools:::.check_citation`) and returns the number of files read (0 or 1). */
 function checkCitationFile(files: PackageFiles, data: ReadonlyFlowrAnalysisProvider, config: PackageMetafilesConfig, report: Report): number {
 	const rel = 'inst/CITATION';
 	const text = files.read(rel);
@@ -302,33 +295,17 @@ function checkRelativeLinks(files: PackageFiles, report: Report): number {
 	return read;
 }
 
-/**
- * Port of the `R CMD check` notes on the metadata files of a package: the `INDEX` and the `demo/00Index` as
- * `checking index information` reads them (empty files, demos without an index entry and entries without a demo),
- * `inst/CITATION` as `checking package subdirectories` reads it (`tools:::.check_citation`: a syntax error, an invalid
- * entry type, or a missing required field of a `citEntry()` or `bibentry()`) and the CITATION files in a non-standard
- * place, and the relative links of the README and vignettes that `checking relative paths in package URLs` looks at
- * (`tools:::.check_package_urls_relative_paths`, which only sees the installed help and vignette HTML).
- * Unlike `R CMD check`, it reads the files statically (no R is run), and also reports the citation functions that are
- * superseded by a newer one.
- */
+/** Port of the `R CMD check` notes on `INDEX`, `demo/00Index`, `inst/CITATION`, CITATION locations, and relative links of README, NEWS and vignettes. */
 export const PACKAGE_METAFILES = {
 	createSearch:        () => Q.from([]),
 	processSearchResult: (_elements, config, data) => {
 		const ctx = data.inspectContext();
 		const files = packageFiles(ctx, packageInfo(ctx).name);
-		const results: PackageMetafilesResult[] = [];
 		if(files === undefined) {
-			return { results, '.meta': { checkedFiles: 0 } };
+			return { results: [], '.meta': { checkedFiles: 0 } };
 		}
-		const report: Report = (kind, file, line, message) => results.push({
-			certainty:  LintingResultCertainty.Certain,
-			involvedId: undefined,
-			loc:        files.locate(file, line),
-			kind,
-			file,
-			message
-		});
+		const { results, add } = fileFindings<PackageMetafilesKind>(files);
+		const report: Report = (kind, file, line, message) => add(kind, file, message, line);
 		let checked = 0;
 		if(config.index) {
 			checked += checkIndices(files, report);

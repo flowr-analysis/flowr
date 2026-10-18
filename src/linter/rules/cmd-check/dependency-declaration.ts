@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { MergeableRecord } from '../../../util/objects';
@@ -15,7 +15,7 @@ import { attachesPackage } from '../../../queries/catalog/dependencies-query/fun
 import { Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AttachedBasePackageSet, isBaseRPackage } from '../../../util/r-base-packages';
-import { type CmdCheckResult, isStandardPackage, packageInfo, projectNodes } from './cmd-check-util';
+import { at, printer, type CmdCheckResult, isStandardPackage, packageInfo, projectNodes } from './cmd-check-util';
 import { packageFiles, type PackageFiles, rootDescriptionFile } from './package-files';
 import { packageCode } from './package-code';
 import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
@@ -203,15 +203,7 @@ export const DEPENDENCY_DECLARATION = {
 			return false;
 		};
 		const add = (id: NodeId, kind: DependencyDeclarationKind, name: string, message: string, certain = true) => {
-			const node = idMap.get(id);
-			results.push({
-				certainty:  certain ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain,
-				involvedId: id,
-				loc:        (node ? SourceLocation.fromNode(node) : undefined) ?? SourceLocation.invalid(),
-				kind,
-				package:    name,
-				message
-			});
+			results.push({ ...at(idMap.get(id), certain), involvedId: id, kind, package: name, message });
 		};
 
 		/* library(), require(), requireNamespace(), ... as the dependencies query resolves them, a package name in a variable included */
@@ -357,11 +349,8 @@ export const DEPENDENCY_DECLARATION = {
 		}
 		return { results, '.meta': { unresolvedLoads } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind} of ${result.package} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<DependencyDeclarationResult>(r => `${r.kind} of ${r.package}`),
+	info:        {
 		name:          'Dependency Declaration',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Reproducibility],
 		certainty:     LintingRuleCertainty.BestEffort,

@@ -2,15 +2,16 @@ import { uniqueArray } from '../../../util/collections/arrays';
 import { escapeRegex } from '../../../util/text/strings';
 import fs from 'fs';
 import path from 'path';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
+import type { SourceLocation } from '../../../util/range';
 import { AuthorRole, parseRAuthorString } from '../../../util/r-author';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { AttachedBasePackageSet, isBaseRPackage } from '../../../util/r-base-packages';
 import { rootDescriptionFile } from './package-files';
+import { MessageAtLocation } from './file-checks';
 import { type CmdCheckResult, DependencyFields, type DependencyField } from './cmd-check-util';
 
 /** The sub-check of `R CMD check` a finding stems from. */
@@ -193,16 +194,7 @@ function hasSrcFolder(ctx: ReadOnlyFlowrAnalyzerContext, dir: string): boolean |
 	return fs.existsSync(dir) ? fs.existsSync(path.join(dir, 'src')) : undefined;
 }
 
-/**
- * Port of the `DESCRIPTION` checks of `R CMD check`: `checking DESCRIPTION meta-information` (`tools:::.check_package_description`
- * and the encoding check: required fields, package name, version, maintainer, dependency fields, `VignetteBuilder`, the
- * ending of Title and Description, non-ASCII fields and the encoding), the checks of `.check_package_description2` (a
- * package listed in several dependency fields, `LinkingTo` without a `src` folder), `.check_package_license` (license
- * specification, deprecated and template licenses, license file pointers), the checks of `Authors@R` (maintainer and
- * author), and the DESCRIPTION based style checks of `R CMD check --as-cran` (title case, Title and Description
- * starts) as well as the excessive `Depends` and `Imports` checks.
- * Unlike `R CMD check`, every finding carries the line(s) of the field it concerns in the DESCRIPTION file.
- */
+/** Port of the DESCRIPTION checks of `R CMD check` (meta-information, dependency fields, license, Authors\@R, and the `--as-cran` style checks), located at the field's lines. */
 export const DESCRIPTION_METADATA = {
 	createSearch:        () => Q.from([]),
 	processSearchResult: (_elements, config, data) => {
@@ -424,11 +416,8 @@ export const DESCRIPTION_METADATA = {
 		}
 		return { results, '.meta': { hasDescription: true } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: MessageAtLocation,
+	info:        {
 		name:          'Description Metadata',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,

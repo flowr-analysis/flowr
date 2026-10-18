@@ -3,7 +3,8 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { type CmdCheckResult, packageInfo } from './cmd-check-util';
+import { packageInfo } from './cmd-check-util';
+import { type FileResult, fileFindings } from './file-checks';
 import { FileRole } from '../../../project/context/flowr-file';
 import type { NamespaceFormat } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { type PackageEntry, type PackageFiles, packageFiles } from './package-files';
@@ -16,12 +17,7 @@ export type CompiledCodeKind =
 	| 'pragmas in C/C++ headers and code' | 'usage of KIND in Fortran files' | 'C++ specification' | 'compiled code'
 	| 'whether package can be installed';
 
-export interface CompiledCodeResult extends CmdCheckResult {
-	/** the `R CMD check` check the finding belongs to */
-	readonly kind: CompiledCodeKind
-	/** the file the finding is in, relative to the package root */
-	readonly file: string
-}
+export type CompiledCodeResult = FileResult<CompiledCodeKind>;
 
 export interface CompiledCodeConfig extends MergeableRecord {
 	/** checks (by their `R CMD check` title) to skip */
@@ -150,6 +146,8 @@ interface Line {
 }
 
 /** the lines of a file with `\` continuations joined and comments removed, like `R CMD check` prepares Makefiles */
+type Findings = { add: (kind: CompiledCodeKind, file: string, line: number, message: string, certainty?: LintingResultCertainty) => void };
+
 function logicalLines(text: string): Line[] {
 	const raw = text.split(/\r?\n/);
 	const result: Line[] = [];
@@ -223,17 +221,6 @@ function stripC(text: string, strings: boolean): string {
 function filesIn(files: PackageFiles, dir: string, pattern: RegExp, recursive = true): PackageEntry[] {
 	return files.entries.filter(e => !e.isDirectory && e.relative.startsWith(dir + '/')
 		&& (recursive || !e.relative.slice(dir.length + 1).includes('/')) && pattern.test(e.relative));
-}
-
-class Findings {
-	public readonly results: CompiledCodeResult[] = [];
-	constructor(private readonly files: PackageFiles, private readonly skip: ReadonlySet<string>) {}
-
-	public add(kind: CompiledCodeKind, file: string, line: number, message: string, certainty = LintingResultCertainty.Certain): void {
-		if(!this.skip.has(kind)) {
-			this.results.push({ certainty, kind, file, message, involvedId: undefined, loc: this.files.locate(file, line) });
-		}
-	}
 }
 
 function checkLineEndings(files: PackageFiles, out: Findings): void {
@@ -695,12 +682,7 @@ function checkInstallable(files: PackageFiles, out: Findings, namespace: Namespa
 	}
 }
 
-/**
- * Ports the static checks `R CMD check` makes on the compiled code of a package and its build files, e.g. the checks
- * for compilation flags in Makevars, `PKG_*FLAGS` and `SHLIB_OPENMP_*FLAGS` in Makefiles, pragmas and Fortran `KIND`s.
- * The Rust compilation check only inspects the install log and is not ported. The binary part of the compiled code
- * check inspects the shared object, so flowR approximates it on the sources.
- */
+/** Port of the static `R CMD check` checks on compiled code and build files (Rust compilation and the binary part of the compiled code check are not ported). */
 export const COMPILED_CODE = {
 	createSearch:        () => Q.from([]),
 	processSearchResult: (_elements, config, data) => {
@@ -710,7 +692,8 @@ export const COMPILED_CODE = {
 		if(files === undefined) {
 			return { results: [], '.meta': { consideredFiles: 0 } };
 		}
-		const out = new Findings(files, new Set(config.skip));
+		const found = fileFindings<CompiledCodeKind>(files, config.skip);
+		const out: Findings & { results: CompiledCodeResult[] } = { results: found.results, add: (kind, file, line, message, certainty) => found.add(kind, file, message, line, certainty) };
 		const dcf = pkg.description?.content();
 		const sysReq = dcf?.get('SystemRequirements')?.join(' ') ?? '';
 		checkLineEndings(files, out);

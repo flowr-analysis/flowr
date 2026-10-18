@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -19,7 +19,7 @@ import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
-import { calledDefinitions, type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
+import { at, printer, calledDefinitions, type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
 
 /** what is wrong with a package hook */
 export type PackageHookIssue =
@@ -149,11 +149,8 @@ export const PACKAGE_HOOKS = {
 		const allowedOutput = new Set(config.allowedOutput);
 		const unsafe = new Set(config.unsafeCalls);
 		for(const { name: hook, def } of hooks) {
-			const defLoc = SourceLocation.fromNode(def) ?? SourceLocation.invalid();
 			const report = (issue: PackageHookIssue, message: string, id: NodeId = def.info.id, call?: string, certain = true) => results.push({
-				certainty:  certain ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain,
-				involvedId: id,
-				loc:        id === def.info.id ? defLoc : SourceLocation.fromNode(idMap.get(id)) ?? defLoc,
+				...at(idMap.get(id) ?? def, certain),
 				hook,
 				issue,
 				...(call ? { call } : {}),
@@ -195,11 +192,8 @@ export const PACKAGE_HOOKS = {
 		}
 		return { results, '.meta': { hooks: hooks.map(h => h.name) } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.hook}: ${result.issue}${result.call ? ` (${result.call})` : ''} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<PackageHooksResult>(r => `${r.hook}: ${r.issue}${r.call ? ` (${r.call})` : ''}`),
+	info:        {
 		name:          'Package Hooks',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Usability],
 		certainty:     LintingRuleCertainty.BestEffort,

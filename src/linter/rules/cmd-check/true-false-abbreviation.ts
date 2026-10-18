@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -16,7 +16,7 @@ import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/d
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { type CmdCheckResult, packageInfo } from './cmd-check-util';
+import { at, type CmdCheckResult, packageInfo, printer } from './cmd-check-util';
 
 export interface TrueFalseAbbreviationResult extends CmdCheckResult {
 	/** the abbreviation used */
@@ -99,12 +99,10 @@ export const TRUE_FALSE_ABBREVIATION = {
 				/* a local `T` (a parameter, a variable of a function) only shadows within that function */
 				if(config.reportRedefinitions && RNode.strictlyEnclosingFunction(node.info.id, idMap) === undefined && !RParameter.is(idMap.get(node.info.parent ?? ''))) {
 					results.push({
-						certainty:  LintingResultCertainty.Certain,
-						involvedId: node.info.id,
-						loc,
-						name:       name as 'T' | 'F',
-						kind:       'redefinition',
-						message:    `${name} is redefined, which changes the meaning of every ${name} used as an abbreviation of ${replacement}`
+						...at(node),
+						name:    name as 'T' | 'F',
+						kind:    'redefinition',
+						message: `${name} is redefined, which changes the meaning of every ${name} used as an abbreviation of ${replacement}`
 					});
 				}
 				continue;
@@ -118,22 +116,17 @@ export const TRUE_FALSE_ABBREVIATION = {
 				continue;
 			}
 			results.push({
-				certainty:  local ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
-				involvedId: node.info.id,
-				loc,
-				name:       name as 'T' | 'F',
-				kind:       'use',
-				message:    `${name} is used as an abbreviation of ${replacement}`,
-				quickFix:   [{ type: 'replace', description: `Replace \`${name}\` with \`${replacement}\``, replacement, loc }]
+				...at(node, !local),
+				name:     name as 'T' | 'F',
+				kind:     'use',
+				message:  `${name} is used as an abbreviation of ${replacement}`,
+				quickFix: [{ type: 'replace', description: `Replace \`${name}\` with \`${replacement}\``, replacement, loc }]
 			});
 		}
 		return { results, '.meta': { locallyDefined } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind === 'use' ? 'Use' : 'Redefinition'} of \`${result.name}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<TrueFalseAbbreviationResult>(r => `${r.kind === 'use' ? 'Use' : 'Redefinition'} of \`${r.name}\``),
+	info:        {
 		name:            'TRUE/FALSE Abbreviation',
 		tags:            [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Readability, LintingRuleTag.QuickFix],
 		certainty:       LintingRuleCertainty.Exact,

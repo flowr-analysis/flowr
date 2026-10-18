@@ -1,5 +1,5 @@
 import { uniqueArray } from '../../../util/collections/arrays';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { FlowrFilterCombinator } from '../../../search/flowr-search-filters';
@@ -10,7 +10,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { type CmdCheckResult, packageInfo } from './cmd-check-util';
+import { at, type CmdCheckResult, packageInfo, printer } from './cmd-check-util';
 import { packageFiles } from './package-files';
 
 export interface NonAsciiCodeResult extends CmdCheckResult {
@@ -81,25 +81,21 @@ export const NON_ASCII_CODE = {
 				const characters = nonAsciiCharacters(node.content.str);
 				if(characters.length > 0) {
 					results.push({
-						certainty:  LintingResultCertainty.Certain,
-						involvedId: node.info.id,
-						loc,
-						kind:       'string',
+						...at(node),
+						kind:     'string',
 						characters,
-						message:    `Non-ASCII characters in string literal (${characters.join(', ')}), use \\uxxxx escapes instead`,
-						quickFix:   quickFixFor(node)
+						message:  `Non-ASCII characters in string literal (${characters.join(', ')}), use \\uxxxx escapes instead`,
+						quickFix: quickFixFor(node)
 					});
 				}
 			} else if(RSymbol.is(node)) {
 				const characters = nonAsciiCharacters(Identifier.getName(node.content));
 				if(characters.length > 0) {
 					results.push({
-						certainty:  LintingResultCertainty.Certain,
-						involvedId: node.info.id,
-						loc,
-						kind:       'symbol',
+						...at(node),
+						kind:    'symbol',
 						characters,
-						message:    `Non-ASCII characters in symbol name (${characters.join(', ')}), use ASCII only`
+						message: `Non-ASCII characters in symbol name (${characters.join(', ')}), use ASCII only`
 					});
 				}
 			}
@@ -112,23 +108,18 @@ export const NON_ASCII_CODE = {
 				const characters = nonAsciiCharacters(line.replace(/#.*$/, ''));
 				if(characters.length > 0) {
 					results.push({
-						certainty:  LintingResultCertainty.Certain,
-						involvedId: undefined,
-						loc:        files.locate('NAMESPACE', i + 1),
-						kind:       'namespace',
+						...at(files.locate('NAMESPACE', i + 1)),
+						kind:    'namespace',
 						characters,
-						message:    `Non-ASCII characters in the NAMESPACE file (${characters.join(', ')}), use ASCII only`
+						message: `Non-ASCII characters in the NAMESPACE file (${characters.join(', ')}), use ASCII only`
 					});
 				}
 			}
 		}
 		return { results, '.meta': { consideredTokens: considered } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `non-ASCII ${result.kind} ${JSON.stringify(result.characters)} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	},
-	info: {
+	prettyPrint: printer<NonAsciiCodeResult>(r => `non-ASCII ${r.kind} ${JSON.stringify(r.characters)}`),
+	info:        {
 		name:          'Non-ASCII Code',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,

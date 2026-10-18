@@ -1,7 +1,7 @@
 import path from 'path';
 import { escapeRegex } from '../../../util/text/strings';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -18,7 +18,7 @@ import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { type CmdCheckResult, type PackageInfo, isStandardPackage, packageInfo, projectNodes } from './cmd-check-util';
+import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, packageInfo, projectNodes } from './cmd-check-util';
 import { packageFiles, type PackageFiles } from './package-files';
 import { packageCode } from './package-code';
 
@@ -324,11 +324,8 @@ export const PACKAGE_RUNTIME = {
 		testAndVignetteChecks(files, pkg, data, config, writers, add);
 		return { results, '.meta': {} };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<PackageRuntimeResult>(r => r.kind),
+	info:        {
 		name:          'Package Runtime',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

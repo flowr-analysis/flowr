@@ -1,9 +1,8 @@
 import { RS3Generics } from '../../../data/r-s3-generics.generated';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { fnInfo } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
@@ -19,7 +18,7 @@ import type { AstIdMap, NormalizedAst, ParentInformation } from '../../../r-brid
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { s3GroupGenericMembers } from '../../../dataflow/environments/group-generics';
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
-import { type CmdCheckResult, formalNames as rawFormalNames, packageInfo, projectNodes, topLevelDefinitions } from './cmd-check-util';
+import { at, type CmdCheckResult, printer, formalNames as rawFormalNames, packageInfo, projectNodes, topLevelDefinitions } from './cmd-check-util';
 
 /** what is wrong with the function */
 export type S3MethodIssue =
@@ -191,13 +190,10 @@ export const S3_METHOD_CONSISTENCY = {
 		let methods = 0;
 		let replacements = 0;
 		const report = (def: RFunctionDefinition<ParentInformation>, kind: S3MethodIssue, name: string, generic: string | undefined, certain: boolean, message: string) => {
-			const node = nameNodeOf(def, idMap);
 			results.push({
-				certainty:  certain ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain,
-				involvedId: node.info.id,
-				loc:        SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
+				...at(nameNodeOf(def, idMap), certain),
 				kind,
-				function:   name,
+				function: name,
 				...(generic === undefined ? {} : { generic }),
 				message
 			});
@@ -250,11 +246,8 @@ export const S3_METHOD_CONSISTENCY = {
 		}
 		return { results, '.meta': { consideredMethods: methods, consideredReplacements: replacements } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.function}: ${result.kind} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<S3MethodConsistencyResult>(r => `${r.function}: ${r.kind}`),
+	info:        {
 		name:          'S3 Method Consistency',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

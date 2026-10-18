@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -8,9 +8,7 @@ import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { StackEnvKind } from '../../../dataflow/environments/default-builtin-config';
@@ -23,7 +21,7 @@ import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/mod
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
-import { boundName, type CmdCheckResult, isBuiltInCall, packageInfo, projectNodes } from './cmd-check-util';
+import { at, boundName, type CmdCheckResult, packageCalls, packageInfo, printer, projectNodes } from './cmd-check-util';
 import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
@@ -64,6 +62,8 @@ const EnvironmentWriters = {
 	data:   { '...': '...', list: 'list', package: 'package', 'lib.loc': 'lib.loc', verbose: 'verbose', envir: 'envir', overwrite: 'overwrite' },
 	attach: { what: 'what', pos: 'pos', name: 'name', 'warn.conflicts': 'warn.conflicts' }
 } as const;
+
+const WriterNames: ReadonlySet<string> = new Set(Object.keys(EnvironmentWriters));
 
 /** whether `node` denotes the global environment, directly or through variables bound to it */
 function denotesGlobalEnv(node: RNode<ParentInformation> | undefined, environment: REnvironmentInformation, df: DataflowInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext, depth = 0): boolean {
@@ -211,20 +211,9 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		const allowed = new Set(config.allowedGlobals);
 		const results: GlobalEnvironmentModificationResult[] = [];
 		let consideredCalls = 0;
-		const add = (node: RNode<ParentInformation>, kind: GlobalEnvironmentModificationKind, message: string, variable?: string) => {
-			const loc = SourceLocation.fromNode(node);
-			if(loc !== undefined) {
-				results.push({ certainty: LintingResultCertainty.Certain, involvedId: node.info.id, loc, kind, ...(variable !== undefined ? { variable } : {}), message });
-			}
-		};
-		for(const [id, vertex] of df.graph.verticesOfType(VertexType.FunctionCall)) {
-			const name = Identifier.getName(vertex.name);
-			const node = idMap.get(id);
-			if(!(name in EnvironmentWriters) || node === undefined || !pkg.isPackageCode(node.info.file) || !isBuiltInCall(df.graph, id)) {
-				continue;
-			}
+		const add = (node: RNode<ParentInformation>, kind: GlobalEnvironmentModificationKind, message: string, variable?: string) => results.push({ ...at(node), kind, ...(variable !== undefined ? { variable } : {}), message });
+		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg, WriterNames, true)) {
 			consideredCalls++;
-			const call = vertex as DataflowGraphVertexFunctionCall;
 			const args = FunctionSemantics.call.match.toSpec(call.args, EnvironmentWriters[name as keyof typeof EnvironmentWriters]);
 			const arg = (formal: string) => {
 				const ids = (args as ReadonlyMap<string, readonly NodeId[]>).get(formal);
@@ -278,11 +267,8 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		}
 		return { results, '.meta': { consideredCalls } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind}${result.variable ? ` of ${result.variable}` : ''} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<GlobalEnvironmentModificationResult>(r => `${r.kind}${r.variable ? ` of ${r.variable}` : ''}`),
+	info:        {
 		name:          'Global Environment Modification',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

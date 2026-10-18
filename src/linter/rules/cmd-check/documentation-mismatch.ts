@@ -23,48 +23,31 @@ import { type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } fr
 
 /** The sub-check of `R CMD check` a finding belongs to. */
 export type DocumentationMismatchKind =
-	/** `checking for missing documentation entries`: an exported object without an `\alias` */
 	| 'undocumented-object'
-	/** `checking for code/documentation mismatches`: the formals of the code and of the `\usage` differ in names or order */
 	| 'argument-mismatch'
-	/** `checking for code/documentation mismatches`: a default value differs between code and `\usage` */
 	| 'default-mismatch'
-	/** `checking Rd \usage sections`: a `\usage` argument without an `\item` */
 	| 'undocumented-argument'
-	/** `checking Rd \usage sections`: an `\item` for an argument the `\usage` does not have */
 	| 'documented-argument-not-in-usage'
-	/** `checking Rd \usage sections`: a `\usage` function without an `\alias` */
 	| 'usage-without-alias';
 
 export interface DocumentationMismatchResult extends CmdCheckResult {
 	readonly kind:      DocumentationMismatchKind
-	/** the object, function or argument the finding is about */
 	readonly name:      string
-	/** the Rd file the finding is about, absent for an undocumented object */
 	readonly rdFile?:   string
-	/** the function whose `\usage` or `\item` is concerned (argument findings) */
 	readonly function?: string
 }
 
 export interface DocumentationMismatchConfig extends MergeableRecord {
-	/** report exported objects no Rd page documents (default `true`) */
 	readonly checkUndocumented:    boolean
-	/** compare the formals of functions with their `\usage` (default `true`) */
 	readonly checkCodoc:           boolean
-	/** also compare literal default values, not only argument names and order (default `true`) */
 	readonly checkDefaults:        boolean
-	/** check the `\arguments` against the `\usage` (default `true`) */
 	readonly checkUsage:           boolean
-	/** also demand documented arguments in `\keyword{internal}` pages, which `R CMD check` does not (default `false`) */
 	readonly checkInternalUsage:   boolean
-	/** report the exported objects of a package that has a NAMESPACE but no Rd page at all as undocumented (default `true`) */
 	readonly requireDocumentation: boolean
 }
 
 export interface DocumentationMismatchMetadata extends MergeableRecord {
-	/** exported objects inspected */
 	readonly consideredObjects: number
-	/** Rd pages inspected */
 	readonly consideredPages:   number
 }
 
@@ -77,7 +60,6 @@ interface UsageCall {
 	readonly name:    string
 	readonly args:    readonly UsageArg[]
 	readonly entry:   string
-	/** a replacement usage `f(x) <- value` */
 	readonly replace: boolean
 }
 
@@ -307,19 +289,7 @@ function signature(name: string, args: readonly string[]): string {
 	return `${name}(${args.join(', ')})`;
 }
 
-/**
- * Port of the code/documentation consistency checks of `R CMD check`:
- * - `checking for missing documentation entries` (`tools::undoc`): a code object the package exports (all top-level
- *   objects without a NAMESPACE, else those matched by `export()` and `exportPattern()`) without any Rd `\alias`;
- * - `checking for code/documentation mismatches` (`tools::codoc`): the formal arguments (names and order) of a
- *   top-level function differ from those in its Rd `\usage`, or a default value differs;
- * - `checking Rd \usage sections` (`tools::checkDocFiles`): `\usage` arguments without an `\item` ("Undocumented
- *   arguments"), `\item`s for arguments not in the `\usage` (documented arguments not in the usage), and `\usage`
- *   functions without an `\alias`.
- *
- * Each finding names its sub-check in `kind`. Beyond `R CMD check`, flowR can switch each sub-check off, only
- * compares default values that are literals on both sides, and can demand arguments in internal pages.
- */
+/** Port of the code/documentation consistency checks of `R CMD check`. */
 export const DOCUMENTATION_MISMATCH = {
 	createSearch:        () => Q.fromQuery({ type: 'dependencies', enabledCategories: [] }),
 	processSearchResult: async(_elements, config, data) => {

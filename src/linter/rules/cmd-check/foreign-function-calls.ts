@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -17,7 +17,7 @@ import { FileRole } from '../../../project/context/flowr-file';
 import type { NamespaceFormat } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type CmdCheckResult, DependencyFields, packageInfo } from './cmd-check-util';
+import { at, type CmdCheckResult, DependencyFields, packageInfo, printer } from './cmd-check-util';
 
 /** what is wrong with a foreign function call */
 export type ForeignFunctionCallIssue =
@@ -108,14 +108,12 @@ export const FOREIGN_FUNCTION_CALLS = {
 			const given = bound.get('package') !== undefined;
 			const target = text(valueOf('package'));
 			const report = (issue: ForeignFunctionCallIssue, message: string, named?: string) => results.push({
-				certainty:  LintingResultCertainty.Certain,
-				involvedId: id,
-				loc,
+				...at(node),
 				issue,
 				call,
 				...(routine === undefined ? {} : { routine }),
 				...(named === undefined ? {} : { package: named }),
-				message:    `${message}: ${call}(${routine === undefined ? '...' : JSON.stringify(routine)}, ...)`
+				message: `${message}: ${call}(${routine === undefined ? '...' : JSON.stringify(routine)}, ...)`
 			});
 			if(!given) {
 				/* R only asks for the argument of a routine named by a string, and not when the NAMESPACE loads a DLL */
@@ -133,11 +131,8 @@ export const FOREIGN_FUNCTION_CALLS = {
 		}
 		return { results, '.meta': { consideredCalls: considered } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.call}${result.routine === undefined ? '' : `(${JSON.stringify(result.routine)})`}: ${result.issue} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	},
-	info: {
+	prettyPrint: printer<ForeignFunctionCallsResult>(r => `${r.call}${r.routine === undefined ? '' : `(${JSON.stringify(r.routine)})`}: ${r.issue}`),
+	info:        {
 		name:          'Foreign Function Calls',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

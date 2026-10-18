@@ -1,14 +1,14 @@
 import fs from 'fs';
 import path from 'path';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
 import { FlowrInlineTextFile } from '../../../project/context/flowr-file';
 import { RDAParser, type RObject, type RObjectData } from '../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { escapeRegex } from '../../../util/text/strings';
-import { type CmdCheckResult, packageInfo } from './cmd-check-util';
+import { packageInfo } from './cmd-check-util';
+import { type FileResult, fileFindings, MessageAtLocation } from './file-checks';
 import { type PackageEntry, type PackageFiles, packageFiles } from './package-files';
 
 export type PackageStructureKind =
@@ -21,12 +21,7 @@ export type PackageStructureKind =
 	| 'large-pdf' | 'crlf-shell-script' | 'vignette-leftover' | 'vignette-source-missing' | 'vignettes-without-inst-doc' | 'vignette-newer'
 	| 'no-vignette-builder' | 'file-already-in-r' | 'license-requires-sources' | 'leftover-mistake' | 'knitr-leftover' | 'should-not-install';
 
-export interface PackageStructureResult extends CmdCheckResult {
-	/** the sub-check of `R CMD check` the finding stems from */
-	readonly kind: PackageStructureKind
-	/** the offending file or directory, relative to the package root (`DESCRIPTION` for package-level findings) */
-	readonly file: string
-}
+export type PackageStructureResult = FileResult<PackageStructureKind>;
 
 export interface PackageStructureConfig extends MergeableRecord {
 	/** a path of more than this many bytes (with the package name as prefix) is noted (default `100`) */
@@ -153,18 +148,9 @@ function readVignetteIndex(file: string): ReadonlyMap<string, readonly string[]>
 	}
 }
 
-class Collector {
-	public readonly results: PackageStructureResult[] = [];
-	constructor(private readonly pf: PackageFiles) {}
-
-	public add(kind: PackageStructureKind, message: string, file: string, certainty = LintingResultCertainty.Certain, line?: number): void {
-		this.results.push({ certainty, involvedId: undefined, loc: this.pf.locate(file, line), kind, file, message });
-	}
-}
-
 interface Env {
 	readonly pf:       PackageFiles
-	readonly out:      Collector
+	readonly out:      { add: (kind: PackageStructureKind, message: string, file: string, certainty?: LintingResultCertainty) => void }
 	readonly config:   PackageStructureConfig
 	readonly pkgName:  string
 	readonly license:  readonly string[]
@@ -644,16 +630,7 @@ function checkInstDoc(env: Env): void {
 	}
 }
 
-/**
- * Port of the file and directory structure checks of `R CMD check`, each finding naming its sub-check in `kind` and the offending file or directory in `file`:
- * `checking for portable file names` (invalid, reserved, case-clashing and not fully portable names, long paths), `checking for hidden files and directories`,
- * `checking top-level files` (defunct files, `configure` without sources, license files, non-standard files and directories),
- * `checking for left-over files`, `checking package subdirectories` (empty or misnamed `R`, `man`, `demo`, `data`, `exec`, `inst`, `src`, `tests`, invalid file names, system directories in `inst`, misplaced `CITATION`),
- * `checking 'build' directory` (the vignette index against the files), `checking for .dll and .exe files`, `checking for executable files`, `checking for sufficient/correct file permissions`,
- * `checking for future file timestamps`, `checking installed package size`, `checking sizes of PDF files under 'inst/doc'`, `checking line endings in shell scripts`,
- * `checking for left-overs from vignette generation`, `checking files in 'vignettes'` and `checking installed files from 'inst/doc'`.
- * The files are those that `R CMD build` keeps. The checks that need file system information (permissions, times, sizes, executables, `build/vignette.rds`) only run for packages on disk.
- */
+/** Port of the file and directory structure checks of `R CMD check` (portable names, hidden and top-level files, subdirectories, permissions, sizes, vignettes). */
 export const PACKAGE_STRUCTURE = {
 	createSearch:        () => Q.from([]),
 	processSearchResult: (_elements, config, data) => {
@@ -663,7 +640,8 @@ export const PACKAGE_STRUCTURE = {
 		if(pf === undefined) {
 			return { results: [], '.meta': { inspectedEntries: 0, onDisk: false } };
 		}
-		const out = new Collector(pf);
+		const found = fileFindings<PackageStructureKind>(pf);
+		const out = { results: found.results, add: (kind: PackageStructureKind, message: string, file: string, certainty = LintingResultCertainty.Certain) => found.add(kind, file, message, undefined, certainty) };
 		const entries = pf.entries;
 		const paths = new Set(entries.map(e => e.relative));
 		const byParent = new Map<string, PackageEntry[]>();
@@ -699,11 +677,8 @@ export const PACKAGE_STRUCTURE = {
 		}
 		return { results: out.results, '.meta': { inspectedEntries: entries.length, onDisk: pf.onDisk } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: MessageAtLocation,
+	info:        {
 		name:          'Package Structure',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,

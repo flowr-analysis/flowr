@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
@@ -12,7 +12,7 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { boundName, type CmdCheckResult, isQuoted, packageInfo } from './cmd-check-util';
+import { at, boundName, type CmdCheckResult, isQuoted, packageInfo, printer } from './cmd-check-util';
 
 export interface BogusReturnResult extends CmdCheckResult {
 	/** the name of the function the bare `return` is in, if it is bound to one */
@@ -23,10 +23,7 @@ export type BogusReturnConfig = MergeableRecord;
 
 export type BogusReturnMetadata = MergeableRecord;
 
-/**
- * Port of the `R CMD check` note "Possibly missing '()' after 'return'" (`checking R code for possible problems`,
- * `tools:::.check_bogus_return`). A bare `return` does not leave the function, it evaluates to the function `return`.
- */
+/** Port of the `R CMD check` note "Possibly missing '()' after 'return'". */
 export const BOGUS_RETURN = {
 	createSearch:        () => Q.all().filter(RType.Symbol),
 	processSearchResult: async(elements, _config, data) => {
@@ -54,21 +51,16 @@ export const BOGUS_RETURN = {
 			}
 			const name = boundName(fn, idMap);
 			results.push({
-				certainty:  LintingResultCertainty.Certain,
-				involvedId: node.info.id,
-				loc,
-				function:   name,
-				message:    `Possibly missing '()' after 'return'${name ? ` in ${name}` : ''}, a bare return evaluates to the function itself`,
-				quickFix:   [{ type: 'replace', description: 'Call `return()`', replacement: 'return()', loc }]
+				...at(node),
+				function: name,
+				message:  `Possibly missing '()' after 'return'${name ? ` in ${name}` : ''}, a bare return evaluates to the function itself`,
+				quickFix: [{ type: 'replace', description: 'Call `return()`', replacement: 'return()', loc }]
 			});
 		}
 		return { results, '.meta': {} };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Bare \`return\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<BogusReturnResult>(() => 'Bare `return`'),
+	info:        {
 		name:          'Bogus Return',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.Exact,

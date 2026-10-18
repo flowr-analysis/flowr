@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../../linter-format';
 import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -18,7 +18,7 @@ import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { NodeValue } from '../../../dataflow/eval/resolve/node-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { type CmdCheckResult, packageInfo } from './cmd-check-util';
+import { at, type CmdCheckResult, packageInfo, printer } from './cmd-check-util';
 
 export interface ClassStringComparisonResult extends CmdCheckResult {
 	/** the class name(s) the condition compares with */
@@ -145,22 +145,17 @@ export const CLASS_STRING_COMPARISON = {
 					continue;
 				}
 				results.push({
-					certainty:  LintingResultCertainty.Certain,
-					involvedId: c.node.info.id,
-					loc,
-					classes:    c.classes,
-					message:    `${RIfThenElse.is(node) ? 'if' : 'while'}() condition compares class() to ${c.literal ? 'a string' : 'a string variable'}, use ${c.negated ? '!' : ''}inherits() instead`,
-					quickFix:   quickFixFor(c)
+					...at(c.node),
+					classes:  c.classes,
+					message:  `${RIfThenElse.is(node) ? 'if' : 'while'}() condition compares class() to ${c.literal ? 'a string' : 'a string variable'}, use ${c.negated ? '!' : ''}inherits() instead`,
+					quickFix: quickFixFor(c)
 				});
 			}
 		}
 		return { results, '.meta': { consideredConditions: considered } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `class() compared to ${result.classes.map(c => JSON.stringify(c)).join(', ')} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	},
-	info: {
+	prettyPrint: printer<ClassStringComparisonResult>(r => `class() compared to ${r.classes.map(c => JSON.stringify(c)).join(', ')}`),
+	info:        {
 		name:          'Class String Comparison',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,

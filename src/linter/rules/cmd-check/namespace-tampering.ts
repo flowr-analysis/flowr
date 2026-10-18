@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { EdgeType } from '../../../dataflow/graph/edge';
@@ -7,9 +7,7 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { NodeValue } from '../../../dataflow/eval/resolve/node-value';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
@@ -17,7 +15,7 @@ import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
-import { type CmdCheckResult, isBuiltInCall, packageInfo } from './cmd-check-util';
+import { at, type CmdCheckResult, packageInfo, packageCalls, printer } from './cmd-check-util';
 
 export type NamespaceTamperingKind =
 	/** `unlockBinding` of a binding in another namespace */
@@ -118,19 +116,8 @@ export const NAMESPACE_TAMPERING = {
 		const pkg = packageInfo(ctx);
 		const info = Resolve.info(df.graph, ctx);
 		const results: NamespaceTamperingResult[] = [];
-		const add = (node: RNode<ParentInformation>, result: Omit<NamespaceTamperingResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => {
-			const loc = SourceLocation.fromNode(node);
-			if(loc !== undefined) {
-				results.push({ certainty: certain ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain, involvedId: node.info.id, loc, ...result });
-			}
-		};
-		for(const [id, vertex] of df.graph.verticesOfType(VertexType.FunctionCall)) {
-			const name = Identifier.getName(vertex.name);
-			const node = TamperingCalls.has(name) ? idMap.get(id) : undefined;
-			if(node === undefined || !pkg.isPackageCode(node.info.file) || !isBuiltInCall(df.graph, id)) {
-				continue;
-			}
-			const call = vertex as DataflowGraphVertexFunctionCall;
+		const add = (node: RNode<ParentInformation>, result: Omit<NamespaceTamperingResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => results.push({ ...at(node, certain), ...result });
+		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg, TamperingCalls, true)) {
 			const arg = (formals: Record<string, string>, formal: string) => {
 				const ids = FunctionSemantics.call.match.toSpec(call.args, formals).get(formal);
 				return ids?.length === 1 ? idMap.get(ids[0]) : undefined;
@@ -192,11 +179,8 @@ export const NAMESPACE_TAMPERING = {
 		}
 		return { results, '.meta': {} };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind}${result.namespace ? ` of ${result.namespace}` : ''} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<NamespaceTamperingResult>(r => `${r.kind}${r.namespace ? ` of ${r.namespace}` : ''}`),
+	info:        {
 		name:          'Namespace Tampering',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Security],
 		certainty:     LintingRuleCertainty.BestEffort,

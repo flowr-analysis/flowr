@@ -1,9 +1,8 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -18,7 +17,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { boundName, calledDefinitions, isQuoted, type CmdCheckResult, formalNames, packageInfo, projectNodes } from './cmd-check-util';
+import { at, boundName, calledDefinitions, isQuoted, type CmdCheckResult, formalNames, packageInfo, printer, projectNodes } from './cmd-check-util';
 
 export type CallArgumentsKind =
 	/** a named argument no formal of the called function takes */
@@ -175,12 +174,7 @@ export const CALL_ARGUMENTS = {
 		const pkg = packageInfo(ctx);
 		const results: CallArgumentsResult[] = [];
 		let checkedCalls = 0;
-		const add = (node: RNode<ParentInformation>, r: Omit<CallArgumentsResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => {
-			const loc = SourceLocation.fromNode(node);
-			if(loc !== undefined) {
-				results.push({ certainty: certain ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain, involvedId: node.info.id, loc, ...r });
-			}
-		};
+		const add = (node: RNode<ParentInformation>, r: Omit<CallArgumentsResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => results.push({ ...at(node, certain), ...r });
 
 		const calls = [...df.graph.verticesOfType(VertexType.FunctionCall)];
 		const rewritesFormals = calls.some(([, v]) => FormalsRewriters.has(Identifier.getName(v.name)));
@@ -258,11 +252,8 @@ export const CALL_ARGUMENTS = {
 		}
 		return { results, '.meta': { checkedCalls } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind}${result.function ? ` in ${result.function}` : ''}${result.argument ? ` (${result.argument})` : ''} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
-	info: {
+	prettyPrint: printer<CallArgumentsResult>(r => `${r.kind}${r.function ? ` in ${r.function}` : ''}${r.argument ? ` (${r.argument})` : ''}`),
+	info:        {
 		name:          'Call Arguments',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

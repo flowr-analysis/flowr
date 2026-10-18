@@ -16,10 +16,14 @@ import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
+import { EdgeType } from '../../../dataflow/graph/edge';
+import { callOnlyQueries } from '../../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
+import { GgPlotImplicitAddons, PlotObjectCreate } from '../../../dataflow/environments/default-builtin-config';
 import { ExpectFunctionNames } from './function-info/test-functions';
+import type { FunctionInfo } from './function-info/function-info';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
-function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation): RNode<ParentInformation> | undefined {
+function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[]): RNode<ParentInformation> | undefined {
 	switch(node?.type) {
 		/* the loops hand back an invisible NULL, and the jumps never hand back anything at all */
 		case undefined:
@@ -32,28 +36,59 @@ function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: Dataf
 		case RType.LineDirective:
 			return undefined;
 		case RType.FunctionCall: {
-			if(callName(node, dataflow) === undefined) {
+			if(callName(node, dataflow, invisible) === undefined) {
 				return undefined;
 			}
-			const handedOn = aliased(node, dataflow);
-			return handedOn === undefined ? node : echoedValue(handedOn, dataflow);
+			const handedOn = aliased(node, dataflow, invisible);
+			return handedOn === undefined ? node : echoedValue(handedOn, dataflow, invisible);
 		}
 		/* a block hands on the value of its last statement, a `( )` group that of what it holds, visibly:
 		   which is what makes `(x <- 1)` print what it assigned */
 		case RType.ExpressionList:
 			return grouped(node) ? lastStatement(node) ?? node
-				: echoedValue(lastStatement(node), dataflow) ?? (node.children.length === 0 ? node : undefined);
+				: echoedValue(lastStatement(node), dataflow, invisible) ?? (node.children.length === 0 ? node : undefined);
 		case RType.Pipe:
-			return echoedValue(node.rhs, dataflow);
+			return echoedValue(node.rhs, dataflow, invisible);
 		/* whichever branch runs decides; without an `else` a false condition yields an invisible NULL */
 		case RType.IfThenElse:
-			return echoedValue(node.then, dataflow) ?? echoedValue(node.otherwise, dataflow);
+			return echoedValue(node.then, dataflow, invisible) ?? echoedValue(node.otherwise, dataflow, invisible);
 		case RType.BinaryOp:
 			return RBinaryOp.getOperatorInfo(node)?.usedAs === 'assignment' ? undefined : node;
 		/* a symbol, a constant, an access, a unary operator, or a function definition is printed as it stands */
 		default:
 			return node;
 	}
+}
+
+const GgPlotComponents: ReadonlySet<string> = new Set(GgPlotImplicitAddons);
+
+/**
+ * Whether the value is a plot, which printing draws rather than writes: a call returning one, a `+` chain adding
+ * to one (as ggplot builds them), or a variable bound to either.
+ */
+function isPlot(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, seen = new Set<NodeId>()): boolean {
+	if(node === undefined || seen.has(node.info.id)) {
+		return false;
+	}
+	seen.add(node.info.id);
+	switch(node.type) {
+		case RType.FunctionCall:
+			return isPlotCall(node, dataflow, PlotObjectCreate);
+		case RType.BinaryOp:
+			return node.operator === '+' && [node.lhs, node.rhs].some(o => isPlot(o, dataflow, seen) || isPlotCall(o, dataflow, GgPlotComponents));
+		case RType.Symbol:
+			return Dataflow.targetsOf(dataflow.graph, node.info.id, EdgeType.Reads).some(def =>
+				Dataflow.targetsOf(dataflow.graph, def, EdgeType.DefinedBy).some(value => isPlot(dataflow.graph.idMap?.get(value), dataflow, seen)));
+		default:
+			return false;
+	}
+}
+
+/** whether the node calls one of the given graphics functions */
+function isPlotCall(node: RNode<ParentInformation>, dataflow: DataflowInformation, among: ReadonlySet<string>): boolean {
+	const name = RFunctionCall.is(node) ? qualifiedName(node, dataflow) : undefined;
+	return name !== undefined && among.has(Identifier.getName(name))
+		&& FunctionSemantics.call.props.hasAny(queryFnProps(name, { environment: dataflow.environment }), [SemanticCallTag.Graphics]);
 }
 
 /** whether the list is a `( )` group rather than a `{ }` block, which is what makes its value visible */
@@ -65,8 +100,8 @@ function grouped(node: RExpressionList<ParentInformation>): boolean {
  * The call whose result this one hands back unchanged, as its {@link ArgProp.Alias} argument states: a pipe
  * is visible exactly when the call it feeds is. `undefined` when the call answers for itself.
  */
-function aliased(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation): RFunctionCall<ParentInformation> | undefined {
-	const name = callName(node, dataflow);
+function aliased(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, invisible: readonly FunctionInfo[]): RFunctionCall<ParentInformation> | undefined {
+	const name = callName(node, dataflow, invisible);
 	const at = name === undefined ? -1 : queryFnProps(name, { environment: dataflow.environment })?.sig
 		?.findIndex(([, p]) => (p & ArgProp.Alias) !== 0) ?? -1;
 	const arg = at < 0 ? undefined : node.arguments[at];
@@ -93,17 +128,26 @@ function qualifiedName(node: RFunctionCall<ParentInformation>, dataflow: Dataflo
 		? Dataflow.qualify(node.info.id, dataflow.graph, false) ?? vertex.name : undefined;
 }
 
-function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, seen = new Set<NodeId>()): Identifier | undefined {
+function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen = new Set<NodeId>()): Identifier | undefined {
 	const name = qualifiedName(node, dataflow);
 	if(name === undefined) {
 		return undefined;
 	}
 	const props = queryFnProps(name, { environment: dataflow.environment });
-	return FunctionSemantics.call.props.hasAny(props, [CallProp.Invisible, SemanticCallTag.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
-		|| (props === undefined && calleesReturnInvisibly(node.info.id, dataflow, seen)) ? undefined : name;
+	/* a setter hands back the previous state invisibly, but queried, the state is what it returns */
+	const hidden = FunctionSemantics.call.props.hasAny(props, [CallProp.Invisible]) && !callOnlyQueries(name, node.arguments, dataflow.environment);
+	return hidden || ExpectFunctionNames.test(Identifier.getName(name)) || isInvisible(name, invisible)
+		|| (props === undefined && calleesReturnInvisibly(node.info.id, dataflow, invisible, seen)) ? undefined : name;
 }
 
-function calleesReturnInvisibly(id: NodeId, dataflow: DataflowInformation, seen: Set<NodeId>): boolean {
+/** whether the call is to one of the functions stated to return invisibly, unless its package says it is another one */
+function isInvisible(name: Identifier, invisible: readonly FunctionInfo[]): boolean {
+	const fn = Identifier.getName(name);
+	const ns = Identifier.getNamespace(name);
+	return invisible.some(f => f.name === fn && (f.package === undefined || ns === undefined || f.package === ns));
+}
+
+function calleesReturnInvisibly(id: NodeId, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId>): boolean {
 	const idMap = dataflow.graph.idMap;
 	if(idMap === undefined || seen.has(id)) {
 		return false;
@@ -114,7 +158,7 @@ function calleesReturnInvisibly(id: NodeId, dataflow: DataflowInformation, seen:
 		callee = true;
 		for(const exit of definition.exitPoints) {
 			const last = idMap.get(exit.nodeId);
-			if(!RFunctionCall.is(last) || callName(last, dataflow, seen) !== undefined) {
+			if(!RFunctionCall.is(last) || callName(last, dataflow, invisible, seen) !== undefined) {
 				return false;
 			}
 		}
@@ -145,14 +189,15 @@ function echoName(node: RNode<ParentInformation>, dataflow: DataflowInformation)
  * outputs), given that it is echoed at all
  * (`project.assumeImplicitEcho`). A statement is only an output if its value is visible: an assignment, a loop,
  * and every {@link CallProp.Invisible} call hand back their result invisibly, while a bare symbol, a constant,
- * or an ordinary call reaches stdout. Calls another category already reports (a plot, a write, an assertion)
- * are left to it.
+ * or an ordinary call reaches stdout, unless it is one of the `invisible` dependency functions (which hold even for a
+ * package that is not loaded). Calls already reported as outputs are not repeated, and a printed plot draws instead
+ * (a lone ggplot component is no plot and is printed).
  */
-export function collectImplicitEchoes(ast: NormalizedAst, dataflow: DataflowInformation, accountedFor: ReadonlySet<NodeId>, result: DependencyInfo[]): void {
+export function collectImplicitEchoes(ast: NormalizedAst, dataflow: DataflowInformation, accountedFor: ReadonlySet<NodeId>, invisible: readonly FunctionInfo[], result: DependencyInfo[]): void {
 	for(const file of ast.ast.files) {
 		for(const statement of file.root.children) {
-			const echoed = echoedValue(statement, dataflow);
-			if(echoed === undefined || accountedFor.has(echoed.info.id)) {
+			const echoed = echoedValue(statement, dataflow, invisible);
+			if(echoed === undefined || accountedFor.has(echoed.info.id) || isPlot(echoed, dataflow)) {
 				continue;
 			}
 			result.push({ nodeId: echoed.info.id, functionName: echoName(echoed, dataflow), value: 'stdout', implicit: true });

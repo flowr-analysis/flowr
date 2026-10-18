@@ -58,6 +58,11 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 	return out;
 }
 
+/** what a top-level call with a visible result prints on its own */
+function printed(nodeId: NodeId | string, functionName: DependencyInfo['functionName']): DependencyInfo {
+	return { nodeId, functionName, value: 'stdout', implicit: true };
+}
+
 describe('Dependencies Query', withTreeSitter(parser => {
 	/** handles slicing criteria for the node ids */
 	function testQuery(
@@ -91,7 +96,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		extra?: () => void
 	): void {
 		describe('Custom', () => {
-			const expected: Partial<DependenciesQueryResult> = { [category]: [{ nodeId: `1@${fnName}`, functionName: fnName, value: 'my-custom-file' }] };
+			/* nothing states that a custom function returns invisibly, so a top-level call to it prints its result */
+			const expected: Partial<DependenciesQueryResult> = { [category]: [{ nodeId: `1@${fnName}`, functionName: fnName, value: 'my-custom-file' }],
+				...category === 'write' ? {} : { write: [printed(`1@${fnName}`, fnName)] } };
 			testQuery('Custom (by index)', `${fnName}(1, "my-custom-file", 2)`, expected, functions);
 			testQuery('Custom (by name)', `${fnName}(num1 = 1, num2 = 2, file = "my-custom-file")`, expected, functions);
 			testQuery('Ignore default', defaultCode, {}, { ignoreDefaultFunctions: true });
@@ -132,7 +139,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			['load_all', true]
 			/* support attach, support with, support pacman::p_load and the like? */
 		] as const) {
-			testQuery(`${loadFn} (${str ? 'string' : 'symbol'})`, `${loadFn}(${str ? '"a"' : 'a'})`, { library: [{ nodeId: '1@' + loadFn, functionName: loadFn, value: 'a' }] });
+			/* only `loadNamespace` hands back what it loaded visibly */
+			testQuery(`${loadFn} (${str ? 'string' : 'symbol'})`, `${loadFn}(${str ? '"a"' : 'a'})`, { library: [{ nodeId: '1@' + loadFn, functionName: loadFn, value: 'a' }],
+				...loadFn === 'loadNamespace' ? { write: [printed('1@loadNamespace', loadFn)] } : {} });
 		}
 
 		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { library: [
@@ -353,23 +362,23 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'read_html_live',
 			'read.ftable',
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}("a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}("a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }], write: [printed(`1@${readFn}`, readFn)] });
 		}
 
 		for(const readFn of [
 			'dbReadTable',
 			'dbReadTableArrow'
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}(obj, "a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}(obj, "a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }], write: [printed(`1@${readFn}`, readFn)] });
 		}
 
-		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
-		testQuery('read_csv', "read_csv('test.csv')", { read: [{ nodeId: '1@read_csv', functionName: 'read_csv', value: 'test.csv' }] });
-		testQuery('gzfile', 'gzfile("test.gz", "rb")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
-		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
-		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [] });
+		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }], write: [printed('1@read.table', 'read.table')] });
+		testQuery('read_csv', "read_csv('test.csv')", { read: [{ nodeId: '1@read_csv', functionName: 'read_csv', value: 'test.csv' }], write: [printed('1@read_csv', 'read_csv')] });
+		testQuery('gzfile', 'gzfile("test.gz", "rb")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
+		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
+		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [], write: [printed('1@gzfile', 'gzfile')] });
 
-		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x', argumentId: '1:12' }] });
+		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x', argumentId: '1:12' }], write: [printed('1@read.table', 'read.table')] });
 
 		describe('Bundled datasets', () => {
 			testQuery('by symbol', 'data(mtcars)', { read: [{ nodeId: '1@data', functionName: 'data', value: 'mtcars' }] });
@@ -380,24 +389,24 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		/* only a value we failed to resolve may be missing, fetched or rebound, so inline data must not look like one */
 		describe('Inline data is no unresolved path', () => {
 			testQuery('constructed from constants', 'matrix(0, 2, 2)',
-				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: '0', argumentId: '1:8' }] });
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: '0', argumentId: '1:8' }], write: [printed('1@matrix', 'matrix')] });
 			testQuery('constructed from a vector of constants', 'matrix(c(1, 2), 1, 2)',
-				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'c(1, 2)', argumentId: '1:8' }] });
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'c(1, 2)', argumentId: '1:8' }], write: [printed('1@matrix', 'matrix')] });
 			testQuery('constructed from a constant local', 'x <- 0\nmatrix(x, 2, 2)',
-				{ read: [{ nodeId: '2@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'x', argumentId: '2:8' }] });
+				{ read: [{ nodeId: '2@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'x', argumentId: '2:8' }], write: [printed('2@matrix', 'matrix')] });
 			testQuery('data that does not resolve stays unknown', 'matrix(f(), 2, 2)',
-				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Unknown, lexemeOfArgument: 'f()', argumentId: '1:8' }] });
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Unknown, lexemeOfArgument: 'f()', argumentId: '1:8' }], write: [printed('1@matrix', 'matrix')] });
 		});
 
-		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
+		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }], write: [printed('1@read.table', 'read.table')] });
 		testQuery('read (path built in a local)', 'p <- file.path("data", "x.csv")\nread.csv(p)',
-			{ read: [{ nodeId: '2@read.csv', functionName: 'read.csv', value: 'data/x.csv' }] });
+			{ read: [{ nodeId: '2@read.csv', functionName: 'read.csv', value: 'data/x.csv' }], write: [printed('2@read.csv', 'read.csv')] });
 		testQuery('write (path built in a local)', 'p <- file.path("out", "r.csv")\nwrite.csv(x, p)',
 			{ write: [{ nodeId: '2@write.csv', functionName: 'write.csv', value: 'out/r.csv' }] });
 
 		describe('Only if file parameter', () => {
-			testQuery('parse', 'parse(file="test.R")', { read: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }] });
-			testQuery('parse text', 'parse(text="test.R")', {});
+			testQuery('parse', 'parse(file="test.R")', { read: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }], write: [printed('1@parse', 'parse')] });
+			testQuery('parse text', 'parse(text="test.R")', { write: [printed('1@parse', 'parse')] });
 		});
 
 		/* a loop marks its body as nse, but unlike a quotation the body really is evaluated */
@@ -489,7 +498,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		describe('Devices', () => {
 			testQuery('the plots between an opener and its close land in its file',
 				'pdf("a.pdf")\nplot(x)\nlines(y)\ndev.off()\nplot(onScreen)', {
-					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
+					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }, { nodeId: '4@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }],
 					visualize: [
 						/* `parts` says what it takes to produce the file: the addons, and the device around them */
 						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf', '4@dev.off'] },
@@ -501,7 +510,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'pdf("a.pdf")\nplot(x)\ndev.off()\npng("b.png")\nhist(z)\ndev.off()', {
 					write: [
 						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
-						{ nodeId: '4@png', functionName: 'png', value: 'b.png' }
+						{ nodeId: '4@png', functionName: 'png', value: 'b.png' },
+						{ nodeId: '3@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true },
+						{ nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
 						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
@@ -511,7 +522,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			// closing the device ends the plot, so what is drawn after it builds whatever is open then
 			testQuery('an addon after the close does not build the closed file',
 				'pdf("a.pdf")\nplot(x)\ndev.off()\nlines(y)', {
-					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
+					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }, { nodeId: '3@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }],
 					visualize: [
 						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
 						{ nodeId: '4@lines', functionName: 'lines', linkedIds: ['2@plot'] }
@@ -521,7 +532,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'pdf("a.pdf")\nplot(x)\ndev.off()\npng("b.png")\nlines(y)\ndev.off()', {
 					write: [
 						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
-						{ nodeId: '4@png', functionName: 'png', value: 'b.png' }
+						{ nodeId: '4@png', functionName: 'png', value: 'b.png' },
+						{ nodeId: '3@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true },
+						{ nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
 						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
@@ -536,7 +549,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'pdf("a.pdf")\nplot(x)\npng("in.png")\nplot(y)\nlines(inner)\ndev.off()\nlines(outer)\ndev.off()', {
 					write: [
 						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
-						{ nodeId: '3@png', functionName: 'png', value: 'in.png' }
+						{ nodeId: '3@png', functionName: 'png', value: 'in.png' },
+						{ nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true },
+						{ nodeId: '8@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
 						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['7@lines', '1@pdf', '8@dev.off'] },
@@ -550,7 +565,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'pdf("a.pdf")\nplot(x)\npng("in.png")\nplot(y)\nlines(inner)\ndev.off()\ndev.off()', {
 					write: [
 						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
-						{ nodeId: '3@png', functionName: 'png', value: 'in.png' }
+						{ nodeId: '3@png', functionName: 'png', value: 'in.png' },
+						{ nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true },
+						{ nodeId: '7@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
 						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '7@dev.off'] },
@@ -560,7 +577,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				});
 			testQuery('each creation of a device takes its own addons',
 				'pdf("a.pdf")\nplot(x)\nlines(y)\nplot(w)\ntext(t)\ndev.off()', {
-					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
+					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }, { nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }],
 					visualize: [
 						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf', '6@dev.off'] },
 						{ nodeId: '4@plot', functionName: 'plot', value: 'a.pdf', parts: ['5@text', '1@pdf', '6@dev.off'] },
@@ -587,10 +604,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			// regression: an unqualified `map` plot entry used to swallow purrr::map / dplyr::map
 			testQuery('purrr::map is not a visualization', 'purrr::map(x, f)', {
 				library:   [{ nodeId: '1@map', functionName: '::', value: 'purrr' }],
+				write:     [{ nodeId: '1@purrr::map', functionName: Identifier.make('map', 'purrr'), value: 'stdout', implicit: true }],
 				visualize: []
 			});
 			testQuery('dplyr::map is not a visualization', 'dplyr::map(x, f)', {
 				library:   [{ nodeId: '1@map', functionName: '::', value: 'dplyr' }],
+				write:     [{ nodeId: '1@dplyr::map', functionName: Identifier.make('map', 'dplyr'), value: 'stdout', implicit: true }],
 				visualize: []
 			});
 			// regression: the ggplot-style calls other packages export were all attributed to ggplot2, so a
@@ -600,7 +619,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				visualize: [
 					{ nodeId: '1@plot', functionName: 'plot', parts: ['2@ggthemes::theme_wsj'] },
 					{ nodeId: '2@ggthemes::theme_wsj', functionName: Identifier.make('theme_wsj', 'ggthemes'), linkedIds: [1] }
-				]
+				],
+				write: [{ nodeId: '2@ggthemes::theme_wsj', functionName: Identifier.make('theme_wsj', 'ggthemes'), value: 'stdout', implicit: true }]
 			});
 			testQuery('a plot creator keeps its own package', 'plotly::ggplotly(p)', { library: [{ nodeId: '1@ggplotly', functionName: '::', value: 'plotly' }], visualize: [{ nodeId: '1@plotly::ggplotly', functionName: Identifier.make('ggplotly', 'plotly') }] });
 			testQuery('maps::map stays a visualization', 'maps::map(x)', { library: [{ nodeId: '1@map', functionName: '::', value: 'maps' }], visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps') }] });
@@ -611,7 +631,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				testQuery(f, `plot()\n${f}(x, y, z)`, { visualize: [
 					{ nodeId: '1@plot', functionName: 'plot', parts: [`2@${f}`] },
 					{ nodeId: `2@${f}`, functionName: f, linkedIds: [1] }
-				] });
+				], ...(f === 'tinyplot_add' ? {} : { write: [{ nodeId: `2@${f}`, functionName: f, value: 'stdout', implicit: true }] }) });
 			}
 			testQuery('complex', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)', { visualize: [
 				{ nodeId: '1@plot', functionName: 'plot', parts: ['4@coord_trans'] },
@@ -648,7 +668,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		/* regression: a name several packages export used to keep only the entry declared last, so a call to any
 		   other package's function of that name went unreported, or was read with the wrong argument */
 		testQuery('a readr write is a write', 'readr::write_csv(d, "o.csv")', { library: [{ nodeId: '1@write_csv', functionName: '::', value: 'readr' }], write: [{ nodeId: '1@readr::write_csv', functionName: Identifier.make('write_csv', 'readr'), value: 'o.csv' }] });
-		testQuery('a readr read is a read', 'readr::read_lines("a.txt")', { library: [{ nodeId: '1@read_lines', functionName: '::', value: 'readr' }], read: [{ nodeId: '1@readr::read_lines', functionName: Identifier.make('read_lines', 'readr'), value: 'a.txt' }] });
+		testQuery('a readr read is a read', 'readr::read_lines("a.txt")', { library: [{ nodeId: '1@read_lines', functionName: '::', value: 'readr' }], read: [{ nodeId: '1@readr::read_lines', functionName: Identifier.make('read_lines', 'readr'), value: 'a.txt' }], write: [printed('1@readr::read_lines', Identifier.make('read_lines', 'readr'))] });
 		/* arrow takes the sink as its second argument, the other package declaring the name takes a file as its first */
 		testQuery('the sink of an arrow write is its own argument', 'arrow::write_parquet(d, "o.pq")', { library: [{ nodeId: '1@write_parquet', functionName: '::', value: 'arrow' }], write: [{ nodeId: '1@arrow::write_parquet', functionName: Identifier.make('write_parquet', 'arrow'), value: 'o.pq' }] });
 		testQuery('a testthat test is a test dependency', 'testthat::test_package("p")', { library: [{ nodeId: '1@test_package', functionName: '::', value: 'testthat' }], test: [{ nodeId: '1@testthat::test_package', functionName: Identifier.make('test_package', 'testthat') }] });
@@ -660,7 +680,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Where a call resolves', () => {
 		/* a library call that cannot have run attaches nothing, so no dependency on it is reported */
-		testQuery('a library call that never runs is no library dependency', 'if (FALSE) library(readr)\nread_csv("a.csv")', { read: [{ nodeId: '2@read_csv', functionName: 'read_csv', value: 'a.csv' }] });
+		testQuery('a library call that never runs is no library dependency', 'if (FALSE) library(readr)\nread_csv("a.csv")', { read: [{ nodeId: '2@read_csv', functionName: 'read_csv', value: 'a.csv' }], write: [printed('2@read_csv', 'read_csv')] });
 	});
 
 	describe('Custom categories', () => {
@@ -703,7 +723,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			read: [
 				{ value: 'a.csv', functionName: 'read.csv', nodeId: '1@read.csv' },
 				{ value: 'b.dat', functionName: 'my_read', nodeId: '2@my_read' }
-			]
+			],
+			write: [printed('1@read.csv', 'read.csv'), printed('2@my_read', 'my_read')]
 		}, {
 			additionalCategories: {
 				read: { functions: [{ name: 'my_read', argIdx: 0, resolveValue: true }] }
@@ -798,8 +819,61 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a call below the top level', 'f <- function() summary(x)', {});
 			testQuery('a call as an argument', 'print(summary(x))', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }] });
 		});
+		describe('A graphics call prints what it returns visibly', () => {
+			/* closing or switching a device hands back the device now active, `split.screen` the screens it made */
+			for(const f of ['dev.off', 'dev.set', 'split.screen']) {
+				testQuery(f, `${f}()`, { write: [{ nodeId: `1@${f}`, functionName: f, value: 'stdout', implicit: true }] });
+			}
+			/* devices, addons, and parameter setters return invisibly */
+			for(const f of ['dev.new', 'graphics.off', 'layout', 'par']) {
+				testQuery(f, `${f}(x)`, {});
+			}
+			testQuery('an addon', 'plot(x)\nlines(y)', { visualize: [
+				{ nodeId: '1@plot', functionName: 'plot', parts: ['2@lines'] },
+				{ nodeId: '2@lines', functionName: 'lines', linkedIds: ['1@plot'] }
+			] });
+		});
+		describe('A setter prints nothing, a query the state it reads', () => {
+			for(const code of ['options()', 'options("digits")', 'par()', 'par("mar")', 'palette()']) {
+				const fn = code.slice(0, code.indexOf('('));
+				testQuery(code, code, { write: [printed(`1@${fn}`, fn)] });
+			}
+			for(const code of ['options(digits = 3)', 'options(op)', 'par(mar = c(1, 1, 1, 1))', 'palette("R3")']) {
+				testQuery(code, code, {});
+			}
+		});
+		describe('A dependency stated to return invisibly prints nothing, loaded or not', () => {
+			testQuery('pacman', 'p_load(a)', { library: [{ nodeId: '1@p_load', functionName: 'p_load', value: 'a' }] });
+			testQuery('devtools', 'source_url("a")', { source: [{ nodeId: '1@source_url', functionName: 'source_url', value: 'a' }] });
+			testQuery('a visible read prints its data', 'read.csv("a.csv")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv' }], write: [printed('1@read.csv', 'read.csv')] });
+		});
 		describe('Calls another category already accounts for are not repeated', () => {
 			testQuery('a plot', 'plot(x)', { visualize: [{ nodeId: '1@plot', functionName: 'plot' }] });
+			testQuery('a printed ggplot chain', 'ggplot(df) + geom_point() + lims(x = c(0, 1))', { visualize: [
+				{ nodeId: '1@ggplot', functionName: 'ggplot', parts: ['1@geom_point', '1@lims'] },
+				{ nodeId: '1@geom_point', functionName: 'geom_point', linkedIds: ['1@ggplot'] },
+				{ nodeId: '1@lims', functionName: 'lims', linkedIds: ['1@ggplot'] }
+			] });
+			testQuery('a ggplot chain on a stored plot', 'p + geom_point()', { visualize: [{ nodeId: '1@geom_point', functionName: 'geom_point' }] });
+			testQuery('a grouped ggplot chain', '(ggplot(df) + geom_point())', { visualize: [
+				{ nodeId: '1@ggplot', functionName: 'ggplot', parts: ['1@geom_point'] },
+				{ nodeId: '1@geom_point', functionName: 'geom_point', linkedIds: ['1@ggplot'] }
+			] });
+			testQuery('a stored plot', 'p <- ggplot(df) + geom_point()\np', { visualize: [
+				{ nodeId: '1@ggplot', functionName: 'ggplot', parts: ['1@geom_point'] },
+				{ nodeId: '1@geom_point', functionName: 'geom_point', linkedIds: ['1@ggplot'] }
+			] });
+			testQuery('a stored value that is no plot', 'p <- summary(x)\np', { write: [{ nodeId: '2@p', functionName: 'p', value: 'stdout', implicit: true }] });
+			testQuery('a stored lattice plot', 'library(lattice)\np <- xyplot(y ~ x)\np', {
+				library:   [{ nodeId: '1@library', functionName: 'library', value: 'lattice' }],
+				visualize: [{ nodeId: '2@xyplot', functionName: 'xyplot' }]
+			});
+			/* base graphics draw at once and hand back data, which printing writes */
+			testQuery('a stored base plot', 'h <- hist(x)\nh', { visualize: [{ nodeId: '1@hist', functionName: 'hist' }], write: [{ nodeId: '2@h', functionName: 'h', value: 'stdout', implicit: true }] });
+			testQuery('a stored ggplot component', 'l <- geom_point()\nl', { visualize: [{ nodeId: '1@geom_point', functionName: 'geom_point' }], write: [{ nodeId: '2@l', functionName: 'l', value: 'stdout', implicit: true }] });
+			testQuery('a lone ggplot component', 'geom_point()', { visualize: [{ nodeId: '1@geom_point', functionName: 'geom_point' }], write: [{ nodeId: '1@geom_point', functionName: 'geom_point', value: 'stdout', implicit: true }] });
+			testQuery('a stem-and-leaf display is text', 'stem(x)', { write: [{ nodeId: '1@stem', functionName: 'stem', value: 'stdout' }] });
+			testQuery('a density estimate draws nothing', 'density(x)', { write: [{ nodeId: '1@density', functionName: 'density', value: 'stdout', implicit: true }] });
 			testQuery('a write', 'write.csv(x, "out.csv")', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out.csv' }] });
 			testQuery('an assertion', 'expect_equal(1 + 1, 2)', {});
 		});

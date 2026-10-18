@@ -22,12 +22,12 @@ function callHas(id: NodeId, dataflow: DataflowInformation, props: PropSelector)
  * {@link DependencyInfo#parts}: the addons drawn onto it, plus the device opener and closer around it.
  * Closing a device ends the plot, so an addon after it builds whatever device is open then, not this file.
  *
- * Openers are the `write` entries that draw ({@link SemanticCallTag.Graphics}), closers the calls that end a device
+ * Openers are the `write` entries that draw ({@link SemanticCallTag.Graphics}), other than what a call prints, closers the calls that end a device
  * ({@link SemanticCallTag.Closes}), and the order is the one the source states.
  */
 export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: DependencyInfo[], dataflow: DataflowInformation, ast: NormalizedAst): void {
 	const opened = new Map(written
-		.filter(w => w.nodeId !== undefined && w.value !== undefined && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
+		.filter(w => w.nodeId !== undefined && w.value !== undefined && !w.implicit && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
 		.map(w => [w.nodeId as NodeId, w.value as string]));
 	const closed = new Set(dataflow.graph.vertexIdsOfType(VertexType.FunctionCall)
 		.filter(id => callHas(id, dataflow, SemanticCallTag.Closes)));

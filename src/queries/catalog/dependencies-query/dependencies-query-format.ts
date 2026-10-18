@@ -125,12 +125,10 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 				return;
 			}
 			const [ast, dataflow] = await Promise.all([data.analyzer.normalize(), data.analyzer.dataflow()]);
-			/* a call another category reports belongs to that category, except for a statistical test: what it
-			   is asked for is the statistic it prints, so a top-level one is an output like any other */
-			const accountedFor = new Set(Object.entries(queryResults?.kinds ?? {})
-				.filter(([kind]) => kind !== 'statistics')
-				.flatMap(([, k]) => Object.values(k.subkinds).flat()).map(r => r.id));
-			collectImplicitEchoes(ast, dataflow, accountedFor, result);
+			/* a call reported as an output already is not repeated, any other still prints a visible result */
+			const accountedFor = new Set(Object.values(queryResults?.kinds['write']?.subkinds ?? {}).flat().map(r => r.id));
+			const invisible = Object.values(defaultDependencyCategories(data.analyzer.inspectContext())).flatMap(c => c.functions.filter(f => f.invisible));
+			collectImplicitEchoes(ast, dataflow, accountedFor, invisible, result);
 		}
 	},
 	'visualize': {

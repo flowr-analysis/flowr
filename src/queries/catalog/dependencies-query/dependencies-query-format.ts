@@ -12,6 +12,7 @@ import { RemoteFunctions, remoteTarget } from './function-info/remote-functions'
 import { computeReadFunctions } from './function-info/read-functions';
 import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
+import { TransformFunctions } from './function-info/transform-functions';
 import { statisticsFunctions } from './function-info/statistics-functions';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
@@ -54,7 +55,7 @@ export interface DependencyCategorySettings {
 }
 
 /** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
-export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'test', 'statistics'] as const;
+export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
 
 /**
@@ -134,6 +135,10 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 	'visualize': {
 		queryDisplayName: 'Visualizations',
 		functions:        VisualizeFunctions
+	},
+	'transform': {
+		queryDisplayName: 'Data Transformations',
+		functions:        TransformFunctions
 	},
 	'test': {
 		queryDisplayName: 'Tests',

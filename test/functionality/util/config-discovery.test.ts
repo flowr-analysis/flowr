@@ -99,7 +99,7 @@ describe('Project config trust', () => {
 	/* so that a new option naming an executable or a file to load cannot slip in untagged */
 	test(label('every string option is classified as security-sensitive or not', ['name-normal'], ['other']), () => {
 		const notSensitive = new Set([
-			'defaultEngine', 'defaultPlugins.*', 'engines.*.type', 'logLevel', 'linter.disabledRules.*',
+			'defaultEngine', 'defaultPlugins.*', 'engines.*.type', 'logLevel', 'linter.disabledRules.*', 'linter.disabledTags.*',
 			'project.basePackages.*', 'project.classification.notebookExtensions.*', 'project.classification.shinyDescriptionTypes.*',
 			'project.classification.shinyEntryFiles.*', 'project.classification.shinyUsagePattern', 'project.discovery.ignore.*',
 			'project.discovery.perKind.*.exclude.*', 'project.discovery.perKind.*.include.*', 'project.implicitSources.*', 'project.useProjectType',

@@ -1,7 +1,7 @@
 import type { FunctionInfo } from './function-info';
 import { FunctionSemantics } from '../../../../dataflow/fn/function-semantics';
 import type { BuiltInFnInfo, PropSelector } from '../../../../dataflow/environments/built-in-props';
-import { ArgProp } from '../../../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp } from '../../../../dataflow/environments/built-in-props';
 import { builtInNames } from '../../../../dataflow/environments/query-fn-props';
 import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
 import { Identifier } from '../../../../dataflow/environments/identifier';
@@ -45,7 +45,8 @@ export function functionInfosFromProps(props: PropSelector, except: readonly Fun
 			const name = Identifier.getName(id);
 			const pkg = Identifier.getNamespace(id);
 			if(!takenEverywhere.has(name) && !taken.has(pkg === undefined ? name : `${pkg}::${name}`)) {
-				found.push({ package: pkg, name, argIdx, argName: info.sig[argIdx][0], resolveValue: true });
+				found.push({ package: pkg, name, argIdx, argName: info.sig[argIdx][0], resolveValue: true,
+					...FunctionSemantics.call.props.hasAny(info, [CallProp.Invisible]) ? { invisible: true } : {} });
 			}
 		}
 	}

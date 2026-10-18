@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="description-metadata">Description Metadata&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a>
 
+R CMD check: [#1](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-1) 🟩, [#6](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-6) 🔶, [#25](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-25) 🟩, [#26](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-26) 🔶, [#27](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-27) 🔷
+
 This rule is a `best-effort` rule.
  
-Port of the DESCRIPTION checks of `R CMD check`: `checking DESCRIPTION meta-information` (required fields, package name, version, maintainer, dependency fields, `VignetteBuilder`, Title and Description endings, non-ASCII fields, encoding), the duplicate dependency and unused `LinkingTo` notes, the license check, the `Authors@R` checks, the excessive `Depends` check, and the DESCRIPTION style checks of `--as-cran` (title case, Title and Description starts). Every finding names its sub-check in `kind` and points to the lines of the field in the DESCRIPTION file; without a DESCRIPTION there are no findings.\
+Checks the DESCRIPTION: required fields, package name, version, maintainer, dependency fields, license, Authors@R, encoding, and the Title and Description style CRAN asks for.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/description-metadata.ts#L206">src/linter/rules/cmd-check/description-metadata.ts</a>._
 
 ### Configuration
@@ -34,7 +36,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Description Metadata** (description-metadata): _no findings_\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

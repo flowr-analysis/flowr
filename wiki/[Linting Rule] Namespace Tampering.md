@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="namespace-tampering">Namespace Tampering&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#37](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-37) 🟩
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` notes *"Found the following possibly unsafe calls"* (`unlockBinding` and `assignInNamespace` on other namespaces), *"Found .Internal call(s)"*, and on `library.dynam` calls naming the shared object with its extension (all `checking R code for possible problems`). Where `R CMD check` compares the written argument with the package name, flowR resolves the namespace and package names through variables and reports an unknown namespace as uncertain.\
+Finds `unlockBinding()` and `assignInNamespace()` on other namespaces, `.Internal()` calls, and `library.dynam()` given a file extension.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/namespace-tampering.ts#L112">src/linter/rules/cmd-check/namespace-tampering.ts</a>._
 
 ### Configuration
@@ -30,7 +32,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (3 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Namespace Tampering** (namespace-tampering):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ assign-in-namespace of base at 1.21-74\

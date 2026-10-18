@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="dependency-declaration">Dependency Declaration&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span>
 
+R CMD check: [#27](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-27) 🔷, [#28](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-28) 🟩, [#29](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-29) 🟩, [#30](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-30) 🟩, [#31](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-31) 🟩, [#32](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-32) 🔷, [#33](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-33) 🔷, [#53](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-53) 🔷, [#77](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-77) 🔷, [#83](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-83) 🔷, [#85](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-85) 🔷, [#88](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-88) 🔷
+
 This rule is a `best-effort` rule.
  
-Port of `checking dependencies in R code` of `R CMD check`: *"'library' or 'require' call not declared from"*, *"'loadNamespace' or 'requireNamespace' call not declared from"*, *"'::' or ':::' import not declared from"*, *"'library' or 'require' call to ... which was already attached by Depends"*, *"'library' or 'require' call to ... in package code"*, *"There are ::: calls to the package's namespace in its code"*, *"Namespace in Imports field not imported from"*, *"Package in Depends field not imported from"*, and *"package 'methods' is used but not declared"*. Where `R CMD check` only reads literal package names, flowR resolves them through variables and knows the loaders of other packages (e.g. `pacman::p_load`); a `:::` to another package whose export status is known is left to the `namespace-access` rule.\
+Finds packages the code, tests, examples, or vignettes use without the DESCRIPTION declaring them, Imports nothing imports from, `library()` calls in package code, own `:::` calls, and undeclared VignetteBuilder or RdMacros packages. Package names are resolved through variables.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/dependency-declaration.ts#L178">src/linter/rules/cmd-check/dependency-declaration.ts</a>._
 
 ### Configuration
@@ -43,7 +45,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (128 ms)\
+Query: **linter** (101 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dependency Declaration** (dependency-declaration): _no findings_\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

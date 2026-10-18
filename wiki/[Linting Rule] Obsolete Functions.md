@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="obsolete-functions">Obsolete Functions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This signals the use of deprecated functions or features."><a href='#deprecated'>![deprecated](https://img.shields.io/badge/deprecated-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#37](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-37) 🟩
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` note on obsolete functions (`checking R code for possible problems`, *"Found the deprecated function"*, *"Found the defunct/removed function"*, and *"Found the platform-specific device"*): package code calling a deprecated or removed function, or a graphics device that only exists on some platforms. Unlike `R CMD check`, it reports the calls themselves, also namespaced ones like `grDevices::x11()`, with their location, and ignores calls to functions the package defines itself. The functions `R CMD check` knows can be extended per kind.\
+Finds calls of deprecated and defunct base functions and of platform-specific graphics devices (`x11()`, `quartz()`, `windows()`).\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/obsolete-functions.ts#L57">src/linter/rules/cmd-check/obsolete-functions.ts</a>._
 
 ### Configuration
@@ -41,7 +43,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Obsolete Functions** (obsolete-functions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ platform-device x11 at 2.2-6\

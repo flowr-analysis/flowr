@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="package-runtime">Package Runtime&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#4](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-4) 🟩, [#5](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-5) 🟩, [#7](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-7) 🟩, [#33](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-33) 🔷, [#77](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-77) 🔷, [#79](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-79) 🔷, [#80](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-80) 🔷, [#81](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-81) 🔷, [#83](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-83) 🔷, [#84](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-84) 🔷, [#85](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-85) 🔷, [#86](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-86) 🔷, [#87](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-87) 🔷, [#89](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-89) 🔷, [#90](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-90) 🔶, [#91](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-91) 🔶
+
 This rule is a `best-effort` rule.
  
-The static part of the `R CMD check` steps that install, load, or run the package (`whether package can be installed`, `whether the package can be loaded`, `loading without being on the library search path`, `tests`, `running R code from vignettes`, `re-building of vignette outputs`, `for differences from example reference output`, `for non-standard things in the check directory`, `Rust compilation`, `if there is a namespace`, `extension type`, `if this is a source package`): undefined exports and S3 methods registered without a function (installing or loading fails), NAMESPACE imports from undeclared packages or of unexported names, a package attaching itself, tests that never run or run another package, test and vignette code that does not parse, vignettes without index entry or engine, files written into the working directory, orphaned reference output, Rust without its SystemRequirements, a missing NAMESPACE, a Type other than Package, and installed packages in place of sources.\
+Finds what makes installing, loading, or running the package fail without doing so: undefined exports, S3 methods without a function, bad NAMESPACE imports, a package attaching itself, tests that never run, test or vignette code that does not parse, missing vignette metadata, and files written into the working directory.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-runtime.ts#L283">src/linter/rules/cmd-check/package-runtime.ts</a>._
 
 ### Configuration
@@ -30,7 +32,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (0 ms)\
+Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Package Runtime** (package-runtime): _no findings_\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

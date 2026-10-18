@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="s3-method-consistency">S3 Method Consistency&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#38](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-38) 🟩, [#39](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-39) 🟩, [#41](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-41) 🔷
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` checks `checking S3 generic/method consistency` (a method must take the arguments of its generic, in order, and `...` if the generic does; apparent methods of exported generics must be registered) and `checking replacement functions` (`foo<-` must end in `value`). Beyond `R CMD check`, it reports apparent methods of generics from base R as uncertain, tells functions flowR knows as ordinary (`t.test`) from methods, and also checks replacement methods (`[<-.cls`).\
+Finds S3 methods whose formals do not match their generic, methods not registered in the NAMESPACE, and replacement functions whose last formal is not `value`.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/s-three-method-consistency.ts#L159">src/linter/rules/cmd-check/s-three-method-consistency.ts</a>._
 
 ### Configuration
@@ -37,7 +39,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1350 ms)\
+Query: **linter** (1108 ms)\
 &nbsp;&nbsp;&nbsp;╰ **S3 Method Consistency** (s3-method-consistency):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ size<-: replacement-value at 2.1-8\

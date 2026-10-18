@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="package-data">Package Data&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a>
 
+R CMD check: [#34](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-34) 🟩, [#48](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-48) 🟩, [#60](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-60) 🟩, [#61](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-61) 🟩, [#62](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-62) 🟩, [#63](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-63) 🟩, [#64](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-64) 🔶
+
 This rule is a `best-effort` rule.
  
-Port of the data checks of `R CMD check`: `checking contents of 'data' directory` (including `data/datalist`), `checking LazyData`, `checking data for ASCII and uncompressed saves`, `checking R/sysdata.rda`, `checking serialization versions` and the undocumented data sets of `checking for missing documentation entries`. Saves are read from disk, from their header (compression, ASCII or binary, serialization version), and the objects they hold are read as well. Unlike `R CMD check`, every finding names the data file, the size limit is configurable and undocumented data sets are only checked when a `man` folder exists. Not ported: non-ASCII strings in data sets (the parser does not expose the encoding of strings), re-saving estimates and the sizes of installed lazy-load databases.\
+Checks `data/` and `R/sysdata.rda`: allowed file types, LazyData, compression, the serialization version R needs, and undocumented data sets.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-data.ts#L128">src/linter/rules/cmd-check/package-data.ts</a>._
 
 ### Configuration

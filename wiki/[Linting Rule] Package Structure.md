@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="package-structure">Package Structure&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a>
 
+R CMD check: [#2](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-2) 🔷, [#3](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-3) 🟩, [#8](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-8) 🟩, [#9](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-9) 🟩, [#10](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-10) 🟩, [#11](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-11) 🟩, [#12](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-12) 🟩, [#13](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-13) 🟩, [#14](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-14) 🟩, [#15](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-15) 🟩, [#16](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-16) 🟩, [#17](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-17) 🟩, [#18](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-18) 🔷, [#19](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-19) 🔷, [#20](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-20) 🟩, [#21](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-21) 🟩, [#22](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-22) 🟩, [#23](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-23) 🔷, [#57](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-57) 🔷, [#87](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-87) 🔷
+
 This rule is a `best-effort` rule.
  
-Port of the file structure checks of `R CMD check`: `checking for portable file names`, `checking for hidden files and directories`, `checking top-level files`, `checking for left-over files`, `checking package subdirectories`, `checking 'build' directory`, `checking for .dll and .exe files`, `checking for executable files`, `checking for sufficient/correct file permissions`, `checking for future file timestamps`, `checking installed package size`, `checking sizes of PDF files under 'inst/doc'`, `checking line endings in shell scripts`, `checking for left-overs from vignette generation`, `checking files in 'vignettes'` and `checking installed files from 'inst/doc'`. Works on the files `R CMD build` keeps (after `.Rbuildignore`); checks that need file system information only run for packages on disk. Unlike `R CMD check`, every finding names the offending file, thresholds and lists are configurable, executables are recognized by their magic bytes, and the installed size is estimated without installing.\
+Checks the package files: portable names, hidden files, top-level files, subdirectories, permissions, executables, timestamps, sizes, line endings of scripts, and vignette leftovers.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-structure.ts#L657">src/linter/rules/cmd-check/package-structure.ts</a>._
 
 ### Configuration
@@ -66,7 +68,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Package Structure** (package-structure): _no findings_\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

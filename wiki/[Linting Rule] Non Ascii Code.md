@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="non-ascii-code">Non-ASCII Code&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a>
 
+R CMD check: [#36](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-36) 🟩, [#44](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-44) 🔶
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` note *"Found the following file with non-ASCII characters"* (`checking code files for non-ASCII characters`). Portable packages must use only ASCII in their R code outside of comments, and `R CMD check` does not exempt string literals. Unlike the check, which names only the file, this reports each string literal and symbol (function, variable or parameter name) holding non-ASCII characters, lists those characters, and offers to escape string literals as `\uxxxx` (`\U{xxxxx}` above U+FFFF). Comments are ignored, and the `NAMESPACE` file is checked line by line like the code.\
+Finds non-ASCII characters in R code and the NAMESPACE outside of comments. Offers `\u` escapes for strings as a quick fix.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/non-ascii-code.ts#L65">src/linter/rules/cmd-check/non-ascii-code.ts</a>._
 
 ### Configuration

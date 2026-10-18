@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="package-metafiles">Package Metafiles&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#56](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-56) 🟩, [#57](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-57) 🔷, [#58](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-58) 🟩, [#59](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-59) 🔷
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` notes on the metafiles of a package: *"checking index information"* (empty `INDEX` or `demo/00Index`, demos missing from or without a `demo/00Index` entry), *"checking package subdirectories"* (`inst/CITATION` that does not parse, `citEntry()` or `bibentry()` calls with an invalid entry type or missing required fields, CITATION files in a non-standard place), and *"checking relative paths in package URLs"* (relative links of the README and vignettes to files the package does not contain). Unlike `R CMD check`, no R code is run, and it also reports the citation functions superseded by `bibentry()` or `person()`, which `R CMD check` accepts.\
+Checks the demo index, `INDEX`, `inst/CITATION`, and relative links in README, NEWS, and vignettes.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L315">src/linter/rules/cmd-check/package-metafiles.ts</a>._
 
 ### Configuration

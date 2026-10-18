@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="foreign-function-calls">Foreign Function Calls&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#40](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-40) 🔷
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` notes of `checking foreign function calls`: calls of `.C`, `.Fortran`, `.Call` or `.External` naming a routine by a string without a `PACKAGE` argument in a package that loads no DLL with `useDynLib`, with an empty `PACKAGE`, or with a `PACKAGE` naming a base package, a different package, or a package the DESCRIPTION does not declare. Unlike `R CMD check`, it recognizes the calls by what flowR knows about them (ignoring a redefined `.Call`), resolves routine and `PACKAGE` through variables, and accepts any DLL the NAMESPACE loads. It does not check the registration of the routines, which needs the installed package.\
+Checks `.Call`, `.C`, `.External`, and `.Fortran` calls: a missing or empty `PACKAGE`, calls into base or other packages, and undeclared packages. Routine and package names are resolved through variables.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/foreign-function-calls.ts#L68">src/linter/rules/cmd-check/foreign-function-calls.ts</a>._
 
 ### Configuration
@@ -30,7 +32,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (5 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Foreign Function Calls** (foreign-function-calls):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ .Call("C_mean"): missing-package at 1.18-35\

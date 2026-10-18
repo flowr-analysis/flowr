@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="package-hooks">Package Hooks&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
 
+R CMD check: [#37](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-37) 🟩, [#42](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-42) 🔷, [#43](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-43) 🔷, [#44](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-44) 🔶, [#82](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-82) 🔷
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` notes on package hooks (`checking R code for possible problems`): startup functions (`.onLoad`, `.onAttach`) with a wrong argument list, that change the search path, print messages other than with `packageStartupMessage` (which in turn is out of place in `.onLoad`), or call `installed.packages`; detach functions (`.onDetach`, `.Last.lib`) with a wrong argument list or calling `library.dynam.unload`; `library.dynam` in `.onAttach`; the obsolete `.First.lib`; and an unexported `.Last.lib`. Where `R CMD check` looks for function names, flowR asks which calls attach a package or print, and follows the calls into the package's own functions.\
+Checks `.onLoad`, `.onAttach`, `.onDetach`, and `.Last.lib`: argument lists, attaching packages, output other than `packageStartupMessage()`, `installed.packages()`, misplaced `library.dynam()` calls, and the obsolete `.First.lib`. Follows calls into the package's own functions.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-hooks.ts#L138">src/linter/rules/cmd-check/package-hooks.ts</a>._
 
 ### Configuration
@@ -39,7 +41,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (9 ms)\
+Query: **linter** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Package Hooks** (package-hooks):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ .onLoad: search-path (library) at 2.2-15\

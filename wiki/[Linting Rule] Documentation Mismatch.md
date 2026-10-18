@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="documentation-mismatch">Documentation Mismatch&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the documentation of the code. For example, missing or misleading comments."><a href='#documentation'>![documentation](https://img.shields.io/badge/documentation-teal) </a></span>
 
+R CMD check: [#44](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-44) 🔶, [#48](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-48) 🟩, [#49](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-49) 🟩, [#50](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-50) 🟩
+
 This rule is a `best-effort` rule.
  
-Port of the code/documentation consistency checks of `R CMD check`: `checking for missing documentation entries` (exported objects without an Rd `\alias`), `checking for code/documentation mismatches` (formals of a function versus its Rd `\usage`) and `checking Rd \usage sections` (undocumented `\usage` arguments, documented arguments not in `\usage`). Each sub-check can be switched off, default values are only compared if both sides are literals, and the Rd line of a finding is reported.\
+Finds exported objects without documentation, functions whose formals differ from their `\usage`, and arguments missing from or extra in `\arguments`.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/documentation-mismatch.ts#L323">src/linter/rules/cmd-check/documentation-mismatch.ts</a>._
 
 ### Configuration
@@ -40,7 +42,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Documentation Mismatch** (documentation-mismatch): _no findings_\
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

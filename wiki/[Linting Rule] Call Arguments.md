@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="call-arguments">Call Arguments&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#37](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-37) 🟩
+
 This rule is a `best-effort` rule.
  
-Port of the `codetools` checks `R CMD check` runs in `checking R code for possible problems`: *"possible error in f(): unused argument"*, *"partial argument match of 'a' to 'abc'"*, *"... may be used in an incorrect context"*, and *"multiple local function definitions for 'f' with different formal arguments"*. flowR resolves the function a call reaches through its dataflow (closures and functions bound in branches included, the latter as uncertain), checks calls of other packages against the signature database, and also reports names matching several formals.\
+Finds calls with arguments the called function does not take, names that match a formal only partially or match several formals, `...` used in a function without `...`, and local functions defined twice with different formals. Calls are resolved through the dataflow graph.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/call-arguments.ts#L168">src/linter/rules/cmd-check/call-arguments.ts</a>._
 
 ### Configuration
@@ -33,7 +35,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (5 ms)\
+Query: **linter** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Call Arguments** (call-arguments):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ partial-match in scale_by (fact) at 2.18-53\

@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="class-string-comparison">Class String Comparison&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#37](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-37) 🟩
+
 This rule is a `best-effort` rule.
  
-Port of the `R CMD check` note *"Found if() conditions comparing class() to string"* (`checking R code for possible problems`). An object may have several classes, so `class(x) == "a"` yields a condition of length > 1 (an error since R 4.2) and misses subclasses; use `inherits(x, "a")` instead. Unlike `R CMD check`, it also spots mirrored comparisons, `while` conditions, and strings flowR resolves through variables, and ignores calls to a redefined `class`.\
+Finds `if`/`while` conditions comparing `class(x)` with a string, which fail for objects with several classes. Offers `inherits(x, ...)` as a quick fix.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/class-string-comparison.ts#L125">src/linter/rules/cmd-check/class-string-comparison.ts</a>._
 
 ### Configuration
@@ -32,7 +34,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (6 ms)\
+Query: **linter** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Class String Comparison** (class-string-comparison):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ class() compared to "data.frame" at 1.21-44 (1 quick fix(es) available)\

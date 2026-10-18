@@ -1,11 +1,13 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 19:24:09 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-18, 21:25:13 UTC (v2.16.2), do not edit directly._
 <h2 id="true-false-abbreviation">TRUE/FALSE Abbreviation&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
+R CMD check: [#37](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-37) 🟩
+
 This rule is a `<span title="Linting rules that are expected to have both high precision and high recall.">exact</span>` rule.
  
-Port of `tools::checkTnF` (*"found T/F in"*), which `R CMD check` only runs for packages without a NAMESPACE, hence off by default. `T` and `F` are ordinary variables that merely default to `TRUE` and `FALSE` and may be rebound by any code. Where `R CMD check` flags every syntactic `T`/`F`, flowR only flags those that resolve to the built-in constants (with a quick fix), reports the top-level definitions that rebind them instead of their (then intended) uses, leaves local ones (parameters, function variables) alone, and leaves `x$T` alone.\
+Finds `T` and `F` used for `TRUE` and `FALSE`, and top-level definitions of `T` or `F`. Off by default, as R only checks this for packages without a NAMESPACE.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/true-false-abbreviation.ts#L79">src/linter/rules/cmd-check/true-false-abbreviation.ts</a>._
 
 ### Configuration
@@ -30,7 +32,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (5 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **TRUE/FALSE Abbreviation** (true-false-abbreviation):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Use of `T` at 1.34 (1 quick fix(es) available)\

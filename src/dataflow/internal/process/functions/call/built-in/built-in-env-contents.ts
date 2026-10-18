@@ -14,6 +14,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import { linkFieldReads } from '../../../../linker';
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { REnvironment } from '../../../../../environments/environment';
@@ -36,12 +37,7 @@ export function processEnvContents<OtherInfo>(
 		return result;
 	}
 	for(const defs of resolution.envDef.envState.current.memory.values()) {
-		for(const def of defs as readonly InGraphIdentifierDefinition[]) {
-			result.graph.addEdge(rootId, def.nodeId, EdgeType.Reads);
-			if(def.definedAt !== undefined && def.definedAt !== def.nodeId) {
-				result.graph.addEdge(rootId, def.definedAt, EdgeType.Reads);
-			}
-		}
+		linkFieldReads(result.graph, rootId, defs, false);
 	}
 	return result;
 }

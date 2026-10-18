@@ -122,11 +122,7 @@ export function processAccess<OtherInfo>(
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
 		in:                RArgument.isEmpty(head) ? info.in : info.in.map(ref => {
-			if(ref.nodeId === head.value?.info.id) {
-				return makeReferenceMaybe(ref, info.graph, info.environment, false);
-			} else {
-				return ref;
-			}
+			return ref.nodeId === head.value?.info.id ? makeReferenceMaybe(ref, info.graph, info.environment, false) : ref;
 		})
 	};
 }

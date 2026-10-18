@@ -29,6 +29,7 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	},
 	// write functions that don't have argIndex are assumed to write to stdout
 	{ package: 'base',  name: 'print',      linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'graphics', name: 'stem',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
 	{ package: 'base',  name: 'message',    linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects,                  resolveValue: false },

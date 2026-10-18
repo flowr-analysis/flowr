@@ -36,7 +36,7 @@ assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', '
 
 const defaultCtx = new FlowrAnalyzerContext(FlowrConfig.default());
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], statistics: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], transform: [], test: [], statistics: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -70,14 +70,15 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		code: string,
 		expected: Partial<DependenciesQueryResult>,
 		query: Partial<DependenciesQuery> = {},
-		caps: readonly FlowrCapabilityId[] = []
+		caps: readonly FlowrCapabilityId[] = [],
+		assumeLoaded?: readonly string[]
 	): void {
 		assertQuery(label(name, caps), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
 			dependencies: {
 				...emptyDependencies,
 				...decodeIds(expected, normalize.idMap)
 			}
-		}));
+		}), false, assumeLoaded);
 	}
 
 	/**
@@ -115,7 +116,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Through the dataflow', () => {
 		testQuery('a handle reads what it was opened on', 'con <- file("a.txt", "r")\nl <- readLines(con)', {
-			read: [{ nodeId: '1@file', functionName: 'file', value: 'a.txt' }, { nodeId: '2@readLines', functionName: 'readLines', value: 'a.txt' }]
+			read: [{ nodeId: '1@file', functionName: 'file', value: 'a.txt', assignedTo: 'con' }, { nodeId: '2@readLines', functionName: 'readLines', value: 'a.txt', assignedTo: 'l' }]
 		});
 		testQuery('a handle writes what it was opened on', 'con <- file("o.txt", "w")\nwriteLines("a", con)', {
 			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
@@ -125,7 +126,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			write: [{ nodeId: '2@ld', functionName: 'ld', value: 'stdout', implicit: true }]
 		});
 		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
-			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv' }]
+			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv', inputVariables: ['d'] }]
 		});
 	});
 
@@ -188,7 +189,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@p_load', functionName: 'p_load', value: 'c' }
 		] });
 
-		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stdout' }] });
+		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv', assignedTo: 'x' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stdout' }] });
 
 		testQuery('Load implicitly', 'foo::x\nbar:::y()', {
 			write: [
@@ -402,7 +403,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('read (path built in a local)', 'p <- file.path("data", "x.csv")\nread.csv(p)',
 			{ read: [{ nodeId: '2@read.csv', functionName: 'read.csv', value: 'data/x.csv' }], write: [printed('2@read.csv', 'read.csv')] });
 		testQuery('write (path built in a local)', 'p <- file.path("out", "r.csv")\nwrite.csv(x, p)',
-			{ write: [{ nodeId: '2@write.csv', functionName: 'write.csv', value: 'out/r.csv' }] });
+			{ write: [{ nodeId: '2@write.csv', functionName: 'write.csv', value: 'out/r.csv', inputVariables: ['x'] }] });
 
 		describe('Only if file parameter', () => {
 			testQuery('parse', 'parse(file="test.R")', { read: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }], write: [printed('1@parse', 'parse')] });
@@ -456,10 +457,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		// regression: once the owning library is loaded the call resolves to that origin namespace, so a wrong
 		// `package` attribution makes the namespace check drop the call (e.g. ggsave was attributed to `ggplot`)
 		testQuery('ggsave after library', 'library(ggplot2)\nggsave("a")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' }], write: [{ nodeId: '2@ggsave', functionName: 'ggsave', value: 'a' }] });
-		testQuery('write_dta after library', 'library(haven)\nwrite_dta(d, "a")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'haven' }], write: [{ nodeId: '2@write_dta', functionName: 'write_dta', value: 'a' }] });
+		testQuery('write_dta after library', 'library(haven)\nwrite_dta(d, "a")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'haven' }], write: [{ nodeId: '2@write_dta', functionName: 'write_dta', value: 'a', inputVariables: ['d'] }] });
 
-		testQuery('visSave', 'visSave(obj, "a")', { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
-		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
+		testQuery('visSave', 'visSave(obj, "a")', { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a', inputVariables: ['obj'] }] });
+		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a', inputVariables: ['obj'] }] });
 		testQuery('export_graph', 'export_graph(file_name = "a")', { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
 
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] });
@@ -472,16 +473,16 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('cat with empty sink', 'sink()\ncat("Hello!")', { write: [{ nodeId: '2@cat', functionName: 'cat', value: 'stdout', linkedIds: [1] }] });
 		testQuery('cat 2 args', 'cat("Hello", "World")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
 		testQuery('cat 2 args with file', 'cat("Hello", "World", file="foo.txt")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'foo.txt' }] });
-		testQuery('cat many args', 'cat(a, b, c, d, e, file)', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
+		testQuery('cat many args', 'cat(a, b, c, d, e, file)', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout', inputVariables: ['a', 'b', 'd', 'e'] }] });
 
-		testQuery('Unknown write', 'write.csv(data, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'unknown', lexemeOfArgument: 'u', argumentId: '1:22' }] });
-		testQuery('File save', 'save(foo,file="a.Rda")', { write: [{ nodeId: '1@save', functionName: 'save', value: 'a.Rda' }] });
+		testQuery('Unknown write', 'write.csv(dat, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'unknown', lexemeOfArgument: 'u', inputVariables: ['dat'], argumentId: '1:21' }] });
+		testQuery('File save', 'save(foo,file="a.Rda")', { write: [{ nodeId: '1@save', functionName: 'save', value: 'a.Rda', inputVariables: ['foo'] }] });
 
-		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'test.csv' }] });
+		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(dat, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'test.csv', inputVariables: ['dat'] }] });
 
 		describe('try with outfile', () => {
-			testQuery('unconfigured', 'try(u)', { write: [{ nodeId: '1@try', functionName: 'try', value: 'stderr' }] });
-			testQuery('with outfile', 'try(u, outFile="myfile.txt")', { write: [{ nodeId: '1@try', functionName: 'try', value: 'myfile.txt' }] });
+			testQuery('unconfigured', 'try(u)', { write: [{ nodeId: '1@try', functionName: 'try', value: 'stderr', inputVariables: ['u'] }] });
+			testQuery('with outfile', 'try(u, outFile="myfile.txt")', { write: [{ nodeId: '1@try', functionName: 'try', value: 'myfile.txt', inputVariables: ['u'] }] });
 			testQuery('unconfigured, with silent', 'try(u, silent=TRUE)', { write: [] });
 			testQuery('unconfigured, with implicit silent', 'try(u, TRUE)', { write: [] });
 			testQuery('with outfile and silent', 'try(u, outFile="myfile.txt", silent=TRUE)', { write: [] });
@@ -501,9 +502,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }, { nodeId: '4@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }],
 					visualize: [
 						/* `parts` says what it takes to produce the file: the addons, and the device around them */
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf', '4@dev.off'] },
-						{ nodeId: '5@plot', functionName: 'plot' },
-						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf', '4@dev.off'] }
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['3@lines', '1@pdf', '4@dev.off'] },
+						{ nodeId: '5@plot', functionName: 'plot', inputVariables: ['onScreen'] },
+						{ nodeId: '3@lines', functionName: 'lines', inputVariables: ['y'], value: 'a.pdf', savedTo: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf', '4@dev.off'] }
 					]
 				});
 			testQuery('each device takes the plots of its own block',
@@ -515,8 +516,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 						{ nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
-						{ nodeId: '5@hist', functionName: 'hist', value: 'b.png', parts: ['4@png', '6@dev.off'] }
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
+						{ nodeId: '5@hist', functionName: 'hist', inputVariables: ['z'], value: 'b.png', savedTo: 'b.png', parts: ['4@png', '6@dev.off'] }
 					]
 				});
 			// closing the device ends the plot, so what is drawn after it builds whatever is open then
@@ -524,8 +525,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'pdf("a.pdf")\nplot(x)\ndev.off()\nlines(y)', {
 					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }, { nodeId: '3@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
-						{ nodeId: '4@lines', functionName: 'lines', linkedIds: ['2@plot'] }
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
+						{ nodeId: '4@lines', functionName: 'lines', inputVariables: ['y'], linkedIds: ['2@plot'] }
 					]
 				});
 			testQuery('an addon of the next device does not build the previous file',
@@ -537,16 +538,16 @@ describe('Dependencies Query', withTreeSitter(parser => {
 						{ nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
-						{ nodeId: '5@lines', functionName: 'lines', value: 'b.png', linkedIds: ['2@plot'], parts: ['4@png', '6@dev.off'] }
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
+						{ nodeId: '5@lines', functionName: 'lines', inputVariables: ['y'], value: 'b.png', savedTo: 'b.png', linkedIds: ['2@plot'], parts: ['4@png', '6@dev.off'] }
 					]
 				});
 			/*
 			 * Closing the inner device hands drawing back to the outer one, which still shows its own plot, so
-			 * `lines(outer)` builds `plot(x)` and its file -- checked against R, where it draws without error.
+			 * `lines(back)` builds `plot(x)` and its file -- checked against R, where it draws without error.
 			 */
 			testQuery('an addon after a nested close builds the plot the restored device shows',
-				'pdf("a.pdf")\nplot(x)\npng("in.png")\nplot(y)\nlines(inner)\ndev.off()\nlines(outer)\ndev.off()', {
+				'pdf("a.pdf")\nplot(x)\npng("in.png")\nplot(y)\nlines(inner)\ndev.off()\nlines(back)\ndev.off()', {
 					write: [
 						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
 						{ nodeId: '3@png', functionName: 'png', value: 'in.png' },
@@ -554,11 +555,11 @@ describe('Dependencies Query', withTreeSitter(parser => {
 						{ nodeId: '8@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['7@lines', '1@pdf', '8@dev.off'] },
-						{ nodeId: '4@plot', functionName: 'plot', value: 'in.png', parts: ['5@lines', '3@png', '6@dev.off'] },
-						{ nodeId: '5@lines', functionName: 'lines', value: 'in.png', linkedIds: ['4@plot'], parts: ['3@png', '6@dev.off'] },
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['7@lines', '1@pdf', '8@dev.off'] },
+						{ nodeId: '4@plot', functionName: 'plot', inputVariables: ['y'], value: 'in.png', savedTo: 'in.png', parts: ['5@lines', '3@png', '6@dev.off'] },
+						{ nodeId: '5@lines', functionName: 'lines', inputVariables: ['inner'], value: 'in.png', savedTo: 'in.png', linkedIds: ['4@plot'], parts: ['3@png', '6@dev.off'] },
 						/* the dataflow links it into the inner device, the restored device is what it really draws on */
-						{ nodeId: '7@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['4@plot'], parts: ['1@pdf', '8@dev.off'] }
+						{ nodeId: '7@lines', functionName: 'lines', inputVariables: ['back'], value: 'a.pdf', savedTo: 'a.pdf', linkedIds: ['4@plot'], parts: ['1@pdf', '8@dev.off'] }
 					]
 				});
 			testQuery('a device nested in another keeps its own plots and parts',
@@ -570,19 +571,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 						{ nodeId: '7@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }
 					],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '7@dev.off'] },
-						{ nodeId: '4@plot', functionName: 'plot', value: 'in.png', parts: ['5@lines', '3@png', '6@dev.off'] },
-						{ nodeId: '5@lines', functionName: 'lines', value: 'in.png', linkedIds: ['4@plot'], parts: ['3@png', '6@dev.off'] }
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['1@pdf', '7@dev.off'] },
+						{ nodeId: '4@plot', functionName: 'plot', inputVariables: ['y'], value: 'in.png', savedTo: 'in.png', parts: ['5@lines', '3@png', '6@dev.off'] },
+						{ nodeId: '5@lines', functionName: 'lines', inputVariables: ['inner'], value: 'in.png', savedTo: 'in.png', linkedIds: ['4@plot'], parts: ['3@png', '6@dev.off'] }
 					]
 				});
 			testQuery('each creation of a device takes its own addons',
-				'pdf("a.pdf")\nplot(x)\nlines(y)\nplot(w)\ntext(t)\ndev.off()', {
+				'pdf("a.pdf")\nplot(x)\nlines(y)\nplot(w)\ntext(tx)\ndev.off()', {
 					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }, { nodeId: '6@dev.off', functionName: 'dev.off', value: 'stdout', implicit: true }],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf', '6@dev.off'] },
-						{ nodeId: '4@plot', functionName: 'plot', value: 'a.pdf', parts: ['5@text', '1@pdf', '6@dev.off'] },
-						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf', '6@dev.off'] },
-						{ nodeId: '5@text', functionName: 'text', value: 'a.pdf', linkedIds: ['4@plot'], parts: ['1@pdf', '6@dev.off'] }
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['3@lines', '1@pdf', '6@dev.off'] },
+						{ nodeId: '4@plot', functionName: 'plot', inputVariables: ['w'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['5@text', '1@pdf', '6@dev.off'] },
+						{ nodeId: '3@lines', functionName: 'lines', inputVariables: ['y'], value: 'a.pdf', savedTo: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf', '6@dev.off'] },
+						{ nodeId: '5@text', functionName: 'text', inputVariables: ['tx'], value: 'a.pdf', savedTo: 'a.pdf', linkedIds: ['4@plot'], parts: ['1@pdf', '6@dev.off'] }
 					]
 				});
 			// a device left open still names its file, there is just no closer to report
@@ -590,8 +591,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'pdf("a.pdf")\nplot(x)\nlines(y)', {
 					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf'] },
-						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf'] }
+						{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.pdf', savedTo: 'a.pdf', parts: ['3@lines', '1@pdf'] },
+						{ nodeId: '3@lines', functionName: 'lines', inputVariables: ['y'], value: 'a.pdf', savedTo: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf'] }
 					]
 				});
 		});
@@ -622,27 +623,162 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				],
 				write: [{ nodeId: '2@ggthemes::theme_wsj', functionName: Identifier.make('theme_wsj', 'ggthemes'), value: 'stdout', implicit: true }]
 			});
-			testQuery('a plot creator keeps its own package', 'plotly::ggplotly(p)', { library: [{ nodeId: '1@ggplotly', functionName: '::', value: 'plotly' }], visualize: [{ nodeId: '1@plotly::ggplotly', functionName: Identifier.make('ggplotly', 'plotly') }] });
-			testQuery('maps::map stays a visualization', 'maps::map(x)', { library: [{ nodeId: '1@map', functionName: '::', value: 'maps' }], visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps') }] });
+			testQuery('a plot creator keeps its own package', 'plotly::ggplotly(p)', { library: [{ nodeId: '1@ggplotly', functionName: '::', value: 'plotly' }], visualize: [{ nodeId: '1@plotly::ggplotly', functionName: Identifier.make('ggplotly', 'plotly'), inputVariables: ['p'] }] });
+			testQuery('maps::map stays a visualization', 'maps::map(x)', { library: [{ nodeId: '1@map', functionName: '::', value: 'maps' }], visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps'), inputVariables: ['x'] }] });
 		});
 		describe('Modification', () => {
 			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {
 				/* the creation reports what is drawn onto it, even without a device to write it to */
 				testQuery(f, `plot()\n${f}(x, y, z)`, { visualize: [
 					{ nodeId: '1@plot', functionName: 'plot', parts: [`2@${f}`] },
-					{ nodeId: `2@${f}`, functionName: f, linkedIds: [1] }
+					{ nodeId: `2@${f}`, functionName: f, linkedIds: [1], inputVariables: ['x', 'y', 'z'] }
 				], ...(f === 'tinyplot_add' ? {} : { write: [{ nodeId: `2@${f}`, functionName: f, value: 'stdout', implicit: true }] }) });
 			}
 			testQuery('complex', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)', { visualize: [
 				{ nodeId: '1@plot', functionName: 'plot', parts: ['4@coord_trans'] },
-				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] }
+				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1], inputVariables: ['x', 'y', 'z'] }
 			] }, { enabledCategories: ['visualize'] });
 			testQuery('multiple', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)\nplot()\ntinyplot_add(x, y, z)', { visualize: [
 				{ nodeId: '1@plot', functionName: 'plot', parts: ['4@coord_trans'] },
 				{ nodeId: '5@plot', functionName: 'plot', parts: ['6@tinyplot_add'] },
-				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] },
-				{ nodeId: '6@tinyplot_add', functionName: 'tinyplot_add', linkedIds: [18] }
+				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1], inputVariables: ['x', 'y', 'z'] },
+				{ nodeId: '6@tinyplot_add', functionName: 'tinyplot_add', linkedIds: [18], inputVariables: ['x', 'y', 'z'] }
 			] }, { enabledCategories: ['visualize'] });
+		});
+	});
+
+	describe('Transform', () => {
+		const dplyr = { library: [{ nodeId: '1@library', functionName: 'library', value: 'dplyr' }] };
+		const testDplyr = (name: string, code: string, expected: Partial<DependenciesQueryResult>, query: Partial<DependenciesQuery> = {}) => testQuery(name, code, expected, query, [], ['dplyr', 'magrittr']);
+		describe('Package attribution', () => {
+			testQuery('dplyr attached by the code', 'library(dplyr)\nfilter(df, x > 1)', { ...dplyr, transform: [{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'] }], write: [printed('2@filter', 'filter')] });
+			testQuery('stats before dplyr is attached', 'filter(x, rep(1, 3))\nlibrary(dplyr)', { library: [{ nodeId: '2@library', functionName: 'library', value: 'dplyr' }], write: [printed('1@filter', 'filter')] });
+			testDplyr('dplyr after library', 'library(dplyr)\nfilter(df, x > 1)', { ...dplyr, transform: [{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'] }], write: [printed(11, 'filter')] });
+			testDplyr('dplyr when namespaced', 'dplyr::filter(df, x > 1)', { library: [{ nodeId: '1@filter', functionName: '::', value: 'dplyr' }], transform: [{ nodeId: '1@dplyr::filter', functionName: Identifier.make('filter', 'dplyr'), inputVariables: ['df'] }], write: [printed(7, Identifier.make('filter', 'dplyr'))] });
+			testQuery('the time-series filter of stats is none', 'stats::filter(x, rep(1, 3))', { library: [{ nodeId: '1@filter', functionName: '::', value: 'stats' }], write: [printed(10, Identifier.make('filter', 'stats'))] });
+			testQuery('a bare filter is the one of stats', 'filter(x, rep(1, 3))', { write: [printed(10, 'filter')] });
+			testQuery('a user-defined filter is none', 'filter <- function(x) x\ny <- filter(df)', {});
+			testQuery('base functions', 'm <- merge(a, b)\ns <- subset(a, x > 1)', { transform: [
+				{ nodeId: '1@merge', functionName: 'merge', inputVariables: ['a', 'b'], assignedTo: 'm' },
+				{ nodeId: '2@subset', functionName: 'subset', inputVariables: ['a'], assignedTo: 's' }
+			] });
+			testQuery('stats functions', 'a <- aggregate(x ~ g, data = d, FUN = sum)', { transform: [{ nodeId: '1@aggregate', functionName: 'aggregate', inputVariables: ['d'], assignedTo: 'a' }] });
+			testQuery('tidyr', 'library(tidyr)\nw <- pivot_wider(long, names_from = k)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'tidyr' }], transform: [{ nodeId: '2@pivot_wider', functionName: 'pivot_wider', inputVariables: ['long'], assignedTo: 'w' }] }, {}, [], ['tidyr']);
+			testQuery('data.table', 'library(data.table)\nsetDT(dt)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'data.table' }], transform: [{ nodeId: '2@setDT', functionName: 'setDT', inputVariables: ['dt'] }], write: [printed(7, 'setDT')] }, {}, [], ['data.table']);
+			testDplyr('disabled', 'library(dplyr)\nfilter(df, x)', dplyr, { enabledCategories: ['library'] });
+			testDplyr('ignoring the defaults', 'dplyr::mutate(df, x)', {}, { ignoreDefaultFunctions: true, enabledCategories: ['transform'] });
+			testQuery('custom function', 'my_verb(df)', { transform: [{ nodeId: '1@my_verb', functionName: 'my_verb', inputVariables: ['df'] }], write: [printed(3, 'my_verb')] }, { transformFunctions: [{ name: 'my_verb' }] });
+			test('every entry names its package', () => {
+				const functions = defaultDependencyCategories(defaultCtx).transform.functions;
+				assert.isNotEmpty(functions);
+				for(const f of functions) {
+					assert.isDefined(f.package, `${f.name} has no package`);
+				}
+			});
+		});
+		describe('Input variables', () => {
+			testDplyr('native pipe', 'library(dplyr)\nsmall <- df |> filter(x > 1) |> select(a)', { ...dplyr, transform: [
+				{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'] },
+				{ nodeId: '2@select', functionName: 'select', inputVariables: ['df'], assignedTo: 'small' }
+			] });
+			testDplyr('magrittr pipe', 'library(dplyr)\nsmall <- df %>% filter(x > 1) %>% select(a)', { ...dplyr, transform: [
+				{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'] },
+				{ nodeId: '2@select', functionName: 'select', inputVariables: ['df'], assignedTo: 'small' }
+			] });
+			testDplyr('nested call', 'library(dplyr)\nsmall <- select(filter(df, x > 1), a)', { ...dplyr, transform: [
+				{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'] },
+				{ nodeId: '2@select', functionName: 'select', inputVariables: ['df'], assignedTo: 'small' }
+			] });
+			testDplyr('data argument', 'library(dplyr)\nmutate(z = 1, .data = df)', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'] }], write: [printed('2@mutate', 'mutate')] });
+			testDplyr('access', 'library(dplyr)\nmutate(df$sub, z = 1)', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'] }], write: [printed('2@mutate', 'mutate')] });
+			testDplyr('parentheses', 'library(dplyr)\nmutate((df), z = 1)', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'] }], write: [printed(13, 'mutate')] });
+			testDplyr('constants are no variables', 'library(dplyr)\nmutate(mtcars[1:3, ], z = 1)', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['mtcars'] }], write: [printed(15, 'mutate')] });
+			testDplyr('joins take both sides', 'library(dplyr)\nj <- a |> left_join(b, by = "k")', { ...dplyr, transform: [{ nodeId: '2@left_join', functionName: 'left_join', inputVariables: ['a', 'b'], assignedTo: 'j' }] });
+			testDplyr('binds take all', 'library(dplyr)\nbind_rows(a, b, d)', { ...dplyr, transform: [{ nodeId: '2@bind_rows', functionName: 'bind_rows', inputVariables: ['a', 'b', 'd'] }], write: [printed('2@bind_rows', 'bind_rows')] });
+			testDplyr('a by variable is an input too', 'library(dplyr)\ninner_join(a, b, by = key)', { ...dplyr, transform: [{ nodeId: '2@inner_join', functionName: 'inner_join', inputVariables: ['a', 'b', 'key'] }], write: [printed('2@inner_join', 'inner_join')] });
+			testQuery('a read has no input', 'raw <- read.csv("data.csv")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'data.csv', assignedTo: 'raw' }] });
+			testQuery('a write takes its data', 'write.csv(small, "out.csv")', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out.csv', inputVariables: ['small'] }] });
+		});
+		describe('Assigned to', () => {
+			testDplyr('arrow', 'library(dplyr)\nmutate(df, z = 1) -> out', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'], assignedTo: 'out' }] });
+			testDplyr('magrittr pipe into an arrow', 'library(dplyr)\ndf %>% filter(x) -> out', { ...dplyr, transform: [{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'], assignedTo: 'out' }] });
+			testDplyr('equals', 'library(dplyr)\nout = df |> filter(x)', { ...dplyr, transform: [{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'], assignedTo: 'out' }] });
+			testDplyr('super assignment', 'library(dplyr)\nout <<- df |> filter(x)', { ...dplyr, transform: [{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'], assignedTo: 'out' }] });
+			testDplyr('chained assignment', 'library(dplyr)\na <- b <- filter(df, x)', { ...dplyr, transform: [{ nodeId: '2@filter', functionName: 'filter', inputVariables: ['df'], assignedTo: 'b' }] });
+			testDplyr('reassignment', 'library(dplyr)\ndf <- df |> mutate(z = 1)', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'], assignedTo: 'df' }] });
+			testDplyr('no assignment', 'library(dplyr)\nmutate(df, z = 1)', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'] }], write: [printed(10, 'mutate')] });
+			testDplyr('the argument of another call is assigned to nothing', 'library(dplyr)\nr <- nrow(mutate(df, z = 1))', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'] }] });
+			testDplyr('only the chain ends in the assignment', 'library(dplyr)\nr <- length(df |> mutate(z = 1))', { ...dplyr, transform: [{ nodeId: '2@mutate', functionName: 'mutate', inputVariables: ['df'] }] });
+		});
+	});
+
+	describe('Plot descriptions', () => {
+		const gg = { library: [{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' }] };
+		describe('Data flow', () => {
+			testQuery('a plot chain', 'library(ggplot2)\np <- ggplot(df, aes(x)) + geom_point()', { ...gg, visualize: [
+				{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', parts: ['2@geom_point'] },
+				{ nodeId: '2@geom_point', functionName: 'geom_point', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['2@ggplot'] }
+			] });
+			testQuery('an addon names its own data', 'library(ggplot2)\np <- ggplot(df) + geom_point(data = other)', { ...gg, visualize: [
+				{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', parts: ['2@geom_point'] },
+				{ nodeId: '2@geom_point', functionName: 'geom_point', inputVariables: ['other'], assignedTo: 'p', linkedIds: ['2@ggplot'] }
+			] });
+			testQuery('a piped plot', 'library(ggplot2)\np <- df |> ggplot(aes(x))', { ...gg, visualize: [{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p' }] });
+		});
+		describe('Title', () => {
+			testQuery('ggtitle', 'library(ggplot2)\np <- ggplot(df) + ggtitle("Hist")', { ...gg, visualize: [
+				{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', title: 'Hist', parts: ['2@ggtitle'] },
+				{ nodeId: '2@ggtitle', functionName: 'ggtitle', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['2@ggplot'] }
+			] });
+			testQuery('labs', 'library(ggplot2)\np <- ggplot(df) + labs(title = "T", x = "X")', { ...gg, visualize: [
+				{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', title: 'T', parts: ['2@labs'] },
+				{ nodeId: '2@labs', functionName: 'labs', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['2@ggplot'] }
+			] });
+			testQuery('labs without a title', 'library(ggplot2)\np <- ggplot(df) + labs(x = "X")', { ...gg, visualize: [
+				{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', parts: ['2@labs'] },
+				{ nodeId: '2@labs', functionName: 'labs', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['2@ggplot'] }
+			] });
+			testQuery('main', 'plot(x, main = "Scatter")', { visualize: [{ nodeId: '1@plot', functionName: 'plot', inputVariables: ['x'], title: 'Scatter' }] });
+			testQuery('the last title wins', 'library(ggplot2)\np <- ggplot(df) + ggtitle("A") + labs(title = "B")', { ...gg, visualize: [
+				{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', title: 'B', parts: ['2@ggtitle', '2@labs'] },
+				{ nodeId: '2@ggtitle', functionName: 'ggtitle', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['2@ggplot'] },
+				{ nodeId: '2@labs', functionName: 'labs', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['2@ggplot'] }
+			] });
+		});
+		describe('Saved to', () => {
+			testQuery('ggsave of a plot variable', 'library(ggplot2)\np <- ggplot(df)\nq <- ggplot(other)\nggsave("p.png", plot = p)', { ...gg,
+				write:     [{ nodeId: '4@ggsave', functionName: 'ggsave', value: 'p.png', inputVariables: ['p'], linkedIds: ['3@ggplot'] }],
+				visualize: [
+					{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', savedTo: 'p.png' },
+					{ nodeId: '3@ggplot', functionName: 'ggplot', inputVariables: ['other'], assignedTo: 'q' }
+				] });
+			testQuery('ggsave of a positional plot', 'library(ggplot2)\np <- ggplot(df)\nq <- ggplot(other)\nggsave("q.png", q)', { ...gg,
+				write:     [{ nodeId: '4@ggsave', functionName: 'ggsave', value: 'q.png', inputVariables: ['q'], linkedIds: ['3@ggplot'] }],
+				visualize: [
+					{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p' },
+					{ nodeId: '3@ggplot', functionName: 'ggplot', inputVariables: ['other'], assignedTo: 'q', savedTo: 'q.png' }
+				] });
+			testQuery('ggsave of the last plot', 'library(ggplot2)\np <- ggplot(a)\nq <- ggplot(b)\nggsave("last.png")\nr <- ggplot(d)', { ...gg,
+				write:     [{ nodeId: '4@ggsave', functionName: 'ggsave', value: 'last.png', linkedIds: ['3@ggplot'] }],
+				visualize: [
+					{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['a'], assignedTo: 'p' },
+					{ nodeId: '3@ggplot', functionName: 'ggplot', inputVariables: ['b'], assignedTo: 'q', savedTo: 'last.png' },
+					{ nodeId: '5@ggplot', functionName: 'ggplot', inputVariables: ['d'], assignedTo: 'r' }
+				] });
+			testQuery('ggsave follows a reassignment', 'library(ggplot2)\np <- ggplot(df)\np <- p + theme_bw()\nggsave("p.png", p)', { ...gg,
+				write:     [{ nodeId: '4@ggsave', functionName: 'ggsave', value: 'p.png', inputVariables: ['p'], linkedIds: ['3@theme_bw'] }],
+				visualize: [
+					{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', savedTo: 'p.png', parts: ['3@theme_bw'] },
+					/* an addon draws the data of the plot it builds */
+					{ nodeId: '3@theme_bw', functionName: 'theme_bw', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['2@ggplot'] }
+				] });
+			testQuery('ggsave of a plot that is not a known one saves none', 'library(ggplot2)\np <- ggplot(df)\nggsave("x.png", plot = make_plot())', { ...gg,
+				write:     [{ nodeId: '3@ggsave', functionName: 'ggsave', value: 'x.png', linkedIds: ['2@ggplot'] }],
+				visualize: [{ nodeId: '2@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p' }] });
+			testQuery('a device', 'png("a.png")\nplot(x)\ndev.off()', {
+				write:     [{ nodeId: '1@png', functionName: 'png', value: 'a.png' }, printed('3@dev.off', 'dev.off')],
+				visualize: [{ nodeId: '2@plot', functionName: 'plot', inputVariables: ['x'], value: 'a.png', savedTo: 'a.png', parts: ['1@png', '3@dev.off'] }]
+			});
 		});
 	});
 
@@ -659,7 +795,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", {
 			read:  [],
 			write: [
-				{ value: 'stdout', functionName: 'print', nodeId: '1@print' }
+				{ value: 'stdout', functionName: 'print', nodeId: '1@print', inputVariables: ['a'] }
 			]
 		});
 	});
@@ -667,13 +803,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('Shared function names', () => {
 		/* regression: a name several packages export used to keep only the entry declared last, so a call to any
 		   other package's function of that name went unreported, or was read with the wrong argument */
-		testQuery('a readr write is a write', 'readr::write_csv(d, "o.csv")', { library: [{ nodeId: '1@write_csv', functionName: '::', value: 'readr' }], write: [{ nodeId: '1@readr::write_csv', functionName: Identifier.make('write_csv', 'readr'), value: 'o.csv' }] });
+		testQuery('a readr write is a write', 'readr::write_csv(d, "o.csv")', { library: [{ nodeId: '1@write_csv', functionName: '::', value: 'readr' }], write: [{ nodeId: '1@readr::write_csv', functionName: Identifier.make('write_csv', 'readr'), value: 'o.csv', inputVariables: ['d'] }] });
 		testQuery('a readr read is a read', 'readr::read_lines("a.txt")', { library: [{ nodeId: '1@read_lines', functionName: '::', value: 'readr' }], read: [{ nodeId: '1@readr::read_lines', functionName: Identifier.make('read_lines', 'readr'), value: 'a.txt' }], write: [printed('1@readr::read_lines', Identifier.make('read_lines', 'readr'))] });
 		/* arrow takes the sink as its second argument, the other package declaring the name takes a file as its first */
-		testQuery('the sink of an arrow write is its own argument', 'arrow::write_parquet(d, "o.pq")', { library: [{ nodeId: '1@write_parquet', functionName: '::', value: 'arrow' }], write: [{ nodeId: '1@arrow::write_parquet', functionName: Identifier.make('write_parquet', 'arrow'), value: 'o.pq' }] });
+		testQuery('the sink of an arrow write is its own argument', 'arrow::write_parquet(d, "o.pq")', { library: [{ nodeId: '1@write_parquet', functionName: '::', value: 'arrow' }], write: [{ nodeId: '1@arrow::write_parquet', functionName: Identifier.make('write_parquet', 'arrow'), value: 'o.pq', inputVariables: ['d'] }] });
 		testQuery('a testthat test is a test dependency', 'testthat::test_package("p")', { library: [{ nodeId: '1@test_package', functionName: '::', value: 'testthat' }], test: [{ nodeId: '1@testthat::test_package', functionName: Identifier.make('test_package', 'testthat') }] });
 		/* nothing pins the call down, so the first entry able to apply answers (and reads the file it declares) */
-		testQuery('an unqualified call still reports', 'write_csv(d, "o.csv")', { write: [{ nodeId: '1@write_csv', functionName: 'write_csv', value: 'o.csv' }] });
+		testQuery('an unqualified call still reports', 'write_csv(d, "o.csv")', { write: [{ nodeId: '1@write_csv', functionName: 'write_csv', value: 'o.csv', inputVariables: ['d'] }] });
 		/* a call qualified to a package that declares none of the entries is none of them */
 		testQuery('a write_csv of another package is no write', 'mypkg::write_csv(d, "o.csv")', { library: [{ nodeId: '1@write_csv', functionName: '::', value: 'mypkg' }] });
 	});
@@ -775,8 +911,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Read from string', () => {
 		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', { read: [], write: [] });
-		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv' }], write: [] });
-		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv' }], write: [] });
+		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv', assignedTo: 'a' }], write: [] });
+		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv', assignedTo: 'a' }], write: [] });
 	});
 
 	describe('Statistical Tests', () => {
@@ -817,7 +953,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			}
 			testQuery('an assignment', 'x <- summary(y)', {});
 			testQuery('a call below the top level', 'f <- function() summary(x)', {});
-			testQuery('a call as an argument', 'print(summary(x))', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }] });
+			testQuery('a call as an argument', 'print(summary(x))', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout', inputVariables: ['x'] }] });
 		});
 		describe('A graphics call prints what it returns visibly', () => {
 			/* closing or switching a device hands back the device now active, `split.screen` the screens it made */
@@ -829,8 +965,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				testQuery(f, `${f}(x)`, {});
 			}
 			testQuery('an addon', 'plot(x)\nlines(y)', { visualize: [
-				{ nodeId: '1@plot', functionName: 'plot', parts: ['2@lines'] },
-				{ nodeId: '2@lines', functionName: 'lines', linkedIds: ['1@plot'] }
+				{ nodeId: '1@plot', functionName: 'plot', inputVariables: ['x'], parts: ['2@lines'] },
+				{ nodeId: '2@lines', functionName: 'lines', inputVariables: ['y'], linkedIds: ['1@plot'] }
 			] });
 		});
 		describe('A setter prints nothing, a query the state it reads', () => {
@@ -848,33 +984,34 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a visible read prints its data', 'read.csv("a.csv")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv' }], write: [printed('1@read.csv', 'read.csv')] });
 		});
 		describe('Calls another category already accounts for are not repeated', () => {
-			testQuery('a plot', 'plot(x)', { visualize: [{ nodeId: '1@plot', functionName: 'plot' }] });
+			testQuery('a plot', 'plot(x)', { visualize: [{ nodeId: '1@plot', functionName: 'plot', inputVariables: ['x'] }] });
 			testQuery('a printed ggplot chain', 'ggplot(df) + geom_point() + lims(x = c(0, 1))', { visualize: [
-				{ nodeId: '1@ggplot', functionName: 'ggplot', parts: ['1@geom_point', '1@lims'] },
-				{ nodeId: '1@geom_point', functionName: 'geom_point', linkedIds: ['1@ggplot'] },
-				{ nodeId: '1@lims', functionName: 'lims', linkedIds: ['1@ggplot'] }
+				{ nodeId: '1@ggplot', functionName: 'ggplot', inputVariables: ['df'], parts: ['1@geom_point', '1@lims'] },
+				{ nodeId: '1@geom_point', functionName: 'geom_point', inputVariables: ['df'], linkedIds: ['1@ggplot'] },
+				{ nodeId: '1@lims', functionName: 'lims', inputVariables: ['df'], linkedIds: ['1@ggplot'] }
 			] });
 			testQuery('a ggplot chain on a stored plot', 'p + geom_point()', { visualize: [{ nodeId: '1@geom_point', functionName: 'geom_point' }] });
 			testQuery('a grouped ggplot chain', '(ggplot(df) + geom_point())', { visualize: [
-				{ nodeId: '1@ggplot', functionName: 'ggplot', parts: ['1@geom_point'] },
-				{ nodeId: '1@geom_point', functionName: 'geom_point', linkedIds: ['1@ggplot'] }
+				{ nodeId: '1@ggplot', functionName: 'ggplot', inputVariables: ['df'], parts: ['1@geom_point'] },
+				{ nodeId: '1@geom_point', functionName: 'geom_point', inputVariables: ['df'], linkedIds: ['1@ggplot'] }
 			] });
 			testQuery('a stored plot', 'p <- ggplot(df) + geom_point()\np', { visualize: [
-				{ nodeId: '1@ggplot', functionName: 'ggplot', parts: ['1@geom_point'] },
-				{ nodeId: '1@geom_point', functionName: 'geom_point', linkedIds: ['1@ggplot'] }
+				{ nodeId: '1@ggplot', functionName: 'ggplot', inputVariables: ['df'], assignedTo: 'p', parts: ['1@geom_point'] },
+				{ nodeId: '1@geom_point', functionName: 'geom_point', inputVariables: ['df'], assignedTo: 'p', linkedIds: ['1@ggplot'] }
 			] });
 			testQuery('a stored value that is no plot', 'p <- summary(x)\np', { write: [{ nodeId: '2@p', functionName: 'p', value: 'stdout', implicit: true }] });
 			testQuery('a stored lattice plot', 'library(lattice)\np <- xyplot(y ~ x)\np', {
 				library:   [{ nodeId: '1@library', functionName: 'library', value: 'lattice' }],
-				visualize: [{ nodeId: '2@xyplot', functionName: 'xyplot' }]
+				/* the formula is quoted, its variables are looked up when the plot is drawn */
+				visualize: [{ nodeId: '2@xyplot', functionName: 'xyplot', assignedTo: 'p' }]
 			});
 			/* base graphics draw at once and hand back data, which printing writes */
-			testQuery('a stored base plot', 'h <- hist(x)\nh', { visualize: [{ nodeId: '1@hist', functionName: 'hist' }], write: [{ nodeId: '2@h', functionName: 'h', value: 'stdout', implicit: true }] });
-			testQuery('a stored ggplot component', 'l <- geom_point()\nl', { visualize: [{ nodeId: '1@geom_point', functionName: 'geom_point' }], write: [{ nodeId: '2@l', functionName: 'l', value: 'stdout', implicit: true }] });
+			testQuery('a stored base plot', 'h <- hist(x)\nh', { visualize: [{ nodeId: '1@hist', functionName: 'hist', inputVariables: ['x'], assignedTo: 'h' }], write: [{ nodeId: '2@h', functionName: 'h', value: 'stdout', implicit: true }] });
+			testQuery('a stored ggplot component', 'l <- geom_point()\nl', { visualize: [{ nodeId: '1@geom_point', functionName: 'geom_point', assignedTo: 'l' }], write: [{ nodeId: '2@l', functionName: 'l', value: 'stdout', implicit: true }] });
 			testQuery('a lone ggplot component', 'geom_point()', { visualize: [{ nodeId: '1@geom_point', functionName: 'geom_point' }], write: [{ nodeId: '1@geom_point', functionName: 'geom_point', value: 'stdout', implicit: true }] });
-			testQuery('a stem-and-leaf display is text', 'stem(x)', { write: [{ nodeId: '1@stem', functionName: 'stem', value: 'stdout' }] });
+			testQuery('a stem-and-leaf display is text', 'stem(x)', { write: [{ nodeId: '1@stem', functionName: 'stem', value: 'stdout', inputVariables: ['x'] }] });
 			testQuery('a density estimate draws nothing', 'density(x)', { write: [{ nodeId: '1@density', functionName: 'density', value: 'stdout', implicit: true }] });
-			testQuery('a write', 'write.csv(x, "out.csv")', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out.csv' }] });
+			testQuery('a write', 'write.csv(x, "out.csv")', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out.csv', inputVariables: ['x'] }] });
 			testQuery('an assertion', 'expect_equal(1 + 1, 2)', {});
 		});
 		describe('A statement that is not a call', () => {
@@ -906,7 +1043,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a super assignment', 'x <<- 1', {});
 			testQuery('a replacement', 'names(x) <- "a"', {});
 			/* the body still runs, so what it prints on its own is still an output */
-			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }] });
+			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout', inputVariables: ['i'] }] });
 		});
 		describe('A block hands on the value of its last statement', () => {
 			testQuery('a visible last statement', '{ invisible(1); 2 }', { write: [{ nodeId: 6, functionName: '2', value: 'stdout', implicit: true }] });

@@ -723,7 +723,8 @@ suggest a \`library\` call for.
 
 Beyond libraries, files and outputs, the query knows the \`visualize\` category (plots) and the \`transform\` category
 (\`Data Transformations\`): the calls that reshape, filter, join or aggregate data, like \`dplyr::filter\`, \`tidyr::pivot_longer\`,
-\`merge\`, \`aggregate\` or \`data.table::setDT\`. Every entry names its package, so \`filter\` is only a transformation when it
+\`merge\`, \`aggregate\` or \`data.table::setDT\`. The category is read from the built-in configuration: every built-in labeled
+\`SemanticCallTag.Transforms\` belongs to it. Every such built-in names its package, so \`filter\` is only a transformation when it
 resolves to \`dplyr\` and never for the time-series \`stats::filter\`.
 
 The \`read\`, \`write\`, \`visualize\`, and \`transform\` entries additionally state how data flows through the call,

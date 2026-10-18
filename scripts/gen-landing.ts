@@ -100,7 +100,7 @@ async function dependencyLines(code: string): Promise<string[][]> {
 	const idMap = (await analyzer.normalize()).idMap;
 	const found = (await analyzer.query([{ type: 'dependencies' }])).dependencies as unknown as
 		Record<string, readonly { value?: string, nodeId?: string | number }[]>;
-	return ([['library', 'library'], ['source', 'source'], ['read', 'read'], ['write', 'write'], ['visualize', 'visualize']] as const)
+	return ([['library', 'library'], ['source', 'source'], ['read', 'read'], ['write', 'write'], ['transform', 'transform'], ['visualize', 'visualize']] as const)
 		.flatMap(([key, label]) => (found[key] ?? []).map(entry => [
 			label,
 			entry.value ?? '?',
@@ -254,13 +254,13 @@ async function signatureLines(code: string, pkg: string, fn: string): Promise<st
 
 /** what a dependency line does, said out loud */
 const Verbs: Readonly<Record<string, string>> = {
-	library: 'loads', source: 'sources', read: 'reads', write: 'writes', visualize: 'plots to'
+	library: 'loads', source: 'sources', read: 'reads', write: 'writes', transform: 'transforms', visualize: 'plots to'
 };
 
 /** the same, for a dependency the query found without a name to go with it */
 const Silent: Readonly<Record<string, string>> = {
 	library:   'loads a package', source:    'sources a file', read:      'reads a file',
-	write:     'writes a file', visualize: 'draws a plot'
+	write:     'writes a file', transform: 'transforms data', visualize: 'draws a plot'
 };
 
 /**

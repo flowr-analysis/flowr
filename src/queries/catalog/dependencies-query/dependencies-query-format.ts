@@ -12,7 +12,7 @@ import { RemoteFunctions, remoteTarget } from './function-info/remote-functions'
 import { computeReadFunctions } from './function-info/read-functions';
 import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
-import { TransformFunctions } from './function-info/transform-functions';
+import { transformFunctions } from './function-info/transform-functions';
 import { statisticsFunctions } from './function-info/statistics-functions';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
@@ -138,7 +138,7 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 	},
 	'transform': {
 		queryDisplayName: 'Data Transformations',
-		functions:        TransformFunctions
+		functions:        transformFunctions(env.builtInIndex)
 	},
 	'test': {
 		queryDisplayName: 'Tests',

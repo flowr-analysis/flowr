@@ -151,6 +151,8 @@ export enum SemanticCallTag {
 	Edits       = 'edits-string',
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
 	Statistics  = 'statistics',
+	/** reshapes, filters, joins or aggregates the data it is given (`dplyr::mutate`, `merge`, `tidyr::pivot_longer`) */
+	Transforms  = 'transforms-data',
 	/** marked for removal, with a better alternative available, like `dplyr::funs` */
 	Deprecated  = 'deprecated',
 	/** dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` */

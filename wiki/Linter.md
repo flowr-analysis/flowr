@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 04:36:32 UTC (v2.16.2, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 07:05:31 UTC (v2.16.3, R v4.5.0), do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
@@ -6,7 +6,7 @@ For example:
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.2, R grammar v14 (tree-sitter engine)
+flowR repl v2.16.3, R grammar v14 (tree-sitter engine)
 R> :query @linter "read.csv(\"/root/x.txt\")"
 ```
 
@@ -14,7 +14,7 @@ R> :query @linter "read.csv(\"/root/x.txt\")"
 <summary style='color:gray'>Output</summary>
 
 ```text
-Query: linter (5 ms)
+Query: linter (9 ms)
    ╰ Deprecated Functions (deprecated-functions): no findings
    ╰ File Path Validity (file-path-validity): no findings
    ╰ Seeded Randomness (seeded-randomness): no findings
@@ -46,7 +46,7 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (16 ms)\
+Query: **linter** (25 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -163,7 +163,7 @@ The following linting rules are available:
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This signals the use of deprecated functions or features."><a href='#deprecated'>![deprecated](https://img.shields.io/badge/deprecated-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>\
 	R CMD check: [#37](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-37)
 
-**[Description Metadata](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Description%20Metadata):** Checks the DESCRIPTION: required fields, package name, version, maintainer, dependency fields, license, Authors@R, encoding, and the Title and Description style CRAN asks for. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/description-metadata.ts#L198">src/linter/rules/cmd-check/description-metadata.ts</a>]\
+**[Description Metadata](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Description%20Metadata):** Checks the DESCRIPTION: required fields, package name, version, maintainer, dependency fields, license, Authors@R, encoding, and the Title and Description style CRAN asks for. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/description-metadata.ts#L199">src/linter/rules/cmd-check/description-metadata.ts</a>]\
 	<a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a>\
 	R CMD check: [#1](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-1), [#6](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-6), [#25](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-25), [#26](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-26), [#27](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-27)
 
@@ -219,7 +219,7 @@ The following linting rules are available:
 	<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>\
 	R CMD check: [#4](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-4), [#5](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-5), [#7](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-7), [#33](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-33), [#77](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-77), [#79](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-79), [#80](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-80), [#81](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-81), [#83](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-83), [#84](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-84), [#85](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-85), [#86](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-86), [#87](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-87), [#89](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-89), [#90](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-90), [#91](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-91)
 
-**[Package Structure](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Package%20Structure):** Checks the package files: portable names, hidden files, top-level files, subdirectories, permissions, executables, timestamps, sizes, line endings of scripts, and vignette leftovers. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-structure.ts#L326">src/linter/rules/cmd-check/package-structure.ts</a>]\
+**[Package Structure](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Package%20Structure):** Checks the package files: portable names, hidden files, top-level files, subdirectories, permissions, executables, timestamps, sizes, line endings of scripts, and vignette leftovers. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-structure.ts#L329">src/linter/rules/cmd-check/package-structure.ts</a>]\
 	<a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a>\
 	R CMD check: [#2](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-2), [#3](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-3), [#8](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-8), [#9](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-9), [#10](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-10), [#11](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-11), [#12](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-12), [#13](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-13), [#14](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-14), [#15](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-15), [#16](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-16), [#17](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-17), [#18](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-18), [#19](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-19), [#20](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-20), [#21](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-21), [#22](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-22), [#23](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-23), [#57](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-57), [#87](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-87)
 

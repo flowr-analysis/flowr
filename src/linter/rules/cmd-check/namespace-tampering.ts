@@ -182,7 +182,7 @@ export const NAMESPACE_TAMPERING = {
 	prettyPrint: printer<NamespaceTamperingResult>(r => `${r.kind}${r.namespace ? ` of ${r.namespace}` : ''}`),
 	info:        {
 		name:          'Namespace Tampering',
-		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Security],
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Security],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds `unlockBinding()` and `assignInNamespace()` on other namespaces, `.Internal()` calls, and `library.dynam()` given a file extension.',
 		defaultConfig: () => ({

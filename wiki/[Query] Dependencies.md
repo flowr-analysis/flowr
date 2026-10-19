@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 04:36:32 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -18,9 +18,9 @@ For a script reading `library(x)`, the following query returns the loaded librar
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (77 ms)\
+Query: **dependencies** (6 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -78,7 +78,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (8 ms)\
+Query: **dependencies** (9 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -91,7 +91,7 @@ Query: **dependencies** (8 ms)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stdout** _auto-printed by + (node 31)_\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 28)_\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 30, linked 28)_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 30, linked 28)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -155,9 +155,9 @@ In the meantime we offer several properties to overwrite the default behavior (e
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (1 ms)\
+Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -210,10 +210,10 @@ Set `assumedPackages` to have those reported as well, as `library` entries marke
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (1 ms)\
+Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**base** _always attached by R, used at 8_\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stats** _attached by R at startup, used at 10_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stats** _attached by R at startup, used at 10_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -328,14 +328,14 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (7 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggtitle (node 45, linked 38)_\
 &nbsp;&nbsp;&nbsp;**Data Transformations** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via filter (node 16)_\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via select (node 24)_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via select (node 24)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

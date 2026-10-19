@@ -20,7 +20,9 @@ export type PackageDataResult = FileResult<PackageDataKind>;
 export interface PackageDataConfig extends MergeableRecord {
 	/** an uncompressed or ASCII save above this many bytes is flagged */
 	readonly maxUncompressedSize: number
+	/** report saves that a stronger compression would make much smaller */
 	readonly checkCompaction:     boolean
+	/** report data sets no Rd page documents */
 	readonly checkUndocumented:   boolean
 }
 
@@ -201,7 +203,7 @@ export const PACKAGE_DATA = {
 		name:          'Package Data',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks `data/` and `R/sysdata.rda`: allowed file types, LazyData, compression, the serialization version R needs, and undocumented data sets.',
+		description:   'Finds problems in `data/` and `R/sysdata.rda`: allowed file types, LazyData, compression, the serialization version R needs, and undocumented data sets.',
 		defaultConfig: () => ({ maxUncompressedSize: 100_000, checkCompaction: true, checkUndocumented: true })
 	}
 } as const satisfies LintingRule<PackageDataResult, PackageDataMetadata, PackageDataConfig>;

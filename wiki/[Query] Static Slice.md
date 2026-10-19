@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Static Slice Query">Static Slice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).\
@@ -39,7 +39,7 @@ _Results (prettified and summarized):_
 
 x <- 1\
 z <- 3\
-x\
+x
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -84,9 +84,9 @@ you can use the `noReconstruction` flag.
 
 _Results (prettified and summarized):_
 
-Query: **static-slice** (5 ms)\
+Query: **static-slice** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice "4@x" \
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {9, 0, 2, 1}\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {9, 0, 2, 1}
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -122,7 +122,7 @@ Likewise, if you want the forward slice for the first use of `x`, you can do it 
 _Results (prettified and summarized):_
 
 x <- 1\
-x\
+x
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -171,7 +171,7 @@ criteria (and may combine it with the forward `f` as `fi`), for example (with a 
 _Results (prettified and summarized):_
 
 greeting <- "hello"\
-print(greeting)\
+print(greeting)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

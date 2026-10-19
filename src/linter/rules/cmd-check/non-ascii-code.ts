@@ -121,7 +121,7 @@ export const NON_ASCII_CODE = {
 	prettyPrint: printer<NonAsciiCodeResult>(r => `non-ASCII ${r.kind} ${JSON.stringify(r.characters)}`),
 	info:        {
 		name:          'Non-ASCII Code',
-		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.QuickFix],
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.CmdCheck, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds non-ASCII characters in R code and the NAMESPACE outside of comments. Offers `\\u` escapes for strings as a quick fix.',
 		defaultConfig: () => ({

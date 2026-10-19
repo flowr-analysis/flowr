@@ -286,7 +286,7 @@ export const UNDEFINED_SYMBOL = {
 	info: {
 		name:          'Undefined Symbol',
 		certainty:     LintingRuleCertainty.OverApproximative,
-		description:   'Flags functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.',
+		description:   'Finds functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Experimental],
 		defaultConfig: () => ({
 			checkFunctions:  true,

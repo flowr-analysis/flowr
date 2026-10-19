@@ -368,7 +368,7 @@ export const UNUSED_DEFINITION = {
 	},
 	info: {
 		name:          'Unused Definitions',
-		description:   'Checks for unused definitions.',
+		description:   'Finds definitions that are never used.',
 		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// our limited analysis causes unused definitions involving complex reflection etc. not to be included in our result, but unused definitions are correctly validated
 		certainty:     LintingRuleCertainty.BestEffort,

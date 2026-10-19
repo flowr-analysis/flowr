@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-17, 21:45:25 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Guess Dependency Versions Query">Guess Dependency Versions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Guesses the version range each dependency must have, from declared constraints and actual code usage.\
@@ -41,7 +41,7 @@ that produced the bound:
 
 _Results (prettified and summarized):_
 
-Query: **guess-dep-versions** (1010 ms)\
+Query: **guess-dep-versions** (131 ms)\
 &nbsp;&nbsp;&nbsp;╰ R _4.5.3_ _(config)_\
 &nbsp;&nbsp;&nbsp;_evidence_: d declared  t transitive  s signature  D date  b base-r  # available  i indirect\
 &nbsp;&nbsp;&nbsp;▶ **sample** _(newest)_: base@4.5.3, dplyr@1.2.1, tidyselect@1.2.1 (works with all newest versions)\
@@ -53,7 +53,7 @@ Query: **guess-dep-versions** (1010 ms)\
 &nbsp;&nbsp;&nbsp;**━ tidyselect** _[coupled: dplyr]_ [orphan: attach library(tidyselect) for everything]  **>=1.1.0 <=1.2.1**  _(5/13 versions, db 0.1.1 - 1.2.1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;! everything() at 2:23 resolves to no definition _(most downloaded of 3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_or instead_: poorman >=0.1.10 <=0.2.7, rfoaas >=0.0.4 <=2.3.3\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;t >=1.1.0 required by dplyr\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;t >=1.1.0 required by dplyr
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

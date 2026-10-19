@@ -469,7 +469,7 @@ export const UNESCAPED_ARGUMENTS = {
 		name:          'Unescaped Arguments',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Shiny, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Detects arguments of critical system, evaluation, database, and HTML/JavaScript calls that are not properly escaped.',
+		description:   'Finds arguments of critical system, evaluation, database, and HTML/JavaScript calls that are not properly escaped.',
 		defaultConfig: () => ({
 			categories: {
 				[UnescapedArgumentCategory.System]: {

@@ -1,4 +1,5 @@
-import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../../linter-format';
+import { SourceLocation } from '../../../util/range';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
@@ -98,6 +99,8 @@ interface Mismatch {
 	readonly kind:      CallArgumentsKind
 	readonly argument?: string
 	readonly message:   string
+	/** the full name of the formal a partial match reaches, and where the abbreviated name is written */
+	readonly full?:     { readonly name: string, readonly loc: SourceLocation | undefined }
 }
 
 /** how R would match the arguments of `call` to `formals`, the problems it would run into */
@@ -131,7 +134,7 @@ function mismatchesOf(call: RFunctionCall<ParentInformation>, formals: readonly 
 		if(candidates.length === 1) {
 			bound.add(candidates[0]);
 			if(partial) {
-				result.push({ kind: 'partial-match', argument: name, message: `partial argument match of '${name}' to '${candidates[0]}'` });
+				result.push({ kind: 'partial-match', argument: name, message: `partial argument match of '${name}' to '${candidates[0]}'`, full: { name: candidates[0], loc: SourceLocation.fromNode(arg.name) } });
 			}
 		} else if(candidates.length > 1) {
 			result.push({ kind: 'ambiguous-match', argument: name, message: `argument '${name}' matches multiple formal arguments (${candidates.join(', ')})` });
@@ -192,16 +195,20 @@ export const CALL_ARGUMENTS = {
 			const perTarget = targets.formals.map(f => mismatchesOf(node, f, config.reportPartialMatches));
 			const fn = Identifier.toString(vertex.name);
 			/* a mismatch with every possible target is certain, with only some of them it is not */
-			const keys = new Map<string, { m: Mismatch, count: number }>();
+			const keys = new Map<string, { m: Mismatch, count: number, fulls: Set<string | undefined> }>();
 			for(const mismatches of perTarget) {
 				for(const m of mismatches) {
 					const key = `${m.kind}:${m.argument ?? ''}`;
 					const entry = keys.get(key);
-					keys.set(key, { m, count: (entry?.count ?? 0) + 1 });
+					keys.set(key, { m, count: (entry?.count ?? 0) + 1, fulls: (entry?.fulls ?? new Set()).add(m.full?.name) });
 				}
 			}
-			for(const { m, count } of keys.values()) {
-				add(node, { kind: m.kind, function: fn, ...(m.argument !== undefined ? { argument: m.argument } : {}), message: `possible error in ${fn}(): ${m.message}` }, targets.certain && count === targets.formals.length);
+			for(const { m, count, fulls } of keys.values()) {
+				const everywhere = count === targets.formals.length;
+				/* the name is spelled out only when every target takes the same formal for it */
+				const quickFix: LintQuickFixReplacement[] | undefined = m.full?.loc !== undefined && everywhere && fulls.size === 1
+					? [{ type: 'replace', loc: m.full.loc, description: `Spell out \`${m.full.name}\``, replacement: m.full.name }] : undefined;
+				add(node, { kind: m.kind, function: fn, ...(m.argument !== undefined ? { argument: m.argument } : {}), message: `possible error in ${fn}(): ${m.message}`, ...(quickFix ? { quickFix } : {}) }, targets.certain && everywhere);
 			}
 		}
 
@@ -255,7 +262,7 @@ export const CALL_ARGUMENTS = {
 	prettyPrint: printer<CallArgumentsResult>(r => `${r.kind}${r.function ? ` in ${r.function}` : ''}${r.argument ? ` (${r.argument})` : ''}`),
 	info:        {
 		name:          'Call Arguments',
-		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
+		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds calls with arguments the called function does not take, names that match a formal only partially or match several formals, `...` used in a function without `...`, and local functions defined twice with different formals. Calls are resolved through the dataflow graph.',
 		defaultConfig: () => ({

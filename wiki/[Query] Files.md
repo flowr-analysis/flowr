@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Files Query">Files Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the files matching the given criteria.\
@@ -15,8 +15,8 @@ This query returns the files that match the given criteria.
 
 _Results (prettified and summarized):_
 
-Query: **files** (0ms)\
-&nbsp;&nbsp;&nbsp;╰ Found 0 files\
+Query: **files**\
+&nbsp;&nbsp;&nbsp;╰ Found 0 files
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

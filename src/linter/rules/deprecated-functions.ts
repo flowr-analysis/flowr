@@ -291,7 +291,7 @@ export const DEPRECATED_FUNCTIONS = {
 		// the hardcoded `always` and `conditionally` list ensures every reported hit is real, but the list is pre-crawled and hence
 		// incomplete; the signature-database pass above adds recall for whichever packages are resolved
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it.',
+		description:   'Finds deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it.',
 		defaultConfig: ctx => ({
 			always:        ctx.env.deriveFromDefinitions(alwayDeprecatedFromBuiltinConfig),
 			conditionally: ctx.env.deriveFromDefinitions(conditionalyDeprecatedFromBuiltinConfig)

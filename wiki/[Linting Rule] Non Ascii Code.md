@@ -1,9 +1,14 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 04:36:32 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
 <h2 id="non-ascii-code">Non-ASCII Code&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
-<span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a>
+<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 36, 44](https://img.shields.io/badge/cmd--check-36%2C%2044-blueviolet) </a> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span>
 
-R CMD check: [#36](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-36) 🟩, [#44](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-44) 🔶
+This rule ports the following steps of `R CMD check` (see the [conformance table](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance) for the legend):
+
+| # | Step | Coverage | Note |
+|---|------|:--------:|------|
+| [36](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-36) | [code files for non-ASCII characters](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L2133) ([book](https://r-pkgs.org/R-CMD-check.html#r-code)) | 🟩⭐ | ⭐ also reports each token instead of each file, escapes strings as a quick fix |
+| [44](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-44) | [package namespace information](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L6863) ([book](https://r-pkgs.org/R-CMD-check.html#namespace)) | 🔶 |  |
 
 This rule is a `best-effort` rule.
  
@@ -16,9 +21,11 @@ Linting rules can be configured by passing a configuration object to the linter 
 The `non-ascii-code` rule accepts the following configuration options:
 
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/non-ascii-code.ts#L25"><code><span title="report string literals holding non-ASCII characters (default true, as R CMD check does)">checkStrings</span></code></a>\
-report string literals holding non-ASCII characters (default `true`, as `R CMD check` does)
+report string literals holding non-ASCII characters (default `true`, as `R CMD check` does)\
+_R CMD check [#36](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-36 "checking code files for non-ASCII characters")_
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/non-ascii-code.ts#L27"><code><span title="report symbols holding non-ASCII characters (default true, as R CMD check does)">checkSymbols</span></code></a>\
-report symbols holding non-ASCII characters (default `true`, as `R CMD check` does)
+report symbols holding non-ASCII characters (default `true`, as `R CMD check` does)\
+_R CMD check [#36](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-36 "checking code files for non-ASCII characters")_
 
 ### Examples
 
@@ -35,10 +42,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Non-ASCII Code** (non-ascii-code):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ non-ASCII string ["ü","ß"] at 2.31-37 (1 quick fix(es) available)\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ non-ASCII string ["ü","ß"] at 2.31-37 (1 quick fix(es) available)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

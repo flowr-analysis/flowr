@@ -381,7 +381,7 @@ export const PACKAGE_STRUCTURE = {
 	info:        {
 		name:          'Package Structure',
 		tags:          [LintingRuleTag.CmdCheck], certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks the package files: portable names, hidden files, top-level files, subdirectories, permissions, executables, timestamps, sizes, line endings of scripts, and vignette leftovers.',
+		description:   'Finds problems in the package files: portable names, hidden files, top-level files, subdirectories, permissions, executables, timestamps, sizes, line endings of scripts, and vignette leftovers.',
 		defaultConfig: () => ({
 			maxPathLength:         100,
 			hiddenAllowed:         ['.Rbuildignore', '.Rinstignore', 'vignettes/.install_extras', '.aspell'],

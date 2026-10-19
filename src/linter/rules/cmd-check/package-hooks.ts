@@ -1,8 +1,8 @@
-import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
+import { SourceLocation, SourceRange } from '../../../util/range';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
@@ -131,6 +131,14 @@ function hasNamedArgument(id: NodeId, df: DataflowInformation, name: string): bo
 	return DfgVertex.isFunctionCall(vertex) && vertex.args.some(a => a !== EmptyArgument && a.name === name);
 }
 
+/** `message()` called in a hook as the startup message function, which takes the same arguments */
+function asStartupMessage(call: RNode<ParentInformation> | undefined, startup: string | undefined): LintQuickFixReplacement[] | undefined {
+	const own = RFunctionCall.isNamed(call) ? SourceRange.ownFromNode(call.functionName) : undefined;
+	const loc = own === undefined ? undefined : SourceLocation.from(own, call?.info.file);
+	return startup === undefined || loc === undefined || !RFunctionCall.isNamed(call) || Identifier.getName(call.functionName.content) !== 'message'
+		? undefined : [{ type: 'replace', loc, description: `Use \`${startup}\``, replacement: startup }];
+}
+
 /**
  * Port of the `R CMD check` notes on package hooks (`checking R code for possible problems`, from
  * `tools:::.check_package_code_startup_functions` and `tools:::.check_package_code_unload_functions`).
@@ -149,12 +157,13 @@ export const PACKAGE_HOOKS = {
 		const allowedOutput = new Set(config.allowedOutput);
 		const unsafe = new Set(config.unsafeCalls);
 		for(const { name: hook, def } of hooks) {
-			const report = (issue: PackageHookIssue, message: string, id: NodeId = def.info.id, call?: string, certain = true) => results.push({
+			const report = (issue: PackageHookIssue, message: string, id: NodeId = def.info.id, call?: string, certain = true, quickFix?: LintQuickFixReplacement[]) => results.push({
 				...at(idMap.get(id) ?? def, certain),
 				hook,
 				issue,
 				...(call ? { call } : {}),
-				message
+				message,
+				...(quickFix ? { quickFix } : {})
 			});
 			if(hook === '.First.lib') {
 				report('obsolete', '.First.lib is obsolete and will not be used in R >= 3.0.0, use .onLoad or .onAttach instead');
@@ -186,7 +195,8 @@ export const PACKAGE_HOOKS = {
 				} else if(startupMessages.has(name) ? hook === '.onLoad' : CallProps.hasAny(props, SemanticCallTag.Prints) && !allowedOutput.has(name) && !writesToResource(id, df, props?.sig)) {
 					report('output', hook === '.onLoad' && startupMessages.has(name)
 						? `.onLoad should not print startup messages with ${name}, use .onAttach instead${through}`
-						: `Package startup functions should use ${config.startupMessageFunctions[0] ?? 'packageStartupMessage'} to generate messages, but ${hook} calls ${name}${through}`, at, name, via === undefined);
+						: `Package startup functions should use ${config.startupMessageFunctions[0] ?? 'packageStartupMessage'} to generate messages, but ${hook} calls ${name}${through}`, at, name, via === undefined,
+					via === undefined && hook !== '.onLoad' ? asStartupMessage(idMap.get(id), config.startupMessageFunctions[0]) : undefined);
 				}
 			}
 		}
@@ -195,9 +205,9 @@ export const PACKAGE_HOOKS = {
 	prettyPrint: printer<PackageHooksResult>(r => `${r.hook}: ${r.issue}${r.call ? ` (${r.call})` : ''}`),
 	info:        {
 		name:          'Package Hooks',
-		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Usability],
+		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Usability, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks `.onLoad`, `.onAttach`, `.onDetach`, and `.Last.lib`: argument lists, attaching packages, output other than `packageStartupMessage()`, `installed.packages()`, misplaced `library.dynam()` calls, and the obsolete `.First.lib`. Follows calls into the package\'s own functions.',
+		description:   'Finds problems in `.onLoad`, `.onAttach`, `.onDetach`, and `.Last.lib`: argument lists, attaching packages, output other than `packageStartupMessage()`, `installed.packages()`, misplaced `library.dynam()` calls, and the obsolete `.First.lib`. Follows calls into the package\'s own functions.',
 		defaultConfig: () => ({
 			startupMessageFunctions: ['packageStartupMessage'],
 			allowedOutput:           ['warning'],

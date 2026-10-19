@@ -396,7 +396,7 @@ export const COMPILED_CODE = {
 		name:          'Compiled Code',
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks `src/` and the build files: non-portable Makevars flags, BLAS/LAPACK and OpenMP flag use, GNU make extensions, pragmas, line endings, Fortran KIND, the C++ standard, calls to non-API or non-portable entry points, and `useDynLib` against `src/`.',
+		description:   'Finds problems in `src/` and the build files: non-portable Makevars flags, BLAS/LAPACK and OpenMP flag use, GNU make extensions, pragmas, line endings, Fortran KIND, the C++ standard, calls to non-API or non-portable entry points, and `useDynLib` against `src/`.',
 		defaultConfig: () => ({
 			skip:                   [],
 			nonPortableFlags:       ['O.*', 'W', 'w', 'W[^l].*', 'ansi', 'pedantic', 'traditional', 'f.*', 'm.*', 'std.*', 'isystem', 'x', 'pipe', 'cpp', 'g', 'q'],

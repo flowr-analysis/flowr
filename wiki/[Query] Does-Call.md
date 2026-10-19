@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -35,9 +35,9 @@ the following query checks whether the call to `f` calls `eval`:
 
 _Results (prettified and summarized):_
 
-Query: **does-call** (20ms)\
+Query: **does-call**\
 &nbsp;&nbsp;- **calls-eval** found:\
-&nbsp;&nbsp;&nbsp;&nbsp;- Call with id **15** (2.1)\
+&nbsp;&nbsp;&nbsp;&nbsp;- Call with id **15** (2.1)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

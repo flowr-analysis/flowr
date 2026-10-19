@@ -38,11 +38,17 @@ export interface DocumentationMismatchResult extends CmdCheckResult {
 }
 
 export interface DocumentationMismatchConfig extends MergeableRecord {
+	/** report exported objects no Rd page documents */
 	readonly checkUndocumented:    boolean
+	/** report functions whose formals differ from their `\usage` */
 	readonly checkCodoc:           boolean
+	/** also report default values that differ between the code and its `\usage` */
 	readonly checkDefaults:        boolean
+	/** report arguments of a `\usage` that its `\arguments` do not document, and documented arguments no `\usage` has */
 	readonly checkUsage:           boolean
+	/** also check the `\usage` of pages with the keyword `internal` */
 	readonly checkInternalUsage:   boolean
+	/** report undocumented objects even when the package has no Rd pages at all */
 	readonly requireDocumentation: boolean
 }
 

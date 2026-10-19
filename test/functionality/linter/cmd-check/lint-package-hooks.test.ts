@@ -27,6 +27,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinterPackage('require in onAttach changes the search path', parser, '.onAttach <- function(libname, pkgname) require(stats)', 'package-hooks', [{ issue: 'search-path', call: 'require' }]);
 			assertLinterPackage('library(help = ) does not attach', parser, '.onLoad <- function(libname, pkgname) library(help = "stats")', 'package-hooks', []);
 			assertLinterPackage('requireNamespace does not change the search path', parser, '.onLoad <- function(libname, pkgname) requireNamespace("stats", quietly = TRUE)', 'package-hooks', []);
+			assertLinterPackage('message in onAttach becomes the startup message', parser, '.onAttach <- function(libname, pkgname) message("hi")', 'package-hooks', [
+				{ issue: 'output', call: 'message', quickFix: [{ type: 'replace', loc: [1, 41, 1, 47, '/pkg/R/code.R'], description: 'Use `packageStartupMessage`', replacement: 'packageStartupMessage' }] }
+			]);
 			assertLinterPackage('cat in onAttach', parser, '.onAttach <- function(libname, pkgname) cat("Welcome")', 'package-hooks', [{ issue: 'output', call: 'cat' }]);
 			assertLinterPackage('message in onLoad', parser, '.onLoad <- function(libname, pkgname) message("hi")', 'package-hooks', [{ issue: 'output', call: 'message' }]);
 			assertLinterPackage('print and writeLines', parser, '.onAttach <- function(libname, pkgname) { print(1); writeLines("x") }', 'package-hooks', [

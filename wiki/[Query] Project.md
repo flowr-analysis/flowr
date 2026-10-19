@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Project Query">Project Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns information about the analyzed project\
@@ -15,9 +15,9 @@ If present, it will incorporate plugins to, e.g., extract author and license inf
 
 _Results (prettified and summarized):_
 
-Query: **project** (0 ms)\
+Query: **project** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ Kind: unknown\
-&nbsp;&nbsp;&nbsp;╰ Dataflow not performed (run `:df#`, then re-run this query, or pass "withDf": true)\
+&nbsp;&nbsp;&nbsp;╰ Dataflow not performed (run `:df#`, then re-run this query, or pass "withDf": true)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

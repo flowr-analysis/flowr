@@ -1,11 +1,11 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
 <h2 id="file-path-validity">File Path Validity&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
-<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
+<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
 This rule is a `best-effort` rule.
  
-Checks whether file paths used in read and write operations are valid and point to existing files.\
+Finds file paths used in read and write operations that are invalid or do not point to existing files.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/file-path-validity.ts#L87">src/linter/rules/file-path-validity.ts</a>._
 
 ### Configuration
@@ -32,9 +32,19 @@ Whether unknown file paths should be included as linting results.
 
 ### Examples
 
-```r
+A project with the code `R/code.R`:
 
-my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
+```r
+survey <- read.csv("data/Survey.csv")
+```
+
+and the files
+
+`R/survey.csv`:
+
+```text
+id,value
+1,2
 ```
 
 The linting query can be used to run this rule on the above example:
@@ -45,10 +55,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `C:/Users/me/Documents/My R Scripts/Reproducible.csv` at 2.12-74\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `data/Survey.csv` at [/pkg/R/code.R:1.11-37](file:///pkg/R/code.R:1:11) (1 quick fix(es) available)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -62,7 +72,22 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
   "linter": {
     "results": {
       "file-path-validity": {
-        "results": [{"involvedId":4,"loc":[2,12,2,74],"filePath":"C:/Users/me/Documents/My R Scripts/Reproducible.csv","certainty":"certain"}],
+        "results": [
+          {
+            "involvedId": 4,
+            "loc": [1,11,1,37,"/pkg/R/code.R"],
+            "filePath": "data/Survey.csv",
+            "certainty": "certain",
+            "quickFix": [
+              {
+                "type": "replace",
+                "loc": [1,20,1,36,"/pkg/R/code.R"],
+                "description": "Replace with existing path `/pkg/R/survey.csv`",
+                "replacement": "\"/pkg/R/survey.csv\""
+              }
+            ]
+          }
+        ],
         ".meta": {"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}
       }
     },

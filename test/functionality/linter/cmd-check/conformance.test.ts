@@ -2,6 +2,8 @@ import { assert, describe, test } from 'vitest';
 import { CmdCheckConformance } from '../../../../src/linter/rules/cmd-check/conformance';
 import { type LintingRuleNames, LintingRules } from '../../../../src/linter/linter-rules';
 import { LintingRuleTag } from '../../../../src/linter/linter-tags';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 /** every `checkingLog(Log, "...")` title of `tools:::.check_packages` in R 4.6.1 (with the variable parts dropped) */
 const CmdCheckSteps = [
@@ -46,5 +48,13 @@ describe('R CMD check conformance', () => {
 	});
 	test('every entry names at least one rule', () => {
 		assert.deepStrictEqual(entries.filter(e => e.rules.length === 0).map(e => e.check), []);
+	});
+	test('every option tuning a step is an option of one of its rules', () => {
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default());
+		const unknown = entries.flatMap(e => (e.options ?? []).filter(o => {
+			const [rule, key] = o.split('.') as [LintingRuleNames, string];
+			return !e.rules.includes(rule) || !(key in LintingRules[rule].info.defaultConfig(ctx));
+		}).map(o => `${e.check}: ${o}`));
+		assert.deepStrictEqual(unknown, []);
 	});
 });

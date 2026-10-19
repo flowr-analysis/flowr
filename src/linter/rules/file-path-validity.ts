@@ -194,7 +194,7 @@ export const FILE_PATH_VALIDITY = {
 	},
 	info: {
 		name:          'File Path Validity',
-		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
+		description:   'Finds file paths used in read and write operations that are invalid or do not point to existing files.',
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
@@ -252,7 +252,7 @@ function samePath(a: string, b: string, ignoreCapitalization: boolean | undefine
 }
 
 /** the string-literal path argument of a call whose resolved value is `value`, for anchoring a quick fix */
-function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RString | undefined {
+export function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RString | undefined {
 	const call = idMap.get(callId);
 	if(!RFunctionCall.is(call)) {
 		return undefined;

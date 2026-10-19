@@ -128,7 +128,7 @@ export const TRUE_FALSE_ABBREVIATION = {
 	prettyPrint: printer<TrueFalseAbbreviationResult>(r => `${r.kind === 'use' ? 'Use' : 'Redefinition'} of \`${r.name}\``),
 	info:        {
 		name:            'TRUE/FALSE Abbreviation',
-		tags:            [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Readability, LintingRuleTag.QuickFix],
+		tags:            [LintingRuleTag.Smell, LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Readability, LintingRuleTag.QuickFix],
 		certainty:       LintingRuleCertainty.Exact,
 		/* R CMD check only runs `checkTnF` for a package without a NAMESPACE, which no current package is */
 		activeByDefault: false,

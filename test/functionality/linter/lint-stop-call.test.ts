@@ -11,7 +11,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('single stop', parser, 'f <- function(x) stop(x)', 'stop-call', [
 			{
 				certainty: LintingResultCertainty.Uncertain,
-				loc:       SourceRange.from(1, 18, 1, 24)
+				loc:       SourceRange.from(1, 18, 1, 24),
+				quickFix:  [{ type: 'replace', loc: [1, 24, 1, 23], description: 'Add `call. = FALSE`', replacement: ', call. = FALSE' }]
 			}
 		]);
 		assertLinter('single stop with arg', parser, 'f <- function(x) stop(x, call.=FALSE)', 'stop-call', []);
@@ -19,7 +20,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('stop with set to true', parser, 'f <- function(y) stop(y, call.=TRUE)', 'stop-call', [
 			{
 				certainty: LintingResultCertainty.Uncertain,
-				loc:       SourceRange.from(1, 18, 1, 36)
+				loc:       SourceRange.from(1, 18, 1, 36),
+				quickFix:  [{ type: 'replace', loc: [1, 32, 1, 35], description: 'Set `call.` to `FALSE`', replacement: 'FALSE' }]
 			}
 		]);
 		assertLinter('resolve flag in stop', parser, 'f <- function(y) { x <- FALSE; stop(y, call.=x) }', 'stop-call', []);
@@ -27,13 +29,13 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('a condition object built with structure', parser, 'f <- function() stop(structure(class = c("myError", "error", "condition"), list(message = "m", call = NULL)))', 'stop-call', []);
 		assertLinter('stop handed to do.call states its arguments there', parser, 'f <- function() { args <- list("m", call. = FALSE); do.call(stop, args) }', 'stop-call', []);
 		assertLinter('a direct stop beside one handed to do.call is still reported', parser, 'f <- function() { args <- list("m", call. = FALSE); do.call(stop, args); stop("y") }', 'stop-call', [
-			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 74, 1, 82) }
+			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 74, 1, 82), quickFix: [{ type: 'replace', loc: [1, 82, 1, 81], description: 'Add `call. = FALSE`', replacement: ', call. = FALSE' }] }
 		]);
 		assertLinter('an object built with structure but no condition class is reported', parser, 'f <- function() stop(structure(class = "myError", list(message = "m", call = NULL)))', 'stop-call', [
-			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 17, 1, 84) }
+			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 17, 1, 84), quickFix: [{ type: 'replace', loc: [1, 84, 1, 83], description: 'Add `call. = FALSE`', replacement: ', call. = FALSE' }] }
 		]);
 		assertLinter('a qualified base::stop', parser, 'f <- function() base::stop("x")', 'stop-call', [
-			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 17, 1, 31) }
+			{ certainty: LintingResultCertainty.Uncertain, loc: SourceRange.from(1, 17, 1, 31), quickFix: [{ type: 'replace', loc: [1, 31, 1, 30], description: 'Add `call. = FALSE`', replacement: ', call. = FALSE' }] }
 		]);
 	});
 }));

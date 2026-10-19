@@ -22,6 +22,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { OtherPathFunctions } from '../../queries/catalog/dependencies-query/function-info/other-path-functions';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { pathArgStringNode } from './file-path-validity';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -154,11 +155,12 @@ export const ABSOLUTE_PATH = {
 			const path = resolvePathForAbsoluteCheck(value, config.ignoreUrls);
 			return path !== undefined && isAbsolutePath(path, regex) ? path : undefined;
 		};
-		const finding = (certainty: LintingResultCertainty, filePath: string, node: RNode | undefined, wd?: string): AbsoluteFilePathResult => compactRecord({
+		/* the fix rewrites the string spelling the path, which may sit inside the reported call */
+		const finding = (certainty: LintingResultCertainty, filePath: string, node: RNode | undefined, wd?: string, str: RNode | undefined = node): AbsoluteFilePathResult => compactRecord({
 			certainty,
 			filePath,
 			loc:      SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-			quickFix: quickFixForPath(node, filePath, wd)
+			quickFix: quickFixForPath(str, filePath, wd)
 		}) as AbsoluteFilePathResult;
 		return {
 			results: withoutNested(elements.getElements().flatMap(element => {
@@ -177,7 +179,7 @@ export const ABSOLUTE_PATH = {
 							return [];
 						}
 						const path = absolute(r.value);
-						return path === undefined ? [] : [finding(LintingResultCertainty.Certain, path, idMap.get(r.nodeId), wd)];
+						return path === undefined ? [] : [finding(LintingResultCertainty.Certain, path, idMap.get(r.nodeId), wd, pathArgStringNode(idMap, r.nodeId, r.value))];
 					});
 					// if we have no absolute paths, but all paths are known, we can return an empty array
 					if(found.length > 0 || reads.every(r => r.value !== Unknown)) {
@@ -205,7 +207,7 @@ export const ABSOLUTE_PATH = {
 	},
 	info: {
 		name:          'Absolute Paths',
-		description:   'Checks whether file paths are absolute.',
+		description:   'Finds absolute file paths.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// checks all found paths for whether they're absolute to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,

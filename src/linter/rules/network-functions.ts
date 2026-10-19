@@ -129,7 +129,7 @@ export const NETWORK_FUNCTIONS = {
 		tags:          [LintingRuleTag.Reproducibility, LintingRuleTag.Security, LintingRuleTag.Performance, LintingRuleTag.Smell],
 		// ensures all network functions found are actually network functions through its limited config, but doesn't find all network functions since the config is pre-crawled, and the DFG may be over-approximated
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',
+		description:   'Finds functions that execute network operations, such as downloading files or making HTTP requests.',
 		defaultConfig: ctx => ({
 			fns: ctx.env.deriveFromIndex(networkFunctions)
 		})

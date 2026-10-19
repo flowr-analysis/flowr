@@ -62,6 +62,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinterPackage('partial name', parser, 'f <- function(value, verbose) value\ng <- function() f(val = 1)', rule, [
 				{ kind: 'partial-match', argument: 'val', message: 'possible error in f(): partial argument match of \'val\' to \'value\'' }
 			]);
+			assertLinterPackage('a partial name is spelled out', parser, 'f <- function(value, verbose) value\ng <- function() f(val = 1)', rule, [
+				{ kind: 'partial-match', quickFix: [{ type: 'replace', loc: [2, 19, 2, 21, '/pkg/R/code.R'], description: 'Spell out `value`', replacement: 'value' }] }
+			]);
 			assertLinterPackage('ambiguous partial name', parser, 'f <- function(value, verbose) value\ng <- function() f(v = 1)', rule, [{ kind: 'ambiguous-match', argument: 'v' }]);
 			assertLinterPackage('no partial matching after dots', parser, 'f <- function(..., value) value\ng <- function() f(val = 1)', rule, []);
 			assertLinterPackage('partial match before dots', parser, 'f <- function(value, ...) value\ng <- function() f(val = 1)', rule, [{ kind: 'partial-match', argument: 'val' }]);

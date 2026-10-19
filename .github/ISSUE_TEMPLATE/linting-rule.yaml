@@ -48,14 +48,14 @@ body:
         - Package Metafiles
         - Package Runtime
         - Package Structure
-        - Problematic inputs
+        - Problematic Inputs
         - Rd Files
         - Roxygen Arguments
         - S3 Method Consistency
         - Seeded Randomness
         - Software Has License
         - Software Has Tests
-        - Stop without call.=False argument
+        - Stop Without Call
         - Syntactically Valid
         - TRUE/FALSE Abbreviation
         - Unclosed Connection

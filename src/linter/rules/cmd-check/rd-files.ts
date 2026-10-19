@@ -28,21 +28,37 @@ export type RdFilesKind = 'rd-syntax' | 'rd-unknown-macro' | 'rd-structure' | 'r
 export type RdFilesResult = FileResult<RdFilesKind>;
 
 export interface RdFilesConfig extends MergeableRecord {
+	/** report what the Rd parser of R reports: syntax errors, unknown macros, and unexpected sections */
 	readonly parse:            boolean
+	/** drop parser diagnostics below this `checkRd` level, the messages of `prepare_Rd` are always kept */
 	readonly minLevel:         number
+	/** report duplicate names and aliases, names that differ only by case, and pages without any alias */
 	readonly metadata:         boolean
+	/** report links to topics no page or package provides */
 	readonly crossReferences:  boolean
+	/** also report links whose target flowR cannot decide */
 	readonly uncertainLinks:   boolean
+	/** report lines in `\usage` and `\examples` wider than {@link RdFilesConfig#usageWidth} and {@link RdFilesConfig#examplesWidth} */
 	readonly lineWidths:       boolean
+	/** the widest line a `\usage` section may have */
 	readonly usageWidth:       number
+	/** the widest line an `\examples` section may have */
 	readonly examplesWidth:    number
+	/** report missing descriptions and values, argument items without text, and generated boilerplate */
 	readonly contents:         boolean
+	/** report functions documented without a `\value` section */
 	readonly requireValue:     boolean
+	/** report keywords that are neither standard nor in {@link RdFilesConfig#keywords} */
 	readonly standardKeywords: boolean
+	/** the keywords besides the standard ones a page may use */
 	readonly keywords:         readonly string[]
+	/** report S3 methods a `\usage` calls by their full name instead of with `\method` */
 	readonly docStyle:         boolean
+	/** report bibentries a page cites but does not show */
 	readonly bibentries:       boolean
+	/** parse the examples and report their syntax errors, undefined calls, `T` and `F`, `q()`, and the files they write */
 	readonly examples:         boolean
+	/** Rd macro files to load besides those of the package */
 	readonly extraMacros:      readonly string[]
 }
 
@@ -683,7 +699,7 @@ export const RD_FILES = {
 		name:          'Rd Files',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks the Rd files: syntax, unknown macros, required and duplicated sections, metadata, cross-references, line widths, contents, and the example code.',
+		description:   'Finds problems in the Rd files: syntax, unknown macros, required and duplicated sections, metadata, cross-references, line widths, contents, and the example code.',
 		defaultConfig: () => ({ parse: true, minLevel: -1, metadata: true, crossReferences: true, uncertainLinks: true, lineWidths: true, usageWidth: 90, examplesWidth: 100, contents: true, requireValue: false, standardKeywords: false, keywords: StandardKeywords, docStyle: true, bibentries: true, examples: true, extraMacros: [] })
 	}
 } as const satisfies LintingRule<RdFilesResult, RdFilesMetadata, RdFilesConfig>;

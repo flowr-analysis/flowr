@@ -224,11 +224,11 @@ export const SEEDED_RANDOMNESS = {
 				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n',
 			],
 		}),
-		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
+		tags:        [LintingRuleTag.Smell, LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
 		// only finds proper randomness producers and consumers due to its config, but will not find all producers/consumers since not all existing deprecated functions will be in the config
 		certainty:   LintingRuleCertainty.BestEffort,
 		name:        'Seeded Randomness',
-		description: 'Checks whether randomness-based function calls are preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
+		description: 'Finds randomness-based function calls not preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: (result, _meta) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,

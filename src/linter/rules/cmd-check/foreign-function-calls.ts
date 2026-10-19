@@ -136,7 +136,7 @@ export const FOREIGN_FUNCTION_CALLS = {
 		name:          'Foreign Function Calls',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks `.Call`, `.C`, `.External`, and `.Fortran` calls: a missing or empty `PACKAGE`, calls into base or other packages, and undeclared packages. Routine and package names are resolved through variables.',
+		description:   'Finds problems in `.Call`, `.C`, `.External`, and `.Fortran` calls: a missing or empty `PACKAGE`, calls into base or other packages, and undeclared packages. Routine and package names are resolved through variables.',
 		defaultConfig: () => ({
 			resolveValues: true
 		})

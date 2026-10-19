@@ -329,7 +329,7 @@ export const PACKAGE_METAFILES = {
 		name:          'Package Metafiles',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks the demo index, `INDEX`, `inst/CITATION`, and relative links in README, NEWS, and vignettes.',
+		description:   'Finds problems in the demo index, `INDEX`, `inst/CITATION`, and relative links in README, NEWS, and vignettes.',
 		defaultConfig: () => ({
 			index:         true,
 			citation:      true,

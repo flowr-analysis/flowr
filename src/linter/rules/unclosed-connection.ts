@@ -237,10 +237,10 @@ export const UNCLOSED_CONNECTION = {
 	},
 	info: {
 		name:          'Unclosed Connection',
-		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Smell],
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		/* a connection handed to code flowR cannot resolve, as in `lapply(cons, close)`, is reported although it is closed */
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Flags connections that are opened but not closed on every path opening them.',
+		description:   'Finds connections that are opened but not closed on every path opening them.',
 		defaultConfig: () => ({
 			openFns:  [],
 			closeFns: []

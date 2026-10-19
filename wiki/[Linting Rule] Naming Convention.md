@@ -1,11 +1,11 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-16, 18:40:42 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
 <h2 id="naming-convention">Naming Convention&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
-<span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
+<span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#style'>![style](https://img.shields.io/badge/style-blue) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span>
 
 This rule is a `over-approximative` rule.
  
-Checks whether the symbols conform to a certain naming convention\
+Finds symbols that do not follow the naming convention of the code.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L199">src/linter/rules/naming-convention.ts</a>._
 
 ### Configuration
@@ -22,8 +22,9 @@ if true non alphabetic characters are ignored
 
 ```r
 
-myVar <- 42
-print(myVar)
+testVar <- 5
+testVarTwo <- 5
+other_var <- 5
 ```
 
 The linting query can be used to run this rule on the above example:
@@ -34,8 +35,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
-&nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention): _no findings_\
+Query: **linter** (4 ms)\
+&nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Identifier 'other_var' at 4.1-9 (snake_case) (1 quick fix(es) available)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -45,7 +48,27 @@ In general, the JSON contains the Ids of the nodes in question as they are prese
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
 ```json
-{"linter":{"results":{"naming-convention":{"results":[],".meta":{"numMatches":1,"numBreak":0}}},".meta":{}},".meta":{}}
+{
+  "linter": {
+    "results": {
+      "naming-convention": {
+        "results": [
+          {
+            "certainty": "certain",
+            "detectedCasing": "snake_case",
+            "name": "other_var",
+            "loc": [4,1,4,9],
+            "involvedId": 6,
+            "quickFix": [{"type":"replace","replacement":"otherVar","description":"Rename to match naming convention camelCase","loc":[4,1,4,9]}]
+          }
+        ],
+        ".meta": {"numMatches":2,"numBreak":1}
+      }
+    },
+    ".meta": {}
+  },
+  ".meta": {}
+}
 ```
 
 </details>

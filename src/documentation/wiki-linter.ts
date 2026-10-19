@@ -477,9 +477,11 @@ function rulesOverview(info: TypeElementInSource[]): string {
 	const row = (name: LintingRuleNames) => {
 		const rule = LintingRules[name].info;
 		const finds = rule.description.split(/\.\s+(?=[A-Z`])/)[0].replace(/^Finds /, '').replace(/\.$/, '');
-		const badges = sortedTags(rule.tags as readonly LintingRuleTag[]).filter(t => !RuleKinds.some(([k]) => k === t))
-			.map(t => t === LintingRuleTag.CmdCheck ? cmdCheckBadge(name, info) : makeTagBadge(t, info));
-		return `| [${rule.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}) | ${finds.replaceAll('|', '\\|')} | ${badges.join(' ')} |`;
+		const badges = sortedTags(rule.tags as readonly LintingRuleTag[]).filter(t => !RuleKinds.some(([k]) => k === t)).map(t => makeTagBadge(t, info));
+		/* the steps are text, a badge naming them grows with them and squeezes the others */
+		const step = (n: number) => `[${n}](${ConformancePage}#cmd-check-${n})`;
+		const steps = cmdCheckRuns(name).map(r => r.from === r.to ? step(r.from) : `${step(r.from)}–${step(r.to)}`).join(', ');
+		return `| [${rule.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}) | ${finds.replaceAll('|', '\\|')}${steps === '' ? '' : `<br><sub>R CMD check ${steps}</sub>`} | ${badges.join(' ')} |`;
 	};
 	const groups = [...RuleKinds.map(([kind, title]) => [title, names.filter(n => kindOf(n) === kind)] as const), ['Package Files', names.filter(n => kindOf(n) === undefined)] as const];
 	const anchor = (title: string) => `rules-${title.toLowerCase().replaceAll(' ', '-')}`;

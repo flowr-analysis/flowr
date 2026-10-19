@@ -33,14 +33,19 @@ describe('flowR linter', withTreeSitter(parser => {
 			}
 		} as const satisfies LintingRule<LintingResult, MergeableRecord, MergeableRecord>;
 
-		const analyzer = await new FlowrAnalyzerBuilder()
-			.setParser(parser)
-			.build();
-		analyzer.addRequest('x <- "hi"');
+		/* the rule set is shared by every test file of the worker, so the dummy must not outlive this test */
+		try {
+			const analyzer = await new FlowrAnalyzerBuilder()
+				.setParser(parser)
+				.build();
+			analyzer.addRequest('x <- "hi"');
 
-		const result = await executeLintingRule('dummy' as unknown as LintingRuleNames, analyzer, undefined);
+			const result = await executeLintingRule('dummy' as unknown as LintingRuleNames, analyzer, undefined);
 
-		assert(LintingResults.isError(result), 'Dummy Rule should always return Error');
-		assert(LintingResults.stringifyError(result).includes('Hello World'));
+			assert(LintingResults.isError(result), 'Dummy Rule should always return Error');
+			assert(LintingResults.stringifyError(result).includes('Hello World'));
+		} finally {
+			delete (LintingRules as Record<string, unknown>)['dummy'];
+		}
 	});
 }));

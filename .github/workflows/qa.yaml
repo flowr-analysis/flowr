@@ -147,19 +147,10 @@ jobs:
         # the sync below runs through ts-node, so the dependencies have to be there before it
         run: npm ci
 
-      - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v5
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
         with:
-          # only the bundles, the shards unpacked next to them are re-derived on demand
-          path: ~/.cache/flowr/sigdb/bundles
-          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
-
-      - name: "⬇️ Sync the Signature Database"
-        # without a database every sigdb-backed test skips instead of checking anything; run through the same
-        # script as the tests so the node dependencies are installed once and reused by both
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/workflows/scripts/run-flowr-command.sh sigdb:sync
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
@@ -228,6 +219,11 @@ jobs:
           install.packages(wanted, repos="https://cloud.r-project.org/")
           missing <- setdiff(wanted, rownames(installed.packages()))
           if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
+
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test -- --run --allowOnly=false"

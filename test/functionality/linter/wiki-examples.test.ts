@@ -28,7 +28,7 @@ describe('the wiki example of every linting rule, with a quick fix exactly when 
 			assert.isDefined(result, `${name} was not run`);
 			assert.isFalse(LintingResults.isError(result), `${name} failed: ${JSON.stringify(result)}`);
 			const findings = LintingResults.unpackSuccess(result).results;
-			assert.isNotEmpty(findings, `${name} shows no finding`);
+			assert.isNotEmpty(findings, `${name} shows no finding${defaultSigDbPaths().length === 0 ? ', and no signature database is available to the tests: run `npm run sigdb:sync`, the wiki is generated with it' : ''}`);
 			const tagged = (LintingRules[name as LintingRuleNames].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.QuickFix);
 			assert.strictEqual((findings as readonly { quickFix?: readonly unknown[] }[]).some(f => (f.quickFix?.length ?? 0) > 0), tagged, `${name} ${tagged ? 'is tagged quickfix but its example shows no fix' : 'offers a fix without the quickfix tag'}`);
 		});

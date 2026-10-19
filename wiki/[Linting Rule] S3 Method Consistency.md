@@ -1,0 +1,80 @@
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 04:36:32 UTC (v2.16.2), do not edit directly._
+<h2 id="s3-method-consistency">S3 Method Consistency&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
+
+<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='#cmd-check'>![cmd-check](https://img.shields.io/badge/cmd-check-teal) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
+
+R CMD check: [#38](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-38) 🟩, [#39](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-39) 🟩, [#41](https://github.com/flowr-analysis/flowr/wiki/Linter#cmd-check-41) 🔷
+
+This rule is a `best-effort` rule.
+ 
+Finds S3 methods whose formals do not match their generic, methods not registered in the NAMESPACE, and replacement functions whose last formal is not `value`.\
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/s-three-method-consistency.ts#L158">src/linter/rules/cmd-check/s-three-method-consistency.ts</a>._
+
+### Configuration
+
+Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
+The `s3-method-consistency` rule accepts the following configuration options:
+
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/s-three-method-consistency.ts#L44"><code><span title="also check functions named like a method but not registered in the NAMESPACE, which R CMD check only does on request (default true)">checkApparentMethods</span></code></a>\
+also check functions named like a method but not registered in the `NAMESPACE`, which `R CMD check` only does on request (default `true`)
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/s-three-method-consistency.ts#L42"><code><span title="check that methods take the arguments of their generic (default true)">checkMethods</span></code></a>\
+check that methods take the arguments of their generic (default `true`)
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/s-three-method-consistency.ts#L48"><code><span title="check that replacement functions end in value (default true)">checkReplacementValues</span></code></a>\
+check that replacement functions end in `value` (default `true`)
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/s-three-method-consistency.ts#L46"><code><span title="report apparent methods of an exported generic that the NAMESPACE does not register (default true)">checkUnregistered</span></code></a>\
+report apparent methods of an exported generic that the `NAMESPACE` does not register (default `true`)
+
+### Examples
+
+```r
+print.myclass <- function(obj) cat("myclass")
+`size<-` <- function(x, v) { attr(x, "size") <- v; x }
+```
+
+The linting query can be used to run this rule on the above example:
+
+```json
+[ { "type": "linter",   "rules": [ { "name": "s3-method-consistency",     "config": {} } ] } ]
+```
+
+_Results (prettified and summarized):_
+
+Query: **linter** (33 ms)\
+&nbsp;&nbsp;&nbsp;╰ **S3 Method Consistency** (s3-method-consistency):\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ size<-: replacement-value at 2.1-8\
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis ran (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+```json
+{
+  "linter": {
+    "results": {
+      "s3-method-consistency": {
+        "results": [
+          {
+            "certainty": "certain",
+            "involvedId": 10,
+            "loc": [2,1,2,8],
+            "kind": "replacement-value",
+            "function": "size<-",
+            "message": "Replacement function size<- should have 'value' as its last argument"
+          }
+        ],
+        ".meta": {"consideredMethods":0,"consideredReplacements":1}
+      }
+    },
+    ".meta": {}
+  },
+  ".meta": {}
+}
+```
+
+</details>
+
+More examples are the test cases in [test/functionality/linter/cmd-check/lint-s-three-method-consistency.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/cmd-check/lint-s-three-method-consistency.test.ts).

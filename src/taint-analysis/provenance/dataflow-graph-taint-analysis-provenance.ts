@@ -14,7 +14,11 @@ import { SourceLocation } from '../../util/range';
 import { DataflowMermaid } from '../../util/mermaid/dfg';
 import { Mermaid } from '../../util/mermaid/mermaid';
 
-export type TaintProvenanceEvents = Map<string, Map<NodeId, AbsintProvenanceEvent>>;
+export enum TaintProvenanceMode {
+	None = 'none',
+	Explain = 'explain',
+	Graph = 'graph'
+}
 
 export type TaintProvenanceVertex = DataflowGraphVertexInfo & {
 	taint?:    Record<string, AnyAbstractDomain>
@@ -24,10 +28,10 @@ export type TaintProvenanceVertex = DataflowGraphVertexInfo & {
 
 export type DataflowGraphTaintAnalysisProvenance = DataflowGraph<TaintProvenanceVertex>;
 
-function collectEvents(events: TaintProvenanceEvents, id: NodeId): Record<string, AbsintProvenanceEvent> | undefined {
+function collectEvents(taint: Map<string, TaintInferenceResult>, id: NodeId): Record<string, AbsintProvenanceEvent> | undefined {
 	const result: Record<string, AbsintProvenanceEvent> = {};
-	for(const [name, byNode] of events) {
-		const event = byNode.get(id);
+	for(const [name, { provenance }] of taint) {
+		const event = provenance?.get(id);
 		if(event !== undefined) {
 			result[name] = event;
 		}
@@ -166,7 +170,7 @@ export const DataflowGraphTaintAnalysisProvenance = {
 		}
 	},
 	explain: explainTaint,
-	compute(this: void, dfg: DataflowGraph, taint: Map<string, TaintInferenceResult>, events: TaintProvenanceEvents, cleanEnv: REnvironmentInformation): DataflowGraphTaintAnalysisProvenance {
+	compute(this: void, dfg: DataflowGraph, taint: Map<string, TaintInferenceResult>, cleanEnv: REnvironmentInformation): DataflowGraphTaintAnalysisProvenance {
 		const result: DataflowGraphTaintAnalysisProvenance = new DataflowGraph(dfg.idMap);
 		const findings = collectFindings(taint);
 		for(const [id, vtx] of dfg.vertices(true)) {
@@ -175,7 +179,7 @@ export const DataflowGraphTaintAnalysisProvenance = {
 			if(values !== undefined) {
 				vertex.taint = values;
 			}
-			const recorded = collectEvents(events, id);
+			const recorded = collectEvents(taint, id);
 			if(recorded !== undefined) {
 				vertex.events = recorded;
 			}

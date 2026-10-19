@@ -3,6 +3,7 @@ import path from 'path';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { FileRole, type FlowrFileProvider } from '../../../project/context/flowr-file';
 import { SourceLocation } from '../../../util/range';
+import { RPath } from '../../../util/files';
 
 /**
  * One file or directory of the package, as `R CMD build` would put it into the tarball.
@@ -102,9 +103,9 @@ export function packageFiles(ctx: ReadOnlyFlowrAnalyzerContext, pkgName?: string
 		return undefined;
 	}
 	const root = path.dirname(desc.path());
-	const known = new Map(ctx.files.getAllFiles().map(f => [path.normalize(f.path()), f]));
+	const known = new Map(ctx.files.getAllFiles().map(f => [RPath.normalize(f.path()), f]));
 	const readKnownOrDisk = (absolute: string): string | undefined => {
-		const file = known.get(path.normalize(absolute));
+		const file = known.get(RPath.normalize(absolute));
 		try {
 			if(file !== undefined) {
 				return file.rawText?.() ?? file.content().toString();
@@ -168,6 +169,9 @@ export function packageFiles(ctx: ReadOnlyFlowrAnalyzerContext, pkgName?: string
 		entries,
 		onDisk,
 		read:   relative => readKnownOrDisk(path.join(root, relative)),
-		locate: (relative, line, endLine) => SourceLocation.from([line ?? 1, 1, endLine ?? line ?? 1, 1], path.join(root, relative))
+		locate: (relative, line, endLine) => {
+			const absolute = path.join(root, relative);
+			return SourceLocation.from([line ?? 1, 1, endLine ?? line ?? 1, 1], known.get(RPath.normalize(absolute))?.path() ?? absolute);
+		}
 	};
 }

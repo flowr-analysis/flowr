@@ -8,6 +8,7 @@ import { FlowrInlineTextFile } from '../../../project/context/flowr-file';
 import { RDAParser, type RObject, type RObjectData } from '../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { escapeRegex } from '../../../util/text/strings';
 import { packageInfo } from './cmd-check-util';
+import { getPlatform } from '../../../util/os';
 import { type FileResult, fileFindings, MessageAtLocation } from './file-checks';
 import { type PackageEntry, type PackageFiles, packageFiles } from './package-files';
 
@@ -255,9 +256,11 @@ const unmentionedLicense = (e: PackageEntry, env: Env) => ['LICENCE', 'LICENSE']
 const nonStandard = (e: PackageEntry, env: Env) => env.config.checkTopLevel && isTop(e) && !e.relative.startsWith('.') && !env.config.standardTopLevel.includes(e.relative)
 	&& !(['AUTHORS', 'COPYRIGHTS'].includes(e.relative) && env.kinds.has(`inst/${e.relative}`));
 const executable = (e: PackageEntry, env: Env) => !e.isDirectory && e.stats !== undefined && !e.stats.isSymbolicLink() && !env.binary.has(e.relative) && !/\.(exe|dll)$/.test(e.relative) && isNativeExecutable(e.absolute, e.stats.mode);
+/** like `R CMD check`, judge permissions only where the file system has them */
+const PosixModes = getPlatform() !== 'windows';
 const insufficient = (e: PackageEntry, env: Env) => {
 	const mode = e.stats?.mode;
-	return mode !== undefined && !e.stats?.isSymbolicLink() && (e.isDirectory ? (mode & 0o700) !== 0o700 && env.files.some(f => under(f, e.relative)) : (mode & 0o400) !== 0o400);
+	return PosixModes && mode !== undefined && !e.stats?.isSymbolicLink() && (e.isDirectory ? (mode & 0o700) !== 0o700 && env.files.some(f => under(f, e.relative)) : (mode & 0o400) !== 0o400);
 };
 
 const EntryRules: readonly EntryRule[] = [
@@ -284,7 +287,7 @@ const EntryRules: readonly EntryRule[] = [
 	{ kind: 'exe-dll-file', applies: (e, env) => !e.isDirectory && !env.binary.has(e.relative) && /\.(exe|dll)$/.test(e.relative), message: e => `Found the following executable file: ${Quote(e.relative)}. Source packages should not contain undeclared executable files.` },
 	{ kind: 'executable-file', applies: executable, message: e => `Found the following executable file: ${Quote(e.relative)}. Source packages should not contain undeclared executable files.` },
 	{ kind: 'insufficient-permissions', applies: insufficient, message: e => `Found the following ${what(e)} with insufficient permissions: ${Quote(e.relative)}. Permissions should be at least 700 for directories and 400 for files.` },
-	{ kind: 'not-executable', applies: e => topFile('configure', 'cleanup')(e) && e.stats !== undefined && (e.stats.mode & 0o500) !== 0o500, message: e => `The file ${Quote(e.relative)} should most likely be executable (for the owner). Please fix its permissions.` },
+	{ kind: 'not-executable', applies: e => PosixModes && topFile('configure', 'cleanup')(e) && e.stats !== undefined && (e.stats.mode & 0o500) !== 0o500, message: e => `The file ${Quote(e.relative)} should most likely be executable (for the owner). Please fix its permissions.` },
 	{ kind: 'future-timestamp', applies: (e, env) => env.config.checkFutureTimestamps && (e.stats?.mtimeMs ?? 0) > Date.now() + FutureLeewayMs, message: e => `Found the following ${what(e)} with a future time stamp: ${Quote(e.relative)}` },
 	{ kind: 'crlf-shell-script', applies: (e, env) => topFile('configure', 'configure.in', 'configure.ac', 'cleanup')(e) && env.pf.read(e.relative)?.includes('\r') === true, message: e => `Found the shell script ${Quote(e.relative)} with CR or CRLF line endings. Non-Windows OSes require LF line endings.` },
 	{ kind: 'vignette-source-missing', applies: (e, env) => parent(e) === 'inst/doc' && !e.isDirectory && SweavePattern.test(e.relative) && isDir(env, 'vignettes') && !env.kinds.has(`vignettes/${base(e.relative)}`), message: e => `Vignette source ${Quote(e.relative)} in 'inst/doc' missing from the 'vignettes' directory.` },

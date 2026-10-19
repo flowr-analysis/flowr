@@ -12,6 +12,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import { AttachedBasePackageSet, isBaseRPackage } from '../../../util/r-base-packages';
 import { rootDescriptionFile } from './package-files';
 import { MessageAtLocation } from './file-checks';
+import { RPath } from '../../../util/files';
 import { type CmdCheckResult, DependencyFields, type DependencyField } from './cmd-check-util';
 
 /** The sub-check of `R CMD check` a finding stems from. */
@@ -343,7 +344,8 @@ export const DESCRIPTION_METADATA = {
 			}
 			const dir = path.dirname(descPath);
 			const pointers = components.flatMap(c => [...c.matchAll(/file\s+(LICEN[CS]E)/g)].map(m => m[1]));
-			const badPointers = pointers.filter(p => ctx.files.exists(path.join(dir, p), false) === undefined);
+			const known = new Set(ctx.files.getAllFiles().map(f => RPath.normalize(f.path())));
+			const badPointers = pointers.filter(p => !known.has(RPath.join(dir, p)) && ctx.files.exists(path.join(dir, p), false) === undefined);
 			if(badPointers.length > 0) {
 				add('license', `Invalid license file pointers: ${badPointers.join(' ')}`, 'License');
 			}

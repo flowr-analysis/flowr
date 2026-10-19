@@ -6,6 +6,10 @@ import { withTreeSitter } from '../../_helper/shell';
 import { assertLinterPackage } from '../../_helper/linter';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import type { PackageStructureConfig, PackageStructureResult } from '../../../../src/linter/rules/cmd-check/package-structure';
+import { getPlatform } from '../../../../src/util/os';
+
+/** what `R CMD check` reports only where the file system has POSIX permissions */
+const onPosix = <T>(findings: T[]): T[] => getPlatform() === 'windows' ? [] : findings;
 
 /** lints the files of a package in memory; only `kind` and `file` of the findings are compared */
 function lint(parser: Parameters<typeof assertLinterPackage>[1], name: string, files: Record<string, string | null>, expected: readonly (readonly [string, string])[], config: Partial<PackageStructureConfig> = {}) {
@@ -167,16 +171,16 @@ describe('flowR linter', withTreeSitter(parser => {
 			assert.deepStrictEqual(await lintOnDisk(root => write(root, 'NAMESPACE')), []);
 		});
 		test('file without read permission', async() => {
-			assert.deepStrictEqual(await lintOnDisk(root => write(root, 'inst/secret.txt', 'x', 0o200)), [['insufficient-permissions', 'inst/secret.txt']]);
+			assert.deepStrictEqual(await lintOnDisk(root => write(root, 'inst/secret.txt', 'x', 0o200)), onPosix([['insufficient-permissions', 'inst/secret.txt']]));
 		});
 		test('directory without full permission', async() => {
 			assert.deepStrictEqual(await lintOnDisk(root => {
 				write(root, 'inst/sub/a.txt', 'x');
 				fs.chmodSync(path.join(root, 'inst/sub'), 0o500);
-			}), [['insufficient-permissions', 'inst/sub']]);
+			}), onPosix([['insufficient-permissions', 'inst/sub']]));
 		});
 		test('configure that is not executable', async() => {
-			assert.deepStrictEqual(await lintOnDisk(root => write(root, 'configure', '#!/bin/sh\n', 0o644)), [['not-executable', 'configure']]);
+			assert.deepStrictEqual(await lintOnDisk(root => write(root, 'configure', '#!/bin/sh\n', 0o644)), onPosix([['not-executable', 'configure']]));
 		});
 		test('configure that is executable', async() => {
 			assert.deepStrictEqual(await lintOnDisk(root => write(root, 'configure', '#!/bin/sh\n', 0o755)), []);

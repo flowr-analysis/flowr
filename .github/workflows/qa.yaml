@@ -188,6 +188,50 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
+  test-os:
+    needs: [ debug ]
+    name: "🧪 Test Suite (${{ matrix.os }})"
+    # the release matrix tests these as well, but by then a failure blocks the release instead of the merge
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+          cache: npm
+
+      - name: "⬇️ Setup R"
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: |
+          wanted <- readLines(".github/actions/setup-r/packages.txt")
+          install.packages(wanted, repos="https://cloud.r-project.org/")
+          missing <- setdiff(wanted, rownames(installed.packages()))
+          if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
+
+      - name: "🧪 Run the Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test -- --run --allowOnly=false"
+
 
   performance-test:
     needs: [ test ]

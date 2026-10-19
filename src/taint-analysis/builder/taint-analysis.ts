@@ -19,6 +19,7 @@ import { guard, isNotUndefined } from '../../util/assert';
 import { buildFindingContext, renderReport } from './report-template';
 import type { TaintConditionFunction, TaintRole } from '../taint-mapping';
 import type { TaintFnCategory } from '../function-categories';
+import type { AbsintProvenanceEvent } from '../../abstract-interpretation/absint-visitor';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -68,11 +69,12 @@ export interface TaintFinding {
  */
 export interface TaintInferenceResult {
 	/** The final abstract domain state after running the taint analysis visitor */
-	domains:  StateAbstractDomain<AnyAbstractDomain>
+	domains:     StateAbstractDomain<AnyAbstractDomain>
 	/** The message describing the findings */
-	msg?:     string
+	msg?:        string
 	/** The findings produced by the analysis, i.e. one per AST node whose inferred taint reached Bottom */
-	findings: TaintFinding[]
+	findings:    TaintFinding[]
+	provenance?: Map<NodeId, AbsintProvenanceEvent>
 }
 
 /**
@@ -91,6 +93,8 @@ export interface TaintAnalysisBuilder<Defs extends readonly string[]> {
 	 * Add a callback hook that is invoked for each function call mapping during taint analysis.
 	 */
 	withHook(fnCallHook: FnCallHook): this;
+
+	withProvenance(): this;
 
 	/**
 	 * Add a predefined taint analysis by name.
@@ -124,6 +128,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 	private readonly defs:       RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
 	private readonly categories: TaintFnCategory[] = [];
 	private fnCallHook:          FnCallHook | undefined;
+	private provenance =         false;
 
 	private constructor(analyzer?: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
@@ -145,6 +150,11 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 
 	public withHook(fnCallHook: FnCallHook): this {
 		this.fnCallHook = fnCallHook;
+		return this;
+	}
+
+	public withProvenance(): this {
+		this.provenance = true;
 		return this;
 	}
 
@@ -175,12 +185,14 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 		const dfg = (await analyzer.dataflow()).graph;
 		const ctx = analyzer.inspectContext();
 		for(const def of this.defs) {
+			const provenance = this.provenance ? new Map<NodeId, AbsintProvenanceEvent>() : undefined;
 			const baseConfig: TaintVisitorConfiguration = {
 				controlFlow:   await analyzer.controlflow(),
 				ctx:           ctx,
 				dfg:           dfg,
 				normalizedAst: await analyzer.normalize(),
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
+				provenance:    provenance && { record: event => provenance.set(event.node, event) },
 			};
 
 			const visitor = def.createVisitor(baseConfig, this.categories);
@@ -199,7 +211,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 
 			// If the report message is a constant string, save it only once
 			const msg = typeof report === 'string' ? report : undefined;
-			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, msg, findings });
+			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, msg, findings, ...(provenance === undefined ? {} : { provenance }) });
 		}
 		return results;
 	}

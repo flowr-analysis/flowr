@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 18:04:52 UTC (v2.16.3), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -18,7 +18,7 @@ For a script reading `library(x)`, the following query returns the loaded librar
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (6 ms)\
+Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_
 
@@ -78,7 +78,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (9 ms)\
+Query: **dependencies** (6 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -108,7 +108,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "remote": [],
     "source": [{"nodeId":3,"functionName":"source","value":"sample.R"}],
     "read": [{"nodeId":14,"functionName":"read.csv","assignedTo":"data","value":"data.csv"}],
-    "write": [{"nodeId":41,"functionName":"print","value":"stdout"},{"nodeId":31,"functionName":"+","value":"stdout","implicit":true}],
+    "write": [{"nodeId":41,"functionName":"print","value":"stdout"},{"nodeId":31,"functionName":"+","value":"stdout","implicit":true,"inputVariables":["data","x","y"]}],
     "visualize": [
       {"nodeId":28,"functionName":"ggplot","inputVariables":["data","x","y"],"parts":[30]},
       {"nodeId":30,"functionName":"geom_point","linkedIds":[28],"inputVariables":["data","x","y"]}
@@ -210,7 +210,7 @@ Set `assumedPackages` to have those reported as well, as `library` entries marke
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (0 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**base** _always attached by R, used at 8_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stats** _attached by R at startup, used at 10_
@@ -328,7 +328,7 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (7 ms)\
+Query: **dependencies** (4 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\
@@ -354,9 +354,9 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "read": [],
     "write": [],
     "visualize": [
-      {"nodeId":38,"functionName":["ggplot","ggplot2",false],"inputVariables":["small"],"parts":[40,45],"title":"Small"},
-      {"nodeId":40,"functionName":["geom_point","ggplot2",false],"linkedIds":[38],"inputVariables":["small"]},
-      {"nodeId":45,"functionName":["ggtitle","ggplot2",false],"linkedIds":[38],"inputVariables":["small"]}
+      {"nodeId":38,"functionName":["ggplot","ggplot2",false],"inputVariables":["small"],"assignedTo":"p","parts":[40,45],"title":"Small"},
+      {"nodeId":40,"functionName":["geom_point","ggplot2",false],"linkedIds":[38],"assignedTo":"p","inputVariables":["small"]},
+      {"nodeId":45,"functionName":["ggtitle","ggplot2",false],"linkedIds":[38],"assignedTo":"p","inputVariables":["small"]}
     ],
     "transform": [
       {"nodeId":16,"functionName":["filter","dplyr",false],"inputVariables":["measurements"]},

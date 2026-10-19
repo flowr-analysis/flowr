@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-10-19, 04:36:32 UTC (v2.16.2, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-10-19, 18:04:52 UTC (v2.16.3, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_32_of_32_the_32_Analyzer)  
@@ -454,10 +454,10 @@ First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/t
 
 Using the available [plugins](#Plugins),
 the files context categorizes files by their <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-file.ts#L18"><code><span title="Some files have a special meaning in R projects, e.g., the DESCRIPTION file in R packages. This list may be extended in the future and reflects files that the FlowrAnalyzer can do something interesting with. If you add an interesting file that is only part of your plugin infrastructure, please use the other role.">FileRole</span></code></a> (e.g., source files or DESCRIPTION files)
-and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L627"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
+and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L628"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
 It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L461"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L502"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
-and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L575"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L503"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
+and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L576"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
 
 For legacy reasons it also provides the list of files considered by the dataflow analysis via
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L295"><code><span title="Get all files that have been considered during dataflow analysis.">FlowrAnalyzerFilesContext::<i>consideredFilesList</i></span></code></a>.
@@ -631,9 +631,9 @@ Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tr
     </details>
 
 The environment context provides access to the built-in environment via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L217"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L218"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
 It also provides the empty built-in environment, which only contains primitives, via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L231"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L232"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
 
 <h3 id="Meta_32_Context">Meta Context</h3>
 

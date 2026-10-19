@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-19, 04:36:32 UTC (v2.16.2, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-19, 18:04:52 UTC (v2.16.3, R v4.6.1), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -17,7 +17,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-> flowR repl v2.16.2, R v4.5.0 (r-shell engine)
+> flowR repl v2.16.3, R v4.6.1 (r-shell engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -258,7 +258,7 @@ To explore these steps, let's use the REPL with the (simple, contrived) R code: 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.2, R v4.5.0 (r-shell engine)
+flowR repl v2.16.3, R v4.6.1 (r-shell engine)
 R> :parse "x <- 1; print(x)"
 ```
 
@@ -409,7 +409,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr --default-engine tree-sitter # or npm run flowr -- --default-engine tree-sitter
-> flowR repl v2.16.2, R grammar v14 (tree-sitter engine)
+> flowR repl v2.16.3, R grammar v14 (tree-sitter engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -1235,7 +1235,7 @@ Besides the processor, an entry says what the function *is*, in three label voca
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L11"><code><span title="What a single argument of a call is used for, as a bitmask ( ArgProp.Forced / ArgProp.NoDefault lead, being the two bits the signature database can also state).">ArgProp</span></code></a> labels each parameter (`sig`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
 
-For several analyses the labels are all they know about a call: <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L403"><code><span title="The one place to ask what flowR's built-ins are: _every pure function_, _every call that reads a file_, _every parameter that names a resource_, _everything the value solver can fold_. Each answer is derived from the BuiltInFnInfo the definitions carry, so a built-in that states its CallProp bits and its FnSig is found here without anything else being registered. Build one over the DefaultBuiltinC...">BuiltInIndex</span></code></a> turns them into the
+For several analyses the labels are all they know about a call: <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L404"><code><span title="The one place to ask what flowR's built-ins are: _every pure function_, _every call that reads a file_, _every parameter that names a resource_, _everything the value solver can fold_. Each answer is derived from the BuiltInFnInfo the definitions carry, so a built-in that states its CallProp bits and its FnSig is found here without anything else being registered. Build one over the DefaultBuiltinC...">BuiltInIndex</span></code></a> turns them into the
 questions callers ask over and over (`with`, `without`, `params`), which is how the
 [input-sources query](https://github.com/flowr-analysis/flowr/wiki/Query-API) knows which functions bring in data of their own, and how
 [linting rules](https://github.com/flowr-analysis/flowr/wiki/Linter) like *seeded randomness* find every call drawing from the RNG without
@@ -1264,7 +1264,7 @@ what it means, and how many built-ins carry it.
 <details><summary>What each call property means</summary>
 
 <sup>db</sup> marks the bits the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database)
-states for any package function on its own (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L172"><code><span title="What the signature database implies for a package function: what its own entry states (see fnInfoFromSignature ) plus the PropagatedProps of everything it calls, transitively. A package function that ends up in system() runs a system command as well.">inferFnProps</span></code></a> reads them off an entry and carries what a
+states for any package function on its own (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L173"><code><span title="What the signature database implies for a package function: what its own entry states (see fnInfoFromSignature ) plus the PropagatedProps of everything it calls, transitively. A package function that ends up in system() runs a system command as well.">inferFnProps</span></code></a> reads them off an entry and carries what a
 function calls over to the function calling it).
 
 | Call property | Built-ins | Meaning |
@@ -1472,7 +1472,7 @@ You can explore the slicing using the REPL with the <span title="Description (Re
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.2, R grammar v14 (tree-sitter engine)
+flowR repl v2.16.3, R grammar v14 (tree-sitter engine)
 R> :query @static-slice (12@product) file://test/testfiles/example.R
 ```
 

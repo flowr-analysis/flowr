@@ -9,8 +9,32 @@ permissions:
   contents: read
 
 jobs:
+  main-green:
+    name: "🚦 QA of main is green"
+    # a release on top of a main whose QA already failed (e.g., only on windows) can only fail an hour later
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    steps:
+      - name: "🚦 Check the last finished QA run on main"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh run list -R "$GITHUB_REPOSITORY" --workflow qa.yaml --branch main --event push --status completed -L 20 \
+            --json headSha,conclusion,url -q "[.[] | select(.headSha != \"$GITHUB_SHA\" and (.conclusion == \"success\" or .conclusion == \"failure\"))][0]")
+          echo "last QA run: $last"
+          if [ "$(jq -r .conclusion <<< "$last")" = "failure" ]; then
+            echo "::error::QA failed on main ($(jq -r .url <<< "$last")), fix it before releasing"
+            exit 1
+          fi
+
   lint:
     name: "👩‍🏫 Linting (Full)"
+    needs: ['main-green']
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
         startsWith(github.event.head_commit.message, '[release:major]') ||
         startsWith(github.event.head_commit.message, '[release:patch]')

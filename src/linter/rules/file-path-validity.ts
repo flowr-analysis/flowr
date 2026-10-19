@@ -34,6 +34,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import { BaseDatasets } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SecureMode } from '../../util/secure-mode';
+import { RPath } from '../../util/files';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string
@@ -268,10 +269,12 @@ function buildDidYouMeanFix(idMap: AstIdMap, callId: NodeId, value: string, foun
 		/* a fix that names no place or changes nothing cannot be carried out, so none is offered */
 		return undefined;
 	}
+	/* R reads a backslash in a string as an escape, so a windows path is written with forward slashes */
+	const fixed = RPath.of(found);
 	return [{
 		type:        'replace',
 		loc,
-		description: `Replace with existing path \`${found}\``,
-		replacement: str.content.quotes + found + str.content.quotes
+		description: `Replace with existing path \`${fixed}\``,
+		replacement: str.content.quotes + fixed + str.content.quotes
 	}];
 }

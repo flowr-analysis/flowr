@@ -1,4 +1,4 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
@@ -25,9 +25,7 @@ export interface ResolveValueQueryResult extends BaseQueryResult {
 function resolveValueLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'resolve-value'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	if(!criteria || criteria.length == 0) {
-		output.stderr(output.formatter.format('Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, 'Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"');
 	}
 
 	return {

@@ -83,15 +83,12 @@ function collectBodies(graph: ReadOnlyControlFlowGraph): Map<NodeId, NodeId[]> {
  * A definition itself belongs to the region it is written in, not to the one it opens.
  */
 function regionOf(id: NodeId, normalizedAst: NormalizedAst): string {
-	let current = normalizedAst.idMap.get(id);
-	current = current?.info.parent === undefined ? undefined : normalizedAst.idMap.get(current.info.parent);
 	let inParameters = false;
-	while(current !== undefined) {
+	for(const current of RNode.iterateParents(normalizedAst.idMap.get(id), normalizedAst.idMap)) {
 		inParameters ||= current.info.role === RoleInParent.FunctionDefinitionParameter;
 		if(RFunctionDefinition.is(current)) {
 			return `${current.info.id}-${inParameters ? 'parameters' : 'body'}`;
 		}
-		current = current.info.parent === undefined ? undefined : normalizedAst.idMap.get(current.info.parent);
 	}
 	return 'top-level';
 }

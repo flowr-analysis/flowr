@@ -187,6 +187,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @returns The number of files currently held by this context.
 	 */
 	getFileCount(): number;
+	/**
+	 * Whether there is any code to analyze, i.e. whether the analysis was handed at least one request. Without one
+	 * (e.g. for a package holding data only, or a folder with no R files), the analysis cannot run.
+	 */
+	hasRequests(): boolean;
 }
 
 /**
@@ -633,5 +638,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getFileCount(): number {
 		return this.files.size + this.inlineFiles.length;
+	}
+
+	public hasRequests(): boolean {
+		return this.loadingOrder.getUnorderedRequests().length > 0;
 	}
 }

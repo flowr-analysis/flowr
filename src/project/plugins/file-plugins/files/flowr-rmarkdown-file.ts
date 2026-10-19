@@ -42,6 +42,12 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		return this.rmd.blocks.filter(b => isExecutableCell(b, defaults));
 	}
 
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
+	}
+
 	/**
 	 * Loads and parses the content of the wrapped file.
 	 * @returns RmdInfo

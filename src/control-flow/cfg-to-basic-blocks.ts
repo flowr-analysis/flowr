@@ -9,11 +9,7 @@ function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): N
 	}
 
 	const next = outgoing.entries().next().value;
-	if(CfgEdge.isFlowDependency(next?.[1])) {
-		return next[0];
-	} else {
-		return undefined;
-	}
+	return CfgEdge.isFlowDependency(next?.[1]) ? next[0] : undefined;
 }
 
 /**

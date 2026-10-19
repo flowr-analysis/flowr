@@ -42,20 +42,7 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 		return current + 'null';
 	} else if(isDefaultBuiltInEnvironment(obj)) {
 		return current + '<BuiltInEnvironment>';
-	} else if(Array.isArray(obj)) {
-		let str = current + '[';
-		for(let i = 0; i < obj.length; i++) {
-			if(i > 0) {
-				str += ',';
-			}
-			str = bigStringify(obj[i], str, send);
-			if(str.length > 20_000) {
-				send(str);
-				str = '';
-			}
-		}
-		return str + ']';
-	} else if(obj instanceof Map || obj instanceof Set) {
+	} else if(Array.isArray(obj) || obj instanceof Map || obj instanceof Set) {
 		let str = current + '[';
 		let i = 0;
 		for(const value of obj) {

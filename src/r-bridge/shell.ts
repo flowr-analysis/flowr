@@ -310,11 +310,7 @@ export class RShell implements AsyncParser<string> {
 				this._sendCommand(`cat("${marker}${this.options.eol}")`);
 			}
 		});
-		if(config.automaticallyTrimOutput) {
-			return output.map(line => line.trim());
-		} else {
-			return output;
-		}
+		return config.automaticallyTrimOutput ? output.map(line => line.trim()) : output;
 	}
 
 	/**

@@ -56,7 +56,7 @@ function fixedStackEnv(kind: StackEnvKind | undefined, data: StackEnvContext): R
 }
 
 /** The kind of stack environment `node` denotes, if it does; a user definition of the same name shadows the built-in. */
-export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: StackEnvContext): StackEnvKind | undefined {
+export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: Pick<StackEnvContext, 'environment'>): StackEnvKind | undefined {
 	const symbol = RSymbol.is(node) ? node.content
 		: RFunctionCall.calledName(node);
 	const kind = symbol !== undefined ? stackEnvKind(String(symbol)) : undefined;

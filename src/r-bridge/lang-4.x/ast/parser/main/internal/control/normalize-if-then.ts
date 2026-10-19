@@ -1,6 +1,6 @@
 import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
+import { ensureExpressionList, retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import { RawRType, RType } from '../../../../model/type';
 import type { RIfThenElse } from '../../../../model/nodes/r-if-then-else';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
@@ -44,10 +44,6 @@ export function tryNormalizeIfThen(
 		then:      ensureExpressionList(parsedThen),
 		location,
 		lexeme:    content,
-		info:      {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:      currentSourceInfo(data)
 	};
 }

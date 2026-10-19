@@ -74,6 +74,12 @@ export enum LintingRuleTag {
 	 */
 	Usability = 'usability',
 	/**
+	 * This rule ports a check of `R CMD check` (see the "Checking packages" section of the "Writing R Extensions" manual),
+	 * so it only makes sense for an R package. Rules with this tag are only part of the default rule set when the
+	 * analyzed project is a package (see the `linter.disabledTags` option of the flowR config).
+	 */
+	CmdCheck = 'cmd-check',
+	/**
 	 * This rule may provide quickfixes to automatically fix the issues it detects.
 	 */
 	QuickFix = 'quickfix'

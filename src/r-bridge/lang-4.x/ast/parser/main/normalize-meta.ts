@@ -2,7 +2,8 @@ import type { JsonEntry, NamedJsonEntry } from '../json/format';
 import { ParseError } from './normalizer-data';
 import { SourceRange } from '../../../../../util/range';
 import { type RawRType, RType } from '../../model/type';
-import type { RNode } from '../../model/model';
+import type { RNode, Source } from '../../model/model';
+import type { NormalizerData } from './normalizer-data';
 import { RExpressionList } from '../../model/nodes/r-expression-list';
 
 /**
@@ -92,4 +93,11 @@ export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<I
 		};
 	}
 	return node;
+}
+
+/**
+ * The source information of the node currently normalized, as given by `data`.
+ */
+export function currentSourceInfo(data: NormalizerData): Source {
+	return { fullRange: data.currentRange, adToks: [], fullLexeme: data.currentLexeme };
 }

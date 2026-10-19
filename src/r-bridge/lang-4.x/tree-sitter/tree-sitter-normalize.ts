@@ -12,7 +12,6 @@ import { EmptyArgument } from '../ast/model/nodes/r-function-call';
 import type { RSymbol } from '../ast/model/nodes/r-symbol';
 import { RString } from '../ast/model/nodes/r-string';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
-import { log } from '../../../util/log';
 import type { RProject } from '../ast/model/nodes/r-project';
 import type { ParseStepOutputSingleFile } from '../../parser';
 import { parseLog } from '../ast/parser/json/parser';
@@ -30,11 +29,7 @@ type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
  * @param lax  - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
  */
 export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tree>[], lax?: boolean): RProject<TreeSitterInfo> {
-	if(lax) {
-		makeTreeSitterLax();
-	} else {
-		makeTreeSitterStrict();
-	}
+	nonErrorChildren = lax ? nonErrorChildrenLax : nonErrorChildrenStrict;
 	const files: { filePath: string | undefined, root: RExpressionList<TreeSitterInfo> }[] = [];
 	for(const t of tree) {
 		rejectUnsupportedPipeBind(t.parsed.rootNode);
@@ -76,24 +71,6 @@ function nonErrorChildrenLax(node: SyntaxNode): SyntaxNode[] {
 
 let nonErrorChildren: (node: SyntaxNode) => SyntaxNode[] = nonErrorChildrenStrict;
 
-/**
- * Globally switch to lax parsing mode for tree-sitter normalization
- * @see {@link makeTreeSitterStrict}
- */
-export function makeTreeSitterLax() {
-	log.info('[Tree-Sitter] Lax parsing active');
-	nonErrorChildren = nonErrorChildrenLax;
-}
-
-/**
- * Globally switch to strict parsing mode for tree-sitter normalization
- * @see {@link makeTreeSitterLax}
- */
-export function makeTreeSitterStrict() {
-	log.info('[Tree-Sitter] Strict parsing active');
-	nonErrorChildren = nonErrorChildrenStrict;
-}
-
 function makeDefaultInfo(node: SyntaxNode, fullRange: SourceRange, fullLexeme: string) {
 	return {
 		info: {
@@ -107,18 +84,7 @@ function makeDefaultInfo(node: SyntaxNode, fullRange: SourceRange, fullLexeme: s
 
 function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 	if(!node) {
-		return {
-			type:     RType.ExpressionList,
-			location: undefined,
-			lexeme:   undefined,
-			children: [],
-			grouping: undefined,
-			info:     {
-				fullRange: undefined,
-				adToks:    [],
-				tsId:      -1,
-			}
-		};
+		return emptyExpressionList();
 	}
 	try {
 		// generally, the grammar source file dictates what children a node has in what order:
@@ -653,30 +619,16 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					...defaultInfo()
 				};
 			case TreeSitterType.Error:
-				return {
-					type:     RType.ExpressionList,
-					location: undefined,
-					lexeme:   undefined,
-					children: [],
-					grouping: undefined,
-					...defaultInfo()
-				};
+				return emptyExpressionList(defaultInfo().info);
 		}
 	} catch{
 		parseLog.error(`[Tree-Sitter] Failed to convert node of type ${node.type} at ${JSON.stringify(makeSourceRange(node))}`);
 	}
-	return {
-		type:     RType.ExpressionList,
-		location: undefined,
-		lexeme:   undefined,
-		children: [],
-		grouping: undefined,
-		info:     {
-			fullRange: undefined,
-			adToks:    [],
-			tsId:      -1,
-		}
-	};
+	return emptyExpressionList();
+}
+
+function emptyExpressionList(info: RExpressionList<TreeSitterInfo>['info'] = { fullRange: undefined, adToks: [], tsId: -1 }): RExpressionList<TreeSitterInfo> {
+	return { type: RType.ExpressionList, location: undefined, lexeme: undefined, children: [], grouping: undefined, info };
 }
 
 function makeSourceRange(node: SyntaxNode | undefined): SourceRange {

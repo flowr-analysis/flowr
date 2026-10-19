@@ -8,8 +8,7 @@ import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
-import type { FunctionArgument, DataflowGraph } from '../graph/graph';
-import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import type { DataflowGraph } from '../graph/graph';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
@@ -84,15 +83,6 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 		}
 	}
 	return nameIdShares;
-}
-
-/**
- * {@link FunctionSemantics.call.match.onCall|Matches} the arguments to the parameters and links them in the graph,
- * returning the resolved map from argument ids to parameter ids.
- * @useInstead {@link FunctionSemantics.call.match.onCallAndLink}
- */
-export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
-	return FunctionSemantics.call.match.onCallAndLink(args, params, graph);
 }
 
 function environmentsOfCallee(info: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation): readonly REnvironmentInformation[] {
@@ -173,7 +163,7 @@ export function linkFunctionCallWithSingleTarget(
 	graph.addEdge(id, fnId, EdgeType.Calls);
 	const fn = idMap.get(fnId);
 	if(RFunctionDefinition.is(fn)) {
-		applyForForcedArgs(graph, id, params, linkArgumentsOnCall(info.args, fn.parameters, graph));
+		applyForForcedArgs(graph, id, params, FunctionSemantics.call.match.onCallAndLink(info.args, fn.parameters, graph));
 	}
 	return exitPoints.filter(e => doesExitPointPropagateCalls(e.type));
 }

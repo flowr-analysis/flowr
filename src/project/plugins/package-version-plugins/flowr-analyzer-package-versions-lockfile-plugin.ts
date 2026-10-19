@@ -16,7 +16,8 @@ function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string): FlowrFileProv
 	return ctx.files.getFilesByRole(FileRole.VirtualEnv).filter(f => platformBasename(f.path()).toLowerCase() === name);
 }
 
-function pin(ctx: FlowrAnalyzerContext, name: string, version: string): void {
+/** Declares the dependency `name` pinned to the given `version`. */
+export function pin(ctx: FlowrAnalyzerContext, name: string, version: string): void {
 	const range = Package.parsePkgVersionRange(undefined, version);
 	ctx.deps.addDeclaredDependency(new Package({ name, versionConstraints: range ? [range] : undefined }));
 }

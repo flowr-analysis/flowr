@@ -168,6 +168,12 @@ export interface FlowrConfig {
 	}
 	readonly linter: {
 		readonly disabledRules: string[]
+		/**
+		 * Rules carrying any of these {@link LintingRuleTag}s are excluded from the default rule set (a rule requested
+		 * explicitly still runs). The `cmd-check` rules are only enabled for a {@link ProjectKind.Package} this way, so a
+		 * configured list replaces that default: keep `cmd-check` in it to keep those rules off outside packages.
+		 */
+		readonly disabledTags?: string[]
 	}
 	/**
 	 * Teaches the {@link InputSourcesQuery|input-sources} analysis further frameworks; entries are *added* to what
@@ -594,11 +600,13 @@ export const FlowrConfig = {
 				assumeImplicitEcho:        true
 			},
 			linter: {
-				disabledRules: []
+				disabledRules: [],
+				/* the R CMD check rules only make sense for a package, which re-enables them below */
+				disabledTags:  ['cmd-check']
 			},
 			specializeConfig: {
 				/* a package's top-level code runs at install time, its results are not echoed to anyone */
-				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } } },
+				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } }, linter: { disabledTags: [] } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
@@ -717,7 +725,8 @@ export const FlowrConfig = {
 			}).optional().description('Overrides for the signals flowR uses to classify the project kind.')
 		}).description('Project specific configuration options.'),
 		linter: Joi.object({
-			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')
+			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.'),
+			disabledTags:  Joi.array().items(Joi.string()).optional().description('Linting rule tags whose rules are excluded from the default rule set (a rule requested explicitly via a linter query still runs). By default the cmd-check rules are disabled for everything but a package; a configured list replaces that default.')
 		}).description('Linter configuration options.'),
 		inputSources: Joi.object({
 			pure:              Joi.array().items(Joi.string()).optional().description('Functions that only pass the constantness of their arguments on.'),

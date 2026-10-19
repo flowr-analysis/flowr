@@ -327,7 +327,7 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 	const where = { graph, idMap: graph.idMap, resolve: ctx.config.solver.variables, ctx, environment };
 	const pathOf = memoize((id: NodeId) => Resolve.toSingleString(id, where));
 	const sameResource = (a: NodeId, b: NodeId): boolean => {
-		if(a === b || reachedBy(b).values().some(t => reachedBy(a).has(t))) {
+		if(a === b || !reachedBy(b).isDisjointFrom(reachedBy(a))) {
 			return true;
 		}
 		const path = pathOf(a);

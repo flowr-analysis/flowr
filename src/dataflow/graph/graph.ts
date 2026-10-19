@@ -777,12 +777,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 		const n = next as DataflowGraphVertexFunctionDefinition;
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
 		if(n.mode && n.mode.length > 0) {
-			current.mode ??= [];
-			for(const m of n.mode) {
-				if(!current.mode.includes(m)) {
-					current.mode.push(m);
-				}
-			}
+			current.mode = uniqueArrayMerge(current.mode ?? [], n.mode);
 		}
 	} else if(DfgVertex.isFunctionCall(current) && DfgVertex.isFunctionCall(next)) {
 		mergeOrigins(current, next);

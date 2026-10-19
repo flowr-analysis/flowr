@@ -1,6 +1,7 @@
 import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
+import { CmdCheckConformance, CmdCheckSource, ConformanceLevel, numberedConformance, RPackagesCmdCheck, WritingRExtensionsCmdCheck } from '../linter/rules/cmd-check/conformance';
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { showQuery } from './doc-util/doc-query';
@@ -350,6 +351,82 @@ function(x) {
 		'namespace-access', 'NamespaceAccessConfig', 'NAMESPACE_ACCESS', 'lint-namespace-access',
 		'dplyr:::filter(df, x > 1)', tagTypes);
 
+	rule(knownParser,
+		'description-metadata', 'DescriptionMetadataConfig', 'DESCRIPTION_METADATA', 'cmd-check/lint-description-metadata',
+		'cat("a package with a malformed DESCRIPTION")', tagTypes);
+
+	rule(knownParser,
+		'documentation-mismatch', 'DocumentationMismatchConfig', 'DOCUMENTATION_MISMATCH', 'cmd-check/lint-documentation-mismatch',
+		'f <- function(x, y) x + y', tagTypes);
+
+	rule(knownParser,
+		'non-ascii-code', 'NonAsciiCodeConfig', 'NON_ASCII_CODE', 'cmd-check/lint-non-ascii-code',
+		'escaped <- function() message("Gr\\u00fc\\u00dfe")\nliteral <- function() message("Gr\u00fc\u00dfe")', tagTypes);
+
+	rule(knownParser,
+		'class-string-comparison', 'ClassStringComparisonConfig', 'CLASS_STRING_COMPARISON', 'cmd-check/lint-class-string-comparison',
+		'f <- function(x) if(class(x) == "data.frame") nrow(x) else length(x)', tagTypes);
+
+	rule(knownParser,
+		'true-false-abbreviation', 'TrueFalseAbbreviationConfig', 'TRUE_FALSE_ABBREVIATION', 'cmd-check/lint-true-false-abbreviation',
+		'f <- function(x) mean(x, na.rm = T)', tagTypes);
+
+	rule(knownParser,
+		'bogus-return', 'BogusReturnConfig', 'BOGUS_RETURN', 'cmd-check/lint-bogus-return',
+		'f <- function(x) {\n\tif(is.null(x)) return\n\tx + 1\n}', tagTypes);
+
+	rule(knownParser,
+		'package-hooks', 'PackageHooksConfig', 'PACKAGE_HOOKS', 'cmd-check/lint-package-hooks',
+		'.onLoad <- function(libname, pkgname) {\n\tlibrary(stats)\n\tcat("Welcome!")\n}', tagTypes);
+
+	rule(knownParser,
+		'global-environment-modification', 'GlobalEnvironmentModificationConfig', 'GLOBAL_ENVIRONMENT_MODIFICATION', 'cmd-check/lint-global-environment-modification',
+		'cache <- function(v) assign("cached", v, envir = globalenv())\ncount <- function() counter <<- counter + 1', tagTypes);
+
+	rule(knownParser,
+		'namespace-tampering', 'NamespaceTamperingConfig', 'NAMESPACE_TAMPERING', 'cmd-check/lint-namespace-tampering',
+		'patch <- function() assignInNamespace("mean", function(x, ...) 42, "base")', tagTypes);
+
+	rule(knownParser,
+		's3-method-consistency', 'S3MethodConsistencyConfig', 'S3_METHOD_CONSISTENCY', 'cmd-check/lint-s-three-method-consistency',
+		'print.myclass <- function(obj) cat("myclass")\n`size<-` <- function(x, v) { attr(x, "size") <- v; x }', tagTypes);
+
+	rule(knownParser,
+		'foreign-function-calls', 'ForeignFunctionCallsConfig', 'FOREIGN_FUNCTION_CALLS', 'cmd-check/lint-foreign-function-calls',
+		'f <- function(x) .Call("C_mean", x)', tagTypes);
+
+	rule(knownParser,
+		'dependency-declaration', 'DependencyDeclarationConfig', 'DEPENDENCY_DECLARATION', 'cmd-check/lint-dependency-declaration',
+		'f <- function(df) {\n\tlibrary(dplyr)\n\ttidyr::drop_na(df)\n}', tagTypes);
+
+	rule(knownParser,
+		'call-arguments', 'CallArgumentsConfig', 'CALL_ARGUMENTS', 'cmd-check/lint-call-arguments',
+		'scale_by <- function(x, factor) x * factor\nf <- function(x) scale_by(x, fact = 2, center = TRUE)', tagTypes);
+
+	rule(knownParser,
+		'package-structure', 'PackageStructureConfig', 'PACKAGE_STRUCTURE', 'cmd-check/lint-package-structure',
+		'f <- function() 1', tagTypes);
+
+	rule(knownParser,
+		'compiled-code', 'CompiledCodeConfig', 'COMPILED_CODE', 'cmd-check/lint-compiled-code',
+		'f <- function(x) .Call("C_f", x)', tagTypes);
+
+	rule(knownParser,
+		'package-metafiles', 'PackageMetafilesConfig', 'PACKAGE_METAFILES', 'cmd-check/lint-package-metafiles',
+		'f <- function() 1', tagTypes);
+
+	rule(knownParser,
+		'rd-files', 'RdFilesConfig', 'RD_FILES', 'cmd-check/lint-rd-files',
+		'f <- function() 1', tagTypes);
+
+	rule(knownParser,
+		'package-data', 'PackageDataConfig', 'PACKAGE_DATA', 'cmd-check/lint-package-data',
+		'f <- function() 1', tagTypes);
+
+	rule(knownParser,
+		'package-runtime', 'PackageRuntimeConfig', 'PACKAGE_RUNTIME', 'cmd-check/lint-package-runtime',
+		'f <- function() library(pkg)', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 
@@ -373,7 +450,7 @@ function(x) {
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
 	**[${rule.info.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
-	${tags}
+	${tags}${cmdCheckStepsOf(name, false) === '' ? '' : `\\\n\t${cmdCheckStepsOf(name, false)}`}
 
 		`.trim()));
 		} else {
@@ -384,6 +461,7 @@ ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">ove
 
 ${tags}
 
+${cmdCheckStepsOf(name, true)}
 
 This rule is a ${certaintyText} rule.
  
@@ -410,13 +488,25 @@ The linting query can be used to run this rule on the above example:
 
 ${await showQuery(parser, example, [{ type: 'linter', rules: [{ name, config: {} as never }] }], { collapseQuery: true })}
 
-${buildSamplesFromLinterTestCases(parser, `${testfile}.test.ts`)}
+${(rule.info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck) ? `More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/linter/${testfile}.test.ts`)}.` : buildSamplesFromLinterTestCases(parser, `${testfile}.test.ts`)}
 
 		`.trim());
 		}
 	}
 
 	return ruleExplanations;
+}
+
+const ConformanceSymbol: Readonly<Record<ConformanceLevel, string>> = {
+	[ConformanceLevel.Full]:    '🟩',
+	[ConformanceLevel.Static]:  '🔷',
+	[ConformanceLevel.Partial]: '🔶'
+};
+
+/** the R CMD check steps a rule covers, as links into the conformance table */
+function cmdCheckStepsOf(name: LintingRuleNames, withCoverage: boolean): string {
+	const steps = numberedConformance().filter(e => e.rules.includes(name));
+	return steps.length === 0 ? '' : `R CMD check: ${steps.map(e => `[#${e.number}](${FlowrWikiBaseRef}/Linter#cmd-check-${e.number})${withCoverage ? ` ${ConformanceSymbol[e.level]}` : ''}`).join(', ')}`;
 }
 
 function getAllLintingRulesWithTag(tag: LintingRuleTag): LintingRuleNames[] {
@@ -474,6 +564,25 @@ ${await (async() => {
 	})()
 }
 	
+${section('R CMD check Conformance', 2, 'r-cmd-check-conformance')}
+
+Rules tagged ${makeTagBadge(LintingRuleTag.CmdCheck, tagTypes.info)} port \`R CMD check\` (R 4.6.1, see [Writing R Extensions](${WritingRExtensionsCmdCheck}) and [R Packages](${RPackagesCmdCheck})).
+They run by default only for packages (config option \`linter.disabledTags\`).
+Below are all steps of \`R CMD check\`, numbered by us (R itself prints them as \`* checking ...\`), each linked to its code in [R's \`check.R\`](${CmdCheckSource}) and its section in R Packages.
+
+| | Coverage |
+| :-: | :-- |
+| ${ConformanceSymbol.full} | everything the step reports |
+| ${ConformanceSymbol.static} | what can be decided without building, installing, or running the package |
+| ${ConformanceSymbol.partial} | part of what the step reports |
+
+${CmdCheckConformance.map(({ area }) => `${section(area, 3)}
+
+| # | Step (\`checking ...\`) | | Rules | Note |
+| --: | :-- | :-: | :-- | :-- |
+${numberedConformance().filter(e => e.area === area).map(e =>
+	`| <a id="cmd-check-${e.number}"></a>${e.number} | [${e.check.replaceAll('|', '\\|')}](${CmdCheckSource}#L${e.line}) ([book](${RPackagesCmdCheck}#${e.book})) | ${ConformanceSymbol[e.level]} | ${e.rules.map(r => linkToRule(r)).join(', ')} | ${(e.note ?? '').replaceAll('|', '\\|')} |`).join('\n')}`).join('\n\n')}
+
 ${section('Quick Fixes', 2, 'quick-fixes')}
 
 Rules tagged ${makeTagBadge(LintingRuleTag.QuickFix, tagTypes.info)} attach a ${shortLink('LintQuickFix', tagTypes.info)} to their results,

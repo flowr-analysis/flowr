@@ -337,18 +337,13 @@ export class Environment implements IEnvironment {
 			const old = joinsOld ? frame.get(key) : undefined;
 			if(old === undefined && applyCds === undefined) {
 				frame.set(key, values);
-			} else if(append) {
+			} else if(append || applyCds === undefined) {
 				frame.set(key, uniqueMergeValuesInDefinitions(old ?? [], values));
 			} else {
 				// we need to make a copy to avoid side effects for old reference in other environments
 				const updated: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
-					if(updated.some(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)) {
-						continue;
-					}
-					if(applyCds === undefined) {
-						updated.push(v);
-					} else {
+					if(!updated.some(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)) {
 						updated.push({ ...v, cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice() });
 					}
 				}
@@ -662,9 +657,5 @@ export interface REnvironmentInformation {
 
 /** Serializes an environment, replacing the built-in environment with a placeholder. */
 export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
-	if(isDefaultBuiltInEnvironment(v)) {
-		return '<BuiltInEnvironment>';
-	} else {
-		return jsonReplacer(k, v);
-	}
+	return isDefaultBuiltInEnvironment(v) ? '<BuiltInEnvironment>' : jsonReplacer(k, v);
 }

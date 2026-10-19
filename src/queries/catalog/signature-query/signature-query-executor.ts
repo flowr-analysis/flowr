@@ -550,7 +550,7 @@ function sourceForVersion(owning: readonly PackageSignatureSource[], pkg: string
 }
 
 /** the message shown when a known package has no release matching the requested version, listing what is available */
-function versionNotFoundMessage(pkg: string, lead: string, avail: readonly string[], base: boolean): string {
+function versionNotFoundMessage(lead: string, avail: readonly string[], base: boolean): string {
 	// only nudge towards a full-history bundle when one is *not* already mounted (a single known version)
 	const hint = !base && avail.length <= 1
 		? ' Only the latest CRAN version is loaded; download the full history with `:signature download` (or mount one with `:signature add <path>`).'
@@ -905,7 +905,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 			const owning = sources.filter(s => s.has(q.package as string));
 			if(owning.length > 0) {
 				const avail = allAvailableVersions(owning, q.package);
-				return { ...meta(), message: versionNotFoundMessage(q.package, `no release of '${q.package}' matches '${q.version}'.`, avail, owning[0].isBaseR(q.package)) };
+				return { ...meta(), message: versionNotFoundMessage(`no release of '${q.package}' matches '${q.version}'.`, avail, owning[0].isBaseR(q.package)) };
 			}
 		}
 		if(found.matchCount === 0 && q.function !== undefined && (literalFunction || !hasGlob(q.function))) {
@@ -929,7 +929,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const src = sourceForVersion(owning, q.package, version);
 	if(q.version !== undefined && src === undefined) {
 		const avail = allAvailableVersions(owning, q.package);
-		return { ...meta(), message: versionNotFoundMessage(q.package, `'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };
+		return { ...meta(), message: versionNotFoundMessage(`'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };
 	}
 	const resolvedSrc = src ?? owning[0];
 	if(q.function) {

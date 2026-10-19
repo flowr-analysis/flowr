@@ -102,7 +102,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
-		guard(this.args.context.files.loadingOrder.getUnorderedRequests().length > 0,
+		guard(this.args.context.files.hasRequests(),
 			'At least one request must be set to run the analysis pipeline');
 		if(force) {
 			this.reset();

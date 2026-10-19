@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledSigDb } from '../_helper/linter';
+import { assertLinterFields, assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import type { DecodedFunction } from '../../../src/project/sigdb/decode';
@@ -107,6 +107,13 @@ second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)`, 'deprecated-functions',
 		[{ certainty: LintingResultCertainty.Certain, function: Identifier.from(['all_equal', PkgName.Dplyr, false]), loc: [4, 1, 4, 31], type: 'deprecated-function' }],
 		{ builtin: 1, sigdb: 0 });
+
+		describe('defunct and platform-specific base functions', () => {
+			assertLinterFields(parser, 'as.real(1)\nis.real(2)', 'deprecated-functions', [{ function: 'as.real' }, { function: 'is.real' }]);
+			assertLinterFields(parser, 'x11()\nquartz()\nwindows()', 'deprecated-functions', [{ type: 'deprecated-function' }, { type: 'deprecated-function' }, { type: 'deprecated-function' }]);
+			assertLinterFields(parser, 'dev.new()\npdf("a.pdf")', 'deprecated-functions', []);
+			assertLinterFields(parser, 'as.real <- function(x) x\nas.real(1)', 'deprecated-functions', []);
+		});
 
 		describe('a deprecated function resolved via a loaded package is still flagged', () => {
 			// regression: the loaded-package export must still count as a built-in call target

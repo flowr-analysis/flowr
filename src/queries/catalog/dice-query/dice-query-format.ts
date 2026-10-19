@@ -1,8 +1,7 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
 import { executeDiceQuery } from './dice-query-executor';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
@@ -45,11 +44,7 @@ const diceFormat = '(from1;from2->to1;to2)';
 function diceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'dice'> {
 	const parsed = diceCriteriaParser(line[0]);
 	if(!parsed) {
-		output.stderr(output.formatter.format(
-			`Invalid dice query format. Expected ${diceFormat}, e.g. (2@x->12@x) or (1@a;2@b->5@c).`,
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }
-		));
-		return { query: [] };
+		return invalidQueryLine(output, `Invalid dice query format. Expected ${diceFormat}, e.g. (2@x->12@x) or (1@a;2@b->5@c).`);
 	}
 	warnAboutSliceFlags(output, line[0], SharedSliceFlags);
 	return {

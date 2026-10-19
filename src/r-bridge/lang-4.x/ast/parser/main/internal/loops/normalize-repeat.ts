@@ -1,7 +1,7 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { guard } from '../../../../../../../util/assert';
-import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
+import { ensureExpressionList, retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { RRepeatLoop } from '../../../../model/nodes/r-repeat-loop';
@@ -33,10 +33,6 @@ export function tryNormalizeRepeat(data: NormalizerData, [repeatToken, bodyToken
 		location,
 		lexeme: content,
 		body:   ensureExpressionList(parseBody),
-		info:   {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:   currentSourceInfo(data)
 	};
 }

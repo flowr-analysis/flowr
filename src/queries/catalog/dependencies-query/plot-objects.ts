@@ -26,19 +26,33 @@ const GgPlotComponents: ReadonlySet<string> = new Set(GgPlotImplicitAddons);
  * Whether the value is a plot, which printing draws rather than writes: a call returning one, a `+` chain adding
  * to one (as ggplot builds them), or a variable bound to either.
  */
-export function isPlot(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, seen = new Set<NodeId>()): boolean {
+export function isPlot(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, seen = new Set<NodeId>(), memo?: Map<NodeId, boolean>): boolean {
 	if(node === undefined || seen.has(node.info.id)) {
 		return false;
 	}
+	const known = memo?.get(node.info.id);
+	if(known !== undefined) {
+		return known;
+	}
+	/* a value cut short by a cycle may answer differently from elsewhere, so only the outermost answer is kept */
+	const outermost = seen.size === 0;
 	seen.add(node.info.id);
+	const plot = isPlotNode(node, dataflow, seen, memo);
+	if(outermost) {
+		memo?.set(node.info.id, plot);
+	}
+	return plot;
+}
+
+function isPlotNode(node: RNode<ParentInformation>, dataflow: DataflowInformation, seen: Set<NodeId>, memo: Map<NodeId, boolean> | undefined): boolean {
 	switch(node.type) {
 		case RType.FunctionCall:
 			return isPlotCall(node, dataflow, PlotObjectCreate);
 		case RType.BinaryOp:
-			return node.operator === '+' && [node.lhs, node.rhs].some(o => isPlot(o, dataflow, seen) || isPlotCall(o, dataflow, GgPlotComponents));
+			return node.operator === '+' && [node.lhs, node.rhs].some(o => isPlot(o, dataflow, seen, memo) || isPlotCall(o, dataflow, GgPlotComponents));
 		case RType.Symbol:
 			return Dataflow.targetsOf(dataflow.graph, node.info.id, EdgeType.Reads).some(def =>
-				Dataflow.targetsOf(dataflow.graph, def, EdgeType.DefinedBy).some(value => isPlot(dataflow.graph.idMap?.get(value), dataflow, seen)));
+				Dataflow.targetsOf(dataflow.graph, def, EdgeType.DefinedBy).some(value => isPlot(dataflow.graph.idMap?.get(value), dataflow, seen, memo)));
 		default:
 			return false;
 	}

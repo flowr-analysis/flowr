@@ -5,7 +5,8 @@ import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../datafl
 import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
 import { type DependencyInfoLinkAttachedInfo, DependencyInfoLinkConstraint, type FunctionInfo } from './function-info/function-info';
@@ -23,7 +24,9 @@ import { linkPlotsToDevices } from './link-devices';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { attachesPackage } from './function-info/library-functions';
 import { describePlots } from './plot-description';
-import { assignmentOf, inputVariablesOf } from './data-flow';
+import { assignmentOf, type FlowMemo, inputVariablesOf, makeFlowMemo } from './data-flow';
+import { MatchArgs } from '../../../dataflow/graph/match-args';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { AttachedBasePackageSet, attachedBasePackages } from '../../../util/r-base-packages';
 
@@ -73,11 +76,12 @@ export async function executeDependenciesQuery({
 	const g = getAllCategories(queries, ctx);
 	const enabled = query.enabledCategories;
 
+	const run: QueryRun = { dataflow, config, normalize, memo: makeFlowMemo(), formals: formalsLookup(dataflow.graph, ctx) };
 	/* the packages the code attaches decide which package a bare call further down belongs to */
-	const library = getResults(g, { dataflow, config, normalize }, queryResults, 'library', functions.get('library') ?? [], data);
+	const library = getResults(g, run, queryResults, 'library', functions.get('library') ?? [], data);
 	const attaching = library.filter(attachesPackage);
 	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
-		const results = c === 'library' ? library : getResults(g, { dataflow, config, normalize }, queryResults, c, f, data, attaching);
+		const results = c === 'library' ? library : getResults(g, run, queryResults, c, f, data, attaching);
 		/* only default categories allow additional analyses */
 		if(enabled === undefined || enabled.includes(c)) {
 			await g[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
@@ -87,8 +91,8 @@ export async function executeDependenciesQuery({
 
 	/* also without a device: a plot on screen has no file, but still has the addons drawn onto it */
 	if(results.visualize?.length) {
-		linkPlotsToDevices(results.write ?? [], results.visualize, dataflow, normalize);
-		describePlots(results.write ?? [], results.visualize, dataflow, normalize, config, ctx);
+		linkPlotsToDevices(results.write ?? [], results.visualize, dataflow, normalize, ctx);
+		describePlots(results.write ?? [], results.visualize, run, ctx);
 		inheritPlotInputs(results.visualize);
 	}
 
@@ -106,6 +110,51 @@ export async function executeDependenciesQuery({
 		},
 		...results,
 	} as DependenciesQueryResult;
+}
+
+/**
+ * What one run of the query computes once and hands to every part: the analysis results, the memo of what is asked
+ * about the same calls again and again, and the formals of the calls. Nothing of it outlives the run.
+ */
+export interface QueryRun {
+	readonly dataflow:  DataflowInformation
+	readonly config:    FlowrConfig
+	readonly normalize: NormalizedAst
+	readonly memo:      FlowMemo
+	/** the formals of the call, give its qualified name if known already */
+	readonly formals:   (vertex: DataflowGraphVertexFunctionCall, qualified?: Identifier) => readonly string[] | undefined
+}
+
+/** whether the call may reach a function definition of the code, whose formals differ from call to call */
+function callsDefinition(dfg: DataflowGraph, id: NodeId): boolean {
+	for(const [target, edge] of dfg.edgesFrom(id)) {
+		if(DfEdge.includesType(edge, EdgeType.Calls) && !NodeId.isBuiltIn(target)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * The formals of a call (see {@link MatchArgs.formalsOf}), looked up once per function the calls reach among the
+ * built-ins and the signature database, as decoding the database's entry is what makes this costly. A call that
+ * may reach a definition of the code is asked directly, its formals are in the AST.
+ */
+function formalsLookup(dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): QueryRun['formals'] {
+	const byFunction = new Map<string, readonly string[] | undefined>();
+	return (vertex, qualified) => {
+		const call = dfg.idMap?.get(vertex.id);
+		if(!RFunctionCall.is(call)) {
+			return undefined;
+		} else if(callsDefinition(dfg, vertex.id)) {
+			return MatchArgs.formalsOf(call, dfg, ctx);
+		}
+		const key = Identifier.toString(qualified ?? Dataflow.qualify(vertex.id, dfg, false) ?? vertex.name);
+		if(!byFunction.has(key)) {
+			byFunction.set(key, MatchArgs.formalsOf(call, dfg, ctx));
+		}
+		return byFunction.get(key);
+	};
 }
 
 /** One implicit `library` entry per attached base package that the graph uses but that is not loaded explicitly. */
@@ -155,11 +204,11 @@ function inheritPlotInputs(plots: DependencyInfo[]): void {
 const ConsumingCategories: ReadonlySet<DependencyCategoryName> = new Set(['write', 'visualize', 'transform']);
 const ProducingCategories: ReadonlySet<DependencyCategoryName> = new Set(['read', 'visualize', 'transform']);
 
-function dataFlowOf(kind: DependencyCategoryName, call: DataflowGraphVertexFunctionCall, dataflow: DataflowInformation, ast: NormalizedAst): Pick<DependencyInfo, 'inputVariables' | 'assignedTo'> {
-	const input = ConsumingCategories.has(kind) ? inputVariablesOf(dataflow, ast, call) : [];
+function dataFlowOf(kind: DependencyCategoryName, call: DataflowGraphVertexFunctionCall, { dataflow, normalize, memo }: QueryRun): Pick<DependencyInfo, 'inputVariables' | 'assignedTo'> {
+	const input = ConsumingCategories.has(kind) ? inputVariablesOf(dataflow, normalize, call, memo) : [];
 	return {
 		inputVariables: input.length > 0 ? input : undefined,
-		assignedTo:     ProducingCategories.has(kind) ? assignmentOf(dataflow, ast, call.id)?.name : undefined
+		assignedTo:     ProducingCategories.has(kind) ? assignmentOf(dataflow, normalize, call.id, memo)?.name : undefined
 	};
 }
 
@@ -179,6 +228,9 @@ function namespaceOf(id: NodeId, functionName: Identifier, dfg: DataflowGraph, c
 
 /** the packages attached by the loader calls the call `id` resolves its definition through */
 function attachingPackagesOf(id: NodeId, dfg: DataflowGraph, attaching: readonly DependencyInfo[]): ReadonlySet<string> {
+	if(attaching.length === 0) {
+		return new Set();
+	}
 	const targets = new Set(Dataflow.callTargetsOf(id, dfg));
 	return new Set(attaching.flatMap(a => a.nodeId !== undefined && a.value !== undefined && targets.has(a.nodeId) ? [a.value] : []));
 }
@@ -201,7 +253,8 @@ function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: st
 	return candidates.find(c => c.package !== undefined && isLoaded(c.package)) ?? candidates[0];
 }
 
-function getResults(categories: Record<DependencyCategoryName, DependencyCategorySettings>, { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData, attaching: readonly DependencyInfo[] = []): DependencyInfo[] {
+function getResults(categories: Record<DependencyCategoryName, DependencyCategorySettings>, run: QueryRun, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData, attaching: readonly DependencyInfo[] = []): DependencyInfo[] {
+	const { dataflow, config, normalize } = run;
 	const defaultValue = categories[kind].defaultValue;
 	const vars = config.solver.variables;
 	const functionMap = Map.groupBy(functions, f => f.name);
@@ -218,15 +271,17 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
 			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
 			const candidates = functionMap.get(name) as readonly FunctionInfo[];
-			/* a package whose attached definition the call resolves to is loaded there, as R resolves the bare name to it */
-			const attachedBy = attachingPackagesOf(id, dfg, attaching);
-			const isLoaded = (pkg: string) => attachedBy.has(pkg) || isLoadedPackage(pkg);
+			/* a package whose attached definition the call resolves to is loaded there, as R resolves the bare name to it;
+			 * only asked when a name is declared for a package, which is what makes it worth the call targets */
+			let attachedBy: ReadonlySet<string> | undefined;
+			const isLoaded = (pkg: string) => (attachedBy ??= attachingPackagesOf(id, dfg, attaching)).has(pkg) || isLoadedPackage(pkg);
 			const info = pickFunctionInfo(candidates, namespaceOf(id, functionName, dfg, candidates, isLoaded), isLoaded);
 			if(info === undefined) {
 				continue;
 			}
-			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
-			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
+			const formals = run.formals(vertex, functionName);
+			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx, formals);
+			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx, formals: run.formals }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 			const linked = linkedIds?.map(linkedId => typeof linkedId === 'object' ? linkedId.id : linkedId);
 			const ignoreOnArgVal = () => {
 				if(info.ignoreIf !== 'arg-true' && info.ignoreIf !== 'arg-false') {
@@ -234,7 +289,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				}
 				const margs = info.additionalArgs?.val;
 				guard(margs, 'Need additional argument val when checking for arg-true');
-				const valArgs = getArgumentStringValue(vars, dfg, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
+				const valArgs = getArgumentStringValue(vars, dfg, vertex, margs.argIdx, margs.argName, margs.resolveValue, ictx, formals);
 				const valValues = valArgs?.values().flatMap(v => Array.from(v)).toArray() ?? [];
 				/* ignore only if every value is the one the check asks for */
 				const ignoredValue = info.ignoreIf === 'arg-true' ? 'TRUE' : 'FALSE';
@@ -255,7 +310,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				guard(margs, 'Need additional argument argSet when checking for arg-set');
 				return hasArg(margs.argName, margs.argIdx);
 			};
-			const flow = dataFlowOf(kind, vertex, dataflow, normalize);
+			const flow = dataFlowOf(kind, vertex, run);
 			const foundValues = linkedArgs ?? args;
 			if(!foundValues) {
 				if(info.ignoreIf !== 'arg-missing' && !ignoreOnArgVal() && !ignoreOnArgSet()) {
@@ -273,7 +328,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				const margs = info.additionalArgs?.mode;
 				guard(margs, 'Need additional argument mode when checking for mode');
 				const modes = info.ignoreIf === 'mode-only-read' ? readOnlyModes : writeOnlyModes;
-				const modeArgs = getArgumentStringValue(vars, dfg, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
+				const modeArgs = getArgumentStringValue(vars, dfg, vertex, margs.argIdx, margs.argName, margs.resolveValue, ictx, formals);
 				const modeValues = modeArgs?.values().flatMap(v => Array.from(v)) ?? [];
 				/* all modes are read-only (resp. write-only), so we can ignore this */
 				if(modeValues.every(m => m && modes.has(m))) {
@@ -318,7 +373,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string | undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext, formals: QueryRun['formals'] }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string | undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
@@ -336,7 +391,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 		if(!DfgVertex.isFunctionCall(vertex)) {
 			continue;
 		}
-		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx, data.formals(vertex));
 		for(const [arg, values] of args?.entries() ?? []) {
 			map.set(arg, (map.get(arg) ?? new Set()).union(values));
 		}

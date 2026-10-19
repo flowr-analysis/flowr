@@ -117,7 +117,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			lint(parser, 'code file starting with an underscore', { 'R/_a.R': '' }, [['invalid-file-name', 'R/_a.R']]);
 			lint(parser, 'invalid file in man', { 'man/a.Rd': '', 'man/b.md': '' }, [['invalid-file-name', 'man/b.md']]);
 			lint(parser, 'invalid file in demo', { 'demo/00Index': '', 'demo/a.R': 'x', 'demo/b.txt': '' }, [['invalid-file-name', 'demo/b.txt']]);
-			lint(parser, 'case variants of directories', { 'MAN/a.Rd': '', 'DATA/a.rda': '' }, [['non-standard-top-level', 'DATA'], ['non-standard-top-level', 'MAN'], ['case-variant-directory', 'MAN'], ['case-variant-directory', 'DATA']]);
+			lint(parser, 'case variants of directories', { 'MAN/a.Rd': '', 'DATA/a.rda': '' }, [['non-standard-top-level', 'DATA'], ['non-standard-top-level', 'MAN'], ['case-variant-directory', 'DATA'], ['case-variant-directory', 'MAN']]);
 			lint(parser, 'data without data sets', { 'data/readme.pdf': '' }, [['empty-data-directory', 'data']]);
 			lint(parser, 'demo without demos', { 'demo/00Index': '' }, [['empty-demo-directory', 'demo']]);
 			lint(parser, 'demo with non-ASCII characters', { 'demo/a.R': 'x <- "é"\n' }, [['demo-non-ascii', 'demo/a.R']]);

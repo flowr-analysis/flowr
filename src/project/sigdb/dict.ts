@@ -112,7 +112,7 @@ for(const [escape, plain] of [['n', Newline], ['t', 0x09], ['r', 0x0d], ['b', 0x
 	SimpleEscapes[escape.charCodeAt(0)] = plain;
 }
 /** `["d",` */
-const RunPrefix = Buffer.from('["d",');
+const RunPrefix = new TextEncoder().encode('["d",');
 
 /** The `d` lines of `lines`, the blob form read off the bytes as it is and anything else through `JSON.parse`. */
 function dictRuns(lines: Buffer): DictRun[] {

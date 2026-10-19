@@ -21,7 +21,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	get builtInEnvironment(): DeepReadonly<IEnvironment>;
 
 	/**
-	 * Every built-in definition flowR carries for `name`, matched by its plain name.
+	 * Every built-in definition flowR carries for `name`: what its namespace states when it names one, else matched by its plain name.
 	 */
 	builtInDefinitionsOf(name: Identifier): readonly IdentifierDefinition[];
 
@@ -186,7 +186,8 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	}
 
 	public builtInDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] {
-		return this.builtInEnv.memory.get(Identifier.getName(name)) ?? this.statedDefinitionsOf(name) ?? [];
+		const namespaced = Identifier.getNamespace(name) === undefined ? undefined : this.statedDefinitionsOf(name);
+		return namespaced ?? this.builtInEnv.memory.get(Identifier.getName(name)) ?? this.statedDefinitionsOf(name) ?? [];
 	}
 
 	public knowsPackage(pkg: string): boolean {

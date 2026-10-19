@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { assertLinterPackage } from '../../_helper/linter';
+import { assertLinter, assertLinterPackage } from '../../_helper/linter';
 import { LintingResultCertainty } from '../../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
@@ -15,6 +15,13 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinterPackage('anonymous function names no function', parser, 'lapply(1:3, function(i) { if(i > 1) return; i })', 'bogus-return', [{ function: undefined }]);
 		assertLinterPackage('several bare returns', parser, 'f <- function(a, b) { if(a) return; if(b) return; 1 }', 'bogus-return', [{ function: 'f' }, { function: 'f' }]);
 		assertLinterPackage('nested function names the innermost binding', parser, 'f <- function() { g <- function() return; g }', 'bogus-return', [{ function: 'g' }]);
+		assertLinter('a folder above named like a test folder keeps package code', parser, 'half <- function(x) { if(x < 0) return; x / 2 }', 'bogus-return', [{
+			certainty: LintingResultCertainty.Certain,
+			function:  'half',
+			message:   'Possibly missing \'()\' after \'return\' in half, a bare return evaluates to the function itself',
+			loc:       [1, 33, 1, 38, '/tmp/test-workspace/pkg/R/f.R'],
+			quickFix:  [{ type: 'replace', description: 'Call `return()`', replacement: 'return()', loc: [1, 33, 1, 38, '/tmp/test-workspace/pkg/R/f.R'] }]
+		}], undefined, { useAsFilePath: '/tmp/test-workspace/pkg/R/f.R' });
 		assertLinterPackage('return as a value of an assignment', parser, 'f <- function() { r <- return; r }', 'bogus-return', [{ function: 'f' }]);
 
 		describe('no findings', () => {

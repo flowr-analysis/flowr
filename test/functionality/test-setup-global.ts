@@ -2,7 +2,7 @@ import { type TestLabel, printMissingLabelSummary } from './_helper/label';
 import fs from 'fs';
 import path from 'path';
 import { DefaultMap } from '../../src/util/collections/defaultmap';
-import { DetailedInfoFile, GlobalSummaryFile } from './summary-def';
+import { DetailedInfoFile, GlobalSummaryFile, TestSuites } from './summary-def';
 import { jsonReplacer } from '../../src/util/json';
 
 
@@ -70,7 +70,9 @@ function makeSummary() {
 				/* skip line */
 			}
 		}
-		printMissingLabelSummary(labelMap);
+		if(DetailedInfoFile === TestSuites.functionality.details) {
+			printMissingLabelSummary(labelMap);
+		}
 	} catch{
 		/* if we do not find the summary, then this is not a big problem */
 	}

@@ -17,6 +17,7 @@ import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
 import { callOnlyQueries } from '../../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
 import { callIdentifierOf, isPlot } from './plot-objects';
+import { inputVariablesAt } from './data-flow';
 import { ExpectFunctionNames } from './function-info/test-functions';
 import type { FunctionInfo } from './function-info/function-info';
 
@@ -160,7 +161,8 @@ export function collectImplicitEchoes(ast: NormalizedAst, dataflow: DataflowInfo
 			if(echoed === undefined || accountedFor.has(echoed.info.id) || isPlot(echoed, dataflow)) {
 				continue;
 			}
-			result.push({ nodeId: echoed.info.id, functionName: echoName(echoed, dataflow), value: 'stdout', implicit: true });
+			const inputs = inputVariablesAt(dataflow, ast, echoed.info.id);
+			result.push({ nodeId: echoed.info.id, functionName: echoName(echoed, dataflow), value: 'stdout', implicit: true, inputVariables: inputs.length > 0 ? inputs : undefined });
 		}
 	}
 }

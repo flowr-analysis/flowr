@@ -145,6 +145,12 @@ export function inputVariablesOf(dataflow: DataflowInformation, ast: NormalizedA
 	return [...into];
 }
 
+/** The variables the value `id` is computed from: those of {@link inputVariablesOf} for a call, the variable itself for a use. */
+export function inputVariablesAt(dataflow: DataflowInformation, ast: NormalizedAst, id: NodeId, memo?: FlowMemo): string[] {
+	const vertex = dataflow.graph.getVertex(id);
+	return DfgVertex.isFunctionCall(vertex) ? inputVariablesOf(dataflow, ast, vertex, memo) : [...variablesOf(dataflow, ast, id, new Set(), memo)];
+}
+
 function targetOf(dataflow: DataflowInformation, assignment: DataflowGraphVertexFunctionCall, value: NodeId): NodeId | undefined {
 	return dataflow.graph.edgesFrom(assignment.id).entries()
 		.find(([to, edge]) => to !== value && DfEdge.includesType(edge, EdgeType.Returns) && DfgVertex.isVariableDefinition(dataflow.graph.getVertex(to)))?.[0];

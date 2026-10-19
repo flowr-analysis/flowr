@@ -15,7 +15,7 @@ import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { valueFromRNumber } from '../values/general';
 import { liftScalar } from '../values/scalar/scalar-constants';
-import { Identifier, type IdentifierDefinition, ReferenceType } from '../../environments/identifier';
+import { Identifier, ReferenceType } from '../../environments/identifier';
 import type { REnvironmentInformation } from '../../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../graph/df-helper';
@@ -32,18 +32,13 @@ import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-ex
  */
 function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | undefined, ctx: ReadOnlyFlowrAnalyzerContext): BuiltInEvalHandler | undefined {
 	/* without an environment the search path is unknown, so what a package states about the name has its say */
-	const defs = environment ? Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction) : builtInDefinitionsOf(name, ctx);
+	const defs = environment ? Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction) : ctx.env.builtInDefinitionsOf(name);
 	const def = defs?.length === 1 ? defs[0] : undefined;
 	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
 }
 
-function builtInDefinitionsOf(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): readonly IdentifierDefinition[] | undefined {
-	return ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
-		?? ctx.env.statedDefinitionsOf(name);
-}
-
 function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	return builtInDefinitionsOf(name, ctx)?.some(d => d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined) ?? false;
+	return ctx.env.builtInDefinitionsOf(name).some(d => d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined);
 }
 
 /** the node types that may fold through a built-in: calls, operators, and the `(`/`{` groupings */

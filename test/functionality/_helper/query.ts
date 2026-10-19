@@ -23,6 +23,8 @@ import type { KnownParser } from '../../../src/r-bridge/parser';
 import type { AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { withSigDb } from './linter';
+import type { SigDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
@@ -52,7 +54,9 @@ export function assertQuery<
 	expected?: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
 	runFull = false,
 	/** packages this query's code may use without attaching them, overriding the file's {@link assumeLoadedPackages} */
-	assumeLoaded?: readonly string[]
+	assumeLoaded?: readonly string[],
+	/** a signature database to use in place of none */
+	sigDb?: SigDbSource
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
@@ -75,9 +79,8 @@ export function assertQuery<
 			}
 		}
 
-		const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder()
-			.setParser(parser), assumed)
-			.build();
+		const builder = applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(parser), assumed);
+		const analyzer = await (sigDb === undefined ? builder : withSigDb(builder, sigDb)).build();
 		analyzer.addRequest(code);
 		if(runFull) {
 			// we run the dfa analysis to make sure normalization post-patches are ready!

@@ -35,6 +35,11 @@ import { applyAssumedPackages, assumedPackagesOf } from './shell';
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
 export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean, assumeLoaded?: readonly string[] };
 
+/** `builder` with `sigDb` in place of the bundled signature database. */
+export function withSigDb(builder: FlowrAnalyzerBuilder, sigDb: SigDbSource): FlowrAnalyzerBuilder {
+	return builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(sigDb));
+}
+
 /** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
 export function controlledSigDb(pkgs: Record<string, readonly string[]>): PackageSignatureSource;
 export function controlledSigDb(pkg: string, exports: readonly string[]): PackageSignatureSource;
@@ -197,7 +202,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 			.configure('solver.resolveSource.dropPaths', DropPathsOption.All), assumed);
 		// swap in a controlled signature database (or none) so tests do not depend on the bundled collection
 		if(lintingRuleConfig?.sigDb !== undefined) {
-			builder = builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(lintingRuleConfig.sigDb));
+			builder = withSigDb(builder, lintingRuleConfig.sigDb);
 		} else if(lintingRuleConfig?.noSigDb) {
 			builder = builder.unregisterPlugins(SigDbPluginName);
 		}

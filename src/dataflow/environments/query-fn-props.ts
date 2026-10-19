@@ -51,7 +51,8 @@ function statedBuiltIn(definition: IdentifierDefinition, environment: REnvironme
 		return undefined;
 	}
 	const [pkg, fn] = pkgFn;
-	const known = REnvironment.findBuiltIn(environment.current).memory.get(fn)
+	const builtIn = REnvironment.findBuiltIn(environment.current);
+	const known = (builtIn.namespaces?.get(pkg)?.get(fn) ?? builtIn.memory.get(fn))
 		?.filter(d => d.type === ReferenceType.BuiltInFunction && Identifier.getNamespace(d.name ?? '') === pkg);
 	return known?.length ? known : undefined;
 }

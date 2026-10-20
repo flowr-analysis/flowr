@@ -6,7 +6,7 @@ import type { DependencyInfo } from './dependencies-query-format';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -22,7 +22,7 @@ import { ExpectFunctionNames } from './function-info/test-functions';
 import type { FunctionInfo } from './function-info/function-info';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
-function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[]): RNode<ParentInformation> | undefined {
+function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId> = new Set()): RNode<ParentInformation> | undefined {
 	switch(node?.type) {
 		/* the loops hand back an invisible NULL, and the jumps never hand back anything at all */
 		case undefined:
@@ -35,22 +35,22 @@ function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: Dataf
 		case RType.LineDirective:
 			return undefined;
 		case RType.FunctionCall: {
-			if(callName(node, dataflow, invisible) === undefined) {
+			if(callName(node, dataflow, invisible, seen) === undefined) {
 				return undefined;
 			}
 			const handedOn = aliased(node, dataflow, invisible);
-			return handedOn === undefined ? node : echoedValue(handedOn, dataflow, invisible);
+			return handedOn === undefined ? node : echoedValue(handedOn, dataflow, invisible, seen);
 		}
 		/* a block hands on the value of its last statement, a `( )` group that of what it holds, visibly:
 		   which is what makes `(x <- 1)` print what it assigned */
 		case RType.ExpressionList:
 			return grouped(node) ? lastStatement(node) ?? node
-				: echoedValue(lastStatement(node), dataflow, invisible) ?? (node.children.length === 0 ? node : undefined);
+				: echoedValue(lastStatement(node), dataflow, invisible, seen) ?? (node.children.length === 0 ? node : undefined);
 		case RType.Pipe:
-			return echoedValue(node.rhs, dataflow, invisible);
+			return echoedValue(node.rhs, dataflow, invisible, seen);
 		/* whichever branch runs decides; without an `else` a false condition yields an invisible NULL */
 		case RType.IfThenElse:
-			return echoedValue(node.then, dataflow, invisible) ?? echoedValue(node.otherwise, dataflow, invisible);
+			return echoedValue(node.then, dataflow, invisible, seen) ?? echoedValue(node.otherwise, dataflow, invisible, seen);
 		case RType.BinaryOp:
 			return RBinaryOp.getOperatorInfo(node)?.usedAs === 'assignment' ? undefined : node;
 		/* a symbol, a constant, an access, a unary operator, or a function definition is printed as it stands */
@@ -68,14 +68,14 @@ function grouped(node: RExpressionList<ParentInformation>): boolean {
  * The call whose result this one hands back unchanged, as its {@link ArgProp.Alias} argument states: a pipe
  * is visible exactly when the call it feeds is. `undefined` when the call answers for itself.
  */
-function aliased(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, invisible: readonly FunctionInfo[]): RFunctionCall<ParentInformation> | undefined {
+function aliased(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, invisible: readonly FunctionInfo[]): RNode<ParentInformation> | undefined {
 	const name = callName(node, dataflow, invisible);
 	const at = name === undefined ? -1 : queryFnProps(name, { environment: dataflow.environment })?.sig
 		?.findIndex(([, p]) => (p & ArgProp.Alias) !== 0) ?? -1;
 	const arg = at < 0 ? undefined : node.arguments[at];
 	const value = typeof arg === 'object' && RArgument.is(arg) ? arg.value : undefined;
-	/* only a call of its own can be invisible where the one around it is not, a symbol says nothing new */
-	return RFunctionCall.is(value) ? value : undefined;
+	/* only a call or a block (`local({ ... })`) can be invisible where the one around it is not, a symbol says nothing new */
+	return RFunctionCall.is(value) || RExpressionList.is(value) ? value : undefined;
 }
 
 /** the last statement of a block, which is what its value comes from */
@@ -89,16 +89,30 @@ function lastStatement<Info>(node: RExpressionList<Info>): RNode<Info> | undefin
 	return undefined;
 }
 
-function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen = new Set<NodeId>()): Identifier | undefined {
+/**
+ * The name of the call if its result is visible, `undefined` if it hands it back invisibly. A call that reaches
+ * functions of the program is visible exactly when one of their exits yields a visible value, by the same rules as a
+ * statement of the top level, whatever a built-in of that name would do; only otherwise its built-in props decide.
+ */
+function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId> = new Set()): Identifier | undefined {
 	const name = callIdentifierOf(node, dataflow);
-	if(name === undefined) {
+	if(name === undefined || ExpectFunctionNames.test(Identifier.getName(name)) || isInvisible(name, invisible)) {
 		return undefined;
+	}
+	const idMap = dataflow.graph.idMap;
+	const callees = [...Dataflow.calleesOf(dataflow.graph, node.info.id)];
+	if(callees.length > 0 && idMap !== undefined) {
+		/* a recursive call is as visible as the call that started it, which the others decide */
+		if(seen.has(node.info.id)) {
+			return undefined;
+		}
+		seen.add(node.info.id);
+		return callees.some(definition => definition.exitPoints.some(exit => echoedValue(idMap.get(exit.nodeId), dataflow, invisible, seen) !== undefined)) ? name : undefined;
 	}
 	const props = queryFnProps(name, { environment: dataflow.environment });
 	/* a setter hands back the previous state invisibly, but queried, the state is what it returns */
 	const hidden = FunctionSemantics.call.props.hasAny(props, [CallProp.Invisible]) && !callOnlyQueries(name, node.arguments, dataflow.environment);
-	return hidden || ExpectFunctionNames.test(Identifier.getName(name)) || isInvisible(name, invisible)
-		|| (props === undefined && calleesReturnInvisibly(node.info.id, dataflow, invisible, seen)) ? undefined : name;
+	return hidden ? undefined : name;
 }
 
 /** whether the call is to one of the functions stated to return invisibly, unless its package says it is another one */
@@ -106,25 +120,6 @@ function isInvisible(name: Identifier, invisible: readonly FunctionInfo[]): bool
 	const fn = Identifier.getName(name);
 	const ns = Identifier.getNamespace(name);
 	return invisible.some(f => f.name === fn && (f.package === undefined || ns === undefined || f.package === ns));
-}
-
-function calleesReturnInvisibly(id: NodeId, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId>): boolean {
-	const idMap = dataflow.graph.idMap;
-	if(idMap === undefined || seen.has(id)) {
-		return false;
-	}
-	seen.add(id);
-	let callee = false;
-	for(const definition of Dataflow.calleesOf(dataflow.graph, id)) {
-		callee = true;
-		for(const exit of definition.exitPoints) {
-			const last = idMap.get(exit.nodeId);
-			if(!RFunctionCall.is(last) || callName(last, dataflow, invisible, seen) !== undefined) {
-				return false;
-			}
-		}
-	}
-	return callee;
 }
 
 /** what to report the echo under: the called name, or the operator or lexeme producing the value */

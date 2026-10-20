@@ -28,6 +28,7 @@ import { assignmentOf, type FlowMemo, inputVariablesOf, makeFlowMemo } from './d
 import { MatchArgs } from '../../../dataflow/graph/match-args';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { AttachedBasePackageSet, attachedBasePackages } from '../../../util/r-base-packages';
 
 /**
@@ -96,6 +97,12 @@ export async function executeDependenciesQuery({
 		inheritPlotInputs(results.visualize);
 	}
 
+	for(const [category, found] of Object.entries(results)) {
+		if(found !== undefined && !NotPassedOnByCalls.has(category)) {
+			results[category] = [...found, ...callSitesOf(found, dataflow.graph, normalize)];
+		}
+	}
+
 	if(query.assumedPackages && (enabled === undefined || enabled.includes('library'))) {
 		const explicit = new Set((results.library ?? []).map(r => r.value).filter((v): v is string => v !== undefined && v !== Unknown && v !== Constant));
 		const assumed = assumedBasePackageEntries(dataflow.graph, ctx.resolvedRVersion, explicit);
@@ -110,6 +117,33 @@ export async function executeDependenciesQuery({
 		},
 		...results,
 	} as DependenciesQueryResult;
+}
+
+/** what a call of a function does not do itself: loading a package or a script there is still what the function does */
+const NotPassedOnByCalls: ReadonlySet<string> = new Set(['library', 'source', 'remote']);
+
+/**
+ * The calls of the program's functions that do what the entries within their bodies do, transitively: a call of `report()`
+ * writes what the `cat()` in its body writes, and so does every call of a function that calls `report()`.
+ */
+function callSitesOf(found: readonly DependencyInfo[], graph: DataflowGraph, ast: NormalizedAst): DependencyInfo[] {
+	const added: DependencyInfo[] = [];
+	const known = new Set(found.map(f => f.nodeId));
+	const queue = [...found];
+	for(let entry = queue.shift(); entry !== undefined; entry = queue.shift()) {
+		const definition = entry.nodeId === undefined ? undefined : RNode.findEnclosing(entry.nodeId, ast.idMap, RFunctionDefinition.is);
+		for(const call of definition === undefined ? [] : Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
+			const vertex = graph.getVertex(call);
+			if(!DfgVertex.isFunctionCall(vertex) || known.has(call)) {
+				continue;
+			}
+			known.add(call);
+			const site: DependencyInfo = { functionName: vertex.name ?? entry.functionName, nodeId: call, via: entry.nodeId, ...entry.value === undefined ? {} : { value: entry.value } };
+			added.push(site);
+			queue.push(site);
+		}
+	}
+	return added;
 }
 
 /**

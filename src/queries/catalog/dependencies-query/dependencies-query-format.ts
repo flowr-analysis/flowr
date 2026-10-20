@@ -176,6 +176,11 @@ export interface DependencyInfo extends Record<string, unknown> {
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
 	/**
+	 * Set on a call of a function of the program that does what this entry reports, transitively: the call of
+	 * `report()` writes what the `cat()` in its body writes. It names the entry within the called function.
+	 */
+	via?:                NodeId
+	/**
 	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
 	 * file, the device opener and closer around it. Answers *which statements produce this output* without
 	 * rebuilding it from {@link linkedIds}.

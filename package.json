@@ -187,7 +187,7 @@
     "@codemirror/legacy-modes": "^6.5.3",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
-    "@eagleoutice/eslint-config-flowr": "^2.1.9",
+    "@eagleoutice/eslint-config-flowr": "^2.1.10",
     "@jupyterlab/nbformat": "^4.5.4",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",

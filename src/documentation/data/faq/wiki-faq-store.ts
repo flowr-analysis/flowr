@@ -1,6 +1,7 @@
 import { collapsibleToc, details, section } from '../../doc-util/doc-structure';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { guard } from '../../../util/assert';
+import { compareByCodeUnit } from '../../../util/text/strings';
 
 const FlowrFaqTopics = {
 	'flowr.use':         '✨ Using <i>flowR</i>',
@@ -37,8 +38,7 @@ export class FaqStore {
 
 	private printAllTopics(topicsRegex: RegExp): string {
 		const topics = Array.from(this.faqs.keys())
-			.filter(topic => topicsRegex.test(topic))
-			.sort((a, b) => a.localeCompare(b));
+			.filter(topic => topicsRegex.test(topic)).sort(compareByCodeUnit);
 		let output = '';
 		for(const topic of topics) {
 			const faqs = this.faqs.get(topic).sort(

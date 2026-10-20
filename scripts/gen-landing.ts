@@ -1,3 +1,5 @@
+import { SourceRange } from '../src/util/range';
+import { RNode } from '../src/r-bridge/lang-4.x/ast/model/model';
 /**
  * Generates the landing page at `index.html`, which is what GitHub Pages serves as the site root.
  *
@@ -16,7 +18,7 @@ import { OriginType } from '../src/dataflow/origin/dfg-get-origin';
 import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
 import { explain } from './page-lib/lint-text';
-import { arraySum } from '../src/util/collections/arrays';
+import { arraySum, uniqueArray  } from '../src/util/collections/arrays';
 import { highlightR, renderRToken, tokenizeR, escapeHtml as escape } from '../src/util/text/r-highlight';
 
 /**
@@ -51,6 +53,8 @@ const ValueNames = ['1@df', '2@df', '3@n'] as const;
 const OriginNames = ['1@square', '2@square', '2@area', '3@area', '3@print'] as const;
 
 const SliceSample = Samples['survey.R'];
+/** The slice the demo shows until the reader points at the code, so the page opens on an answer. */
+const PreviewSlice = '9@plot';
 const DependencySample = Samples['project.R'];
 const LintSample = Samples['messy.R'];
 const ValueSample = Samples['shapes.R'];
@@ -75,7 +79,7 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 	const lines = new Set<number>();
 	for(const id of ids) {
 		const node = map?.get(id as never);
-		const start = node?.location?.[0];
+		const start = SourceRange.getStartLine(node?.location);
 		if(typeof start !== 'number') {
 			continue;
 		}
@@ -83,7 +87,7 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 		/* a kept node that closes with a brace keeps the line that brace sits on, the way the
 		   reconstructed slice prints it; without it the block looks cut off in the highlighting */
 		const full = node?.info?.fullRange;
-		if(full !== undefined && full[2] > full[0] && node?.info?.fullLexeme?.trimEnd().endsWith('}')) {
+		if(full !== undefined && full[2] > full[0] && RNode.lexeme(node)?.trimEnd().endsWith('}')) {
 			lines.add(full[2]);
 		}
 	}
@@ -96,11 +100,11 @@ async function dependencyLines(code: string): Promise<string[][]> {
 	const idMap = (await analyzer.normalize()).idMap;
 	const found = (await analyzer.query([{ type: 'dependencies' }])).dependencies as unknown as
 		Record<string, readonly { value?: string, nodeId?: string | number }[]>;
-	return ([['library', 'library'], ['source', 'source'], ['read', 'read'], ['write', 'write'], ['visualize', 'visualize']] as const)
+	return ([['library', 'library'], ['source', 'source'], ['read', 'read'], ['write', 'write'], ['transform', 'transform'], ['visualize', 'visualize']] as const)
 		.flatMap(([key, label]) => (found[key] ?? []).map(entry => [
 			label,
 			entry.value ?? '?',
-			String(idMap?.get(entry.nodeId as never)?.location?.[0] ?? 0)
+			String(SourceRange.getStartLine(idMap?.get(entry.nodeId as never)?.location) ?? 0)
 		]));
 }
 
@@ -150,8 +154,8 @@ async function valueLines(code: string): Promise<string[][]> {
 	const resolved: string[][] = [];
 	for(const criterion of ValueNames) {
 		const answer = await analyzer.query([{ type: 'resolve-value', criteria: [criterion] }]);
-		const values = [...new Set(Object.values(answer['resolve-value'].results)
-			.flatMap(found => found.values.map(v => stringifyValue(v))))].filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
+		const values = uniqueArray(Object.values(answer['resolve-value'].results)
+			.flatMap(found => found.values.map(v => stringifyValue(v)))).filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
 		if(values.length > 0) {
 			/* the comment says what it means, the tooltip keeps flowR's own form (`[6L, 6L]`) */
 			resolved.push([criterion, values.map(plain).join(', '), values.join(', ')]);
@@ -196,7 +200,7 @@ async function originLines(code: string): Promise<string[][]> {
 		const result = await analyzer.query([{ type: 'origin', criterion }]);
 		for(const origin of result.origin.results[criterion] ?? []) {
 			const at = idMap?.get(origin.id);
-			const line = at?.location?.[0];
+			const line = SourceRange.getStartLine(at?.location);
 			const what = at?.lexeme ?? String(origin.id);
 			lines.push([criterion, phrase(origin.type, what, line, origin.type === OriginType.BuiltInFunctionOrigin ? String(origin.fn.name) : what), String(line ?? 0),
 				origin.type === OriginType.FunctionCallOrigin ? 'call' : 'read']);
@@ -250,13 +254,13 @@ async function signatureLines(code: string, pkg: string, fn: string): Promise<st
 
 /** what a dependency line does, said out loud */
 const Verbs: Readonly<Record<string, string>> = {
-	library: 'loads', source: 'sources', read: 'reads', write: 'writes', visualize: 'plots to'
+	library: 'loads', source: 'sources', read: 'reads', write: 'writes', transform: 'transforms', visualize: 'plots to'
 };
 
 /** the same, for a dependency the query found without a name to go with it */
 const Silent: Readonly<Record<string, string>> = {
 	library:   'loads a package', source:    'sources a file', read:      'reads a file',
-	write:     'writes a file', visualize: 'draws a plot'
+	write:     'writes a file', transform: 'transforms data', visualize: 'draws a plot'
 };
 
 /**
@@ -469,6 +473,9 @@ function highlightWithMarks(line: string, marks: readonly Mark[]): string {
 }
 
 function render(data: PageData): string {
+	if(!(PreviewSlice in data.slices)) {
+		throw new Error(`the slice demo has no criterion ${PreviewSlice} to open on`);
+	}
 	const sliceCode = SliceSample.split('\n').map((line, index) => {
 		const number = index + 1;
 		const keeps = Object.entries(data.slices).filter(([, lines]) => lines.includes(number)).map(([key]) => key);
@@ -524,7 +531,7 @@ function render(data: PageData): string {
 	}).join('\n');
 
 	const kindsOn = (pairs: string[][], line: number): string[] =>
-		[...new Set(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind))];
+		uniqueArray(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind));
 	const depSource = (code: string, pairs: string[][]): string => code.split('\n').map((line, index) => {
 		const number = index + 1;
 		const mine = pairs.filter(([, , at]) => at === String(number));
@@ -555,6 +562,7 @@ function render(data: PageData): string {
 		.replace('<!--BENCHRELEASE-->', measured?.release ?? '')
 		.replace('<!--BENCHCALIBRATION-->', measured?.calibration ?? '')
 		.replace('<!--SLICE-->', sliceCode)
+		.replace('<!--SLICE-PREVIEW-->', PreviewSlice)
 		.replace('<!--DEPSOURCE-->', depSource(DependencySample, data.dependencies))
 		.replace('<!--LINTSOURCE-->', flagged(LintSample, data.lint))
 		.replace('<!--ORIGIN-->', rows(data.origin, true))

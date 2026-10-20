@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Function Info Query">Function Info Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.\
@@ -25,7 +25,7 @@ Given a base-R name such as `sd`:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (50 ms)\
+Query: **function-info** (28 ms)\
 &nbsp;&nbsp;&nbsp;╰ **stats** _(x, na.rm)_ _(R/sd.R:19)_\
 &nbsp;&nbsp;&nbsp;╰ **posterior** _(x, ...)_ _(R/rvar-summaries-over-draws.R:192)_\
 &nbsp;&nbsp;&nbsp;╰ **h2o** _(x, na.rm)_ _(R/frame.R:2998)_\
@@ -56,7 +56,7 @@ Query: **function-info** (50 ms)\
 &nbsp;&nbsp;&nbsp;╰ **ibdsegments** _(x, ...)_ _(R/distribution_methods.R:55)_\
 &nbsp;&nbsp;&nbsp;╰ **descsuppR** _(x, ...)_ _(R/tod.r:201)_\
 &nbsp;&nbsp;&nbsp;╰ **tidyna** _(x, na.rm, all_na, ...)_ _(R/aaa-utils.R:25)_\
-&nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **stats::sd** [function] _processor builtin:d-ra, primitive_\
+&nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **stats::sd** [function] _processor builtin:d-ra, primitive_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -130,12 +130,12 @@ flowR states for it:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (9 ms)\
+Query: **function-info** (13 ms)\
 &nbsp;&nbsp;&nbsp;╰ **base** _(x, pos, envir, mode, inherits)_ _(R/get.R:26)_\
 &nbsp;&nbsp;&nbsp;╰ **config** _(value, config, file, use_parent)_ _(R/get.R:43)_\
 &nbsp;&nbsp;&nbsp;╰ **crmPack**\
 &nbsp;&nbsp;&nbsp;╰ **ale** _(obj, ...)_ _(R/000-startup.R:52)_\
-&nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **base::get** [function] _processor builtin:get, eval eval:get, eval_\
+&nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **base::get** [function] _processor builtin:get, eval eval:get, eval_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -183,6 +183,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Function Info Query query is `executeFunctionInfoQuery` in [`./src/queries/catalog/function-info-query/function-info-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/function-info-query/function-info-query-executor.ts).
+The Function Info Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/function-info-query/function-info-query-executor.ts#L11"><code><span title="Executes a function-info query: looks up name in the loaded signature database(s) (optionally restricted to packages) and in flowR's own built-in configuration, see builtinModelsOf .">executeFunctionInfoQuery</span></code></a>.
 
 </details>

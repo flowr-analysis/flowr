@@ -12,7 +12,7 @@ import { ArrayQueue } from '../util/collections/queue';
 export function visitCfgInReverseOrder(
 	graph: ControlFlowGraph,
 	startNodes: readonly NodeId[],
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
@@ -50,7 +50,7 @@ export function visitCfgInReverseOrder(
 export function visitCfgInOrder(
 	graph: ControlFlowGraph,
 	startNodes: readonly NodeId[],
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 	visitor: (node: NodeId) => boolean | void
 ): Set<NodeId> {
 	const visited = new Set<NodeId>();

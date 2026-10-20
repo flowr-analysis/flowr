@@ -340,76 +340,158 @@ function* groupPairsAt(text: string, marker: RegExp): Generator<[first: RdGroup,
 	}
 }
 
-/** matches a `\macro{` opening at the current {@link RegExp.lastIndex}, i.e. it must be set before every use */
-const RdMacroUseAt = /\\([A-Za-z]+)\s*\{/y;
-
-/** one `\macro{body}` a scan found: its name, its body, and the span of its group, see {@link macroGroups}. */
-type RdMacroUseFound = [macro: string, body: string, at: number, end: number];
-
-/** The group opening at `open` (must index a `{`), read in the same sweep as every `\macro{...}` nested inside it -- self first, then each child in the order it was found, matching a macro named `name` (`undefined` for a group with no name of its own, e.g. one just used to scope a run of text). `undefined` when the group never closes: nothing found while scanning it is trustworthy then, so the caller gives up on it too. */
-function consumeGroup(text: string, open: number, name: string | undefined): { end: number, found: RdMacroUseFound[] } | undefined {
-	const bodyStart = open + 1;
-	const found: RdMacroUseFound[] = [];
-	for(let i = bodyStart; i < text.length; i++) {
-		const c = text[i];
-		if(c === '{') {
-			const child = consumeGroup(text, i, undefined);
-			if(child === undefined) {
-				return undefined;
-			}
-			found.push(...child.found);
-			i = child.end - 1;
-		} else if(c === '}') {
-			const self: RdMacroUseFound[] = name === undefined ? [] : [[name, text.slice(bodyStart, i), open, i + 1]];
-			return { end: i + 1, found: [...self, ...found] };
-		} else if(c === '\\') {
-			RdMacroUseAt.lastIndex = i;
-			const use = RdMacroUseAt.exec(text);
-			if(use === null) {
-				i++;   // a lone escape, e.g. `\{` or `\%`, is content, not a boundary
-				continue;
-			}
-			const child = consumeGroup(text, i + use[0].length - 1, use[1]);
-			if(child === undefined) {
-				return undefined;
-			}
-			found.push(...child.found);
-			i = child.end - 1;
-		}
-	}
-	return undefined;
+/** How {@link scanRd} reads a group: `t` as text, `v` verbatim (no macros), `r` as R code (a string hides braces). */
+export type RdMode = 't' | 'v' | 'r';
+/** A node of {@link scanRd} at offset `at` of the scanned text; a text node never spans a line break. */
+export type RdNode =
+	| { readonly type: 'text', readonly text: string, readonly at: number, readonly mode: RdMode }
+	| { readonly type: 'group', readonly children: readonly RdNode[], readonly at: number }
+	| RdMacroUse;
+/** A macro: its bracketed option, its argument groups, and the `[from, to)` span of each body (`to` is `-1` when it never closes). */
+export type RdMacroUse = { readonly type: 'macro', readonly name: string, readonly at: number, readonly option?: string, readonly args: readonly (readonly RdNode[])[], readonly spans: readonly (readonly [number, number])[] };
+/** A scanned page: the comment-free text the offsets point into, its nodes, and where braces, strings or macros are wrong. */
+export type RdScan = { readonly text: string, readonly nodes: readonly RdNode[], readonly lineOf: (at: number) => number, readonly problems: readonly { readonly at: number, readonly kind: 'syntax' | 'unknown', readonly text: string }[] };
+/**
+ * How {@link scanRd} reads macros: `specOf` gives the modes of a macro's groups (lowercase required, uppercase optional, e.g. `vV`; `undefined` if unknown, the default),
+ * `lenient` reads an unknown macro with all groups that follow instead of reporting it and dropping its first group, and `macros` are expanded first.
+ */
+export interface RdScanOptions {
+	readonly specOf?:  (name: string, parent: string | undefined) => string | undefined
+	readonly lenient?: boolean
+	readonly macros?:  RdMacros
 }
 
-/**
- * The bodies of every `\macro{...}` in `text`, keyed by macro and in order of appearance. A use of a macro
- * inside a recorded group of the same macro is not a second use of it, which is how a per-macro scan reads
- * `\alias{\alias{x}}`; a use of any other macro nested in there is found as usual.
- */
-function macroGroups(text: string): Map<string, string[]> {
-	const groups = new Map<string, string[]>();
-	const recordedUntil = new Map<string, number>();
-	for(let i = 0; i < text.length; i++) {
-		if(text[i] !== '\\') {
-			continue;
-		}
-		RdMacroUseAt.lastIndex = i;
-		const use = RdMacroUseAt.exec(text);
-		if(use === null) {
-			continue;
-		}
-		const group = consumeGroup(text, i + use[0].length - 1, use[1]);
-		if(group === undefined) {
-			break;   // an unclosed group swallows the rest of the page; nothing past it can be trusted
-		}
-		for(const [macro, body, at, end] of group.found) {
-			if(at < (recordedUntil.get(macro) ?? 0)) {
-				continue;
+/** Scans an Rd source into a positioned tree, noting the problems the lexer of `R CMD check` reports. */
+export function scanRd(content: string, { specOf = () => undefined, lenient = false, macros }: RdScanOptions = {}): RdScan {
+	const stripped = stripRdComments(content);
+	const src = macros !== undefined && macros.size > 0 ? expandRdMacros(stripped, macros) : stripped;
+	const breaks = [...src.matchAll(/\n/g)].map(m => m.index);
+	const lineOf = (at: number) => 1 + breaks.filter(b => b < at).length;
+	const problems: RdScan['problems'][number][] = [];
+	const syntax = (at: number, text: string) => problems.push({ at, kind: 'syntax', text });
+	let pos = 0;
+	let ended = false;
+	let closed = false;
+	const seq = (mode: RdMode, closing: boolean, parent: string | undefined, open: number): RdNode[] => {
+		const nodes: RdNode[] = [];
+		let buf = '';
+		let bufAt = pos;
+		let quote: string | undefined;
+		let quoteAt = 0;
+		let comment = false;
+		const flush = () => {
+			if(buf !== '') {
+				nodes.push({ type: 'text', text: buf, at: bufAt, mode });
 			}
-			recordedUntil.set(macro, end);
-			groups.set(macro, [...groups.get(macro) ?? [], body]);
+			buf = '';
+		};
+		const add = (n: number) => {
+			bufAt = buf === '' ? pos : bufAt;
+			buf += src.slice(pos, pos += n);
+		};
+		while(pos < src.length) {
+			const [c, n] = [src[pos], src[pos + 1] ?? ''];
+			if(c === '\\' && n !== '' && '\\%{}'.includes(n)) {
+				add(2);
+			} else if(c === '\\' && quote === undefined && mode !== 'v' && !comment && /[A-Za-z]/.test(n)) {
+				flush();
+				macro(nodes, parent);
+			} else if(c === '\\') {
+				add(quote !== undefined && n !== '' && n !== '\n' ? 2 : 1);
+			} else if(c === '{' && quote === undefined) {
+				flush();
+				const at = pos++;
+				nodes.push({ type: 'group', children: seq(mode, true, parent, at), at });
+			} else if(c === '}' && quote === undefined) {
+				pos++;
+				if(closing) {
+					flush();
+					closed = true;
+					return nodes;
+				}
+				syntax(pos - 1, 'unexpected \'}\'');
+			} else {
+				if(mode === 'r' && quote !== undefined) {
+					quote = c === quote ? undefined : quote;
+				} else if(mode === 'r' && !comment && /["'`#]/.test(c)) {
+					[comment, quote, quoteAt] = c === '#' ? [true, undefined, quoteAt] : [false, c, pos];
+				}
+				comment &&= c !== '\n';
+				add(1);
+				if(c === '\n') {
+					flush();
+				}
+			}
 		}
-		i = group.end - 1;
-	}
+		flush();
+		if(!ended && (quote !== undefined || closing)) {
+			ended = true;
+			syntax(quote !== undefined ? quoteAt : open, quote !== undefined
+				? `Unexpected end of input (in ${quote} quoted string opened at line ${lineOf(quoteAt)})`
+				: `unexpected END_OF_INPUT (the '{' on line ${lineOf(open)} is never closed)`);
+		}
+		closed = false;
+		return nodes;
+	};
+	const macro = (nodes: RdNode[], parent: string | undefined) => {
+		const at = pos++;
+		RdMacroName.lastIndex = pos;
+		const name = RdMacroName.exec(src)?.[0] ?? '';
+		pos += name.length;
+		const spec = specOf(name, parent);
+		if(spec === undefined && !lenient) {
+			problems.push({ at, kind: 'unknown', text: `unknown macro '\\${name}'` });
+		}
+		let option: string | undefined;
+		if((name === 'link' || name === 'Sexpr') && src[pos] === '[' && src.indexOf(']', pos) > 0) {
+			option = src.slice(pos + 1, src.indexOf(']', pos));
+			pos += option.length + 2;
+		}
+		const args: RdNode[][] = [];
+		const spans: [number, number][] = [];
+		const count = spec?.length ?? (lenient ? Infinity : 1);
+		for(let i = 0; i < count; i++) {
+			const mode = spec?.[i] ?? 'T';
+			const [save, required] = [pos, /[a-z]/.test(mode)];
+			if((i > 0 && required) || (i === 0 && !required && /^\s*\{/.test(src.slice(pos, pos + 64)))) {
+				while(Whitespace.test(src[pos] ?? '')) {
+					pos++;
+				}
+			}
+			if(src[pos] !== '{') {
+				if(required && (i > 0 || /^\s+\{/.test(src.slice(save, save + 8)))) {
+					syntax(pos, 'bad markup (extra space?)');
+				}
+				break;
+			}
+			const from = ++pos;
+			args.push(seq(mode.toLowerCase() as RdMode, true, spec === undefined ? parent : name, from - 1));
+			spans.push([from, closed ? pos - 1 : -1]);
+		}
+		if(spec !== undefined || lenient) {
+			nodes.push({ type: 'macro', name, at, option, args, spans });
+		}
+	};
+	const nodes = seq('t', false, undefined, 0);
+	return { text: src, nodes, problems, lineOf };
+}
+
+/** The bodies of every `\macro{...}` of a scan, keyed by macro and in order; a use inside a group of the same macro is no second use (`\alias{\alias{x}}`), and nothing in a macro left unclosed is trusted. */
+function macroGroups(scan: RdScan): Map<string, string[]> {
+	const groups = new Map<string, string[]>();
+	const visit = (nodes: readonly RdNode[], inside: ReadonlySet<string>): void => {
+		for(const n of nodes) {
+			if(n.type === 'group') {
+				visit(n.children, inside);
+			} else if(n.type === 'macro' && n.spans.length > 0 && n.spans.every(([, to]) => to >= 0)) {
+				if(!inside.has(n.name)) {
+					groups.set(n.name, [...groups.get(n.name) ?? [], scan.text.slice(...n.spans[0])]);
+				}
+				n.args.forEach(a => visit(a, new Set([...inside, n.name])));
+			}
+		}
+	};
+	visit(scan.nodes, new Set());
 	return groups;
 }
 
@@ -653,9 +735,7 @@ function expandMacrosOnce(text: string, macros: RdMacros): string {
 
 /** Parses one `.Rd` manual page: `content` is the raw page, `fallbackName` the topic to assume when the page states no `\name{}` (usually the file's basename), and `macros` the package's own `\newcommand`s, so a page using them states what it renders. */
 export function parseRdPage(content: string, fallbackName = '', macros?: RdMacros): RdPage {
-	const stripped = stripRdComments(content);
-	const text = macros !== undefined && macros.size > 0 ? expandRdMacros(stripped, macros) : stripped;
-	const groups = macroGroups(text);
+	const groups = macroGroups(scanRd(content, { macros, lenient: true, specOf: n => n === 'usage' || n === 'examples' ? 'R' : undefined }));
 	const one = (macro: string): string | undefined => groups.get(macro)?.[0];
 	const many = (macro: string): string[] => (groups.get(macro) ?? []).map(plainText).filter(e => e.length > 0);
 	const [name, title, docType] = [one('name'), one('title'), one('docType')];

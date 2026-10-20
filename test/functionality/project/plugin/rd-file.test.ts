@@ -79,6 +79,7 @@ test.each([
 	['a usage states the dots parameter as R renders it', '\\name{f}\\usage{\\method{plot}{nash.eq}(x,\\dots)\n\\special{x[i] <- value}}', (p: RdPage) => assert.deepEqual(p.usage, ['plot.nash.eq(x,...)', 'x[i] <- value'])],
 	['\\dots names the dots argument', '\\name{f}\\arguments{\\item{\\dots}{the rest}}', (p: RdPage) => assert.strictEqual(p.arguments.get('...'), 'the rest')],
 	['an \\item nested in a description does not become an argument', '\\name{f}\\arguments{\\item{x}{one of \\describe{\\item{a}{first}\\item{b}{second}}}\\item{y}{two}}', (p: RdPage) => assert.deepEqual([...p.arguments.keys()], ['x', 'y'])],
+	['a brace inside a string of the usage does not swallow the rest of the page', '\\name{f}\\usage{f(sep = "{")}\n\\alias{f}', (p: RdPage) => assert.deepEqual([p.usage, p.aliases], [['f(sep = "{")'], ['f']])],
 	['an unterminated group ends the scan instead of hanging', '\\name{f}\\alias{f}\\arguments{\\item{x}{never closed', (p: RdPage) => assert.deepEqual([p.name, p.aliases], ['f', ['f']])]
 ] as const)('markup: %s', (_desc, input, check) => check(parseRdPage(input)));
 

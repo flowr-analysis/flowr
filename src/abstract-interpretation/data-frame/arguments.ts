@@ -1,3 +1,4 @@
+import { EdgeType } from '../../dataflow/graph/edge';
 import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
@@ -18,6 +19,8 @@ import type { AbsintContext } from '../abstract-semantics';
 import type { StateDomain } from '../domains/state-domain';
 import type { DataFrameDomain } from './dataframe-domain';
 import { unescapeSpecialChars, unquoteArgument } from './resolve-args';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { escapeRegex } from '../../util/text/strings';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -47,7 +50,7 @@ export function escapeRegExp(text: string, allowTokens: boolean = false): string
 	if(allowTokens) {  // only allow and keep the tokens `\s`, `\t`, and `\n` in the text
 		return text.replace(/[.*+?^${}()|[\]]|\\[^stn]/g, '\\$&');
 	} else {
-		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		return escapeRegex(text);
 	}
 }
 
@@ -157,15 +160,13 @@ export function getFunctionArguments(
 	dfg: DataflowGraph
 ): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	const vertex = dfg.getVertex(node.info.id);
-
-	if(DfgVertex.isFunctionCall(vertex) && dfg.idMap !== undefined) {
-		const idMap = dfg.idMap;
-
-		return vertex.args
-			.map(arg => FunctionArgument.isEmpty(arg) ? arg : idMap.get(arg.nodeId))
-			.map(arg => RArgument.isEmpty(arg) || RArgument.is(arg) ? arg : toUnnamedArgument(arg, idMap));
+	const idMap = dfg.idMap;
+	if(!DfgVertex.isFunctionCall(vertex) || idMap === undefined) {
+		return node.arguments;
 	}
-	return node.arguments;
+	return vertex.args
+		.map(arg => FunctionArgument.isEmpty(arg) ? arg : idMap.get(arg.nodeId))
+		.map(arg => RArgument.isEmpty(arg) || RArgument.is(arg) ? arg : toUnnamedArgument(arg, idMap));
 }
 
 /**
@@ -190,7 +191,9 @@ export function getUnresolvedSymbolsInExpression(
 			const symbolName = unquoteArgument(Identifier.getName(node.content));
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(DfgVertex.isUse(vertex) && (edges?.size === 0 || FunctionSemantics.call.nse.maskedName(dfg, node.info.id)) && symbolNamespace === undefined && symbolName !== '.') {
+			/* a masked name a call runs, like the function in `across(everything(), as.character)`, falls back to the function without such a column */
+			const masked = FunctionSemantics.call.nse.maskedName(dfg, node.info.id) && Dataflow.sourcesOf(dfg, node.info.id, EdgeType.Calls).length === 0;
+			if(DfgVertex.isUse(vertex) && (edges?.size === 0 || masked) && symbolNamespace === undefined && symbolName !== '.') {
 				unresolvedSymbols.push(symbolName);
 			}
 		}

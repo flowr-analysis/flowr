@@ -27,7 +27,7 @@ function defineRule() {
 
 	type MyRuleConfig = MergeableRecord;
 
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- rule objects are named in upper snake case, as the text below says
 	const MY_NEW_RULE = {
 		createSearch: (_config) => Q.all(),
 
@@ -96,7 +96,7 @@ After implementing the rule, register it by adding it to ${ctx.link('LintingRule
 
 ## Step 5: Add the rule to the linter wiki generation
 
-After registering the rule, add a corresponding \`rule\` entry to the linter wiki generation in ${ctx.link('WikiLinter')}. These entries are used to generate the linter overview and the individual wiki pages for linting rules, which can then be inspected through ${ctx.linkPage('wiki/Linter')}.
+After registering the rule, add its entry to ${ctx.link('LintingRuleExamples')}: the names of its configuration and implementation types, its test file, and an example that produces a finding (and a quick fix, if the rule offers one). The compiler asks for an entry for every rule, and a test runs every example to check that it shows what it should. These entries generate the linter overview and the individual wiki pages for linting rules, which can then be inspected through ${ctx.linkPage('wiki/Linter')}.
 
 ## Step 6: Add tests for the rule
 

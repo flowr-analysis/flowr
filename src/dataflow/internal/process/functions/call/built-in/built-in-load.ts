@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -10,14 +11,12 @@ import { Identifier, PkgName, ReferenceType } from '../../../../../environments/
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { findSource } from './built-in-source';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { dataflowLogger } from '../../../../../logger';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
-import { unpackArg } from '../argument/unpack-argument';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
 import { isNotUndefined } from '../../../../../../util/assert';
@@ -43,7 +42,7 @@ export function processLoadCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { fileArg, envirArg } = getArguments(args, data);
+	const { fileArg, envirArg } = loadArgsOf(args, data);
 
 	if(!fileArg) {
 		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
@@ -67,7 +66,7 @@ export function processLoadCall<OtherInfo>(
 	let sourceFile: string[] | undefined;
 
 	if(RString.is(fileArg)) {
-		sourceFile = [removeRQuotes(fileArg.lexeme)];
+		sourceFile = [RString.unquote(fileArg.lexeme)];
 	} else {
 		const resolved = NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment });
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
@@ -75,7 +74,7 @@ export function processLoadCall<OtherInfo>(
 
 	if(sourceFile) {
 		for(const candidate of sourceFile) {
-			const path = removeRQuotes(candidate);
+			const path = RString.unquote(candidate);
 			let filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : path;
 
 			if(Array.isArray(filepath)) {
@@ -280,7 +279,7 @@ export function sexpTypeToReferenceType(type?: SexpType): ReferenceType {
 	}
 }
 
-function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function loadArgsOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
 	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
 	const bound = FunctionSemantics.call.match.toNames(args, loadParams);
@@ -289,8 +288,8 @@ function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherI
 	const envirArg = bound.get('envir');
 	const verboseArgBound = bound.get('verbose');
 
-	const fileArg = fileArgBound ? unpackArg(fileArgBound) : undefined;
-	const verboseArg = verboseArgBound ? unpackArg(verboseArgBound) : undefined;
+	const fileArg = fileArgBound ? RArgument.valueOf(fileArgBound) : undefined;
+	const verboseArg = verboseArgBound ? RArgument.valueOf(verboseArgBound) : undefined;
 
 	return { fileArg, envirArg, verboseArg };
 }

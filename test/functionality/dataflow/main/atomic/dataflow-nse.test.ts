@@ -281,8 +281,13 @@ describe('Dataflow', withTreeSitter(ts => {
 		/* the closure carries the promise past the call, so it reads whatever is bound when it runs */
 		assertReads('a promise a closure carries reaches every binding it may see',
 			['function-calls', 'formals-promises', 'closures'],
+			'mk <- function(v) function() v\nk <- 5\nfn <- mk(k)\nif(u) fn()\nk <- 6\nfn()', {
+				'3@k': ['2@k', '5@k']
+			});
+		assertReads('a promise a closure carries first runs after the overwrite',
+			['function-calls', 'formals-promises', 'closures'],
 			'mk <- function(v) function() v\nk <- 5\nfn <- mk(k)\nk <- 6\nfn()', {
-				'3@k': ['2@k', '4@k']
+				'3@k': ['4@k']
 			});
 
 		assertReads('forcing in the body settles the promise where it is made',

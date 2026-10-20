@@ -17,14 +17,12 @@ interface Page {
 	readonly dir:   string;
 	/** what the other pages call it */
 	readonly label: string;
-	/** the class this page puts on the links of its own bar, where it uses one */
-	readonly link?: string;
 }
 
 /** every page that has a bar, in the order each of their navs lists them */
 const Pages: readonly Page[] = [
 	{ id: 'landing', dir: '', label: 'Landing Page' },
-	{ id: 'playground', dir: 'wiki/playground', label: 'Playground', link: 'link' },
+	{ id: 'playground', dir: 'wiki/playground', label: 'Playground' },
 	{ id: 'sigdb', dir: 'wiki/sigdb', label: 'Signature DB' },
 	{ id: 'capabilities', dir: 'wiki/capabilities', label: 'Capabilities' },
 	{ id: 'benchmark', dir: 'wiki/stats/benchmark', label: 'Benchmarks' }
@@ -65,20 +63,18 @@ function reach(from: Page, to: Page): string {
 }
 
 /** every other page, as a link at the depth `from` sits at */
-function pageLinks(from: Page, cls: string): string {
-	return Pages.filter(p => p !== from).map(p => `<a ${cls}href="${reach(from, p)}" target="_blank" rel="noopener">${p.label}</a>`).join('\n');
+function pageLinks(from: Page): string {
+	return Pages.filter(p => p !== from).map(p => `<a href="${reach(from, p)}" target="_blank" rel="noopener">${p.label}</a>`).join('\n');
 }
 
 /** the bar links of a page: every other one, in the same order however deep the page itself sits */
 function nav(from: Page): string {
-	const cls = from.link ? `class="${from.link}" ` : '';
-	return `${pageLinks(from, cls)}\n<a ${cls}href="${Wiki}" target="_blank" rel="noopener">Wiki</a>`;
+	return `${pageLinks(from)}\n<a href="${Wiki}" target="_blank" rel="noopener">Wiki</a>`;
 }
 
 /** the GitHub mark and the theme switch, which end every bar */
-function controls(from: Page): string {
+function controls(): string {
 	return partial('controls.html')
-		.replaceAll('<!--CONTROLS-CLASS-->', from.link ? `${from.link} gh` : 'gh')
 		.replaceAll('<!--ICON-->', '16');
 }
 
@@ -91,7 +87,7 @@ function reachRoot(from: Page): string {
 function footer(from: Page, notes: string): string {
 	return partial('footer.html')
 		.replace('<!--FOOTER-ROOT-->', reachRoot(from))
-		.replace('<!--FOOTER-PAGES-->', pageLinks(from, ''))
+		.replace('<!--FOOTER-PAGES-->', pageLinks(from))
 		.replace('<!--FOOTER-NOTES-->', notes ? `<p class="notes">${notes}</p>` : '');
 }
 
@@ -131,7 +127,7 @@ function fillParts(text: string): string {
 		.replace('<!--FOOTER-CSS-->', () => partial('footer.css'))
 		.replace('<!--CHROME-SCRIPT-->', () => partial('chrome.html'))
 		.replace(/<!--NAV:([\w-]+)-->/, (_, id: string) => nav(page(id)))
-		.replace(/<!--CONTROLS:([\w-]+)-->/, (_, id: string) => controls(page(id)))
+		.replace(/<!--CONTROLS:[\w-]+-->/, () => controls())
 		.replace(/<!--FOOTER:([\w-]+)-->/, (_, id: string) => footer(page(id), notes));
 }
 

@@ -29,17 +29,22 @@ export const LinkedInputObjects: readonly LinkedInputObject[] = [
 ];
 
 /**
- * The functions whose result is bounded no matter what flows in, read back from the {@link SemanticCallTag.Narrows}
- * built-ins: with an {@link ArgProp.Bounds} parameter the result is one of that argument's values (`match.arg`
- * and its `choices`), without one it is a count, an index, or a logical of the call's own making. Label a
- * built-in `Narrows` (in the {@link DefaultBuiltinConfig} or your own definitions) and it shows up here.
+ * The {@link SemanticCallTag.Narrows} built-ins with an {@link ArgProp.Bounds} parameter, whose result is one of
+ * that argument's values (`match.arg` and its `choices`). Label a built-in `Narrows` with such a parameter
+ * (in the {@link DefaultBuiltinConfig} or your own definitions) and it shows up here.
  */
 export function narrowingFunctions(index: BuiltInIndex): readonly NarrowingFunction[] {
 	const bounds = new Map(index.params(ArgProp.Bounds).map(p => [Identifier.getName(p.call), p]));
-	return index.with(SemanticCallTag.Narrows).map(call => {
+	return index.with(SemanticCallTag.Narrows).flatMap(call => {
 		const bound = bounds.get(Identifier.getName(call));
-		return bound === undefined ? { call } : { call, argName: bound.name, argIdx: bound.index };
+		return bound === undefined ? [] : [{ call, argName: bound.name, argIdx: bound.index }];
 	});
+}
+
+/** The {@link SemanticCallTag.Narrows} built-ins without an {@link ArgProp.Bounds} parameter: counts and logicals free of their arguments' content. */
+export function contentFreeFunctions(index: BuiltInIndex): readonly Identifier[] {
+	const bounded = new Set(index.params(ArgProp.Bounds).map(p => Identifier.getName(p.call)));
+	return index.with(SemanticCallTag.Narrows).filter(call => !bounded.has(Identifier.getName(call)));
 }
 
 /** shiny binds `input`, `output`, and `session` positionally, so their names are up to whoever writes the server */

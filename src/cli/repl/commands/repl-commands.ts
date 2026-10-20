@@ -54,7 +54,7 @@ function wrapAfter(prefix: string, content: string): string {
 	return prefix + lines.map((l, i) => i === 0 ? l : pad + l).join('\n');
 }
 
-function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
+function scriptHelpText(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
 	let content = script[1].description;
 	if(starredVersion) {
 		content += ` ${italic(`(star: ${starredVersion.description})`, f)}`;
@@ -91,7 +91,7 @@ function printCommandHelp(formatter: OutputFormatter) {
 
 	const lines: string[] = [];
 	for(const entry of bases.filter(([name]) => shortestPrefixCommand(name) === name).sort((a, b) => a[0].localeCompare(b[0]))) {
-		lines.push(printHelpForScript(entry, formatter, cmds[entry[0] + '*']));
+		lines.push(scriptHelpText(entry, formatter, cmds[entry[0] + '*']));
 		const variants = children.get(entry[0]);
 		if(variants) {
 			lines.push(printFamilyVariants(variants.sort(), cmds, formatter));
@@ -205,6 +205,8 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 				description,
 				aliases:       [],
 				script:        true,
+				// master scripts run as separate processes with client-controlled arguments (e.g., output files)
+				localOnly:     true,
 				usageExample:  `:${script} --help`,
 				isCodeCommand: false,
 				fn:            async({ output, remainingLine, analyzer }) => {

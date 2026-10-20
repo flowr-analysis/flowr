@@ -1,11 +1,11 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ArgProps } from '../../../dataflow/environments/built-in-props';
+import { queryHeader } from '../../query-print';
 import type { ShardStatus } from '../../../project/sigdb/reader';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, italic, color, Colors } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { italic, color, Colors } from '../../../util/text/ansi';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { executeSignatureQuery, signatureQueryCompleter } from './signature-query-executor';
@@ -307,7 +307,7 @@ export const SignatureQueryDefinition = {
 	executor:        executeSignatureQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result, _query) => {
 		const out = queryResults as QueryResults<'signature'>['signature'];
-		result.push(`Query: ${bold('signature', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('signature', formatter, out['.meta'].timing));
 		if(out.function) {
 			pushFunction(result, formatter, out.function);
 		} else if(out.package) {

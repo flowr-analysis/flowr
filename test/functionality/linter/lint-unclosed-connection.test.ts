@@ -22,6 +22,34 @@ close(file)`,
 			'unclosed-connection',
 			[]
 		);
+		assertLinter('an unopened connection handed to a reader is opened and closed by it', parser, 'x <- readLines(file("a.txt"))',
+			'unclosed-connection',
+			[]
+		);
+		assertLinter('a connection opened explicitly stays open', parser, 'con <- file("a.txt")\nopen(con)',
+			'unclosed-connection',
+			[{ certainty: LintingResultCertainty.Certain, loc: [1, 8, 1, 20], quickFix: [{ type: 'replace', loc: [2, 10, 2, 9], description: 'Close the connection with `close(con)`', replacement: '\nclose(con)' }] }]
+		);
+		assertLinter('a reader does not close an opened connection', parser, 'con <- file("a.txt")\nopen(con)\nx <- readLines(con)',
+			'unclosed-connection',
+			[{ certainty: LintingResultCertainty.Certain, loc: [1, 8, 1, 20], quickFix: [{ type: 'replace', loc: [3, 20, 3, 19], description: 'Close the connection with `close(con)`', replacement: '\nclose(con)' }] }]
+		);
+		assertLinter('a connection opened on creation stays open', parser, 'x <- readLines(file("a.txt", open = "r"))',
+			'unclosed-connection',
+			[{ certainty: LintingResultCertainty.Certain, loc: [1, 16, 1, 40] }]
+		);
+		assertLinter('an unopened connection handed to a writer is opened and closed by it', parser, 'writeLines("a", file("o.txt"))\nwrite.table(data.frame(a = 1), file = pipe("cat"))',
+			'unclosed-connection',
+			[]
+		);
+		assertLinter('close.connection closes', parser, 'con <- file("a.txt")\nx <- readLines(con)\nclose.connection(con)',
+			'unclosed-connection',
+			[]
+		);
+		assertLinter('close.connection of another connection leaves the opened one open', parser, 'con <- file("a.txt")\nopen(con)\nother <- file("b.txt")\nclose.connection(other)',
+			'unclosed-connection',
+			[{ certainty: LintingResultCertainty.Certain, loc: [1, 8, 1, 20], quickFix: [{ type: 'replace', loc: [2, 10, 2, 9], description: 'Close the connection with `close(con)`', replacement: '\nclose(con)' }] }]
+		);
 		assertLinter('Never closed', parser, 'a <- file("x")',
 			'unclosed-connection',
 			[{

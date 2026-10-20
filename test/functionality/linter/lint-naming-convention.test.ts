@@ -203,6 +203,30 @@ describe('flowR linter', withTreeSitter(parser => {
 			ignoreNonAlpha: false
 		});
 
+		assertLinter('one-word names cast no vote', parser, 'x <- 1\ny <- 2\nmy_var <- 3', 'naming-convention', [], undefined, { caseing: 'auto' });
+		assertLinter('one-word names do not hide a name breaking the multi-word convention', parser, 'x <- 1\ny <- 2\nmy_var <- 3\nother_var <- 4\nmyVar <- 5', 'naming-convention', [{
+			certainty:      LintingResultCertainty.Certain,
+			detectedCasing: CasingConvention.CamelCase,
+			name:           'myVar',
+			loc:            [5, 1, 5, 5],
+			quickFix:       undefined
+		}], undefined, { caseing: 'auto' });
+		assertLinter('quoted names are converted within their quotes', parser, 'my_var <- 1\nother_var <- 2\nassign("BadName", 1)', 'naming-convention', [{
+			certainty:      LintingResultCertainty.Certain,
+			detectedCasing: CasingConvention.PascalCase,
+			name:           'BadName',
+			loc:            [3, 8, 3, 16],
+			quickFix:       [{ type: 'replace', replacement: '"bad_name"', description: 'Rename to match naming convention snake_case', loc: [3, 8, 3, 16] }]
+		}], undefined, { caseing: 'auto' });
+		assertLinter('an S3 method keeps the name dispatch needs', parser, 'print.myClass <- function(x, ...) cat("x")\nmy_var <- 1\nother_var <- 2', 'naming-convention', [], undefined, { caseing: 'auto' });
+		assertLinter('beside an S3 method another name is still checked', parser, 'print.myClass <- function(x, ...) cat("x")\nmy_var <- 1\nother_var <- 2\nanotherVar <- 3', 'naming-convention', [{
+			certainty:      LintingResultCertainty.Certain,
+			detectedCasing: CasingConvention.CamelCase,
+			name:           'anotherVar',
+			loc:            [4, 1, 4, 10],
+			quickFix:       [{ type: 'replace', replacement: 'another_var', description: 'Rename to match naming convention snake_case', loc: [4, 1, 4, 10] }]
+		}], undefined, { caseing: 'auto' });
+
 		assertLinter('empty string', parser, '', 'naming-convention', [], undefined, { caseing: CasingConvention.SnakeCase });
 		assertLinter('empty string (auto detect)', parser, '', 'naming-convention', [], undefined, { caseing: 'auto' });
 

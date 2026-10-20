@@ -7,18 +7,18 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 /**
  * Produce a fingerprint string for an origin query
  */
-export function fingerPrintOfQuery(query: OriginQuery): SlicingCriterion {
+export function criterionOfQuery(query: OriginQuery): SlicingCriterion {
 	return query.criterion;
 }
 
 /**
  * Execute origin queries, catching duplicates with the same fingerprint
  */
-export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
+export async function executeOriginQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
 	const start = Date.now();
 	const results: OriginQueryResult['results'] = {};
 	for(const query of queries) {
-		const key = fingerPrintOfQuery(query);
+		const key = criterionOfQuery(query);
 
 		if(results[key]) {
 			log.warn(`Duplicate Key for origin-query: ${key}, skipping...`);

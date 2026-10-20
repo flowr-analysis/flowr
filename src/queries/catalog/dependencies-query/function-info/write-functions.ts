@@ -2,6 +2,7 @@ import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInf
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
+import { LinkToLastGgPlot } from '../../../../dataflow/environments/default-builtin-config';
 import { computeReadFunctions } from './read-functions';
 import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
@@ -11,10 +12,11 @@ const OutputRedirects = [
 	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
 ] as const satisfies DependencyInfoLink[];
 
-
 const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'save.image',  argIdx: 0, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'utils', name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
+	/* without a `plot`, it saves `last_plot()` */
+	{ package: 'ggplot2', name: 'ggsave',  argIdx: 0, argName: 'filename', resolveValue: true, linkTo: [LinkToLastGgPlot] },
 	{
 		package:        'base',
 		name:           'try',
@@ -30,6 +32,7 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	},
 	// write functions that don't have argIndex are assumed to write to stdout
 	{ package: 'base',  name: 'print',      linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'graphics', name: 'stem',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
 	{ package: 'base',  name: 'message',    linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects,                  resolveValue: false },
@@ -37,6 +40,13 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'base',  name: 'file.create',   argIdx: 'unnamed',             resolveValue: true },
+	{ package: 'base',  name: 'file.copy',     argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'base',  name: 'file.rename',   argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'base',  name: 'file.append',   argIdx: 0, argName: 'file1',   resolveValue: true },
+	{ package: 'base',  name: 'file.symlink',  argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'base',  name: 'file.link',     argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'utils', name: 'download.file', argIdx: 1, argName: 'destfile', resolveValue: true },
 	{ package: 'base', name: 'file', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'url', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'grDevices', name: 'jpeg',       argIdx: 0, argName: 'filename', resolveValue: true },
@@ -78,9 +88,6 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'png',        name: 'writePNG',   argIdx: 1, argName: 'target',    resolveValue: true, ignoreIf: 'arg-missing' },
 	/* audio / video */
 	{ package: 'seewave', name: 'savewav',               argName: 'filename', resolveValue: true, defaultValue: '<wave-name>' },
-	/* geospatial */
-	/* array / binary science formats */
-	/* phylogeny / sequence */
 ] as const;
 
 /** The write entries the given built-in definitions imply, together with the ones written down here. */

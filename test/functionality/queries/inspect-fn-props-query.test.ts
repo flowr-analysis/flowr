@@ -1,3 +1,5 @@
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import { assert, describe, test } from 'vitest';
 import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
 import { withTreeSitter } from '../_helper/shell';
@@ -25,7 +27,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 			const found: Record<string, ArgProps> = {};
 			for(const roles of Object.values(result.roles)) {
 				for(const [formal, props] of Object.entries(roles)) {
-					found[idMap.get(Number(formal))?.lexeme ?? formal] = props;
+					found[NodeId.recoverName(Number(formal), idMap) ?? formal] = props;
 				}
 			}
 			assertProps(found, expected, FunctionSemantics.call.argument.words);
@@ -72,7 +74,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	/* counterexamples: what the walk has to get right beyond the straightforward cases */
 	testRoles('a formal overwritten before the end is not the result', 'f <- function(x) { x <- 1; x }', { x: ArgProp.Lazy });
 	testRoles('nor is one overwritten on the way', 'f <- function(x) { y <- x; y <- 2; y }', { x: ArgProp.Forced });
-	testRoles('branches agreeing on the formal make it the result', 'f <- function(x, c) if(c) x else x', { x: ArgProp.Alias, c: ArgProp.Forced | ArgProp.Atomic });
+	testRoles('branches agreeing on the formal make it the result', 'f <- function(x, c) if(c) x else x', { x: ArgProp.Forced | ArgProp.Alias, c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('branches disagreeing do not', 'f <- function(x, y, c) if(c) x else y', { c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('a constant condition is no condition', 'f <- function(x) if(TRUE) x', { x: ArgProp.Forced | ArgProp.Alias });
 	testRoles('a quoted formal is read as written, not evaluated', 'f <- function(x) quote(x)', { x: ArgProp.Nse | ArgProp.Lazy });
@@ -118,7 +120,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testProps('nor any of the other replacements', 'f <- function(x) { x[1] <- 1; attr(x, "k") <- 1; class(x) <- "a"; levels(x) <- 1; x }', [{ props: CallProp.Strict }]);
 	testProps('a super-assigning replacement does', 'f <- function(x) { names(x) <<- "n"; x }', [{ props: CallProp.Scope | CallProp.Strict }]);
 	testProps('so does a super-assignment of the formal', 'f <- function(x) { x <<- 5; 1 }', [{ props: CallProp.Scope }]);
-	testProps('and attaching a package', 'f <- function(x) { library(stats); x }', [{ props: CallProp.Scope | CallProp.Strict }]);
+	testProps('and attaching a package', 'f <- function(x) { library(stats); x }', [{ props: CallProp.Scope | CallProp.Strict, tags: [SemanticCallTag.AttachesPackage, SemanticCallTag.LoadsPackage] }]);
 
 	/* the formals of the same bodies, so a fix to one half cannot quietly move the other */
 	testRoles('a default keeps the other formals apart', 'f <- function(x, y = 2) x', { x: ArgProp.Forced | ArgProp.Alias, y: ArgProp.Lazy });
@@ -156,7 +158,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 		queryCase(parser, 'inspect-fn-props', name, code, ({ result, idMap }) => {
 			const found: Record<string, Required<StatedProps>> = {};
 			for(const [id, props] of Object.entries(result.props)) {
-				found[idMap.get(Number(id))?.info.fullLexeme ?? id] = stated(props);
+				found[RNode.lexeme(idMap.get(Number(id))) ?? id] = stated(props);
 			}
 			assertProps(found, Object.fromEntries(Object.entries(expected).map(([k, v]) => [k, stated(v)])), FunctionSemantics.call.props.labels);
 		});

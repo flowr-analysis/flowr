@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Signature Query">Signature Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Inspects the signature database: packages, function signatures, source and documentation links.\
@@ -44,13 +44,13 @@ we can inspect the signature of the function it calls:
 
 _Results (prettified and summarized):_
 
-Query: **signature** (8 ms)\
+Query: **signature** (17 ms)\
 &nbsp;&nbsp;&nbsp;╰ **dplyr**::**lead** v1.2.1\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **lead**(_x_, _n_ = _1L_, _default_ = _NULL_, _order_by_ = _NULL_, ...)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ exported  _can-throw_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _source_  R/lead-lag.R:74  [https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74](https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _docs_    [rdrr.io](https://rdrr.io/cran/dplyr/man/lead-lag.html)  [man v1.2.1](https://github.com/cran/dplyr/blob/1.2.1/man/lead-lag.Rd)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _calls_ (6): -, <, abort, shift, check_number_whole, check_dots_empty0\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _calls_ (6): -, <, abort, shift, check_number_whole, check_dots_empty0
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -107,6 +107,6 @@ functions you only half-remember: `{ package: '*', parameters: ['data', 'mapping
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Signature Query query is `executeSignatureQuery` in [`./src/queries/catalog/signature-query/signature-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/signature-query/signature-query-executor.ts).
+The Signature Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/signature-query/signature-query-executor.ts#L864"><code><span title="Executes the signature query. With no package it summarizes the loaded databases. A glob in package/function or a multi-version version triggers a wildcard search (matching packages or functions). Otherwise a single exact package (optionally at an exact version) yields its full view, or the detailed function view.">executeSignatureQuery</span></code></a>.
 
 </details>

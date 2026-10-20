@@ -1,3 +1,4 @@
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
@@ -6,6 +7,7 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { Ternary } from '../../../../src/util/logic';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
+import { decorateLabelContext, label } from '../../_helper/label';
 
 
 describe('is-strict-function', withTreeSitter(ts => {
@@ -26,7 +28,7 @@ describe('is-strict-function', withTreeSitter(ts => {
 				assert.strictEqual(strictness.strict, expected);
 				for(const [param, want] of Object.entries(params)) {
 					const found = Object.entries(strictness.parameters)
-						.find(([p]) => idMap.get(Number(p))?.lexeme === param);
+						.find(([p]) => NodeId.recoverName(Number(p), idMap) === param);
 					assert.isDefined(found, `no parameter ${param}`);
 					assert.strictEqual(found[1], want, `parameter ${param}`);
 				}
@@ -67,7 +69,12 @@ describe('is-strict-function', withTreeSitter(ts => {
 	testStrict('calling a parameter forces it', 'f <- function(g) g(1)', '1@function', Ternary.Always, { g: Ternary.Always });
 	testStrict('an argument reaches whatever `...` reaches', 'f <- function(...) sum(...)', '1@function', Ternary.Always);
 	testStrict('a chain carries the verdict of its end', 'h <- function(c) 1\ng <- function(b) h(b)\nf <- function(a) g(a)', '3@function', Ternary.Never, { a: Ternary.Never });
-	testStrict('mutual recursion is left open', 'g <- function(b) f(b)\nf <- function(a) g(a)', '2@function', Ternary.Maybe, { a: Ternary.Maybe });
+	/* a call of either never returns, so whenever it does it has forced its argument */
+	testStrict('mutual recursion without a way out forces vacuously', 'g <- function(b) f(b)\nf <- function(a) g(a)', '2@function', Ternary.Always, { a: Ternary.Always });
+	testStrict('recursion forcing on its way out', 'f <- function(n, x) if(n > 0) f(n - 1, x) else x', '1@function', Ternary.Always, { x: Ternary.Always });
+	testStrict('recursion never forcing on its way out', 'f <- function(n, x) if(n > 0) f(n - 1, x) else 0', '1@function', Ternary.Maybe, { x: Ternary.Maybe });
+	testStrict('branches that all force', 'f <- function(c, x) if(c) x + 1 else print(x)', '1@function', Ternary.Always, { x: Ternary.Always });
+	testStrict('branches that do not all force', 'f <- function(c, x) if(c) x', '1@function', Ternary.Maybe, { x: Ternary.Maybe });
 
 	/* dispatch: the method chosen at run time decides */
 	const s3 = 'f <- function(x, y) UseMethod("f")\nf.default <- function(x, y) x\nf.numeric <- function(x, y) y';
@@ -106,4 +113,33 @@ describe('is-strict-function', withTreeSitter(ts => {
 	testStrict('arguments are matched by position', 'g <- function(p, q) p\nf <- function(a, b) g(b, a)', '2@function', Ternary.Never, { a: Ternary.Never, b: Ternary.Always });
 	testStrict('and by name where one is written', 'g <- function(p, q) p\nf <- function(a, b) g(q = a, p = b)', '2@function', Ternary.Never, { a: Ternary.Never, b: Ternary.Always });
 	testStrict('a name may be given in part', 'g <- function(value, other) value\nf <- function(a, b) g(val = a, oth = b)', '2@function', Ternary.Never, { a: Ternary.Always, b: Ternary.Never });
+
+	/* every function reaches all the others, which is only feasible if what a cycle leaves open is reused */
+	const ring = Array.from({ length: 12 }, (_, i) => {
+		const others = Array.from({ length: 12 }, (_, j) => j).filter(j => j !== i).map(j => `g${j}(x)`).join('; ');
+		return `g${i} <- function(x, y) { if(runif(1) > .5) { ${others} }; x + y }`;
+	}).join('\n');
+	testStrict('mutually recursive functions answer quickly', ring, '1@function', Ternary.Always, { x: Ternary.Always, y: Ternary.Always });
+
+	describe('domains:promise', () => {
+		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+		const strictOf = async(code: string, fn: SlicingCriterion) => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addRequest(code);
+			const { idMap } = await analyzer.normalize();
+			const id = SlicingCriterion.parse(fn, idMap);
+			const strictness = FunctionSemantics.strictness([id], (await analyzer.dataflow()).graph, { ctx: analyzer.inspectContext() })[id];
+			const byName = (p: string) => Object.entries(strictness.parameters).find(([k]) => NodeId.recoverName(Number(k), idMap) === p)?.[1];
+			return { a: byName('a'), b: byName('b') };
+		};
+		test(sec('domains:promise a branch on a constant forces only one argument'), async() => {
+			assert.deepEqual(await strictOf('f <- function(a, b) if(TRUE) a else b', '1@function'), { a: Ternary.Always, b: Ternary.Never });
+		});
+		test(sec('domains:promise a branch on a global constant forces only one argument'), async() => {
+			assert.deepEqual(await strictOf('note <- function(x) {\n  cat("used\\n")\n  x\n}\ncond <- TRUE\nf <- function(a, b) if(cond) a else b\nf(note(1), note(2))', '6@function'), { a: Ternary.Always, b: Ternary.Never });
+		});
+		test(sec('domains:promise a branch on an unknown global may force either'), async() => {
+			assert.deepEqual(await strictOf('f <- function(a, b) if(cond) a else b', '1@function'), { a: Ternary.Maybe, b: Ternary.Maybe });
+		});
+	});
 }));

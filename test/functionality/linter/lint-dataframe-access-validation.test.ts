@@ -1,9 +1,10 @@
 import { describe } from 'vitest';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import type { DataFrameAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, assertLintedLines } from '../_helper/linter';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { SourceRange } from '../../../src/util/range';
+import { decorateLabelContext, label } from '../_helper/label';
 
 assumeLoadedPackages('dplyr', 'magrittr');
 
@@ -220,4 +221,5 @@ print(df3${access})
 			);
 		});
 	});
+	assertLintedLines(decorateLabelContext(label('deps: a function handed to across is no column', ['name-normal', 'function-calls']), ['dataflow']), parser, 'library(dplyr)\ndf <- data.frame(a = 1:2)\nmutate(df, across(everything(), as.character))', 'dataframe-access-validation', []);
 }));

@@ -9,8 +9,17 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import type { FlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { computeReparseInfo } from '../../../project/incremental/incremental-parse/incremental-parse';
 
-export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
-export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
+/** Resolves the file through the installed package so it does not depend on the working directory, and keeps the relative path where there is no package to resolve (a bundle). */
+function resolveWasm(request: string, fallback: string): string {
+	try {
+		return require.resolve(request);
+	} catch{
+		return fallback;
+	}
+}
+
+export const DEFAULT_TREE_SITTER_R_WASM_PATH = resolveWasm('@davisvaughan/tree-sitter-r/tree-sitter-r.wasm', './node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm');
+export const DEFAULT_TREE_SITTER_WASM_PATH = resolveWasm('web-tree-sitter/tree-sitter.wasm', './node_modules/web-tree-sitter/tree-sitter.wasm');
 
 const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 

@@ -54,6 +54,13 @@ import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 import type { DeepWritable } from 'ts-essentials';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { EdgeType } from '../../../src/dataflow/graph/edge';
+import { uniqueArray } from '../../../src/util/collections/arrays';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -109,7 +116,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 }
 
 function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
-	return JSON.parse(JSON.stringify(obj, (key, value) => {
+	return JSON.parse(JSON.stringify(obj, (key, value: unknown) => {
 		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nest')) {
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
@@ -120,14 +127,13 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 			// we ignore tree-sitter-specific metadata
 			return undefined;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;
 	})) as T;
 }
 
 function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
-	// eslint-disable-next-line flowr/replacement-pattern
+	// eslint-disable-next-line flowr/replacement-pattern -- `expected` may be a project, which `RExpressionList.is` does not accept, and `RProject` has no `is`
 	if(expected.type === RType.ExpressionList) {
 		expected = {
 			type: RType.Project,
@@ -253,14 +259,8 @@ export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfigurati
 		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`);
 }
 
-/** Comfort for {@link assertAst} to run the same test for multiple steps */
-export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T }[] {
-	return steps.map(step => ({ step, wanted }));
-}
-
 /**
  * For a given input code, this takes multiple ASTs depending on the respective normalizer step to run!
- * @see sameForSteps
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdToks:   boolean,
@@ -376,7 +376,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	/** Whether to test the call graph instead of the dataflow graph */
 	context:               'dataflow' | 'call-graph',
 	/** Allows you to modify the analyzer before running the test (assumes side-effects and reuses the same object if you return undefined). */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- a modifier that works in place returns nothing
 	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined | void
 }
 
@@ -768,6 +768,112 @@ export function assertDiced(
 		}
 		for(const id of SlicingCriterion.convertAll(opts.lacksNodes ?? [], ast.idMap)) {
 			assert.isFalse(slice.result.has(id), `expected node id ${id} NOT to be in dice result`);
+		}
+	});
+}
+
+/** the code the static-slice query of a fresh analyzer reconstructs for `criterion` */
+export async function sliceOf(parser: KnownParser, code: string, criterion: SlicingCriterion): Promise<string> {
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+	analyzer.addRequest(code);
+	const sliced = await analyzer.query([{ type: 'static-slice', criteria: [criterion] }]);
+	return (Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code;
+}
+
+/** asserts that the slice for `criterion` keeps each of `has` and none of `lacks` */
+export function assertSliceKeeps(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, { has = [], lacks = [] }: { has?: readonly string[], lacks?: readonly string[] }) {
+	test(name, async() => {
+		const sliced = await sliceOf(parser, code, criterion);
+		for(const s of has) {
+			assert.include(sliced, s, `slice should keep ${s}:\n${sliced}`);
+		}
+		for(const s of lacks) {
+			assert.notInclude(sliced, s, `slice should drop ${s}:\n${sliced}`);
+		}
+	});
+}
+
+/** asserts which of the given definitions the call at `criterion` reaches with a calls edge */
+export function assertCallTargets(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, { reaches = [], misses = [] }: { reaches?: readonly SlicingCriterion[], misses?: readonly SlicingCriterion[] }) {
+	test(name, async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+		analyzer.addRequest(code);
+		const { idMap } = await analyzer.normalize();
+		const targets = new Set(Dataflow.targetsOf((await analyzer.dataflow()).graph, SlicingCriterion.parse(criterion, idMap), EdgeType.Calls));
+		for(const r of reaches) {
+			assert.isTrue(targets.has(SlicingCriterion.parse(r, idMap)), `${criterion} should call ${r}`);
+		}
+		for(const r of misses) {
+			assert.isFalse(targets.has(SlicingCriterion.parse(r, idMap)), `${criterion} should not call ${r}`);
+		}
+	});
+}
+
+/** asserts that the slice for `criterion`, run by {@link printedByR}, prints `lastLine` last, as the whole program does */
+export function assertSliceRunsInR(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, lastLine: string, config?: Partial<TestConfiguration>) {
+	test.skipIf(skipTestBecauseConfigNotMet(config))(name, async({ skip }) => {
+		await skipWithoutRPackages(code, skip);
+		const slice = await sliceOf(parser, code, criterion);
+		const [program, sliced] = await Promise.all([printedByR(code), printedByR(slice)]);
+		assert.strictEqual(program.split('\n').at(-1), lastLine, 'the program itself');
+		assert.strictEqual(sliced.split('\n').at(-1), lastLine, `the slice:\n${slice}`);
+	});
+}
+
+const execFileAsync = promisify(execFile);
+
+/** what `Rscript` prints for `code` in a fresh directory, failing on an error or after 20 seconds; the code goes through a file, as windows cuts `-e` at the first line break */
+export async function printedByR(code: string): Promise<string> {
+	const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'flowr-r-'));
+	const cwd = path.join(root, 'work');
+	const script = path.join(root, 'script.R');
+	try {
+		await fs.promises.mkdir(cwd);
+		await fs.promises.writeFile(script, code);
+		return (await execFileAsync('Rscript', ['--vanilla', script], { cwd, timeout: 20_000, killSignal: 'SIGKILL', maxBuffer: 1 << 24 })).stdout.replace(/\r\n/g, '\n').trimEnd();
+	} finally {
+		await fs.promises.rm(root, { recursive: true, force: true });
+	}
+}
+
+let ciRPackages: Promise<{ listed: readonly string[], available: ReadonlySet<string> }> | undefined;
+
+/** skips a test whose `code` loads a package CI installs (`packages.txt`) but this R lacks, as CRAN no longer builds it for an old R */
+async function skipWithoutRPackages(code: string, skip: (condition: boolean, note?: string) => void): Promise<void> {
+	const used = [...code.matchAll(/\b(?:library|require|requireNamespace|loadNamespace)\(\s*["']?([\w.]+)|\b([\w.]+):::?/g)].map(m => m[1] ?? m[2]);
+	if(used.length === 0) {
+		return;
+	}
+	ciRPackages ??= (async() => ({
+		listed:    (await fs.promises.readFile('.github/actions/setup-r/packages.txt', 'utf-8')).split(/\s+/).filter(p => p.length > 0),
+		available: new Set((await printedByR('cat(.packages(all.available = TRUE), sep = "\\n")')).split('\n'))
+	}))();
+	const { listed, available } = await ciRPackages;
+	const missing = uniqueArray(used).filter(p => listed.includes(p) && !available.has(p));
+	skip(missing.length > 0, `R ${globalThis.rVersion?.raw ?? '?'} lacks ${missing.join(', ')}`);
+}
+
+/**
+ * Asserts that the slice for `criterion` (default: the call on the last line), run by `Rscript`, prints what the program
+ * prints last (all of it with `whole`) and lacks `absent`; `sigdb` turns the shipped signature database on.
+ */
+export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, absent, whole, sigdb }: { criterion?: SlicingCriterion, absent?: string, whole?: boolean, sigdb?: boolean } = {}) {
+	test(name, async({ skip }) => {
+		await skipWithoutRPackages(code, skip);
+		const lines = code.split('\n');
+		const disabled = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		if(sigdb) {
+			delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		}
+		const slice = await sliceOf(parser, code, criterion ?? `${lines.length}@${/^(\w+)\(/.exec(lines[lines.length - 1])?.[1] ?? 'print'}`).finally(() => {
+			if(disabled !== undefined) {
+				process.env.FLOWR_DISABLE_DEFAULT_SIGDB = disabled;
+			}
+		});
+		const [all, part] = (await Promise.all([printedByR(code), printedByR(slice)])).map(out => whole ? out : out.split('\n').at(-1));
+		assert.strictEqual(part, all, `the slice:\n${slice}`);
+		if(absent !== undefined) {
+			assert.notInclude(slice, absent, `the slice:\n${slice}`);
 		}
 	});
 }

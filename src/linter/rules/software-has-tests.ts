@@ -51,8 +51,8 @@ export const SOFTWARE_HAS_TESTS = {
 	},
 	info: {
 		name:          'Software Has Tests',
-		description:   'Checks whether the software project has tests (test files in a test directory or test function calls in R code).',
-		tags:          [LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		description:   'Finds software projects without tests (test files in a test directory or test function calls in R code).',
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: () => ({
 			additionalTestFunctions: []

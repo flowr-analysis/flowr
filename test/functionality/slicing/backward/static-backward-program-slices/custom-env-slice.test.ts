@@ -1,10 +1,10 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
-import { label } from '../../../_helper/label';
+import { assertSliced, withShell, assertSliceKeeps, withTreeSitter } from '../../../_helper/shell';
+import { label, decorateLabelContext } from '../../../_helper/label';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
+import type { SlicingCriteria, SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 
 type SliceTestConfig = Parameters<typeof assertSliced>[5];
 
@@ -180,7 +180,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			shell,
 			`w <- 42\nf <- function() {\n  ${parentGlobal}\n  ${getW}\n  print(r)\n}\nf()`,
 			['5@r'],
-			`${parentGlobal}\n${getW}\nr`
+			`f <- function() {\n        ${parentGlobal}\n        ${getW}\n        r\n    }`
 		);
 	});
 
@@ -279,6 +279,45 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		);
 	});
 
+	describe('whole-environment reads and writes from calls', () => {
+		const caps: readonly FlowrCapabilityId[] = ['dynamic-environment-resolution', 'environment-sharing'];
+		keepsAll('as.list reads every field write', caps, 'e <- new.env()\ne$x <- 10\nprint(as.list(e))', ['3@print']);
+		keepsAll('evalq reads the field write', caps, 'e <- new.env()\ne$x <- 10\nprint(evalq(x, e))', ['3@print']);
+		assertSliced(label('delayedAssign reads the field write of its eval.env', caps),
+			shell, 'e <- new.env()\ne$x <- 10\ndelayedAssign("p", x, eval.env = e)\nx <- 5\nprint(p)', ['5@print'],
+			'e <- new.env()\ne$x <- 10\ndelayedAssign("p", x, eval.env = e)\nprint(p)'
+		);
+		keepsAll('delayedAssign falls back to every binding for a name its eval.env lacks', caps, 'e <- new.env()\ne$y <- 10\ndelayedAssign("p", x, eval.env = e)\nx <- 5\nprint(p)', ['5@print']);
+		keepsAll('assign into a free environment variable keeps the call', caps, 'e <- new.env()\nf <- function() assign("v", 5, envir = e)\nf()\nprint(get("v", e))', ['4@print']);
+		keepsAll('field write on a free environment variable keeps the call', caps, 'e <- new.env()\nf <- function() e$v <- 1\nf()\nprint(e$v)', ['4@print']);
+		keepsAll('field write in a nested function keeps the calls that run it', caps, 'e <- new.env()\nf <- function() {\n        h <- function() e$v <- 2\n        h()\n    }\nf()\nprint(e$v)', ['7@print']);
+		keepsAll('field write through a copy of the environment variable reaches the original', caps, 'e <- new.env()\ng <- e\ng$v <- 3\nprint(e$v)', ['4@print']);
+		keepsAll('field write through the original reaches the copy', caps, 'e <- new.env()\ng <- e\ne$v <- 3\nprint(g$v)', ['4@print']);
+		assertSliced(label('local with envir leaves the binding of the calling function alone', ['local-envir-argument']),
+			shell, 'f <- function() {\n        y <- 1\n        e <- new.env()\n        local(y <- 2, envir = e)\n        y\n    }\nr <- f()', ['7@r'],
+			'f <- function() {\n        y <- 1\n        y\n    }\nr <- f()'
+		);
+		keepsAll('assign through a copy made in a function reaches the original', caps, 'e <- new.env()\nf <- function() {\n        g <- e\n        assign("w", 4, envir = g)\n    }\nf()\nprint(e$w)', ['7@print']);
+		keepsAll('field write through a copy made in a function reaches the original', caps, 'e <- new.env()\nf <- function() {\n        g <- e\n        g$v <- 3\n    }\nf()\nprint(e$v)', ['7@print']);
+		keepsAll('super-assigned field write after a local field write reaches the original', caps, 'e <- new.env()\nf <- function() {\n        e$v <- 1\n        h <- function() e$v <<- 2\n        h()\n    }\nf()\nprint(e$v)', ['8@print']);
+		assertSliced(label('assign inside local keeps the body', caps),
+			shell, 'e <- new.env()\nlocal({ y <- 3; assign("z", y * 2, envir = e) })\nprint(e$z)', ['3@print'],
+			'e <- new.env()\nlocal({ y <- 3; assign("z", y * 2, envir = e) })\nprint(e$z)'
+		);
+		assertSliced(label('a local body does not leak its definitions', caps),
+			shell, 'y <- 1\nlocal({ y <- 3 })\nprint(y)', ['3@print'],
+			'y <- 1\nprint(y)'
+		);
+		assertSliced(label('a local body in a slice keeps the local call', caps),
+			shell, 'y <- 1\nlocal({ y <- 3; assign("z", y, envir = e) })\nprint(y)', ['2@y'],
+			'local({ y <- 3; assign("z", y, envir = e) })'
+		);
+		assertSliced(label('sink inside local keeps the local call', caps),
+			shell, 'local({ sink("a") })\nprint(1)', ['2@print'],
+			'local({ sink("a") })\nprint(1)'
+		);
+	});
+
 	describe('config: trackEnvironments disabled', () => {
 		const noTrack = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.trackEnvironments', false);
 
@@ -290,4 +329,24 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			{ flowrConfig: noTrack }
 		);
 	});
+}));
+
+describe('Custom Environment Slicing of closures', withTreeSitter(parser => {
+	const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+	const keeps = (name: string, code: string, criterion: SlicingCriterion, expected: { has?: readonly string[], lacks?: readonly string[] }) => assertSliceKeeps(sec(name), parser, code, criterion, expected);
+	const alias = 'e <- new.env()\nf <- e\nassign("x", 1, envir = f)\nprint(get("x", envir = e))';
+	keeps('domains:env write through an alias is seen', alias, '4@print', { has: ['assign("x", 1, envir = f)', 'f <- e'] });
+	const distinct = 'e1 <- new.env()\ne2 <- new.env()\nassign("x", 1, envir = e1)\nassign("x", 2, envir = e2)\nprint(get("x", envir = e1))';
+	keeps('domains:env two environments are kept apart', distinct, '5@print', { has: ['assign("x", 1, envir = e1)'], lacks: ['assign("x", 2, envir = e2)'] });
+	const overwrite = 'e <- new.env()\nassign("x", 1, envir = e)\nf <- e\nassign("x", 2, envir = f)\nprint(get("x", envir = e))';
+	keeps('domains:env a surely aliased environment is overwritten', overwrite, '5@print', { has: ['assign("x", 2, envir = f)'], lacks: ['assign("x", 1, envir = e)'] });
+	const factory = 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\na <- mk()\nb <- mk()\na()\na()\nprint(b())';
+	keeps('domains:env closures of one factory do not share state', factory, '6@print', { has: ['b <- mk()'], lacks: ['a <- mk()', 'a()'] });
+	const counter = (rest: string) => `mk <- function() { n <- 0; function() { n <<- n + 1; n } }\n${rest}`;
+	keeps('domains:env interleaved calls of another closure are not needed', counter('a <- mk()\nb <- mk()\na()\nb()\nprint(a())'), '6@print', { has: ['\na()'], lacks: ['b <- mk()', 'b()'] });
+	keeps('domains:env an alias of a closure shares its state', counter('a <- mk()\nb <- a\na()\nprint(b())'), '5@print', { has: ['\na()'] });
+	keeps('domains:env a closure created in a loop shares state with its later calls', counter('for(i in 1:2) {\n  a <- mk()\n  a()\n}\nprint(a())'), '6@print', { has: ['a()\n'] });
+	keeps('domains:env closures stored in a list keep their calls', counter('cs <- lapply(1:2, function(i) mk())\ncs[[1]]()\nprint(cs[[1]]())'), '4@print', { has: ['cs[[1]])()'] });
+	keeps('domains:env a closure called through a function keeps that call', counter('g <- function() a()\na <- mk()\nb <- mk()\ng()\nprint(a())'), '6@print', { has: ['g()'] });
+	keeps('domains:env a closure of a global counter shares state', 'mk <- function() function() { n <<- n + 1; n }\nn <- 0\na <- mk()\nb <- mk()\na()\nprint(b())', '6@print', { has: ['\na()'] });
 }));

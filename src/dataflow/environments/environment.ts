@@ -8,18 +8,22 @@ import type {
 	BrandedIdentifier,
 	BrandedNamespace,
 	IdentifierDefinition,
-	InGraphIdentifierDefinition
+	ReferenceType
 } from './identifier';
 import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
 import { Identifier, PkgName } from './identifier';
-import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
-import { uniqueMergeValuesInDefinitions } from './append';
+import { appendEnvironment, uniqueMergeValuesInDefinitions } from './append';
+import { define as defineInEnvironment } from './define';
+import { overwriteEnvironment } from './overwrite';
+import { cloneEnvironmentInformation } from './clone';
+import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from './scoping';
 import { Frame } from './frame-memory';
 import type { MemoryView } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../util/log';
+import { DefaultMap } from '../../util/collections/defaultmap';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -73,8 +77,10 @@ export class Environment implements IEnvironment {
 	private frame:         Frame;
 	cache?:                Map<Identifier, IdentifierDefinition[]>;
 	/** what a resolution found below this frame, by target and name; only frames nothing writes keep one */
-	tailCache?:            Map<string, readonly IdentifierDefinition[] | undefined>;
+	tailCache?:            Map<ReferenceType, Map<string, readonly IdentifierDefinition[] | undefined>>;
 	builtInEnv?:           true;
+	/** set on the built-in environment once a definition below binds a promise or a text connection, which reads then look for */
+	forcing?:              true;
 	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;
 	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */
@@ -169,13 +175,6 @@ export class Environment implements IEnvironment {
 		this.tailCache = undefined;
 	}
 
-	/** What a merge writes its result into: {@link Frame.forWrite} overlays a big frame instead of copying it, so the cost follows what the merge changes, not what it keeps. */
-	private mergedFrame(): Frame {
-		/* the result may keep this frame as its base, so a later write here has to fork */
-		this.sharedMemory = true;
-		return this.frame.forWrite();
-	}
-
 	/** {@link memory} ready to be written to. Every write goes through here, since {@link clone} shares the frame. */
 	public get writableMemory(): Frame {
 		this.tailCache = undefined;
@@ -192,17 +191,22 @@ export class Environment implements IEnvironment {
 			return this; // do not clone the built-in environment
 		}
 
-		const clone = new Environment(this.parent, this.builtInEnv, this.frame);
-		clone.c = this.c;
-		clone.n = this.n;
-		clone.t = this.t;
-		clone.globalEnv = this.globalEnv;
-		clone.superMemory = this.superMemory;
+		const clone = this.derive(this.parent, this.frame);
 		clone.sharedMemory = this.sharedMemory = true;
 		if(recurseParents && !this.parent.builtInEnv) {
 			clone.sharedParent = true;
 		}
 		return clone;
+	}
+
+	private derive(parent: Environment, frame?: Frame): Environment {
+		const env = new Environment(parent, undefined, frame);
+		env.c = this.c;
+		env.n = this.n;
+		env.t = this.t;
+		env.globalEnv = this.globalEnv;
+		env.superMemory = this.superMemory;
+		return env;
 	}
 
 	/** Define a new identifier definition within this environment. */
@@ -241,31 +245,15 @@ export class Environment implements IEnvironment {
 		if(definition.cds !== undefined) {
 			definition = { ...definition, cds: definition.cds.slice() };
 		}
-		// When there are defined indices, merge the definitions
-		if(definition.cds === undefined) {
-			this.writableMemory.set(name, [definition]);
-		} else {
-			const existing = this.lookup(name);
-			const inGraphDefinition = definition as InGraphIdentifierDefinition;
-			if(
-				existing !== undefined &&
-                inGraphDefinition.cds === undefined
-			) {
-				this.writableMemory.set(name, [inGraphDefinition]);
-			} else if(existing === undefined || definition.cds === undefined) {
-				this.writableMemory.set(name, [definition]);
-			} else {
-				/* the array may be shared with clones, so replace instead of push */
-				this.writableMemory.set(name, [...existing, definition]);
-			}
-		}
+		/* a maybe definition joins the existing ones; the array may be shared with clones, so replace instead of push */
+		const existing = definition.cds === undefined ? undefined : this.lookup(name);
+		this.writableMemory.set(name, existing === undefined ? [definition] : [...existing, definition]);
 	}
 
 	private defineInNamespace(definition: IdentifierDefinition & { name: Identifier }, ns: BrandedNamespace): Environment {
 		if(this.n === ns) {
 			return this.define(definition);
 		}
-		// navigate to parent until either before built-in or matching namespace
 		const newEnvironment = this.clone(false);
 		let current = newEnvironment;
 		/* the match has to be re-checked after every step: a post-condition on `current.n` would end the loop on
@@ -277,14 +265,12 @@ export class Environment implements IEnvironment {
 				current.apply(Identifier.getName(definition.name), definition);
 				return newEnvironment;
 			} else if(current.parent && !current.parent.builtInEnv) {
-				// clone parent
 				current.parent = current.parent.clone(false);
 				current = current.parent;
 			} else {
 				break;
 			}
 		}
-		// we did not find the namespace, so we inject a new environment here
 		log.warn(`Defining ${Identifier.getName(definition.name)} in namespace ${ns}, which did not exist yet in the environment chain => create (r should fail or we miss attachment).`);
 		const env = new Environment(current.parent);
 		env.n = ns;
@@ -292,7 +278,7 @@ export class Environment implements IEnvironment {
 		return newEnvironment;
 	}
 
-	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
+	public defineSuper(definition: IdentifierDefinition & { name: Identifier }, append = false): Environment {
 		const [name, ns] = Identifier.toArray(definition.name);
 		/* isolate the cds from the originating reference, see {@link define} */
 		if(definition.cds !== undefined) {
@@ -303,36 +289,35 @@ export class Environment implements IEnvironment {
 			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);
 			return newEnvironment;
 		}
+		/* `<<-` binds in the closest enclosing frame that holds the name, which for an emptied frame is what
+		 * it stood in for when the closure was created (see {@link superMemory}) */
+		const holdsName = (env: Environment) => env.lookup(name) !== undefined || env.superMemory?.has(name) === true;
 		let current = newEnvironment;
-		let last = undefined;
-		let found = false;
-		do{
-			/* `<<-` binds in the closest enclosing frame that holds the name, which for an emptied frame is what
-			 * it stood in for when the closure was created (see {@link superMemory}) */
-			if(current.lookup(name) !== undefined || current.superMemory?.has(name)) {
-				current.writableMemory.set(name, [definition]);
-				found = true;
-				break;
-			}
-			// `<<-` falls back to the global env, never an attached package below it
-			if(current.globalEnv) {
-				current.writableMemory.set(name, [definition]);
-				found = true;
-				break;
-			}
-			last = current;
+		// `<<-` falls back to the global env, never an attached package below it
+		while(!holdsName(current) && !current.globalEnv) {
+			const last = current;
 			current.parent = current.parent.clone(false);
 			current = current.parent;
-		} while(!current.builtInEnv);
-		if(!found) {
-			guard(last !== undefined, () => `Could not find global scope for ${name}`);
-			last.writableMemory.set(name, [definition]);
+			if(current.builtInEnv) {
+				current = last;
+				break;
+			}
 		}
+		current.writableMemory.set(name, append ? [...current.lookup(name) ?? [], definition] : [definition]);
 		return newEnvironment;
 	}
 
 	/** Definitions within `other` replace those here by name; if all of `other`'s are maybe, they are appended instead (turning existing ones maybe too). Always recurses parents. */
 	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
+		return this.merge(other, false, applyCds);
+	}
+
+	/** Adds all writes of `other` to this environment (`other`'s operations *might* happen). Always recurses parents. */
+	public append(other: Environment | undefined): Environment {
+		return this.merge(other, true);
+	}
+
+	private merge(other: Environment | undefined, append: boolean, applyCds?: readonly ControlDependency[]): Environment {
 		if(!other || this === other) {
 			return this;
 		}
@@ -342,79 +327,31 @@ export class Environment implements IEnvironment {
 		}
 		/* nothing on the other side leaves these bindings as the result, so they are shared rather than merged */
 		const keep = other.memory.size === 0;
-		const frame = keep ? this.frame : this.mergedFrame();
-		if(keep) {
-			this.sharedMemory = true;
-		}
+		const frame = keep ? this.frame : this.frame.forWrite();
+		/* the result may keep this frame as its base, so a later write here has to fork */
+		this.sharedMemory = true;
 		for(const [key, values] of other.memory) {
-			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
-			if(hasMaybe) {
-				const old = frame.get(key);
-				if(!old && applyCds === undefined) {
-					frame.set(key, values);
-					continue;
-				}
+			/* an overwrite by definite definitions replaces the old ones, so they are not even looked up */
+			const hasMaybe = values.length === 0 || values.some(v => v.cds !== undefined);
+			const joinsOld = append || applyCds !== undefined || hasMaybe;
+			const old = joinsOld ? frame.get(key) : undefined;
+			if(old === undefined && applyCds === undefined) {
+				frame.set(key, values);
+			} else if(append || applyCds === undefined) {
+				frame.set(key, uniqueMergeValuesInDefinitions(old ?? [], values));
+			} else {
 				// we need to make a copy to avoid side effects for old reference in other environments
 				const updated: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
-					const { nodeId, definedAt } = v;
-					if(updated.some(o => o.nodeId === nodeId && o.definedAt === definedAt)) {
-						continue;
-					}
-					if(applyCds === undefined) {
-						updated.push(v);
-					} else {
-						updated.push({
-							...v,
-							cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice()
-						});
+					if(!updated.some(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)) {
+						updated.push({ ...v, cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice() });
 					}
 				}
 				frame.set(key, updated);
-			} else {
-				frame.set(key, values);
 			}
 		}
-
-		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
-		out.c = this.c;
-		out.n = this.n;
-		out.t = this.t;
-		out.globalEnv = this.globalEnv;
-		out.superMemory = this.superMemory ?? other.superMemory;
-		out.adoptFrame(frame, keep);
-		return out;
-	}
-
-	/** Adds all writes of `other` to this environment (`other`'s operations *might* happen). Always recurses parents. */
-	public append(other: Environment | undefined): Environment {
-		if(!other || this === other) {
-			return this;
-		}
-		const shortcut = this.mergeShortcut(other);
-		if(shortcut !== undefined) {
-			return shortcut;
-		}
-		const keep = other.memory.size === 0;
-		const frame = keep ? this.frame : this.mergedFrame();
-		if(keep) {
-			this.sharedMemory = true;
-		}
-		for(const [key, value] of other.memory) {
-			const old = frame.get(key);
-			if(old) {
-				frame.set(key, uniqueMergeValuesInDefinitions(old, value));
-			} else {
-				frame.set(key, value);
-			}
-		}
-
-		const out = new Environment(this.parent.append(other.parent));
-		out.c = this.c;
-		out.n = this.n;
-		out.t = this.t;
-		out.globalEnv = this.globalEnv;
-		out.superMemory = this.superMemory ?? other.superMemory;
+		const out = this.derive(append ? this.parent.append(other.parent) : this.parent.overwrite(other.parent, applyCds));
+		out.superMemory ??= other.superMemory;
 		out.adoptFrame(frame, keep);
 		return out;
 	}
@@ -458,14 +395,10 @@ export class Environment implements IEnvironment {
 		 * Keyed by type and then by name, rather than by a `t:n` string built for every layer of every merge.
 		 */
 		const order: Environment[] = [];
-		const merged = new Map<EnvType | undefined, Map<string | undefined, Environment>>();
+		const merged = new DefaultMap<EnvType | undefined, Map<string | undefined, Environment>>(() => new Map());
 		for(const layers of thisLayers.length > otherLayers.length ? [thisLayers, otherLayers] : [otherLayers, thisLayers]) {
 			for(const layer of layers) {
-				let byName = merged.get(layer.t);
-				if(byName === undefined) {
-					byName = new Map();
-					merged.set(layer.t, byName);
-				}
+				const byName = merged.get(layer.t);
 				const existing = byName.get(layer.n);
 				if(existing === undefined) {
 					const cloned = layer.clone(false);
@@ -547,6 +480,18 @@ function findGlobalEnvironment(this: void, env: Environment): Environment {
 	return current;
 }
 
+/** The frames from `env` outwards, excluding the built-in environment. */
+function* framesOf(this: void, env: Environment): Generator<Environment, void, undefined> {
+	for(let e = env; !e.builtInEnv; e = e.parent) {
+		yield e;
+	}
+}
+
+/** The frames below the global environment of `env`, i.e. the layers of the `search()` path, innermost first. */
+function searchPathOf(this: void, env: Environment): Generator<Environment, void, undefined> {
+	return framesOf(findGlobalEnvironment(env).parent);
+}
+
 /** Walks up to the built-in environment. */
 function findBuiltInEnvironment(this: void, env: Environment): Environment {
 	let current = env;
@@ -598,7 +543,7 @@ function searchPositionOf(this: void, env: Environment, name: string): number | 
 		return 1;
 	}
 	let pos = 1;
-	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+	for(const e of searchPathOf(env)) {
 		if(e.t === EnvType.Imports) {
 			continue; // internal layer, not a search-path entry
 		}
@@ -616,7 +561,7 @@ function searchPositionOf(this: void, env: Environment, name: string): number | 
  */
 function attachedPackagesOf(this: void, env: Environment): Set<string> {
 	const attached = new Set<string>([PkgName.Base]);
-	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+	for(const e of searchPathOf(env)) {
 		if(e.t !== EnvType.Imports && e.n !== undefined) {
 			attached.add(e.n);
 		}
@@ -634,12 +579,30 @@ export const REnvironment = {
 	findGlobal:       findGlobalEnvironment,
 	/** Walks up to the built-in environment; see {@link findBuiltInEnvironment}. */
 	findBuiltIn:      findBuiltInEnvironment,
+	/** The frames from an environment outwards, without the built-in one; see {@link framesOf}. */
+	frames:           framesOf,
+	/** The layers below the global environment, innermost first; see {@link searchPathOf}. */
+	searchPath:       searchPathOf,
 	/** Attaches a package block at a `search()` position, below the global by default; see {@link attachPackageAt}. */
 	attachAt:         attachPackageAt,
 	/** The `search()` position of a named entry; see {@link searchPositionOf}. */
 	searchPosition:   searchPositionOf,
 	/** The packages on the search path; see {@link attachedPackagesOf}. */
 	attachedPackages: attachedPackagesOf,
+	/** Defines an identifier in the environment, as a super assignment if asked; returns the new environment information. */
+	define:           defineInEnvironment,
+	/** Adds all writes of `next` to `base` as things that might happen; see {@link appendEnvironment}. */
+	append:           appendEnvironment,
+	/** Lets the definitions of `next` replace those of `base` by name; see {@link overwriteEnvironment}. */
+	overwrite:        overwriteEnvironment,
+	/** Clones the environment information, with or without its parents; see {@link cloneEnvironmentInformation}. */
+	clone:            cloneEnvironmentInformation,
+	/** Adds a local scope on top, see {@link REnvironment.popLocal} for the counterpart; see {@link pushLocalEnvironment}. */
+	pushLocal:        pushLocalEnvironment,
+	/** Removes the top local scope, see {@link REnvironment.pushLocal} for the counterpart; see {@link popLocalEnvironment}. */
+	popLocal:         popLocalEnvironment,
+	/** The search path of the environment with an empty global frame: attached packages stay visible, global binds do not; see {@link cleanEnvOf}. */
+	cleanOf:          cleanEnvOf,
 } as const;
 
 /**
@@ -694,9 +657,5 @@ export interface REnvironmentInformation {
 
 /** Serializes an environment, replacing the built-in environment with a placeholder. */
 export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
-	if(isDefaultBuiltInEnvironment(v)) {
-		return '<BuiltInEnvironment>';
-	} else {
-		return jsonReplacer(k, v);
-	}
+	return isDefaultBuiltInEnvironment(v) ? '<BuiltInEnvironment>' : jsonReplacer(k, v);
 }

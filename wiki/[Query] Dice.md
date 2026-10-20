@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Dice Query">Dice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reduces the code to the parts that carry information from a given start point to a given end point.\
@@ -45,7 +45,7 @@ as well as `w <- z * 2` and `print(z)` (they are not on a path _into_ the `to` c
 _Results (prettified and summarized):_
 
 x <- 1\
-z <- x + y\
+z <- x + y
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -99,7 +99,7 @@ _Results (prettified and summarized):_
 x <- 1\
 y <- 2\
 z <- x + y\
-print(z)\
+print(z)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -131,6 +131,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Dice Query query is `executeDiceQuery` in [`./src/queries/catalog/dice-query/dice-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dice-query/dice-query-executor.ts).
+The Dice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dice-query/dice-query-executor.ts#L12"><code><span title="Execute dice queries. Each dice computes the intersection of a forward slice from from and a backward slice from to, yielding only those program points that lie on a path from the start criteria to the end criteria.">executeDiceQuery</span></code></a>.
 
 </details>

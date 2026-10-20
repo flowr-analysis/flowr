@@ -22,7 +22,7 @@ export function docTook(ms: number): string {
 }
 
 const TimingPatterns: readonly (readonly [RegExp, string])[] = [
-	[/^(Query: [^\n(]*?) \([\d.]+ ?[a-zµ]+\)$/gm, '$1'],
+	[/^(Query: [^\n(]*?) \([\d.]+ ?[a-zµ]+\)(\\?)$/gm, '$1$2'],
 	[/^[^\n]*\bTook [\d.]+ ?[a-zµ]+[^\n]*\n?/gm, ''],
 	[/^_?All queries together required [^\n]*\n?/gm, ''],
 	[/^[^\n]*(?:searchTimeMs|processTimeMs): [\d.]+[^\n]*\n?/gm, ''],
@@ -40,5 +40,6 @@ export function withoutTimings(text: string): string {
 	if(ShowDocTimings) {
 		return text;
 	}
-	return TimingPatterns.reduce((t, [pattern, replacement]) => t.replace(pattern, replacement), text);
+	/* a removed line leaves the markdown line break before it with no line to break to */
+	return TimingPatterns.reduce((t, [pattern, replacement]) => t.replace(pattern, replacement), text).replace(/\\(?=\n[ \t]*(?:\n|$))/g, '');
 }

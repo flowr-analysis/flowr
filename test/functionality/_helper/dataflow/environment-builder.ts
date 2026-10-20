@@ -6,13 +6,11 @@ import type {
 	IEnvironment,
 	REnvironmentInformation
 } from '../../../../src/dataflow/environments/environment';
-import { define } from '../../../../src/dataflow/environments/define';
-import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
-import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 import { FlowrAnalyzerEnvironmentContext } from '../../../../src/project/context/flowr-analyzer-environment-context';
 import type { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
+import { REnvironment } from '../../../../src/dataflow/environments/environment';
 
 
 /**
@@ -140,7 +138,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param superAssignment - If true, the definition is treated as if defined by a super assignment.
 	 */
 	defineInEnv(def: IdentifierDefinition, superAssignment = false) {
-		const envWithDefinition = define({
+		const envWithDefinition = REnvironment.define({
 			...def,
 			definedAt: NodeId.normalize(def.definedAt),
 			nodeId:    NodeId.normalize(def.nodeId),
@@ -153,7 +151,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Adds a new, local environment on the environment stack and returns it.
 	 */
 	pushEnv(): EnvironmentBuilder {
-		const newEnvironment = pushLocalEnvironment(this);
+		const newEnvironment = REnvironment.pushLocal(this);
 		return new EnvironmentBuilder(newEnvironment.current, this.builtInEnv, newEnvironment.level);
 	}
 
@@ -161,7 +159,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Pops the last environment (must be local) from the environment stack.
 	 */
 	popEnv(): EnvironmentBuilder {
-		const underlyingEnv = popLocalEnvironment(this);
+		const underlyingEnv = REnvironment.popLocal(this);
 		return new EnvironmentBuilder(underlyingEnv.current, this.builtInEnv, underlyingEnv.level);
 	}
 
@@ -171,7 +169,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param other - The next environment.
 	 */
 	appendWritesOf(other: REnvironmentInformation) {
-		const appendedEnv = appendEnvironment(this, other);
+		const appendedEnv = REnvironment.append(this, other);
 		return new EnvironmentBuilder(appendedEnv.current, this.builtInEnv, appendedEnv.level);
 	}
 }

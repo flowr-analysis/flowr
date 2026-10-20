@@ -1,8 +1,7 @@
+import { RString } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
-import { removeRQuotes } from '../../../../r-bridge/retriever';
-import { startAndEndsWith } from '../../../../util/text/strings';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
 import type {
@@ -37,6 +36,8 @@ export interface NamespaceInfo {
 	/** Classes listed by `exportClasses()`: the S4 classes the package owns. Separated like {@link exportedS4Methods}. */
 	exportedS4Classes:    string[];
 	exportS3Generics:     Map<string, string[]>;
+	/** For `S3method(generic, class, fun)`, the function registered as the method `generic.class` when it is not named so. */
+	s3MethodFunctions?:   Map<string, string>;
 	exportedPatterns:     string[];
 	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
@@ -79,6 +80,10 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	 */
 	protected loadContent(): NamespaceFormat {
 		return this.ctx ? parseNamespaceComplex(this.wrapped, this.ctx) : parseNamespaceSimple(this.wrapped);
+	}
+
+	public rawText(): string {
+		return this.wrapped.rawText?.() ?? this.wrapped.content().toString();
 	}
 
 	/** See {@link isExportedInNamespaceFormat}, which this answers for the file's own content. */
@@ -282,11 +287,6 @@ function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RF
 		arguments: [toUnnamedArgument(node, idMap)]
 	};
 }
-/** the name a NAMESPACE directive lists, without the quotes or backticks R allows around it */
-function unquoteName(name: string): string {
-	return startAndEndsWith(name, '`') ? name.slice(1, -1) : removeRQuotes(name);
-}
-
 /** Unquotes every lexeme of `args` (dropping empty/nameless arguments) and pushes the result onto `target`. */
 function pushUnquotedLexemes(target: string[], args: readonly PotentiallyEmptyRArgument<ParentInformation>[], unquote: (s: string) => string): void {
 	target.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquote(a.lexeme) : undefined).filter(isNotUndefined));
@@ -316,7 +316,7 @@ function markSideEffectLoader(fmt: NamespaceFormat, pkg: string): void {
 }
 
 function handleExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	pushUnquotedLexemes(g.current.exportedSymbols, args, unquoteName);
+	pushUnquotedLexemes(g.current.exportedSymbols, args, RString.unquote);
 	return g;
 }
 function handleExportPatternCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
@@ -333,14 +333,20 @@ function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyR
 	if(RArgument.isEmpty(pkgArg) || RArgument.isEmpty(funcArg) || !pkgArg.lexeme || !funcArg.lexeme) {
 		return g;
 	}
-	arrayAt(g.current.exportS3Generics, unquoteName(pkgArg.lexeme)).push(unquoteName(funcArg.lexeme));
+	const generic = RString.unquote(pkgArg.lexeme);
+	const cls = RString.unquote(funcArg.lexeme);
+	arrayAt(g.current.exportS3Generics, generic).push(cls);
+	const fun = args[2];
+	if(fun !== undefined && !RArgument.isEmpty(fun) && fun.lexeme) {
+		(g.current.s3MethodFunctions ??= new Map()).set(`${generic}.${cls}`, RString.unquote(fun.lexeme));
+	}
 	return g;
 }
 function handleImportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	/* `import(a, b)` imports both; a named argument like `except =` names no package */
 	for(const arg of args) {
 		if(arg !== EmptyArgument && arg.name === undefined && arg.lexeme) {
-			g.current.importedPackages?.set(unquoteName(arg.lexeme), 'all');
+			g.current.importedPackages?.set(RString.unquote(arg.lexeme), 'all');
 		}
 	}
 	return g;
@@ -354,13 +360,13 @@ function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmpt
 	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
-	const arr = importArrayAt(g.current.importedPackages, unquoteName(pkgArg.lexeme));
+	const arr = importArrayAt(g.current.importedPackages, RString.unquote(pkgArg.lexeme));
 	for(let i = 1; i < args.length; i++) {
 		const symArg = args[i];
 		if(RArgument.isEmpty(symArg) || !symArg.lexeme) {
 			continue;
 		}
-		arr.push(unquoteName(symArg.lexeme));
+		arr.push(RString.unquote(symArg.lexeme));
 	}
 	return g;
 }
@@ -372,12 +378,12 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
-	markSideEffectLoader(g, unquoteName(pkgArg.lexeme));
+	markSideEffectLoader(g, RString.unquote(pkgArg.lexeme));
 	return g;
 }
 /** `exportClasses(A, B)` / `exportMethods(show, summary)`: a directive may list several names, and each goes to `into`. */
 function handleS4ExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], into: 'exportedS4Classes' | 'exportedS4Methods'): NamespaceFormat {
-	pushUnquotedLexemes(g.current[into], args, unquoteName);
+	pushUnquotedLexemes(g.current[into], args, RString.unquote);
 	return g;
 }
 const cleanLineCommentRegex = /^#.*$/gm;
@@ -458,7 +464,10 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		}
 	}
 
+	const s3MethodFunctions = target.s3MethodFunctions || source.s3MethodFunctions
+		? new Map([...target.s3MethodFunctions ?? [], ...source.s3MethodFunctions ?? []]) : undefined;
 	return {
+		...(s3MethodFunctions ? { s3MethodFunctions } : {}),
 		callable:             [...target.callable, ...source.callable],
 		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
 		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
@@ -493,7 +502,7 @@ function splitNamespaceArgs(args: string): string[] {
 			const part = args.slice(start, i).trim();
 			start = i + 1;
 			if(part.length > 0 && !namedArgument.test(part)) {
-				names.push(unquoteName(part));
+				names.push(RString.unquote(part));
 			}
 		}
 	}
@@ -527,8 +536,11 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				if(parts.length !== 2 && parts.length !== 3) {
 					continue;
 				}
-				const [pkg, func] = parts;
+				const [pkg, func, fun] = parts;
 				arrayAt(result.current.exportS3Generics, pkg).push(func);
+				if(fun !== undefined) {
+					(result.current.s3MethodFunctions ??= new Map()).set(`${pkg}.${func}`, fun);
+				}
 				break;
 			}
 			case 'export':

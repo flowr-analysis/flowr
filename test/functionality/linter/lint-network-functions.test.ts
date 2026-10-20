@@ -1,8 +1,9 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledSigDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { decorateLabelContext, label } from '../_helper/label';
 
 const urlPrefix = ['https://', 'ftp://', 'ftps://'];
 
@@ -35,6 +36,13 @@ describe('flowR linter', withTreeSitter(parser => {
 			);
 
 		}
+
+		assertLinter('a local data source of an attached package', parser, 'library(rgdal)\nx <- readOGR("coastpolygon", "coastpolygon")', 'network-functions', []);
+		assertLinter('rvest selectors work on a parsed document', parser, 'library(rvest)\nhtml_text(html_nodes(doc, "a"))', 'network-functions', []);
+		assertLinter('rvest still fetches a constant URL it is handed to parse', parser, 'library(rvest)\nhtml_text(html_nodes(read_html("https://x.org"), "a"))', 'network-functions',
+			[{ certainty: LintingResultCertainty.Certain, function: 'read_html', loc: [2, 22, 2, 47] }]);
+		assertLinter('native pipe', parser, '"https://x.org/a.csv" |> read.csv()', 'network-functions',
+			[{ certainty: LintingResultCertainty.Certain, function: 'utils::read.csv', loc: [1, 26, 1, 35] }]);
 
 		assertLinter('library call', parser, 'library(httr)\nPOST("http://example.com")',
 			'network-functions',
@@ -166,11 +174,21 @@ describe('flowR linter', withTreeSitter(parser => {
 		describe('a call that writes no file argument writes to the console', () => {
 			assertLinter('cat without file', parser, 'cat("hello\n")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
 			assertLinter('writeLines without con', parser, 'writeLines("x")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
+			assertLinter('cat with an unknown value where its file may go', parser, 'cat("n: ", length(x))', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
 			assertLinter('cat to a local file', parser, 'cat("hello", file = "out.txt")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
-			assertLinter('cat to a url', parser, 'cat("hello", file = "https://example.com")', 'network-functions',
-				[{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 42] }],
-				{ totalCalls: 1, totalFunctionDefinitions: 1 }
-			);
+			/* R opens urls for reading only, so writing to one fails before it reaches the network */
+			assertLinter('cat to a url', parser, 'cat("hello", file = "https://example.com")', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
+			assertLinter('a device writing to a name the user gives', parser, 'name <- readline("File: ")\npdf(name)', 'network-functions', [], { totalCalls: 0, totalFunctionDefinitions: 0 });
 		});
 	});
+	assertLinterFields(parser, '"https://x.org/a.csv" |> read.csv()', 'network-functions', [{ function: 'utils::read.csv' }]);
+	assertLinterFields(parser, 'socketConnection(host = "x.org", port = 80)', 'network-functions', [{ function: 'base::socketConnection', certainty: LintingResultCertainty.Certain }]);
+	assertLinterFields(parser, 'd <- download.file\nd("https://x.org", "a")', 'network-functions', [{ function: 'utils::download.file', certainty: LintingResultCertainty.Certain }]);
+	assertLinterFields(parser, 'purrr::walk(c("https://a.org"), download.file, destfile = "x")', 'network-functions', [{ function: 'utils::download.file', certainty: LintingResultCertainty.Certain }]);
+	assertLinterFields(parser, 'curl::curl_download("sftp://x.org/a", "a")', 'network-functions', [{ function: 'curl::curl_download', certainty: LintingResultCertainty.Certain }]);
+	assertLinterFields(parser, 'req <- httr2::request("https://x.org")\nhttr2::req_perform(req)', 'network-functions', [{ function: 'httr2::req_perform', loc: [2, 1, 2, 23] }]);
+	assertLinterFields(parser, 'jsonlite::fromJSON("https://x.org/a.json")', 'network-functions', [{ function: 'jsonlite::fromJSON' }]);
+	assertLintedLines('a command is no address', parser, 'pipe(paste("cat", readline()))', 'network-functions', []);
+	assertLintedLines('a connection to text in memory is no address', parser, 'x <- readline()\nsource(textConnection(x))', 'network-functions', []);
+	assertLintedLines(decorateLabelContext(label('security: a device file is no network address', ['name-normal', 'function-calls']), ['dataflow']), parser, 'name <- readline("File for the plot: ")\npdf(name)\nplot(1:10)\ndev.off()', 'network-functions', []);
 }));

@@ -15,19 +15,15 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	private data?:       RmdInfo;
 	private mergedCode?: string;
 
-	private readonly wrapped:  FlowrFileProvider<string>;
-	private readonly context:  FlowrAnalyzerContext;
 	private readonly included: string[] = [];
 
 	/**
 	 * Prefer the static {@link FlowrRMarkdownFile.from} method
-	 * @param file - the file to load as R Markdown
-	 * @param ctx  - the analyzer context the chunks are read with
+	 * @param wrapped - the file to load as R Markdown
+	 * @param context - the analyzer context the chunks are read with
 	 */
-	constructor(file: FlowrFileProvider<string>, ctx: FlowrAnalyzerContext) {
-		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
-		this.wrapped = file;
-		this.context = ctx;
+	constructor(private readonly wrapped: FlowrFileProvider<string>, private readonly context: FlowrAnalyzerContext) {
+		super(wrapped.path(), wrapped.roles ? [...wrapped.roles, FileRole.Source] : [FileRole.Source]);
 	}
 
 	/**
@@ -44,6 +40,12 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	get executableCells(): CodeBlock[] {
 		const defaults = globalChunkOptions(this.rmd.options);
 		return this.rmd.blocks.filter(b => isExecutableCell(b, defaults));
+	}
+
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
 	}
 
 	/**
@@ -68,26 +70,18 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	 */
 	private postProcessCodeBlocks() {
 		guard(this.data !== undefined);
-
 		for(const block of this.data.blocks) {
 			const childOpt = block.options.get('child');
-			if(childOpt === undefined) {
-				continue;
-			}
-
-			const childPath = findSource(this.context.config.solver.resolveSource, childOpt, {
+			const childPath = childOpt === undefined ? undefined : findSource(this.context.config.solver.resolveSource, childOpt, {
 				ctx:            this.context,
 				referenceChain: [this.path()]
 			});
-
 			if(childPath === undefined) {
 				continue;
 			}
-
 			if(childPath.length > 1) {
 				log.warn(`Found more than one path for child '${childOpt}' in rmd file '${this.path()}'. Only using the first path: '${childPath[0]}'`);
 			}
-
 			// register but do not request, the content is spliced in here
 			const rawChildFile = (this.context.files.getFileByPath(childPath[0])
 				?? this.context.files.addFile(childPath[0])) as FlowrFileProvider<string> | undefined;
@@ -165,8 +159,13 @@ function wrapErrorTolerant(code: string): string {
  */
 export function globalChunkOptions(frontmatter: object): CodeBlockOptions {
 	const knitr = (frontmatter as { knitr?: { opts_chunk?: unknown } }).knitr;
+	return scalarOptions([(frontmatter as { execute?: unknown }).execute, knitr?.opts_chunk]);
+}
+
+/** The scalar entries of the given yaml objects as options, later ones overriding earlier ones. */
+function scalarOptions(sources: readonly unknown[]): CodeBlockOptions {
 	const options: CodeBlockOptions = new Map();
-	for(const source of [(frontmatter as { execute?: unknown }).execute, knitr?.opts_chunk]) {
+	for(const source of sources) {
 		if(typeof source !== 'object' || source === null) {
 			continue;
 		}
@@ -213,22 +212,13 @@ function parseFrontmatter(raw: string): unknown {
  * @returns   Rmd Info
  */
 export function parseRMarkdownFile(raw: string): RmdInfo {
-	// Read and Parse Markdown
-	const parser = new Parser();
-	const ast = parser.parse(raw);
-
-	// Parse Frontmatter
 	let frontmatter: unknown;
 	try {
 		frontmatter = parseFrontmatter(raw);
 	} catch(e) {
 		log.warn(`Failed to parse frontmatter of Rmd file, ignoring it. Error was: ${JSON.stringify(e)}`);
-		frontmatter = undefined;
 	}
-
-
-	// Parse Codeblocks
-	const walker = ast.walker();
+	const walker = new Parser().parse(raw).walker();
 	const blocks: CodeBlock[] = [];
 	let e;
 	while((e = walker.next())) {
@@ -236,26 +226,21 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 		if(!isRCodeBlock(node)) {
 			continue;
 		}
-
 		const options = parseCodeBlockOptions(node.info, node.literal);
 		const engineOpt = options.get('engine');
-		if(engineOpt !== undefined && engineOpt.trim().toLowerCase() !== 'r') {
-			continue;
+		if(engineOpt === undefined || engineOpt.trim().toLowerCase() === 'r') {
+			blocks.push({
+				code:     node.literal,
+				options,
+				header:   node.info,
+				startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
+			});
 		}
-
-		blocks.push({
-			code:     node.literal,
-			options:  options,
-			header:   node.info,
-			startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
-		});
 	}
-
 	blocks.push(...parseIncludeShortcodes(raw));
 	blocks.sort((a, b) => a.startpos.line - b.startpos.line);
-
 	return {
-		blocks:  blocks,
+		blocks,
 		options: typeof frontmatter === 'object' && frontmatter !== null ? frontmatter : {}
 	};
 }
@@ -264,24 +249,19 @@ const IncludeShortcodeRegex = /{{<\s*include\s+["']?(.+?)["']?\s*>}}/;
 
 /** Collects quarto's `{{< include other.qmd >}}` as blocks carrying a `child`, resolved like knitr's option */
 function parseIncludeShortcodes(raw: string): CodeBlock[] {
-	const blocks: CodeBlock[] = [];
-	const lines = raw.split(LineRegex);
-	for(let i = 0; i < lines.length; i++) {
-		const match = IncludeShortcodeRegex.exec(lines[i]);
-		if(match) {
-			blocks.push({
-				code:     '',
-				options:  new Map([['child', match[1]]]),
-				header:   '',
-				startpos: { line: i + 1, col: 0 }
-			});
-		}
-	}
-	return blocks;
+	return raw.split(LineRegex).flatMap((line, i) => {
+		const match = IncludeShortcodeRegex.exec(line);
+		return match ? [{
+			code:     '',
+			options:  new Map([['child', match[1]]]),
+			header:   '',
+			startpos: { line: i + 1, col: 0 }
+		}] : [];
+	});
 }
 
-// We need the [\s,] part, otherwise {rust} would also match
-const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
+/** The info string of an R chunk, `{r}` or `{r label, eval = FALSE}`; the `[\s,]` keeps `{rust}` out */
+export const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
 
 /**
  * Checks whether a CommonMark node is an R code block
@@ -313,10 +293,7 @@ export function restoreBlocksWithoutMd(blocks: readonly CodeBlock[], totalLines:
 		output += block.code;
 		line += countNewlines(block.code);
 	}
-
-	// Add remainder of file
 	goToLine(totalLines + 1);
-
 	return output;
 }
 
@@ -338,13 +315,7 @@ export function parseCodeBlockOptions(header: string, content: string): CodeBloc
 		// keep the indentation, yaml block scalars rely on it
 		cellLines.push(line.trim().slice(2).replace(/^ /, ''));
 	}
-
-	const options = parseOptionString(headerOpts);
-	for(const [key, value] of parseCellOptions(cellLines)) {
-		options.set(key, value);
-	}
-
-	return options;
+	return new Map([...parseOptionString(headerOpts), ...parseCellOptions(cellLines)]);
 }
 
 /** Parses knitr's `key=value` option syntax as used in the chunk header */
@@ -355,7 +326,6 @@ function parseOptionString(opts: string): CodeBlockOptions {
 			parsedOptions.set(match[1], match[2].trim());
 		}
 	}
-
 	return parsedOptions;
 }
 
@@ -364,22 +334,14 @@ function parseCellOptions(lines: readonly string[]): CodeBlockOptions {
 	if(lines.length === 0) {
 		return new Map();
 	}
-
 	try {
 		const parsed: unknown = parseFrontmatter(`---\n${lines.join('\n')}\n---\n`);
 		// a bare scalar is knitr's `key=value` syntax, not yaml
 		if(typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) && Object.keys(parsed).length > 0) {
-			const options: CodeBlockOptions = new Map();
-			for(const [key, value] of Object.entries(parsed)) {
-				if(value !== null && typeof value !== 'object') {
-					options.set(key, String(value));
-				}
-			}
-			return options;
+			return scalarOptions([parsed]);
 		}
 	} catch(e) {
 		log.warn(`Failed to parse cell options as yaml, falling back to the header syntax. Error was: ${JSON.stringify(e)}`);
 	}
-
 	return parseOptionString(lines.join(', '));
 }

@@ -1,11 +1,13 @@
 import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
-import { describe } from 'vitest';
+import { describe, assert, test } from 'vitest';
 import { assertCfg } from '../../_helper/controlflow/assert-control-flow-graph';
 import { ControlFlowGraph } from '../../../../src/control-flow/control-flow-graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { canReach } from '../../../../src/control-flow/simple-visitor';
 import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { controlReaches } from '../../_helper/controlflow/happens-before';
+import { decorateLabelContext, label } from '../../_helper/label';
 
 assumeLoadedPackages('foreach', 'rlang');
 
@@ -133,14 +135,9 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	});
 
 	describe('foreach loop bodies', () => {
-		/*
-		 * The dataflow analysis forces the arguments of an unknown infix operator, so the `return` escapes the
-		 * `%dopar%` and everything behind it is dead to it. The control flow is a view on that graph and says
-		 * the same; teaching the analysis that a foreach body is evaluated elsewhere is what would bring the
-		 * code after the loop back.
-		 */
+		/* `%dopar%` hands its body on as an expression rather than forcing it, so the `return` within never leaves `f` */
 		assertDeadCode('f <- function(x) {\n  foreach(i = 1:3) %dopar% {\n    return(i)\n  }\n  after <- 1\n  after\n}', {
-			reachableFromStart: [], unreachableFromStart: ['5@after', '6@after']
+			reachableFromStart: ['5@after', '6@after'], unreachableFromStart: []
 		});
 	});
 
@@ -152,5 +149,21 @@ print("dead")`, {
 			reachableFromStart:   ['1@i', '2@next', '4@print'],
 			unreachableFromStart: []
 		});
+	});
+
+	describe('domains:promise', () => {
+		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+		function testReturn(name: string, code: string, marker: SlicingCriterion, expected: boolean) {
+			test(sec(`domains:promise ${name}`), async() => {
+				assert.strictEqual(await controlReaches(parser, code, marker), expected);
+			});
+		}
+		testReturn('a return in a forced argument leaves the caller', 'g <- function(x) { x; 1 }\nh <- function() { g(return(5)); print("dead") }', '2@print', false);
+		testReturn('a return in an argument forced by force() leaves the caller', 'g <- function(x) { force(x); 1 }\nh <- function() { g(return(5)); print("dead") }', '2@print', false);
+		testReturn('a return in an argument the callee never forces is skipped', 'g <- function(x) 1\nh <- function() { g(return(5)); print("alive") }', '2@print', true);
+		testReturn('a return in an argument the callee may force may be skipped', 'g <- function(x) { if(runif(1) > 0.5) x; 1 }\nh <- function() { g(return(5)); print("maybe") }', '2@print', true);
+		testReturn('a return in a default argument leaves only the callee', 'h <- function() { f <- function(x = return(7)) { x; 3 }; f(); print(2) }', '1@print', true);
+		testReturn('a return in a default argument nobody forces is skipped', 'h <- function() { f <- function(x = return(7)) 3; f(); print(2) }', '1@print', true);
+		testReturn('code after a plain return is dead', 'h <- function() { return(5); print(2) }', '1@print', false);
 	});
 }));

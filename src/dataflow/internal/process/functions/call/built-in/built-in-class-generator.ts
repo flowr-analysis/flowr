@@ -18,6 +18,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
 import { attachClassDeclaration } from './built-in-s-seven-new-generic';
+import { linkS4Declaration } from './built-in-s-four';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
@@ -33,6 +34,7 @@ export function processClassGenerator<OtherInfo>(
 ): DataflowInformation {
 	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ClassGenerator }).information;
 	attachClassDeclaration(info, rootId, args, config?.classDecl);
+	linkS4Declaration(info, rootId, data);
 	return info;
 }
 
@@ -46,10 +48,9 @@ export function resolveClassMethodsToEnvState<OtherInfo>(
 	}
 	let envState: REnvironmentInformation | undefined;
 	for(const [names, values] of [[MethodListArguments, false], [FieldListArguments, true]] as const) {
-		const list = source.arguments.find(arg => arg !== EmptyArgument && arg.name !== undefined && names.includes(arg.name.content));
-		const resolved = list && list !== EmptyArgument && list.value !== undefined
-			? resolveListToEnvState(list.value, envState ? { environment: envState } : data, values)
-			: undefined;
+		const listArg = source.arguments.find(arg => arg !== EmptyArgument && arg.name !== undefined && names.includes(arg.name.content));
+		const list = RArgument.valueOf(listArg);
+		const resolved = list === undefined ? undefined : resolveListToEnvState(list, envState ? { environment: envState } : data, values);
 		envState = resolved ?? envState;
 	}
 	return envState;
@@ -62,14 +63,11 @@ export function resolveConstructorInstanceEnvState<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>,
 	data:   Pick<DataflowProcessorInformation<never>, 'environment'>
 ): REnvironmentInformation | undefined {
-	if(!RFunctionCall.is(source) || source.named) {
-		return undefined;
-	}
-	const callee = source.calledFunction;
+	const callee = RFunctionCall.isUnnamed(source) ? source.calledFunction : undefined;
 	if(!RAccess.is(callee) || (callee.operator !== '$' && callee.operator !== '[[') || !RSymbol.is(callee.accessed)) {
 		return undefined;
 	}
-	const field = RArgument.isEmpty(callee.access[0]) ? undefined : callee.access[0]?.value;
+	const field = RArgument.valueOf(callee.access[0]);
 	const fieldName = RString.is(field) ? field.content.str : field?.lexeme;
 	if(fieldName !== ConstructorField) {
 		return undefined;

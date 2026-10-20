@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
+import { ensureExpressionList, retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import { guard, isNotUndefined } from '../../../../../../../util/assert';
 import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { tryNormalizeParameter } from './normalize-parameter';
@@ -54,10 +54,6 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 		lexeme:     content,
 		parameters: parameters as RParameter[],
 		body:       ensureExpressionList(body[0]),
-		info:       {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:       currentSourceInfo(data)
 	};
 }

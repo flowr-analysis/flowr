@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
+import { getWithTokenType, retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../../util/assert';
 import { tryToNormalizeArgument } from './normalize-argument';
@@ -91,22 +91,14 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 				type:   RType.Next,
 				lexeme: content,
 				location,
-				info:   {
-					fullRange:  data.currentRange,
-					adToks:     [],
-					fullLexeme: data.currentLexeme
-				}
+				info:   currentSourceInfo(data)
 			};
 		} else if(RBreak.is(calledFunction)) {
 			return {
 				type:   RType.Break,
 				lexeme: content,
 				location,
-				info:   {
-					fullRange:  data.currentRange,
-					adToks:     [],
-					fullLexeme: data.currentLexeme
-				}
+				info:   currentSourceInfo(data)
 			};
 		}
 	}
@@ -118,11 +110,7 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 		lexeme:         content,
 		calledFunction: calledFunction,
 		arguments:      parsedArguments.map(x => x ?? EmptyArgument),
-		info:           {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:           currentSourceInfo(data)
 	};
 }
 
@@ -153,10 +141,6 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 		lexeme:    content,
 		functionName,
 		arguments: parsedArguments.map(x => x ?? EmptyArgument),
-		info:      {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:      currentSourceInfo(data)
 	};
 }

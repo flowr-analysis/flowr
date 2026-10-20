@@ -7,6 +7,7 @@ import type {
 	InputSourcesQueryResult
 } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
 import { defaultInputClassifierConfig } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
+import { contentFreeFunctions } from '../../../../src/queries/catalog/input-sources-query/input-source-functions';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import type { BuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
@@ -30,15 +31,16 @@ describe('The default classifier configuration follows the built-in labels', () 
 			assert.isTrue(derived.has(Identifier.toString(pure)), `${Identifier.toString(pure)} is pure but not classified as deriving from its arguments`);
 		}
 	});
-	test(label('the narrowing functions are the ones labelled `Narrows`', ['name-normal'], ['other']), () => {
+	test(label('the narrowing functions are the ones labelled `Narrows` with a `Bounds` parameter', ['name-normal'], ['other']), () => {
 		const narrowing = defaultConfig.narrowing ?? [];
-		assert.deepStrictEqual(narrowing.map(n => Identifier.toString(n.call)).sort(),
+		assert.deepStrictEqual([...narrowing.map(n => n.call), ...contentFreeFunctions(builtIns)].map(Identifier.toString).sort(),
 			builtIns.with(SemanticCallTag.Narrows).map(Identifier.toString).sort());
 		const matchArg = narrowing.find(n => Identifier.getName(n.call) === 'match.arg');
 		assert.deepStrictEqual(matchArg, { call: Identifier.from(['match.arg', 'base']), argName: 'choices', argIdx: 1 },
 			'the `Bounds` parameter is what bounds the result');
-		assert.isUndefined(narrowing.find(n => Identifier.getName(n.call) === 'length')?.argIdx,
-			'a narrowing call without a `Bounds` parameter is bounded on its own');
+		assert.isUndefined(narrowing.find(n => Identifier.getName(n.call) === 'length'),
+			'a count depends on what it counts, so it does not narrow');
+		assert.isUndefined(defaultConfig.sanitizers);
 		assert.deepStrictEqual(builtIns.params(ArgProp.Bounds).map(p => Identifier.getName(p.call)), ['match.arg']);
 	});
 });
@@ -178,7 +180,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		});
 
 		testQuery('Loop with conditional overwrite (random control dep)', 'x <- 2\nfor(i in 1:2) { if(runif(1) > 0.5) x <- read.csv("a") }\nfoo(x)', [{ type: 'input-sources', criterion: '3@foo' }], {
-			'3@foo': [{ id: '3@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias, cds: [InputType.Random, InputType.Constant, InputType.DerivedConstant] }]
+			'3@foo': [{ id: '3@x', types: [InputType.File, InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.Random, InputType.Constant, InputType.DerivedConstant] }]
 		});
 
 		testQuery('Recursive function that may read file', 'f <- function(n) { if(n==0) read.csv("a") else f(n-1) }\ny <- f(1)\nfoo(y)', [{ type: 'input-sources', criterion: '3@foo' }], {
@@ -199,12 +201,25 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('match.arg narrows to constant choices', 'function(fmt) eval(parse(text=match.arg(fmt, c("a","b","c"))))', [{ type: 'input-sources', criterion: '1@eval' }], {
 			'1@eval': [{
 				id:    '1@parse',
-				types: [InputType.DerivedConstant], trace: InputTraceType.Pure
+				types: [InputType.DerivedConstant], trace: InputTraceType.Pure,
+				cds:   [InputType.Parameter]
 			}]
 		});
-		// a count/index/logical is content-independent, so the subject's taint must not carry through
-		testQuery('nchar narrows away the subject taint', 'function(x) eval(parse(text=nchar(x)))', [{ type: 'input-sources', criterion: '1@eval' }], {
-			'1@eval': [{ id: '1@parse', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
+		// a count/index/logical carries no content of its subject, but its value still depends on it
+		testQuery('nchar keeps the subject taint', 'function(x) eval(parse(text=nchar(x)))', [{ type: 'input-sources', criterion: '1@eval' }], {
+			'1@eval': [{ id: '1@parse', types: [InputType.Parameter, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+		testQuery('length of a file read is file-dependent', 'f <- "a.txt"\nfoo(length(readLines(f)))', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@length', types: [InputType.File, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+		testQuery('nrow of a csv read is file-dependent', 'foo(nrow(read.csv("a.csv")))', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [{ id: '1@nrow', types: [InputType.File, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+		testQuery('nchar of an environment variable is environment-dependent', 'foo(nchar(Sys.getenv("HOME")))', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [{ id: '1@nchar', types: [InputType.Options, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+		testQuery('match.arg follows file-dependent choices', 'foo(match.arg(x, readLines("a")))', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [{ id: '1@match.arg', types: [InputType.File], trace: InputTraceType.Unknown, cds: [InputType.Unknown] }]
 		});
 	});
 
@@ -217,8 +232,12 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', types: [InputType.Ffi], trace: InputTraceType.Alias }]
 		});
 
-		testQuery('Language object source', 'x <- substitute(a)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@x', types: [InputType.Lang], trace: InputTraceType.Alias }]
+		testQuery('Language object source', 'f <- function(a) {\n  x <- substitute(a)\n  foo(x)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@x', types: [InputType.Lang], trace: InputTraceType.Alias }]
+		});
+		/* the global environment substitutes nothing, so this is the code written there */
+		testQuery('Language object of written code', 'x <- substitute(a)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant], trace: InputTraceType.Alias }]
 		});
 
 		testQuery('Options / getOption source', "x <- getOption('digits')\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {
@@ -391,6 +410,82 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		});
 	});
 
+	describe('Nothing that depends on an input is constant', () => {
+		const q = (criterion: string, config?: object) => [{ type: 'input-sources', criterion, config }] as never;
+		testQuery('an if yields its branches, picked by its condition', "x <- if(u) readLines('f') else 'n'\nfoo(x)", q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
+		});
+		testQuery('a switch yields its alternatives, picked by its subject', "x <- switch(readline(), a = 'ls', b = 'pwd')\nfoo(x)", q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.User] }]
+		});
+		testQuery('evaluating quoted code is no constant', "x <- eval(quote(readLines('f')))\nfoo(x)", q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		});
+		testQuery('tryCatch may yield its block', "x <- tryCatch(readLines('f'), error = function(e) 'a')\nfoo(x)", q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias }]
+		});
+		testQuery('a parameter of a function handed on as a value is not bound by its direct callers', "h <- function(a) { x <- a; foo(x) }\nh('c')\ntryCatch(stop(readline()), error = h)", q('1@foo'), {
+			'1@foo': [{ id: '$9', types: [InputType.Constant, InputType.Scope, InputType.Parameter], trace: InputTraceType.Alias }]
+		});
+		testQuery('a load may rebind a variable', "x <- 'a'\nload('a.rda')\nfoo(x)", q('3@foo'), {
+			'3@foo': [{ id: '3@x', types: [InputType.Constant, InputType.Unknown], trace: InputTraceType.Alias }]
+		});
+		testQuery('a field written on an environment may rebind a variable', "x <- 'a'\n.GlobalEnv$x <- readLines('f')\nfoo(x)", q('3@foo'), {
+			'3@foo': [{ id: '3@x', types: [InputType.Constant, InputType.Unknown], trace: InputTraceType.Alias }]
+		});
+		testQuery('the session state is no constant', 'x <- ls()\nfoo(x)', q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Unknown], trace: InputTraceType.Alias }]
+		});
+		testQuery('a template carries what it interpolates', "x <- readline()\nfoo(glue::glue('ls {x}'))", q('2@foo'), {
+			'2@foo': [{ id: '$8', types: [InputType.Constant, InputType.User, InputType.DerivedConstant], trace: InputTraceType.Unknown }]
+		});
+		testQuery('a sanitizer does not escape its template', "foo(DBI::sqlInterpolate(con, paste('SELECT', readline()), a = 1))", q('1@foo', { sanitizers: ['DBI::sqlInterpolate'] }), {
+			'1@foo': [{ id: '$15', types: [InputType.DerivedConstant, InputType.Constant, InputType.User], trace: InputTraceType.Alias }]
+		});
+		testQuery('a function the code defines is no sanitizer of the same name', 'shQuote <- function(s) s\nfoo(shQuote(readline()))', q('2@foo', { sanitizers: ['base::shQuote'] }), {
+			'2@foo': [{ id: '2@shQuote', types: [InputType.User], trace: InputTraceType.Alias }]
+		});
+		testQuery('get is classified by the name it looks up', "v <- readline()\nget('v')", q('2@get'), {
+			'2@get': [{ id: '7-get-name', types: [InputType.Constant], trace: InputTraceType.Unknown, value: 'v' }]
+		});
+		testQuery('do.call is classified by the function it is handed', "do.call(paste, list('a', readline()))", q('1@do.call'), {
+			'1@do.call': [{ id: '1@paste', types: [InputType.Constant], trace: InputTraceType.Unknown }, { id: '1@list', types: [InputType.Constant, InputType.User, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+		testQuery('replicate yields what it evaluates', 'x <- replicate(5, mean(sample(1:10, 3)))\nfoo(x)', q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.Random, InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		});
+		testQuery('sapply yields what the function it is handed returns', 'x <- sapply(1:5, function(i) runif(1))\nfoo(x)', q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant, InputType.Random], trace: InputTraceType.Alias }]
+		});
+		testQuery('a purrr formula yields what its body does', 'x <- purrr::map_dbl(1:5, ~ runif(1))\nfoo(x)', q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant, InputType.Random], trace: InputTraceType.Alias }]
+		});
+		testQuery('a built-in handed to purrr by name yields what it returns', 'x <- purrr::map(1:3, runif)\nfoo(x)', q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant, InputType.Random], trace: InputTraceType.Alias }]
+		});
+		testQuery('a function held as a looked up value says nothing about its result', 'f <- get("readLines")\nfoo(f("a"))', q('2@foo'), {
+			'2@foo': [{ id: '2@f', types: [InputType.Unknown], trace: InputTraceType.Unknown }]
+		});
+		testQuery('whether a handler answers depends on the whole block', 'x <- tryCatch({ readLines("a"); 1 }, error = function(e) 2)\nfoo(x)', q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Constant] }]
+		});
+		testQuery('a namespaced call of a package outside base R is no base function', "x <- config::get('n')\nfoo(x)", q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Unknown], trace: InputTraceType.Alias }]
+		});
+		testQuery('a database answers with its own data', "x <- sqldf::sqldf('select 1')\nfoo(x)", q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Unknown], trace: InputTraceType.Alias }]
+		});
+		testQuery('a reactive value holds what is set later on', 'v <- shiny::reactiveVal(1)\nv(readline())\nfoo(v())', q('3@foo'), {
+			'3@foo': [{ id: '3@v', types: [InputType.Unknown], trace: InputTraceType.Unknown }]
+		});
+		testQuery('code built from an input is no written code', 'x <- as.name(readline())\nfoo(x)', q('2@foo'), {
+			'2@foo': [{ id: '2@x', types: [InputType.Lang], trace: InputTraceType.Alias }]
+		});
+		testQuery('cutting into a sanitized value undoes the escape', "foo(gsub(\"'\", '', shQuote(readline())))", q('1@foo', { sanitizers: ['base::shQuote'] }), {
+			'1@foo': [{ id: '1@gsub', types: [InputType.Constant, InputType.User, InputType.DerivedConstant], trace: InputTraceType.Unknown }]
+		});
+	});
+
 	describe('Shiny (issue #2625)', () => {
 		testQuery('a read of input$n links to the widget declaring it', 'library(shiny)\nui <- fluidPage(textInput("n", "Name"))\nserver <- function(input, output, session) {\n  foo(input$n)\n}', [{ type: 'input-sources', criterion: '4@foo' }], {
 			'4@foo': [{ id: '4@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n', declaredAt: ['2@textInput'] }]
@@ -414,7 +509,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'3@foo': [{ id: '3@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'clientData' }]
 		});
 		testQuery('the rest of the session is not', 'library(shiny)\nserver <- function(input, output, session) {\n  foo(session$userData)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
-			'3@foo': [{ id: '3@$', types: [InputType.Parameter, InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Known }]
+			'3@foo': [{ id: '3@$', types: [InputType.Parameter, InputType.Constant, InputType.DerivedConstant], trace: InputTraceType.Known }]
 		});
 		testQuery('traces through the reactive wrappers', 'library(shiny)\nserver <- function(input, output, session) {\n  output$txt <- renderText({ foo(isolate(input$n)) })\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
 			'3@foo': [{ id: '3@isolate', types: [InputType.User, InputType.DerivedConstant], trace: InputTraceType.Known }]
@@ -436,7 +531,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'3@foo': [{ id: '3@parseQueryString', types: [InputType.User], trace: InputTraceType.Unknown }]
 		});
 		testQuery('input handed to a helper keeps being user input', 'library(shiny)\nhelper <- function(input) {\n  foo(input$cmd)\n}\nsrv <- function(input, output, session) {\n  helper(input)\n}\nsrv(1, 2, 3)', [{ type: 'input-sources', criterion: '3@foo' }], {
-			'3@foo': [{ id: '3@$', types: [InputType.User, InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Known }]
+			'3@foo': [{ id: '3@$', types: [InputType.User, InputType.Constant, InputType.DerivedConstant], trace: InputTraceType.Known }]
 		});
 	});
 

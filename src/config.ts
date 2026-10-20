@@ -26,6 +26,17 @@ import { type FlowrGasConfig, GasWikiRef } from './gas';
 import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from './queries/catalog/input-sources-query/input-types';
 import { uniqueArray } from './util/collections/arrays';
+import { SecureMode } from './util/secure-mode';
+
+/** Marks an option that decides what flowR executes or loads, it is dropped from untrusted configs (see {@link FlowrConfig.fromFile}). */
+function securitySensitive<T extends Joi.Schema>(schema: T): T {
+	return schema.meta({ securitySensitive: true }) as T;
+}
+
+/** Marks an option holding regular expressions, which the {@link SecureMode} drops from every config (ReDoS). */
+function regexOption<T extends Joi.Schema>(schema: T): T {
+	return schema.meta({ regex: true }) as T;
+}
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -157,6 +168,12 @@ export interface FlowrConfig {
 	}
 	readonly linter: {
 		readonly disabledRules: string[]
+		/**
+		 * Rules carrying any of these {@link LintingRuleTag}s are excluded from the default rule set (a rule requested
+		 * explicitly still runs). The `cmd-check` rules are only enabled for a {@link ProjectKind.Package} this way, so a
+		 * configured list replaces that default: keep `cmd-check` in it to keep those rules off outside packages.
+		 */
+		readonly disabledTags?: string[]
 	}
 	/**
 	 * Teaches the {@link InputSourcesQuery|input-sources} analysis further frameworks; entries are *added* to what
@@ -583,11 +600,13 @@ export const FlowrConfig = {
 				assumeImplicitEcho:        true
 			},
 			linter: {
-				disabledRules: []
+				disabledRules: [],
+				/* the R CMD check rules only make sense for a package, which re-enables them below */
+				disabledTags:  ['cmd-check']
 			},
 			specializeConfig: {
 				/* a package's top-level code runs at install time, its results are not echoed to anyone */
-				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } } },
+				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } }, linter: { disabledTags: [] } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
@@ -701,12 +720,13 @@ export const FlowrConfig = {
 			classification: Joi.object({
 				shinyDescriptionTypes: Joi.array().items(Joi.string()).optional().description('DESCRIPTION Type: values that mark a shiny app.'),
 				shinyEntryFiles:       Joi.array().items(Joi.string()).optional().description('File names a shiny app is assembled from.'),
-				shinyUsagePattern:     Joi.string().optional().description('Regex source evidencing shiny usage in an entry file.'),
+				shinyUsagePattern:     regexOption(Joi.string().optional()).description('Regex source evidencing shiny usage in an entry file.'),
 				notebookExtensions:    Joi.array().items(Joi.string()).optional().description('File extensions marking a notebook.')
 			}).optional().description('Overrides for the signals flowR uses to classify the project kind.')
 		}).description('Project specific configuration options.'),
 		linter: Joi.object({
-			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')
+			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.'),
+			disabledTags:  Joi.array().items(Joi.string()).optional().description('Linting rule tags whose rules are excluded from the default rule set (a rule requested explicitly via a linter query still runs). By default the cmd-check rules are disabled for everything but a package; a configured list replaces that default.')
 		}).description('Linter configuration options.'),
 		inputSources: Joi.object({
 			pure:              Joi.array().items(Joi.string()).optional().description('Functions that only pass the constantness of their arguments on.'),
@@ -721,13 +741,13 @@ export const FlowrConfig = {
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({
 				type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
-				wasmPath:           Joi.string().optional().description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
-				treeSitterWasmPath: Joi.string().optional().description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.'),
+				wasmPath:           securitySensitive(Joi.string().optional()).description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
+				treeSitterWasmPath: securitySensitive(Joi.string().optional()).description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.'),
 				lax:                Joi.boolean().optional().description('Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.')
 			}).description('The configuration for the tree sitter engine.'),
 			Joi.object({
 				type:     Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
-				rPath:    Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.'),
+				rPath:    securitySensitive(Joi.string().optional()).description('The path to the R executable to use. If this is undefined, this uses the default path.'),
 				pipeBind: Joi.boolean().optional().description('Whether to enable R\'s experimental pipe-bind operator "=>" by setting _R_USE_PIPEBIND_ for the R session (default false); R itself keeps this off by default, as it is experimental and has never shipped in a release version of R.')
 			}).description('The configuration for the R shell engine.')
 		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
@@ -747,16 +767,16 @@ export const FlowrConfig = {
 				linkPackageCalls:            Joi.boolean().optional().description('Add a lightweight Reads edge from a resolved package call to its signature-database function vertex (default false).'),
 				linkDescriptionDependencies: Joi.boolean().optional().description('Eagerly attach the namespaces of the project\'s declared DESCRIPTION dependencies (Imports/Depends) so their exports resolve without an explicit library() (default false).'),
 				warmInBackground:            Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).'),
-				additionalPaths:             Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
-				downloadRepo:                Joi.string().optional().description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
+				additionalPaths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
+				downloadRepo:                securitySensitive(Joi.string().optional()).description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
 				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
 				installedLibrary:            Joi.object({
 					enabled:           Joi.boolean().required().description('Recover packages no signature database knows from their installed copy (default false).'),
-					paths:             Joi.array().items(Joi.string()).optional().description('Library directories to search; when empty they are discovered from the environment and the project.'),
+					paths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Library directories to search; when empty they are discovered from the environment and the project.'),
 					useEnvironment:    Joi.boolean().optional().description('Search the libraries R_LIBS_USER/R_LIBS/R_LIBS_SITE name (default true).'),
 					useProjectLibrary: Joi.boolean().optional().description('Search a project-local renv/packrat library (default true).'),
 					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
-					packages:          Joi.array().items(Joi.string()).optional().description('Only recover packages whose name matches one of these regular expressions; empty means any.')
+					packages:          regexOption(Joi.array().items(Joi.string()).optional()).description('Only recover packages whose name matches one of these regular expressions; empty means any.')
 				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
 				blobCacheBudgetMb: Joi.number().min(0).optional().description('How many MiB of decoded package blobs every open bundle may hold together (default 16).'),
 				versionSelection:  Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
@@ -777,7 +797,7 @@ export const FlowrConfig = {
 				inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 				searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
 				repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
-				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files'),
+				applyReplacements:     regexOption(Joi.array().items(Joi.object())).description('Provide name replacements for loaded files'),
 				assumeFilesExist:      Joi.boolean().optional().description('Assume a sourced file is always there, making what it defines certain instead of conditional on the source call.')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
@@ -849,9 +869,15 @@ export const FlowrConfig = {
 	/**
 	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.
 	 */
-	parse(this: void, jsonString: string): FlowrConfig | undefined {
+	parse(this: void, jsonString: string, trusted = true): FlowrConfig | undefined {
 		try {
 			const parsed   = JSON.parse(jsonString) as FlowrConfig;
+			const dropped = trusted && !SecureMode.isEnabled() ? [] : FlowrConfig.dropUntrusted(parsed);
+			if(dropped.length > 0) {
+				console.warn(SecureMode.isEnabled()
+					? `[flowR] Ignoring ${dropped.join(', ')}, the secure mode does not allow them in any config.`
+					: `[flowR] Ignoring ${dropped.join(', ')} from the project config, pass --config-file or --trust-config to use them.`);
+			}
 			const validate = FlowrConfig.Schema.validate(parsed);
 			if(!validate.error) {
 				// assign default values to all config options except for the specified ones
@@ -864,10 +890,27 @@ export const FlowrConfig = {
 			log.error(`Failed to parse config ${jsonString}: ${(e as Error).message}`);
 		}
 	},
+	/** Paths (`*` matching any key) of all {@link securitySensitive} options, also within `specializeConfig`. */
+	securitySensitivePaths(this: void): readonly (readonly string[])[] {
+		return taggedPaths('securitySensitive');
+	},
+	/** Paths of all {@link regexOption} options, see {@link FlowrConfig.securitySensitivePaths}. */
+	regexPaths(this: void): readonly (readonly string[])[] {
+		return taggedPaths('regex');
+	},
+	/** Removes all {@link FlowrConfig.securitySensitivePaths} from the raw config (in place), returns the removed paths. */
+	dropSecuritySensitive(this: void, raw: unknown): string[] {
+		return FlowrConfig.securitySensitivePaths().flatMap(p => dropPath(raw, p, ''));
+	},
+	/** Like {@link FlowrConfig.dropSecuritySensitive}, but in {@link SecureMode} also drops the {@link FlowrConfig.regexPaths}. */
+	dropUntrusted(this: void, raw: unknown): string[] {
+		const dropped = FlowrConfig.dropSecuritySensitive(raw);
+		return SecureMode.isEnabled() ? [...dropped, ...FlowrConfig.regexPaths().flatMap(p => dropPath(raw, p, ''))] : dropped;
+	},
 	/**
 	 * Creates a new flowr config that has the updated values.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
 	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
 		return amendmentFunc(newConfig) ?? newConfig;
@@ -883,11 +926,15 @@ export const FlowrConfig = {
 	 * Please note that you can also use this without a path parameter to
 	 * infer the config from flowR's default locations.
 	 * This is mostly useful for user-facing features.
+	 * A relative `configFile` is searched for in the working directory and its parents. That file belongs to the analyzed
+	 * project, so its {@link securitySensitive} options are dropped unless `trustProjectConfig` is set.
 	 */
-	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
+	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd(), trustProjectConfig = false): FlowrConfig {
 		let config: FlowrConfig;
 		try {
-			config = loadConfigFromFile(configFile, configWorkingDirectory);
+			// the secure mode never searches for a project config
+			const searched = configFile !== undefined && !path.isAbsolute(configFile);
+			config = loadConfigFromFile(searched && SecureMode.isEnabled() ? undefined : configFile, configWorkingDirectory, trustProjectConfig);
 		} catch(e) {
 			log.error(`Failed to load config: ${(e as Error).message}`);
 			config = FlowrConfig.default();
@@ -1034,7 +1081,57 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	return file;
 }
 
-function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {
+const taggedPathsCache = new Map<string, readonly (readonly string[])[]>();
+
+function taggedPaths(meta: string): readonly (readonly string[])[] {
+	let paths = taggedPathsCache.get(meta);
+	if(paths === undefined) {
+		const base = collectTaggedPaths(FlowrConfig.Schema.describe(), meta);
+		paths = [...base, ...base.map(p => ['specializeConfig', '*', ...p])];
+		taggedPathsCache.set(meta, paths);
+	}
+	return paths;
+}
+
+interface JoiDescription {
+	readonly keys?:    Record<string, JoiDescription>
+	readonly items?:   readonly JoiDescription[]
+	readonly matches?: readonly { readonly schema?: JoiDescription }[]
+	readonly metas?:   readonly Record<string, unknown>[]
+}
+
+function collectTaggedPaths(d: JoiDescription | undefined, meta: string, at: readonly string[] = []): string[][] {
+	if(!d) {
+		return [];
+	} else if(d.metas?.some(m => m[meta] === true)) {
+		return [[...at]];
+	}
+	return [
+		...Object.entries(d.keys ?? {}).flatMap(([k, v]) => collectTaggedPaths(v, meta, [...at, k])),
+		...(d.items ?? []).flatMap(i => collectTaggedPaths(i, meta, [...at, '*'])),
+		...(d.matches ?? []).flatMap(m => collectTaggedPaths(m.schema, meta, at))
+	];
+}
+
+function dropPath(obj: unknown, path: readonly string[], at: string): string[] {
+	if(obj === null || typeof obj !== 'object' || path.length === 0) {
+		return [];
+	}
+	const [head, ...rest] = path;
+	const record = obj as Record<string, unknown>;
+	const dropped: string[] = [];
+	for(const key of head === '*' ? Object.keys(record) : Object.hasOwn(record, head) ? [head] : []) {
+		const next = at === '' ? key : `${at}.${key}`;
+		if(rest.length > 0) {
+			dropped.push(...dropPath(record[key], rest, next));
+		} else if(Reflect.deleteProperty(record, key)) {
+			dropped.push(next);
+		}
+	}
+	return dropped;
+}
+
+function loadConfigFromFile(configFile: string | undefined, workingDirectory: string, trustProjectConfig: boolean): FlowrConfig {
 	if(configFile !== undefined) {
 		if(path.isAbsolute(configFile) && fs.existsSync(configFile)) {
 			log.trace(`Found config at ${configFile} (absolute)`);
@@ -1049,7 +1146,7 @@ function loadConfigFromFile(configFile: string | undefined, workingDirectory: st
 			const configPath = path.join(searchPath, configFile);
 			if(fs.existsSync(configPath)) {
 				log.trace(`Found config at ${configPath}`);
-				const ret = FlowrConfig.parse(fs.readFileSync(configPath, { encoding: 'utf-8' }));
+				const ret = FlowrConfig.parse(fs.readFileSync(configPath, { encoding: 'utf-8' }), trustProjectConfig);
 				if(ret) {
 					log.info(`Using config ${JSON.stringify(ret)}`);
 					return ret;

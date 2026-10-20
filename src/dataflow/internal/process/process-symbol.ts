@@ -1,3 +1,4 @@
+import { ReferenceType } from '../../environments/identifier';
 import { type DataflowInformation, ExitPointType } from '../../info';
 import type { DataflowProcessorInformation } from '../../processor';
 import { processValue } from './process-value';
@@ -6,8 +7,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RNa, RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
-import { ReferenceType } from '../../environments/identifier';
-
+import { ambientAccessOfSymbol } from './functions/call/built-in/built-in-ambient-state';
 
 /**
  * Process a symbol node in the AST for dataflow analysis.
@@ -19,8 +19,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		return processValue(symbol, data);
 	}
 	const sid = symbol.info.id;
-
-	return {
+	return ambientAccessOfSymbol({
 		unknownReferences: [{ nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown }],
 		in:                [],
 		out:               [],
@@ -33,5 +32,5 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		entryPoint: sid,
 		exitPoints: [{ nodeId: sid, type: ExitPointType.Default, cds: data.cds }],
 		hooks:      []
-	};
+	}, symbol, data as DataflowProcessorInformation<OtherInfo & ParentInformation>);
 }

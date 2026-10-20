@@ -72,7 +72,7 @@ describe('Static Dicing', withTreeSitter(shell => {
 	describe('Function calls', () => {
 		assertDiced('function body is on the data-flow path from argument to return value',
 			shell, 'f <- function(x) x * 2\na <- 3\nb <- f(a)', ['2@a'], ['3@b'],
-			{ contains: ['a <- 3', 'b <- f(a)'], excludes: ['f <- function'] });
+			{ contains: ['f <- function(x) x * 2', 'a <- 3', 'b <- f(a)'] });
 
 		assertDiced('dice through a two-argument function: a-path excludes b-def, b-path excludes a-def',
 			shell,

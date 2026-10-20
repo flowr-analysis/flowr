@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, assertLinterFields } from '../_helper/linter';
 import { SourceRange } from '../../../src/util/range';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
@@ -30,6 +30,19 @@ f = function(a, b){return a;}`, 'roxygen-arguments', [
 			}
 		]);
 		assertLinter('Same @param documented as implemented', parser, '#\' This is a function.\n#\' An interesting function.\n#\' @param a some variable\n#\' @param b does exist\nf = function(a,b){return a;}', 'roxygen-arguments', []);
+		assertLinter('A backticked @param', parser, '#\' @param `a b` x\nf <- function(`a b`) 1', 'roxygen-arguments', []);
+		assertLinter('A backticked @param naming another parameter', parser, '#\' @param `a b` x\nf <- function(`a c`) 1', 'roxygen-arguments', [{
+			certainty:       LintingResultCertainty.Uncertain,
+			loc:             SourceRange.from(2, 6, 2, 22),
+			overDocumented:  ['a b'],
+			underDocumented: ['a c']
+		}]);
+		assertLinter('A ##\' block documents', parser, '##\' @param b x\nf <- function(a) a', 'roxygen-arguments', [{
+			certainty:       LintingResultCertainty.Uncertain,
+			loc:             SourceRange.from(2, 6, 2, 18),
+			overDocumented:  ['b'],
+			underDocumented: ['a']
+		}]);
 		assertLinter('Parameterized function, not commented', parser, 'f = function(a){return a;}', 'roxygen-arguments', []);
 		assertLinter('Unparameterized function, not commented', parser, 'f = function(){return 42;}', 'roxygen-arguments', []);
 		assertLinter('Different @param documented than implemented', parser, '#\' @param a some variable\nf = function(b){return b;}', 'roxygen-arguments', [
@@ -110,5 +123,11 @@ f = function(a, b){return a;}`, 'roxygen-arguments', [
 		assertLinter('comma-separated @param documents each name', parser, `#' This is a function.
 #' @param x,y numeric values
 add <- function(x, y) x + y`, 'roxygen-arguments', []);
+	});
+	describe('counterexamples', () => {
+		/* roxygen2::parse_text gives the param name `a b` */
+		assertLinter('backticked param', parser, '#\' @param `a b` x\nf <- function(`a b`) 1', 'roxygen-arguments', []);
+		/* roxygen2 reads ##' blocks as well */
+		assertLinterFields(parser, '##\' @param b x\nf <- function(a) a', 'roxygen-arguments', [{ underDocumented: ['a'], overDocumented: ['b'] }]);
 	});
 }));

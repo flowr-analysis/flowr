@@ -153,8 +153,7 @@ type Primitive =
 	| null
 	| undefined
 	| Date
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-	| Function;
+	| ((...args: never[]) => unknown);
 
 /**
  * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.

@@ -29,4 +29,24 @@
 		document.documentElement.dataset.theme = next;
 		try { localStorage.setItem('flowr-theme', next); } catch(e) { /* private mode forgets the choice */ }
 	});
+	/* stack the bar from what its row actually holds rather than a guessed width: unstack, then see whether the nav
+	   overflows; the links are watched too, as a late font widens them without resizing the bar. Once stacked, a
+	   title that still pushes the controls onto a row of their own drops the version instead */
+	addEventListener('DOMContentLoaded', () => {
+		for(const bar of document.querySelectorAll('.bar')) {
+			const nav = bar.querySelector('nav');
+			const title = bar.querySelector('h2');
+			const controls = bar.querySelector('.controls');
+			const fit = () => {
+				bar.classList.remove('stacked', 'tight');
+				bar.classList.toggle('stacked', nav.scrollWidth > nav.clientWidth);
+				bar.classList.toggle('tight', controls.offsetTop >= title.offsetTop + title.offsetHeight);
+			};
+			fit();
+			const watch = new ResizeObserver(fit);
+			for(const box of [bar, ...nav.children]) {
+				watch.observe(box);
+			}
+		}
+	});
 </script>

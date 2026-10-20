@@ -1,19 +1,19 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Inspect Argument Roles Query">Inspect Argument Roles Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine what functions and their formals do\
 _This query is requested with the type `inspect-fn-props`._\
 Run in the REPL: `:query @inspect-fn-props [(<crit>;...)] <code | file://path>`
 
-Per function definition this states what each formal is used for, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L9"><code><span title="What a single argument of a call is used for, as a bitmask ( ArgProp.Forced / ArgProp.NoDefault lead, being the two bits the signature database can also state).">ArgProp</span></code></a> bits, and what the
-function itself does, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L57"><code><span title="The properties of the behavior of a call, as a bitmask.">CallProp</span></code></a> bits: the very scheme flowR states its built-ins and the
+Per function definition this states what each formal is used for, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L11"><code><span title="What a single argument of a call is used for, as a bitmask ( ArgProp.Forced / ArgProp.NoDefault lead, being the two bits the signature database can also state).">ArgProp</span></code></a> bits, and what the
+function itself does, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L59"><code><span title="The properties of the behavior of a call, as a bitmask.">CallProp</span></code></a> bits: the very scheme flowR states its built-ins and the
 signature database stores its parameters with.
 
 R hands arguments over as promises, so whether a parameter is evaluated at all is part of the answer:
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L11"><code><span title="evaluated whenever the call happens, even if the result goes unused, like x in force(x)">ArgProp::<b>Forced</b></span></code></a> says every call forces it,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L45"><code><span title="never evaluated, the definite counterpart of ArgProp.Forced : no path of the body reads it">ArgProp::<b>Lazy</b></span></code></a> that none can, and neither of the two that it depends on the
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L13"><code><span title="evaluated whenever the call happens, even if the result goes unused, like x in force(x)">ArgProp::<b>Forced</b></span></code></a> says every call forces it,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L47"><code><span title="never evaluated, the definite counterpart of ArgProp.Forced : no path of the body reads it">ArgProp::<b>Lazy</b></span></code></a> that none can, and neither of the two that it depends on the
 path taken, on the caller, or on a function flowR could not resolve. A function forcing every one of its
-parameters is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L88"><code>CallProp::<b>Strict</b></code></a> in turn. A read that only hands the parameter
+parameters is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L90"><code>CallProp::<b>Strict</b></code></a> in turn. A read that only hands the parameter
 on is decided by the function receiving it, resolved through the call graph, while a read in a nested
 definition, in a loop, or under a condition leaves it open.
 
@@ -38,8 +38,8 @@ Using the example code `f <- function(x, xs, FUN, opt) { if(missing(opt)) print(
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (8ms)\
-&nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
+Query: **inspect-fn-props**\
+&nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -69,6 +69,10 @@ We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
 
 ```mermaid
 flowchart LR
+    %% Environment of 32 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%   #rng: {**#rng** (id: 27, type: Variable, def. @27)}
     32["`*#91;RFunctionDefinition#93;* **function**
       *1.6-89* (**id: 32**)`"]
 
@@ -133,14 +137,19 @@ lapply`"]
     31[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.32* (**id: 31**)
     arg: (23, 29, 30)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 23 stroke:purple,stroke-width:4px; 
     style 14 stroke:purple,stroke-width:4px; 
     style 19 stroke:purple,stroke-width:4px; 
     style 21 stroke:purple,stroke-width:4px; 
+    style 21 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
     style 29 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
     style 31 stroke:purple,stroke-width:4px; 
 end
     0["`*#91;RSymbol#93;* **f**
@@ -148,9 +157,9 @@ end
     33[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-89* (**id: 33**)
     arg: (0, 32)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 3
     linkStyle 0 stroke:gray,color:gray;
     3 -.->|"flow"| 5
@@ -207,7 +216,7 @@ end
     31 -->|"arg"| 23
     31 -->|"arg"| 29
     31 -->|"returns, arg"| 30
-    31 -.->|"reads, calls"| built-in:_
+    31 -.->|"reads, calls"| built-in:_123_
     linkStyle 36 stroke:gray;
 32 -.-|function| flow-32
 
@@ -217,7 +226,7 @@ end
     0 -->|"defined-by"| 32
     33 -->|"reads, arg"| 32
     33 -->|"returns, arg"| 0
-    33 -.->|"reads, calls"| built-in:_-
+    33 -.->|"reads, calls"| built-in:_60_-
     linkStyle 43 stroke:gray;
 ```
 
@@ -242,8 +251,8 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-fn-props** (4ms)\
-&nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]\
+Query: **inspect-fn-props**\
+&nbsp;&nbsp;- Function **32** (1.6-89) x: forced, alias, xs: forced, value, shape, FUN: forced, callee, opt: presence, lazy [prints]
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -273,6 +282,10 @@ We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
 
 ```mermaid
 flowchart LR
+    %% Environment of 32 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%   #rng: {**#rng** (id: 27, type: Variable, def. @27)}
     32["`*#91;RFunctionDefinition#93;* **function**
       *1.6-89* (**id: 32**)`"]
 
@@ -337,14 +350,19 @@ lapply`"]
     31[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.32* (**id: 31**)
     arg: (23, 29, 30)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 23 stroke:purple,stroke-width:4px; 
     style 14 stroke:purple,stroke-width:4px; 
     style 19 stroke:purple,stroke-width:4px; 
     style 21 stroke:purple,stroke-width:4px; 
+    style 21 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
     style 29 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
     style 31 stroke:purple,stroke-width:4px; 
 end
     0["`*#91;RSymbol#93;* **f**
@@ -352,9 +370,9 @@ end
     33[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-89* (**id: 33**)
     arg: (0, 32)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 3
     linkStyle 0 stroke:gray,color:gray;
     3 -.->|"flow"| 5
@@ -411,7 +429,7 @@ end
     31 -->|"arg"| 23
     31 -->|"arg"| 29
     31 -->|"returns, arg"| 30
-    31 -.->|"reads, calls"| built-in:_
+    31 -.->|"reads, calls"| built-in:_123_
     linkStyle 36 stroke:gray;
 32 -.-|function| flow-32
 
@@ -421,7 +439,7 @@ end
     0 -->|"defined-by"| 32
     33 -->|"reads, arg"| 32
     33 -->|"returns, arg"| 0
-    33 -.->|"reads, calls"| built-in:_-
+    33 -.->|"reads, calls"| built-in:_60_-
     linkStyle 43 stroke:gray;
 ```
 
@@ -433,6 +451,6 @@ end
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Inspect Argument Roles Query query is `executeFnPropsQuery` in [`./src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor.ts).
+The Inspect Argument Roles Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor.ts#L51"><code><span title="Execute function-property inspection queries on the given analyzer.">executeFnPropsQuery</span></code></a>.
 
 </details>

@@ -63,7 +63,11 @@ export function describeCompletion(insert: string, describe: string): string {
 	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
 }
 
-function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?, (readonly string[])?] {
+/**
+ * Every completion for `line`, the fragment of it they replace, the labels saying what each does, and the
+ * display-only hints; {@link replCompleter} and {@link completionSuggestion} are the two views the terminal needs.
+ */
+export function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?, (readonly string[])?] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -237,7 +241,7 @@ export function startWatching(
 	return watcher;
 }
 
-async function executeStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+async function executeStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean, remote: boolean): Promise<void> {
 	const time = Date.now();
 	const heatMap = new Map<RType, number>();
 	if(analyzer.inspectContext().config.repl.dfProcessorHeat) {
@@ -254,7 +258,9 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 		};
 		try {
 			const processor = getCommand(command);
-			if(processor) {
+			if(processor?.localOnly && remote) {
+				output.stderr(`the command '${command}' is only available in a local session, not to clients of the server\n`);
+			} else if(processor) {
 				await genericWrapReplFailIfNoRequest(async() => {
 					const remainingLine = statement.slice(command.length + 2).trim();
 					if(processor.isCodeCommand) {
@@ -323,18 +329,18 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 	}
 }
 
-async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean, remote: boolean): Promise<void> {
 	stopWatching(output, !statement.includes(watchProtocol));
 
 	if(statement.includes(watchProtocol)) {
 		const watchPath = extractWatchPath(statement);
 		const effective = toFileStatement(statement);
-		await executeStatement(output, effective, analyzer, allowRSessionAccess);
+		await executeStatement(output, effective, analyzer, allowRSessionAccess, remote);
 		if(watchPath) {
 			try {
 				activeWatcher = startWatching(watchPath, output, () => {
 					analyzer.context().files.getFileByPath(watchPath)?.invalidate();
-					void executeStatement(output, effective, analyzer, allowRSessionAccess);
+					void executeStatement(output, effective, analyzer, allowRSessionAccess, remote);
 				});
 				activeWatcher.unref();
 				activeWatcher.on('error', (err: Error) => {
@@ -348,7 +354,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		return;
 	}
 
-	await executeStatement(output, statement, analyzer, allowRSessionAccess);
+	await executeStatement(output, statement, analyzer, allowRSessionAccess, remote);
 }
 
 /**
@@ -357,12 +363,13 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
  * @param output              - Defines two methods that every function in the repl uses to output its data.
  * @param expr                - The expression to process.
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
+ * @param remote              - If true, the expression comes from a (untrusted) client of the server, which may not use {@link ReplBaseCommand#localOnly} commands.
  */
-export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean): Promise<void> {
+export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean, remote = false): Promise<void> {
 	const statements = splitAtEscapeSensitive(expr, false, /^;\s*:/);
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement.trim(), analyzer, allowRSessionAccess);
+		await replProcessStatement(output, statement.trim(), analyzer, allowRSessionAccess, remote);
 	}
 }
 

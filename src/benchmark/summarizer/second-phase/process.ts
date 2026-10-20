@@ -307,6 +307,24 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 	};
 }
 
+/** Restores the maps and bigints of serialized measurements. */
+export function restoreMeasurementMaps(stats: object) {
+	const { memory, commonMeasurements, additionalMeasurements } = stats as {
+		memory:                 [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][],
+		commonMeasurements:     [CommonSlicerMeasurements, string][],
+		additionalMeasurements: [AdditionalSlicerMeasurements, string][] | undefined
+	};
+	const bigints = <K>(entries: readonly (readonly [K, string])[]) => new Map(entries.map(([k, v]) => {
+		guard(v.endsWith('n'), 'Expected a bigint');
+		return [k, BigInt(v.slice(0, -1))] as const;
+	}));
+	return {
+		memory:                 new Map(memory),
+		commonMeasurements:     bigints(commonMeasurements),
+		additionalMeasurements: bigints(additionalMeasurements ?? [])
+	};
+}
+
 /**
  * Processes the next summary line.
  */
@@ -316,24 +334,7 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 		summarize: {
 			...got.summarize,
 			// restore maps
-			memory: new Map(
-				(got.summarize.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
-					.map(([k, v]) => [k, v])
-			),
-			commonMeasurements: new Map(
-				(got.summarize.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
-					.map(([k, v]) => {
-						guard(v.endsWith('n'), 'Expected a bigint');
-						return [k, BigInt(v.slice(0, -1))];
-					})
-			),
-			additionalMeasurements: new Map(
-				(got.summarize.additionalMeasurements as unknown as [AdditionalSlicerMeasurements, string][] ?? [])
-					.map(([k, v]) => {
-						guard(v.endsWith('n'), 'Expected a bigint');
-						return [k, BigInt(v.slice(0, -1))];
-					})
-			),
+			...restoreMeasurementMaps(got.summarize),
 			perSliceMeasurements: {
 				...got.summarize.perSliceMeasurements,
 				// restore maps

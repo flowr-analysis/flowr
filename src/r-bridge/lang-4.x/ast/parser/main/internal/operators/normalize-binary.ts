@@ -1,6 +1,6 @@
 import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { ensureChildrenAreLhsAndRhsOrdered, ensureExpressionList, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta';
+import { ensureChildrenAreLhsAndRhsOrdered, ensureExpressionList, retrieveMetaStructure, retrieveOpName, currentSourceInfo } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import { expensiveTrace } from '../../../../../../../util/log';
 import { startAndEndsWith } from '../../../../../../../util/text/strings';
@@ -105,11 +105,7 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			},
 			rhs:    desugarPipeBindRhs(parsedRhs),
 			lexeme: content,
-			info:   {
-				fullRange:  data.currentRange,
-				adToks:     [],
-				fullLexeme: data.currentLexeme
-			}
+			info:   currentSourceInfo(data)
 		};
 	} else {
 		return {
@@ -119,11 +115,7 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			rhs:      parsedRhs,
 			operator: operationName,
 			lexeme:   content,
-			info:     {
-				fullRange:  data.currentRange,
-				adToks:     [],
-				fullLexeme: data.currentLexeme
-			}
+			info:     currentSourceInfo(data)
 		};
 	}
 }

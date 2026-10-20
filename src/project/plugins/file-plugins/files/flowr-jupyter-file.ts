@@ -2,21 +2,23 @@ import type { INotebookContent } from '@jupyterlab/nbformat';
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
 
-
 /**
  * This decorates a text file and parses its contents as a Jupyter file.
  * Finnaly, it provides access to the single cells, and all cells fused together as one R file.
  */
 export class FlowrJupyterFile extends FlowrFile {
-	private readonly wrapped: FlowrFileProvider<string>;
-
 	/**
 	 * Prefer the static {@link FlowrJupyterFile.from} method
-	 * @param file - the file to load as Jupyter
+	 * @param wrapped - the file to load as Jupyter
 	 */
-	constructor(file: FlowrFileProvider<string>) {
-		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
-		this.wrapped = file;
+	constructor(private readonly wrapped: FlowrFileProvider<string>) {
+		super(wrapped.path(), wrapped.roles ? [...wrapped.roles, FileRole.Source] : [FileRole.Source]);
+	}
+
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
 	}
 
 	/**
@@ -41,13 +43,9 @@ export class FlowrJupyterFile extends FlowrFile {
 }
 
 function loadJupyter(content: string): string {
-	const nb = JSON.parse(content) as INotebookContent;
-
-	return nb.cells.map(cell => {
-		if(cell.cell_type === 'code') {
-			return typeof cell.source === 'object' ? cell.source.join('') : cell.source;
-		} else {
-			return typeof cell.source === 'object' ? cell.source.map(s => `# ${s}`).join('') : `# ${cell.source}`;
-		}
+	return (JSON.parse(content) as INotebookContent).cells.map(cell => {
+		const source = typeof cell.source === 'object' ? cell.source.join('') : cell.source;
+		/* every line of a text cell becomes a comment, whether the notebook stores the cell as lines or as one string */
+		return cell.cell_type === 'code' ? source : source.replace(/^/gm, '# ');
 	}).join('\n');
 }

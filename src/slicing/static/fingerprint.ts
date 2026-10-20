@@ -2,7 +2,7 @@ import objectHash from 'object-hash';
 import type { Environment, REnvironmentInformation } from '../../dataflow/environments/environment';
 import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../dataflow/environments/identifier';
-import type { MemoryView } from '../../dataflow/environments/frame-memory';
+import { Frame, type MemoryView } from '../../dataflow/environments/frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type Fingerprint = string;
@@ -35,15 +35,22 @@ function definitionHash(definition: IdentifierDefinition): Fingerprint {
 
 function memoryHash(memory: MemoryView): Fingerprint {
 	let hash = memoryHashes.get(memory);
-	if(hash === undefined) {
+	if(hash !== undefined) {
+		return hash;
+	}
+	const lazy = memory instanceof Frame ? memory.lazy() : undefined;
+	if(lazy !== undefined) {
+		/* an attached package's exports: hashing what they bind would build a definition for every one of them */
+		hash = objectHash(`${lazy.origin}|${[...lazy.keys()].join(',')}`, HashOptions);
+	} else {
 		const entries: string[] = [];
 		for(const [name, definitions] of memory) {
 			entries.push(`${String(name)}=${definitions.map(definitionHash).join(',')}`);
 		}
 		entries.sort();
 		hash = objectHash(entries, HashOptions);
-		memoryHashes.set(memory, hash);
 	}
+	memoryHashes.set(memory, hash);
 	return hash;
 }
 

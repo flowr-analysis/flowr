@@ -11,7 +11,7 @@ import { versionReplString } from '../../cli/repl/print-version';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
-function printHelpForScript(script: [string, ReplBaseCommand], starredVersion?: ReplBaseCommand): string {
+function scriptHelpMarkdown(script: [string, ReplBaseCommand], starredVersion?: ReplBaseCommand): string {
 	let base = `| **${getReplCommand(script[0], false, starredVersion !== undefined)}** | ${script[1].description}`;
 	if(starredVersion) {
 		base += ` (star: ${starredVersion.description})`;
@@ -37,7 +37,7 @@ export function printReplHelpAsMarkdownTable(): string {
 			continue;
 		}
 		const starred =  cmds[c[0] + '*'];
-		scriptHelp.push(printHelpForScript(c, starred));
+		scriptHelp.push(scriptHelpMarkdown(c, starred));
 	}
 
 	return `
@@ -68,9 +68,10 @@ export interface DocumentReplCommand {
 	description: string;
 }
 
+const AnsiEscapeCodes = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[mK]`, 'g');
+
 function dropAnsiEscapeCodesAndCodeTags(input: string): string {
-	// eslint-disable-next-line no-control-regex
-	return input.replace(/\x1B\[[0-9;]*[mK]/g, '')
+	return input.replace(AnsiEscapeCodes, '')
 		.replace(/<\/?code>/g, '')
 		.replace(/\**([^*]+)\**/g, '$1')
 		.replace(/_([^_]+)_/g, '$1')

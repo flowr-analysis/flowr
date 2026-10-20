@@ -1,7 +1,7 @@
 import type { InspectRecursionQuery, InspectRecursionQueryResult } from './inspect-recursion-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isFunctionRecursive } from '../../../dataflow/fn/recursive-function';
+import { CallGraph } from '../../../dataflow/graph/call-graph';
 import { QueryFunctionFilter } from '../../query-function-filter';
 
 /**
@@ -13,7 +13,7 @@ export async function executeRecursionQuery({ analyzer }: BasicQueryData, querie
 
 	const result: Record<NodeId, boolean> = {};
 	for(const [id] of fns) {
-		result[id] = isFunctionRecursive(id, cg);
+		result[id] = CallGraph.isRecursive(id, cg);
 	}
 
 	return {

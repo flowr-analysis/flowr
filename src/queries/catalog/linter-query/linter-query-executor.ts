@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import type { LintingRuleTag } from '../../../linter/linter-tags';
 import type { LinterQuery, LinterQueryResult } from './linter-query-format';
 import { type LintingRuleNames, LintingRules } from '../../../linter/linter-rules';
 import { log } from '../../../util/log';
@@ -17,11 +18,18 @@ import { isNotUndefined } from '../../../util/assert';
  */
 export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: readonly LinterQuery[]): Promise<LinterQueryResult> {
 	// no explicit rules: run the rules that opt in via activeByDefault (default true), minus those the (project-kind
-	// specialized) config disables -- e.g. software-has-license/-tests are off for a lone script or a notebook
+	// specialized) config disables by name or tag -- e.g. software-has-license/-tests are off for a lone script or a
+	// notebook, and the cmd-check rules for everything but a package
 	const disabled = new Set(analyzer.flowrConfig.linter.disabledRules);
+	const disabledTags = new Set<string>(analyzer.flowrConfig.linter.disabledTags ?? []);
 	const defaultRules = (Object.keys(LintingRules) as LintingRuleNames[])
-		.filter((name: LintingRuleNames) => (LintingRules[name].info as { activeByDefault?: boolean }).activeByDefault !== false && !disabled.has(name));
-	const flattened = queries.flatMap(q => q.rules ?? defaultRules);
+		.filter((name: LintingRuleNames) => {
+			const info = LintingRules[name].info as { activeByDefault?: boolean, tags: readonly string[] };
+			return info.activeByDefault !== false && !disabled.has(name) && !info.tags.some(t => disabledTags.has(t));
+		});
+	const tagged = (tags: readonly LintingRuleTag[]) => (Object.keys(LintingRules) as LintingRuleNames[])
+		.filter(name => (LintingRules[name].info.tags as readonly LintingRuleTag[]).some(t => tags.includes(t)));
+	const flattened = queries.flatMap(q => q.rules ?? (q.tags ? tagged(q.tags) : defaultRules));
 	const distinct = new Set(flattened);
 	if(distinct.size !== flattened.length) {
 		const pretty = [...distinct].filter(r => flattened.indexOf(r) !== flattened.lastIndexOf(r)).map(r => typeof r === 'string' ? r : r.name).join(', ');

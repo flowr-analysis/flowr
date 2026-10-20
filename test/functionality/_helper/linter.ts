@@ -33,7 +33,12 @@ import type { LibraryExports } from '../../../src/project/sigdb/schema';
 import { applyAssumedPackages, assumedPackagesOf } from './shell';
 
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
-export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean };
+export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean, assumeLoaded?: readonly string[] };
+
+/** `builder` with `sigDb` in place of the bundled signature database. */
+export function withSigDb(builder: FlowrAnalyzerBuilder, sigDb: SigDbSource): FlowrAnalyzerBuilder {
+	return builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(sigDb));
+}
 
 /** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
 export function controlledSigDb(pkgs: Record<string, readonly string[]>): PackageSignatureSource;
@@ -113,6 +118,67 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 		}).sort()
 	}) as LintingRuleResult<Name>);
 }
+/** Asserts the linting results, comparing only the fields the expected results state (the union over all of them, so state a field for every result or none).*/
+export function assertLinterFields<Name extends LintingRuleNames>(
+	parser: KnownParser,
+	code: string,
+	ruleName: Name,
+	expected: Record<string, unknown>[],
+	emptyFiles: readonly string[] = [],
+	assumeLoaded?: readonly string[]
+) {
+	const keys = new Set(expected.flatMap(e => Object.keys(e)));
+	const setup: LinterTestSetup = { addFiles: emptyFiles.map(f => new FlowrInlineTextFile(f, '')), assumeLoaded };
+	assertLinterWithCleanup(`${ruleName}: ${JSON.stringify(code)}`, parser, code, ruleName, expected, undefined, setup as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
+		r => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k))));
+}
+
+/** extra setup of {@link assertLinterPackage}: the package files besides the linted one, and where the linted code lives */
+export type PackageTestSetup = {
+	/** files of the package by their path below the package root; `DESCRIPTION` defaults to a minimal one, `null` drops it */
+	readonly files?: Readonly<Record<string, string | null>>
+	/** the path of the linted code below the package root (default `R/code.R`) */
+	readonly file?:  string
+};
+
+/** the root all {@link assertLinterPackage} packages live at */
+export const TestPackageRoot = '/pkg';
+
+/**
+ * Asserts the linting results of `code` as a file of an R package (by default `R/code.R` next to a minimal
+ * `DESCRIPTION` of a package called `pkg`), comparing only the fields the expected results state (the union over all of them, so state a field for every result or none).
+ */
+export function assertLinterPackage<Name extends LintingRuleNames>(
+	name: string | TestLabel,
+	parser: KnownParser,
+	code: string,
+	ruleName: Name,
+	expected: Record<string, unknown>[],
+	setup: PackageTestSetup & DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup = {} as PackageTestSetup & DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
+) {
+	const { files, file, ...config } = setup;
+	const all: Record<string, string | null> = { DESCRIPTION: 'Package: pkg\nVersion: 1.0\nTitle: A Package\nLicense: MIT\n', ...files };
+	const keys = new Set(expected.flatMap(e => Object.keys(e)));
+	const cfg = {
+		...config,
+		useAsFilePath: `${TestPackageRoot}/${file ?? 'R/code.R'}`,
+		addFiles:      [...Object.entries(all).filter(([, c]) => c !== null).map(([p, c]) => new FlowrInlineTextFile(`${TestPackageRoot}/${p}`, c as string)), ...config.addFiles ?? []]
+	} as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup;
+	assertLinterWithCleanup(name, parser, code, ruleName, expected, undefined, cfg,
+		r => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k))));
+}
+
+/** Asserts the lines the findings of `rule` start at, as the linter query of a fresh analyzer reports them */
+export function assertLintedLines(name: string, parser: KnownParser, code: string, rule: LintingRuleNames, lines: readonly number[]) {
+	test(name, async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+		analyzer.addRequest(code);
+		const linted = await analyzer.query([{ type: 'linter', rules: [rule] }]);
+		const results = (linted.linter.results[rule] as unknown as { results?: { loc: readonly number[] }[] } | undefined)?.results ?? [];
+		assert.deepStrictEqual(results.map(r => r.loc[0]), lines, `${rule} should report the lines ${JSON.stringify(lines)}`);
+	});
+}
+
 /**
  * Asserts correct linting results, allowing for a custom cleanup function that determines what information from the linting result will be kept for comparison.
  */
@@ -126,7 +192,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
 	cleanup: (result: LintingRuleResult<Name> | Result, ast: NormalizedAst) => LintingRuleResult<Name> | Result = (r => r),
 ) {
-	const assumed = assumedPackagesOf(undefined);
+	const assumed = assumedPackagesOf(lintingRuleConfig);
 	test(decorateLabelContext(name, ['linter']), async() => {
 		let builder = applyAssumedPackages(new FlowrAnalyzerBuilder()
 			.setInput({
@@ -138,7 +204,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		}
 		// swap in a controlled signature database (or none) so tests do not depend on the bundled collection
 		if(lintingRuleConfig?.sigDb !== undefined) {
-			builder = builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(lintingRuleConfig.sigDb));
+			builder = withSigDb(builder, lintingRuleConfig.sigDb);
 		} else if(lintingRuleConfig?.noSigDb) {
 			builder = builder.unregisterPlugins(SigDbPluginName);
 		}
@@ -177,8 +243,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 			throw e;
 		}
 		if(expectedMetadata !== undefined) {
-			// eslint-disable-next-line unused-imports/no-unused-vars
-			const { searchTimeMs, processTimeMs, ...strippedMeta } = results['.meta'];
+			const { searchTimeMs: _searchTimeMs, processTimeMs: _processTimeMs, ...strippedMeta } = results['.meta'];
 			assert.deepEqual(strippedMeta as unknown as LintingRuleMetadata<Name>, expectedMetadata,
 				`Expected ${ruleName} to have metadata ${JSON.stringify(expectedMetadata)}, but got ${JSON.stringify(results['.meta'])}`);
 		}

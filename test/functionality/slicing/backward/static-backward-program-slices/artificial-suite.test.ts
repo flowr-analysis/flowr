@@ -1,7 +1,14 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, skipTestBecauseConfigNotMet, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { describe } from 'vitest';
+import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { assert, describe, test } from 'vitest';
+import fs from 'fs';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import { staticSlice } from '../../../../../src/slicing/static/static-slicer';
+import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
+import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
+import { equidistantSampling } from '../../../../../src/util/collections/arrays';
 
 /**
  * Slicing tests for the R files added to the artificial performance suite
@@ -79,11 +86,27 @@ describe('Artificial performance suite', { concurrent: false }, withShell(shell 
 		'x <- 0\nif(x == 0)\n    { if(x < 1)\n        { if(x >= 0)\n            { while(x < 5) {\n                x <- x + 1\n                if(x %% 2 == 0) { x <- x + 1 } else\n                { x <- x + 2 }\n            } } } }\nx'
 	);
 
-	// the closures write to their captured `count` via `<<-`, so the side-effecting calls are all kept
-	assertSliced(label('closure-chain: side-effecting closure calls are all kept', []),
+	// each closure writes to the `count` of its own factory call via `<<-`, so only the calls of `c1` are kept
+	assertSliced(label('closure-chain: side-effecting calls of the same closure are kept', []),
 		shell,
 		'make_counter <- function(start) {\n  count <- start\n  function() {\n    count <<- count + 1\n    count\n  }\n}\nc1 <- make_counter(0)\nc2 <- make_counter(100)\nprint(c1())\nprint(c1())\nprint(c2())',
 		['10@c1'],
-		'make_counter <- function(start) {\n        count <- start\n        function() {\n            count <<- count + 1\n            count\n        }\n    }\nc1 <- make_counter(0)\nc2 <- make_counter(100)\nc1()\nc1()\nc2()'
+		'make_counter <- function(start) {\n        count <- start\n        function() {\n            count <<- count + 1\n            count\n        }\n    }\nc1 <- make_counter(0)\nc1()\nc1()'
 	);
+
+	/* the suite's `setup.sh` blows each file up to 22 copies, where a slice must never hit the threshold */
+	const dir = 'test/performance/suite-artificial/static';
+	for(const file of fs.readdirSync(dir)) {
+		const code = fs.readFileSync(`${dir}/${file}`, 'utf-8');
+		const minRVersion = /\|>/.test(code) ? MIN_VERSION_PIPE : /\\\(/.test(code) ? MIN_VERSION_LAMBDA : undefined;
+		test.skipIf(skipTestBecauseConfigNotMet({ minRVersion }))(label(`${file} x22: no slice hits the threshold`, [], ['other']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+			analyzer.addRequest(code.concat('\n').repeat(22));
+			const [ast, info] = [await analyzer.normalize(), await analyzer.dataflow()];
+			for(const criteria of equidistantSampling([...collectAllSlicingCriteria(ast.ast, DefaultAllVariablesFilter)], 50)) {
+				const { timesHitThreshold } = staticSlice({ ctx: analyzer.context(), info, ast, ids: SlicingCriterion.convertAll(criteria, ast.idMap) });
+				assert.strictEqual(timesHitThreshold, 0, `${file} at ${JSON.stringify(criteria)}`);
+			}
+		});
+	}
 }));

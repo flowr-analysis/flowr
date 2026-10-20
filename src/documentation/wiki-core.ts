@@ -392,7 +392,7 @@ We can see that it relies on three steps:
 3. **${ctx.link('STATIC_DATAFLOW', { codeFont: false })}** ([dataflow](#dataflow-graph-generation)): Produces the actual ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} from the normalized AST.\\
    _Its main function linked as the processor is the ${ctx.link(produceDataFlowGraph, { codeFont: false })} function._
 
-To explore these steps, let's use the REPL with the (very simple and contrived) R code: \`${sampleCode}\`.
+To explore these steps, let's use the REPL with the (simple, contrived) R code: \`${sampleCode}\`.
 
 ${await documentReplSession(shell, [{
 	command:     `:parse "${sampleCode}"`,
@@ -443,10 +443,10 @@ ${await (async() => {
 
 ### Parsing
 
-The parsing step uses the ${ctx.link(RShell)} to parse the input program (or, of course, the ${ctx.link(TreeSitterExecutor)} when using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}).
+The parsing step uses the ${ctx.link(RShell)} to parse the input program (or the ${ctx.link(TreeSitterExecutor)} when using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}).
 To speed up the process, we use the ${ctx.link(initCommand)} function to compile the parsing function and rely on a 
 custom serialization, which outputs the information in a CSV-like format.
-This means, that the ${getReplCommand('parse')} command actually kind-of lies to you, as it does pretty print the serialized version which looks more like the following (this uses the ${ctx.link(retrieveParseDataFromRCode.name)} function with the sample code \`${sampleCode}\`):
+The ${getReplCommand('parse')} command pretty-prints the serialized version, which looks more like the following (this uses the ${ctx.link(retrieveParseDataFromRCode.name)} function with the sample code \`${sampleCode}\`):
 
 ${details(`Raw parse output for <code>${sampleCode}</code>`, `For the code \`${sampleCode}\`:\n\n` + codeBlock('csv', await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell)))}
 
@@ -554,11 +554,11 @@ While all of them are essentially empty when processing an “uninteresting leaf
 
 ${ctx.hierarchy(processValue, { maxDepth: 2, openTop: true })}
 
-Please note, that we add the ${ctx.linkPage('wiki/Dataflow Graph', 'value vertex', 'value-vertex')} to the newly created dataflow graph,
+Note that we add the ${ctx.linkPage('wiki/Dataflow Graph', 'value vertex', 'value-vertex')} to the newly created dataflow graph,
 which holds a reference to the constant. If you are confused with the use of the ${ctx.link('ParentInformation')} type, 
 this stems from the [AST decoration](#normalization) and signals that we have a decorated ${ctx.link(RNode)} (which may have additional information in \`OtherInfo\`).
 
-Yet again, this is not very interesting. When looking at the ${ctx.link('processors')} object you may be confused by
+When looking at the ${ctx.link('processors')} object you may be confused by
 many lines just mapping the node to the ${ctx.link(processAsNamedCall)} function.
 This is because during the dataflow analysis we actually "desugar" the AST, and treat syntax constructs like binary operators (e.g., \`x + y\`) as function calls (e.g. \`\` \`+\`(x, y) \`\`).
 We do this, because R does it the same way, and allows to even overwrite these operators (including \`if\`, \`<-\`, etc.) by their name.
@@ -594,18 +594,18 @@ Afterward, we take the \`processedArguments\`, perform another round of sanity c
 semantic effects of the repeat loop. We first use one of flowR's linkers to
 ${ctx.link(linkCircularRedefinitionsWithinALoop.name)} and then retrieve the active exit points with ${ctx.link(filterOutLoopExitPoints.name)}.
 
-Feel free to have a look around and explore the other handlers for now. Each of them uses the results of its children alongside the active backpack 
+Each of them uses the results of its children alongside the active backpack
 to produce a new dataflow information.
 
 ## Beyond the Dataflow Graph
 
 Given the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, you can do a lot more!
 You can issue ${ctx.linkPage('wiki/Query API', 'queries')} to explore the graph, ${ctx.linkPage('wiki/Search API', 'search')} for specific elements, or, for example, request a [static backward slice](#static-backward-slicing).
-Of course, all of these endeavors work not just with the ${ctx.link(RShell)} but also with the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}.
+All of these work with both the ${ctx.link(RShell)} and the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}.
 
 ### Static Backward Slicing
 
-The slicing is available as an extra step as you can see by inspecting he ${ctx.link('DEFAULT_SLICING_PIPELINE')}.
+The slicing is available as an extra step, see the ${ctx.link('DEFAULT_SLICING_PIPELINE')}.
 Besides ${ctx.link('STATIC_SLICE')} it contains a ${ctx.link('NAIVE_RECONSTRUCT')} to print the slice as (executable) R code.
 
 Your main point of interesting here is the ${ctx.link(staticSlice.name)} function which relies on a modified

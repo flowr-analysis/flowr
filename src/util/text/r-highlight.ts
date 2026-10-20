@@ -92,7 +92,7 @@ function boundIn(tokens: readonly RToken[]): ReadonlySet<string> {
 		} else if(token.kind === 'name' || token.kind === 'quoted' || token.kind === 'string') {
 			const op = next(at);
 			if(op?.kind === 'op' && (op.text === '<-' || op.text === '<<-' || (op.text === '=' && depth === 0))) {
-				bound.add(token.text.replace(/^["'`]|["'`]$/g, ''));
+				bound.add(RString.unquote(token.text));
 			}
 		}
 	}
@@ -177,4 +177,5 @@ export function highlightR(code: string, knownNames?: KnownNames): string {
 		}
 		return link === undefined || bound.has(link) ? renderRToken(a) : renderRToken(a, knownNames, link);
 	}).join('');
-}
+} import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+

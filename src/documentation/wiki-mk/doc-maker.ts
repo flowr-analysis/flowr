@@ -67,8 +67,7 @@ const UrlEncodedHomePath = /(?:[a-z]%3A)?(%2F|%5C)(?:home|users)\1(?:[\w.%-]+\1)
 const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	// mute signature database load time variance in wiki table (before the `ms` rule, which would eat half of it)
 	[/≈\s*<?[\d.]+\s*[µm]s/g, ''],
-	// eslint-disable-next-line no-irregular-whitespace -- we may produce it in output
-	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
+	[/\d+(\.\d+)?(\u2009|\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"?(timing|searchTimeMs|processTimeMs|id|tsId)"?:\s*\d+(\.\d)?,?/g, ''],
 	[/"format":"compact"[^\n\r]*/giu, ''],

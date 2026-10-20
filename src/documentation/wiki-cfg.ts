@@ -21,7 +21,7 @@ import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { cfgVisitorConfig, DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
@@ -145,7 +145,7 @@ _flowR_ produces three main perspectives of the program: 1)&nbsp;a ${ctx.linkPag
 2)&nbsp;a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, and 3)&nbsp;a control flow graph&nbsp;(CFG).
 flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a ${linkToQueryOfName('call-context')}).
 
-Please note that the control flow graph is a view on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')},
+The control flow graph is a view on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')},
 similar to the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')}.
 
 ${
@@ -281,7 +281,7 @@ There are two kinds, told apart by the ${ctx.link('CfgEdgeType')} enum.
 
 ${section('Flow Edges', 4, 'cfg-flow-edge')}
 
-A flow edge says that the target simply runs next. In \`x; y\` there is one from \`x\` to \`y\`:
+A flow edge says that the target runs next. In \`x; y\` there is one from \`x\` to \`y\`:
 
 ${await printCfgCode(shell, 'x; y', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
@@ -308,7 +308,7 @@ ${await (async() => {
 })()}
 <br/>
 
-Please note that repeat loops have no control edges, as they repeat their body unconditionally.
+Repeat loops have no control edges, as they repeat their body unconditionally.
 Additionally, the control flow graph does not have to be connected. If you use a repeat without any exit condition,
 the loop is never left, so its vertex is not reachable from the entry:
 
@@ -357,7 +357,7 @@ ${await printDfGraphForCode(shell, 'print(3)', { showCode: true, ctx })}
 
 ${section('Adding Basic Blocks', 3, 'cfg-basic-blocks')}
 
-As mentioned in the introduction, our control flow graph does not use basic blocks by default and hence simply links all vertices independent of whether they have (un-)conditional jumps or not.
+As mentioned in the introduction, our control flow graph does not use basic blocks by default and hence links all vertices independent of whether they have (un-)conditional jumps or not.
 On the upside, this tells us the execution order (and, in case of promises, forcing order) of involved expressions and seamlessly handles cases like
 \`x <- return(3)\`.  On the downside, this makes it hard to apply classical control flow graph algorithms and, in general, makes the graph much harder to read.
 Yet, we can request basic blocks or transform an existing CFG into basic blocks using the ${ctx.link(convertCfgToBasicBlocks)} function.
@@ -439,8 +439,7 @@ In general, we check for a hammock graph (given that the program contains no def
 
 ${section('Sophisticated CFG Traversal', 3, 'cfg-traversal')}
 
-The [simple traversal](#cfg-simple-traversal) functions are great for simple tasks, but very unhandy when you want to do something more sophisticated
-that incorporates language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
+The [simple traversal](#cfg-simple-traversal) functions are unhandy once you need language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
 visitors that incorporate various alternative perspectives:
 
 - [Basic CFG Visitor](#cfg-traversal-basic):\\
@@ -570,7 +569,7 @@ so the vertex of an expression *is* its exit point &dash; there are no separate 
 ${details('Example: Where an if joins again', await (async function() {
 	const expr = 'if(u) 3 else 2';
 	const cfg = await getCfg(shell, expr);
-	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => cfg.ast.idMap.get(n)?.lexeme === 'if')[0];
+	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => NodeId.recoverName(n, cfg.ast.idMap) === 'if')[0];
 	guard(CfgVertex.isStatement(ifVertex) || CfgVertex.isExpression(ifVertex));
 
 	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart LR\n', ctx })}

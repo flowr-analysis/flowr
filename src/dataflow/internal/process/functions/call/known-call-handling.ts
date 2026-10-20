@@ -1,14 +1,15 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { FnSig } from '../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
-import type { ExitPoint, DataflowInformation, KillReference } from '../../../../info';
-import { ExitPointType } from '../../../../info';
+import type { ExitPoint, DataflowInformation } from '../../../../info';
+import { ExitPointType, withCds } from '../../../../info';
 import { processAllArguments } from './common';
 import { applyKills } from '../../../../environments/apply-kill';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
@@ -16,6 +17,8 @@ import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { ControlFlow } from '../../../control-flow';
+import { Ternary } from '../../../../../util/logic';
+import { isNotUndefined } from '../../../../../util/assert';
 import { dataflowLogger } from '../../../../logger';
 import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
@@ -36,6 +39,8 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> {
 	readonly reverseOrder?:         boolean
 	/** which arguments are {@link NseKind.Reevaluated|reevaluated}, like a loop body */
 	readonly markAsNSE?:            readonly number[]
+	/** see {@link ProcessAllArgumentInput#keepGraphs}, needed to mark what lies within an argument afterward */
+	readonly keepArgumentGraphs?:   boolean
 	/** allows passing a data processor in-between each argument */
 	readonly patchData?:            (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** Does the call have a side effect that we do not know a lot about which may have further consequences? */
@@ -66,7 +71,7 @@ export interface ProcessKnownFunctionCallResult {
 	readonly fnRef:              IdentifierReference
 	/**
 	 * The arguments as recorded on the function call vertex.
-	 * They are also part of the information via the function call vertex adde, but sometimes useful separately.
+	 * They are also part of the information via the function call vertex added, but sometimes useful separately.
 	 * For example, together with {@link FunctionSemantics.call.match.toSpec} to do custom parameter matching.
 	 */
 	readonly callArgs:           readonly FunctionArgument[]
@@ -102,6 +107,23 @@ export interface NseMarkOptions {
 	readonly kind?:      NseKind
 	/** ids an unquote escape splices back in, see {@link FunctionSemantics.call.nse.unquoted} */
 	readonly evaluated?: ReadonlySet<NodeId>
+	/** the position of the argument filling the first parameter, see {@link nseArgumentPositions} */
+	readonly first?:     number
+}
+
+/**
+ * The positions of the arguments `which` names among `count` arguments, where `first` is the position of the
+ * argument filling the first parameter (`-1` if none does), as a named one may come later (`mutate(z = 1, .data = d)`).
+ */
+export function nseArgumentPositions(which: NseArguments | readonly number[] | undefined, count: number, first = 0): readonly number[] {
+	if(typeof which !== 'string') {
+		return which ?? [];
+	}
+	const all = Array.from({ length: count }, (_, i) => i);
+	if(which === NseArguments.First) {
+		return first >= 0 && first < count ? [first] : [];
+	}
+	return which === NseArguments.AllButFirst ? all.filter(i => i !== first) : all;
 }
 
 /**
@@ -114,25 +136,14 @@ export function markArgumentsAsNonStandardEvaluation(
 	rootId:             NodeId,
 	processedArguments: readonly (DataflowInformation | undefined)[],
 	which:              NseArguments | readonly number[] | undefined,
-	{ kind = NseKind.Quoted, evaluated }: NseMarkOptions = {}
+	{ kind = NseKind.Quoted, evaluated, first }: NseMarkOptions = {}
 ): void {
-	if(which === undefined) {
-		return;
-	}
-
-	if(typeof which !== 'string') {
-		for(const i of which) {
-			if(i < processedArguments.length) {
-				markArgument(graph, rootId, processedArguments[i], kind, evaluated);
-			} else {
-				dataflowLogger.warn(`Trying to mark argument ${i} as non-standard-evaluation, but only ${processedArguments.length} arguments are available`);
-			}
+	for(const i of nseArgumentPositions(which, processedArguments.length, first)) {
+		if(i < processedArguments.length) {
+			markArgument(graph, rootId, processedArguments[i], kind, evaluated);
+		} else {
+			dataflowLogger.warn(`Trying to mark argument ${i} as non-standard-evaluation, but only ${processedArguments.length} arguments are available`);
 		}
-		return;
-	}
-	const end = which === NseArguments.First ? 1 : processedArguments.length;
-	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
-		markArgument(graph, rootId, processedArguments[i], kind, evaluated);
 	}
 }
 
@@ -164,7 +175,7 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData = d => d, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom, keepArgumentGraphs }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
@@ -177,7 +188,18 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forced, nonFunction });
+	} = processAllArguments<OtherInfo>({
+		functionName,
+		args:             processArgs,
+		data:             origin === 'default' ? ControlFlow.withinPromise(data, rootId) : data,
+		finalGraph,
+		functionRootId:   rootId,
+		keepGraphs:       keepArgumentGraphs,
+		patchData,
+		forced,
+		nonFunction,
+		alternativesFrom: reverseOrder ? undefined : alternativeArgsFrom
+	});
 	markArgumentsAsNonStandardEvaluation(finalGraph, rootId, processedArguments, markAsNSE, { kind: NseKind.Reevaluated });
 
 	const onlyBuiltin = data.builtInNoEnv === rootId;
@@ -197,74 +219,55 @@ export function processKnownFunctionCall<OtherInfo>(
 		handleUnknownSideEffect(finalGraph, data.environment, rootId);
 	}
 
-	const inIds = remainingReadInArgs;
 	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function };
-	inIds.push(fnRef);
+	remainingReadInArgs.push(fnRef);
 
-	// if force args is not none, we need to collect all non-default exit points from our arguments!
+	/* each argument is a promise, and how surely the call forces it decides what a jump within it does */
 	let exitPoints: ExitPoint[] | undefined = undefined;
+	/* what a function flowR does not know here forces is up to its body, see `FunctionSemantics.settleJumpsInPromises` */
+	const forcing = origin === 'default' ? undefined : FunctionSemantics.call.signature.forcing(sig, processArgs.length);
+	/* exactly one alternative runs when a string selects among them with a default arm, a number past the arms picks none */
+	const selector = alternativeArgsFrom === undefined ? undefined : processArgs[alternativeArgsFrom - 1];
+	const hasDefaultArm = RString.is(RArgument.valueOf(selector)) && processArgs.slice(alternativeArgsFrom).some(RArgument.isUnnamed);
+	const alternatives = hasDefaultArm ? processedArguments.slice(alternativeArgsFrom).filter(isNotUndefined) : [];
+	const allArmsJump = alternatives.length > 0 && alternatives.every(a => ControlFlow.alwaysExits(a, data.cds));
 	/* a jump that only happens under a condition still lets the call complete, so its default exit has to stay */
-	let alwaysJumps = false;
-	if(forced) {
-		for(let i = 0; i < processedArguments.length; i++) {
-			const p = processedArguments[i];
-			if(p === undefined || !forced[i]) {
-				continue;
-			}
-			const before = exitPoints?.length ?? 0;
-			for(const exit of p.exitPoints) {
-				if(exit.type !== ExitPointType.Default) {
-					(exitPoints ??= []).push(exit);
-				}
-			}
-			alwaysJumps ||= (exitPoints?.length ?? 0) > before && ControlFlow.alwaysExits(p);
+	let alwaysJumps = allArmsJump;
+	for(const [i, p] of processedArguments.entries()) {
+		const isAlternative = alternativeArgsFrom !== undefined && i >= alternativeArgsFrom;
+		/* the alternative that is picked runs for sure, the others not at all */
+		const f = isAlternative ? Ternary.Always : forcing?.[i] ?? Ternary.Maybe;
+		/* a call with its own control flow wires up what it does not surely force itself */
+		if(p === undefined || (customControlFlow && f !== Ternary.Always)) {
+			continue;
 		}
-		if(exitPoints !== undefined && !alwaysJumps) {
-			exitPoints.push({ nodeId: rootId, type: ExitPointType.Default, cds: data.cds });
+		const exits = ControlFlow.promise(finalGraph, p, f, rootId);
+		if(exits.length > 0) {
+			/* an arm that is not the only way out leaves only when it is picked */
+			const conditional = isAlternative && !allArmsJump;
+			(exitPoints ??= []).push(...conditional ? exits.map(e => ({ ...e, cds: withCds(e.cds, [{ id: rootId, when: true }]) })) : exits);
+			alwaysJumps ||= f === Ternary.Always && !isAlternative && ControlFlow.alwaysExits(p, data.cds);
 		}
 	}
+	if(exitPoints !== undefined && !alwaysJumps) {
+		exitPoints.push({ nodeId: rootId, type: ExitPointType.Default, cds: data.cds });
+	}
 
-	/* an alternative without a name is the default arm, which runs when nothing else matched */
 	const cfgEntry = customControlFlow ? rootId
 		: alternativeArgsFrom === undefined ? ControlFlow.inSequence(finalGraph, processedArguments, rootId)
-			: ControlFlow.picksOneOf(finalGraph, processedArguments, alternativeArgsFrom, rootId,
-				processArgs.slice(alternativeArgsFrom).some(a => a !== EmptyArgument && (!RArgument.is(a) || a.name === undefined)));
-	if(!customControlFlow) {
-		/*
-		 * A jump within an argument that the call does not pass on is caught here (the callee decides whether it
-		 * ever forces that argument), so control resumes at the call rather than leaving it.
-		 */
-		for(const argument of processedArguments) {
-			for(const exit of argument?.exitPoints ?? []) {
-				/*
-				 * A jump within an argument the call does not pass on resumes at the call. A `return` leaves the
-				 * enclosing function wherever the argument runs at all, so only a call that never evaluates it
-				 * may catch one (see `processQuote`).
-				 */
-				if(exit.type !== ExitPointType.Default && exit.type !== ExitPointType.Return && !exitPoints?.includes(exit)) {
-					finalGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
-				}
-			}
-		}
-	}
+			: ControlFlow.picksOneOf(finalGraph, processedArguments, alternativeArgsFrom, rootId, hasDefaultArm);
 
-	let kill: KillReference[] | undefined = undefined;
-	for(const p of processedArguments) {
-		const kills = p?.kill;
-		if(kills !== undefined && kills.length > 0) {
-			kill = kill === undefined ? kills.slice() : kill.concat(kills);
-		}
-	}
-	const environment = kill ? applyKills(finalEnv, kill) : finalEnv;
+	const kills = processedArguments.flatMap(p => p?.kill ?? []);
+	const kill = kills.length > 0 ? kills : undefined;
 
 	return {
 		information: {
 			unknownReferences: [],
-			in:                inIds,
+			in:                remainingReadInArgs,
 			/* we do not keep the argument out as it has been linked by the function */
 			out:               functionName.out,
 			graph:             finalGraph,
-			environment,
+			environment:       kill ? applyKills(finalEnv, kill) : finalEnv,
 			entryPoint:        rootId,
 			cfgEntry:          cfgEntry === rootId ? undefined : cfgEntry,
 			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],

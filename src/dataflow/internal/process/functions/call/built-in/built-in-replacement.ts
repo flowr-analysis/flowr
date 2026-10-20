@@ -12,7 +12,6 @@ import type {
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
-import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import type { AssignmentConfiguration } from './built-in-assignment';
@@ -55,7 +54,7 @@ export function processReplacementFunction<OtherInfo>(
 		if(args.length > 2 && args[1] !== EmptyArgument) {
 			tarName += S7DispatchSeparator + args[1].lexeme;
 		}
-		const uArg = unpackArg(targetArg) ?? targetArg;
+		const uArg = RArgument.valueOf(targetArg) ?? targetArg;
 		targetArg = toUnnamedArgument({
 			content:  tarName,
 			type:     RType.Symbol,
@@ -99,7 +98,7 @@ export function processReplacementFunction<OtherInfo>(
 	if(DfgVertex.isFunctionCall(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
-	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
+	const targetVert = res.graph.getVertex(RArgument.valueOf(args[0])?.info.id as NodeId);
 	if(DfgVertex.isVariableDefinition(targetVert)) {
 		(targetVert as { par: boolean }).par = true;
 	}
@@ -114,7 +113,7 @@ export function processReplacementFunction<OtherInfo>(
 	});
 
 	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));
-	const targetNode = unpackArg(args[0]);
+	const targetNode = RArgument.valueOf(args[0]);
 	if(targetNode !== undefined && targetNode.info.id !== rootId) {
 		/*
 		 * `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced
@@ -134,14 +133,14 @@ export function processReplacementFunction<OtherInfo>(
 				if(RArgument.isEmpty(a)) {
 					return undefined;
 				}
-				const entry = a.name === undefined ? unpackNonameArg(a) : a;
+				const entry = a.name === undefined ? RArgument.unnamedValueOf(a) : a;
 				return entry === undefined ? undefined : { entryPoint: entry.info.id };
 			}),
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
-	const firstArg = unpackNonameArg(args[0]);
+	const firstArg = RArgument.unnamedValueOf(args[0]);
 
 	handleReplacementOperator({
 		operator: name.content,

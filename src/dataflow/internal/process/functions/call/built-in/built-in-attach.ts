@@ -1,7 +1,7 @@
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -24,14 +24,9 @@ export function processAttach<OtherInfo>(
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Attach }).information;
 
 	const whatArg = args.length >= 1 ? args[0] : undefined;
-	const whatNode = whatArg && whatArg !== EmptyArgument ? unpackArg(whatArg) : undefined;
+	const whatNode = whatArg && whatArg !== EmptyArgument ? RArgument.valueOf(whatArg) : undefined;
 
-	if(!RSymbol.is(whatNode)) {
-		handleUnknownSideEffect(result.graph, result.environment, rootId);
-		return result;
-	}
-
-	const envirResolution = resolveSymbolToEnvir(whatNode.content, whatNode.info.id, data);
+	const envirResolution = RSymbol.is(whatNode) ? resolveSymbolToEnvir(whatNode.content, whatNode.info.id, data) : undefined;
 	if(!envirResolution) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
 		return result;

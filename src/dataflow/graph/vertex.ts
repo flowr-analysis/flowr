@@ -123,7 +123,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`,
 	 * `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and
 	 * whether it can be instantiated. Filled from the {@link ClassDeclarationConfig} the built-in declares,
-	 * so no argument's meaning is guessed. See {@link declaredClasses} to collect these across a graph.
+	 * so no argument's meaning is guessed. See {@link declaredClassesImpl} to collect these across a graph.
 	 */
 	classDecl?:    ClassDeclaration
 }

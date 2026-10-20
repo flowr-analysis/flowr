@@ -1,7 +1,9 @@
 import { describe } from 'vitest';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledSigDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
+import { DepType } from '../../../src/project/sigdb/schema';
+import { decorateLabelContext, label } from '../_helper/label';
 
 assumeLoadedPackages('dplyr', 'ggplot2', 'magrittr');
 
@@ -27,9 +29,10 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('only the undefined call is flagged', parser, 'g <- function() 1\ng()\nh()',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'h', kind: 'function', loc: [3, 1, 3, 3] }]);
 
-			// an unresolved library could export the symbol, so the finding is kept but marked low-confidence
-			assertLinter('flagged low-confidence when an unknown library is loaded', parser, 'library(somePkg)\nfoo()',
-				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'foo', kind: 'function', loc: [2, 1, 2, 5], mayBeProvidedByUnresolvedLibrary: true }]);
+			// an unresolved library could export any bare name, so nothing is guessed
+			assertLinter('not flagged when an unknown library is loaded', parser, 'library(somePkg)\nfoo()', 'undefined-symbol', []);
+			assertLinter('a data set of datasets is defined', parser, 'summary(iris)\nhead(mtcars)', 'undefined-symbol', []);
+			assertLinter('a namespaced name is still checked', parser, 'library(somePkg)\nfoo()\nbase::fooo()', 'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'fooo', kind: 'function', loc: [3, 1, 3, 12] }]);
 		});
 
 		describe('base R packages resolve via the package database', () => {
@@ -39,6 +42,9 @@ describe('flowR linter', withTreeSitter(parser => {
 
 			assertLinter('namespace-qualified base function is not flagged', parser, 'stats::sd(x)',
 				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: false });
+
+			assertLinter('namespace-qualified base function is not flagged', parser, 'stats::sd',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
 
 			// primitives/internals (`is.na`) and base data constants (`.Machine`) are absent from the sigdb
 			// export list but must still be recognised as defined base-R names (both calls and variable reads)
@@ -50,6 +56,17 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('non-attached base package function is flagged with a hint', parser, 'mclapply(x, f)',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'mclapply', kind: 'function', loc: [1, 1, 1, 14], availableInPackages: ['parallel'] }],
 				undefined, { sigDb: controlledSigDb('parallel', ['mclapply']), checkVariables: false });
+		});
+
+		describe('attached packages', () => {
+			assertLinter('an export named like a primitive keeps its semantics', parser, 'library(lubridate)\nd <- data.frame(a = 1)\nprint(d$a)',
+				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({ lubridate: ['$', 'ymd'] }) });
+			assertLinter('a namespaced read may be lazy data the database does not record', parser, 'x <- MASS::birthwt',
+				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({ MASS: ['lda'] }) });
+			assertLinter('a name the package may re-export from its imports', parser, 'library(dplyr)\nas_tibble(data.frame(a = 1))',
+				'undefined-symbol', [], undefined, { sigDb: { ...controlledSigDb({ dplyr: ['mutate'], tibble: ['as_tibble'] }), dependencies: (pkg: string) => pkg === 'dplyr' ? [{ name: 'tibble', type: DepType.Imports }] : undefined } });
+			assertLinter('a name neither the package nor its imports export is flagged', parser, 'library(dplyr)\nnot_in_dplyr(data.frame(a = 1))',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'not_in_dplyr', kind: 'function', loc: [2, 1, 2, 31] }], undefined, { sigDb: { ...controlledSigDb({ dplyr: ['mutate'], tibble: ['as_tibble'] }), dependencies: (pkg: string) => pkg === 'dplyr' ? [{ name: 'tibble', type: DepType.Imports }] : undefined } });
 		});
 
 		describe('package hints from the database', () => {
@@ -77,6 +94,10 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		describe('variables', () => {
+			for(const load of ['data(rat)', 'data("rat")', 'data(list = "rat")']) {
+				assertLinter(`${load} defines the data set`, parser, `${load}\nprint(rat)`, 'undefined-symbol', []);
+				assertLinter(`${load} defines no other data set`, parser, `${load}\nprint(mouse)`, 'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'mouse', kind: 'variable', loc: [2, 7, 2, 11] }]);
+			}
 			assertLinter('undefined variable read is flagged (checked by default)', parser, 'f <- function() undefinedVar',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'undefinedVar', kind: 'variable', loc: [1, 17, 1, 28] }]);
 			assertLinter('a read before the write in the same frame is flagged', parser, 'f <- function() { print(v); v <- 1 }',
@@ -159,6 +180,25 @@ describe('flowR linter', withTreeSitter(parser => {
 				undefined, { checkSubscripts: true });
 		});
 
+		describe('declared globals (as R CMD check honors them)', () => {
+			const utilsDb = controlledSigDb({ utils: ['globalVariables'], base: ['cat', 'NextMethod', 'c'] });
+			const undefinedVar = (name: string, loc: [number, number, number, number]) => ({ certainty: LintingResultCertainty.Uncertain, name, kind: 'variable' as const, loc });
+			assertLinter('utils::globalVariables declares a name', parser, 'utils::globalVariables(c("mpg", "cyl"))\nf <- function() mpg + cyl',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+			assertLinter('bare globalVariables declares a name', parser, 'globalVariables("mpg")\nf <- function() mpg',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+			assertLinter('globalVariables with a vector in a variable', parser, 'vars <- c("mpg", "cyl")\nutils::globalVariables(vars)\nf <- function() mpg',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+			assertLinter('only the declared names are suppressed', parser, 'utils::globalVariables("mpg")\nf <- function() mpg + hp',
+				'undefined-symbol', [undefinedVar('hp', [2, 23, 2, 24])], undefined, { sigDb: utilsDb });
+			assertLinter('another package\'s globalVariables does not count', parser, 'other::globalVariables("mpg")\nf <- function() mpg',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'globalVariables', kind: 'function', loc: [1, 1, 1, 29] }, undefinedVar('mpg', [2, 17, 2, 19])], undefined, { sigDb: utilsDb });
+			assertLinter('the declaration itself is known without a signature database', parser, 'utils::globalVariables("mpg")\nf <- function() mpg',
+				'undefined-symbol', [], undefined, { noSigDb: true });
+			assertLinter('variables of the dispatch are bound in a method', parser, 'print.foo <- function(x, ...) { cat(.Generic); NextMethod() }',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+		});
+
 		describe('inst/ resource files are treated separately', () => {
 			assertLinter('undefined call in an inst/ file is not flagged', parser, 'notARealFunction()',
 				'undefined-symbol', [], undefined, { useAsFilePath: 'inst/REFERENCES.R' });
@@ -167,5 +207,11 @@ describe('flowR linter', withTreeSitter(parser => {
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'notARealFunction', kind: 'function', loc: [1, 1, 1, 18, 'R/foo.R'] }],
 				undefined, { useAsFilePath: 'R/foo.R' });
 		});
+	});
+	describe('counterexamples', () => {
+		/* R: data("rat") and data(list = "rat") define rat just like data(rat) */
+		assertLinterFields(parser, 'data("rat")\nprint(rat)', 'undefined-symbol', [], ['data/rat.R'], []);
+		assertLinterFields(parser, 'data(list = "rat")\nprint(rat)', 'undefined-symbol', [], ['data/rat.R'], []);
+		assertLintedLines(decorateLabelContext(label('io: iris is a data set of datasets', ['name-normal', 'function-calls']), ['dataflow']), parser, 'write.csv(iris, "data.csv")\ndf <- read.csv("data.csv")', 'undefined-symbol', []);
 	});
 }));

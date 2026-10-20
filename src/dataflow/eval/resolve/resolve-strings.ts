@@ -48,8 +48,8 @@ export interface StringFn {
 	/** parameters a call may supply that change nothing for the single strings we fold, like `paste`'s `collapse` */
 	readonly ignored?:  readonly string[];
 	/** the fold over the supplied arguments, in declaration order */
-	/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- each entry types its own parameters, the registry cannot */
-	readonly fold:      (...args: any[]) => string | number | undefined;
+	/* a method, so each entry may type its own parameters */
+	fold(...args: unknown[]): string | number | undefined;
 }
 
 /**

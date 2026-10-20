@@ -4,6 +4,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { QueryFunctionFilter } from '../../query-function-filter';
+import type { ArgumentFacts } from '../../../dataflow/fn/higher-order-function';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 
 
@@ -23,9 +24,10 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 		invertedGraph = Dataflow.invertGraph(graph, analyzer.inspectContext().env.makeCleanEnv());
 	}
 
+	const argumentFacts = new Map<NodeId, ArgumentFacts>();
 	const result: Record<NodeId, boolean> = {};
 	for(const id of fns) {
-		result[id] = FunctionSemantics.isHigherOrder(id, graph, { ctx: analyzer.inspectContext(), invertedGraph });
+		result[id] = FunctionSemantics.isHigherOrder(id, graph, { ctx: analyzer.inspectContext(), invertedGraph, argumentFacts });
 	}
 
 	return {

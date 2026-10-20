@@ -14,6 +14,7 @@ import { SigDbExt, type SigDbContent } from './schema';
 import { encodeIndex, type SigDbIndex } from './index-format';
 import { Hash53 } from '../../util/hash';
 import { createDecompressFor, decompressSyncFor, isCompressedExt, readableExtsPreferred } from './codec';
+import { joinUntrustedSegment } from '../../util/files';
 
 /** whether a bundle path is a compressed (`.br`/`.zst`/`.gz`) source that must be decompressed to be seekable */
 export const isCompressed = (f: string): boolean => isCompressedExt(f);
@@ -118,7 +119,8 @@ export interface EnsureOptions {
 /** the cache paths for a source given its content hash */
 interface CachePaths { plain: string; idx: string }
 function cachePaths(hash: string, cacheDir?: string): CachePaths {
-	const plain = path.join(sigDbCacheDir(cacheDir), `sigdb-${hash}${SigDbExt}`);
+	// the hash may come from the header of a project-supplied bundle
+	const plain = joinUntrustedSegment(sigDbCacheDir(cacheDir), `sigdb-${hash}${SigDbExt}`);
 	return { plain, idx: `${plain}.idx` };
 }
 

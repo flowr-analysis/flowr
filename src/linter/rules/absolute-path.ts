@@ -2,11 +2,11 @@ import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, 
 import { RPath } from '../../util/files';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { SourceLocation } from '../../util/range';
+import { SourceLocation, SourceRange } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isAbsolutePath, isUrl, fileUrlToPath } from '../../util/text/strings';
-import { isNotUndefined, isUndefined } from '../../util/assert';
+import { isNotUndefined } from '../../util/assert';
 import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { writeFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
@@ -19,9 +19,10 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import type { Identifier } from '../../dataflow/environments/identifier';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { OtherPathFunctions } from '../../queries/catalog/dependencies-query/function-info/other-path-functions';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { pathArgStringNode } from './file-path-validity';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -71,7 +72,7 @@ function inferWd(file: string | undefined, wd: SupportedWd, ctx: ReadOnlyFlowrAn
 }
 
 // this can be improved by respecting raw strings and supporting more scenarios
-function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
+function quickFixForPath(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
 	const loc = SourceLocation.fromNode(str);
 	if(!wd || !str || !RString.is(str) || loc === undefined) {
 		/* a fix that names no place cannot be carried out, so none is offered */
@@ -85,33 +86,24 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 	}];
 }
 
-type PathFunction = (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext) => string[] | undefined;
-
-/** return all strings constructable by these functions */
-const PathFunctions: ReadonlyMap<Identifier, PathFunction> = new Map([
-	['file.path', (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined => {
-		const fsep = getArgumentStringValue(ctx.config.solver.variables,
-			df, vtx, undefined, 'fsep', true, ctx
-		);
-		// in the future we can access `.Platform$file.sep` here
-		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? ['/'];
-		if(sepValues.some(s => s === Unknown || isUndefined(s))) {
-			// if we have no fsep, we cannot construct a path
-			return undefined;
-		}
-		const args = getArgumentStringValue(ctx.config.solver.variables, df, vtx, 'unnamed', undefined, true, ctx);
-		const argValues = args ? Array.from(args.values()).flatMap(v => [...v]) : [];
-		if(!argValues || argValues.length === 0 || argValues.some(v => v === Unknown || isUndefined(v))) {
-			// if we have no arguments, we cannot construct a path
-			return undefined;
-		}
-		const results: string[] = [];
-		for(const val of sepValues) {
-			results.push(argValues.join(val));
-		}
-		return results;
-	}]
-]);
+/** The paths `file.path(...)` builds, `undefined` if a part is unknown. */
+function filePathStrings(graph: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+	const variables = ctx.config.solver.variables;
+	// in the future we can access `.Platform$file.sep` here
+	const fsep = getArgumentStringValue(variables, graph, vtx, undefined, 'fsep', true, ctx);
+	const seps = fsep?.values().flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? ['/'];
+	if(seps.includes(Unknown)) {
+		// if we have no fsep, we cannot construct a path
+		return undefined;
+	}
+	const unnamed = getArgumentStringValue(variables, graph, vtx, 'unnamed', undefined, true, ctx);
+	const args = [...unnamed?.values() ?? []].flatMap(v => [...v]);
+	if(args.length === 0 || args.some(v => v === Unknown || v === undefined)) {
+		// if we have no arguments, we cannot construct a path
+		return undefined;
+	}
+	return seps.map(sep => args.join(sep));
+}
 
 /**
  * Resolve a raw string value to the path that should be checked for absoluteness.
@@ -127,23 +119,25 @@ function resolvePathForAbsoluteCheck(value: string, ignoreUrls: boolean): string
 	return ignoreUrls && isUrl(value) ? undefined : value;
 }
 
+/** A path built within a call that already reports it, as `file.path` within `read.csv`, is one finding. */
+function withoutNested(results: readonly AbsoluteFilePathResult[]): AbsoluteFilePathResult[] {
+	return results.filter((r, i) => !results.some((o, j) => i !== j && o.filePath === r.filePath
+		&& (SourceRange.isStrictSubsetOf(r.loc, o.loc) || (j < i && SourceRange.equals(r.loc, o.loc)))));
+}
+
 export const ABSOLUTE_PATH = {
 	/* this can be done better once we have types */
 	createSearch: (config, data) => {
-		let q;
-		if(config.include.allStrings) {
-			q = Q.all().filter(RType.String);
-		} else {
-			q = Q.fromQuery({
-				type:                   'dependencies',
-				// we use the dependencies query to give us all functions that take a file path as input
-				ignoreDefaultFunctions: true,
-				readFunctions:          readFunctions(data.inspectContext()).concat(writeFunctions(data.inspectContext()), SourceFunctions, OtherPathFunctions, config.additionalPathFunctions),
-			});
-		}
+		const ctx = data.inspectContext();
+		const pathFunctions = readFunctions(ctx).concat(writeFunctions(ctx), SourceFunctions, OtherPathFunctions, config.additionalPathFunctions);
+		let q = config.include.allStrings ? Q.all().filter(RType.String) : Q.fromQuery({
+			type:                   'dependencies',
+			// we use the dependencies query to give us all functions that take a file path as input
+			ignoreDefaultFunctions: true,
+			readFunctions:          pathFunctions,
+		});
 		if(config.include.constructed) {
 			q = q.merge(Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets));
-			/* in the future, we want to directly check whether this is one of the supported functions */
 		}
 		return q.unique();
 	},
@@ -154,73 +148,56 @@ export const ABSOLUTE_PATH = {
 		};
 		const queryResults = elements.enrichmentContent(Enrichment.QueryData)?.queries;
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
-		const normalize = await data.normalize();
-		const dataflow = await data.dataflow();
+		const { idMap } = await data.normalize();
+		const { graph } = await data.dataflow();
 		const ctx = data.inspectContext();
+		const absolute = (value: string): string | undefined => {
+			const path = resolvePathForAbsoluteCheck(value, config.ignoreUrls);
+			return path !== undefined && isAbsolutePath(path, regex) ? path : undefined;
+		};
+		/* the fix rewrites the string spelling the path, which may sit inside the reported call */
+		const finding = (certainty: LintingResultCertainty, filePath: string, node: RNode | undefined, wd?: string, str: RNode | undefined = node): AbsoluteFilePathResult => compactRecord({
+			certainty,
+			filePath,
+			loc:      SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
+			quickFix: quickFixForPath(str, filePath, wd)
+		}) as AbsoluteFilePathResult;
 		return {
-			results: elements.getElements().flatMap(element => {
+			results: withoutNested(elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
 				const node = element.node;
 				const wd = inferWd(node.info.file, config.useAsWd, ctx);
+				const query = enrichmentContent(element, Enrichment.QueryData);
 				if(RString.is(node)) {
-					const resolved = resolvePathForAbsoluteCheck(node.content.str, config.ignoreUrls);
-					if(resolved !== undefined && resolved.length >= 3 && isAbsolutePath(resolved, regex)) {
-						return [{
-							certainty: LintingResultCertainty.Uncertain,
-							filePath:  resolved,
-							loc:       SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-							quickFix:  buildQuickFix(node, resolved, wd)
-						}];
-					} else {
-						return [];
-					}
-				} else if(enrichmentContent(element, Enrichment.QueryData)) {
-					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
-					const mappedStrings = result.read.flatMap(r => {
+					const path = absolute(node.content.str);
+					return path !== undefined && path.length >= 3 ? [finding(LintingResultCertainty.Uncertain, path, node, wd)] : [];
+				} else if(query) {
+					const result = queryResults[query.query] as QueryResults<'dependencies'>['dependencies'];
+					const reads = result.read.filter(r => r.nodeId === node.info.id);
+					const found = reads.flatMap(r => {
 						if(r.value === undefined || r.value === Unknown || r.nodeId === undefined) {
 							return [];
 						}
-						const resolved = resolvePathForAbsoluteCheck(r.value, config.ignoreUrls);
-						if(resolved === undefined || !isAbsolutePath(resolved, regex)) {
-							return [];
-						}
-						const elem = normalize.idMap.get(r.nodeId);
-						return [{
-							certainty: LintingResultCertainty.Certain,
-							filePath:  resolved,
-							loc:       elem ? SourceLocation.fromNode(elem) ?? SourceLocation.invalid() : SourceLocation.invalid(),
-							quickFix:  buildQuickFix(elem, resolved, wd)
-						}];
+						const path = absolute(r.value);
+						return path === undefined ? [] : [finding(LintingResultCertainty.Certain, path, idMap.get(r.nodeId), wd, pathArgStringNode(idMap, r.nodeId, r.value))];
 					});
-					if(mappedStrings.length > 0) {
-						return mappedStrings;
-					} else if(result.read.every(r => r.value !== Unknown)) {
-						// if we have no absolute paths, but all paths are known, we can return an empty array
-						return [];
+					// if we have no absolute paths, but all paths are known, we can return an empty array
+					if(found.length > 0 || reads.every(r => r.value !== Unknown)) {
+						return found;
 					}
 				} else {
-					const dfNode = dataflow.graph.getVertex(node.info.id);
-					if(DfgVertex.isFunctionCall(dfNode)) {
-						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
-						const strings = handler ? handler(dataflow.graph, dfNode, data.inspectContext()) : [];
+					const vertex = graph.getVertex(node.info.id);
+					if(DfgVertex.isFunctionCall(vertex)) {
+						/* `file.path` is the only supported function that returns a file path */
+						const strings = Identifier.getName(vertex.name) === 'file.path' ? filePathStrings(graph, vertex, ctx) : [];
 						if(strings) {
-							return strings.flatMap(s => {
-								const resolved = resolvePathForAbsoluteCheck(s, config.ignoreUrls);
-								return resolved !== undefined && isAbsolutePath(resolved, regex) ? [resolved] : [];
-							}).map(str => ({
-								certainty: LintingResultCertainty.Uncertain,
-								filePath:  str,
-								loc:       SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-								quickFix:  undefined
-							}));
+							return strings.map(absolute).filter(isNotUndefined).map(path => finding(LintingResultCertainty.Uncertain, path, node));
 						}
 					}
-					// check whether the df node is a function call that returns a file path
 				}
-
 				metadata.totalUnknown++;
-				return undefined;
-			}).filter(isNotUndefined).map(r => compactRecord(r) as AbsoluteFilePathResult),
+				return [];
+			})),
 			'.meta': metadata
 		};
 	},
@@ -230,7 +207,7 @@ export const ABSOLUTE_PATH = {
 	},
 	info: {
 		name:          'Absolute Paths',
-		description:   'Checks whether file paths are absolute.',
+		description:   'Finds absolute file paths.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// checks all found paths for whether they're absolute to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,

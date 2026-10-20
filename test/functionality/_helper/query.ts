@@ -1,3 +1,4 @@
+import { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	TREE_SITTER_DATAFLOW_PIPELINE
@@ -22,12 +23,14 @@ import type { KnownParser } from '../../../src/r-bridge/parser';
 import type { AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { withSigDb } from './linter';
+import type { SigDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 import { applyAssumedPackages, assumedPackagesOf } from './shell';
 
-function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
+function normalizeResults<Queries extends Query>(result: unknown): QueryResultsWithoutMeta<Queries> {
 	return JSON.parse(JSON.stringify(result, (key: unknown, value: unknown) => {
 		if(key === '.meta') {
 			return undefined;
@@ -51,7 +54,9 @@ export function assertQuery<
 	expected?: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
 	runFull = false,
 	/** packages this query's code may use without attaching them, overriding the file's {@link assumeLoadedPackages} */
-	assumeLoaded?: readonly string[]
+	assumeLoaded?: readonly string[],
+	/** a signature database to use in place of none */
+	sigDb?: SigDbSource
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
@@ -62,11 +67,10 @@ export function assertQuery<
 				continue;
 			}
 			const queryType = SupportedQueries[query.type];
-			const queryString = JSON.stringify(query, (_key, value) => {
+			const queryString = JSON.stringify(query, (_key, value: unknown) => {
 				if(value instanceof RegExp) {
 					return value.toString();
 				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				return value;
 			});
 			const validationResult = queryType.schema.validate(JSON.parse(queryString));
@@ -75,9 +79,8 @@ export function assertQuery<
 			}
 		}
 
-		const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder()
-			.setParser(parser), assumed)
-			.build();
+		const builder = applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(parser), assumed);
+		const analyzer = await (sigDb === undefined ? builder : withSigDb(builder, sigDb)).build();
 		analyzer.addRequest(code);
 		if(runFull) {
 			// we run the dfa analysis to make sure normalization post-patches are ready!
@@ -98,7 +101,6 @@ export function assertQuery<
 
 		/* expect them to be deeply equal */
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(
 				{
 					parse:     await analyzer.parse(),
@@ -176,7 +178,7 @@ export function testEachCase<Type extends SupportedQueryTypes, V>(
 	return (name, code, expected) => queryCase(parser, type, name, code, ({ result, idMap }) => {
 		const found: Record<string, boolean> = {};
 		for(const [id, value] of Object.entries(pick(result))) {
-			found[idMap.get(Number(id))?.info.fullLexeme ?? id] = flag(value);
+			found[RNode.lexeme(idMap.get(Number(id))) ?? id] = flag(value);
 		}
 		assert.deepStrictEqual(found, { ...expected });
 	});

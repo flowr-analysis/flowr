@@ -1,21 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { sigdbAnalyzer, ver } from '../../_helper/sigdb';
-import { SigDbBuilder } from '../../../../src/project/sigdb/build';
-import { SigDatabase } from '../../../../src/project/sigdb/reader';
+import { fakeSigDb, sigdbAnalyzer } from '../../_helper/sigdb';
+import type { SigDatabase } from '../../../../src/project/sigdb/reader';
 import { FnProp } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** a CRAN package `mypkg` whose exported `foo` internally calls the (non-exported) `bar` */
 function buildDb(): SigDatabase {
-	const b = new SigDbBuilder();
-	b.addPackage('mypkg', { latest: '1.0.0' });
-	b.addVersion('mypkg', '1.0.0', ver([
-		{ name: 'foo', props: FnProp.Exported, params: [], callees: ['bar'] },
-		{ name: 'bar', props: 0, params: [], callees: [] }
-	]));
-	return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
+	return fakeSigDb({ mypkg: [{ name: 'foo', props: FnProp.Exported, params: [], callees: ['bar'] }, { name: 'bar', props: 0, params: [], callees: [] }] });
 }
 
 describe('Expand library internals (call-graph / does-call)', withTreeSitter(ts => {

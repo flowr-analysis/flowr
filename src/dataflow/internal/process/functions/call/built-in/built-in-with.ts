@@ -1,11 +1,14 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { VertexType } from '../../../../../graph/vertex';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { Resolve } from '../../../../../environments/resolve-helper';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
@@ -13,8 +16,10 @@ import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signaturePa
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { isPipedArgument, patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
+import type { DataflowGraph } from '../../../../../graph/graph';
 import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
+import { REnvironment } from '../../../../../environments/environment';
 
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
 const withParamsFallback = ['data', 'expr'] as const;
@@ -26,7 +31,7 @@ function markAsMaskedFallback<OtherInfo>(
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With });
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With, keepArgumentGraphs: true });
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.AllButFirst, { kind: NseKind.DataMasked });
 	return information;
 }
@@ -59,7 +64,8 @@ export function processWithEnv<OtherInfo>(
 
 	// prefer R's real `base::with` signature from the database, falling back to the known formals when it is absent
 	// use the call's own name (`with` or `within`) qualified to base, so each gets its real signature
-	const bound = FunctionSemantics.call.match.toNames(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
+	const qualifiedName = Identifier.make(Identifier.getName(name.content), PkgName.Base);
+	const bound = FunctionSemantics.call.match.toNames(args, signatureParamNames(data, qualifiedName, withParamsFallback));
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 
@@ -73,18 +79,17 @@ export function processWithEnv<OtherInfo>(
 	const envirResolution = envirOf(envirRouting);
 	if(!envirResolution) {
 		const fallback = markAsMaskedFallback(name, args, rootId, data);
-		unknownIfAmbiguous(envirRouting, fallback, rootId);
+		/* only a definition or a call we cannot see into (a closure of `data`) can write to a `data` we cannot pin down */
+		if((!fallback.graph.verticesOfType(VertexType.VariableDefinition).next().done || callsOpaque(fallback.graph, rootId)) && !unknownIfAmbiguous(envirRouting, fallback, rootId)) {
+			return mayWriteInto(dataArg.value, fallback, rootId, data);
+		}
 		return fallback;
 	}
 
 	const pipedData = isPipedArgument(dataArg, rootId, data);
 	const dfDataArg = pipedData ? DataflowInformation.initialize(rootId, data) : processDataflowFor(dataArg.value, data);
-
 	/* evaluate expr in the resolved env's scope so variable lookup uses envState */
-	const dfExpr = processDataflowFor(exprArg.value, {
-		...data,
-		environment: envirResolution.envirData.environment
-	});
+	const dfExpr = processDataflowFor(exprArg.value, { ...data, environment: envirResolution.envirData.environment });
 
 	/*
 	 * processSymbol puts symbol uses in unknownReferences without creating reads edges.
@@ -114,15 +119,16 @@ export function processWithEnv<OtherInfo>(
 		[{ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function }]
 	);
 
-	const isWithin = Identifier.getName(name.content) === 'within';
 	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	let resultEnv = data.environment;
-	if(isWithin && dfExpr.out.length > 0) {
+	/* an environment is not copied, so the writes of `with` stay in it just like those of `within` */
+	if(dfExpr.out.length > 0) {
+		keepCallFor(dfExpr.out, merged, rootId);
 		const tempResult = { ...dfExpr, environment: data.environment, graph: merged };
 		resultEnv = routeWrittenToEnvir(tempResult, envirResolution, rootId, data.environment).environment;
 	}
 
-	return {
+	const result: DataflowInformation = {
 		hooks:             dfDataArg.hooks.concat(dfExpr.hooks),
 		environment:       resultEnv,
 		exitPoints:        dfDataArg.exitPoints.concat(dfExpr.exitPoints),
@@ -134,4 +140,31 @@ export function processWithEnv<OtherInfo>(
 		out:               [],   /* writes are inside envState, not directly in outer scope */
 		unknownReferences: []
 	};
+	return callsOpaque(dfExpr.graph, rootId) ? mayWriteInto(dataArg.value, result, rootId, data) : result;
+}
+
+/** whether `graph` holds a call other than `rootId` that may run a closure of the data, like `with(e, inc())` */
+function callsOpaque(graph: DataflowGraph, rootId: NodeId): boolean {
+	return graph.verticesOfType(VertexType.FunctionCall).some(([id, vertex]) => id !== rootId && !vertex.onlyBuiltin);
+}
+
+/** `data` may be an untracked environment `expr` writes into, so later reads of its variable see the call as a maybe redefinition. */
+function mayWriteInto<OtherInfo>(
+	dataNode: RNode<OtherInfo & ParentInformation>,
+	result:   DataflowInformation,
+	rootId:   NodeId,
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	keepCallFor(result.out, result.graph, rootId);
+	if(!RSymbol.is(dataNode) || Resolve.byNameAndType(dataNode.content, result.environment, ReferenceType.Variable) === undefined) {
+		return result;
+	}
+	return { ...result, environment: REnvironment.define({ name: dataNode.content, nodeId: rootId, definedAt: rootId, type: ReferenceType.Variable, cds: data.cds }, false, result.environment) };
+}
+
+/** a write in `expr` only happens because the call evaluates it */
+function keepCallFor(written: readonly IdentifierReference[], graph: DataflowGraph, rootId: NodeId): void {
+	for(const w of written) {
+		graph.addEdge(w.nodeId, rootId, EdgeType.Reads);
+	}
 }

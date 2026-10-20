@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { type RNa, boolean2ts, isBoolean, isNA, RNumberValue } from '../../../../../convert-values';
-import { retrieveMetaStructure } from '../../normalize-meta';
+import { retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import type { RNumber } from '../../../../model/nodes/r-number';
 import type { RLogical } from '../../../../model/nodes/r-logical';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
@@ -21,11 +21,7 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 	const common = {
 		location,
 		lexeme: content,
-		info:   {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:   currentSourceInfo(data)
 	};
 
 	/* the special symbol */

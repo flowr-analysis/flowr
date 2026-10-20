@@ -129,11 +129,7 @@ export function decorateAst<OtherInfo = NoInfo>(
 
 	const folds = {
 		down: (n: RProject<OtherInfo> | RNode<OtherInfo>, nesting: number): number => {
-			if(nestForElement.has(n.type)) {
-				return nesting + 1;
-			} else {
-				return nesting;
-			}
+			return nestForElement.has(n.type) ? nesting + 1 : nesting;
 		},
 		foldNumber:   foldLeaf,
 		foldString:   foldLeaf,

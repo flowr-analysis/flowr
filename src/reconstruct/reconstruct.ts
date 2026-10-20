@@ -23,7 +23,7 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { type RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -31,8 +31,7 @@ import { type StatefulFoldFunctions, foldAstStateful } from '../r-bridge/lang-4.
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-select-defaults';
 import { Identifier } from '../dataflow/environments/identifier';
-import type { InlineWarning } from './inline/source-inline-map';
-import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { type InlineWarning, sourcePathOf } from './inline/source-inline-map';
 import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
 
 /**
@@ -77,7 +76,7 @@ type Code = PrettyPrintLine[];
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' });
 
-function getLexeme(n: RNodeWithParent): string {
+function reconstructableSource(n: RNodeWithParent): string {
 	const lexeme = RNode.lexeme(n);
 	if(lexeme !== undefined) {
 		return lexeme;
@@ -90,7 +89,7 @@ function getLexeme(n: RNodeWithParent): string {
 function synthesizeExpressionListLexeme(n: RExpressionList<ParentInformation>): string {
 	const inner = n.children
 		.filter(c => !RComment.is(c))
-		.map(c => getLexeme(c))
+		.map(c => reconstructableSource(c))
 		.filter(c => c.length > 0)
 		.join('; ');
 	const start = RExpressionList.groupStart(n);
@@ -110,7 +109,7 @@ function getArgumentLexeme(n: RArgument<ParentInformation> | typeof EmptyArgumen
 	if(n === undefined || RArgument.isEmpty(n)) {
 		return '';
 	}
-	return n.info.fullLexeme ?? (n.value !== undefined ? getLexeme(n.value) : getLexeme(n));
+	return n.info.fullLexeme ?? (n.value !== undefined ? reconstructableSource(n.value) : reconstructableSource(n));
 }
 
 function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {
@@ -118,7 +117,7 @@ function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionC
 }
 
 function foldToConst(n: RNodeWithParent): Code {
-	return plain(getLexeme(n));
+	return plain(reconstructableSource(n));
 }
 
 function indentBy(lines: Code, indent: number): Code {
@@ -128,11 +127,7 @@ function indentBy(lines: Code, indent: number): Code {
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: readonly Code[], config: ReconstructionConfiguration): Code {
 	const subExpressions = expressions.filter(e => e.length > 0);
 	if(subExpressions.length === 0) {
-		if(isSelected(config, exprList)) {
-			return plain('{}');
-		} else {
-			return [];
-		}
+		return isSelected(config, exprList) ? plain('{}') : [];
 	} else if(subExpressions.length === 1) {
 		if(!isSelected(config, exprList)) {
 			return subExpressions[0];
@@ -186,24 +181,12 @@ function evaluatesToRhs(n: RBinaryOp<ParentInformation> | RPipe<ParentInformatio
 }
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {
-	if(lhs.length === 0 && rhs.length === 0) {
-		if(isSelected(config, n)) {
-			return plain(getLexeme(n));
-		} else {
-			return [];
-		}
-	} else if(lhs.length === 0) {
+	if(lhs.length === 0 || rhs.length === 0) {
 		// dropping the lhs is only sound if the operator evaluates to its rhs, otherwise we have to keep the operation
-		if(isSelected(config, n) && !evaluatesToRhs(n)) {
-			return plain(getLexeme(n));
+		if(isSelected(config, n) && !(rhs.length > 0 && evaluatesToRhs(n))) {
+			return foldToConst(n);
 		}
-		return rhs;
-	} else if(rhs.length === 0) {
-		if(isSelected(config, n)) {
-			return plain(getLexeme(n));
-		} else {
-			return lhs;
-		}
+		return lhs.length === 0 ? rhs : lhs;
 	}
 
 	return reconstructRawBinaryOperator(lhs, RPipe.is(n) ? '|>' : n.operator, rhs);
@@ -214,26 +197,8 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		return body;
 	} else if(body.length === 0 && variable.length === 0 && vector.length === 0) {
 		return [];
-	} else if(body.length <= 1) {
-		// 'inline'
-		return [{
-			line:   `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].line}`,
-			indent: 0
-		}];
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-		// 'block'
-		return [
-			{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, indent: 0 },
-			...body.slice(1, body.length - 1),
-			{ line: '}', indent: 0 }
-		];
-	} else {
-		// unknown
-		return [
-			{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, indent: 0 },
-			...indentBy(body, 1)
-		];
 	}
+	return reconstructBodyWithHeader({ line: `for(${reconstructableSource(loop.variable)} in ${reconstructableSource(loop.vector)})`, indent: 0 }, body, ' {}');
 }
 
 function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty: string): Code {
@@ -268,7 +233,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	otherwise ??= [];
 	if(then.length === 0 && otherwise.length === 0) {
 		if(isSelected(config, ifThenElse)) {
-			return [{ line: `if(${getLexeme(ifThenElse.condition)}) { }`, indent: 0 }];
+			return [{ line: `if(${reconstructableSource(ifThenElse.condition)}) { }`, indent: 0 }];
 		} else if(condition.length > 0) {
 			return condition;
 		} else {
@@ -277,7 +242,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	} else if(otherwise.length === 0) {
 		if(isSelected(config, ifThenElse)) {
 			return reconstructBodyWithHeader(
-				{ line: `if(${getLexeme(ifThenElse.condition)})`, indent: 0 },
+				{ line: `if(${reconstructableSource(ifThenElse.condition)})`, indent: 0 },
 				then, '{}'
 			);
 		} else {
@@ -286,7 +251,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	} else if(then.length === 0) {
 		if(isSelected(config, ifThenElse)) {
 			return reconstructBodyWithHeader(
-				{ line: `if(${getLexeme(ifThenElse.condition)}) { } else`, indent: 0 },
+				{ line: `if(${reconstructableSource(ifThenElse.condition)}) { } else`, indent: 0 },
 				then, '{}'
 			);
 		} else {
@@ -300,7 +265,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			}
 		}
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line} ${then.length === 1 ? 'else' : ''}`, indent: 0 },
+			{ line: `if(${reconstructableSource(ifThenElse.condition)}) ${then[0].line} ${then.length === 1 ? 'else' : ''}`, indent: 0 },
 			...thenRemainder,
 			{ line: `${otherwise[0].line}`, indent: 0 },
 			...indentBy(otherwise.splice(1), 1)
@@ -313,33 +278,16 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 		return body;
 	} else if(body.length === 0 && condition.length === 0) {
 		return [];
-	} else if(body.length <= 1) {
-		// 'inline'
-		return [{ line: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }];
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-		// 'block'
-		return [
-			{ line: `while(${getLexeme(loop.condition)}) {`, indent: 0 },
-			...body.slice(1, body.length - 1),
-			{ line: '}', indent: 0 }
-		];
-	} else {
-		// unknown
-		return [
-			{ line: `while(${getLexeme(loop.condition)})`, indent: 0 },
-			...indentBy(body, 1)
-		];
 	}
+	return reconstructBodyWithHeader({ line: `while(${reconstructableSource(loop.condition)})`, indent: 0 }, body, ' {}');
+}
+
+function parameterSource(p: RParameter<ParentInformation>): string {
+	return p.defaultValue === undefined ? reconstructableSource(p) : `${reconstructableSource(p.name)}=${reconstructableSource(p.defaultValue)}`;
 }
 
 function reconstructParameters(parameters: readonly RParameter<ParentInformation>[]): string[] {
-	return parameters.map(p => {
-		if(p.defaultValue !== undefined) {
-			return `${getLexeme(p.name)}=${getLexeme(p.defaultValue)}`;
-		} else {
-			return getLexeme(p);
-		}
-	});
+	return parameters.map(parameterSource);
 }
 
 function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
@@ -353,12 +301,12 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 		return accessed;
 	}
 
-	return plain(getLexeme(node));
+	return foldToConst(node);
 }
 
 function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined): Code {
 	if(argument.name !== undefined && name !== undefined && name.length > 0) {
-		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`);
+		return plain(`${reconstructableSource(argument.name)}=${argument.value ? reconstructableSource(argument.value) : ''}`);
 	} else {
 		return value ?? [];
 	}
@@ -366,29 +314,21 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, parameter)) {
-		return plain(getLexeme(parameter));
+		return foldToConst(parameter);
 	}
-	if(parameter.defaultValue !== undefined && name.length > 0) {
-		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`);
-	} else if(parameter.defaultValue !== undefined && name.length === 0) {
-		return defaultValue ?? [];
-	} else {
+	if(parameter.defaultValue === undefined) {
 		return name;
 	}
+	return name.length > 0 ? plain(parameterSource(parameter)) : defaultValue ?? [];
 }
 
 /** whether any ancestor of `n` is part of the reconstruction and hence may consume the value of `n` */
 function hasSelectedAncestor(n: RNodeWithParent, config: ReconstructionConfiguration): boolean {
 	const { idMap } = config.fullAst;
-	let parentId = n.info.parent;
-	while(parentId !== undefined) {
-		const parent = idMap.get(parentId);
-		if(parent === undefined) {
-			return false;
-		} else if(isSelected(config, parent)) {
+	for(const parent of RNode.iterateParents(n, idMap)) {
+		if(isSelected(config, parent)) {
 			return true;
 		}
-		parentId = parent.info.parent;
 	}
 	return false;
 }
@@ -450,7 +390,7 @@ function reconstructSpecialInfixFunctionCall(args: readonly (Code | typeof Empty
 	const lhsLexeme = getArgumentLexeme(call.arguments[0]);
 	const rhsLexeme = getArgumentLexeme(call.arguments[1]);
 	if(lhsLexeme.length === 0 || rhsLexeme.length === 0) {
-		return plain(getLexeme(call));
+		return foldToConst(call);
 	}
 	return plain(`${lhsLexeme} ${Identifier.toString(call.functionName.content)} ${rhsLexeme}`);
 }
@@ -469,7 +409,7 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 			// cyclic source() - keep the literal call and mark the cycle edge
 			config.warnings?.push({ kind: 'cycle', callId: id, path });
 			reconstructLogger.warn(`cyclic source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
-			const literal = plain(getLexeme(call));
+			const literal = foldToConst(call);
 			literal.push({ line: `# [flowR] cyclic source() not inlined: ${path ?? '<unknown>'}`, indent: 0 });
 			return literal;
 		}
@@ -481,9 +421,8 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 		return stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
 	}
 	// a selected source() that we could not link to a file (dynamic/missing path): keep it verbatim
-	if(call.named && call.functionName.lexeme === 'source') {
-		const arg = call.arguments[0];
-		const path = arg !== undefined && arg !== EmptyArgument && RString.is(arg.value) ? arg.value.content.str : undefined;
+	if(RFunctionCall.isNamed(call, 'source')) {
+		const path = sourcePathOf(call);
 		config.warnings?.push({ kind: 'unresolved', callId: id, path });
 		reconstructLogger.warn(`unresolved source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
 	}
@@ -516,7 +455,7 @@ function reconstructFunctionCall(
 		return reconstructSpecialInfixFunctionCall(args, call);
 	}
 	if(call.named && selected) {
-		return plain(getLexeme(call));
+		return foldToConst(call);
 	}
 	if(functionName.length === 0 && args.every(a => a === undefined || a.length === 0)) {
 		return [];
@@ -534,7 +473,7 @@ function reconstructFunctionCall(
 		last.line += '()';
 		return functionName;
 	} else {
-		return plain(getLexeme(call));
+		return foldToConst(call);
 	}
 }
 

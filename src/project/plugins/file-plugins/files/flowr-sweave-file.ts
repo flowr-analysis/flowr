@@ -31,6 +31,12 @@ export class FlowrSweaveFile extends FlowrFile {
 		return this.data;
 	}
 
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
+	}
+
 	/**
 	 * Loads and parses the content of the wrapped file.
 	 * @returns the content of the Sweave file, which is the R code without the latex code, no-eval blocks, ...

@@ -66,20 +66,18 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "🛒 Checkout LFS"
         if: ${{ success() && env.PUBLISH == 'true' }}
         # just as a time-proven safety measure
         run: git lfs checkout
+
+      # before the tests, which check the database-backed examples of the pages, and before the pages themselves
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "⚗️ Test Suite (full, for data)"
         # we make sure we have a clean run
@@ -99,19 +97,6 @@ jobs:
           name: wiki-test-label-details
           path: coverage/flowr-test-details*.json
           if-no-files-found: warn
-
-      - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v5
-        with:
-          # only the bundles, the shards unpacked next to them are re-derived on demand
-          path: ~/.cache/flowr/sigdb/bundles
-          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
-
-      - name: "⬇️ Sync the Signature Database"
-        # without it every sigdb-backed page says "No signature database is loaded" instead of showing a result
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sigdb:sync
 
       # the release workflow produces the data but does not commit it, so it lands in the same commit as the pages
       - name: "⬇️ Get the Benchmark Data from the Release Run"
@@ -276,16 +261,7 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        timeout-minutes: 20
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "📦 Install Node Dependencies"
         # the sync below runs through ts-node, so the dependencies have to be there before it

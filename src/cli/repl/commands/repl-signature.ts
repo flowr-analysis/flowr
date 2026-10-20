@@ -5,14 +5,14 @@ import { executeQueries } from '../../../queries/query';
 import { SignatureQueryDefinition } from '../../../queries/catalog/signature-query/signature-query-format';
 import { FunctionInfoQueryDefinition } from '../../../queries/catalog/function-info-query/function-info-query-format';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import { downloadFullSigDb } from '../../../project/sigdb/sigdb-download';
+import { downloadFullSigDb, SigDbDownloadError } from '../../../project/sigdb/sigdb-download';
 import { persistSigDbPathToGlobalConfig } from '../../../config';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { signatureQueryCompleter } from '../../../queries/catalog/signature-query/signature-query-executor';
 import type { CommandCompletions } from '../core';
 
 /** treat the whole line as arguments, no R code to separate */
-function parseArgs(line: string) {
+function parseSignatureArgs(line: string) {
 	return { rCode: undefined, remaining: splitAtEscapeSensitive(line) };
 }
 
@@ -21,7 +21,7 @@ function joinArgs(args: readonly string[]): string {
 	return args.filter(a => a.length > 0).join(' ').trim();
 }
 
-function printHelp(output: ReplOutput): void {
+function printSignatureHelp(output: ReplOutput): void {
 	const f = output.formatter;
 	output.stdout(bold('Signature Database', f) + italic('  (inspect and extend the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
@@ -82,12 +82,12 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 	const f = output.formatter;
 	const sigdb = analyzer.flowrConfig.solver.sigdb;
 	try {
-		const { dir, manifest, files } = await downloadFullSigDb({
+		const { tag, dir, manifest, files, downloaded, bytes, ms } = await downloadFullSigDb({
 			version:    rest.find(a => a.length > 0),
 			repo:       sigdb.downloadRepo,
 			onProgress: msg => output.stdout(italic(`  ${msg}`, f))
 		});
-		output.stdout(`Downloaded ${bold(String(files.length), f)} file(s) to ${bold(dir, f)}.`);
+		output.stdout(`Signature database ${bold(tag, f)}: ${bold(String(files.length), f)} file(s) in ${bold(dir, f)}, ${downloaded.length} fetched now (${(bytes / 1e6).toFixed(1)} MB in ${(ms / 1000).toFixed(1)}s).`);
 		if(manifest) {
 			await analyzer.context().deps.addDatabaseSource(manifest);
 			analyzer.reset();
@@ -99,7 +99,15 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 			output.stderr(italic(`Could not update global config (${(e as Error).message}); add ${dir} to solver.sigdb.additionalPaths manually.`, f));
 		}
 	} catch(e) {
-		output.stderr(`Download failed: ${(e as Error).message}`);
+		if(e instanceof SigDbDownloadError) {
+			output.stderr(`Download of ${e.tag} incomplete: ${e.completed} file(s) are in place, ${e.failed.length} failed:`);
+			for(const { name, reason } of e.failed) {
+				output.stderr(`  ${name}: ${reason}`);
+			}
+			output.stderr(italic('Run the command again to fetch only what is missing.', f));
+		} else {
+			output.stderr(`Download failed: ${(e as Error).message}`);
+		}
 	}
 }
 
@@ -112,7 +120,7 @@ const signatureSubcommands = {
 	info:     runInfo,
 	add:      runAdd,
 	download: runDownload,
-	help:     output => printHelp(output),
+	help:     output => printSignatureHelp(output),
 } satisfies Record<string, SignatureSubHandler>;
 
 /** the `:signature` subcommand names, offered as completions for its first argument */
@@ -140,7 +148,9 @@ export const signatureCommand: ReplCodeCommand = {
 	usageExample:  ':signature <query|add|download> ...',
 	aliases:       ['sig'],
 	script:        false,
-	argsParser:    parseArgs,
+	// `add` mounts arbitrary local files and `download` fetches from the network and persists into the global config
+	localOnly:     true,
+	argsParser:    parseSignatureArgs,
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const [sub = 'help', ...rest] = remainingArgs.filter(a => a.length > 0);
 		const handler = signatureSubcommands[sub as keyof typeof signatureSubcommands];

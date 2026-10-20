@@ -83,7 +83,16 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run:   lapply(c("dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        run: |
+          wanted <- readLines(".github/actions/setup-r/packages.txt")
+          install.packages(wanted, repos="https://cloud.r-project.org/")
+          missing <- setdiff(wanted, rownames(installed.packages()))
+          if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
+
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
@@ -155,16 +164,7 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        timeout-minutes: 20
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "⚙️ Name and Email for Git (config)"
         run: |
@@ -176,6 +176,12 @@ jobs:
 
       - name: "🔁 Fetch latest main before release"
         run: git fetch origin main && git reset --hard origin/main
+
+      # release-it runs `test:full` again, which needs the database just like the test jobs
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🌟 Release"
         id: release
@@ -333,16 +339,7 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        timeout-minutes: 20
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "⏱️ Run the performance benchmarks"
         run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 2 "${{ matrix.name }}" "${{ matrix.parser }}"

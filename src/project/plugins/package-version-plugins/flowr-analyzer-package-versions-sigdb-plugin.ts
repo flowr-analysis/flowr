@@ -17,19 +17,13 @@ import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { SecureMode } from '../../../util/secure-mode';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
 
-/** map a resolved source's compressed extension to a codec name for display (`undefined` extension is a plain file) */
-function codecNameOf(ext: string | undefined): string {
-	switch(ext) {
-		case '.zst': return 'zstd';
-		case '.br':  return 'brotli';
-		case '.gz':  return 'gzip';
-		default:     return 'plain';
-	}
-}
+/** a resolved source's compressed extension as a codec name for display, a file without one is `plain` */
+const CodecNames: Readonly<Record<string, string>> = { '.zst': 'zstd', '.br': 'brotli', '.gz': 'gzip' };
 
 /** the codec name of a manifest's resolved shard + dict sources, or `mixed` when they do not all agree */
 function manifestFormat(set: SigDatabaseSet): string {
@@ -37,7 +31,7 @@ function manifestFormat(set: SigDatabaseSet): string {
 		...set.manifest.shards.map(s => s.path),
 		...(set.manifest.dicts?.map(d => d.path) ?? [])
 	];
-	const codecs = uniqueArray(paths.map(p => codecNameOf(compressedExtOf(resolveSource(set.baseDir, p)))));
+	const codecs = uniqueArray(paths.map(p => CodecNames[compressedExtOf(resolveSource(set.baseDir, p)) ?? ''] ?? 'plain'));
 	return codecs.length === 1 ? codecs[0] : 'mixed';
 }
 
@@ -158,7 +152,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(ctx.config.solver.sigdb.warmInBackground) {
 				this.startBackgroundWarm();
 			}
-			if(ctx.config.solver.sigdb.autoSync) {
+			if(ctx.config.solver.sigdb.autoSync && !SecureMode.isEnabled()) {
 				this.startBackgroundSync(ctx);
 			}
 			if(ctx.config.solver.sigdb.versionSelection === VersionSelection.System) {
@@ -183,16 +177,18 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(!dl.sigDbNeedsSync()) {
 				return;
 			}
-			sigDbLog.info('sigdb: committed link file changed, re-syncing shards in the background');
-			const { files } = await dl.downloadFullSigDb({
+			sigDbLog.info('sigdb: the committed link file names shards missing from the cache, syncing them in the background');
+			const { tag, files, downloaded, stale } = await dl.downloadFullSigDb({
 				repo:       ctx.config.solver.sigdb.downloadRepo,
 				onProgress: msg => sigDbLog.info(`sigdb sync: ${msg}`)
 			});
-			for(const manifest of files.filter(f => /\.manifest\.json(\.br)?$/.test(f))) {
+			const manifests = files.filter(f => dl.isManifestFile(f));
+			for(const manifest of manifests) {
 				await ctx.deps.addDatabaseSource(manifest);
 			}
+			sigDbLog.info(`sigdb sync: ${tag} ready (${downloaded.length} file(s) fetched, ${manifests.length} manifest(s) mounted${stale.length > 0 ? `, ${stale.length} older bundle(s) still cached` : ''})`);
 		})().catch((e: unknown) => {
-			sigDbLog.warn(`background sigdb sync failed (keeping the cached shards): ${(e as Error).message}`);
+			sigDbLog.warn(`background sigdb sync failed, analyzing with the signatures already cached: ${(e as Error).message}`);
 		});
 	}
 
@@ -273,16 +269,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		/* the historical bundle is not asked: a name is hinted so a `library()` can be added for it, and a package
 		   only that bundle carries is one nothing can attach today */
 		const sources = this.loadSources().filter(s => describeLoadedDatabase(s).scope !== 'history');
-		const seen = new Set<string>();
-		const owners: string[] = [];
-		for(const src of sources) {
-			for(const pkg of exportOwners(src, name)) {
-				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
-					seen.add(pkg);
-					owners.push(pkg);
-				}
-			}
-		}
+		const owners = uniqueArray(sources.flatMap(src => exportOwners(src, name))).filter(pkg => !this.isSelfPackage(pkg));
 		// each source's list is already sorted; a merge of several needs one more pass to be globally ordered
 		if(owners.length > 1 && sources.length > 1) {
 			/* the comparator runs O(n log n) times, so each package is counted once up front */
@@ -389,12 +376,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			return undefined;
 		}
 		const target = this.analyzerCtx?.resolvedRVersion ?? resolveAssumedRVersion(undefined);
-		let chosen: RVersion | undefined;   // versions are ascending; keep the newest core release <= target
-		for(const v of versions) {
-			if(RVersion.compare(v.str, target) <= 0) {
-				chosen = v;
-			}
-		}
+		// versions are ascending; keep the newest core release <= target
+		let chosen = versions.findLast(v => RVersion.compare(v.str, target) <= 0);
 		if(chosen === undefined) {
 			// the assumed R version is older than the earliest recorded core release: fall back to the closest one
 			chosen = versions[0];
@@ -478,25 +461,18 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(info && (range === undefined || RRange.satisfies(info.version, range))) {
 			return info;
 		}
-		if(range !== undefined) {
-			const versions = this.availableVersions(src, name);
-			for(let i = versions.length - 1; i >= 0; i--) {
-				if(RRange.satisfies(versions[i], range)) {
-					return src.lookup(name, versions[i]);
-				}
-			}
+		if(range === undefined) {
+			return undefined;
 		}
-		return undefined;
+		const satisfying = this.availableVersions(src, name).findLast(version => RRange.satisfies(version, range));
+		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/** Lowest stored version satisfying the constraint (using the store's actual R-form version strings). */
 	private oldestSatisfying(src: PackageSignatureSource, name: string, range: Range | undefined): LibraryExports | undefined {
-		for(const version of this.availableVersions(src, name)) {   // ascending
-			if(range === undefined || RRange.satisfies(version, range)) {
-				return src.lookup(name, version);
-			}
-		}
-		return undefined;
+		// versions are ascending, so the first satisfying one is the oldest
+		const satisfying = this.availableVersions(src, name).find(version => range === undefined || RRange.satisfies(version, range));
+		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/**
@@ -509,7 +485,9 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */
 	private toResolvedPackage(name: string, info: LibraryExports): Package {
-		const exported = info.exported.slice();
+		/* what the configuration states for the package is part of its interface, even where the database misses it */
+		const stated = this.analyzerCtx?.env.statedFor(name);
+		const exported = stated === undefined ? info.exported.slice() : uniqueArray([...info.exported, ...[...stated.keys()].map(String)]);
 		const namespaceInfo: NamespaceInfo = {
 			exportedSymbols:      exported,
 			exportedFunctions:    [],

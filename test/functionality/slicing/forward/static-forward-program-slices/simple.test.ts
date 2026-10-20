@@ -32,7 +32,7 @@ print(x + y)
 	}
 f()
 print(x + y)
-		`, ['2@x'], '{ x <<- 2 }\nf()\nprint(x + y)');
+		`, ['2@x'], 'f <- function() { x <<- 2 }\nf()\nprint(x + y)');
 	});
 	describe('Function definitions', () => {
 		/* the slice keeps the binding of `f`, so the body must not be reconstructed without its header */
@@ -209,5 +209,10 @@ plot(b$v)`;
 			shell, code, ['3@x'], 'x <- undefined_symbol');
 		assertSlicedF(label('one of two reads taints only the plot using it', ['name-normal', 'function-calls', 'dollar-access', ...OperatorDatabase['<-'].capabilities]),
 			shell, code, ['1@a'], 'a <- read.csv("a.csv")\nplot(a$v)');
+	});
+	describe('Globals read in a function', () => {
+		const caps = ['name-normal', 'function-calls', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines'] as const;
+		assertSlicedF(label('reach the calls after the definition', [...caps]),
+			shell, 'f <- function() print(x)\nf()\nx <- 1\nf()', ['3@x'], 'f <- function() print(x)\nx <- 1\nf()');
 	});
 }));

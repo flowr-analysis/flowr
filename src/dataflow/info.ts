@@ -4,7 +4,6 @@ import type { BrandedIdentifier, IdentifierReference } from './environments/iden
 import type { REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
-import { isNotUndefined } from '../util/assert';
 import type { HookInformation } from './hooks';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
@@ -25,6 +24,8 @@ export interface ControlDependency {
 	readonly when?:        boolean
 	/** whether this control dependency was created due to iteration (e.g., a loop) */
 	readonly byIteration?: boolean
+	/** whether this control dependency is a promise's: what stands under it runs only once the call `id` forces it, see {@link ControlFlow.withinPromise} */
+	readonly byPromise?:   boolean
 	/**
 	 * any file-exist assumptions made
 	 */
@@ -66,10 +67,7 @@ export const ControlDependency = {
 
 /** Appends the given control dependencies to `target`, skipping the ones that are already in there. */
 export function appendCds(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void {
-	if(!toAdd) {
-		return;
-	}
-	for(const add of toAdd) {
+	for(const add of toAdd ?? []) {
 		if(!target.some(have => sameControlDependency(have, add))) {
 			target.push(add);
 		}
@@ -78,7 +76,7 @@ export function appendCds(target: ControlDependency[], toAdd: readonly ControlDe
 
 /** A copy of `base` with `toAdd` appended, skipping the control dependencies that are already in there. */
 export function withCds(base: readonly ControlDependency[] | undefined, toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
-	const result = base ? Array.from(base) : [];
+	const result = [...base ?? []];
 	appendCds(result, toAdd);
 	return result;
 }
@@ -131,6 +129,8 @@ export interface ExitPoint {
 	readonly type:   ExitPointType,
 	/** The id of the node which causes the exit point! */
 	readonly nodeId: NodeId,
+	/** The jump this exit stands for, when {@link ExitPoint#nodeId|nodeId} is a construct it leaves through */
+	readonly jump?:  NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
@@ -139,33 +139,31 @@ export interface ExitPoint {
 	readonly cds?:   ControlDependency[]
 }
 
+/** `exit` leaving through the construct `rootId`, which keeps the jump it stands for. */
+export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
+	return { ...exit, nodeId: rootId, jump: exit.jump ?? exit.nodeId };
+}
+
 /**
  * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
 export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
-	const toAdd = add.filter(({ type }) => type !== ExitPointType.Default);
-	if(toAdd.length === 0) {
-		return;
-	}
-	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
-		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
-	).map(negateControlDependency)).filter(isNotUndefined);
-	for(const ep of toAdd) {
-		existing.push(ep);
-	}
-	for(const icd of invertedCds) {
-		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
-			invertExitCds.push(icd);
+	for(const ep of add) {
+		if(ep.type !== ExitPointType.Default) {
+			existing.push(ep);
+			const ownCds = ControlDependency.minus(ep.cds ?? [], activeCds ?? []);
+			appendCds(invertExitCds, ownCds.map(negateControlDependency));
 		}
 	}
 }
 
 /**
- * Overwrites the existing exit points with the given ones, taking care of cds.
+ * Overwrites the existing exit points with the given ones, taking care of cds:
+ * the existing ones stay if the replacements only happen in some branches.
  */
 export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
 	const replaceCds = replace.flatMap(e => e.cds);
-	if(replaceCds.length === 0 || replaceCds.includes(undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
+	if(replaceCds.length === 0 || replaceCds.includes(undefined) || happensInEveryBranch(replaceCds as ControlDependency[])) {
 		return replace;
 	}
 	return existing.concat(replace);
@@ -298,24 +296,23 @@ export function happensInEveryBranch(cds: readonly ControlDependency[] | undefin
 	return cds === undefined || (cds.length !== 0 && coversSet(cds));
 }
 
-function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
+function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]): boolean {
 	/* as deep as the surrounding branches, so the pairwise scan beats any set */
 	for(const { id, when } of cds) {
-		if(when !== true && when !== false) {
-			continue;
-		}
-		let counterpart = false;
-		for(const other of cds) {
-			if(other.id === id && other.when === !when) {
-				counterpart = true;
-				break;
-			}
-		}
-		if(!counterpart) {
+		if(when !== undefined && !hasCounterpart(cds, id, !when)) {
 			return false;
 		}
 	}
 	return true;
+}
+
+function hasCounterpart(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[], id: NodeId, when: boolean): boolean {
+	for(const other of cds) {
+		if(other.id === id && other.when === when) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /** As {@link happensInEveryBranch}, but for a set of control dependencies. */

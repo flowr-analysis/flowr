@@ -12,17 +12,13 @@ import type { BuiltInFnInfo, StatedProps } from '../environments/built-in-props'
 import { ArgProp, CallProp, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { happensInEveryBranch } from '../info';
 import { strictnessOfEach } from './strict-function';
 import { argumentRolesOfFunctions, type ArgumentRolesOptions, type FunctionArgumentRoles, type LookupState } from './argument-roles';
-import { callsIn, edgeTargets, propagateToFixpoint } from './frame-reflection';
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
-
-/** @see {@link propagateToFixpoint}, re-exported from where it lives so nothing importing it from here needs to change. */
-export { propagateToFixpoint };
+import { Dataflow } from '../graph/df-helper';
 
 /** What flowR infers about a set of definitions, see {@link inferFunctions}. */
 export interface InferredFunctions {
@@ -48,14 +44,14 @@ export function inferFunctions(this: void, definitions: readonly NodeId[], graph
 	const { ctx, only } = options;
 	const strict = strictnessOfEach(definitions, graph, { ctx });
 	return {
-		props: only === 'arguments' ? {} : callProps(definitions, graph, strict, ctx),
-		roles: only === 'function' ? {} : argumentProps(definitions, graph, strict, options)
+		props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
+		roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
 	};
 }
 
 /** The {@link CallProp} mask of each definition, `Strict` included and what its callees carry mixed in. */
-function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, ctx: ReadOnlyFlowrAnalyzerContext | undefined): Record<NodeId, StatedProps> {
-	const state = makeState(graph, ctx);
+function callProps(definitions: readonly NodeId[], state: LookupState, strict: Record<NodeId, FunctionStrictness>): Record<NodeId, StatedProps> {
+	const { join, filter, hasAny } = FunctionSemantics.call.props;
 	const props = new Map<NodeId, StatedProps>();
 	const callees = new Map<NodeId, readonly NodeId[]>();
 	/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
@@ -66,28 +62,15 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 			continue;
 		}
 		const own = propsOf(id, state);
-		props.set(id, strict[id]?.strict === Ternary.Always ? FunctionSemantics.call.props.join(own.stated, { props: CallProp.Strict }) : own.stated);
+		props.set(id, strict[id]?.strict === Ternary.Always ? join(own.stated, { props: CallProp.Strict }) : own.stated);
 		callees.set(id, own.callees);
 		toVisit.push(...own.callees);
 	}
-	propagateOverCalls(props, callees);
-	const all: Record<NodeId, StatedProps> = {};
-	for(const id of definitions) {
-		const found = props.get(id);
-		if(FunctionSemantics.call.props.hasAny(found)) {
-			all[id] = found as StatedProps;
-		}
-	}
-	return all;
-}
-
-/** Hands {@link PropagatedProps} on to callers until nothing changes, so a chain of calls carries them however long it is. */
-function propagateOverCalls(props: Map<NodeId, StatedProps>, callees: ReadonlyMap<NodeId, readonly NodeId[]>): void {
-	propagateToFixpoint(callees.keys(), callees, id => {
+	Dataflow.propagateToFixpoint(callees.keys(), callees, id => {
 		const before = props.get(id);
 		let grown = before ?? {};
 		for(const callee of callees.get(id) ?? []) {
-			grown = FunctionSemantics.call.props.join(grown, FunctionSemantics.call.props.filter(props.get(callee), PropagatedProps));
+			grown = join(grown, filter(props.get(callee), PropagatedProps));
 		}
 		/* joining only ever adds, so nothing new means the same bits and the same number of tags */
 		if((grown.props ?? 0) === (before?.props ?? 0) && (grown.tags?.length ?? 0) === (before?.tags?.length ?? 0)) {
@@ -96,10 +79,11 @@ function propagateOverCalls(props: Map<NodeId, StatedProps>, callees: ReadonlyMa
 		props.set(id, grown);
 		return true;
 	});
+	return Object.fromEntries(definitions.filter(id => hasAny(props.get(id))).map(id => [id, props.get(id) as StatedProps]));
 }
 
 /** The {@link ArgProp} mask of each formal, `Forced`/`Lazy` included. */
-function argumentProps(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, options: ArgumentRolesOptions): Record<NodeId, FunctionArgumentRoles> {
+function rolesOfDefinitions(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, options: ArgumentRolesOptions): Record<NodeId, FunctionArgumentRoles> {
 	const all: Record<NodeId, FunctionArgumentRoles> = { ...argumentRolesOfFunctions(definitions, graph, options) };
 	for(const [id, { parameters }] of Object.entries(strict)) {
 		const roles: FunctionArgumentRoles = { ...all[id] };
@@ -116,11 +100,6 @@ function argumentProps(definitions: readonly NodeId[], graph: DataflowGraph, str
 	return all;
 }
 
-
-function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): LookupState {
-	return { graph, info: builtInLookup(ctx) };
-}
-
 /** What one definition states about itself, together with the definitions its body calls. */
 interface OwnProps {
 	readonly stated:  StatedProps
@@ -129,33 +108,29 @@ interface OwnProps {
 }
 
 function propsOf(id: NodeId, state: LookupState): OwnProps {
+	const { join, filter } = FunctionSemantics.call.props;
 	const definition = state.graph.getVertex(id);
 	if(!DfgVertex.isFunctionDefinition(definition)) {
 		return { stated: {}, callees: [] };
 	}
 	let stated: StatedProps = {};
 	const callees: NodeId[] = [];
-	for(const [node, vertex] of callsIn(definition, state.graph)) {
+	for(const [node, vertex] of Dataflow.callsIn(definition, state.graph)) {
 		const info = state.info(vertex.name);
-		const carried = FunctionSemantics.call.props.filter(info, PropagatedProps);
-		stated = FunctionSemantics.call.props.join(stated, {
+		const carried = filter(info, PropagatedProps);
+		stated = join(stated, {
 			props: (carried.props ?? 0) & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope),
 			tags:  carried.tags
 		});
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
-			stated = FunctionSemantics.call.props.join(stated, { props: CallProp.Generic });
+			stated = join(stated, { props: CallProp.Generic });
 		}
-		callees.push(...calledDefinitions(node, state));
+		callees.push(...Dataflow.calleeIdsOf(state.graph, node));
 	}
-	if(returnsInvisibly(definition, state)) {
-		stated = FunctionSemantics.call.props.join(stated, { props: CallProp.Invisible });
+	if(exitsInvisibly(definition, state)) {
+		stated = join(stated, { props: CallProp.Invisible });
 	}
 	return { stated, callees };
-}
-
-/** The definitions of the program the call resolved to, which are the ones stating what the call does. */
-function calledDefinitions(node: NodeId, state: LookupState): NodeId[] {
-	return edgeTargets(state.graph, node, EdgeType.Calls).filter(target => DfgVertex.isFunctionDefinition(state.graph.getVertex(target)));
 }
 
 /** the assignments binding in the frame they run in, which is a scope of the function's own */
@@ -172,20 +147,19 @@ function bindsOutside(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnIn
 	if(!FrameLocalBinders.has(name) && !isFrameLocalReplacement(name)) {
 		return true;
 	}
-	const layout = info?.sig === undefined ? undefined : Sig.layout(info.sig);
-	return layout !== undefined && Sig.posWith(layout, vertex.args.length, ArgProp.Written).length > 0;
+	return info?.sig !== undefined && Sig.posWith(Sig.layout(info.sig), vertex.args.length, ArgProp.Written).length > 0;
 }
 
 /** Whether every unconditional exit ends in a call returning invisibly; a bare value result (`function() 1`) never does. */
-function returnsInvisibly(definition: DataflowGraphVertexFunctionDefinition, state: LookupState): boolean {
+function exitsInvisibly(definition: DataflowGraphVertexFunctionDefinition, state: LookupState): boolean {
 	const unconditional = definition.exitPoints.filter(e => happensInEveryBranch(e.cds)).map(e => e.nodeId);
-	return unconditional.length > 0 && unconditional.every(node => yieldsInvisibly(node, state, 0));
+	return unconditional.length > 0 && unconditional.every(node => yieldsInvisibly(node, state));
 }
 
 /** How far the result is followed through the blocks and `return`s wrapping it. */
 const MaxDepth = 6;
 
-function yieldsInvisibly(node: NodeId, state: LookupState, depth: number): boolean {
+function yieldsInvisibly(node: NodeId, state: LookupState, depth = 0): boolean {
 	const vertex = state.graph.getVertex(node);
 	if(DfgVertex.isFunctionCall(vertex) && ((state.info(vertex.name)?.props ?? 0) & CallProp.Invisible) !== 0) {
 		return true;
@@ -194,6 +168,6 @@ function yieldsInvisibly(node: NodeId, state: LookupState, depth: number): boole
 		return false;
 	}
 	/* a block hands back its last expression and `return(x)` what it was given, so what they yield decides */
-	const returns = edgeTargets(state.graph, node, EdgeType.Returns);
+	const returns = Dataflow.targetsOf(state.graph, node, EdgeType.Returns);
 	return returns.length > 0 && returns.every(target => yieldsInvisibly(target, state, depth + 1));
 }

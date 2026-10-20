@@ -122,12 +122,7 @@ export class FlowRServerConnection {
 			case 'request-query':
 				return this.handleQueryRequest(message as QueryRequestMessage);
 			default:
-				sendMessage<FlowrErrorMessage>(this.socket, {
-					id:     message.id,
-					type:   'error',
-					fatal:  true,
-					reason: `The message type ${JSON.stringify(message.type as string | undefined ?? 'undefined')} is not supported.`
-				});
+				this.sendError(message.id, `The message type ${JSON.stringify(message.type as string | undefined ?? 'undefined')} is not supported.`, true);
 				this.socket.end();
 				return Promise.resolve();
 		}
@@ -166,12 +161,7 @@ export class FlowRServerConnection {
 			await this.sendFileAnalysisResponse(analyzer, message);
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`);
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     message.id,
-				type:   'error',
-				fatal:  false,
-				reason: `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`
-			});
+			this.sendError(message.id, `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`);
 		}
 
 		// this is an interestingly named function that means "I am a callback that removes a file" - so this deletes the file
@@ -266,18 +256,17 @@ export class FlowRServerConnection {
 		return analyzer;
 	}
 
+	private sendError(id: string | undefined, reason: string, fatal = false): void {
+		sendMessage<FlowrErrorMessage>(this.socket, { id, type: 'error', fatal, reason });
+	}
+
 	/**
 	 * Looks up the analysis stored for the given file token, answering with an error message if there is none.
 	 */
 	private getAnalyzedFile(request: { id?: string, filetoken: string }) {
 		const fileInformation = this.fileMap.get(request.filetoken);
 		if(!fileInformation) {
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `The file token ${request.filetoken} has never been analyzed.`
-			});
+			this.sendError(request.id, `The file token ${request.filetoken} has never been analyzed.`);
 		}
 		return fileInformation;
 	}
@@ -314,12 +303,7 @@ export class FlowRServerConnection {
 			});
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
-			});
+			this.sendError(request.id, `Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 		}
 	}
 
@@ -353,7 +337,8 @@ export class FlowRServerConnection {
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
 		}, request.expression,
-		this.allowRSessionAccess
+		this.allowRSessionAccess,
+		/* remote */ true
 		);
 		sendMessage<ExecuteEndMessage>(this.socket, {
 			type: 'end-repl-execution',
@@ -386,12 +371,7 @@ export class FlowRServerConnection {
 			});
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `Error while executing query: ${String(e)}`
-			});
+			this.sendError(request.id, `Error while executing query: ${String(e)}`);
 		}
 	}
 }

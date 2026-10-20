@@ -1,4 +1,4 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
@@ -7,16 +7,13 @@ import type {
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
-import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { StaticSliceFlags, criteriaQueryCompleter, describeSliceFlags, queryLineCode, sliceCriteriaParser, sliceDirectionParser, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
-import { isSerializedQuery, type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
+import { summarizeSliceResults, type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
 import { SliceDirection } from '../../../util/slice-direction';
 
 /** Calculates and returns the static backward or forward slice from the given criteria */
@@ -63,10 +60,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 	const direction = sliceDirectionParser(line[0]);
 	const options = sliceQueryOptionsParser(line[0]);
 	if(!criteria || criteria.length === 0) {
-		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		output.stderr(SliceCriterionHelp);
-		return { query: [] };
+		return invalidQueryLine(output, 'Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"', SliceCriterionHelp);
 	}
 	warnAboutSliceFlags(output, line[0], StaticSliceFlags);
 
@@ -82,43 +76,10 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 export const StaticSliceQueryDefinition = {
 	title:           'Static Slice Query',
 	executor:        executeStaticSliceQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
-		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
-		if(Object.keys(out.results).length === 1) {
-			// just print the single result without fingerprint
-			const [, obj] = Object.entries(out.results)[0];
-			if('reconstruct' in obj) {
-				const code = Array.isArray(obj.reconstruct.code) ? obj.reconstruct.code : [obj.reconstruct.code];
-				if(code.length === 1) {
-					result.push(
-						code[0]
-					);
-					return true;
-				}
-			}
-		}
-		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [key, obj] of Object.entries(out.results)) {
-			/* a named slice is keyed by its name, which is the whole point of naming it, so there is nothing to parse */
-			const query = isSerializedQuery(key) ? JSON.parse(key) as StaticSliceQuery : undefined;
-			const addons = [];
-			if(query?.noReconstruction) {
-				addons.push('no reconstruction');
-			}
-			if(query?.noMagicComments) {
-				addons.push('no magic comments');
-			}
-			const what = query === undefined ? `"${key}"` : `for {${query.criteria.join(', ')}}`;
-			result.push(`   ╰ Slice ${what} ${addons.join(', ')}`);
-			if('reconstruct' in obj) {
-				const code = Array.isArray(obj.reconstruct.code) ? obj.reconstruct.code : [obj.reconstruct.code];
-				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + code.flatMap(c => c.split('\n')).join('\\n') + '</code>');
-			} else {
-				result.push(`     ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...obj.slice.result])}}`);
-			}
-		}
-		return true;
-	},
+	asciiSummarizer: (formatter, _analyzer, queryResults, result): boolean => summarizeSliceResults<StaticSliceQuery>(
+		formatter, 'static-slice', queryResults as QueryResults<'static-slice'>['static-slice'], result,
+		(key, q) => `Slice ${q === undefined ? `"${key}"` : `for {${q.criteria.join(', ')}}`}`
+	),
 	fromLine:  sliceQueryLineParser,
 	completer: criteriaQueryCompleter,
 	syntax:    '@static-slice (<crit>;...)[fiIcB] <code | file://path>',

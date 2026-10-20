@@ -119,8 +119,7 @@ async function main(): Promise<void> {
 	const exportLines = current
 		.map(pkg => `\t\t${JSON.stringify(pkg)}:[${exportsByPackage[pkg].map(n => JSON.stringify(n)).join(',')}],`)
 		.join('\n');
-	const body = '/* eslint-disable */\n'
-		+ '/*\n'
+	const body = '/*\n'
 		+ ` * GENERATED from the flowr-sigdb bundle by scripts/gen-base-packages.ts on ${new Date().toISOString().slice(0, 10)} -- do not edit.\n`
 		+ ` * bundle: ${fingerprint}\n`
 		+ ' * newestRVersion: newest R release in the database. current: its base packages. packages: [first, last]\n'

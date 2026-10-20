@@ -99,6 +99,8 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
 	 * So make sure your implementation closes the resource as soon as possible.
 	 */
 	content(): Content;
+	/** The text the {@link content} was parsed from, for files whose content is not their text (e.g. a DESCRIPTION or an R Markdown document). */
+	rawText?(): string;
 
 	/**
 	 * Assign a role to this file, this should be done by the loader plugins (cf. {@link PluginType}).
@@ -248,6 +250,11 @@ export class FlowrInlineTextFile extends FlowrFile<string> {
 export abstract class FlowrWrappedFile<Content extends StringableContent = StringableContent> extends FlowrFile<Content> {
 	public constructor(protected readonly wrapped: FlowrFileProvider) {
 		super(wrapped.path(), wrapped.roles);
+	}
+
+	/** The text the content was parsed from, e.g. to locate what the parsed content holds in the file. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
 	}
 
 	/** Lifts a file to the class this is called on, reusing it if already one and assigning `role`. */

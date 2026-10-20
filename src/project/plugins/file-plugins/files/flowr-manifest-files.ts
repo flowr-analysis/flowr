@@ -18,6 +18,16 @@ export abstract class FlowrManifestFile<Content extends StringableContent = Stri
 	public abstract rVersion(): string | undefined;
 	/** grouped as a `DESCRIPTION` groups them */
 	public abstract declares(): DeclaredPackages;
+
+	/** the parsed TOML of the wrapped file, empty (with a warning) if it does not parse */
+	protected parseTomlContent(): Record<string, unknown> {
+		try {
+			return parseToml(this.wrapped.content().toString());
+		} catch(e) {
+			manifestFileLog.warn(`Could not parse ${this.wrapped.path()}: ${(e as Error).message}`);
+			return {};
+		}
+	}
 }
 
 /** the `[project]` table of an `rproject.toml`, see https://a2-ai.github.io/rv-docs/config/ */
@@ -30,13 +40,7 @@ interface RvProject {
 /** The `rproject.toml` of an [rv](https://a2-ai.github.io/rv-docs/) project, lifted by {@link FlowrRProjectFile.from}. */
 export class FlowrRProjectFile extends FlowrManifestFile<DeepReadonly<RvProject>> {
 	protected loadContent(): RvProject {
-		try {
-			const toml = parseToml(this.wrapped.content().toString());
-			return (toml as { project?: RvProject }).project ?? {};
-		} catch(e) {
-			manifestFileLog.warn(`Could not parse ${this.wrapped.path()}: ${(e as Error).message}`);
-			return {};
-		}
+		return (this.parseTomlContent() as { project?: RvProject }).project ?? {};
 	}
 
 	public projectName(): string | undefined {
@@ -82,12 +86,7 @@ interface UvrManifest {
 /** The `uvr.toml` of a [uvr](https://github.com/nbafrank/uvr) project, lifted by {@link FlowrUvrManifestFile.from}. */
 export class FlowrUvrManifestFile extends FlowrManifestFile<DeepReadonly<UvrManifest>> {
 	protected loadContent(): UvrManifest {
-		try {
-			return parseToml(this.wrapped.content().toString());
-		} catch(e) {
-			manifestFileLog.warn(`Could not parse ${this.wrapped.path()}: ${(e as Error).message}`);
-			return {};
-		}
+		return this.parseTomlContent();
 	}
 
 	public projectName(): string | undefined {

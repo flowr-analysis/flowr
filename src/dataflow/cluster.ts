@@ -3,6 +3,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './graph/edge';
 import { guard } from '../util/assert';
 import { DfgVertex } from './graph/vertex';
+import { Identifier } from './environments/identifier';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -94,7 +95,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 					continue;
 				}
 				// don't cluster for function content if it isn't returned
-				if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{') {
+				if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && DfgVertex.isFunctionCall(info) && info.onlyBuiltin && Identifier.getName(info.name) === '{') {
 					continue;
 				}
 				reach(dest);

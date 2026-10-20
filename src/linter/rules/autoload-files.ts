@@ -65,7 +65,7 @@ export const AUTOLOAD_FILES = {
 					continue;
 				}
 				const wdRoots = wdRootsFor(sourced.nodeId as NodeId, path);
-				const withWd = { ...ctx.config.solver.resolveSource, searchPath: [...(ctx.config.solver.resolveSource?.searchPath ?? []), ...wdRoots] };
+				const withWd = { ...ctx.config.solver.resolveSource, searchPath: [...(ctx.config.solver.resolveSource?.searchPath ?? []), ...wdRoots.roots] };
 				const sources = findSource(withWd as FlowrLaxSourcingOptions, sourced.value, { ctx, referenceChain });
 				const sourcedFiles = sources?.map(p => ctx.files.getFileByPath(p)).filter(isNotUndefined);
 				if(!sourcedFiles?.length) {
@@ -91,8 +91,8 @@ export const AUTOLOAD_FILES = {
 	},
 	info: {
 		name:          'Autoload Files',
-		description:   'Checks for code in a project that will be executed automatically through autoload files like .RProfile',
-		tags:          [LintingRuleTag.Security],
+		description:   'Finds code in a project that will be executed automatically through autoload files like .RProfile',
+		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell],
 		certainty:     LintingRuleCertainty.OverApproximative,
 		defaultConfig: () => ({
 			allowEmptyFiles:     true,

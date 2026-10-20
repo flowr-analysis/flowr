@@ -42,27 +42,42 @@ export interface SliceFlag {
 	readonly conflicts?: readonly string[]
 }
 
+/** the letter of every flag a criteria argument may end with, the one place they are spelled out */
+export const SliceFlagLetter = {
+	Forward:        'f',
+	Removal:        'r',
+	InlineSources:  'i',
+	IncludeCallees: 'c',
+	InlineFull:     'I',
+	Banners:        'B'
+} as const;
+const { Forward, Removal, InlineSources, IncludeCallees, InlineFull, Banners } = SliceFlagLetter;
+
 /** the flags every slicing query understands, see {@link sliceQueryOptionsParser} */
 export const SharedSliceFlags = [
-	{ flag: 'i', describe: 'inline sources', conflicts: ['I'] },
-	{ flag: 'c', describe: 'include callees' },
-	{ flag: 'I', describe: 'inline all files', conflicts: ['i'] },
-	{ flag: 'B', describe: 'banners', requires: ['i', 'I'] }
+	{ flag: InlineSources, describe: 'inline sources', conflicts: [InlineFull] },
+	{ flag: IncludeCallees, describe: 'include callees' },
+	{ flag: InlineFull, describe: 'inline all files', conflicts: [InlineSources] },
+	{ flag: Banners, describe: 'banners', requires: [InlineSources, InlineFull] }
 ] as const satisfies readonly SliceFlag[];
 
 /** the flags of the `static-slice` query: a dice fixes both directions, so only it can be told to slice forward */
-export const StaticSliceFlags = [{ flag: 'f', describe: 'slice forward', conflicts: ['r'] }, { flag: 'r', describe: 'removal slice', conflicts: ['f'] }, ...SharedSliceFlags] as const satisfies readonly SliceFlag[];
+export const StaticSliceFlags = [
+	{ flag: Forward, describe: 'slice forward', conflicts: [Removal] },
+	{ flag: Removal, describe: 'removal slice', conflicts: [Forward] },
+	...SharedSliceFlags
+] as const satisfies readonly SliceFlag[];
 
 /**
  * Checks whether the given argument represents a slicing direction with an `f` suffix (in any flag order).
  */
 export function sliceDirectionParser(argument: string): SliceDirection {
-	return sliceFlagSuffix(argument).includes('f') ? SliceDirection.Forward : SliceDirection.Backward;
+	return sliceFlagSuffix(argument).includes(Forward) ? SliceDirection.Forward : SliceDirection.Backward;
 }
 
 /** Whether the flag suffix of `argument` asks for the removal slice (`r`) rather than the slice. */
 export function sliceRemovalParser(argument: string): boolean {
-	return sliceFlagSuffix(argument).includes('r');
+	return sliceFlagSuffix(argument).includes(Removal);
 }
 
 /**
@@ -71,10 +86,11 @@ export function sliceRemovalParser(argument: string): boolean {
  */
 export function sliceQueryOptionsParser(argument: string): SliceQueryOptions {
 	const flags = sliceFlagSuffix(argument);
+	const inlining = flags.includes(Banners) ? 'banner' as const : true;
 	return {
-		...(flags.includes('i') ? { inlineSources: flags.includes('B') ? 'banner' as const : true } : {}),
-		...(flags.includes('I') ? { inlineFull: flags.includes('B') ? 'banner' as const : true } : {}),
-		...(flags.includes('c') ? { includeCallees: true } : {})
+		...(flags.includes(InlineSources) ? { inlineSources: inlining } : {}),
+		...(flags.includes(InlineFull) ? { inlineFull: inlining } : {}),
+		...(flags.includes(IncludeCallees) ? { includeCallees: true } : {})
 	};
 }
 

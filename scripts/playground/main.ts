@@ -845,6 +845,8 @@ const shared = (() => {
 		others,
 		position:   /^\d+$/.test(params.get('p') ?? '') ? Math.min(Number(params.get('p')), others.length) : others.length,
 		cut,
+		/* the release of flowR a link insists on, see {@link copyLink} */
+		release:    params.get('r') ?? undefined,
 		config:     changed.length === 0 ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
 		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
 		direction:  view.forward ? SliceDirection.Forward : view.removal ? 'removal' as const : undefined,
@@ -959,6 +961,9 @@ function shareFields(): [string, string][] {
 	}
 	if(replSaid.length > 0) {
 		fields.push(['q', packForUrl(replSaid.join('\n'))]);
+	}
+	if(shared.release !== undefined) {
+		fields.push(['r', shared.release]);
 	}
 	return fields;
 }
@@ -2428,7 +2433,7 @@ graphsButton.addEventListener('click', () => openMenu(graphsButton, graphEntries
 const moreButton = document.getElementById('more') as HTMLElement;
 moreButton.addEventListener('click', () => openMenu(moreButton, [
 	{ label: 'Reset example', run: () => document.querySelector<HTMLElement>('[data-sample]')?.click() },
-	{ label: 'Copy link', run: copyLink }, '', ...graphEntries()
+	{ label: 'Copy link', run: () => copyLink() }, '', ...graphEntries()
 ]));
 
 /** what flowR rebuilds of a slice: one text, or one per file of the project */
@@ -2934,17 +2939,29 @@ function showExample(project: readonly [string, string][], note: string): void {
 }
 /* the site keeps the playgrounds of the last releases (see `keep-playground-versions.ts`), which open with the same script */
 const siteRoot = location.pathname.replace(/v\/[^/]+\/?$/, '');
-void fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<string[]> : []).then(versions => {
-	const tag = document.getElementById('version');
-	if(versions.length > 0 && tag !== null) {
-		const go = (to: string) => () => location.assign(`${to}${location.search}${location.hash}`);
-		const pick = iconButton('versions', 'open the playground of an earlier release', 'M4 6l4 4 4-4', () => openMenu(pick, [
-			'Playground of', { label: 'the current release', run: go(siteRoot) }, ...versions.map(v => ({ label: `flowR ${v}`, run: go(`${siteRoot}v/${v}/`) }))
-		]));
-		pick.setAttribute('aria-haspopup', 'menu');
-		tag.after(pick);
+const versionTag = document.getElementById('version');
+const release = versionTag?.dataset.release?.replace(/^v/, '');
+void fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<string[]> : [], () => []).then((versions: readonly string[]) => {
+	const go = (to: string) => () => location.assign(`${to}${location.search}${location.hash}`);
+	/* a link that insists on a release opens it, or the kept one of the same minor release */
+	const asked = shared.release;
+	if(asked !== undefined && asked !== release) {
+		const minor = (v: string) => v.split('.').slice(0, 2).join('.');
+		const kept = versions.includes(asked) ? asked : versions.find(v => minor(v) === minor(asked));
+		if(kept === undefined || kept === release) {
+			showShared(`the link asks for flowR ${asked}, which this site no longer keeps`);
+		} else {
+			go(`${siteRoot}v/${kept}/`)();
+		}
 	}
-}).catch(() => undefined);
+	const pick = iconButton('versions', 'open the playground of an earlier release', 'M4 6l4 4 4-4', () => openMenu(pick, [
+		'Playground of', { label: 'the current release', run: go(siteRoot) },
+		...versions.length === 0 ? ['no earlier release kept on this site'] : versions.map(v => ({ label: `flowR ${v}`, run: go(`${siteRoot}v/${v}/`) })),
+		...release === undefined ? [] : ['', { label: `Copy a link to flowR ${release}`, title: 'the link opens this release of flowR, also once newer ones are out', run: () => copyLink(release) }]
+	]));
+	pick.setAttribute('aria-haspopup', 'menu');
+	versionTag?.after(pick);
+});
 
 document.querySelector('[data-sample]')?.addEventListener('click', () => showExample([[Playground.MainFile, Sample]], 'the example is back'));
 /* a reset turns its arrow once around; the class goes again so the next click turns it again */
@@ -2961,15 +2978,16 @@ for(const button of document.querySelectorAll<HTMLElement>('.spins')) {
  * Copies the link that brings this playground back, which the button and `ctrl+s` both ask for.
  * The cursor is written here rather than in {@link remember}, so the address bar does not churn on every click.
  */
-function copyLink(): void {
-	const fields = shareFields();
+function copyLink(pinned?: string): void {
+	const fields = [...shareFields().filter(([key]) => key !== 'r'), ...pinned === undefined ? [] : [['r', pinned] as [string, string]]];
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
 	if(line.number > 1 || head > line.from) {
 		fields.push(['p', `${line.number}:${head - line.from + 1}`]);
 	}
 	const hash = Playground.hash(fields);
-	const link = location.href.replace(/#.*$/, '') + (hash.length > 0 ? `#${hash}` : '');
+	/* the link of a release goes to the site's playground, which sends it on to wherever that release is kept */
+	const link = (pinned === undefined ? location.href.replace(/#.*$/, '') : location.origin + siteRoot) + (hash.length > 0 ? `#${hash}` : '');
 	void navigator.clipboard?.writeText(link).then(
 		() => showShared('link copied'),
 		() => {
@@ -2983,7 +3001,7 @@ function copyLink(): void {
 	);
 }
 
-document.getElementById('share')?.addEventListener('click', copyLink);
+document.getElementById('share')?.addEventListener('click', () => copyLink());
 
 /* there is nothing to save here, so `ctrl+s` keeps the script the only way this page can: as a link */
 document.addEventListener('keydown', event => {

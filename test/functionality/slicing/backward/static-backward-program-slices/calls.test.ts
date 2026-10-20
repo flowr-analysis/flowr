@@ -177,6 +177,19 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		assertSliced(label('A read of a file we cannot name keeps every write', [...caps]), shell, 'p <- tempfile()\nwriteLines("b", "b.txt")\nwriteLines("a", p)\nr <- readLines(p)\nprint(r)', ['5@r'], 'p <- tempfile()\nwriteLines("b", "b.txt")\nwriteLines("a", p)\nr <- readLines(p)\nr');
 		assertSliced(label('A write to a file we cannot name reaches a read of a named one', [...caps]), shell, 'p <- tempfile()\nwriteLines("a", p)\nwriteLines("b", "b.txt")\nr <- readLines("a.txt")\nprint(r)', ['5@r'], 'p <- tempfile()\nwriteLines("a", p)\nr <- readLines("a.txt")\nr');
 		assertSliced(label('A write to another named file within a called function is not kept', [...caps, 'normal-definition']), shell, 'f <- function() writeLines("b", "b.txt")\nwriteLines("a", "a.txt")\nf()\nr <- readLines("a.txt")\nprint(r)', ['5@r'], 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A file named by sprintf', [...caps, 'string-templates']), shell, 'writeLines("b", "b.txt")\nwriteLines("a", sprintf("%s_%d.txt", "a", 1))\nr <- readLines("a_1.txt")\nprint(r)', ['4@r'], 'writeLines("a", sprintf("%s_%d.txt", "a", 1))\nr <- readLines("a_1.txt")\nr');
+		assertSliced(label('A file named by sprintf with a width may be any file', [...caps, 'string-templates']), shell, 'writeLines("a", sprintf("%5s.txt", "b"))\nr <- readLines("a.txt")\nprint(r)', ['3@r'], 'writeLines("a", sprintf("%5s.txt", "b"))\nr <- readLines("a.txt")\nr');
+		assertSliced(label('A read through do.call names its file', [...caps]), shell, 'writeLines("b", "b.txt")\nr <- do.call(readLines, list("a.txt"))\nprint(r)', ['3@r'], 'r <- do.call(readLines, list("a.txt"))\nr');
+		assertSliced(label('A sink to a file in a variable keeps what it captures', [...caps]), shell, 'm <- "sk.txt"\nsink(m)\nprint(3)\nsink()\nr <- readLines("sk.txt")\nprint(r)', ['6@r'], 'm <- "sk.txt"\nsink(m)\nprint(3)\nsink()\nr <- readLines("sk.txt")\nr');
+		assertSliced(label('A percent sign in a read file name is no pattern', [...caps]), shell, 'writeLines("b", "b.txt")\nr <- readLines("a%b.txt")\nprint(r)', ['3@r'], 'r <- readLines("a%b.txt")\nr');
+		assertSliced(label('A numbered device file stands for others', [...caps]), shell, 'png("p%03d.png")\nplot(1)\ndev.off()\nr <- readBin("p001.png", "raw")\nprint(r)', ['5@r'], 'png("p%03d.png")\nplot(1)\ndev.off()\nr <- readBin("p001.png", "raw")\nr');
+		assertSliced(label('Closing a device writes only its file', [...caps]), shell, 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- read.csv("b.csv")\nprint(r)', ['5@r'], 'r <- read.csv("b.csv")\nr');
+		assertSliced(label('A read of the device file keeps the plot', [...caps]), shell, 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- readBin("a.pdf", "raw")\nprint(r)', ['5@r'], 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- readBin("a.pdf", "raw")\nr');
+		assertSliced(label('Closing a device within a function may write any file', [...caps, 'normal-definition']), shell, 'f <- function() dev.off()\npng("a.png")\nplot(1)\nf()\nr <- readBin("b.png", "raw")\nprint(r)', ['6@r'], 'f <- function() dev.off()\nf()\nr <- readBin("b.png", "raw")\nr');
+		const ggsave = 'library(ggplot2)\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("a.png")\nr <- read.csv("b.csv")\ns <- readBin("a.png", "raw")';
+		assertSliced(label('ggsave writes only its file', [...caps, 'library-loading']), shell, ggsave, ['4@r'], 'r <- read.csv("b.csv")');
+		assertSliced(label('ggsave saves the last plot', [...caps, 'library-loading']), shell, ggsave, ['5@s'], 'library(ggplot2)\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("a.png")\ns <- readBin("a.png", "raw")');
+		assertSliced(label('A package method for a primitive reads no ambient state', [...caps, 'library-loading']), shell, 'library(lubridate)\nx <- runif(1)\nv <- rep(1, 2)', ['3@v'], 'library(lubridate)\nv <- rep(1, 2)');
 		assertSliced(label('A write after the read is not kept', [...caps]), shell, 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nwriteLines("c", "a.txt")\nprint(r)', ['4@r'], 'writeLines("a", "a.txt")\nr <- readLines("a.txt")\nr');
 		assertSliced(label('A serialized object written to another file is not kept', [...caps, 'numbers']), shell, 'saveRDS(1, "a.rds")\nsaveRDS(2, "b.rds")\nr <- readRDS("a.rds")\nprint(r)', ['4@r'], 'saveRDS(1, "a.rds")\nr <- readRDS("a.rds")\nr');
 	});
@@ -588,8 +601,14 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		assertSliced(label('Changing the working directory', [
 			'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'
 		]), shell,
+		'setwd("f/")\nx <- read.csv("a.csv")\nsetwd("g/")', ['2@x'],
+		'setwd("f/")\nx <- read.csv("a.csv")'
+		);
+		assertSliced(label('Changing the working directory does not reach a value', [
+			'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'
+		]), shell,
 		'setwd("f/")\nx', ['2@x'],
-		'setwd("f/")\nx'
+		'x'
 		);
 		assertSliced(label('Setting a fixed seed', [
 			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'

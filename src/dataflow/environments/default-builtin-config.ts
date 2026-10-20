@@ -437,14 +437,14 @@ const LinkToLastPlot = {
 } as const;
 
 /** The internal generics: they dispatch in C rather than through `UseMethod`, so the list has to be written down. */
-const InternalGenerics: readonly string[] = [
+export const InternalGenerics: ReadonlySet<string> = new Set([
 	'$', '[', '[[', '+', '-', '*', '/', '^', '%%', '%/%', '==', '!=', '<', '>', '<=', '>=', '&', '|', '!',
 	'c', 'length', 'dim', 'dimnames', 'names', 'max', 'min', 'range', 'sum', 'prod', 'abs', 'sqrt', 'exp',
 	'log', 'floor', 'ceiling', 'round', 'signif', 'trunc', 'cumsum', 'cumprod', 'cummax', 'cummin',
 	'as.character', 'as.integer', 'as.double', 'as.logical', 'as.complex', 'as.numeric', 'as.raw',
 	'is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.matrix', 'is.numeric', 'cbind', 'rbind', 'anyNA', 'as.environment',
 	'as.call', 'is.array', 'log2', 'log10', 'rep', 'seq.int', 'xtfrm'
-];
+]);
 
 /**
  * Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics} (no R body, so
@@ -591,7 +591,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'constant', names: [Identifier.from(['month.abb', PkgName.Base])], value: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['month.name', PkgName.Base])], value: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], assumePrimitive: true },
 	/* formula: operands are model terms/columns, not variables */
-	{ type: 'function', names: [Identifier.from(['~', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { markArgsAsMasked: NseArguments.All, sig: [['y', ArgProp.Nse], ['model', ArgProp.NoDefault | ArgProp.Nse]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['~', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { markArgsAsMasked: NseArguments.All, sig: [['y', 0], ['model', ArgProp.NoDefault]] }, assumePrimitive: false },
 	/* cohortBuilder has a `filter` too, and built-ins go by name, so dplyr's entry below wins in the environment
 	   while this one still states what cohortBuilder's does */
 	{ type: 'function', names: [Identifier.from(['filter', PkgName.CohortBuilder])], processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Pure, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
@@ -689,7 +689,7 @@ export const WrittenBuiltinDefinitions = [
 				'solve', 'det', 'eigen', 'aperm',
 				/* string */
 				'grep', 'sub', 'gsub', 'substr', 'substring', 'strsplit', 'strrep', 'chartr', 'strtoi', 'shQuote',
-				'regexpr', 'gregexpr', 'regexec', 'format', 'sprintf', 'formatC',
+				'regexpr', 'gregexpr', 'regexec', 'format', 'formatC',
 				/* regmatches yields a substring of its subject, so what flows in flows out */
 				'regmatches'
 			]),
@@ -878,11 +878,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['writeWorksheetToFile', PkgName.XlConnect])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['visSave', PkgName.VisNetwork])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['graph', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['save_graph', PkgName.DiagrammeR])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['graph', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
-	{ type:      'function', names:     [Identifier.from(['ggsave', PkgName.GgPlot2])], processor: BuiltInProcName.DefaultReadAllArgs, config:    { libFn: true, tags:  [SemanticCallTag.File, SemanticCallTag.Writes], sig:   [
-		['filename', ArgProp.Forced | ArgProp.Resource], ['plot', ArgProp.Forced | ArgProp.Value], ['device', ArgProp.Flag], ['path', ArgProp.Resource],
-		['scale', ArgProp.Flag], ['width', ArgProp.Flag], ['height', ArgProp.Flag], ['units', ArgProp.Flag], ['dpi', ArgProp.Flag], ['limitsize', ArgProp.Flag],
-		['bg', ArgProp.Flag], ['create.dir', ArgProp.Flag], ['...', ArgProp.Flag]] }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['ggsave2', PkgName.Cowplot])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['filename', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['ggsave', PkgName.GgPlot2])], processor: BuiltInProcName.Default, config: { libFn: true, readAllArguments: true, hasUnknownSideEffects: LinkToLastGgPlot, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['filename', ArgProp.Forced | ArgProp.Resource], ['plot', ArgProp.Forced | ArgProp.Value], ['device', ArgProp.Flag], ['path', ArgProp.Resource], ['scale', ArgProp.Flag], ['width', ArgProp.Flag], ['height', ArgProp.Flag], ['units', ArgProp.Flag], ['dpi', ArgProp.Flag], ['limitsize', ArgProp.Flag], ['bg', ArgProp.Flag], ['create.dir', ArgProp.Flag], ['...', ArgProp.Flag]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['ggsave2', PkgName.Cowplot])], processor: BuiltInProcName.Default, config: { libFn: true, readAllArguments: true, hasUnknownSideEffects: LinkToLastGgPlot, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['filename', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['write_json', PkgName.Jsonlite])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['x', ArgProp.Forced | ArgProp.Value], ['path', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['fwrite', PkgName.DataTable])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['x', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['write_xlsx', PkgName.Writexl])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['x', ArgProp.Forced | ArgProp.Value], ['path', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
@@ -1063,7 +1060,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.GrDevices, ['dev.set', 'dev.next', 'dev.prev']), processor: BuiltInProcName.Default, config: { props: CallProp.Configures, libFn: true, ambient: { type: AmbientStateAccessType.SwitchDevice }, tags: [SemanticCallTag.Graphics], sig: [['which', ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: ['('], processor: BuiltInProcName.Default, config: { keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Forced | ArgProp.Alias]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.Group },
 	{ type: 'function', names: [Identifier.from(['load_all', PkgName.PkgLoad]), Identifier.from(['load_all', PkgName.Devtools])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Scope | CallProp.Invisible, sig: [['path', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['setwd', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, sig: [['dir', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['setwd', PkgName.Base])], processor: BuiltInProcName.Default, config: { ambient: { type: AmbientStateAccessType.SetWorkingDirectory }, props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, sig: [['dir', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['set.seed', PkgName.Base])], processor: BuiltInProcName.Default, config: { ambient: { type: AmbientStateAccessType.SetRng }, props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random], sig: [['seed', ArgProp.Value | ArgProp.Forced], ['kind', ArgProp.Value | ArgProp.Forced], ['normal.kind', ArgProp.Value | ArgProp.Forced], ['sample.kind', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['RNGkind', PkgName.Base])], processor: BuiltInProcName.Default, config: { ambient: { type: AmbientStateAccessType.SetRng, kindFrom: 0 }, props: CallProp.Configures, tags: [SemanticCallTag.Random], sig: [['kind', ArgProp.Value | ArgProp.Forced], ['normal.kind', ArgProp.Value | ArgProp.Forced], ['sample.kind', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['body', 'formals']), processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Lang, sig: [['fun', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: true },
@@ -1394,7 +1391,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['dyn.load', 'getNativeSymbolInfo']), processor: BuiltInProcName.Default, config: { props: CallProp.Ffi, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['sourceCpp', PkgName.Rcpp])], processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Ffi | CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Forced | ArgProp.Resource]] }, assumePrimitive: false },
 	/* ambient state: options, environment variables, the clock, the session itself */
-	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['Sys.getenv', 'Sys.info', 'Sys.getpid', 'getwd', 'getRversion', 'R.Version', 'Sys.time', 'Sys.Date', 'Sys.timezone', 'date', 'proc.time', 'interactive']), processor: BuiltInProcName.Default, config: { props: CallProp.Ambient, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['Sys.getenv', 'Sys.info', 'Sys.getpid', 'getRversion', 'R.Version', 'Sys.time', 'Sys.Date', 'Sys.timezone', 'date', 'proc.time', 'interactive']), processor: BuiltInProcName.Default, config: { props: CallProp.Ambient, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['getwd', PkgName.Base])], processor: BuiltInProcName.Default, config: { ambient: { type: AmbientStateAccessType.GetWorkingDirectory }, props: CallProp.Ambient, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['getOption', PkgName.Base])], processor: BuiltInProcName.Default, config: { ambient: { type: AmbientStateAccessType.GetOption }, props: CallProp.Ambient, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['commandArgs', PkgName.Base])], processor: BuiltInProcName.Default, config: { props: CallProp.Ambient, tags: [SemanticCallTag.CommandLine], sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	/* system commands */
@@ -1455,7 +1453,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['$', '@'], config: { readIndices: false, props: CallProp.Scope } },
 	/* the string and shape functions R declares formals for, restated one by one: the group above gives them
 	   what they do, this gives them the arguments they do it with (the names are R's own) */
-	{ overrides: true, type: 'function', names: [Identifier.from(['sprintf', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['fmt', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['sprintf', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['fmt', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn },
 	{ overrides: true, type: 'function', names: [Identifier.from(['format', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { ambient: PrintDispatched, props: CallProp.Pure, sig: SigXDots }, assumePrimitive: true },
 	{ overrides: true, type: 'function', names: [Identifier.from(['grep', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['pattern', ArgProp.Forced | ArgProp.Value], ['x', ArgProp.Forced | ArgProp.Value], ['ignore.case', ArgProp.Forced | ArgProp.Flag], ['perl', ArgProp.Forced | ArgProp.Flag], ['value', ArgProp.Forced | ArgProp.Flag], ['fixed', ArgProp.Forced | ArgProp.Flag], ['useBytes', ArgProp.Forced | ArgProp.Flag], ['invert', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: true },
 	{ overrides: true, type: 'function', names: Identifier.fromAll(PkgName.Base, ['sub', 'gsub']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Edits], sig: [['pattern', ArgProp.Forced | ArgProp.Value], ['replacement', ArgProp.Forced | ArgProp.Value], ['x', ArgProp.Forced | ArgProp.Value], ['ignore.case', ArgProp.Forced | ArgProp.Flag], ['perl', ArgProp.Forced | ArgProp.Flag], ['fixed', ArgProp.Forced | ArgProp.Flag], ['useBytes', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: true },

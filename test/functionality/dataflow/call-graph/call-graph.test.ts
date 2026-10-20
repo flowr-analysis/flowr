@@ -14,6 +14,36 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 assumeLoadedPackages('R6');
 
+/** the call graph of both fibonacci definitions, up to how they recurse */
+function fibGraph() {
+	return emptyGraph()
+		.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
+		.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
+		.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
+		.calls('7@fib', '1@function')
+		.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
+		.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
+		.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
+			out:               [],
+			in:                [],
+			unknownReferences: [],
+			entryPoint:        '2@if',
+			graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
+			environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
+		}, { readParams: [[1, true]] })
+		.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
+		.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
+		.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
+		.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
+		.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
+		.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
+		.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
+		.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
+		.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
+		.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
+		.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+');
+}
+
 describe('Call Graph Generation', withTreeSitter(ts => {
 	assertDataflow(label('sample calls', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
 		ts,
@@ -78,32 +108,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		}
 		fib(5)
 		`,
-		emptyGraph()
-			.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
-			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
-			.calls('7@fib', '1@function')
-			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
-			.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
-			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '2@if',
-				graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
-				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
-			}, { readParams: [[1, true]] })
-			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
-			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
-			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
-			.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
-			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
-			.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
-			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
-			.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+')
+		fibGraph()
 			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls('5@+', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@+', 22)
 			.call(22, 'fib', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }] })
@@ -318,32 +323,7 @@ f.numeric <- function(x) {
 		}
 		fib(5)
 		`,
-		emptyGraph()
-			.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
-			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
-			.calls('7@fib', '1@function')
-			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
-			.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
-			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '2@if',
-				graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
-				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
-			}, { readParams: [[1, true]] })
-			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
-			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
-			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
-			.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
-			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
-			.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
-			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
-			.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+')
+		fibGraph()
 			.call('5@+', '+', [argumentInCall('5@Recall'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls('5@+', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@+', 22)
 			.call(22, UnnamedFunctionCallPrefix + '22-Recall', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }], origin: [BuiltInProcName.Recall] })

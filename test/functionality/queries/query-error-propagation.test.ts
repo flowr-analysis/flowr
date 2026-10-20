@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from 'vitest';
-import { SupportedQueries, executeQueries } from '../../../../src/queries/query';
-import { setMinLevelOfAllLogs } from '../../_helper/log';
-import { LogLevel } from '../../../../src/util/log';
-import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import type { DoesCallQuery } from '../../../../src/queries/catalog/does-call-query/does-call-query-format';
+import { SupportedQueries, executeQueries } from '../../../src/queries/query';
+import { setMinLevelOfAllLogs } from '../_helper/log';
+import { LogLevel } from '../../../src/util/log';
+import { withTreeSitter } from '../_helper/shell';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import type { DoesCallQuery } from '../../../src/queries/catalog/does-call-query/does-call-query-format';
 
 /** runs the given queries while keeping the expected error out of the test log */
 async function quietly<T>(fn: () => Promise<T>): Promise<T> {

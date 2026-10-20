@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
-import type { Queries } from '../../../../src/queries/query';
-import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
-import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { withTreeSitter } from '../_helper/shell';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
+import type { Queries } from '../../../src/queries/query';
+import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
+import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 
 describe('Multiple queries', withTreeSitter(ts => {
 	/**

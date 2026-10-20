@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
-import { withTreeSitter } from '../../_helper/shell';
-import { LocationMapSpan, type FileId, type FilePath } from '../../../../src/queries/catalog/location-map-query/location-map-query-format';
-import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import type { SourceRange } from '../../../../src/util/range';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
+import { withTreeSitter } from '../_helper/shell';
+import { LocationMapSpan, type FileId, type FilePath } from '../../../src/queries/catalog/location-map-query/location-map-query-format';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import type { SourceRange } from '../../../src/util/range';
 
 /** a call spanning four lines, so that the token of the `<-` and the statement around it differ */
 const multiLine = `p <- ggplot(d,

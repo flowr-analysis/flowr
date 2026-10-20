@@ -1,22 +1,22 @@
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
-import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { assert, describe, test } from 'vitest';
 import type {
 	InputSourcesQuery,
 	InputSourcesQueryResult
-} from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
-import { defaultInputClassifierConfig } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
-import { contentFreeFunctions } from '../../../../src/queries/catalog/input-sources-query/input-source-functions';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
-import type { BuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
-import { InputTraceType, InputType } from '../../../../src/queries/catalog/input-sources-query/simple-input-classifier';
-import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { FlowrConfig } from '../../../../src/config';
-import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
+} from '../../../src/queries/catalog/input-sources-query/input-sources-query-format';
+import { defaultInputClassifierConfig } from '../../../src/queries/catalog/input-sources-query/input-sources-query-format';
+import { contentFreeFunctions } from '../../../src/queries/catalog/input-sources-query/input-source-functions';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
+import type { BuiltInDefinitions } from '../../../src/dataflow/environments/built-in-config';
+import { InputTraceType, InputType } from '../../../src/queries/catalog/input-sources-query/simple-input-classifier';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../src/config';
+import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
 
 assumeLoadedPackages('cohortBuilder', 'shiny', 'shinyCohortBuilder');
 

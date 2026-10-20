@@ -1,10 +1,10 @@
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
 import type {
 	NormalizedAstQuery
-} from '../../../../src/queries/catalog/normalized-ast-query/normalized-ast-query-format';
+} from '../../../src/queries/catalog/normalized-ast-query/normalized-ast-query-format';
 import { describe } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
+import { withTreeSitter } from '../_helper/shell';
 
 describe('Normalized AST Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly NormalizedAstQuery[]) {

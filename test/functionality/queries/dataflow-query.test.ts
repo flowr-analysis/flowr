@@ -1,9 +1,9 @@
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
-import type { DataflowQuery } from '../../../../src/queries/catalog/dataflow-query/dataflow-query-format';
-import { withTreeSitter } from '../../_helper/shell';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
+import type { DataflowQuery } from '../../../src/queries/catalog/dataflow-query/dataflow-query-format';
+import { withTreeSitter } from '../_helper/shell';
 import { assert, describe } from 'vitest';
-import { jsonReplacer } from '../../../../src/util/json';
+import { jsonReplacer } from '../../../src/util/json';
 
 describe('Dataflow Query', { concurrent: false }, withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly DataflowQuery[]) {

@@ -2,15 +2,15 @@ import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { executeQueries } from '../../../../src/queries/query';
-import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { InputType } from '../../../../src/queries/catalog/input-sources-query/simple-input-classifier';
-import type { ProblematicInputsResult } from '../../../../src/linter/rules/problematic-inputs';
-import { uniqueArray } from '../../../../src/util/collections/arrays';
-import { FlowrConfig } from '../../../../src/config';
-import { writeFilesUnder } from '../../project/plugin/plugin-test-helper';
+import { withTreeSitter } from '../_helper/shell';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { executeQueries } from '../../../src/queries/query';
+import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { InputType } from '../../../src/queries/catalog/input-sources-query/simple-input-classifier';
+import type { ProblematicInputsResult } from '../../../src/linter/rules/problematic-inputs';
+import { uniqueArray } from '../../../src/util/collections/arrays';
+import { FlowrConfig } from '../../../src/config';
+import { writeFilesUnder } from '../project/plugin/plugin-test-helper';
 
 /** writes the given `name -> content` map below a fresh directory in `root` */
 function writeProject(root: string, name: string, files: Record<string, string>): string {

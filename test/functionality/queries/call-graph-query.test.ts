@@ -1,9 +1,9 @@
 import { assert, describe, test } from 'vitest';
-import { label } from '../../_helper/label';
-import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import type { CallGraphQuery } from '../../../../src/queries/catalog/call-graph-query/call-graph-query-format';
+import { label } from '../_helper/label';
+import { withTreeSitter } from '../_helper/shell';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import type { CallGraphQuery } from '../../../src/queries/catalog/call-graph-query/call-graph-query-format';
 
 const askForUnreachable: CallGraphQuery = { type: 'call-graph', reportUnreachable: true };
 

@@ -1,17 +1,17 @@
 import { describe, expect, test } from 'vitest';
-import { label } from '../../_helper/label';
-import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
-import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type GuessScenario } from '../../_helper/guess-dep-versions';
-import { FlowrConfig } from '../../../../src/config';
-import { executeQueries, SupportedQueries } from '../../../../src/queries/query';
-import { discardingReplOutput } from '../../_helper/repl';
-import { explodeDependencyVersions } from '../../../../src/project/dependency-version-space';
-import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
-import { ansiFormatter } from '../../../../src/util/text/ansi';
-import { Package } from '../../../../src/project/plugins/package-version-plugins/package';
-import { FlowrNamespaceFile } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
-import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
-import type { GuessDepVersionsQueryResult } from '../../../../src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-format';
+import { label } from '../_helper/label';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
+import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type GuessScenario } from '../_helper/guess-dep-versions';
+import { FlowrConfig } from '../../../src/config';
+import { executeQueries, SupportedQueries } from '../../../src/queries/query';
+import { discardingReplOutput } from '../_helper/repl';
+import { explodeDependencyVersions } from '../../../src/project/dependency-version-space';
+import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
+import { ansiFormatter } from '../../../src/util/text/ansi';
+import { Package } from '../../../src/project/plugins/package-version-plugins/package';
+import { FlowrNamespaceFile } from '../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import type { GuessDepVersionsQueryResult } from '../../../src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 
 assumeLoadedPackages('S7', 'cohortBuilder', 'ggplot2');
 

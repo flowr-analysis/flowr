@@ -50,23 +50,19 @@ function statementsOf(ast: NormalizedAst): Map<NodeId, RNodeWithParent> {
 	return result;
 }
 
-function statementOf(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNodeWithParent>, id: NodeId): RNodeWithParent | undefined {
-	for(let node = ast.idMap.get(id); node; node = node.info.parent === undefined ? undefined : ast.idMap.get(node.info.parent)) {
-		if(statements.has(node.info.id)) {
-			return node;
-		}
+/** the node and everything it lies within, innermost first */
+function* ancestors(ast: NormalizedAst, id: NodeId | undefined): Generator<NodeId> {
+	for(let at = id; at !== undefined; at = ast.idMap.get(at)?.info.parent) {
+		yield at;
 	}
-	return undefined;
 }
 
-function within(ast: NormalizedAst, id: NodeId, ancestor: NodeId): boolean {
-	for(let at: NodeId | undefined = id; at !== undefined; at = ast.idMap.get(at)?.info.parent) {
-		if(at === ancestor) {
-			return true;
-		}
-	}
-	return false;
+function statementOf(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNodeWithParent>, id: NodeId): RNodeWithParent | undefined {
+	const at = ancestors(ast, id).find(a => statements.has(a));
+	return at === undefined ? undefined : statements.get(at);
 }
+
+const within = (ast: NormalizedAst, id: NodeId, ancestor: NodeId): boolean => ancestors(ast, id).some(at => at === ancestor);
 
 function callOf(node: RNodeWithParent | undefined): RNodeWithParent | undefined {
 	while(RFunctionCall.isNamed(node, PassingOn) && node.arguments.length === 1) {
@@ -155,14 +151,7 @@ export function staticRemovalSlice(
 		}
 		const candidates = [...statements.keys()].filter(id => inSlice.has(id) && !needed.has(id));
 		const chosen = new Set(candidates);
-		return candidates.filter(id => {
-			for(let at = ast.idMap.get(id)?.info.parent; at !== undefined; at = ast.idMap.get(at)?.info.parent) {
-				if(chosen.has(at)) {
-					return false;
-				}
-			}
-			return true;
-		});
+		return candidates.filter(id => !ancestors(ast, ast.idMap.get(id)?.info.parent).some(at => chosen.has(at)));
 	};
 
 	/* removing a save (`ggsave()`) or a device removes what it saves, which would otherwise keep it alive */

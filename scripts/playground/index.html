@@ -529,12 +529,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	.drawer[open]::details-content { height: auto; }
 	@starting-style {
 		/* a panel built anew after an analysis shows at once, only what one opens grows */
-		#panel:not(.fresh) .dnode.open > .dchildren, #panel:not(.fresh) [data-fold-body]:not([hidden]), #panel .lintmore { height: 0; }
+		#panel:not(.fresh) .dnode.open > .dchildren, #panel:not(.fresh) [data-fold-body]:not([hidden]), #panel:not(.fresh) .lintmore { height: 0; }
 	}
 }
 #panel .drow .dicon { flex: none; width: 16px; height: 16px; display: inline-flex; color: var(--fg); }
 #panel .drow .dicon.colored { color: var(--cat); }
-#panel .dlabel { flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; }
+#panel .dlabel { flex: 0 1 auto; min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #panel .dactions { flex: none; display: none; gap: .1rem; margin-left: auto; }
 #panel .drow:hover .dactions, #panel .drow:focus-within .dactions, #panel .drow.selected .dactions { display: inline-flex; }
 #panel .daction { display: inline-flex; padding: 1px; border: none; border-radius: 3px; background: none; color: var(--muted); cursor: pointer; }
@@ -613,7 +613,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #clearmarks:hover { border-color: var(--mark); color: var(--mark); }
 /* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
 #panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; row-gap: .3rem; }
-#panel .lintmore { grid-column: 1 / -1; margin: -.2rem 0 .2rem; padding: .45rem .7rem; border-radius: .4rem; background: var(--sunk); font-size: .8rem; }
+#panel .lintmore { grid-column: 1 / -1; margin-top: .4rem; padding-top: .4rem; border-top: 1px solid color-mix(in srgb, var(--hue) 18%, var(--border)); font-size: .8rem; cursor: auto; }
 #panel .lintmore .about { margin: 0; color: var(--muted); }
 #panel .lintmore .diff { margin: .4rem 0; padding: .3rem .5rem; border-radius: .3rem; background: var(--panel); font-size: .76rem; overflow-x: auto; white-space: pre; }
 #panel .lintmore .del { color: #b42318; background: color-mix(in srgb, #b42318 9%, transparent); }

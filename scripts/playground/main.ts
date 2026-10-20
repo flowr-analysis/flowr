@@ -886,7 +886,8 @@ const shared = (() => {
 		/* what the link points at, as `12`, `12-15`, `12@sum`, `12:5`, `lint:<rule>[@<line>]`, or a box */
 		marks:      Playground.Mark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
 		/* the rest of the script steps back for whoever opens the link, just as it did for whoever sent it */
-		dim:        view.dim,
+		/* a page opened without a link steps back what the slice leaves out; a link keeps the view it was sent with */
+		dim:        params.size === 0 || view.dim,
 		/* the repl and the whole of a slice are as much a part of how the page was left as the panes are */
 		replOpen:   view.replOpen,
 		wholeSlice: view.wholeSlice,
@@ -2248,6 +2249,9 @@ function versionRange(entry: Dependency): string | undefined {
 }
 interface Finding { loc?: SourceLocation, quickFix?: LintQuickFix[], involvedId?: string | number | (string | number)[] }
 
+/* the finding whose details are open, which a new analysis opens again */
+let openedLint: string | undefined;
+
 /** the categories whose findings are errors, those of any other one warnings */
 const ErrorCategories: ReadonlySet<string> = new Set(['bug', 'security']);
 const isError = (rule: string): boolean => ErrorCategories.has(category(rule));
@@ -2976,21 +2980,15 @@ async function analyze(): Promise<number> {
 		const chip = el('span', 'rule');
 		chip.dataset.category = category(f.rule);
 		chip.append(tag(f.rule, 'rulename'));
-		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
-		chip.title = f.rule;
 		if(f.quickFix.length > 0) {
 			chip.classList.add('fixable');
 			chip.append(tag('fix', 'offer'));
 		}
-		chip.title = `${f.rule}: what it looks for${f.quickFix.length > 0 ? ' and what its fix does' : ''}`;
-		chip.addEventListener('click', event => {
-			event.stopPropagation();
-			const open = line.nextElementSibling?.classList.contains('lintmore') === true;
-			lints.querySelectorAll('.lintmore').forEach(more => more.remove());
-			if(!open) {
-				line.after(ruleDetails(f.rule, f.quickFix));
-			}
-		});
+		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
+		chip.title = f.quickFix.length > 0 ? `${f.rule}: ${uniqueArray(f.quickFix.map(fix => fix.description)).join('; ')}` : f.rule;
+		if(f.quickFix.length > 0) {
+			chip.addEventListener('click', event => (event.stopPropagation(), applyFixes(f.quickFix)));
+		}
 		/* one element per finding, so the hover lights the whole row; the columns still line up
 		   because the row borrows the surrounding grid */
 		const line = el('div', 'lint');
@@ -2999,7 +2997,24 @@ async function analyze(): Promise<number> {
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'a click goes there, alt-click highlights this finding in the link';
 		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
-		line.addEventListener('click', event => event.altKey || reveal(f.file, f.at));
+		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}`;
+		line.addEventListener('click', event => {
+			if(event.altKey) {
+				return;
+			}
+			if((event.target as HTMLElement).closest('.lintmore') !== null) {
+				return;
+			}
+			openedLint = openedLint === lintKey ? undefined : lintKey;
+			lints.querySelectorAll('.lintmore').forEach(more => more.remove());
+			if(openedLint === lintKey) {
+				line.append(ruleDetails(f.rule, f.quickFix));
+			}
+			reveal(f.file, f.at);
+		});
+		if(openedLint === lintKey) {
+			line.append(ruleDetails(f.rule, f.quickFix));
+		}
 		lints.append(...linkRow([line], [f.line]));
 	}
 	lintBody.append(lints);

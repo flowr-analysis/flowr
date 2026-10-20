@@ -1,5 +1,5 @@
 /**
- * Keeps the playgrounds of the last releases under `wiki/playground/v/<version>/`, taken from the site before it is
+ * Keeps the playgrounds of the last minor releases under `wiki/playground/v/<version>/`, taken from the site before it is
  * replaced. Usage: `ts-node scripts/keep-playground-versions.ts <previous>`, the `wiki/playground` folder served so far.
  */
 import fs from 'fs';
@@ -24,7 +24,10 @@ if(previous !== undefined && fs.existsSync(previous)) {
 		found.set(release, previous);
 	}
 }
-const kept = [...found.keys()].filter(v => v !== current && semver.valid(v) !== null).sort(semver.rcompare).slice(0, Keep);
+/* the newest patch of each of the last minor releases before the current one */
+const minorOf = (version: string) => `${semver.major(version)}.${semver.minor(version)}`;
+const kept = [...found.keys()].filter(v => semver.valid(v) !== null && (current === undefined || minorOf(v) !== minorOf(current))).sort(semver.rcompare)
+	.filter((v, at, all) => all.findIndex(other => minorOf(other) === minorOf(v)) === at).slice(0, Keep);
 for(const version of kept) {
 	fs.cpSync(found.get(version) as string, path.join(Target, 'v', version), { recursive: true, filter: from => path.relative(found.get(version) as string, from) !== 'v' });
 }

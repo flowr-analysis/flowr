@@ -117,11 +117,11 @@ describe('playground', { concurrent: false }, () => {
 		expect(page.errors).toEqual([]);
 	}, 5 * 60 * 1000);
 
-	test('a rule says what it looks for and shows its fix as a diff before carrying it out', async() => {
+	test('a finding says what its rule looks for and shows its fix as a diff before carrying it out', async() => {
 		const page = await open();
-		const chip = page.document.querySelector<HTMLElement>('#panel .lint .rule');
-		expect(chip?.textContent).toContain('unused-definitions');
-		chip?.click();
+		const row = page.document.querySelector<HTMLElement>('#panel .lint');
+		expect(row?.querySelector('.rule')?.textContent).toContain('unused-definitions');
+		row?.click();
 		const details = page.document.querySelector('#panel .lintmore');
 		expect(details?.textContent).toContain('Finds definitions that are never used');
 		expect(details?.querySelector('.del')?.textContent).toMatch(/^- unused_total/);

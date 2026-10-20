@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-20, 14:20:38 UTC (v2.16.3), do not edit directly._
 <h2 id="Dice Query">Dice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reduces the code to the parts that carry information from a given start point to a given end point.\
 _This query is requested with the type `dice`._\
-Run in the REPL: `:query @dice (<crit>;...->crit;...)[iIcB] <code | file://path>`
+Run in the REPL: `:query @dice (<crit>;...->crit;...)[icIB] <code | file://path>`
 
 While the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice) answers "what affects this point?" (or "what does this point affect?"),
 a _dice_ answers the two-sided question: **which parts of the program carry information from A to B?**

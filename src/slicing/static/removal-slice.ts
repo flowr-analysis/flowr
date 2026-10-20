@@ -13,6 +13,10 @@ import { SliceDirection } from '../../util/slice-direction';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { EdgeType } from '../../dataflow/graph/edge';
 import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { ArgProp, type FnSig } from '../../dataflow/environments/built-in-props';
+import { type AmbientStateAccess, AmbientStateAccessType } from '../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
 
 /** What removing code for a set of criteria takes out of the program. */
 export interface RemovalSliceResult {
@@ -22,9 +26,16 @@ export interface RemovalSliceResult {
 	readonly result:  ReadonlySet<NodeId>
 }
 
-const DeviceOpeners: ReadonlySet<string> = new Set(['pdf', 'png', 'jpeg', 'jpg', 'tiff', 'bmp', 'svg', 'cairo_pdf', 'cairo_ps', 'postscript', 'win.metafile', 'x11', 'dev.new']);
-const DeviceClosers: ReadonlySet<string> = new Set(['dev.off', 'graphics.off']);
-const Silencers: ReadonlySet<string> = new Set(['invisible', 'suppressWarnings', 'suppressMessages', 'suppressPackageStartupMessages']);
+type StatedConfig = { readonly ambient?: AmbientStateAccess | readonly AmbientStateAccess[], readonly sig?: FnSig };
+/** the names of the functions flowR's built-in definitions state something of */
+function builtInNames(stated: (config: StatedConfig) => boolean): ReadonlySet<string> {
+	return new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'function' && stated((d.config ?? {}) as StatedConfig) ? d.names.map(name => String(Identifier.getName(name))) : []));
+}
+const accesses = (type: AmbientStateAccessType) => (config: StatedConfig) => [config.ambient ?? []].flat().some(access => access.type === type);
+const DeviceOpeners = builtInNames(accesses(AmbientStateAccessType.OpenDevice));
+const DeviceClosers = builtInNames(accesses(AmbientStateAccessType.CloseDevice));
+/* `invisible(dev.off())` closes the device as much as `dev.off()` does: a call handing back its argument is that argument */
+const PassingOn = builtInNames(config => ((config.sig?.[0]?.[1] ?? 0) & ArgProp.Alias) !== 0);
 
 /** the statements of the program: the children of every block, but not those of a function body, which only runs when called */
 function statementsOf(ast: NormalizedAst): Map<NodeId, RNodeWithParent> {
@@ -61,7 +72,7 @@ function within(ast: NormalizedAst, id: NodeId, ancestor: NodeId): boolean {
 
 /** the call a statement makes, past the wrappers that only hide its value (`invisible(dev.off())`) */
 function callOf(node: RNodeWithParent | undefined): RNodeWithParent | undefined {
-	while(RFunctionCall.isNamed(node, Silencers) && node.arguments.length === 1) {
+	while(RFunctionCall.isNamed(node, PassingOn) && node.arguments.length === 1) {
 		node = RArgument.valueOf(node.arguments[0]);
 	}
 	return node;

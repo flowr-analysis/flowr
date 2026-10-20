@@ -151,7 +151,6 @@ function configDocs(): string {
 	return JSON.stringify(out);
 }
 
-/** how the playground script is bundled, into `outfile` or into memory without one */
 function bundleOptions(outfile?: string) {
 	return {
 		entryPoints:   [path.join('scripts', 'playground', 'main.ts')],
@@ -233,10 +232,7 @@ async function main(): Promise<void> {
 	}
 }
 
-/**
- * Serves the playground and rebuilds it on every change: the script through esbuild's own watch, the page and its
- * examples and partials by writing it anew. Every rebuild reloads the open pages.
- */
+/** serves the playground, rebuilding and reloading open pages on every change */
 async function watch(writeIndex: () => void): Promise<void> {
 	const reload = serveWiki('playground/', 8000, true);
 	const rebuilt = { name: 'reload', setup: (b: { onEnd(f: () => void): void }) => b.onEnd(reload) };

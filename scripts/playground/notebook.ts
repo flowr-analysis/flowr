@@ -146,7 +146,7 @@ interface Cell {
 	readonly tail?:    number
 	readonly runs:     boolean
 	readonly label:    string
-	/** how many of the first lines state the cell's options (`#| label: fit`) rather than code */
+	/** how many of the first lines are options (`#| label: fit`), not code */
 	readonly options?: number
 }
 
@@ -194,24 +194,19 @@ function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 	return markdown ? documentCells(text, rows) : scriptCells(rows);
 }
 
-/** runs a cell in the R session the cells share, its output going `into` the cell's own output when one cell runs */
+/** runs a cell in the shared R session, its output going `into` the given element */
 export type CellRunner = (code: string, title: string, into?: HTMLElement, fresh?: boolean) => Promise<number | undefined>;
-/** runs the picked cells, as a cell's run button and shift+enter do */
 type CellRuns = (view: EditorView, picked: readonly Cell[], cells: readonly Cell[], fresh?: boolean) => Promise<void>;
 
-/**
- * How the whole notebook runs, as the Run button runs it: cell by cell, each output below its cell, the first in a
- * fresh session when asked to. `undefined` for a file without code cells, which the button runs as one script.
- */
+/** runs the whole notebook cell by cell, `undefined` for a file without code cells */
 export const NotebookRun = Facet.define<(view: EditorView, fresh: boolean) => Promise<void> | undefined>();
 
 const codeIndex = (cell: Cell, cells: readonly Cell[]) => cells.filter(c => c.kind === 'code').indexOf(cell);
-/** a cell is always called by its number, and by its label too when it has one */
 const titleOf = (cell: Cell, cells: readonly Cell[]) => `cell ${codeIndex(cell, cells) + 1}${cell.label ? ` · ${cell.label}` : ''}`;
 
 const cellAt = (cells: readonly Cell[], line: number) => cells.find(c => line >= c.from && line <= c.to);
 
-/** what the code cell holding a line is called, for a notebook or a document with chunks */
+/** the name of the code cell holding a line */
 export function cellTitles(state: EditorState, name: string): (line: number) => string | undefined {
 	const cells = cellsOf(state, isMarkdownDocument(name));
 	return line => {
@@ -221,9 +216,8 @@ export function cellTitles(state: EditorState, name: string): (line: number) => 
 }
 
 /**
- * The document with each code cell holding what `codeOf` gives for its lines instead, everything else of it as it is:
- * front matter, prose, text cells, and the fences and markers of the cells. A code cell left with no code goes as a
- * whole, together with the text since the cell before it, which is about it. A file without cells is one cell.
+ * The document with each code cell's code replaced by `codeOf`. A cell left with no code goes whole, together with
+ * the text since the cell before it. A file without cells is one cell.
  */
 export function rewriteCells(state: EditorState, name: string, codeOf: (from: number, to: number) => string): string {
 	const rows = state.doc.toString().split(LineBreak);
@@ -236,7 +230,6 @@ export function rewriteCells(state: EditorState, name: string, codeOf: (from: nu
 	for(let line = 1; line <= rows.length;) {
 		const cell = cells.find(c => (c.head ?? c.from) === line);
 		if(cell?.kind === 'code') {
-			/* the options of a cell are part of it, not code a slice keeps or drops */
 			const body = cell.from + (cell.options ?? 0);
 			const code = body > cell.to ? '' : codeOf(body, cell.to);
 			if(code.trim() !== '') {
@@ -256,7 +249,7 @@ export function rewriteCells(state: EditorState, name: string, codeOf: (from: nu
 	return [...out, ...text].join('\n');
 }
 
-/** whether a line is R code: in a chunk of a document, and outside the text cells of a notebook */
+/** whether a line is R code */
 export function writesR(state: EditorState, name: string, line: number): boolean {
 	const markdown = isMarkdownDocument(name);
 	const kind = cellAt(cellsOf(state, markdown), line)?.kind;
@@ -265,7 +258,6 @@ export function writesR(state: EditorState, name: string, line: number): boolean
 
 const codeOf = (state: EditorState, cell: Cell) => cell.from > cell.to ? '' : state.sliceDoc(state.doc.line(cell.from).from, state.doc.line(cell.to).to);
 
-/** the output of a cell, shown below it */
 class CellOutput extends WidgetType {
 	constructor(readonly box: HTMLElement) {
 		super();
@@ -283,12 +275,7 @@ class CellOutput extends WidgetType {
 
 const outputsChanged = StateEffect.define<null>();
 
-/**
- * Runs the cells of a notebook, each with its output below it, several one after the other. The outputs stay below
- * their cells, by the number of the cell, until closed.
- */
 function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellRuns, readonly shown: Extension, readonly took: ReadonlyMap<number, number> } {
-	/* how long each code cell took the last time it ran, by its number */
 	const took = new Map<number, number>();
 	const outputs = new Map<number, HTMLElement>();
 	const outputOf = (view: EditorView, index: number): HTMLElement => {
@@ -306,9 +293,7 @@ function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellR
 		return box.lastElementChild as HTMLElement;
 	};
 	const runs: CellRuns = (view, picked, cells, fresh = false) => {
-		/* one after the other in the session they share, each with its output below it, as a notebook runs them */
 		return picked.filter(c => c.kind === 'code' && c.runs).reduce((before, cell, at) => before.then(async() => {
-			/* what the code itself took, not starting R or installing what it loads */
 			const ran = await run(codeOf(view.state, cell), titleOf(cell, cells), outputOf(view, codeIndex(cell, cells)), fresh && at === 0);
 			if(ran !== undefined) {
 				took.set(codeIndex(cell, cells), ran);
@@ -331,17 +316,15 @@ function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellR
 	return { runs, shown, took };
 }
 
-/** what the menu next to a cell's run button offers, given the cells and where this one is among them */
 const RunChoices: readonly (readonly [string, string, (cells: readonly Cell[], at: number) => readonly Cell[]])[] = [
 	['Run this cell', 'Run', (cells, at) => [cells[at]]],
 	['Run all cells above', 'Run above', (cells, at) => cells.slice(0, at)],
 	['Run this cell and all below', 'Run below', (cells, at) => cells.slice(at)],
 	['Run all cells', 'Run all', cells => cells]
 ];
-/** which of the {@link RunChoices} the run button of every cell carries out, as picked from its menu */
+/** index of the picked {@link RunChoices} entry */
 let runChoice = 0;
 
-/** what a notebook cell is called, in place of the `# %%` that starts it */
 class CellLabel extends WidgetType {
 	constructor(readonly text: string) {
 		super();
@@ -366,7 +349,6 @@ class RunButton extends WidgetType {
 		if(this.note !== '') {
 			tools.append(el('span', 'cm-cell-note', this.note));
 		}
-		/* that knitr skips the cell is a state of it, not part of its name */
 		if(!this.cell.runs) {
 			const skipped = el('span', 'cm-cell-skipped', 'skipped');
 			skipped.title = 'the document says not to run this cell (eval: false)';
@@ -396,7 +378,6 @@ class RunButton extends WidgetType {
 			const { cells, at } = current();
 			void this.runs(view, RunChoices[runChoice][2](cells, at), cells);
 		});
-		/* what the button runs is picked behind the arrow next to it, as jupyter offers the cells before and after */
 		const more = el('button', 'cm-cell-more');
 		more.type = 'button';
 		more.title = 'choose what the button runs';
@@ -466,14 +447,12 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, took: Rea
 		const note = cell.kind === 'meta' ? cell.label : cell.kind === 'text' && markdown ? 'markdown' : undefined;
 		if(cell.head !== undefined) {
 			at(cell.head, lineDeco(`${kind} cm-cell-head`, note));
-			/* a notebook's `# %%` only says where a cell starts: what reads is which cell it is */
 			if(!markdown && cell.head <= doc.lines) {
 				const head = doc.line(cell.head);
 				found.push(Decoration.replace({ widget: new CellLabel(cell.kind === 'text' ? 'markdown' : titleOf(cell, cells)) }).range(head.from, head.to));
 			}
 			inCell.add(cell.head);
 			if(cell.kind === 'code' && cell.head <= doc.lines) {
-				/* a notebook already says which cell this is where its `# %%` was */
 				const note = markdown ? titleOf(cell, cells) : cell.label;
 				found.push(Decoration.widget({ widget: new RunButton(cell, note, markdown, runs, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.head).to));
 			}
@@ -481,7 +460,6 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, took: Rea
 		for(let line = cell.from; line <= cell.to; line++) {
 			at(line, lineDeco(`${kind}${line === cell.to && cell.tail === undefined ? ' cm-cell-end' : ''}`));
 			inCell.add(line);
-			/* a markdown cell of a notebook is written as comments, which say nothing once it reads as prose */
 			const prefix = !markdown && cell.kind === 'text' && line <= doc.lines ? /^#\s?/.exec(doc.line(line).text)?.[0] : undefined;
 			if(prefix !== undefined) {
 				found.push(Decoration.replace({}).range(doc.line(line).from, doc.line(line).from + prefix.length));
@@ -541,18 +519,17 @@ export function notebookCells(name: string, run: CellRunner): Extension {
 }
 
 const cellLook = EditorView.theme({
-	/* the tints are see-through, as the selection is drawn beneath the lines and would vanish under a solid one */
+	/* see-through, or the selection drawn beneath the lines would vanish */
 	'.cm-cell': {
 		backgroundColor: 'color-mix(in srgb, var(--accent) 5%, transparent)',
 		boxShadow:       'inset 3px 0 0 color-mix(in srgb, var(--accent) 55%, transparent)'
 	},
-	/* a text cell reads as prose on paper rather than as commented-out code */
 	'.cm-cell-text': {
 		backgroundColor: 'color-mix(in srgb, var(--panel) 70%, transparent)',
 		boxShadow:       'inset 3px 0 0 color-mix(in srgb, var(--muted) 40%, transparent)',
 		fontFamily:      'system-ui, -apple-system, "Segoe UI", sans-serif',
 		lineHeight:      '1.65',
-		/* indented, not padded: the selection measures the padding of one line and draws every line with it */
+		/* indented, not padded: the selection would draw every line with the padding of one */
 		textIndent:      '.5rem'
 	},
 	'.cm-cell-text.cm-cell-head': { fontFamily: 'inherit', opacity: '.55', lineHeight: '1.4' },
@@ -562,7 +539,6 @@ const cellLook = EditorView.theme({
 	'.cm-cell-head':              { borderTop: '1px solid var(--border)', fontSize: '.85em' },
 	'.cm-cell-tail':              { fontSize: '.85em' },
 	'.cm-cell-end':               { borderBottom: '1px solid var(--border)' },
-	/* a little below the cell's top edge, so the button sits inside the cell rather than on its border */
 	'.cm-cell-tools':             { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem', position: 'relative', top: '.35rem' },
 	'.cm-cell-took':              { fontFamily: 'system-ui, sans-serif', fontSize: '.68rem', color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' },
 	'.cm-cell-skipped':           {
@@ -601,7 +577,6 @@ const cellLook = EditorView.theme({
 	},
 	'.cm-cell-run .runicon':                   { width: '.65rem', height: '.65rem' },
 	'.cm-cell-run:hover, .cm-cell-more:hover': { background: 'color-mix(in srgb, var(--accent) 88%, var(--fg))' },
-	/* the same look as the menus of the page, as the one behind the Run button */
 	'.cm-cell-menu':                           {
 		position:      'absolute', top:           'calc(100% + .15rem)', right:         '0', zIndex:        '20', minWidth:      '11rem', padding:       '.25rem',
 		display:       'flex', flexDirection: 'column', fontFamily:    'system-ui, sans-serif', fontSize:      '.8rem',
@@ -618,17 +593,16 @@ const cellLook = EditorView.theme({
 	'.cm-cell-choice[aria-checked="true"]::before':         { visibility: 'visible' },
 	'.cm-cell-choice:hover, .cm-cell-choice:focus-visible': { background: 'var(--sunk)', color: 'var(--accent)', outline: 'none' },
 	'.cm-cell-output':                                      {
-		/* no margin: the editor measures a block by its box, and a margin would push every line below off its number */
+		/* no margin: the editor measures a block by its box */
 		position:       'relative', boxSizing:      'border-box', width:          '100%', padding:        '.4rem 1.8rem .4rem .8rem',
 		borderLeft:     '3px solid color-mix(in srgb, var(--accent) 45%, transparent)', borderBottom:   '.4rem solid transparent',
 		backgroundClip: 'padding-box', background:     'var(--panel)', fontSize:       '.82rem', maxHeight:      '32rem', overflow:       'auto'
 	},
 	'.cm-cell-output-body > div':   { whiteSpace: 'pre-wrap' },
-	/* what R warns about is quieter than what it prints, what the run says about itself reads as a remark, an error stands out */
 	'.cm-cell-output-body > .note': { color: 'var(--muted)' },
 	'.cm-cell-output-body > .meta': { fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' },
 	'.cm-cell-output-body > .bad':  { color: '#d55e00' },
-	/* a plot is as wide as the output and no wider, or the code would scroll sideways with it */
+	/* no wider than the output, or the code scrolls sideways */
 	'.cm-cell-output-body canvas':  { display: 'block', margin: '.3rem 0' },
 	'.cm-cell-output-x':            {
 		position: 'absolute', top: '.2rem', right: '.3rem', border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', font: 'inherit', fontSize: '.75rem'

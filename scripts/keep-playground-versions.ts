@@ -1,8 +1,6 @@
 /**
- * Keeps the playgrounds of the last releases next to the current one, under `wiki/playground/v/<version>/`, which the
- * playground offers to switch to. Each is the self-contained page of its release (a few megabytes, loaded only when
- * opened), taken from the site before it is replaced. Usage: `ts-node scripts/keep-playground-versions.ts <previous>`,
- * with `<previous>` the `wiki/playground` folder the site served so far.
+ * Keeps the playgrounds of the last releases under `wiki/playground/v/<version>/`, taken from the site before it is
+ * replaced. Usage: `ts-node scripts/keep-playground-versions.ts <previous>`, the `wiki/playground` folder served so far.
  */
 import fs from 'fs';
 import path from 'path';
@@ -11,7 +9,6 @@ import semver from 'semver';
 const Target = path.join('wiki', 'playground');
 const Keep = 4;
 
-/** the release a playground page was built from, as its version link names it */
 const releaseOf = (dir: string): string | undefined =>
 	/data-release="v?([^"]+)"/.exec(fs.existsSync(path.join(dir, 'index.html')) ? fs.readFileSync(path.join(dir, 'index.html'), 'utf8') : '')?.[1];
 

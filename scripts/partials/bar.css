@@ -34,7 +34,6 @@
 	:root:not([data-theme="light"]) .bar .controls .gh, :root:not([data-theme="light"]) .bar .controls .gh:hover { color: #fff; }
 }
 .bar .controls .gh svg { display: block; width: auto; height: auto; }
-/* the theme is a little sky: a moon by night among the stars, a sun by day among clouds, sliding over when it flips */
 #theme {
 	--night: radial-gradient(1px 1px at 62% 30%, #fff 60%, transparent), radial-gradient(1.5px 1.5px at 78% 62%, #fff 60%, transparent),
 		radial-gradient(1px 1px at 88% 28%, #fff 60%, transparent), radial-gradient(1px 1px at 70% 78%, #fff 60%, transparent), #211042;

@@ -1,8 +1,4 @@
-/**
- * The dependency overview of the playground, laid out the way vscode-flowR's dependency view is: one
- * collapsible category per kind of dependency, in the order of an analysis, with the same names, icons,
- * colors, grouping and labels, so the two read alike.
- */
+/** The dependency overview of the playground, laid out like vscode-flowR's dependency view. */
 import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, NormalizedAst, ParentInformation } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -134,7 +130,6 @@ export interface ViewContext {
 
 const Combinators = new Set(['+', '%>%', '|>']);
 
-/** the variable a call is assigned to, following `+` and pipe chains up to the assignment */
 function assignedName(ids: AstIdMap, id: NodeId): string | undefined {
 	let node: RNode<ParentInformation> | undefined = ids.get(id);
 	/* flowR may point at the called name instead of the call */
@@ -161,7 +156,6 @@ function assignedTo(ast: NormalizedAst, info: DependencyInfo): string | undefine
 	return info.assignedTo ?? (info.nodeId !== undefined ? assignedName(ast.idMap, info.nodeId) : undefined);
 }
 
-/** each plot by the title flowR found, else the variable it is stored in, plus the file it is saved to */
 function describePlots(visualize: readonly DependencyInfo[], ast: NormalizedAst): Map<DependencyInfo, string> {
 	const result = new Map<DependencyInfo, string>();
 	for(const p of visualize.filter(v => v.nodeId !== undefined && !v.linkedIds?.length)) {
@@ -191,7 +185,6 @@ function packageOf(e: DependencyInfo): string | undefined {
 	}
 }
 
-/** a long path as its file name, shortened in the middle, with the folder going to the description */
 function shortenPath(path: string, max = 32): { label: string, folder?: string } {
 	const at = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
 	const name = at >= 0 && at < path.length - 1 ? path.slice(at + 1) : path;
@@ -206,7 +199,7 @@ function shortenPath(path: string, max = 32): { label: string, folder?: string }
 const NoDataFlow = new Set(['library', 'remote', 'source']);
 const ConsoleStreams: ReadonlySet<string> = new Set(['stdout', 'stderr']);
 
-/** builds the view from one answer of the dependencies query; the categories without findings come last */
+/** builds the view from one answer of the dependencies query */
 export function dependencyTree(answer: Readonly<Record<string, readonly DependencyInfo[] | unknown>>, ctx: ViewContext): { roots: DepNode[], empty: DepNode[] } {
 	const kinds = orderedKinds(Object.keys(answer).filter(k => !k.startsWith('.') && Array.isArray(answer[k])));
 	const plots = describePlots((answer.visualize ?? []) as DependencyInfo[], ctx.ast);
@@ -293,7 +286,7 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 		};
 	};
 
-	/* a call that reaches a use only through the function it calls holds that use, as `report(x)` holds the `cat()` inside of it */
+	/* a call holds the uses inside the function it calls, as `report(x)` holds the `cat()` in it */
 	const viaNested = (group: readonly DependencyInfo[], make: (e: DependencyInfo) => DepNode): DepNode[] => {
 		const inner = new Set(group.map(e => e.via).filter(v => v !== undefined));
 		const nest = (e: DependencyInfo, seen: ReadonlySet<DependencyInfo>): DepNode => {
@@ -385,7 +378,7 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 	return { roots: roots.filter(r => r.children.length > 0), empty: roots.filter(r => r.children.length === 0) };
 }
 
-/** keys stand for an entry across re-analyses, so what is unfolded stays unfolded; the parent's key goes in front */
+/** keys identify an entry across re-analyses, so what is unfolded stays unfolded */
 function uniqueKeys(node: DepNode, parent: string, seen: Set<string>): void {
 	let key = parent + node.key;
 	for(let n = 1; seen.has(key); n++) {
@@ -398,7 +391,7 @@ function uniqueKeys(node: DepNode, parent: string, seen: Set<string>): void {
 	}
 }
 
-/** the group of the categories without findings, collapsed below the others */
+/** the collapsed group of categories without findings */
 export function noFindingsGroup(empty: readonly DepNode[]): DepNode {
 	return {
 		key:         'no-findings',

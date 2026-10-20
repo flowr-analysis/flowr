@@ -230,7 +230,6 @@ interface PlotSize {
 }
 
 /** a canvas as wide as the card has room for, at the screen's resolution so text stays legible on a phone */
-/* a plot is drawn as wide as where it goes, but no wider than it reads well, and never too small to read */
 function plotSize(into: HTMLElement): PlotSize {
 	const css = Math.max(240, Math.min(480, into.clientWidth - 32));
 	const scale = window.devicePixelRatio || 1;
@@ -257,23 +256,18 @@ interface Sink {
 	readonly status: (text: string) => void
 }
 
-/** the plot as a canvas shown as wide as it was asked for, whatever resolution webR drew it in */
 function canvasOf(image: ImageBitmap, plot: PlotSize): HTMLCanvasElement {
 	const canvas = document.createElement('canvas');
 	canvas.width = image.width;
 	canvas.height = image.height;
 	canvas.style.width = `${plot.width / (window.devicePixelRatio || 1)}px`;
-	/* a pane made narrower later shrinks the plot along, keeping its proportions */
 	canvas.style.maxWidth = '100%';
 	canvas.style.height = 'auto';
 	canvas.getContext('2d')?.drawImage(image, 0, 0);
 	return canvas;
 }
 
-/**
- * Runs `code` in the page's R session, silently giving up once `current` fails: whether R printed or drew anything, and
- * how long the code itself ran, without starting R, installing packages, or setting up the session.
- */
+/** runs `code` in the page's R session, giving up silently once `current` fails */
 async function evaluate(code: string, wanted: () => Promise<readonly string[]>, sink: Sink, plot: PlotSize, current: () => boolean, project?: RunInput): Promise<{ readonly said: boolean, readonly took: number }> {
 	if(session === undefined) {
 		sink.status('downloading R, only once...');
@@ -359,7 +353,7 @@ export async function evalInR(code: string, packagesOf: PackageFinder, line: (te
 	}
 }
 
-/** runs what `prepare` returns under `title`, its output going to the card unless `into` takes it, as a notebook cell's does */
+/** runs what `prepare` returns under `title`, into the card or `into` */
 export type Runner = (prepare: () => Promise<RunInput>, title: string, into?: HTMLElement) => Promise<number | undefined>;
 
 /** wires the run button and the output card, returning a runner for notebook cells */
@@ -421,8 +415,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 	const runScript = async(what: () => Promise<RunInput>, named: string, into?: HTMLElement): Promise<number | undefined> => {
 		const run = ++running;
 		const target = into ?? out;
-		/* a cell keeps its last output until the new one is complete: emptied first, the page would shrink under the
-		   pointer and the scroll position jump up with it */
+		/* a cell keeps its old output until the new is complete, or the page shrinks under the pointer */
 		const sink = into === undefined ? out : document.createElement('div');
 		const line = lineIn(sink);
 		if(title !== null && into === undefined) {
@@ -470,7 +463,6 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		return undefined;
 	};
 	const runner: Runner = (what, named, into) => go.disabled ? Promise.resolve(undefined) : runScript(what, named, into);
-	/* a notebook runs its own way, cell by cell, which `instead` does when it applies */
 	const runAll = () => void (instead?.() ?? runner(prepare, 'R output'));
 	go.addEventListener('click', runAll);
 	document.addEventListener('keydown', event => {

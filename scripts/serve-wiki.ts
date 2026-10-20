@@ -21,14 +21,10 @@ const Types: Readonly<Record<string, string>> = {
 	'.md':   'text/markdown'
 };
 
-/* what a served page listens on, so a rebuild reloads it */
 const ReloadPath = '/__reload';
 const ReloadScript = `<script>new EventSource('${ReloadPath}').onmessage = () => location.reload();</script>`;
 
-/**
- * Serves `wiki/` and says where `page` is. With `live`, every served page reloads whenever the returned function is
- * called, which a build in watch mode does once it wrote the page anew.
- */
+/** Serves `wiki/`; with `live`, the returned function reloads every served page. */
 export function serveWiki(page = '', port = 8000, live = false): () => void {
 	const listening = new Set<http.ServerResponse>();
 	http.createServer((req, res) => {

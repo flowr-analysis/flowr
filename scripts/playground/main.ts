@@ -73,7 +73,6 @@ function showTook(text: string): void {
 	}
 }
 
-/* with ctrl or cmd held, what a click would jump from is underlined, as in vscode-flowR */
 const setJumpable = StateEffect.define<{ readonly from: number, readonly to: number } | undefined>();
 const jumpableMark = marksFrom(setJumpable, at => at === undefined ? Decoration.none : Decoration.set([Decoration.mark({ class: 'cm-jumpable' }).range(at.from, at.to)]));
 let jumpShown = false, jumpAsked = 0;
@@ -97,18 +96,14 @@ const jumpHover = EditorView.domEventHandlers({
 });
 window.addEventListener('keyup', event => (event.key === 'Control' || event.key === 'Meta') && (jumpAsked++, showJumpable(undefined)));
 
-/* outside the R code of a notebook, in its prose or a markdown cell, the cursor keeps the slice it had last */
+/* outside the R code of a notebook the cursor keeps its last slice */
 let held: { readonly criterion?: string, readonly name?: string } = {};
 const holdCursor = EditorView.updateListener.of(update => update.selectionSet && cursorTarget());
 
 /* what the linter found, and which lines a slice keeps: both replaced after every analysis */
 const setLints = StateEffect.define<readonly { from: number, to: number, message: string, rule?: string }[]>();
 const setSlice = StateEffect.define<readonly number[] | undefined>();
-/*
- * The positions pinned for a slice, boxed where they are as vscode-flowR boxes them. They live in the state of their
- * file as ranges, which move with every edit, so a pin stays on its name wherever new code pushes it; what each one
- * slices for is read off where it is now.
- */
+/* pins live as ranges in the state of their file, so they move with every edit */
 const togglePin = StateEffect.define<{ readonly from: number, readonly to: number }>();
 const clearPins = StateEffect.define<null>();
 const pinMark = Decoration.mark({ class: 'cm-pinned' });
@@ -205,12 +200,10 @@ const sliceMarks = marksFrom(setSlice, (kept, tr) => kept === undefined ? Decora
 		.map(line => Decoration.line({ class: 'cm-outside' }).range(tr.state.doc.line(line).from)),
 	true));
 
-/* the code a dependency entry was clicked for, framed in the color of its category for a moment */
 const setFlash = StateEffect.define<{ from: number, to: number, color: string } | undefined>();
 const flashMarks = marksFrom(setFlash, value => value === undefined || value.to <= value.from ? Decoration.none
 	: Decoration.set([Decoration.mark({ class: 'cm-dep-flash', attributes: { style: `--cat: ${value.color}` } }).range(value.from, value.to)]));
 
-/** a narrow bar in the category's color next to a line with dependencies, as vscode-flowR draws one */
 class CategoryBar extends GutterMarker {
 	constructor(readonly kind: string, readonly joins: string) {
 		super();
@@ -238,7 +231,6 @@ const categoryBars = StateField.define<RangeSet<GutterMarker>>({
 		return bars;
 	}
 });
-/** the card a bar shows under the pointer: what the dependencies of its line do, as the hover over the code says it */
 const barTip = el('div', 'cm-tooltip cm-valuetip bartip');
 function showBarTip(view: EditorView, line: { from: number, to: number }, event: Event): boolean {
 	const said = depsOver(line.from, line.to);
@@ -604,7 +596,6 @@ function packageTip(info: PackageInfo, complaints: readonly { rule: string, mess
 	return dom;
 }
 
-/** the links a hover card ends with, to read on about the name where it is documented */
 function tipLinks(links: readonly (readonly [string, string])[]): HTMLElement {
 	const row = el('div', 'tlinks');
 	for(const [text, href] of links) {
@@ -635,7 +626,6 @@ function tip(known: ReturnType<typeof signatureOf>, said: string | undefined, co
 		dom.append(complaint(found, 'tlint'));
 	}
 	if(known !== undefined) {
-		/* where to read on comes last, after everything said about the name here */
 		dom.append(tipLinks([
 			...known.source === undefined ? [] : [['source', known.source] as const],
 			...known.docs === undefined ? [] : [['documentation', known.docs] as const],
@@ -659,7 +649,6 @@ const bakedPackages: Readonly<Record<string, readonly string[]>> = (() => {
 	}
 })();
 
-/** the status bar: how long each step of the analysis took, with how many plugins, and how big the graph it built is */
 function showStats(steps: Readonly<Record<string, number>>, graph: DataflowGraph): void {
 	const vertices = [...graph.vertices(true)];
 	const edges = arraySum(vertices.map(([id]) => graph.edgesFrom(id).size));
@@ -903,7 +892,6 @@ const shared = (() => {
 		wholeSlice: view.wholeSlice,
 		/* a slice across files keeps them apart, unless asked to splice what `source()` pulls in at the call */
 		inline:     view.inline,
-		/* the pinned positions, as `<file>:<from>-<to>` in the text the link carries, so a reload keeps them */
 		pins:       (params.get('P') ?? '').split(',').map(pin => /^(\d+):(\d+)-(\d+)$/.exec(pin)).filter(m => m !== null)
 			.map(([, file, from, to]) => ({ file: Number(file), from: Number(from), to: Number(to) })),
 		/* what was asked of the repl, so a link opens on the answer it was sent for */
@@ -931,11 +919,9 @@ const marks: Mark[] = shared.marks;
 
 /** what the last analysis found, kept so a `lint:` or `dep:` mark can say which code it stands for */
 let shownLints: readonly { rule: string, message: string, line?: number, from: number, to: number }[] = [];
-/** a dependency flagged in the editor, and what the hover over it says */
 interface ShownDep { readonly kind: string, readonly line?: number, readonly from: number, readonly to: number, readonly said?: { readonly name: string, readonly why: string } }
 let shownDeps: readonly ShownDep[] = [];
 
-/** what the dependencies over the range do, for the hover card: the category in its color, and what the call does */
 function depsOver(from: number, to: number): Node[] {
 	return shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to).map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
 }
@@ -1149,7 +1135,6 @@ configReset.addEventListener('click', () => {
 
 const configTab = document.getElementById('configtab') as HTMLElement;
 let onConfig = false;
-/* the configuration is a tab like a file: there once opened, until closed */
 const configClose = el('span', 'x', 'x');
 configClose.title = 'close the configuration';
 configClose.addEventListener('click', event => (event.stopPropagation(), configTab.hidden = true, showTab(false)));
@@ -1168,12 +1153,8 @@ configTab.addEventListener('click', () => showTab(true));
 /** which way the playground slices; `removal` is what can go together with the criteria */
 type Way = SliceDirection | 'removal';
 let direction: Way = shared.direction ?? SliceDirection.Backward;
-/* the positions pinned to slice for instead of the cursor (vscode-flowR's position slices), whether their slices
-   intersect rather than unite, whether the editor steps back the slice rather than the rest, and whether the slice
-   asked for opens in the wide window once it is there */
 let intersect = false, negative = false, showWide = false;
 
-/** what every pin of every file slices for, read off where it sits now */
 function pinnedCriteria(): string[] {
 	return files.flatMap((file, at) => {
 		const state = at === active ? editor.state : file.state;
@@ -1189,7 +1170,6 @@ function pinnedCriteria(): string[] {
 	});
 }
 
-/** takes every pin out, of every file */
 function unpinAll(): void {
 	files.forEach((file, at) => at === active || (file.state = file.state.update({ effects: clearPins.of(null) }).state));
 	editor.dispatch({ effects: clearPins.of(null) });
@@ -1202,14 +1182,13 @@ function dim(): void {
 	editor.dispatch({ effects: setSlice.of(dimOutside && lastKept.length > 0 ? bright : undefined) });
 }
 
-/** a slice asked for explicitly, from the keyboard, the context menu or a dependency: it dims, and shows the slice whole */
+/** a slice asked for explicitly: it dims, and shows the slice whole */
 function askSlice(way: Way): void {
 	direction = way;
 	dimOutside = showWide = true;
 	remember();
 }
 
-/** pins the position under the cursor, or unpins it if it is pinned */
 function pinCursor(): void {
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
@@ -1222,7 +1201,6 @@ function pinCursor(): void {
 	}
 }
 
-/** what one can do with a slice at the cursor, with vscode-flowR's keys where it has one */
 const SliceActions: readonly { readonly label: string, readonly key: string, readonly run: () => void }[] = [
 	{ label: 'Slice: what this is built from', key: 'Alt-s', run: () => (askSlice(SliceDirection.Backward), void run()) },
 	{ label: 'Slice: what this influences', key: 'Alt-f', run: () => (askSlice(SliceDirection.Forward), void run()) },
@@ -1236,7 +1214,6 @@ const SliceActions: readonly { readonly label: string, readonly key: string, rea
 	} }
 ];
 const sliceKeys = Prec.high(keymap.of(SliceActions.map(action => ({ key: action.key, run: () => (action.run(), true) }))));
-/** the context menu of the code: the slice actions, and the modes the slices are taken in */
 function sliceMenu(): MenuEntry[] {
 	const toggle = (flip: () => void) => () => (flip(), remember(), void run());
 	return [
@@ -1249,7 +1226,6 @@ function sliceMenu(): MenuEntry[] {
 const editorExtensions = [
 	basicSetup, look, syntaxHighlighting(highlight), callMarks,
 	lintMarks, sliceMarks, linkMarks, shownMarks, flashMarks, categoryGutter, valueTips, sliceKeys, autocompletion({ override: [complete] }),
-	/* tab writes a tab, as an editor does, rather than leaving the code */
 	keymap.of([indentWithTab]), holdCursor, pins,
 	/* ctrl+click jumps to a definition, as in vscode-flowR, rather than adding another cursor */
 	EditorView.clickAddsSelectionRange.of(() => false), jumpableMark, jumpHover,
@@ -1269,7 +1245,6 @@ const fileState = (name: string, text: string) => EditorState.create({ doc: text
 /** one editor state per file, the editor holds the live one at {@link active} */
 const files = [...shared.others.slice(0, shared.position), [shared.name, shared.code ?? Sample], ...shared.others.slice(shared.position)].map(([name, text]) => ({ name, state: fileState(name, text) }));
 let active = shared.position;
-/* the pins a link carries go back where they were, into the file they belong to */
 for(const { file, from, to } of shared.pins) {
 	const state = files[file]?.state;
 	if(state !== undefined && to <= state.doc.length && from < to) {
@@ -1277,7 +1252,6 @@ for(const { file, from, to } of shared.pins) {
 	}
 }
 const editor = new EditorView({ state: files[active].state, parent: document.getElementById('editor') as HTMLElement });
-/* a right click opens the slice actions where it points, a click into the code takes back what the dependency view grayed out */
 const menuPoint = el('span', 'menupoint');
 document.body.append(menuPoint);
 editor.contentDOM.addEventListener('contextmenu', event => {
@@ -1448,7 +1422,6 @@ const treeToggle = document.getElementById('treetoggle') as HTMLElement;
 treeToggle.addEventListener('click', () => (treeToggle.setAttribute('aria-expanded', String(tree.toggleAttribute('hidden') === false)), showFiles()));
 /** the files open as tabs, which the tree opens and a tab's x closes again, without removing the file */
 let openTabs: string[] = [];
-/** the open files as tabs beside the configuration, and every file of the project in the tree */
 function showFiles(): void {
 	openTabs = uniqueArray([...openTabs.filter(name => files.some(f => f.name === name)), files[active].name]);
 	fileBar.replaceChildren(...openTabs.map(name => {
@@ -1511,7 +1484,6 @@ function showFiles(): void {
 		});
 	const settingsRow = treeRow('file settings', 'flowR configuration', 0, onConfig);
 	settingsRow.addEventListener('click', () => showTab(true));
-	/* an example takes the place of every file, which is why it sits apart, below the project */
 	const examples = Examples.map(example => {
 		const row = treeRow('file example', example.label, 0);
 		row.title = `${example.title}, in place of all files`;
@@ -1519,7 +1491,6 @@ function showFiles(): void {
 			const project = example.files.map(([name, text]) => asProjectFile(name, text));
 			if(pristineExample() || confirm(`replace all files with the ${example.label} example?`)) {
 				showExample(project, `the ${example.label} example is open`);
-				/* the example is what one wants to see now, not the files that make it up */
 				tree.hidden = true;
 				treeToggle.setAttribute('aria-expanded', 'false');
 				showFiles();
@@ -1530,7 +1501,6 @@ function showFiles(): void {
 	tree.replaceChildren(treeHead, ...rows, settingsRow, el('div', 'treehead examples', 'Examples'), ...examples);
 }
 
-/** the folders folded away in the tree */
 const foldedFolders = new Set<string>();
 
 /** whether the files are one of the examples as it opened, which nobody minds losing */
@@ -1540,7 +1510,6 @@ function pristineExample(): boolean {
 		|| (files.length === 1 && textOf(0) === Sample);
 }
 
-/** a row of the tree with the actions it offers under the pointer */
 function treeRow(kind: string, text: string, depth: number, open = false, actions: readonly (readonly [string, string, () => void])[] = []): HTMLElement {
 	const row = el('div', kind);
 	row.setAttribute('role', 'button');
@@ -1901,7 +1870,6 @@ function cursorTarget(): { readonly criterion?: string, readonly name?: string }
 	const first = /[A-Za-z.][\w._]*/.exec(line.text);
 	return held = {
 		criterion: found !== undefined ? scoped(found.criterion) : first ? scoped(`${line.number}@${first[0]}`) : undefined,
-		/* what the cursor is on, as a reader would write it: `clean$scaled` rather than `13:11` */
 		name:      found === undefined ? undefined : `${line.number}@${found.name}`
 	};
 }
@@ -2010,11 +1978,9 @@ let focusRequest = 0;
 let flashTimer = 0;
 
 function isOpen(node: DepNode): boolean {
-	/* a category with few entries, and an entry holding a single one, show what they hold right away */
 	return unfoldedDeps.get(node.key) ?? ((node.root && node.key !== 'no-findings' && node.children.length <= AutoReveal) || node.children.length === 1);
 }
 
-/** unfolds or folds the entry an element stands for, and remembers it */
 function setOpen(holder: HTMLElement, open: boolean, remember = true): void {
 	holder.classList.toggle('open', open);
 	holder.querySelector(':scope > .drow')?.setAttribute('aria-expanded', String(open));
@@ -2032,12 +1998,10 @@ function revealRow(row: HTMLElement): void {
 	}
 }
 
-/** the lines of the script the editor shows that an entry stands for */
 function linesOf(node: DepNode): number[] {
 	return allNodes([node]).flatMap(n => n.target && n.target.file === undefined && n.id !== undefined ? [n.target.span[0]] : []);
 }
 
-/** selects the code of an entry and frames it in the color of its category for a moment */
 function revealDependency(node: DepNode): void {
 	const target = node.target;
 	if(target === undefined) {
@@ -2061,7 +2025,6 @@ function revealDependency(node: DepNode): void {
 	void run();
 }
 
-/** the entries around one, so what it holds and the groups it lies in are never grayed out */
 function familyOf(key: string, roots: readonly DepNode[]): DepNode[] | undefined {
 	for(const root of roots) {
 		if(root.key === key) {
@@ -2075,14 +2038,12 @@ function familyOf(key: string, roots: readonly DepNode[]): DepNode[] | undefined
 	return undefined;
 }
 
-/** grays out every entry whose code is in neither the backward nor the forward slice of the selected one */
 const DepsAside = '(click to go there)';
 function paintRelated(): void {
 	const family = focusedKey === undefined ? undefined : familyOf(focusedKey, shownTree);
 	const keep = new Set(family?.map(n => n.key));
 	const ids = related?.key === focusedKey ? related?.ids : undefined;
 	const byKey = new Map(allNodes(shownTree).map(n => [n.key, n]));
-	/* the heading says what the overview is narrowed to, as the grayed rows alone do not say why */
 	const aside = panel.querySelector<HTMLElement>(`[data-fold="${PlaygroundBox.Deps}"] .aside`);
 	const focused = ids === undefined || focusedKey === undefined ? undefined : byKey.get(focusedKey)?.label;
 	if(aside !== null) {
@@ -2100,7 +2061,6 @@ function paintRelated(): void {
 		const own = nodeIds(node);
 		const unrelated = ids !== undefined && own.length > 0 && !keep.has(node.key) && !own.some(id => ids.has(String(id)));
 		row.classList.toggle('unrelated', unrelated);
-		/* what has nothing to do with the selection folds away, and opens again once it has */
 		if(unrelated && node.children.length > 0 && holder.classList.contains('open')) {
 			setOpen(holder, false, false);
 			focusFolded.add(holder);
@@ -2111,7 +2071,6 @@ function paintRelated(): void {
 }
 const focusFolded = new Set<HTMLElement>();
 
-/** selects an entry, or takes the selection back when it is clicked again */
 async function focusRelated(node: DepNode | undefined): Promise<void> {
 	const request = ++focusRequest;
 	focusedKey = node?.key;
@@ -2140,7 +2099,6 @@ async function focusRelated(node: DepNode | undefined): Promise<void> {
 	paintRelated();
 }
 
-/** the text of an info marker on a dependency: the category in its color, and what the call does */
 function depMessage(kind: string, said: { readonly name: string, readonly why: string }): Node {
 	const at = el('span', 'cm-dep-says');
 	const square = el('span', 'cm-dep-square', '\u25A0');
@@ -2149,7 +2107,6 @@ function depMessage(kind: string, said: { readonly name: string, readonly why: s
 	return at;
 }
 
-/** one entry of the dependency view and, folded or not, what it holds */
 function depEntry(node: DepNode, depth: number): HTMLElement {
 	const holder = el('div', 'dnode');
 	holder.dataset.key = node.key;
@@ -2172,7 +2129,6 @@ function depEntry(node: DepNode, depth: number): HTMLElement {
 		line.append(icon(node.icon, node.colored ? 'dicon colored' : 'dicon'));
 	}
 	line.append(label, el('span', 'ddesc', node.description ?? ''));
-	/* the inline actions vscode-flowR has on a dependency: what it is built from, and what it influences */
 	if(node.target !== undefined && node.id !== undefined) {
 		const actions = el('span', 'dactions');
 		for(const [way, name, hint] of [
@@ -2195,7 +2151,6 @@ function depEntry(node: DepNode, depth: number): HTMLElement {
 		line.append(actions);
 	}
 	line.title = node.tooltip ?? node.label;
-	/* alt-click highlights this one dependency, the way it does a finding */
 	const at = node.target?.file === undefined && node.id !== undefined ? node.target?.span[0] : undefined;
 	if(node.kind !== '') {
 		line.dataset.mark = node.root ? `dep:${node.kind}` : at === undefined ? `dep:${node.kind}` : `dep:${node.kind}@${at}`;
@@ -2319,7 +2274,6 @@ function applyFixes(fixes: readonly LintQuickFix[]): void {
 	}
 }
 
-/** what a rule looks for and, for a fix, the lines it changes as a compact diff with the button that carries it out */
 function ruleDetails(rule: string, fixes: readonly LintQuickFix[]): HTMLElement {
 	const more = el('div', 'lintmore');
 	const about = (LintingRules as unknown as Record<string, { info?: { description?: string } }>)[rule]?.info?.description;
@@ -2451,7 +2405,6 @@ async function originLines(origins: { id: string | number }[] | undefined): Prom
 	});
 }
 
-/** opens the file of the project (the one shown if `undefined`) at the line, if it has it */
 function reveal(file: string | undefined, line: number | undefined): void {
 	if(file !== undefined && files.some(f => f.name === file)) {
 		openFile(file);
@@ -2462,7 +2415,6 @@ function reveal(file: string | undefined, line: number | undefined): void {
 	}
 }
 
-/** the project file a string at `pos` names, as in `source("helpers.R")`, with where that string is */
 function fileAt(pos: number): { readonly name: string, readonly from: number, readonly to: number } | undefined {
 	const line = editor.state.doc.lineAt(pos);
 	const literal = [...line.text.matchAll(/(["'])([^"'\n]+)\1/g)].find(m => (m.index ?? 0) <= pos - line.from && pos - line.from <= (m.index ?? 0) + m[0].length);
@@ -2485,7 +2437,6 @@ function definitionOf(criterion: string): Promise<{ readonly line: number, reado
 	return found;
 }
 
-/** where a ctrl+click at `pos` goes: the file a string names, or the definition of the name there */
 async function jumpTarget(pos: number): Promise<{ readonly from: number, readonly to: number, go(): void } | undefined> {
 	const file = fileAt(pos);
 	if(file !== undefined) {
@@ -2498,8 +2449,7 @@ async function jumpTarget(pos: number): Promise<{ readonly from: number, readonl
 	}
 	const at = { from: line.from + found.from, to: line.from + found.to };
 	const away = (url: string | undefined) => url === undefined ? undefined : { ...at, go: () => void window.open(url, '_blank', 'noopener') };
-	/* the order vscode-flowR goes in: a package name opens its CRAN page, a name of the project its definition, and
-	   what a package or base R defines its implementation, from the same signature data flowR answers queries with */
+	/* the order vscode-flowR goes in: a package opens its CRAN page, a project name its definition, else its implementation */
 	if(namesPackage(line.text, found)) {
 		return isBaseRPackage(found.name) ? undefined : away(cranPageUrl(found.name));
 	}
@@ -2512,7 +2462,6 @@ async function jumpTarget(pos: number): Promise<{ readonly from: number, readonl
 	return away(known?.source ?? known?.docs);
 }
 
-/** jumps to where the name under the cursor was defined, or opens the file the string under it names */
 async function jumpToDefinition(): Promise<void> {
 	const target = await jumpTarget(editor.state.selection.main.head);
 	if(target === undefined) {
@@ -2567,7 +2516,6 @@ const graphEntries = (): MenuEntry[] => ['Open in mermaid.live', ...([
 ] as const).map(([which, label]) => ({ label, run: () => openView(which, label) }))];
 const graphsButton = document.getElementById('graphs') as HTMLElement;
 graphsButton.addEventListener('click', () => openMenu(graphsButton, graphEntries()));
-/* the tools as one menu, for a pane too narrow to show them side by side */
 const moreButton = document.getElementById('more') as HTMLElement;
 moreButton.addEventListener('click', () => openMenu(moreButton, [
 	{ label: 'Reset example', run: () => document.querySelector<HTMLElement>('[data-sample]')?.click() },
@@ -2576,20 +2524,14 @@ moreButton.addEventListener('click', () => openMenu(moreButton, [
 
 /** what flowR rebuilds of a slice: one text, or one per file of the project */
 type Rebuilt = string | readonly { readonly path: string, readonly code: string }[];
-/** the rebuilt slice as one text, each file under the banner flowR marks an inlined file with */
 const rebuiltText = (code: Rebuilt): string => typeof code === 'string' ? code : code.map(f => `${fileBanner(f.path)}\n${f.code}`).join('\n\n');
 
-/**
- * The bar over a slice (how much of the script it keeps, whether to show it in context, and a way to read it
- * in a wide window or close that again) and the lines under it. The panel and the wide window share both.
- */
+/** The bar over a slice and the lines under it, shared by the panel and the wide window. */
 function sliceParts(kept: readonly number[], asked: string | undefined, wide: boolean, code?: Rebuilt): HTMLElement[] {
 	const view = el('span', 'ways');
 	view.setAttribute('role', 'group');
 	view.setAttribute('aria-label', 'how to show the slice');
-	/* a slice reaching into other files only reads well as the code flowR rebuilds from it */
 	let lines = code === undefined ? sliceLines(kept, wholeSlice) : el('div', 'slines rebuilt');
-	/* the files of a slice each under their name, as the cells of a notebook are */
 	for(const part of code === undefined ? [] : typeof code === 'string' ? [{ path: undefined, code }] : code) {
 		const text = el('pre', 'scode');
 		paint(part.code, text);
@@ -2633,7 +2575,7 @@ function sliceParts(kept: readonly number[], asked: string | undefined, wide: bo
 	adopt.title = 'rewrite the program to what the slice keeps of it (ctrl+z takes it back)';
 	adopt.addEventListener('click', () => (widen.closest('dialog')?.close(), void adoptSlice(typeof code === 'string' ? code : undefined)));
 	copy.before(adopt);
-	/* the panel shows a long slice folded to the lines the room below it holds, at least a few, the wide window all of it */
+	/* the panel folds a long slice to the lines the room holds, at least a few, the wide window shows all */
 	const length = code === undefined ? kept.length : rebuiltText(code).split('\n').length;
 	if(!wide && length > FoldedSliceLines) {
 		lines.classList.add('folded');
@@ -2656,13 +2598,11 @@ function sliceParts(kept: readonly number[], asked: string | undefined, wide: bo
 	return [bar, lines];
 }
 
-/** what the slice is called: what kind of slice, for what the cursor is on or how many positions are pinned */
 function sliceTitle(asked: string | undefined): string {
 	const pinned = pinnedCriteria().length;
 	return `${direction === 'removal' ? 'Removal slice' : 'Program slice'}${pinned > 0 ? ` · ${pinned} pinned` : asked === undefined ? '' : ` · ${asked}`}`;
 }
 
-/** a small button showing only an icon, drawn as one svg path, with what it does as its title */
 function iconButton(cls: string, title: string, path: string, onClick: () => void): HTMLButtonElement {
 	const button = el('button', cls);
 	button.type = 'button';
@@ -2676,12 +2616,10 @@ function iconButton(cls: string, title: string, path: string, onClick: () => voi
 /** the fewest lines of a slice the panel shows when it folds the rest away */
 const FoldedSliceLines = 3;
 
-/** the slice in a window as wide as the page allows, for a slice too long to read in the panel */
 function showWideSlice(kept: readonly number[], asked: string | undefined, code?: Rebuilt): void {
 	let dialog = document.getElementById('slicewide') as HTMLDialogElement | null;
 	if(dialog === null) {
 		dialog = Object.assign(document.createElement('dialog'), { id: 'slicewide' });
-		/* a click on the backdrop, which is the dialog itself rather than what it holds, closes it */
 		dialog.addEventListener('click', event => {
 			if(event.target === dialog) {
 				dialog?.close();
@@ -2695,13 +2633,9 @@ function showWideSlice(kept: readonly number[], asked: string | undefined, code?
 	dialog.showModal();
 }
 
-/** the line starting a cell of a notebook, as the editor shows one */
 const CellStart = /^# %%/;
 
-/**
- * The slice as the lines of the script it keeps, each under its original line number (a click goes there), a
- * notebook's lines under the cell they belong to, and what it leaves out folded into a gap or, in context, stepped back.
- */
+/** The slice as the lines it keeps under their original numbers, what it leaves out folded into a gap or stepped back. */
 function sliceLines(kept: readonly number[], inContext: boolean): HTMLElement {
 	const doc = editor.state.doc;
 	const keep = new Set(kept);
@@ -2746,7 +2680,6 @@ function sliceLines(kept: readonly number[], inContext: boolean): HTMLElement {
 	return list;
 }
 
-/** what the DESCRIPTION says about the project, as facts with their names */
 function showProject(project: ProjectQueryResult): void {
 	const needs = project.dependencies;
 	const facts = [
@@ -2771,10 +2704,7 @@ let lastCriteria: readonly string[] = [];
 
 const sameFile = (path: string | undefined, name: string): boolean => path === name || path?.endsWith(`/${name}`) === true;
 
-/**
- * What the slice keeps of each file, unless the files `source()` pulls in are spliced into the open one as `inlined`.
- * Each code cell of a notebook or document gets the reconstruction of the slice within it, the rest of it stays.
- */
+/** What the slice keeps of each file, unless `inlined` splices in the files `source()` pulls in. Each code cell gets the reconstruction within it. */
 async function slicedFiles(inlined: string | undefined): Promise<ReadonlyMap<string, string>> {
 	if(inlined !== undefined && inlineFiles) {
 		return new Map([[files[active].name, inlined]]);
@@ -2801,10 +2731,7 @@ async function slicedFiles(inlined: string | undefined): Promise<ReadonlyMap<str
 	}));
 }
 
-/**
- * Replaces the program with the slice: every file of it with what the slice keeps of it, which leaves the files of the
- * project the slice has no part in empty (but not its DESCRIPTION and the like). The editor's history can take it back.
- */
+/** Replaces the program with the slice, keeping files like DESCRIPTION; the editor's history can take it back. */
 async function adoptSlice(inlined?: string): Promise<void> {
 	const sliced = await slicedFiles(inlined);
 	for(const [at, file] of files.entries()) {
@@ -2823,7 +2750,6 @@ async function adoptSlice(inlined?: string): Promise<void> {
 	remember();
 }
 
-/** the slice queries for the criteria: one slice of them all, or one each when their slices intersect */
 function slicesFor(criteria: readonly string[]): object[] {
 	const query = (of: readonly string[]) => ({
 		type: 'static-slice', criteria: of, includeCallees: true, inlineSources: files.length > 1 && inlineFiles && 'banner', perFile: files.length > 1 && !inlineFiles,
@@ -2849,7 +2775,6 @@ async function analyze(): Promise<number> {
 	const answers = await built.query([
 		{ type: 'dependencies' },
 		{ type: 'linter' },
-		/* what the DESCRIPTION of a package-like project says about it */
 		...files.some(f => /(^|\/)DESCRIPTION$/.test(f.name)) ? [{ type: 'project' }] : [],
 		...slicesFor(lastCriteria = pinnedCriteria().length > 0 ? pinnedCriteria() : criterion === undefined ? [] : [criterion])
 	] as never) as unknown as {
@@ -2869,14 +2794,12 @@ async function analyze(): Promise<number> {
 	}
 
 	const sliced = Object.values(answers['static-slice']?.results ?? {});
-	/* a slice kept apart by file says which file each part is from */
 	const parts = sliced[0]?.reconstruct?.files?.filter(f => f.code.trim() !== '').map(f => ({ path: f.path ?? 'unknown', code: f.code }));
 	const reconstructed = sliced[0]?.reconstruct?.code;
 	const code: Rebuilt | undefined = parts ?? (typeof reconstructed === 'object' ? reconstructed.join('\n') : reconstructed);
 	const linesOf = (result: Iterable<string | number> = []) => uniqueArray([...result]
 		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => SourceRange.getStartLine(node?.location))
 		.filter((l): l is number => typeof l === 'number'));
-	/* the slices of the pinned positions, intersected as asked or else as one slice of all of them */
 	const sliceLinesOf = sliced.map(r => linesOf(r.slice?.result)).reduce<number[] | undefined>((a, b) => a?.filter(l => b.includes(l)) ?? b, undefined) ?? [];
 	/* a removal slice keeps what is left once its lines are gone, which is the program one goes on with */
 	const doc = editor.state.doc;
@@ -2972,8 +2895,6 @@ async function analyze(): Promise<number> {
 			versionAsked.set(entry.value as string, asked);
 		}
 	}
-	/* every dependency of the script the editor shows is flagged in it: a bar in the category's color next to the
-	   line, as vscode-flowR draws one, and an info marker on the call that says what it does */
 	shownDeps = flat.flatMap((d): ShownDep[] => {
 		const span = RNode.span(d.node) ?? d.node?.location;
 		if(d.file !== undefined || span === undefined || span[0] < 1 || span[0] > doc.lines) {
@@ -2984,10 +2905,8 @@ async function analyze(): Promise<number> {
 		return [{ kind: d.kind, line: span[0], from, to: Math.max(from, Math.min(last.to, last.from + span[3])), said: describeDependency(d.kind, d.entry as never) }];
 	});
 	const kinds = new Map(uniqueArray(shownDeps.map(d => d.line as number)).map(line => [line, primaryCategory(shownDeps.filter(d => d.line === line).map(d => d.kind))] as const));
-	/* bars of the same color on adjacent lines join into one, as one block of code does one thing */
 	editor.dispatch({ effects: setCategories.of([...kinds].map(([line, kind]) => ({ line, kind, joins: `${kinds.get(line - 1) === kind ? ' up' : ''}${kinds.get(line + 1) === kind ? ' down' : ''}` }))) });
 
-	/* the same tree vscode-flowR's dependency view shows, with the categories that found nothing folded away last */
 	const tree = dependencyTree((answers.dependencies ?? {}) as never, {
 		ast:       normalized,
 		fileOf:    elsewhere,
@@ -3064,7 +2983,6 @@ async function analyze(): Promise<number> {
 			chip.append(tag('fix', 'offer'));
 		}
 		chip.title = `${f.rule}: what it looks for${f.quickFix.length > 0 ? ' and what its fix does' : ''}`;
-		/* a click on the rule says what it is about and shows its fix before carrying it out */
 		chip.addEventListener('click', event => {
 			event.stopPropagation();
 			const open = line.nextElementSibling?.classList.contains('lintmore') === true;
@@ -3091,7 +3009,6 @@ async function analyze(): Promise<number> {
 	return took;
 }
 
-/** whether the panel shows the slice in the context of the whole script, rather than only the lines it keeps */
 let wholeSlice = shared.wholeSlice;
 let inlineFiles = shared.inline;
 
@@ -3136,7 +3053,6 @@ document.getElementById('clearmarks')?.addEventListener('click', () => {
 });
 
 function showExample(project: readonly [string, string][], note: string): void {
-	/* the code of an example opens as tabs, its DESCRIPTION and the like wait in the tree */
 	openTabs = project.map(([name]) => name).filter(name => Analyzed.test(name));
 	openFile(Playground.MainFile, () => (scrolledTo.clear(), files.splice(0, files.length, ...project.map(([name, text]) => ({ name, state: fileState(name, text) })))));
 	showTab(false);
@@ -3339,7 +3255,6 @@ function showHints(): void {
 		const labelled = stripAnsi(labels?.get(insert) ?? '').slice(shown.length).trim();
 		const command = commandOf(insert);
 		const aliases = command?.aliases.map(alias => `:${alias}`).join(', ');
-		/* a query says what it is and how it is written, and links its page of the wiki */
 		const query = (SupportedQueries as Record<string, { title: string, syntax?: string } | undefined>)[shown.replace(/^@/, '')];
 		if(query !== undefined) {
 			return { insert, label: shown, says: [query.title, query.syntax].filter(Boolean).join(': '), docs: `${FlowrWikiBaseRef}/${encodeURIComponent(queryWikiPage(query.title).replaceAll(' ', '-'))}` };
@@ -3542,7 +3457,6 @@ document.getElementById('divider')?.addEventListener('click', () => {
 	}
 });
 
-/* the tree of files is as wide as its edge is dragged */
 draggable(document.getElementById('treegrip'), '--tree-width', () => tree.getBoundingClientRect().width,
 	(at, from, begun) => `${Math.round(between(7 * rem(), begun + at.clientX - from.clientX, 30 * rem()))}px`);
 

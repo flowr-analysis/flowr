@@ -50,9 +50,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
 .tools svg, #runrclear svg { width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-/* the tools give up their labels before they crowd the file tabs or slide under the run button */
 #more { display: none; }
-/* without room for them, the tools fold into one menu rather than into icons nobody can tell apart */
 @container pane (max-width: 52rem) {
 	.tools > :not(#more) { display: none; }
 	.tools #more { display: inline-flex; }
@@ -84,22 +82,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .tablist { display: flex; align-items: flex-end; align-self: flex-end; gap: .2rem; min-width: 0; flex: 0 1 auto; margin-bottom: -1px; }
 #files { display: flex; min-width: 0; }
 #files .tab { overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
-/* the files show as a pane of the window, drawn filled while it is open */
 #treetoggle { display: inline-flex; align-items: center; padding-inline: .45rem; color: var(--muted); }
 #treetoggle:hover, #treetoggle[aria-expanded="true"] { color: var(--fg); }
 #treetoggle svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linejoin: round; }
 #treetoggle .pane { fill: currentColor; stroke: none; opacity: 0; transition: opacity .15s; }
 #treetoggle[aria-expanded="true"] .pane { opacity: .55; }
-/* the project's files beside the code, folded away until asked for */
 .work { display: flex; flex: 1; min-height: 0; }
 .work > .code { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-/* the tree sits on the gutter's ground, so it reads as part of the editor rather than a panel beside it */
 #tree { flex: none; width: var(--tree-width, 11rem); max-width: 50%; overflow: auto; display: flex; flex-direction: column; padding: .2rem 0 .4rem; background: var(--sunk); font-size: .8rem; }
 #tree[hidden], #tree[hidden] + .treegrip { display: none; }
-/* the files slide in from the edge of the editor, quickly enough not to be waited for */
 @keyframes tree-in { from { margin-left: calc(-1 * var(--tree-width, 11rem)); } }
 @media (prefers-reduced-motion: no-preference) { #tree:not([hidden]) { animation: tree-in 10ms ease-out; } }
-/* the tree is as wide as one drags its edge */
 .treegrip { flex: none; width: 5px; margin-left: -3px; cursor: col-resize; border-right: 1px solid var(--border); touch-action: none; position: relative; z-index: 1; }
 .treegrip:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 #tree .treehead { display: flex; align-items: center; justify-content: space-between; padding: .15rem .3rem .2rem .7rem; font-size: .72rem; color: var(--muted); }
@@ -117,7 +110,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #tree .tact { visibility: hidden; flex: none; font: inherit; line-height: 1; padding: .05rem .25rem; border: 0; border-radius: .2rem; background: none; color: var(--muted); cursor: pointer; }
 #tree :is(.file, .folder):is(:hover, :focus-within) .tact { visibility: visible; }
 #tree .tact:hover { color: var(--accent); background: color-mix(in srgb, var(--fg) 8%, transparent); }
-/* the configuration is set apart from the files by a rule, the examples by their own heading */
 #tree .settings { margin-top: .4rem; padding-top: .35rem; border-top: 1px dashed var(--border); color: var(--muted); }
 #tree .example { color: var(--muted); }
 .tabs .tab {
@@ -359,7 +351,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); }
 .right { overflow: hidden; }
 .right.folded > #runr:not([hidden]) ~ #panel { display: none; }
-/* a thin status bar: what each step of the analysis took and what it built, and how long it took in all */
 #pointed {
 	display: flex; align-items: baseline; gap: .6rem; flex: none; padding: .15rem .8rem;
 	border-top: 1px solid var(--border); background: var(--panel); font-size: .7rem; color: var(--muted);
@@ -380,7 +371,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel h3 .aside.focusing { color: var(--accent); opacity: 1; text-transform: none; letter-spacing: 0; }
 #panel h3[data-fold]:focus-visible { outline: 2px solid var(--accent); outline-offset: .15rem; border-radius: .2rem; }
 #panel h3[data-fold].folded::before { transform: rotate(-90deg); }
-/* a folded section is one line, so it sits close to its neighbours */
 #panel h3[data-fold].folded { margin-bottom: 0; }
 #panel h3[data-fold].folded + .sbody + h3 { margin-top: .55rem; }
 #panel h3[data-fold]:hover { color: var(--accent); }
@@ -441,12 +431,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .toggle input { accent-color: var(--accent); margin: 0; }
 #panel h3:first-child { margin-top: 0; }
 :is(#panel, #slicewide) .card { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: .5rem; background: color-mix(in srgb, var(--panel) 62%, var(--sunk)); }
-/* the slice: the lines it keeps under their own numbers, a notebook's under their cells, the rest a gap or stepped back */
 :is(#panel, #slicewide) .slice-view { padding: 0; overflow: hidden; }
 :is(#panel, #slicewide) .slice-view > pre, :is(#panel, #slicewide) .slice-view > .hint { margin: 0; padding: .6rem .8rem; }
 :is(#panel, #slicewide) .slice-view .hint { color: var(--muted); }
 :is(#panel, #slicewide) .sbar { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; padding: .35rem .6rem; border-bottom: 1px solid var(--border); background: var(--sunk); font-size: .78rem; }
-/* a narrow panel puts the controls on a second row rather than breaking their labels */
 :is(#panel, #slicewide) .sbar > * { flex: none; white-space: nowrap; }
 :is(#panel, #slicewide) .sbar .kept { color: var(--muted); font-variant-numeric: tabular-nums; }
 :is(#panel, #slicewide) .sbar .ways { margin-left: auto; }
@@ -463,9 +451,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	font: inherit; font-size: .74rem; color: var(--muted); cursor: pointer;
 }
 #panel .sunfold:hover { color: var(--accent); }
-/* where a right click opened the slice actions, which the menu hangs from */
 .menupoint { position: fixed; width: 0; height: 0; }
-/* next to the version: the playgrounds of earlier releases */
 .versions { display: inline-flex; margin-left: .15rem; padding: .1rem; border: none; border-radius: .3rem; background: none; color: var(--muted); cursor: pointer; vertical-align: middle; }
 .versions:hover { color: var(--fg); background: var(--sunk); }
 .versions svg { width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -474,14 +460,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
 :is(#panel, #slicewide) .sadopt:hover { border-color: var(--accent); color: var(--accent); }
-/* every control over the panel and a slice stands as tall as the others */
 :is(#panel, #slicewide) :is(.ways, .sadopt, .swiden, .fix, .suggest) { box-sizing: border-box; height: 1.5rem; }
 :is(#panel, #slicewide) :is(.sadopt, .fix, .suggest) { display: inline-flex; align-items: center; gap: .25em; padding-block: 0; }
 :is(#panel, #slicewide) .swiden { width: 1.5rem; padding: 0; align-items: center; justify-content: center; }
 :is(#panel, #slicewide) .way { padding-block: 0; }
-/* a rebuilt slice: its code, under the name of each file it reaches into */
 :is(#panel, #slicewide) .slines.rebuilt .scode { margin: 0; padding: 0 .8rem; white-space: pre; font: inherit; }
-/* the slice read in a window of its own, as wide as the page allows */
 #slicewide {
 	width: min(72rem, 92vw); max-height: 90vh; padding: 1rem 1.2rem 1.2rem; border: 1px solid var(--border); border-radius: .7rem;
 	background: var(--bg); color: var(--fg); box-shadow: 0 20px 60px rgb(0 0 0 / .4);
@@ -524,8 +507,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 #panel .copy:hover { color: var(--accent); border-color: var(--accent); }
 #panel pre { margin: 0; overflow-x: auto; font-size: .82rem; }
-/* the dependency view, laid out like vscode-flowR's tree: a twistie, an icon in the category's color, the label and
-   a dimmer description, indented per level */
 #panel .deps { max-height: min(28rem, 50vh); overflow: hidden auto; overscroll-behavior: contain; font-size: .86rem; }
 #panel .drow {
 	--cat: var(--fg);
@@ -539,8 +520,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .drow .twistie { flex: none; width: 16px; height: 16px; color: var(--muted); display: inline-flex; transition: transform .12s; }
 #panel .dnode.open > .drow .twistie { transform: rotate(90deg); }
 #panel .dnode:not(.open) > .dchildren { display: none; }
-/* what folds, folds in its height rather than all at once: the overview, the boxes of the panel, the repl, and what a
-   rule says; browsers that cannot size to auto keep folding at once */
+/* lets heights animate to auto; browsers without it fold at once */
 :root { interpolate-size: allow-keywords; }
 @media (prefers-reduced-motion: no-preference) {
 	#panel .dchildren, #panel [data-fold-body], #panel .lintmore { overflow: clip; transition: height .3s ease-in-out, display .3s allow-discrete; }
@@ -560,23 +540,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .daction { display: inline-flex; padding: 1px; border: none; border-radius: 3px; background: none; color: var(--muted); cursor: pointer; }
 #panel .daction:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 12%, transparent); }
 #panel .ddesc { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: .9em; margin-left: .2rem; }
-/* what has nothing to show, and what does not relate to the selected entry, steps back as vscode's disabled foreground */
 #panel .drow.grayed, #panel .drow.grayed .dicon, #panel .drow.unrelated, #panel .drow.unrelated .dicon.colored { color: var(--muted); }
 #panel .drow.grayed, #panel .drow.unrelated { opacity: .6; }
 #panel .drow.unrelated .ddesc { opacity: .8; }
-/* this output is printed without anything asking for it */
 #panel .echo { font-style: italic; }
-/* the bar next to a line with dependencies, the gutter icon of vscode-flowR's line indicators */
 .cm-dep-gutter { min-width: 6px; }
 .cm-dep-gutter .cm-gutterElement { padding: 0 1px; }
 .cm-dep-bar { width: 3px; height: calc(100% - 4px); margin: 2px auto; background: var(--cat); border-radius: 2px; cursor: help; }
-/* bars of one color on adjacent lines run into each other */
 .cm-dep-bar.up { margin-top: 0; height: calc(100% - 2px); border-top-left-radius: 0; border-top-right-radius: 0; }
 .cm-dep-bar.down { margin-bottom: 0; height: calc(100% - 2px); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .cm-dep-bar.up.down { height: 100%; }
 .bartip { position: fixed; z-index: 50; pointer-events: none; font-family: system-ui, sans-serif; }
 .bartip > * { display: block; }
-/* where a click on a dependency entry went: framed in the category's color, as vscode-flowR flashes it */
 .cm-dep-flash {
 	background: color-mix(in srgb, var(--mark) 25%, transparent);
 	box-shadow: 0 0 0 1px var(--cat); border-radius: 2px;
@@ -638,14 +613,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #clearmarks:hover { border-color: var(--mark); color: var(--mark); }
 /* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
 #panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; row-gap: .3rem; }
-/* what a rule looks for, and what its fix would change, under the finding its name was clicked on */
 #panel .lintmore { grid-column: 1 / -1; margin: -.2rem 0 .2rem; padding: .45rem .7rem; border-radius: .4rem; background: var(--sunk); font-size: .8rem; }
 #panel .lintmore .about { margin: 0; color: var(--muted); }
 #panel .lintmore .diff { margin: .4rem 0; padding: .3rem .5rem; border-radius: .3rem; background: var(--panel); font-size: .76rem; overflow-x: auto; white-space: pre; }
 #panel .lintmore .del { color: #b42318; background: color-mix(in srgb, #b42318 9%, transparent); }
 #panel .lintmore .ins { color: #0f766e; background: color-mix(in srgb, #0f766e 9%, transparent); }
 #panel .lintmore .more { color: var(--muted); }
-/* each finding a quiet card, its edge in the color of what kind of problem it is */
 #panel .lints .lint {
 	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
 	padding: .4rem .6rem; border-radius: .4rem; cursor: pointer;
@@ -661,10 +634,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 
 #panel .says { font-size: .84rem; }
-/* the facts of the project, a name next to each */
 #panel .facts { display: grid; grid-template-columns: auto 1fr; gap: .2rem .9rem; font-size: .84rem; }
 #panel .facts .fname { color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; align-self: baseline; }
-/* a rule reads in the color of what it is about, in the panel, in the hover card, and under the code */
 :is(#panel, .cm-valuetip) .rule {
 	--hue: #d55e00;
 	position: relative;
@@ -692,7 +663,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	#panel .rule { grid-column: 1; grid-row: 1; }
 	#panel .at { grid-column: 2; grid-row: 1; }
 	#panel .says { grid-column: 1 / -1; grid-row: 2; }
-	/* the description of a dependency gives way first, as it does in a narrow vscode side bar */
 	#panel .ddesc { display: none; }
 	/* the headings keep their controls, but only the words they need for them */
 	#panel .wide, #panel h3 .aside { display: none; }

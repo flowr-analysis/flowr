@@ -27,17 +27,16 @@ export interface RemovalSliceResult {
 }
 
 type StatedConfig = { readonly ambient?: AmbientStateAccess | readonly AmbientStateAccess[], readonly sig?: FnSig };
-/** the names of the functions flowR's built-in definitions state something of */
 function builtInNames(stated: (config: StatedConfig) => boolean): ReadonlySet<string> {
 	return new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'function' && stated((d.config ?? {}) as StatedConfig) ? d.names.map(name => String(Identifier.getName(name))) : []));
 }
 const accesses = (type: AmbientStateAccessType) => (config: StatedConfig) => [config.ambient ?? []].flat().some(access => access.type === type);
 const DeviceOpeners = builtInNames(accesses(AmbientStateAccessType.OpenDevice));
 const DeviceClosers = builtInNames(accesses(AmbientStateAccessType.CloseDevice));
-/* `invisible(dev.off())` closes the device as much as `dev.off()` does: a call handing back its argument is that argument */
+/* a call handing back its argument is that argument: `invisible(dev.off())` closes the device */
 const PassingOn = builtInNames(config => ((config.sig?.[0]?.[1] ?? 0) & ArgProp.Alias) !== 0);
 
-/** the statements of the program: the children of every block, but not those of a function body, which only runs when called */
+/** the statements of the program, without function bodies, which only run when called */
 function statementsOf(ast: NormalizedAst): Map<NodeId, RNodeWithParent> {
 	const result = new Map<NodeId, RNodeWithParent>();
 	RNode.visitAst(ast.ast.files.map(f => f.root), node => {
@@ -51,7 +50,6 @@ function statementsOf(ast: NormalizedAst): Map<NodeId, RNodeWithParent> {
 	return result;
 }
 
-/** the innermost statement holding `id` */
 function statementOf(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNodeWithParent>, id: NodeId): RNodeWithParent | undefined {
 	for(let node = ast.idMap.get(id); node; node = node.info.parent === undefined ? undefined : ast.idMap.get(node.info.parent)) {
 		if(statements.has(node.info.id)) {
@@ -70,7 +68,6 @@ function within(ast: NormalizedAst, id: NodeId, ancestor: NodeId): boolean {
 	return false;
 }
 
-/** the call a statement makes, past the wrappers that only hide its value (`invisible(dev.off())`) */
 function callOf(node: RNodeWithParent | undefined): RNodeWithParent | undefined {
 	while(RFunctionCall.isNamed(node, PassingOn) && node.arguments.length === 1) {
 		node = RArgument.valueOf(node.arguments[0]);
@@ -80,10 +77,7 @@ function callOf(node: RNodeWithParent | undefined): RNodeWithParent | undefined 
 
 const isNamed = (node: RNodeWithParent | undefined, names: ReadonlySet<string>) => RFunctionCall.isNamed(callOf(node), names);
 
-/**
- * The calls between a device and its `dev.off()` around each criterion (`pdf()`, `plot()`, `dev.off()`): removing what is
- * drawn removes the device it is drawn on. Assignments in between stay to the slice, as the rest may use them.
- */
+/** the calls from a device to its `dev.off()` around each criterion, assignments in between stay as the rest may use them */
 function deviceWindows(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNodeWithParent>, ids: readonly NodeId[]): NodeId[] {
 	const found = new Set<NodeId>();
 	for(const id of ids) {
@@ -127,19 +121,14 @@ function danglingRead(info: DataflowInformation, removed: ReadonlySet<NodeId>): 
 	return undefined;
 }
 
-/**
- * What is left of the program once a removal slice took `removed` out: every node but those and the roots of the files,
- * as a root selected would keep every removed function as a stub.
- */
+/** every node left once `removed` is out, but the file roots, which would keep removed functions as stubs */
 export function keptAfterRemoval(ast: NormalizedAst, removed: ReadonlySet<NodeId>): Set<NodeId> {
 	return new Set([...ast.idMap.entries()].filter(([id, node]) => !removed.has(id) && node.info.parent !== undefined).map(([id]) => id));
 }
 
 /**
- * The removal slice of `ids`: the statements of their backward slice that nothing else in the program needs, so removing
- * them removes the criteria and everything that only exists for them while the rest keeps working. A statement the rest
- * needs even in part stays as a whole. A removed plot takes its device (`png()`, `dev.off()`) along, and an output
- * saving only removed plots (`ggsave()`) as well, as the `dependencies` of the program state them.
+ * The removal slice of `ids`: the statements of their backward slice that nothing else needs. A statement the rest
+ * needs even in part stays as a whole. Removed plots take their device and saving calls along.
  */
 export function staticRemovalSlice(
 	ctx: ReadOnlyFlowrAnalyzerContext,
@@ -166,7 +155,6 @@ export function staticRemovalSlice(
 		}
 		const candidates = [...statements.keys()].filter(id => inSlice.has(id) && !needed.has(id));
 		const chosen = new Set(candidates);
-		/* a statement inside a removed block goes with it */
 		return candidates.filter(id => {
 			for(let at = ast.idMap.get(id)?.info.parent; at !== undefined; at = ast.idMap.get(at)?.info.parent) {
 				if(chosen.has(at)) {
@@ -192,7 +180,6 @@ export function staticRemovalSlice(
 	const gone = (id: NodeId | undefined) => id !== undefined && removed.some(r => within(ast, id, r));
 	const parts = [
 		...dependencies.filter(d => gone(d.nodeId)).flatMap(d => d.parts ?? [])
-			/* a `dev.off()` another plot shares stays */
 			.filter(p => !dependencies.some(d => !gone(d.nodeId) && d.parts?.includes(p))),
 		...dependencies.filter(d => d.linkedIds?.some(gone)).map(d => d.nodeId).filter(id => id !== undefined),
 		...deviceWindows(ast, statements, [...seeds])
@@ -206,7 +193,6 @@ export function staticRemovalSlice(
 			}
 		}
 	}
-	/* everything below a removed statement, the body of a removed function included, under every id it is known by */
 	const below = () => new Set([...ast.idMap.entries()].filter(([, node]) => removed.some(r => within(ast, node.info.id, r))).map(([id]) => id));
 	let result = below();
 	/* a slice keeps a value, not every name the code it keeps reads: what is left must not read what is gone */

@@ -68,14 +68,14 @@ describe('Slice query flags', () => {
 		assert.include(offered('(2@x)fiB'), ' ', 'the code may follow any flag');
 	});
 
-	test('the banner flag is only offered together with I', () => {
+	test('the banner flag is only offered together with an inlining', () => {
 		assert.deepStrictEqual(offered('(2@x)I'), ['f', 'r', 'c', 'B', ' ']);
+		assert.deepStrictEqual(offered('(2@x)i'), ['f', 'r', 'c', 'B', ' ']);
 		assert.deepStrictEqual(offered('(2@x)IB'), ['f', 'r', 'c', ' ']);
 	});
 
 	test('inlining sources and inlining all files are never offered together', () => {
 		assert.notInclude(offered('(2@x)i'), 'I', 'iI makes no sense');
-		assert.notInclude(offered('(2@x)i'), 'B', 'iB makes no sense either, B needs I');
 		assert.notInclude(offered('(2@x)I'), 'i');
 	});
 
@@ -107,7 +107,7 @@ describe('Slice query flags', () => {
 describe('Dice query flags', () => {
 	test('dice offers the shared flags, but not the direction', () => {
 		assert.deepStrictEqual(diceOffered('(1@x->2@y)'), ['i', 'c', 'I', ' '], 'a dice fixes both directions, so no f');
-		assert.deepStrictEqual(diceOffered('(1@x->2@y)i'), ['c', ' ']);
+		assert.deepStrictEqual(diceOffered('(1@x->2@y)i'), ['c', 'B', ' ']);
 		assert.deepStrictEqual(diceOffered('(1@x->2@y)I'), ['c', 'B', ' ']);
 	});
 

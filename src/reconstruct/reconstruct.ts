@@ -40,6 +40,16 @@ import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
  * @see {@link Selection#inlineFull}
  */
 export type InlineFull = boolean | 'banner';
+/**
+ * Whether to splice resolvable `source()` calls: `true` splices them, `'banner'` additionally marks where each
+ * spliced file begins and ends with a banner comment naming it.
+ */
+export type InlineSources = boolean | 'banner';
+
+/** The banner comment that names a file where an inlining puts it, or where it ends (`end`). */
+export function fileBanner(path: string | undefined, end = false): string {
+	return `# ---- ${end ? 'end of ' : ''}${path ?? '<inline>'} ----`;
+}
 
 interface Selection {
 	/** The set of node ids to be reconstructed. */
@@ -50,7 +60,7 @@ interface Selection {
 	 * If set, selected `source()` calls are replaced by the (spliced) reconstruction of the sourced file, producing a
 	 *  single self-contained reconstruction. Requires {@link Selection#sourceMap}; overrides {@link Selection#reconstructFiles}.
 	 */
-	inlineSources?:    boolean
+	inlineSources?:    InlineSources
 	/**
 	 * If set, every file is reconstructed into a single self-contained text, in flowR's loading order; files sourced
 	 *  explicitly are spliced into their `source()` call instead of repeated at the top level (`'banner'` names each).
@@ -418,7 +428,8 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 			visited:     visited.union(new Set([config.currentFile ?? 0, targetFile])),
 			currentFile: targetFile
 		};
-		return stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
+		const spliced = stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
+		return config.banner ? [{ line: fileBanner(path), indent: 0 }, ...spliced, { line: fileBanner(path, true), indent: 0 }] : spliced;
 	}
 	// a selected source() that we could not link to a file (dynamic/missing path): keep it verbatim
 	if(RFunctionCall.isNamed(call, 'source')) {
@@ -485,6 +496,8 @@ interface ReconstructionConfiguration<Info = ParentInformation> extends Mergeabl
 	autoSelectIf:   AutoSelectPredicate
 	/** @see {@link Selection#inlineSources} */
 	inlineSources?: boolean
+	/** whether each spliced file is marked by banner comments, see {@link InlineSources} */
+	banner?:        boolean
 	/** @see {@link Selection#sourceMap} */
 	sourceMap?:     ReadonlyMap<NodeId, number>
 	/** the set of file indices currently being inlined on the active path (used to break cyclic `source()` inlining) */
@@ -599,7 +612,9 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 		const warnings: InlineWarning[] = [];
 		const sourceMap = selection.sourceMap ?? new Map<NodeId, number>();
 		const splicedIn = new Set<number>(sourceMap.values());
-		const indices = selection.inlineFull ? ast.ast.files.map((_, i) => i).filter(i => !splicedIn.has(i)) : [0];
+		const roots = ast.ast.files.map((_, i) => i).filter(i => !splicedIn.has(i));
+		/* the program starts in the first file no other one sources, wherever flowR happened to load it */
+		const indices = selection.inlineFull ? roots : [roots[0] ?? 0];
 		const parts: string[] = [];
 		for(const i of indices) {
 			const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
@@ -607,13 +622,14 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 				autoSelectIf:  autoSelectIfWrapper,
 				fullAst:       ast,
 				inlineSources: true,
+				banner:        selection.inlineFull === 'banner' || selection.inlineSources === 'banner',
 				sourceMap,
 				visited:       new Set<number>([i]),
 				currentFile:   i,
 				warnings
 			}));
 			if(code.length > 0) {
-				parts.push(selection.inlineFull === 'banner' ? `# ---- ${ast.ast.files[i].filePath ?? '<inline>'} ----\n${code}` : code);
+				parts.push(selection.inlineFull === 'banner' ? `${fileBanner(ast.ast.files[i].filePath)}\n${code}` : code);
 			}
 		}
 		return {

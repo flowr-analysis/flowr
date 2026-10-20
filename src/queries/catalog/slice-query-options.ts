@@ -9,7 +9,7 @@ import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { CriteriaParseError, SlicingCriterion } from '../../slicing/criterion/parse';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { type InlineFull, type ReconstructionResult, reconstructToCode } from '../../reconstruct/reconstruct';
+import { type InlineFull, type InlineSources, type ReconstructionResult, reconstructToCode } from '../../reconstruct/reconstruct';
 import { buildSourceInlineMap } from '../../reconstruct/inline/source-inline-map';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../reconstruct/auto-select/magic-comments';
@@ -31,7 +31,7 @@ export interface SliceQueryOptions {
 	 * Inline resolvable `source()` calls into the reconstruction so the result is a single self-contained R text.
 	 * Cyclic and unresolvable `source()` calls are kept verbatim and reported via `reconstruct.inlineWarnings`.
 	 */
-	readonly inlineSources?:    boolean
+	readonly inlineSources?:    InlineSources
 	/**
 	 * Inline _every_ file into the reconstruction, in flowR's loading order (which respects implicit sources),
 	 * independent of whether it is sourced explicitly; `'banner'` additionally precedes each file with a banner
@@ -58,7 +58,7 @@ export const SliceQueryOptionsSchema = {
 	name:             Joi.string().min(1).optional().description('What to call this slice: the results are keyed by it instead of by the serialized query.'),
 	noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 	noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
-	inlineSources:    Joi.boolean().optional().description('Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text.'),
+	inlineSources:    Joi.alternatives(Joi.boolean(), Joi.string().valid('banner')).optional().description('Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text; "banner" marks where each spliced file begins and ends with a banner comment naming it.'),
 	inlineFull:       Joi.alternatives(Joi.boolean(), Joi.string().valid('banner')).optional().description('Inline all files into the reconstruction, in flowR\'s loading order and independent of whether they are sourced explicitly; "banner" precedes every file with a banner comment naming it.'),
 	includeCallees:   Joi.boolean().optional().description('If set (and slicing backward), continue the slice past a function-definition boundary, also including the definition\'s binding and call sites.'),
 	perFile:          Joi.boolean().optional().description('Reconstruct the slice as the project\'s files, reported in `reconstruct.files` in loading order with their paths, instead of only the entry file.'),

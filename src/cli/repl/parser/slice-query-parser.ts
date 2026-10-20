@@ -36,8 +36,8 @@ export interface SliceFlag {
 	readonly flag:       string
 	/** what the flag does, kept to a few words as it is offered as a completion */
 	readonly describe:   string
-	/** the flag this one only makes sense with, if any */
-	readonly requires?:  string
+	/** the flags this one only makes sense with one of, if any */
+	readonly requires?:  readonly string[]
 	/** the flags this one must not be combined with */
 	readonly conflicts?: readonly string[]
 }
@@ -47,7 +47,7 @@ export const SharedSliceFlags = [
 	{ flag: 'i', describe: 'inline sources', conflicts: ['I'] },
 	{ flag: 'c', describe: 'include callees' },
 	{ flag: 'I', describe: 'inline all files', conflicts: ['i'] },
-	{ flag: 'B', describe: 'banners', requires: 'I' }
+	{ flag: 'B', describe: 'banners', requires: ['i', 'I'] }
 ] as const satisfies readonly SliceFlag[];
 
 /** the flags of the `static-slice` query: a dice fixes both directions, so only it can be told to slice forward */
@@ -72,15 +72,15 @@ export function sliceRemovalParser(argument: string): boolean {
 export function sliceQueryOptionsParser(argument: string): SliceQueryOptions {
 	const flags = sliceFlagSuffix(argument);
 	return {
-		...(flags.includes('i') ? { inlineSources: true } : {}),
+		...(flags.includes('i') ? { inlineSources: flags.includes('B') ? 'banner' as const : true } : {}),
 		...(flags.includes('I') ? { inlineFull: flags.includes('B') ? 'banner' as const : true } : {}),
 		...(flags.includes('c') ? { includeCallees: true } : {})
 	};
 }
 
-/** the given flags and what they do, e.g. for a help text: `f (slice forward), B (banners, needs I)` */
+/** the given flags and what they do, e.g. for a help text: `f (slice forward), B (banners, needs i or I)` */
 export function describeSliceFlags(flags: readonly SliceFlag[]): string {
-	return flags.map(f => `${f.flag} (${f.describe}${f.requires ? `, needs ${f.requires}` : ''})`).join(', ');
+	return flags.map(f => `${f.flag} (${f.describe}${f.requires ? `, needs ${f.requires.join(' or ')}` : ''})`).join(', ');
 }
 
 function warn(output: ReplOutput, message: string): void {
@@ -146,7 +146,7 @@ export function sliceFlagCompletions(arg: string, flags: readonly SliceFlag[]): 
 	const has = (flag: string) => split.flags.includes(flag);
 	const offered = flags.filter(f =>
 		!has(f.flag)
-		&& (f.requires === undefined || has(f.requires))
+		&& (f.requires === undefined || f.requires.some(has))
 		&& !f.conflicts?.some(has)
 	);
 	return {

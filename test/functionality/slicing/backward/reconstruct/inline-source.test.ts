@@ -198,4 +198,38 @@ describe('inline source()', { concurrent: false }, () => {
 		expect(code).not.toContain('source(');
 		expect(entry.reconstruct.inlineWarnings).toEqual([]);
 	});
+	test('the program starts in the file no other one sources, even when a sourced one is loaded first', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addFile(new FlowrInlineTextFile('helpers.R', 'twice <- function(x) x * 2'), new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(twice(2))'));
+		analyzer.addRequest({ request: 'file', content: 'helpers.R' }, { request: 'file', content: 'main.R' });
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
+	});
+	test('banners mark where a spliced file begins and ends', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addRequest('source("a")\ncat(N)');
+		analyzer.addFile(new FlowrInlineTextFile('a', 'N <- 9'));
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@N'], inlineSources: 'banner' }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('# ---- a ----\nN <- 9\n# ---- end of a ----\nN');
+	});
+	test('a sourced file the project also analyzes on its own is still inlined', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addFile(new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(twice(2))'), new FlowrInlineTextFile('helpers.R', 'twice <- function(x) x * 2'));
+		analyzer.addRequest({ request: 'file', content: 'main.R' }, { request: 'file', content: 'helpers.R' });
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
+		expect(entry.reconstruct.inlineWarnings).toEqual([]);
+	});
 });

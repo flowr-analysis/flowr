@@ -12,11 +12,14 @@ import { RBinaryOp } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-
 import { RPipe } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { RExpressionList } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { SourceRange } from '../../src/util/range';
+import { el } from '../page-lib/dom';
+
+const items = (n: number, what = 'item'): string => `${n} ${what}${n === 1 ? '' : 's'}`;
 
 export type IconName = 'library' | 'cloud-download' | 'file-code' | 'file-text' | 'filter' | 'search' | 'beaker' | 'graph'
 	| 'new-file' | 'folder' | 'link' | 'circle-small-filled' | 'circle-slash' | 'chevron' | 'arrow-up' | 'arrow-down' | 'terminal' | 'trash';
 
-export interface CategoryInfo {
+interface CategoryInfo {
 	readonly name:             string
 	readonly verb:             string
 	readonly icon:             IconName
@@ -26,7 +29,7 @@ export interface CategoryInfo {
 }
 
 /** in the order of an analysis: set up, load data, transform it, analyze, check, then communicate the results */
-export const DependencyCategories: Readonly<Record<string, CategoryInfo>> = {
+const DependencyCategories: Readonly<Record<string, CategoryInfo>> = {
 	library:    { name: 'Libraries', verb: 'loads the library', icon: 'library', color: '#4CAF50' },
 	remote:     { name: 'Remote Installs', verb: 'installs', icon: 'cloud-download', color: '#26A69A' },
 	source:     { name: 'Sourced Scripts', verb: 'sources the script', icon: 'file-code', color: '#9CCC65' },
@@ -41,12 +44,6 @@ export const DependencyCategories: Readonly<Record<string, CategoryInfo>> = {
 /** a category flowR may add later still shows, after the known ones and without a color of its own */
 export function categoryInfo(kind: string): CategoryInfo {
 	return DependencyCategories[kind] ?? { name: kind, verb: 'uses', icon: 'circle-small-filled', color: 'var(--muted)' };
-}
-
-/** the known categories first, in their order, then whatever else the query answered with */
-export function orderedKinds(kinds: readonly string[]): string[] {
-	const known = Object.keys(DependencyCategories);
-	return [...known, ...kinds.filter(k => !known.includes(k))];
 }
 
 /** the category whose color a line shows: the one furthest along the analysis (the plot, not the library it uses) */
@@ -79,8 +76,7 @@ const Paths: Readonly<Record<IconName, string>> = {
 
 /** the icon as inline svg in `currentColor`, which is what the category color is set on */
 export function icon(name: IconName, cls = 'dicon'): HTMLElement {
-	const at = document.createElement('span');
-	at.className = cls;
+	const at = el('span', cls);
 	at.setAttribute('aria-hidden', 'true');
 	const filled = name === 'circle-small-filled';
 	at.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="${filled ? 'currentColor' : 'none'}" stroke="${filled ? 'none' : 'currentColor'}"`
@@ -169,7 +165,7 @@ function describePlots(visualize: readonly DependencyInfo[], ast: NormalizedAst)
 }
 
 /** a function name as R writes it: `purrr::map`, not `map,purrr,false` */
-export function renderFunctionName(fn: Identifier | undefined): string {
+function renderFunctionName(fn: Identifier | undefined): string {
 	try {
 		return Identifier.toString(fn) ?? String(fn);
 	} catch{
@@ -201,14 +197,18 @@ const ConsoleStreams: ReadonlySet<string> = new Set(['stdout', 'stderr']);
 
 /** builds the view from one answer of the dependencies query */
 export function dependencyTree(answer: Readonly<Record<string, readonly DependencyInfo[] | unknown>>, ctx: ViewContext): { roots: DepNode[], empty: DepNode[] } {
-	const kinds = orderedKinds(Object.keys(answer).filter(k => !k.startsWith('.') && Array.isArray(answer[k])));
+	const known = Object.keys(DependencyCategories);
+	/* the known categories first, in their order, then whatever else the query answered with */
+	const kinds = [...known, ...Object.keys(answer).filter(k => !k.startsWith('.') && Array.isArray(answer[k]) && !known.includes(k))];
 	const plots = describePlots((answer.visualize ?? []) as DependencyInfo[], ctx.ast);
 	const ids = ctx.ast.idMap;
 	const locOf = (id: NodeId | undefined) => id === undefined ? undefined : ids.get(id)?.location;
-	const byLocation = (a: DependencyInfo, b: DependencyInfo): number => {
-		const la = locOf(a.nodeId), lb = locOf(b.nodeId);
+	const byLocation = (a: NodeId | undefined, b: NodeId | undefined): number => {
+		const la = locOf(a), lb = locOf(b);
 		return la && lb ? la[0] - lb[0] || la[1] - lb[1] : la ? -1 : lb ? 1 : 0;
 	};
+	const groupNode = (key: string, kind: string, label: string, tooltip: string, icon: IconName, children: DepNode[]): DepNode =>
+		({ key, kind, label, description: items(allNodes(children).length), tooltip, icon, colored: true, root: false, children });
 	const guardedName = (e: DependencyInfo): string => {
 		const plot = plots.get(e);
 		if(plot) {
@@ -252,17 +252,14 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 		const known = info.value !== undefined && info.value !== Unknown;
 		const folder = known && typeof info.value === 'string' ? shortenPath(info.value).folder : undefined;
 		const pkg = known ? undefined : packageOf(info);
-		const linked = info.linkedIds?.length ? `, linked to ${info.linkedIds.length} id${info.linkedIds.length === 1 ? '' : 's'}` : '';
+		const linked = info.linkedIds?.length ? `, linked to ${items(info.linkedIds.length, 'id')}` : '';
 		const span = RNode.span(node) ?? loc;
 		let children: DepNode[] = [];
 		if(!link && cat.useReverseLinks) {
 			const dependents = all.filter(i => i !== info && i.linkedIds && info.nodeId !== undefined && i.linkedIds.includes(info.nodeId));
 			children = grouped(kind, dependents, all);
 		} else if(!link && info.linkedIds) {
-			children = [...info.linkedIds].sort((a, b) => {
-				const la = locOf(a), lb = locOf(b);
-				return la && lb ? la[0] - lb[0] || la[1] - lb[1] : 0;
-			}).map(i => {
+			children = [...info.linkedIds].sort(byLocation).map(i => {
 				const at = locOf(i);
 				const tok = at && ctx.fileOf(ids.get(i)) === undefined ? ctx.textAt(at) : ids.get(i)?.lexeme;
 				return tok
@@ -311,47 +308,27 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 			const file = ctx.fileOf(e.nodeId === undefined ? undefined : ids.get(e.nodeId));
 			return { ...entry(kind, all, e, printed(e)), description: `${e.implicit ? 'auto-printed ' : ''}in ${file ? `${file} ` : ''}(L. ${locOf(e.nodeId)?.[0] ?? '?'})` };
 		});
-		return {
-			key:         `console:${stream}${children.map(c => c.key).join('-')}`,
-			kind,
-			label:       stream === 'stderr' ? 'Console (stderr)' : 'Console output',
-			description: `${allNodes(children).length} item${allNodes(children).length === 1 ? '' : 's'}`,
-			tooltip:     `what the script prints to ${stream}`,
-			icon:        'terminal' as const,
-			colored:     true,
-			root:        false,
-			children
-		};
+		return groupNode(`console:${stream}${children.map(c => c.key).join('-')}`, kind, stream === 'stderr' ? 'Console (stderr)' : 'Console output', `what the script prints to ${stream}`, 'terminal', children);
 	};
 
 	const grouped = (kind: string, shown: readonly DependencyInfo[], all: readonly DependencyInfo[]): DepNode[] => {
 		const groups = new Map<string, DependencyInfo[]>();
-		for(const e of shown.filter(i => i.nodeId !== undefined).sort(byLocation)) {
+		for(const e of shown.filter(i => i.nodeId !== undefined).sort((a, b) => byLocation(a.nodeId, b.nodeId))) {
 			const name = guardedName(e);
 			const list = groups.get(name) ?? [];
 			list.push(e);
 			groups.set(name, list);
 		}
-		return [...groups.entries()].map(([name, group]) => {
+		return [...groups.entries()].map(([name, uses]) => {
 			if(kind === 'write' && ConsoleStreams.has(name)) {
-				return toConsole(group, kind, all, name);
+				return toConsole(uses, kind, all, name);
 			}
-			if(group.length === 1) {
-				return entry(kind, all, group[0], withDataFlow(kind, group[0], displayLabel(group[0], name)));
+			if(uses.length === 1) {
+				return entry(kind, all, uses[0], withDataFlow(kind, uses[0], displayLabel(uses[0], name)));
 			}
-			const byValue = group[0].value !== undefined && group[0].value !== Unknown && !plots.has(group[0]);
-			const children = viaNested(group, e => entry(kind, all, e, withDataFlow(kind, e, byValue ? usageName(e) : guardedName(e))));
-			return {
-				key:         `${name}${children.map(c => c.key).join('-')}`,
-				kind,
-				label:       displayLabel(group[0], name),
-				description: `${allNodes(children).length} items`,
-				tooltip:     name,
-				icon:        'folder' as const,
-				colored:     true,
-				root:        false,
-				children
-			};
+			const byValue = uses[0].value !== undefined && uses[0].value !== Unknown && !plots.has(uses[0]);
+			const children = viaNested(uses, e => entry(kind, all, e, withDataFlow(kind, e, byValue ? usageName(e) : guardedName(e))));
+			return groupNode(`${name}${children.map(c => c.key).join('-')}`, kind, displayLabel(uses[0], name), name, 'folder', children);
 		});
 	};
 
@@ -363,7 +340,7 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 			key:         `cat:${kind}`,
 			kind,
 			label:       cat.name,
-			description: `${children.length} item${children.length === 1 ? '' : 's'}`,
+			description: items(children.length),
 			tooltip:     cat.name,
 			icon:        cat.icon,
 			colored:     children.length > 0,

@@ -45,7 +45,7 @@ import { cfgToMermaid } from '../../src/util/mermaid/cfg';
 import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
 import treeSitterWasm from '../../node_modules/web-tree-sitter/tree-sitter.wasm';
 import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
-import { blank, el } from '../page-lib/dom';
+import { blank, button, el } from '../page-lib/dom';
 import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
 import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
@@ -65,13 +65,16 @@ const Sample = (document.getElementById('sample')?.textContent ?? '').trim();
 
 const panel = document.getElementById('panel') as HTMLElement;
 
-/** how long the last analysis took, next to what it found */
-function showTook(text: string): void {
-	const at = document.getElementById('took');
+const textInto = (id: string) => (text: string): void => {
+	const at = document.getElementById(id);
 	if(at !== null) {
 		at.textContent = text;
 	}
-}
+};
+/** how long the last analysis took, next to what it found */
+const showTook = textInto('took');
+/** what the tools bar says about the link, next to the button that copies it */
+const showShared = textInto('sharenote');
 
 const setJumpable = StateEffect.define<{ readonly from: number, readonly to: number } | undefined>();
 const jumpableMark = marksFrom(setJumpable, at => at === undefined ? Decoration.none : Decoration.set([Decoration.mark({ class: 'cm-jumpable' }).range(at.from, at.to)]));
@@ -159,27 +162,14 @@ const linkMarks = marksFrom(setLinked, (value, tr) => {
 });
 
 /** lights up the lines a panel row stands for, and the row itself, while the pointer rests on it */
-function linkRow(cells: readonly HTMLElement[], lines: readonly (number | undefined)[]): readonly HTMLElement[] {
+function linkRow(row: HTMLElement, lines: readonly (number | undefined)[]): HTMLElement {
 	const at = lines.filter((l): l is number => l !== undefined);
-	if(at.length === 0) {
-		return cells;
+	if(at.length > 0) {
+		row.classList.add('linked');
+		row.addEventListener('mouseenter', () => (row.classList.add('hot'), editor.dispatch({ effects: setLinked.of(at) })));
+		row.addEventListener('mouseleave', () => (row.classList.remove('hot'), editor.dispatch({ effects: setLinked.of(undefined) })));
 	}
-	for(const cell of cells) {
-		cell.classList.add('linked');
-		cell.addEventListener('mouseenter', () => {
-			for(const other of cells) {
-				other.classList.add('hot');
-			}
-			editor.dispatch({ effects: setLinked.of(at) });
-		});
-		cell.addEventListener('mouseleave', () => {
-			for(const other of cells) {
-				other.classList.remove('hot');
-			}
-			editor.dispatch({ effects: setLinked.of(undefined) });
-		});
-	}
-	return cells;
+	return row;
 }
 
 const lintMarks = marksFrom(setLints, value =>
@@ -275,7 +265,7 @@ const highlight = HighlightStyle.define([
 	{ tag: tags.strong, fontWeight: '700' },
 	{ tag: tags.emphasis, fontStyle: 'italic' },
 	{ tag: tags.link, color: 'var(--accent)', textDecoration: 'underline' },
-	{ tag: tags.monospace, color: '#0f766e', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
+	{ tag: tags.monospace, color: '#0f766e', fontFamily: 'var(--mono)' },
 	{ tag: tags.meta, color: 'var(--muted)' }
 ]);
 
@@ -488,7 +478,7 @@ function ownerOf(name: string, resolved: string | undefined): string | undefined
  * it, and where it is defined. Parsed from the block the build put into the page, on first use.
  */
 let signatures: Map<string, string[]> | undefined;
-interface Signature { call: string, props: string, where: string, source?: string, docs?: string }
+interface Signature { call: string, props: string, where: string, source?: string, docs?: string, name?: string }
 function signatureOf(name: string, pkg?: string): Signature | undefined {
 	if(signatures === undefined) {
 		signatures = new Map();
@@ -578,39 +568,16 @@ function packageFacts(info: PackageInfo): string[] {
 	].filter((fact): fact is string => fact !== undefined);
 }
 
-/** the name at the version it was read at, which heads both the card and the hover */
-function packageHead(info: PackageInfo): string {
-	return info.version === undefined ? info.name : `${info.name} ${info.version}`;
-}
-
 /** the hover card of a package: its version, what came with it, and what the linter said here */
 function packageTip(info: PackageInfo, complaints: readonly { rule: string, message: string }[]): HTMLElement {
-	const dom = el('div', 'cm-valuetip');
-	const head = el('div', 'tcall', packageHead(info));
-	dom.append(head);
-	const about = el('div', 'tabout', packageFacts(info).join(' · '));
-	dom.append(about, tipLinks([['in the signature database', `../sigdb/?q=${encodeURIComponent(info.name)}`]]));
-	for(const found of complaints) {
-		dom.append(complaint(found, 'tlint'));
-	}
-	return dom;
-}
-
-function tipLinks(links: readonly (readonly [string, string])[]): HTMLElement {
-	const row = el('div', 'tlinks');
-	for(const [text, href] of links) {
-		row.append(link(text, href, 'tlink'));
-	}
-	return row;
+	const head = info.version === undefined ? info.name : `${info.name} ${info.version}`;
+	return tip({ call: head, props: '', where: packageFacts(info).join(' · '), name: info.name }, undefined, complaints);
 }
 
 /** the hover card: what the database knows about the name, then what flowR made of this script */
-function tip(known: ReturnType<typeof signatureOf>, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
+function tip(known: Signature | undefined, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
 	const dom = el('div', 'cm-valuetip');
-	const line = (text: string, cls: string): void => {
-		const at = el('div', cls, text);
-		dom.append(at);
-	};
+	const line = (text: string, cls: string): void => dom.append(el('div', cls, text));
 	if(known !== undefined) {
 		line(known.call, 'tcall');
 		const about = [known.props.split(' ').filter(p => p.length > 0).map(p => p.replace(/-/g, ' ')).join(' · '), known.where]
@@ -626,11 +593,16 @@ function tip(known: ReturnType<typeof signatureOf>, said: string | undefined, co
 		dom.append(complaint(found, 'tlint'));
 	}
 	if(known !== undefined) {
-		dom.append(tipLinks([
-			...known.source === undefined ? [] : [['source', known.source] as const],
-			...known.docs === undefined ? [] : [['documentation', known.docs] as const],
-			['in the signature database', `../sigdb/?q=${encodeURIComponent(known.call.split('(')[0].split('::').pop() ?? known.call)}`]
-		]));
+		const row = el('div', 'tlinks');
+		for(const [text, href] of [
+			['source', known.source], ['documentation', known.docs],
+			['in the signature database', `../sigdb/?q=${encodeURIComponent(known.name ?? known.call.split('(')[0].split('::').pop() ?? known.call)}`]
+		] as const) {
+			if(href !== undefined) {
+				row.append(link(text, href, 'tlink'));
+			}
+		}
+		dom.append(row);
 	}
 	return dom;
 }
@@ -825,12 +797,7 @@ const configTips = hoverTooltip((view, pos) => {
 		above:  true,
 		create: () => {
 			const dom = el('div', 'cm-valuetip');
-			const head = el('div', 'tcall', `${key.path.join('.')}${info.t === undefined ? '' : `: ${info.t}`}`);
-			dom.append(head);
-			if(said.length > 0) {
-				const rest = el('div', 'tabout', said);
-				dom.append(rest);
-			}
+			dom.append(el('div', 'tcall', `${key.path.join('.')}${info.t === undefined ? '' : `: ${info.t}`}`), ...said.length > 0 ? [el('div', 'tabout', said)] : []);
 			return { dom };
 		}
 	};
@@ -885,7 +852,6 @@ const shared = (() => {
 		repl:       sized(repl, 'px'),
 		/* what the link points at, as `12`, `12-15`, `12@sum`, `12:5`, `lint:<rule>[@<line>]`, or a box */
 		marks:      Playground.Mark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
-		/* the rest of the script steps back for whoever opens the link, just as it did for whoever sent it */
 		/* a page opened without a link steps back what the slice leaves out; a link keeps the view it was sent with */
 		dim:        params.size === 0 || view.dim,
 		/* the repl and the whole of a slice are as much a part of how the page was left as the panes are */
@@ -927,14 +893,6 @@ function depsOver(from: number, to: number): Node[] {
 	return shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to).map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
 }
 
-/** what the tools bar says about the link, next to the button that copies it */
-function showShared(text: string): void {
-	const at = document.getElementById('sharenote');
-	if(at !== null) {
-		at.textContent = text;
-	}
-}
-
 let shareTimer = 0;
 
 /**
@@ -967,7 +925,7 @@ function shareFields(): [string, string][] {
 	}
 	const pinnedAt = files.flatMap((file, at) => {
 		const found: string[] = [];
-		(at === active ? editor.state : file.state).field(pins, false)?.between(0, Number.MAX_SAFE_INTEGER, (from, to) => void found.push(`${at}:${from}-${to}`));
+		stateOf(at).field(pins, false)?.between(0, Number.MAX_SAFE_INTEGER, (from, to) => void found.push(`${at}:${from}-${to}`));
 		return found;
 	});
 	if(pinnedAt.length > 0) {
@@ -1079,14 +1037,11 @@ function showConfigState(text: string, problems: readonly ConfigProblem[]): void
 		? `${problems.length === 1 ? 'one problem' : `${problems.length} problems`}, flowR keeps analyzing with the last valid configuration`
 		: text === Defaults ? 'flowR\'s defaults, with the lax parser' : 'edited, flowR analyzes with this';
 	configIssues.replaceChildren(...problems.map(problem => {
-		const row = el('button', undefined, ` ${problem.message}`);
-		row.type = 'button';
-		row.title = 'jump to it';
-		row.prepend(el('span', 'where', `line ${config.state.doc.lineAt(problem.from).number}`));
-		row.addEventListener('click', () => {
+		const row = button(undefined, ` ${problem.message}`, 'jump to it', () => {
 			config.dispatch({ selection: { anchor: problem.from, head: problem.to }, scrollIntoView: true });
 			config.focus();
 		});
+		row.prepend(el('span', 'where', `line ${config.state.doc.lineAt(problem.from).number}`));
 		return row;
 	}));
 	configIssues.hidden = problems.length === 0;
@@ -1158,7 +1113,7 @@ let intersect = false, negative = false, showWide = false;
 
 function pinnedCriteria(): string[] {
 	return files.flatMap((file, at) => {
-		const state = at === active ? editor.state : file.state;
+		const state = stateOf(at);
 		const found: string[] = [];
 		state.field(pins, false)?.between(0, state.doc.length, from => {
 			const line = state.doc.lineAt(from);
@@ -1241,7 +1196,7 @@ const editorExtensions = [
 ];
 
 const fileKind = new Compartment();
-const kindOf = (name: string) => [languageOf(name), notebookCells(name, runCell)];
+const kindOf = (name: string) => [languageOf(name), notebookCells(name, runCell, openMenu)];
 const fileState = (name: string, text: string) => EditorState.create({ doc: text, extensions: [editorExtensions, fileKind.of(kindOf(name))] });
 /** one editor state per file, the editor holds the live one at {@link active} */
 const files = [...shared.others.slice(0, shared.position), [shared.name, shared.code ?? Sample], ...shared.others.slice(shared.position)].map(([name, text]) => ({ name, state: fileState(name, text) }));
@@ -1263,7 +1218,8 @@ editor.contentDOM.addEventListener('contextmenu', event => {
 	openMenu(menuPoint, sliceMenu());
 });
 editor.contentDOM.addEventListener('mousedown', () => focusedKey === undefined || void focusRelated(undefined));
-const textOf = (at: number): string => (at === active ? editor.state : files[at].state).doc.toString();
+const stateOf = (at: number): EditorState => at === active ? editor.state : files[at].state;
+const textOf = (at: number): string => stateOf(at).doc.toString();
 const projectFiles = () => files.map((f, at) => [f.name, textOf(at)] as const);
 
 /** how far down each file was scrolled when it was left, so going back to it does not start at its top */
@@ -1399,13 +1355,6 @@ function nameAccepted(name: string, except?: number): boolean {
 	return problem === undefined;
 }
 
-function roleButton(className: string | undefined, text: string, role: string): HTMLButtonElement {
-	const button = el('button', className, text);
-	button.type = 'button';
-	button.setAttribute('role', role);
-	return button;
-}
-
 function picker(folder: boolean): HTMLInputElement {
 	const input = Object.assign(document.createElement('input'), { type: 'file', multiple: true, webkitdirectory: folder, accept: '.R,.r,.Rmd,.Rmarkdown,.qmd,.ipynb,.zip' });
 	input.addEventListener('change', () => {
@@ -1428,10 +1377,9 @@ function showFiles(): void {
 	fileBar.replaceChildren(...openTabs.map(name => {
 		const at = files.findIndex(f => f.name === name);
 		const open = !onConfig && at === active;
-		const tab = roleButton('tab file', name.split('/').at(-1) ?? name, 'tab');
+		const tab = button('tab file', name.split('/').at(-1) ?? name, open ? `${name}, right-click for more` : `open ${name}`, () => open || (openFile(at), showTab(false)));
+		tab.setAttribute('role', 'tab');
 		tab.setAttribute('aria-selected', String(open));
-		tab.title = open ? `${name}, right-click for more` : `open ${name}`;
-		tab.addEventListener('click', () => open || (openFile(at), showTab(false)));
 		tab.addEventListener('contextmenu', event => (event.preventDefault(), openMenu(tab, fileMenu(at))));
 		/* renaming is what one does to an open file, so it waits on the tab under the pointer */
 		const pen = el('span', 'pen', '\u270E');
@@ -1520,11 +1468,7 @@ function treeRow(kind: string, text: string, depth: number, open = false, action
 	row.addEventListener('keydown', event => event.key === 'Enter' && row.click());
 	row.append(el('span', 'tname', text));
 	for(const [label, title, act] of actions) {
-		const button = el('button', 'tact', label);
-		button.type = 'button';
-		button.title = title;
-		button.addEventListener('click', event => (event.stopPropagation(), act()));
-		row.append(button);
+		row.append(button('tact', label, title, event => (event.stopPropagation(), act())));
 	}
 	return row;
 }
@@ -1590,15 +1534,11 @@ function openMenu(anchor: HTMLElement, entries: readonly MenuEntry[]): void {
 		if(typeof entry === 'string') {
 			return entry === '' ? document.createElement('hr') : el('div', 'heading', entry);
 		}
-		const item = roleButton(undefined, entry.label, entry.checked === undefined ? 'menuitem' : 'menuitemradio');
-		item.title = entry.title ?? '';
+		const item = button(undefined, entry.label, entry.title ?? '', () => (closeMenu(), entry.run()));
+		item.setAttribute('role', entry.checked === undefined ? 'menuitem' : 'menuitemradio');
 		if(entry.checked !== undefined) {
 			item.setAttribute('aria-checked', String(entry.checked));
 		}
-		item.addEventListener('click', () => {
-			closeMenu();
-			entry.run();
-		});
 		return item;
 	}));
 	menuAnchor = anchor;
@@ -1773,6 +1713,7 @@ let fadeTimer = 0;
 /** puts every mark the link carries back on the code, and on the rows and boxes that stand for one */
 function showMarks(): void {
 	const ranges = mergedRanges(marks.flatMap(markRanges));
+	const clear = document.getElementById('clearmarks');
 	let marked = ranges.length > 0;
 	const fresh = unseenMarks;
 	editor.dispatch({ effects: setShown.of({ ranges, fresh }) });
@@ -1796,10 +1737,7 @@ function showMarks(): void {
 		fadeTimer = window.setTimeout(() => {
 			editor.dom.classList.add('faded');
 			panel.classList.add('faded');
-			const clear = document.getElementById('clearmarks');
-			if(clear !== null) {
-				clear.hidden = true;
-			}
+			clear?.toggleAttribute('hidden', true);
 			/* once it has faded there is nothing left to point at, so the link stops saying that there is */
 			window.setTimeout(clearMarks, FadeTakes);
 		}, MarksLinger);
@@ -1814,12 +1752,9 @@ function showMarks(): void {
 	if(drawer !== null && marks.includes(PlaygroundBox.Repl)) {
 		drawer.open = true;
 	}
-	const clear = document.getElementById('clearmarks');
-	if(clear !== null) {
-		/* what it clears is what is lit, not what the link asks for: a mark the page cannot place (its code was
-		   edited away, its row is not in the current answer) lights nothing, and nothing is what it clears */
-		clear.hidden = !marked;
-	}
+	/* what it clears is what is lit, not what the link asks for: a mark the page cannot place (its code was
+	   edited away, its row is not in the current answer) lights nothing, and nothing is what it clears */
+	clear?.toggleAttribute('hidden', !marked);
 }
 
 /** takes every highlight out of the page and out of the link */
@@ -1877,17 +1812,13 @@ function cursorTarget(): { readonly criterion?: string, readonly name?: string }
 const cursorCriterion = () => cursorTarget().criterion;
 const cursorName = () => cursorTarget().name;
 
-function section(title: string, box: PlaygroundBox, aside?: string, end?: Node): HTMLElement {
-	const head = document.createElement('h3');
+function section(title: string, box: PlaygroundBox, aside?: string, ...end: Node[]): HTMLElement {
+	const head = el('h3', undefined, title);
 	foldable(head, box);
-	head.append(title);
 	if(aside !== undefined) {
-		const said = el('span', 'aside', aside);
-		head.append(said);
+		head.append(el('span', 'aside', aside));
 	}
-	if(end !== undefined) {
-		head.append(end);
-	}
+	head.append(...end);
 	const body = el('div', 'sbody');
 	body.dataset.foldBody = box;
 	panel.append(head, body);
@@ -2011,19 +1942,26 @@ function revealDependency(node: DepNode): void {
 	if(target.file !== undefined) {
 		openFile(target.file);
 	}
-	const doc = editor.state.doc;
-	const [startLine, startCol, endLine, endCol] = target.span;
-	if(startLine < 1 || startLine > doc.lines) {
+	const { from, to } = spanRange(target.span) ?? {};
+	if(from === undefined || to === undefined) {
 		return;
 	}
-	const from = doc.line(startLine).from + startCol - 1;
-	const last = doc.line(Math.min(Math.max(endLine, startLine), doc.lines));
-	const to = Math.max(from, Math.min(last.to, last.from + endCol));
 	/* the head goes to the start, so the slice is for the call rather than for its closing parenthesis */
 	editor.dispatch({ selection: { anchor: to, head: from }, scrollIntoView: true, effects: setFlash.of({ from, to, color: categoryInfo(node.kind).color }) });
 	clearTimeout(flashTimer);
 	flashTimer = window.setTimeout(() => editor.dispatch({ effects: setFlash.of(undefined) }), 2000);
 	void run();
+}
+
+/** a `[startLine, startCol, endLine, endCol]` span as offsets into the open file, none when it lies outside */
+function spanRange([startLine, startCol, endLine, endCol]: readonly number[]): { readonly from: number, readonly to: number } | undefined {
+	const doc = editor.state.doc;
+	if(startLine < 1 || startLine > doc.lines) {
+		return undefined;
+	}
+	const from = doc.line(startLine).from + startCol - 1;
+	const last = doc.line(Math.min(Math.max(endLine, startLine), doc.lines));
+	return { from, to: Math.max(from, Math.min(last.to, last.from + endCol)) };
 }
 
 function familyOf(key: string, roots: readonly DepNode[]): DepNode[] | undefined {
@@ -2137,17 +2075,10 @@ function depEntry(node: DepNode, depth: number): HTMLElement {
 			[SliceDirection.Forward, 'arrow-down', 'show the influence of the dependency (forward slice)'],
 			['removal', 'trash', 'show the code that can go with the dependency (removal slice)']
 		] as const) {
-			const button = el('button', 'daction');
-			button.type = 'button';
-			button.title = hint;
-			button.setAttribute('aria-label', hint);
-			button.append(icon(name));
-			button.addEventListener('click', event => {
-				event.stopPropagation();
-				askSlice(way);
-				revealDependency(node);
-			});
-			actions.append(button);
+			const action = button('daction', '', hint, event => (event.stopPropagation(), askSlice(way), revealDependency(node)));
+			action.setAttribute('aria-label', hint);
+			action.append(icon(name));
+			actions.append(action);
 		}
 		line.append(actions);
 	}
@@ -2156,7 +2087,7 @@ function depEntry(node: DepNode, depth: number): HTMLElement {
 	if(node.kind !== '') {
 		line.dataset.mark = node.root ? `dep:${node.kind}` : at === undefined ? `dep:${node.kind}` : `dep:${node.kind}@${at}`;
 	}
-	linkRow([line], linesOf(node));
+	linkRow(line, linesOf(node));
 	const toggle = () => setOpen(holder, !holder.classList.contains('open'));
 	twistie.addEventListener('click', event => {
 		event.stopPropagation();
@@ -2182,18 +2113,13 @@ function depEntry(node: DepNode, depth: number): HTMLElement {
 	});
 	holder.append(line);
 	if(node.children.length > 0) {
-		line.setAttribute('aria-expanded', String(isOpen(node)));
-		holder.classList.toggle('open', isOpen(node));
+		setOpen(holder, isOpen(node), false);
 		const below = el('div', 'dchildren');
 		below.setAttribute('role', 'group');
 		below.append(...node.children.map(child => depEntry(child, depth + 1)));
 		holder.append(below);
 	}
 	return holder;
-}
-
-function nothing(text: string): HTMLElement {
-	return el('p', 'empty', text);
 }
 
 /**
@@ -2307,26 +2233,13 @@ function ruleDetails(rule: string, fixes: readonly LintQuickFix[]): HTMLElement 
 	};
 	show(before.slice(head, before.length - tail), '-');
 	show(after.slice(head, after.length - tail), '+');
-	const apply = el('button', 'fix', uniqueArray(fixes.map(fix => fix.description)).join('; ') || 'apply the fix');
-	apply.type = 'button';
-	apply.title = `line ${head + 1}: carry the fix out (ctrl+z takes it back)`;
-	apply.addEventListener('click', event => (event.stopPropagation(), applyFixes(fixes)));
-	more.append(diff, apply);
+	more.append(diff, fixButton(fixes, uniqueArray(fixes.map(fix => fix.description)).join('; ') || 'apply the fix', `line ${head + 1}: carry the fix out (ctrl+z takes it back)`));
 	return more;
 }
 
-/** the button on the lint heading, which carries out every fix the findings below offer */
+/** carries fixes out; the row itself links to the finding, so the click must not travel up to it */
 function fixButton(fixes: readonly LintQuickFix[], label: string, title: string): HTMLElement {
-	const button = el('button', 'fix');
-	button.type = 'button';
-	button.textContent = label;
-	button.title = title;
-	/* the row itself links to the finding, so the click must not travel up to it */
-	button.addEventListener('click', event => {
-		event.stopPropagation();
-		applyFixes(fixes);
-	});
-	return button;
+	return button('fix', label, title, event => (event.stopPropagation(), applyFixes(fixes)));
 }
 
 /** a data frame shape as a sentence: `6 rows, 2 columns (id, value)` beats the raw intervals */
@@ -2466,14 +2379,6 @@ async function jumpTarget(pos: number): Promise<{ readonly from: number, readonl
 	return away(known?.source ?? known?.docs);
 }
 
-async function jumpToDefinition(): Promise<void> {
-	const target = await jumpTarget(editor.state.selection.main.head);
-	if(target === undefined) {
-		showTook('no definition found here');
-	}
-	target?.go();
-}
-
 
 /**
  * The graphs flowR builds on the way to its answers, handed to mermaid.live rather than drawn here:
@@ -2532,32 +2437,24 @@ const rebuiltText = (code: Rebuilt): string => typeof code === 'string' ? code :
 
 /** The bar over a slice and the lines under it, shared by the panel and the wide window. */
 function sliceParts(kept: readonly number[], asked: string | undefined, wide: boolean, code?: Rebuilt): HTMLElement[] {
-	const view = el('span', 'ways');
-	view.setAttribute('role', 'group');
-	view.setAttribute('aria-label', 'how to show the slice');
 	let lines = code === undefined ? sliceLines(kept, wholeSlice) : el('div', 'slines rebuilt');
 	for(const part of code === undefined ? [] : typeof code === 'string' ? [{ path: undefined, code }] : code) {
 		const text = el('pre', 'scode');
 		paint(part.code, text);
 		lines.append(...part.path === undefined ? [] : [el('div', 'scell', part.path)], text);
 	}
-	for(const [inContext, label, hint] of code === undefined ? [[false, 'slice', 'only the lines the slice keeps'], [true, 'in context', 'the whole script, with the rest stepped back']] as const : []) {
-		const button = el('button', 'way', label);
-		button.type = 'button';
-		button.title = hint;
-		button.setAttribute('aria-pressed', String(inContext === wholeSlice));
-		button.addEventListener('click', () => {
+	const view = ways('how to show the slice', code === undefined
+		? ([[false, 'slice', 'only the lines the slice keeps'], [true, 'in context', 'the whole script, with the rest stepped back']] as const).map(([inContext, label, hint]) => [label, hint, () => {
 			if(wholeSlice !== inContext) {
 				wholeSlice = inContext;
 				remember();
 				const next = sliceLines(kept, wholeSlice);
 				lines.replaceWith(next);
 				lines = next;
-				view.querySelectorAll('.way').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+				view.querySelectorAll('.way').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === label)));
 			}
-		});
-		view.append(button);
-	}
+		}, inContext === wholeSlice] as const)
+		: wide ? [] : [['inline source()', 'splice the files source() pulls in at the call, or keep each file apart', () => (inlineFiles = !inlineFiles, remember(), schedule(0)), inlineFiles] as const]);
 	const bar = el('div', 'sbar');
 	const copy = iconButton('swiden', 'copy the lines of the slice', 'M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3', () => {
 		void navigator.clipboard?.writeText(code === undefined ? kept.map(n => editor.state.doc.line(n).text).join('\n') : rebuiltText(code)).then(() => showTook('copied the slice'));
@@ -2565,28 +2462,15 @@ function sliceParts(kept: readonly number[], asked: string | undefined, wide: bo
 	const widen = wide
 		? iconButton('swiden', 'back to the panel (esc)', 'M4 4l8 8M12 4l-8 8', () => widen.closest('dialog')?.close())
 		: iconButton('swiden', 'read the slice in a wide window', 'M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9', () => showWideSlice(kept, asked, code));
-	if(code !== undefined && !wide) {
-		const inline = el('button', 'way', 'inline source()');
-		inline.type = 'button';
-		inline.title = 'splice the files source() pulls in at the call, or keep each file apart';
-		inline.setAttribute('aria-pressed', String(inlineFiles));
-		inline.addEventListener('click', () => (inlineFiles = !inlineFiles, remember(), schedule(0)));
-		view.append(inline);
-	}
-	bar.append(tag(code === undefined ? `${kept.length} of ${codeLines.length} lines of code` : `across ${files.filter(f => Analyzed.test(f.name)).length} files`, 'kept'), view, copy, widen);
-	const adopt = el('button', 'sadopt', 'use as program');
-	adopt.type = 'button';
-	adopt.title = 'rewrite the program to what the slice keeps of it (ctrl+z takes it back)';
-	adopt.addEventListener('click', () => (widen.closest('dialog')?.close(), void adoptSlice(typeof code === 'string' ? code : undefined)));
-	copy.before(adopt);
+	const adopt = button('sadopt', 'use as program', 'rewrite the program to what the slice keeps of it (ctrl+z takes it back)',
+		() => (widen.closest('dialog')?.close(), void adoptSlice(typeof code === 'string' ? code : undefined)));
+	bar.append(tag(code === undefined ? `${kept.length} of ${codeLines.length} lines of code` : `across ${files.filter(f => Analyzed.test(f.name)).length} files`, 'kept'), view, adopt, copy, widen);
 	/* the panel folds a long slice to the lines the room holds, at least a few, the wide window shows all */
 	const length = code === undefined ? kept.length : rebuiltText(code).split('\n').length;
 	if(!wide && length > FoldedSliceLines) {
 		lines.classList.add('folded');
-		const more = el('button', 'sunfold', `show all ${length} lines`);
-		more.type = 'button';
 		const unfold = () => (lines.classList.remove('folded'), lines.style.removeProperty('max-height'), more.remove());
-		more.addEventListener('click', unfold);
+		const more = button('sunfold', `show all ${length} lines`, '', unfold);
 		requestAnimationFrame(() => {
 			const line = parseFloat(getComputedStyle(lines).lineHeight) || 20;
 			const room = panel.getBoundingClientRect().bottom - lines.getBoundingClientRect().top - more.getBoundingClientRect().height - line;
@@ -2608,13 +2492,23 @@ function sliceTitle(asked: string | undefined): string {
 }
 
 function iconButton(cls: string, title: string, path: string, onClick: () => void): HTMLButtonElement {
-	const button = el('button', cls);
-	button.type = 'button';
-	button.title = title;
-	button.setAttribute('aria-label', title);
-	button.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${path}"/></svg>`;
-	button.addEventListener('click', onClick);
-	return button;
+	const icon = button(cls, '', title, onClick);
+	icon.setAttribute('aria-label', title);
+	icon.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${path}"/></svg>`;
+	return icon;
+}
+
+/** a row of buttons of which the pressed one is the current choice */
+function ways(label: string, options: readonly (readonly [string, string, () => void, boolean])[]): HTMLElement {
+	const group = el('span', 'ways');
+	group.setAttribute('role', 'group');
+	group.setAttribute('aria-label', label);
+	for(const [text, hint, pick, pressed] of options) {
+		const way = button('way', text, hint, pick);
+		way.setAttribute('aria-pressed', String(pressed));
+		group.append(way);
+	}
+	return group;
 }
 
 /** the fewest lines of a slice the panel shows when it folds the rest away */
@@ -2669,13 +2563,7 @@ function sliceLines(kept: readonly number[], inContext: boolean): HTMLElement {
 			list.append(el('div', 'scell', cell));
 		}
 		const row = el('div', keep.has(n) ? 'sline' : 'sline out');
-		const number = el('button', 'sno', String(n));
-		number.type = 'button';
-		number.title = `go to line ${n}`;
-		number.addEventListener('click', () => {
-			(list.closest('dialog'))?.close();
-			reveal(undefined, n);
-		});
+		const number = button('sno', String(n), `go to line ${n}`, () => (list.closest('dialog')?.close(), reveal(undefined, n)));
 		const line = el('code', 'stext');
 		paint(text, line);
 		row.append(number, line);
@@ -2723,8 +2611,7 @@ async function slicedFiles(inlined: string | undefined): Promise<ReadonlyMap<str
 	const kept = direction === 'removal' ? keptAfterRemoval(ast, result) : result;
 	return new Map(files.filter(file => Analyzed.test(file.name)).map(file => {
 		const index = ast.ast.files.findIndex(f => sameFile(f.filePath, file.name));
-		const state = file === files[active] ? editor.state : file.state;
-		return [file.name, rewriteCells(state, file.name, (from, to) => {
+		return [file.name, rewriteCells(stateOf(files.indexOf(file)), file.name, (from, to) => {
 			const nodes = new Set([...kept].filter(id => {
 				const node = ast.idMap.get(id);
 				const line = SourceRange.getStartLine(node?.location);
@@ -2813,30 +2700,6 @@ async function analyze(): Promise<number> {
 	lastKept = keptLines;
 	dim();
 
-	const head = el('h3', undefined, sliceTitle(asked));
-	/* the same pair the landing page offers: what this value is built from, or what depends on it */
-	const ways = el('span', 'ways');
-	ways.setAttribute('role', 'group');
-	ways.setAttribute('aria-label', 'which way to slice');
-	for(const [value, label, hint] of [
-		[SliceDirection.Backward, 'origin', 'what this value is built from'],
-		[SliceDirection.Forward, 'impact', 'what depends on this value'],
-		['removal', 'removal', 'what can go together with this value, the rest keeps working']
-	] as const) {
-		const button = el('button', 'way', label);
-		button.type = 'button';
-		button.title = hint;
-		button.setAttribute('aria-pressed', String(value === direction));
-		button.addEventListener('click', () => {
-			if(direction !== value) {
-				direction = value;
-				remember();
-				void run();
-			}
-		});
-		ways.append(button);
-	}
-	head.append(ways);
 	const dimmer = el('label', 'toggle switch');
 	const box = document.createElement('input');
 	box.type = 'checkbox';
@@ -2847,13 +2710,14 @@ async function analyze(): Promise<number> {
 		remember();
 	});
 	dimmer.append(box, document.createTextNode('dim'), tag(' the rest', 'wide'));
-	head.append(dimmer);
-	foldable(head, PlaygroundBox.Slice);
-	/* the slice is built here, where the answer is, and put in below what the panel says about the script */
-	const sliceBlock = document.createDocumentFragment();
-	const sliceBody = el('div', 'sbody');
-	sliceBody.dataset.foldBody = PlaygroundBox.Slice;
-	sliceBlock.append(head, sliceBody);
+	/* the same pair the landing page offers: what this value is built from, or what depends on it */
+	const sliceBody = section(sliceTitle(asked), PlaygroundBox.Slice, undefined, ways('which way to slice', ([
+		[SliceDirection.Backward, 'origin', 'what this value is built from'],
+		[SliceDirection.Forward, 'impact', 'what depends on this value'],
+		['removal', 'removal', 'what can go together with this value, the rest keeps working']
+	] as const).map(([value, label, hint]) => [label, hint, () => direction === value || (direction = value, remember(), void run()), value === direction] as const)), dimmer);
+	/* the slice is built here, where the answer is, and moved below what the panel says about the script */
+	const sliceBlock = [sliceBody.previousElementSibling as HTMLElement, sliceBody];
 	const slice = el('div', 'card slice-view');
 	slice.dataset.mark = PlaygroundBox.Slice;
 	if(code === undefined || (direction === 'removal' && sliceLinesOf.length === 0)) {
@@ -2901,12 +2765,8 @@ async function analyze(): Promise<number> {
 	}
 	shownDeps = flat.flatMap((d): ShownDep[] => {
 		const span = RNode.span(d.node) ?? d.node?.location;
-		if(d.file !== undefined || span === undefined || span[0] < 1 || span[0] > doc.lines) {
-			return [];
-		}
-		const from = doc.line(span[0]).from + span[1] - 1;
-		const last = doc.line(Math.min(Math.max(span[2], span[0]), doc.lines));
-		return [{ kind: d.kind, line: span[0], from, to: Math.max(from, Math.min(last.to, last.from + span[3])), said: describeDependency(d.kind, d.entry as never) }];
+		const at = d.file === undefined && span !== undefined ? spanRange(span) : undefined;
+		return at === undefined || span === undefined ? [] : [{ kind: d.kind, line: span[0], ...at, said: describeDependency(d.kind, d.entry as never) }];
 	});
 	const kinds = new Map(uniqueArray(shownDeps.map(d => d.line as number)).map(line => [line, primaryCategory(shownDeps.filter(d => d.line === line).map(d => d.kind))] as const));
 	editor.dispatch({ effects: setCategories.of([...kinds].map(([line, kind]) => ({ line, kind, joins: `${kinds.get(line - 1) === kind ? ' up' : ''}${kinds.get(line + 1) === kind ? ' down' : ''}` }))) });
@@ -2915,8 +2775,10 @@ async function analyze(): Promise<number> {
 		ast:       normalized,
 		fileOf:    elsewhere,
 		versionOf: pkg => bakedPackages[pkg]?.[0] || undefined,
-		textAt:    ([startLine, startCol, endLine, endCol]) => startLine < 1 || endLine > doc.lines ? undefined
-			: doc.sliceString(doc.line(startLine).from + startCol - 1, Math.min(doc.line(endLine).to, doc.line(endLine).from + endCol))
+		textAt:    span => {
+			const at = spanRange(span);
+			return at && doc.sliceString(at.from, at.to);
+		}
 	});
 	shownTree = [...tree.roots, ...tree.empty.length > 0 ? [noFindingsGroup(tree.empty)] : []];
 	const depBody = section('Overview', PlaygroundBox.Deps, DepsAside);
@@ -2941,11 +2803,9 @@ async function analyze(): Promise<number> {
 		})).sort((a, b) => Number(isError(b.rule)) - Number(isError(a.rule)));
 	const marked = found.flatMap(f => {
 		const [startLine, startCol, endLine, endCol] = f.loc ?? [];
-		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined) {
+		/* a rule may point outside this file, e.g. at the project around it */
+		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined || startLine < 1 || startLine > editor.state.doc.lines) {
 			return [];
-		}
-		if(startLine < 1 || startLine > editor.state.doc.lines) {
-			return [];   // a rule that points outside this file, e.g. at the project around it
 		}
 		const line = editor.state.doc.line(startLine);
 		return [{
@@ -2958,21 +2818,10 @@ async function analyze(): Promise<number> {
 	shownLints = marked;
 	const fixable = found.flatMap(f => f.quickFix);
 	const acts = el('span', 'acts');
-	if(fixable.length > 0) {
-		acts.append(fixButton(fixable, `fix ${fixable.length}`,
-			uniqueArray(fixable.map(fix => fix.description)).join('\n')));
-	}
-	acts.append(suggestRule());
+	acts.append(...fixable.length > 0 ? [fixButton(fixable, `fix ${fixable.length}`, uniqueArray(fixable.map(fix => fix.description)).join('\n'))] : [], suggestRule());
 	const errors = found.filter(f => isError(f.rule)).length;
 	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints,
 		found.length === 0 ? undefined : [errors > 0 ? `${errors} error${errors === 1 ? '' : 's'}` : '', found.length > errors ? `${found.length - errors} warning${found.length - errors === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), acts);
-	if(found.length === 0) {
-		lintBody.append(nothing('no findings'));
-		panel.append(sliceBlock);
-		showFolds();
-		showMarks();
-		return took;
-	}
 	const lints = el('div', 'lints');
 	lints.dataset.mark = PlaygroundBox.Lints;
 	for(const f of found) {
@@ -2999,10 +2848,7 @@ async function analyze(): Promise<number> {
 		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
 		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}`;
 		line.addEventListener('click', event => {
-			if(event.altKey) {
-				return;
-			}
-			if((event.target as HTMLElement).closest('.lintmore') !== null) {
+			if(event.altKey || (event.target as HTMLElement).closest('.lintmore') !== null) {
 				return;
 			}
 			openedLint = openedLint === lintKey ? undefined : lintKey;
@@ -3015,10 +2861,10 @@ async function analyze(): Promise<number> {
 		if(openedLint === lintKey) {
 			line.append(ruleDetails(f.rule, f.quickFix));
 		}
-		lints.append(...linkRow([line], [f.line]));
+		lints.append(linkRow(line, [f.line]));
 	}
-	lintBody.append(lints);
-	panel.append(sliceBlock);
+	lintBody.append(found.length === 0 ? el('p', 'empty', 'no findings') : lints);
+	panel.append(...sliceBlock);
 	showFolds();
 	showMarks();
 	return took;
@@ -3060,12 +2906,7 @@ function schedule(delay = 700): void {
 	timer = window.setTimeout(() => void run(), delay);
 }
 
-document.getElementById('clearmarks')?.addEventListener('click', () => {
-	marks.length = 0;
-	showMarks();
-	remember();
-	showShared('the highlights are cleared');
-});
+document.getElementById('clearmarks')?.addEventListener('click', () => (clearMarks(), showShared('the highlights are cleared')));
 
 function showExample(project: readonly [string, string][], note: string): void {
 	openTabs = project.map(([name]) => name).filter(name => Analyzed.test(name));
@@ -3153,7 +2994,7 @@ document.addEventListener('keydown', event => {
 });
 editor.dom.addEventListener('click', event => {
 	if(event.ctrlKey || event.metaKey) {
-		void jumpToDefinition();
+		void jumpTarget(editor.state.selection.main.head).then(target => target === undefined ? showTook('no definition found here') : target.go());
 	} else if(event.altKey) {
 		event.preventDefault();
 		toggleMark(markUnderPointer(event), event.shiftKey);
@@ -3391,7 +3232,7 @@ function runRepl(line: string): void {
 		.catch((e: unknown) => say(String(e), 'bad'));
 }
 say('flowR\'s repl, over whatever the editor holds. :help lists what it knows, tab completes.');
-say('Plain R runs in your browser with webR, in the session Run uses, so after a run its variables are here.', 'note');
+say('Plain R runs in your browser with webR, in the active session, so after a run its variables are here.', 'note');
 /* a link that carried commands opens on their answers, which is what it was sent for */
 if(replSaid.length > 0) {
 	(document.getElementById('repl') as HTMLDetailsElement | null)?.setAttribute('open', '');

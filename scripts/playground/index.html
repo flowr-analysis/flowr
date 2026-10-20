@@ -18,6 +18,7 @@
 -->
 <!--THEME-CSS:own-->
 * { box-sizing: border-box; }
+:root { --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; interpolate-size: allow-keywords; }
 /* every list here gives its rows a `display` of their own, and that beats what `hidden` states: said once
    for the page, so nothing has to remember it again */
 [hidden] { display: none !important; }
@@ -33,7 +34,7 @@ a {
 }
 a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { a { transition: none; } }
-code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code, pre { font-family: var(--mono); }
 
 <!--BAR-CSS-->
 /* the bar spans the whole window here, not a centred column, so it brings its own margin and backdrop */
@@ -61,7 +62,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	.tabs .tab { padding-inline: .5rem; }
 }
 .tools button:hover { border-color: var(--accent); color: var(--accent); }
-.tools .sharenote { color: var(--muted); font-size: .74rem; }
+.tools .sharenote { color: var(--muted); font-size: .74rem; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 .split { flex: 1; display: grid; grid-template-columns: minmax(0, var(--split, 1.15fr)) .35rem minmax(14rem, 1fr); min-height: 0; }
 /* the bar between the panes, dragged to give one of them more room */
 .divider { cursor: ew-resize; background: var(--border); touch-action: none; transition: background .15s; }
@@ -90,7 +91,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .work { display: flex; flex: 1; min-height: 0; }
 .work > .code { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 #tree { flex: none; width: var(--tree-width, 11rem); max-width: 50%; overflow: auto; display: flex; flex-direction: column; padding: .2rem 0 .4rem; background: var(--sunk); font-size: .8rem; }
-#tree[hidden], #tree[hidden] + .treegrip { display: none; }
+#tree[hidden] + .treegrip { display: none; }
 @keyframes tree-in { from { margin-left: calc(-1 * var(--tree-width, 11rem)); } }
 @media (prefers-reduced-motion: no-preference) { #tree:not([hidden]) { animation: tree-in 10ms ease-out; } }
 .treegrip { flex: none; width: 5px; margin-left: -3px; cursor: col-resize; border-right: 1px solid var(--border); touch-action: none; position: relative; z-index: 1; }
@@ -122,15 +123,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .tabs .tab .x { margin-left: .45rem; padding: 0 .15rem; border-radius: .2rem; color: var(--muted); }
 .tabs .tab .x:hover { color: #d55e00; background: var(--sunk); }
 .tabs > :not(.tablist) { flex: none; }
-/* the run button and the tools always fit: the file tabs scroll sideways instead, and a note stays short */
-.tools .sharenote { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 /* below what opened it, kept on screen: the script sets where that is */
 .menu {
 	position: fixed; z-index: 20; display: flex; flex-direction: column; padding: .25rem; min-width: 11rem;
 	top: var(--top); left: max(.5rem, var(--left)); margin-top: .15rem; max-height: calc(100dvh - var(--top) - 1rem); overflow-y: auto;
 	background: var(--panel); border: 1px solid var(--border); border-radius: .4rem; box-shadow: 0 .4rem 1.2rem rgb(0 0 0 / .25);
 }
-.menu[hidden] { display: none; }
 .menu .heading { padding: .4rem .6rem .15rem; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .menu hr { width: 100%; margin: .25rem 0; border: 0; border-top: 1px solid var(--border); }
 .menu button {
@@ -153,7 +151,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #configproblems { display: flex; flex-direction: column; max-height: 7.5rem; overflow: auto; padding: 0 1rem .4rem; }
 #configproblems button {
 	display: flex; align-items: baseline; gap: .6rem; padding: .2rem .5rem; text-align: left; cursor: pointer;
-	font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--fg);
+	font: inherit; font-family: var(--mono); color: var(--fg);
 	border: 0; border-left: 3px solid #d55e00; border-radius: 0 .3rem .3rem 0; background: color-mix(in srgb, #d55e00 9%, var(--panel));
 }
 #configproblems button + button { margin-top: .2rem; }
@@ -180,23 +178,23 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .drawer > summary .what code { font-size: .95em; }
 .drawer .body { display: flex; flex-direction: column; height: var(--repl-height, 14rem); border-top: 1px solid var(--border); }
-/* the bar one drags to give the repl more or less room */
-.drawer .grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); }
-.drawer .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
+/* the bars one drags to give the repl or the R output more or less room */
+.grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); }
+.grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
 #repl .out {
 	flex: 1; min-height: 0; overflow: auto; margin: 0; padding: .6rem .8rem; white-space: pre-wrap;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+	font-family: var(--mono); font-size: .8rem;
 }
 #repl .said { color: var(--accent); }
 #repl .out a { color: var(--accent); }
-#repl .bad { color: #d55e00; }
-#repl .note { color: var(--muted); }
-#repl .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+:is(#repl, #runr .out) .bad { color: #d55e00; }
+:is(#repl, #runr .out) .note { color: var(--muted); }
+:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
-#repl .ask > span { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#repl .ask > span { color: var(--accent); font-family: var(--mono); }
 #repl input {
 	flex: 1; font: inherit; font-size: .82rem; padding: .2rem .4rem; color: var(--fg);
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-family: var(--mono);
 	border: 1px solid var(--border); border-radius: .3rem; background: var(--bg);
 }
 #repl input:focus { outline: none; border-color: var(--accent); }
@@ -205,7 +203,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	position: absolute; left: 2.4rem; right: .8rem; bottom: calc(100% - .2rem); z-index: 5; margin: 0; padding: .25rem; list-style: none;
 	max-height: min(14rem, 60vh); overflow-y: auto; border: 1px solid var(--border); border-radius: .4rem;
 	background: var(--panel); box-shadow: 0 .4rem 1.2rem rgb(0 0 0 / .2);
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+	font-family: var(--mono); font-size: .8rem;
 }
 #replhints li { display: flex; align-items: baseline; gap: .8rem; padding: .15rem .5rem; border-radius: .25rem; cursor: pointer; white-space: nowrap; }
 #replhints li b { font-weight: 600; color: var(--fg); }
@@ -248,14 +246,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	flex: none; display: flex; flex-direction: column; height: var(--runr-height, auto); max-height: var(--runr-height, 45%);
 	background: var(--panel); border-bottom: 1px solid var(--border);
 }
-#runr[hidden] { display: none; }
 #runr .head {
-	display: flex; align-items: center; gap: .5rem; padding: .5rem 1.2rem .3rem;
+	display: flex; align-items: center; gap: .5rem; padding: .5rem 1.2rem .3rem; white-space: nowrap;
 	font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
 }
 #runrstate, #runrbytes, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
 /* one line however narrow the card: the words give way, the bar keeps its width */
-#runr .head { white-space: nowrap; }
 #runrstate, #runr .via { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #runrbytes { font-variant-numeric: tabular-nums; }
 #runrprogress { flex: none; width: 5rem; height: .4rem; accent-color: var(--accent); }
@@ -282,15 +278,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #runr .head button:not([hidden]) ~ button { margin-left: 0; }
 #runrclear { display: inline-flex; align-items: center; gap: .25rem; }
 #runr .out {
-	min-height: 0; overflow: auto; padding: 0 1.2rem .8rem; white-space: pre-wrap; overflow-wrap: anywhere;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+	flex: 1; min-height: 0; overflow: auto; padding: 0 1.2rem .8rem; white-space: pre-wrap; overflow-wrap: anywhere;
+	font-family: var(--mono); font-size: .8rem;
 }
-#runr .out { flex: 1; }
-#runr .grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); border-top: 1px solid var(--border); }
-#runr .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
-#runr .out .note { color: var(--muted); }
-#runr .out .bad { color: #d55e00; }
-#runr .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+#runr .grip { border-top: 1px solid var(--border); }
 /* a call by name, which the R mode leaves plain: weight rather than colour */
 .cm-call { color: var(--fg); font-weight: 600; }
 /* what the linter marks, and what flowR can say about a name */
@@ -328,14 +319,14 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 /* the completion list, in the page's own colours rather than CodeMirror's */
 .cm-tooltip-autocomplete > ul > li { padding: .1rem .5rem; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: var(--accent-fg); }
-.cm-completionLabel { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cm-completionLabel { font-family: var(--mono); }
 .cm-completionDetail { color: var(--muted); font-style: normal; font-size: .78rem; margin-left: .6rem; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail { color: var(--accent-fg); opacity: .85; }
 .cm-completionMatchedText { text-decoration: none; font-weight: 700; color: var(--accent); }
 .cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText { color: var(--accent-fg); }
 :root[data-theme="dark"] .cm-lint { text-decoration-color: #e69f00; }
 .cm-tooltip { border: 1px solid var(--border); border-radius: .4rem; background: var(--panel); }
-.cm-valuetip { padding: .35rem .55rem; color: var(--fg); font-size: .8rem; max-width: 34rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cm-valuetip { padding: .35rem .55rem; color: var(--fg); font-size: .8rem; max-width: 34rem; font-family: var(--mono); }
 .cm-valuetip .tcall { font-weight: 600; }
 .cm-valuetip .tabout, .cm-valuetip .tsaid { color: var(--muted); font-size: .76rem; margin-top: .15rem; }
 .cm-valuetip .tlinks { display: flex; flex-wrap: wrap; gap: .25rem .8rem; margin-top: .35rem; padding-top: .3rem; border-top: 1px solid var(--border); font-family: system-ui, sans-serif; font-size: .74rem; }
@@ -348,8 +339,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .cm-valuetip .tlint .rule { flex: none; font-size: .68rem; }
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
-.right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); }
-.right { overflow: hidden; }
+.right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); overflow: hidden; }
 .right.folded > #runr:not([hidden]) ~ #panel { display: none; }
 #pointed {
 	display: flex; align-items: baseline; gap: .6rem; flex: none; padding: .15rem .8rem;
@@ -374,7 +364,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel h3[data-fold].folded { margin-bottom: 0; }
 #panel h3[data-fold].folded + .sbody + h3 { margin-top: .55rem; }
 #panel h3[data-fold]:hover { color: var(--accent); }
-#panel .sbody[hidden] { display: none; }
 #panel h3 {
 	display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem;
 	margin: 1.2rem 0 .4rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em;
@@ -391,14 +380,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 :is(#panel, #slicewide) .way[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
 /* the way to ask for a new linting rule, at the end of the lint heading */
 #panel h3 .suggest {
-	margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0;
+	font-weight: 400; text-transform: none; letter-spacing: 0;
 	padding: .1rem .6rem; border: 1px solid var(--border); border-radius: 1rem;
 	color: var(--muted); text-decoration: none;
 }
 #panel h3 .suggest:hover { color: var(--fg); }
 /* the actions at the end of the lint heading, which the suggest link used to hold on its own */
 #panel h3 .acts { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; }
-#panel h3 .acts .suggest { margin-left: 0; }
 /* carrying out every quick fix at once, at the end of the lint heading */
 #panel .fix {
 	font: inherit; font-size: .72rem; font-weight: 600; text-transform: none; letter-spacing: 0;
@@ -438,7 +426,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 :is(#panel, #slicewide) .sbar > * { flex: none; white-space: nowrap; }
 :is(#panel, #slicewide) .sbar .kept { color: var(--muted); font-variant-numeric: tabular-nums; }
 :is(#panel, #slicewide) .sbar .ways { margin-left: auto; }
-:is(#panel, #slicewide) .slines { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; line-height: 1.6; padding: .3rem 0; max-height: 75vh; overflow: auto; }
+:is(#panel, #slicewide) .slines { font-family: var(--mono); font-size: .8rem; line-height: 1.6; padding: .3rem 0; max-height: 75vh; overflow: auto; }
 :is(#panel, #slicewide) .swiden {
 	display: inline-flex; padding: .2rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--panel);
 	color: var(--muted); cursor: pointer;
@@ -520,8 +508,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .drow .twistie { flex: none; width: 16px; height: 16px; color: var(--muted); display: inline-flex; transition: transform .12s; }
 #panel .dnode.open > .drow .twistie { transform: rotate(90deg); }
 #panel .dnode:not(.open) > .dchildren { display: none; }
-/* lets heights animate to auto; browsers without it fold at once */
-:root { interpolate-size: allow-keywords; }
 @media (prefers-reduced-motion: no-preference) {
 	#panel .dchildren, #panel [data-fold-body], #panel .lintmore { overflow: clip; transition: height .3s ease-in-out, display .3s allow-discrete; }
 	#panel .dnode:not(.open) > .dchildren, #panel [data-fold-body][hidden] { height: 0; }
@@ -558,7 +544,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .cm-dep-square { font-size: .9em; }
 .cm-valuetip .cm-dep-says { display: block; font-family: system-ui, sans-serif; margin-bottom: .25rem; }
-#panel .at { color: var(--muted); font-size: .78rem; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: left; }
+#panel .at { color: var(--muted); font-size: .78rem; white-space: nowrap; font-family: var(--mono); text-align: left; }
 #panel .empty { color: var(--muted); font-size: .86rem; }
 /* a row that stands for a place in the code lights that place up while the pointer is on it */
 #panel .linked { cursor: pointer; border-radius: .3rem; }
@@ -641,7 +627,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	position: relative;
 	padding: 0 .45rem; border-radius: 1rem; font-size: .72rem; font-weight: 600; white-space: nowrap;
 	justify-self: start; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-family: var(--mono);
 	color: color-mix(in srgb, var(--hue) 78%, var(--muted));
 	border: 1px solid color-mix(in srgb, var(--hue) 22%, var(--border));
 	background: color-mix(in srgb, var(--hue) 6%, transparent);

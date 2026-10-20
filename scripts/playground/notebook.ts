@@ -6,7 +6,7 @@ import { r } from '@codemirror/legacy-modes/mode/r';
 import { yaml } from '@codemirror/legacy-modes/mode/yaml';
 import type { INotebookContent } from '@jupyterlab/nbformat';
 import { cellOptionLines, globalChunkOptions, isExecutableCell, parseRMarkdownFile, RTagRegex } from '../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
-import { el } from '../page-lib/dom';
+import { button, el } from '../page-lib/dom';
 
 export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
 
@@ -197,6 +197,8 @@ function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 /** runs a cell in the shared R session, its output going `into` the given element */
 export type CellRunner = (code: string, title: string, into?: HTMLElement, fresh?: boolean) => Promise<number | undefined>;
 type CellRuns = (view: EditorView, picked: readonly Cell[], cells: readonly Cell[], fresh?: boolean) => Promise<void>;
+/** opens the page's menu under `anchor`; a string is a heading */
+export type CellMenu = (anchor: HTMLElement, entries: readonly (string | { readonly label: string, readonly checked: boolean, readonly run: () => void })[]) => void;
 
 /** runs the whole notebook cell by cell, `undefined` for a file without code cells */
 export const NotebookRun = Facet.define<(view: EditorView, fresh: boolean) => Promise<void> | undefined>();
@@ -282,11 +284,7 @@ function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellR
 		let box = outputs.get(index);
 		if(box === undefined) {
 			const shown = el('div', 'cm-cell-output');
-			const close = el('button', 'cm-cell-output-x', 'x');
-			close.type = 'button';
-			close.title = 'close the output';
-			close.addEventListener('click', () => (outputs.delete(index), view.dispatch({ effects: outputsChanged.of(null) })));
-			shown.append(close, el('div', 'cm-cell-output-body'));
+			shown.append(button('cm-cell-output-x', 'x', 'close the output', () => (outputs.delete(index), view.dispatch({ effects: outputsChanged.of(null) }))), el('div', 'cm-cell-output-body'));
 			outputs.set(index, box = shown);
 			view.dispatch({ effects: outputsChanged.of(null) });
 		}
@@ -338,7 +336,7 @@ class CellLabel extends WidgetType {
 }
 
 class RunButton extends WidgetType {
-	constructor(readonly cell: Cell, readonly note: string, readonly markdown: boolean, readonly runs: CellRuns, readonly took?: number) {
+	constructor(readonly cell: Cell, readonly note: string, readonly markdown: boolean, readonly runs: CellRuns, readonly menu: CellMenu, readonly took?: number) {
 		super();
 	}
 	eq(other: RunButton): boolean {
@@ -359,71 +357,33 @@ class RunButton extends WidgetType {
 			took.title = 'how long the cell took the last time it ran';
 			tools.append(took);
 		}
-		const button = el('button', 'cm-cell-run');
-		const label = el('span', 'label', RunChoices[runChoice][1]);
-		button.append(label);
-		/* the Run button's own icon, badge and all: a cell always runs in the session that runs keep */
-		const icon = document.querySelector('#runrgo .runicon')?.cloneNode(true);
-		if(icon) {
-			button.prepend(icon);
-		}
-		button.type = 'button';
-		button.title = 'run in the same R session as runs and the repl (shift+enter runs this cell)';
-		button.addEventListener('mousedown', event => event.preventDefault());
 		const current = () => {
 			const cells = cellsOf(view.state, this.markdown);
 			return { cells, at: Math.max(0, cells.findIndex(c => c.head === this.cell.head)) };
 		};
-		button.addEventListener('click', () => {
+		const run = button('cm-cell-run', '', 'run in the same R session as runs and the repl (shift+enter runs this cell)', () => {
 			const { cells, at } = current();
 			void this.runs(view, RunChoices[runChoice][2](cells, at), cells);
 		});
-		const more = el('button', 'cm-cell-more');
-		more.type = 'button';
-		more.title = 'choose what the button runs';
+		/* the Run button's own icon, badge and all: a cell always runs in the session that runs keep */
+		const icon = document.querySelector('#runrgo .runicon')?.cloneNode(true);
+		run.append(...icon ? [icon] : [], el('span', 'label', RunChoices[runChoice][1]));
+		const more = button('cm-cell-more', '', 'choose what the button runs', () => this.menu(more, ['Run with this button', ...RunChoices.map(([text, short], at) => ({
+			label:   text,
+			checked: at === runChoice,
+			run:     () => {
+				runChoice = at;
+				view.dom.querySelectorAll('.cm-cell-run .label').forEach(l => l.textContent = short);
+			}
+		}))]));
 		more.setAttribute('aria-haspopup', 'menu');
 		more.setAttribute('aria-expanded', 'false');
 		more.setAttribute('aria-label', more.title);
-		const menu = el('div', 'cm-cell-menu');
-		menu.setAttribute('role', 'menu');
-		menu.hidden = true;
-		menu.append(el('div', 'cm-cell-heading', 'Run with this button'));
-		const close = (event?: Event) => {
-			if(event === undefined || !split.contains(event.target as Node)) {
-				menu.hidden = true;
-				more.setAttribute('aria-expanded', 'false');
-				document.removeEventListener('mousedown', close);
-			}
-		};
-		for(const [at, [text, short]] of RunChoices.entries()) {
-			const choice = el('button', 'cm-cell-choice', text);
-			choice.type = 'button';
-			choice.setAttribute('role', 'menuitemradio');
-			choice.setAttribute('aria-checked', String(at === runChoice));
-			choice.addEventListener('click', () => {
-				close();
-				runChoice = at;
-				view.dom.querySelectorAll('.cm-cell-run .label').forEach(l => l.textContent = short);
-			});
-			menu.append(choice);
+		for(const keep of [run, more]) {
+			keep.addEventListener('mousedown', event => event.preventDefault());
 		}
-		more.addEventListener('mousedown', event => event.preventDefault());
-		more.addEventListener('click', () => {
-			menu.querySelectorAll('.cm-cell-choice').forEach((c, at) => c.setAttribute('aria-checked', String(at === runChoice)));
-			menu.hidden = !menu.hidden;
-			more.setAttribute('aria-expanded', String(!menu.hidden));
-			if(!menu.hidden) {
-				document.addEventListener('mousedown', close);
-			}
-		});
-		menu.addEventListener('keydown', event => {
-			if(event.key === 'Escape') {
-				close();
-				more.focus();
-			}
-		});
 		const split = el('span', 'cm-cell-split');
-		split.append(button, more, menu);
+		split.append(run, more);
 		tools.append(split);
 		return tools;
 	}
@@ -432,7 +392,7 @@ class RunButton extends WidgetType {
 	}
 }
 
-function decorate(view: EditorView, markdown: boolean, runs: CellRuns, took: ReadonlyMap<number, number>): DecorationSet {
+function decorate(view: EditorView, markdown: boolean, runs: CellRuns, menu: CellMenu, took: ReadonlyMap<number, number>): DecorationSet {
 	const doc = view.state.doc;
 	const cells = cellsOf(view.state, markdown);
 	const found: Range<Decoration>[] = [];
@@ -454,7 +414,7 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, took: Rea
 			inCell.add(cell.head);
 			if(cell.kind === 'code' && cell.head <= doc.lines) {
 				const note = markdown ? titleOf(cell, cells) : cell.label;
-				found.push(Decoration.widget({ widget: new RunButton(cell, note, markdown, runs, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.head).to));
+				found.push(Decoration.widget({ widget: new RunButton(cell, note, markdown, runs, menu, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.head).to));
 			}
 		}
 		for(let line = cell.from; line <= cell.to; line++) {
@@ -481,7 +441,7 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, took: Rea
 }
 
 /** the cell decorations of a notebook, each code cell runnable with `run` */
-export function notebookCells(name: string, run: CellRunner): Extension {
+export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Extension {
 	const markdown = isMarkdownDocument(name);
 	const { runs, shown, took } = cellRunning(markdown, run);
 	return [
@@ -493,11 +453,11 @@ export function notebookCells(name: string, run: CellRunner): Extension {
 		ViewPlugin.fromClass(class {
 			decorations: DecorationSet;
 			constructor(view: EditorView) {
-				this.decorations = decorate(view, markdown, runs, took);
+				this.decorations = decorate(view, markdown, runs, menu, took);
 			}
 			update(update: ViewUpdate) {
 				if(update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(outputsChanged)))) {
-					this.decorations = decorate(update.view, markdown, runs, took);
+					this.decorations = decorate(update.view, markdown, runs, menu, took);
 				}
 			}
 		}, { decorations: plugin => plugin.decorations }),
@@ -577,22 +537,7 @@ const cellLook = EditorView.theme({
 	},
 	'.cm-cell-run .runicon':                   { width: '.65rem', height: '.65rem' },
 	'.cm-cell-run:hover, .cm-cell-more:hover': { background: 'color-mix(in srgb, var(--accent) 88%, var(--fg))' },
-	'.cm-cell-menu':                           {
-		position:      'absolute', top:           'calc(100% + .15rem)', right:         '0', zIndex:        '20', minWidth:      '11rem', padding:       '.25rem',
-		display:       'flex', flexDirection: 'column', fontFamily:    'system-ui, sans-serif', fontSize:      '.8rem',
-		background:    'var(--panel)', color:         'var(--fg)', border:        '1px solid var(--border)', borderRadius:  '.4rem',
-		boxShadow:     '0 .4rem 1.2rem rgb(0 0 0 / .25)'
-	},
-	'.cm-cell-menu[hidden]': { display: 'none' },
-	'.cm-cell-heading':      { padding: '.4rem .6rem .15rem', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)' },
-	'.cm-cell-choice':       {
-		textAlign:    'left', padding:      '.3rem .6rem', border:       'none', borderRadius: '.3rem', background:   'none',
-		color:        'var(--fg)', font:         'inherit', cursor:       'pointer', whiteSpace:   'nowrap'
-	},
-	'.cm-cell-choice::before':                              { content: '"\\2713"', display: 'inline-block', width: '1.2em', visibility: 'hidden' },
-	'.cm-cell-choice[aria-checked="true"]::before':         { visibility: 'visible' },
-	'.cm-cell-choice:hover, .cm-cell-choice:focus-visible': { background: 'var(--sunk)', color: 'var(--accent)', outline: 'none' },
-	'.cm-cell-output':                                      {
+	'.cm-cell-output':                         {
 		/* no margin: the editor measures a block by its box */
 		position:       'relative', boxSizing:      'border-box', width:          '100%', padding:        '.4rem 1.8rem .4rem .8rem',
 		borderLeft:     '3px solid color-mix(in srgb, var(--accent) 45%, transparent)', borderBottom:   '.4rem solid transparent',

@@ -5,6 +5,7 @@
  */
 import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
+import { el } from '../page-lib/dom';
 
 
 /**
@@ -370,14 +371,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 	}
 	let running = 0;
 
-	const lineIn = (target: HTMLElement) => (text: string, cls?: string): void => {
-		const at = document.createElement('div');
-		if(cls) {
-			at.className = cls;
-		}
-		at.textContent = text;
-		target.append(at);
-	};
+	const lineIn = (target: HTMLElement) => (text: string, cls?: string): void => target.append(el('div', cls, text));
 	const line = lineIn(out);
 
 	const done = (text: string): void => {
@@ -416,7 +410,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		const run = ++running;
 		const target = into ?? out;
 		/* a cell keeps its old output until the new is complete, or the page shrinks under the pointer */
-		const sink = into === undefined ? out : document.createElement('div');
+		const sink = into === undefined ? out : el('div');
 		const line = lineIn(sink);
 		if(title !== null && into === undefined) {
 			title.textContent = named;

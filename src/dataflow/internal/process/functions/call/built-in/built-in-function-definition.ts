@@ -2,9 +2,8 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
-import { bindAccessedField, getAllFunctionCallTargets, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
+import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -17,12 +16,11 @@ import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { s3DispatchClassesOf } from '../../../../../fn/class-declaration';
 import { createFreshEnvState } from './built-in-new-env';
-import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import type { Environment, IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
+import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
+import { REnvironment } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
@@ -41,7 +39,7 @@ import { arraysGroupBy } from '../../../../../../util/collections/arrays';
 import { groupGenericOf } from '../../../../../environments/group-generics';
 import { DotsParameterName } from '../../../../../../util/arg-matching';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
-import { callsIn, definitionsByName, edgeSources, edgeTargets } from '../../../../../fn/frame-reflection';
+import { Dataflow } from '../../../../../graph/df-helper';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -59,7 +57,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1);
-	const bodyArg = unpackNonameArg(args.at(-1));
+	const bodyArg = RArgument.unnamedValueOf(args.at(-1));
 	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has no body! This is bad!`);
 
 	const originalEnvironment = data.environment;
@@ -84,13 +82,13 @@ export function processFunctionDefinition<OtherInfo>(
 		const read = processed.in.concat(processed.unknownReferences);
 		allParameterReads.push(...read);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		(data as { environment: REnvironmentInformation }).environment = overwriteEnvironment(data.environment, processed.environment);
+		(data as { environment: REnvironmentInformation }).environment = REnvironment.overwrite(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
 
 	const body = processDataflowFor(bodyArg, data);
 	for(const [, v] of body.graph.verticesOfType(VertexType.FunctionCall)) {
-		const envir = v.origin.includes(BuiltInProcName.Rm) ? v.args.find(a => FunctionArgument.hasName(a, 'envir')) : undefined;
+		const envir = DfgVertex.hasOrigin(v, BuiltInProcName.Rm) ? v.args.find(a => FunctionArgument.hasName(a, 'envir')) : undefined;
 		const offset = envir && parseSysFrameOffset(idMap.get(envir.valueId ?? envir.nodeId));
 		if(offset === undefined || offset > 0) {
 			continue;
@@ -98,7 +96,7 @@ export function processFunctionDefinition<OtherInfo>(
 		const targetLevel = offset === 0 ? 0 : originalEnvironment.level + 1 + offset;
 		let targetEnv = originalEnvironment;
 		while(targetEnv.level > targetLevel && targetEnv.level > 0) {
-			targetEnv = popLocalEnvironment(targetEnv);
+			targetEnv = REnvironment.popLocal(targetEnv);
 		}
 		if(targetEnv.level !== targetLevel) {
 			continue;
@@ -141,7 +139,7 @@ export function processFunctionDefinition<OtherInfo>(
 		if(parameter?.defaultValue === undefined) {
 			continue;
 		}
-		const forcedAt = edgeSources(subgraph, parameter.name.info.id, EdgeType.Reads);
+		const forcedAt = Dataflow.sourcesOf(subgraph, parameter.name.info.id, EdgeType.Reads);
 		RNode.visitAst<OtherInfo & ParentInformation>(parameter.defaultValue, inner => {
 			if(RSymbol.is(inner) && DfgVertex.isUse(subgraph.getVertex(inner.info.id))
 				&& linkParameterReadToBodyWrites(subgraph, { nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable }, writesByName)) {
@@ -154,7 +152,7 @@ export function processFunctionDefinition<OtherInfo>(
 	}
 
 	// parameter names are unique, so overwriting their environments here is correct even with non-`=` arguments
-	let outEnvironment = overwriteEnvironment(paramsEnvironments, body.environment);
+	let outEnvironment = REnvironment.overwrite(paramsEnvironments, body.environment);
 
 	for(const read of remainingRead) {
 		if(read.name) {
@@ -189,9 +187,9 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 		let hookEnvironment = vert.subflow.environment;
 		while(hookEnvironment.level > outEnvironment.level) {
-			hookEnvironment = popLocalEnvironment(hookEnvironment);
+			hookEnvironment = REnvironment.popLocal(hookEnvironment);
 		}
-		outEnvironment = overwriteEnvironment(outEnvironment, hookEnvironment);
+		outEnvironment = REnvironment.overwrite(outEnvironment, hookEnvironment);
 		/* the jumps and errors of an exit hook overrule the exit points of the body */
 		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
 		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);
@@ -227,7 +225,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const readParams: Record<NodeId, boolean> = {};
 	for(const paramId of paramIds) {
-		readParams[paramId] = edgeSources(subgraph, paramId, EdgeType.Reads).length > 0;
+		readParams[paramId] = Dataflow.sourcesOf(subgraph, paramId, EdgeType.Reads).length > 0;
 	}
 
 	const returnEnvState = data.ctx.config.solver.trackEnvironments
@@ -238,7 +236,7 @@ export function processFunctionDefinition<OtherInfo>(
 	graph.addVertex({
 		tag:         VertexType.FunctionDefinition,
 		id:          name.info.id,
-		environment: popLocalEnvironment(outEnvironment),
+		environment: REnvironment.popLocal(outEnvironment),
 		cds:         data.cds,
 		params:      readParams,
 		subflow:     flow,
@@ -291,12 +289,12 @@ function envStateReturnedAt<OtherInfo>(
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
 	callerEnvironment ??= ctx.env.makeCleanEnv();
 	while(baseEnvironment.level < callerEnvironment.level) {
-		baseEnvironment = pushLocalEnvironment(baseEnvironment);
+		baseEnvironment = REnvironment.pushLocal(baseEnvironment);
 	}
 	while(baseEnvironment.level > callerEnvironment.level) {
-		callerEnvironment = pushLocalEnvironment(callerEnvironment);
+		callerEnvironment = REnvironment.pushLocal(callerEnvironment);
 	}
-	return overwriteEnvironment(baseEnvironment, callerEnvironment);
+	return REnvironment.overwrite(baseEnvironment, callerEnvironment);
 }
 
 /**
@@ -312,7 +310,7 @@ function dispatchesOnFirstParameter<Info>(id: NodeId, idMap: AstIdMap<Info & Par
 function updateDispatches<Info>(graph: DataflowGraph, myArgs: FunctionArgument[], idMap: AstIdMap<Info & ParentInformation>): void {
 	for(const [, info] of graph.vertices(false)) {
 		const isDispatch = DfgVertex.isFunctionCall(info)
-			&& (info.origin.includes(BuiltInProcName.S3Dispatch) || info.origin.includes(BuiltInProcName.S7Dispatch));
+			&& (DfgVertex.hasOrigin(info, BuiltInProcName.S3Dispatch) || DfgVertex.hasOrigin(info, BuiltInProcName.S7Dispatch));
 		if(!isDispatch || info.args.length > 0) {
 			continue;
 		}
@@ -392,7 +390,7 @@ function* superAssignedTargets(graph: DataflowGraph, nodes: Iterable<NodeId>): G
 		if(!DfgVertex.hasOrigin(graph.getVertex(nodeId), BuiltInProcName.SuperAssignment)) {
 			continue;
 		}
-		for(const target of edgeTargets(graph, nodeId, EdgeType.Returns)) {
+		for(const target of Dataflow.targetsOf(graph, nodeId, EdgeType.Returns)) {
 			const node = graph.idMap?.get(target);
 			if(DfgVertex.isVariableDefinition(graph.getVertex(target)) && RSymbol.is(node)) {
 				yield [target, node.content];
@@ -416,7 +414,7 @@ interface NamesOfInterest {
 function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfInterest {
 	const shadowing = new Set<string>();
 	const generics = new Set<string>();
-	for(let env: IEnvironment | undefined = environment.current; env !== undefined && !env.builtInEnv; env = env.parent) {
+	for(const env of REnvironment.frames(environment.current)) {
 		for(const [identifier, definitions] of env.memory) {
 			if(definitions.every(d => NodeId.isBuiltIn(d.nodeId))) {
 				continue;
@@ -458,10 +456,10 @@ function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifie
 		/* the dispatch looks the method up by name, just like a call written out would */
 		graph.addEdge(call.id, def.nodeId, EdgeType.Reads);
 	}
-	return linkedDefinitions(dispatched, graph);
+	return linkedFunctionIds(dispatched, graph);
 }
 
-function linkedDefinitions(defs: readonly IdentifierDefinition[], graph: DataflowGraph): NodeId[] {
+function linkedFunctionIds(defs: readonly IdentifierDefinition[], graph: DataflowGraph): NodeId[] {
 	return getAllLinkedFunctionDefinitions(new Set(defs.map(d => d.nodeId)), graph)[0].values().map(d => d.id).toArray();
 }
 
@@ -498,9 +496,9 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 			}
 		}
 	}
-	const callsNext = linkedDefinitions([...picked], graph).some(d => {
+	const callsNext = linkedFunctionIds([...picked], graph).some(d => {
 		const v = graph.getVertex(d);
-		return DfgVertex.isFunctionDefinition(v) && callsIn(v, graph).some(([, c]) => c.origin.includes(BuiltInProcName.S3DispatchNext));
+		return DfgVertex.isFunctionDefinition(v) && Dataflow.callsIn(v, graph).some(([, c]) => DfgVertex.hasOrigin(c, BuiltInProcName.S3DispatchNext));
 	});
 	return callsNext ? undefined : [...picked];
 }
@@ -523,7 +521,7 @@ export function updateNestedFunctionCalls(
 	const runsOnceAt = memoize((id: NodeId) => ProgramOrder.runsOnceAt(id, graph));
 	const environmentAt = memoize((id: NodeId) => {
 		const environment = (graph.getVertex(id) as DataflowGraphVertexFunctionCall).environment;
-		return environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
+		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;
 	});
 	for(let i = 0; i < calls.length; i++) {
 		const [id, vertex] = calls[i];
@@ -541,7 +539,7 @@ export function updateNestedFunctionCalls(
 		/* a call the program runs once, at the top and outside any loop, cannot see what is defined after it */
 		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph);
 
-		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
+		const targets = new Set(Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
 		/* a call of a parameter sees what it is bound to only once the calls handing it down are linked */
 		if(!deferred.has(id) && targets.size > 0 && targets.values().every(t => !NodeId.isBuiltIn(t) && DfgVertex.isVariableDefinition(graph.getVertex(t)))) {
 			deferred.add(id);
@@ -552,7 +550,7 @@ export function updateNestedFunctionCalls(
 		let treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
 		if(treatAsS3 && !graph.isRoot(id)) {
 			/* a body dispatches where it is called, which may see a method the end of the script has replaced */
-			rootDefinitions ??= definitionsByName(graph);
+			rootDefinitions ??= Dataflow.definitionsByName(graph);
 			const prefix = Identifier.getName(name) + '.';
 			for(const [defined, ids] of rootDefinitions.entries()) {
 				if(defined.startsWith(prefix)) {
@@ -597,8 +595,8 @@ export function updateNestedFunctionCalls(
 					targetVertex.mode.push('s3');
 				}
 				// collect all next method calls to link them to the same targets!
-				for(const [next, v] of callsIn(targetVertex, graph)) {
-					if(v.origin.includes(BuiltInProcName.S3DispatchNext)) {
+				for(const [next, v] of Dataflow.callsIn(targetVertex, graph)) {
+					if(DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)) {
 						collectedNextMethods.add(next);
 					}
 				}
@@ -611,7 +609,7 @@ export function updateNestedFunctionCalls(
 				}
 				/* only writes from within functions (`<<-`) are left, and the call may run before them, seeing what they replace */
 				if(resolved.every(d => !graph.isRoot(d.nodeId)) && ingoing.name !== undefined) {
-					rootDefinitions ??= definitionsByName(graph);
+					rootDefinitions ??= Dataflow.definitionsByName(graph);
 					for(const def of rootDefinitions.get(Identifier.getName(ingoing.name)).filter(d => graph.isRoot(d))) {
 						graph.addEdge(ingoing.nodeId, def, EdgeType.Reads);
 					}
@@ -644,7 +642,7 @@ export function updateNestedFunctionCalls(
 		}
 	}
 	linkLiftedReads(graph, lifted, enclosingOf, environmentAt, runsOnceAt);
-	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([id]) => edgeTargets(graph, id, EdgeType.Calls)));
+	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		if(called.has(id)) {
 			continue;
@@ -676,7 +674,7 @@ function linkLiftedReads(
 			continue;
 		}
 		known.add(read.nodeId);
-		for(const call of edgeSources(graph, definition, EdgeType.Calls)) {
+		for(const call of Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
 			if(!DfgVertex.isFunctionCall(graph.getVertex(call))) {
 				continue;
 			}
@@ -730,9 +728,9 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 	for(let frame = data.environment.current; enclosing.length < level; frame = frame.parent) {
 		enclosing.push(frame);
 	}
-	let env = cleanEnvOf(data.environment);
+	let env = REnvironment.cleanOf(data.environment);
 	for(let i = 0; i < level + 1; i++) {
-		env = pushLocalEnvironment(env);
+		env = REnvironment.pushLocal(env);
 		if(i === level) {
 			env.current.setClosureNodeId(rootId);
 		} else {

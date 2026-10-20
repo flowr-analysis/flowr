@@ -1,9 +1,9 @@
+import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../../environments/identifier';
-import { removeRQuotes } from '../../../../../r-bridge/retriever';
 import { EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
@@ -11,9 +11,9 @@ import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-
 import { firstOnSomePath, reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { linkCallToDefinitions } from '../../../linker';
-import { edgeSources } from '../../../../fn/frame-reflection';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
+import { Dataflow } from '../../../../graph/df-helper';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -35,7 +35,7 @@ interface NameIndex {
 /** The vertices of `type` by their unquoted name. */
 export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idMap: AstIdMap<Info & ParentInformation>): Map<string, NodeId[]> {
 	const named = graph.vertexIdsOfType(type).filter(id => NodeId.recoverName(id, idMap) !== undefined);
-	return Map.groupBy(named, id => removeRQuotes(NodeId.recoverName(id, idMap) as string));
+	return Map.groupBy(named, id => RString.unquote(NodeId.recoverName(id, idMap) as string));
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
@@ -51,10 +51,10 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
-				for(const def of edgeSources(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
+				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
 					const name = NodeId.recoverName(def, idMap);
 					if(name !== undefined) {
-						names.push([def, removeRQuotes(name), true]);
+						names.push([def, RString.unquote(name), true]);
 					}
 				}
 			}
@@ -95,11 +95,11 @@ export const Deferred = {
 	 * With `viaClosures`, a closure reading a `delayedAssign` binding forces it when called.
 	 */
 	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph, viaClosures = false): readonly NodeId[] {
-		const reads = edgeSources(graph, binding, EdgeType.Reads);
+		const reads = Dataflow.sourcesOf(graph, binding, EdgeType.Reads);
 		const readSet = new Set(reads);
 		/* a closure reading it and the call of that closure may skip the read, so they never rule out a later force */
 		const calls = viaClosures
-			? edgeSources(graph, binding, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall).filter(r => !readSet.has(r))
+			? Dataflow.sourcesOf(graph, binding, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall).filter(r => !readSet.has(r))
 			: [];
 		if(reads.length < 2) {
 			return reads.concat(calls);
@@ -168,7 +168,7 @@ export const Deferred = {
 			return always;
 		};
 		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
-		const bindingName = forces === undefined ? undefined : removeRQuotes(NodeId.recoverName(forces.binding, idMap) ?? '');
+		const bindingName = forces === undefined ? undefined : RString.unquote(NodeId.recoverName(forces.binding, idMap) ?? '');
 		for(const [node, name, writes] of within) {
 			if(writes) {
 				/* a write of the bound name replaces the binding, so a read it definitely reaches sees only it */

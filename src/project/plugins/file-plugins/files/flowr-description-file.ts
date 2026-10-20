@@ -1,3 +1,4 @@
+import { RString } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { type FlowrFileProvider, type FileRole, FlowrWrappedFile, FlowrTextFile } from '../../../context/flowr-file';
 import type { RAuthorInfo } from '../../../../util/r-author';
 import { AuthorRole, parseTextualAuthorString, parseRAuthorString } from '../../../../util/r-author';
@@ -6,7 +7,6 @@ import type { DeepReadonly } from 'ts-essentials';
 import type { RLicenseElementInfo } from '../../../../util/r-license';
 import { parseRLicense } from '../../../../util/r-license';
 import { Package, type PackageType } from '../../package-version-plugins/package';
-import { removeRQuotes } from '../../../../r-bridge/retriever';
 import type { SemVer } from 'semver';
 import { RVersion } from '../../../../util/r-version';
 
@@ -92,7 +92,7 @@ export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
 	public collate(): readonly string[] | undefined {
 		const c = this.content().get('Collate');
 		// we join newlines, and then split quote sensitive:
-		return c ? splitAtEscapeSensitive(c.join(' '), true, ' ').map(s => removeRQuotes(s).trim()).filter(s => s.length > 0) : undefined;
+		return c ? splitAtEscapeSensitive(c.join(' '), true, ' ').map(s => RString.unquote(s).trim()).filter(s => s.length > 0) : undefined;
 	}
 
 	/**

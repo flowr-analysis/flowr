@@ -12,7 +12,6 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs } from '../../../../linker';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
-import { tryUnpackNoNameArg } from '../argument/unpack-argument';
 import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from '../../../../../graph/graph';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
@@ -30,10 +29,11 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { appendEnvironment } from '../../../../../environments/append';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
-import { type BuiltInLookup, calledDefinitions, hasEdgeOfType } from '../../../../../fn/frame-reflection';
+import type { BuiltInLookup } from '../../../../../fn/frame-reflection';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../../graph/df-helper';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Process a built-in try-catch or similar handler.
@@ -52,7 +52,7 @@ export function processTryCatch<OtherInfo>(
 		aborts?: boolean
 	}
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
+	const res = processKnownFunctionCall({ name, args: args.map(RArgument.unnamedValueOrArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
 	if(args.length < 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;
@@ -188,7 +188,7 @@ export function processTryCatch<OtherInfo>(
 			call.cds = [...call.cds ?? [], { id: rootId, when: true }];
 		}
 	}
-	const environment = mayAbort ? appendEnvironment(data.environment, info.environment) : info.environment;
+	const environment = mayAbort ? REnvironment.append(data.environment, info.environment) : info.environment;
 	return {
 		...info,
 		out:         info.out.concat(mayAbort ? makeAllMaybe(escaping, info.graph, environment, true) : escaping),
@@ -201,7 +201,7 @@ export function processTryCatch<OtherInfo>(
 export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext): void {
 	const ordered = new Set<NodeId>();
 	const reach = (node: RNode<ParentInformation>) => {
-		for(const id of RFunctionDefinition.is(node) ? [node.info.id] : calledDefinitions(graph, node.info.id)) {
+		for(const id of RFunctionDefinition.is(node) ? [node.info.id] : Dataflow.calleeIdsOf(graph, node.info.id)) {
 			const definition = idMap.get(id);
 			if(!ordered.has(id) && RFunctionDefinition.is(definition)) {
 				ordered.add(id);
@@ -213,7 +213,7 @@ export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: F
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const call = DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) ? idMap.get(id) : undefined;
 		for(const arg of RFunctionCall.is(call) ? call.arguments : []) {
-			if(arg !== EmptyArgument && !hasEdgeOfType(graph, id, arg.info.id, EdgeType.Calls)) {
+			if(arg !== EmptyArgument && !Dataflow.hasEdge(graph, id, arg.info.id, EdgeType.Calls)) {
 				RNode.visitAst(arg, n => {
 					reach(n);
 					return RFunctionDefinition.is(n);
@@ -229,7 +229,7 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 	const raises = (node: Node): boolean => {
 		const vertex = graph.getVertex(node.info.id);
 		const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : RFunctionCall.is(node) ? RFunctionCall.calledName(node) : RAccess.is(node) ? node.operator : node.lexeme;
-		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || (rootId !== undefined && hasEdgeOfType(graph, node.info.id, rootId, EdgeType.Reads))) {
+		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || (rootId !== undefined && Dataflow.hasEdge(graph, node.info.id, rootId, EdgeType.Reads))) {
 			return true;
 		} else if(DfgVertex.isFunctionCall(vertex)) {
 			return !vertex.onlyBuiltin;

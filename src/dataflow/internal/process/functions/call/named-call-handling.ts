@@ -1,16 +1,16 @@
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowProcessorInformation } from '../../../../processor';
 import { hidesBody, readsAllAmbientState } from './built-in/built-in-ambient-state';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
 import { DataflowInformation, type ExitPoint, withCds } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
-import { appendEnvironment } from '../../../../environments/append';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RParameter } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RExpressionList } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { OperatorDatabase } from '../../../../../r-bridge/lang-4.x/ast/model/operators';
-import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RBinaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -27,6 +27,8 @@ import { Resolve } from '../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../util/assert';
 import { CallProp, CallProps, SemanticCallTag } from '../../../../environments/built-in-props';
 import { queryFnProps } from '../../../../environments/query-fn-props';
+import { REnvironment } from '../../../../environments/environment';
+import { InternalGenerics } from '../../../../environments/default-builtin-config';
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
 	if(info === undefined) {
@@ -37,7 +39,7 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		in:                info.in.concat(newInfo.in),
 		out:               info.out.concat(newInfo.out),
 		graph:             info.graph.mergeWith(newInfo.graph),
-		environment:       appendEnvironment(info.environment, newInfo.environment),
+		environment:       REnvironment.append(info.environment, newInfo.environment),
 		entryPoint:        newInfo.entryPoint,
 		cfgEntry:          newInfo.cfgEntry,
 		cfgExit:           newInfo.cfgExit,
@@ -88,7 +90,7 @@ const HandedFunction = ReferenceType.Function | ReferenceType.Parameter | Refere
 
 /** Whether `arg` hands over a function that may draw: a symbol bound to data (`d <- read.csv(f)`, `NA`) does not, nor does a built-in stating it does not (`mean`) */
 function handsOverFunction<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	const value = arg === EmptyArgument ? undefined : arg.value;
+	const value = RArgument.valueOf(arg);
 	if(!RSymbol.is(value)) {
 		return RFunctionDefinition.is(value);
 	}
@@ -198,8 +200,9 @@ export function processNamedCall<OtherInfo>(
 	for(const own of toRun) {
 		alternatives.push(own.processor(name, args, rootId, data));
 		const pkg = own.name === undefined ? undefined : Identifier.getNamespace(own.name);
-		/* unless flowR states how it accesses the state, as for `withr::with_options` */
-		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg));
+		/* unless flowR states how it accesses the state, as for `withr::with_options`, or the export is a method the primitive dispatches to (lubridate's `rep`) */
+		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg))
+			&& !InternalGenerics.has(Identifier.getName(own.name as Identifier));
 	}
 	if(defaultProcessor && !shadowable) {
 		processDefault();

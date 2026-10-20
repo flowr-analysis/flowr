@@ -10,10 +10,11 @@
 <style>
 <!--THEME-CSS-->
 <!--BASE-CSS-->
-/* a few soft balls behind everything, in the colours the feature cards use, drifting slowly enough
+/* a few soft balls behind the whole page, in the colours the feature cards use, drifting slowly enough
    that one only notices them when looking for them */
+body { position: relative; overflow-x: clip; }
 body::before, body::after {
-	content: ""; position: fixed; inset: -10%; z-index: -1; pointer-events: none;
+	content: ""; position: absolute; inset: 0 -5%; z-index: -1; pointer-events: none;
 	will-change: transform;
 }
 body::before {
@@ -58,10 +59,10 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 
 <!--BAR-CSS-->
 
-header { text-align: center; padding: 2.6rem 0 1.6rem; }
-header h1 { margin: 0 0 1.3rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
-header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 3.25vw, 1.18rem); color: var(--muted); }
-#meta { min-height: 1.6em; margin: 0 0 1.6rem; color: var(--muted); font-size: .9rem; }
+header { text-align: center; padding: 1.5rem 0 .8rem; }
+header h1 { margin: 0 0 .8rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
+header p.lead { max-width: 46rem; margin: 0 auto 1rem; font-size: clamp(1rem, 3.25vw, 1.18rem); color: var(--muted); }
+#meta { min-height: 1.6em; margin: 0 0 1rem; color: var(--muted); font-size: .9rem; }
 #meta b { color: var(--fg); }
 #meta a { color: inherit; text-decoration: none; }
 #meta a:hover { color: var(--accent); }
@@ -123,10 +124,12 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .demo .line.source  { --kind: #0072b2; }
 .demo .line.read    { --kind: #0f766e; }
 .demo .line.write   { --kind: #d55e00; }
+.demo .line.transform { --kind: #b8860b; }
 :root[data-theme="dark"] .demo .line.library { --kind: #c58af9; }
 :root[data-theme="dark"] .demo .line.visualize { --kind: #f0a6d0; }
 :root[data-theme="dark"] .demo .line.read    { --kind: #2dd4bf; }
 :root[data-theme="dark"] .demo .line.write   { --kind: #e69f00; }
+:root[data-theme="dark"] .demo .line.transform { --kind: #e3b341; }
 .demo .line.jump { animation: jump 1.2s ease-out; }
 @keyframes jump {
 	0%, 60% { background: color-mix(in srgb, var(--accent) 30%, transparent); }
@@ -312,7 +315,7 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 @media (prefers-reduced-motion: reduce) { .path li em { transition: none; } }
 .path li em code { background: var(--sunk); border: 1px solid var(--border); border-radius: .3rem; padding: 0 .3rem; font-size: .92em; }
 /* the platforms flowR ships for, introduced rather than dropped in */
-.available { margin: 2.2rem 0 .5rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+.available { margin: 1.4rem 0 .4rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
 /* which way a slice runs: a question next to the explanation instead of a switch under the code */
 .demo .direction { margin-top: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .demo .direction[hidden] { display: none; }

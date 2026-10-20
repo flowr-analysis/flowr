@@ -29,7 +29,6 @@ import { reachableTo } from '../../../../../control-flow/happens-before';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { callFnProps } from '../../../../environments/query-fn-props';
 import { CallProp, CallProps, SemanticCallTag } from '../../../../environments/built-in-props';
-import { edgeSources, edgeTargets, hasEdgeOfType } from '../../../../fn/frame-reflection';
 import { DefaultMap } from '../../../../../util/collections/defaultmap';
 
 type Reach = NonNullable<ForceSites['reach']>;
@@ -86,7 +85,7 @@ export const Quoted = {
 		for(let parent = idMap?.get(id)?.info.parent; parent !== undefined; parent = idMap?.get(parent)?.info.parent) {
 			const captured = Quoted.capturedBy(graph, parent);
 			if(captured.length > 0) {
-				const evaluating = captured.flatMap(expr => edgeSources(graph, expr, EdgeType.Returns | EdgeType.Reads | EdgeType.Calls));
+				const evaluating = captured.flatMap(expr => Dataflow.sourcesOf(graph, expr, EdgeType.Returns | EdgeType.Reads | EdgeType.Calls));
 				return [parent, ...evaluating.filter(from => from !== parent)];
 			}
 		}
@@ -120,6 +119,8 @@ export const Quoted = {
 		const reaches = new DefaultMap<string, Reach>(() => ({}));
 		const reachOf = (sites: readonly NodeId[]): Reach => reaches.get(sites.join('\0'));
 		let enclosing: ReadonlyMap<NodeId, readonly NodeId[]> | undefined;
+		/* every call of a function lists the arguments of all its calls, so each is linked once per forces it meets */
+		const linkedWith = new Map<NodeId, ForceSites>();
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
 			if(masks !== undefined) {
@@ -170,7 +171,8 @@ export const Quoted = {
 					for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
 						const index = namesOnce();
 						const forces = forcesOf(graph, parameter, flow, forcing, reachOf);
-						if(forces !== undefined) {
+						if(forces !== undefined && linkedWith.get(argument) !== forces) {
+							linkedWith.set(argument, forces);
 							Deferred.link(graph, argument, index, idMap, forces);
 						}
 					}
@@ -201,7 +203,7 @@ function forcesOf(graph: DataflowGraph, parameter: NodeId, cfg: ControlFlowGraph
 		return known.forces;
 	}
 	/* counting is only needed once something touched the reads, and the same count still means the same forces */
-	const reads = edgeSources(graph, parameter, EdgeType.Reads).length;
+	const reads = Dataflow.sourcesOf(graph, parameter, EdgeType.Reads).length;
 	if(known?.reads === reads) {
 		forcing.set(parameter, { ...known, version });
 		return known.forces;
@@ -214,12 +216,12 @@ function forcesOf(graph: DataflowGraph, parameter: NodeId, cfg: ControlFlowGraph
 
 /** The name a delaying call binds, which is the definition its reads have to go through. */
 function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
-	return edgeSources(graph, id, EdgeType.DefinedBy).find(target => DfgVertex.isVariableDefinition(graph.getVertex(target)));
+	return Dataflow.sourcesOf(graph, id, EdgeType.DefinedBy).find(target => DfgVertex.isVariableDefinition(graph.getVertex(target)));
 }
 
 /** Every read of the delayed name takes the promised expression's value, so all of them get the link, not just whichever forces it first. */
 function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: NodeId): void {
-	for(const reader of edgeSources(graph, binding, EdgeType.Reads | EdgeType.DefinedByOnCall)) {
+	for(const reader of Dataflow.sourcesOf(graph, binding, EdgeType.Reads | EdgeType.DefinedByOnCall)) {
 		if(reader !== promise) {
 			graph.addEdge(reader, promise, EdgeType.Reads);
 		}
@@ -234,13 +236,13 @@ function trackedEnvOf(call: DataflowGraphVertexFunctionCall, evalEnv: RNode<Pare
 }
 
 function* installedLanguageOf(graph: DataflowGraph, id: NodeId, installers: () => ReadonlySet<NodeId>): Generator<NodeId> {
-	for(const definition of edgeTargets(graph, id, EdgeType.Reads)) {
+	for(const definition of Dataflow.targetsOf(graph, id, EdgeType.Reads)) {
 		if(!DfgVertex.isVariableDefinition(graph.getVertex(definition))) {
 			continue;
 		}
 		let installs = false;
 		const captured: NodeId[] = [];
-		for(const by of edgeTargets(graph, definition, EdgeType.DefinedBy)) {
+		for(const by of Dataflow.targetsOf(graph, definition, EdgeType.DefinedBy)) {
 			const captures = capturedArgumentsOf(graph, by, true);
 			if(captures.length > 0) {
 				captured.push(...captures);
@@ -287,7 +289,7 @@ function evaluationSites(graph: DataflowGraph, id: NodeId, enclosing: ReadonlyMa
 	const todo = [id];
 	for(let at = todo.pop(); at !== undefined; at = todo.pop()) {
 		for(const definition of enclosing.get(at) ?? []) {
-			for(const caller of edgeSources(graph, definition, EdgeType.Calls)) {
+			for(const caller of Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
 				if(!sites.has(caller)) {
 					sites.add(caller);
 					todo.push(caller);
@@ -341,7 +343,7 @@ function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierRe
 }
 
 function callsWithSideEffects(graph: DataflowGraph): ReadonlySet<NodeId> {
-	return new Set(graph.vertices(true).flatMap(([from]) => edgeTargets(graph, from, EdgeType.SideEffectOnCall)));
+	return new Set(graph.vertices(true).flatMap(([from]) => Dataflow.targetsOf(graph, from, EdgeType.SideEffectOnCall)));
 }
 
 /** Links a capture handed to an evaluating call, in that call's scope. */
@@ -445,7 +447,7 @@ function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<readonl
 				continue;
 			}
 			for(const parameter of Dataflow.parametersOf(callee)) {
-				if(edgeSources(graph, parameter, EdgeType.Reads).some(reader => !closure.subflow.graph.has(reader))) {
+				if(Dataflow.sourcesOf(graph, parameter, EdgeType.Reads).some(reader => !closure.subflow.graph.has(reader))) {
 					continue;
 				}
 				for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
@@ -466,9 +468,9 @@ function readAtForcingCalls<Info>(graph: DataflowGraph, factoryCall: NodeId, arg
 		} else if(!DfgVertex.isVariableDefinition(via) || !DfEdge.includesType(edge, EdgeType.DefinedBy)) {
 			return;
 		}
-		for(const reader of edgeSources(graph, binding, EdgeType.Reads)) {
+		for(const reader of Dataflow.sourcesOf(graph, binding, EdgeType.Reads)) {
 			const call = graph.getVertex(reader);
-			if(!DfgVertex.isFunctionCall(call) || !hasEdgeOfType(graph, reader, closure, EdgeType.Calls)
+			if(!DfgVertex.isFunctionCall(call) || !Dataflow.hasEdge(graph, reader, closure, EdgeType.Calls)
 				|| call.environment === undefined || ProgramOrder.runsOnceAt(reader, graph) === undefined) {
 				return;
 			}
@@ -485,7 +487,7 @@ function readAtForcingCalls<Info>(graph: DataflowGraph, factoryCall: NodeId, arg
 		}
 		if(RSymbol.is(node)) {
 			const visible = new Set(environments.flatMap(env => Resolve.byName(node.content, env) ?? []).map(d => d.nodeId));
-			for(const target of edgeTargets(graph, node.info.id, EdgeType.Reads)) {
+			for(const target of Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads)) {
 				if(DfgVertex.isVariableDefinition(graph.getVertex(target)) && !visible.has(target)) {
 					graph.removeEdgeType(node.info.id, target, EdgeType.Reads);
 				}

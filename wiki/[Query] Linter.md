@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-16, 17:37:29 UTC (v2.16.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Linter Query">Linter Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Lints a given R script for common issues.\
 _This query is requested with the type `linter`._\
-Run in the REPL: `:query @linter [rules:<r1>,<r2>,...] [format:<fmt>] <code | file://path>`
+Run in the REPL: `:query @linter [rules:<r1>,<r2>,...] [tags:<t1>,...] [format:<fmt>] <code | file://path>`
 
 This query lints a given R script for common issues, such as missing files, unused variables, and more.
 
@@ -17,7 +17,7 @@ For a script reading `read.csv("i_do_not_exist.csv")`, the following query retur
 
 _Results (prettified and summarized):_
 
-Query: **linter** (40 ms)\
+Query: **linter** (21 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -29,15 +29,15 @@ Query: **linter** (40 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop): _no findings_\
-&nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs): _no findings_\
-&nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call): _no findings_\
+&nbsp;&nbsp;&nbsp;╰ **Problematic Inputs** (problematic-inputs): _no findings_\
+&nbsp;&nbsp;&nbsp;╰ **Stop Without Call** (stop-call): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
-&nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
+&nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -74,7 +74,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalFunctionCalls": 1,
           "totalVariableUses": 0,
-          "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0}
+          "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}
         }
       },
       "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
@@ -100,10 +100,10 @@ You can also configure which rules to apply and what settings to use for these r
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -135,6 +135,6 @@ We welcome any feedback and suggestions for new rules on this (consider opening 
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Linter Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-executor.ts#L18"><code><span title="Executes the given linter queries using the provided analyzer. A query without an explicit rule list runs only the rules that are active by default.">executeLinterQuery</span></code></a>.
+The Linter Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-executor.ts#L19"><code><span title="Executes the given linter queries using the provided analyzer. A query without an explicit rule list runs only the rules that are active by default.">executeLinterQuery</span></code></a>.
 
 </details>

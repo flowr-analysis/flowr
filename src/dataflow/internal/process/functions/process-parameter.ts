@@ -4,11 +4,11 @@ import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type IdentifierDefinition, ReferenceType } from '../../../environments/identifier';
-import { define } from '../../../environments/define';
 import { EdgeType } from '../../../graph/edge';
 import { ControlFlow } from '../../control-flow';
 import { Ternary } from '../../../../util/logic';
 import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { REnvironment } from '../../../environments/environment';
 
 function definedByDefault<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, defaultValue: DataflowInformation | undefined): NodeId[] {
 	if(defaultValue === undefined) {
@@ -38,7 +38,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	for(const reference of name.unknownReferences) {
 		const written = { ...reference, type: ReferenceType.Parameter, definedAt: parameter.info.id } as IdentifierDefinition & { name: string };
 		graph.setDefinitionOfVertex(written, defaultValue === undefined ? [] : [defaultValue.entryPoint]);
-		environment = define(written, false, environment);
+		environment = REnvironment.define(written, false, environment);
 		for(const node of definedBy) {
 			graph.addEdge(written.nodeId, node, EdgeType.DefinedBy);
 		}

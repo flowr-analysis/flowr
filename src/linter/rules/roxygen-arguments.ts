@@ -77,9 +77,9 @@ export const ROXYGEN_ARGS = {
 	},
 	info: {
 		name:          'Roxygen Arguments',
-		tags:          [LintingRuleTag.Smell, LintingRuleTag.Documentation, LintingRuleTag.Style],
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.Documentation],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks whether a function has undocumented or overdocumented parameters',
+		description:   'Finds function parameters the roxygen documentation leaves out, and documented parameters the function does not have.',
 		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<RoxygenArgsResult, RoxygenArgsMetadata, RoxygenArgsConfig>;

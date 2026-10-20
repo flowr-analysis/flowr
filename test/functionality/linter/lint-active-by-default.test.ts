@@ -2,7 +2,8 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-executor';
-import type { LintingRuleNames } from '../../../src/linter/linter-rules';
+import { type LintingRuleNames, LintingRules } from '../../../src/linter/linter-rules';
+import { LintingRuleTag } from '../../../src/linter/linter-tags';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 
 describe('flowR linter', withTreeSitter(parser => {
@@ -27,6 +28,20 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 	});
 
+	describe('the file of a finding', () => {
+		test('every finding names its file, a sourced one included', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addFile(new FlowrInlineTextFile('helpers.R', 'f <- function() read.csv("/home/me/data.csv")'));
+			analyzer.addFile(new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(f())'));
+			analyzer.addRequest({ request: 'file', content: 'main.R' });
+			const { results } = await executeLinterQuery({ analyzer }, [{ type: 'linter', rules: ['absolute-file-paths'] }]);
+			const found = (results['absolute-file-paths'] as { results: { loc: readonly unknown[] }[] }).results;
+			const files = found.map(f => f.loc[4]);
+			assert.include(files, 'helpers.R', 'the path written in the sourced file is found there');
+			assert.notInclude(files, undefined, 'every finding names its file');
+		});
+	});
+
 	describe('project-kind specialization', () => {
 		async function defaultRuleKeys(description?: string): Promise<string[]> {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
@@ -47,6 +62,49 @@ describe('flowR linter', withTreeSitter(parser => {
 			const keys = await defaultRuleKeys('Package: Foo\nVersion: 1.0\n');
 			assert.isTrue(keys.includes('software-has-license'), `got ${keys.join(', ')}`);
 			assert.isTrue(keys.includes('software-has-tests'), `got ${keys.join(', ')}`);
+		});
+
+		const cmdCheckRules = (Object.keys(LintingRules) as LintingRuleNames[]).filter(r => (LintingRules[r].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck) && (LintingRules[r].info as { activeByDefault?: boolean }).activeByDefault !== false);
+
+		test('there are R CMD check rules', () => {
+			assert.isAbove(cmdCheckRules.length, 10);
+		});
+
+		test('a lone script runs none of the R CMD check rules by default', async() => {
+			const keys = await defaultRuleKeys();
+			assert.deepStrictEqual(keys.filter(k => cmdCheckRules.includes(k as LintingRuleNames)), []);
+		});
+
+		test('a package runs all R CMD check rules by default', async() => {
+			const keys = await defaultRuleKeys('Package: Foo\nVersion: 1.0\n');
+			assert.includeMembers(keys, cmdCheckRules);
+		});
+
+		test('a shiny app with a DESCRIPTION is no package', async() => {
+			const keys = await defaultRuleKeys('Package: Foo\nVersion: 1.0\nType: shiny\n');
+			assert.deepStrictEqual(keys.filter(k => cmdCheckRules.includes(k as LintingRuleNames)), []);
+		});
+
+		test('the R CMD check rules can be enabled for any project through the config', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).configure('linter.disabledTags', []).build();
+			analyzer.addRequest('cat("hello")');
+			const keys = Object.keys((await executeLinterQuery({ analyzer }, [{ type: 'linter' }])).results);
+			assert.includeMembers(keys, cmdCheckRules);
+		});
+
+		test('a query for the cmd-check tag runs exactly the R CMD check rules', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addRequest('cat("hello")');
+			const keys = Object.keys((await executeLinterQuery({ analyzer }, [{ type: 'linter', tags: [LintingRuleTag.CmdCheck] }])).results);
+			const all = (Object.keys(LintingRules) as LintingRuleNames[]).filter(r => (LintingRules[r].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck));
+			assert.deepStrictEqual(keys.sort(), all.sort());
+		});
+
+		test('other tags can be disabled through the config', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).configure('linter.disabledTags', [LintingRuleTag.Bug]).build();
+			analyzer.addRequest('cat("hello")');
+			const keys = Object.keys((await executeLinterQuery({ analyzer }, [{ type: 'linter' }])).results) as LintingRuleNames[];
+			assert.isTrue(keys.length > 0 && keys.every(k => !(LintingRules[k].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.Bug)), `got ${keys.join(', ')}`);
 		});
 
 		test('explicitly requested rules always run, even a config-disabled one on a script', async() => {

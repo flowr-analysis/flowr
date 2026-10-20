@@ -2,9 +2,13 @@
  * The playground: a CodeMirror editor on the left, and on the right what flowR makes of it, all in
  * the browser. The wasm rides along inside this bundle, so the page fetches nothing.
  */
+import { type SourceLocation, SourceRange } from '../../src/util/range';
+import { queryWikiPage, SupportedQueries } from '../../src/queries/query';
+import { FlowrWikiBaseRef } from '../../src/documentation/doc-util/doc-files';
 import { EditorView, basicSetup } from 'codemirror';
-import { Decoration, hoverTooltip, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import { Compartment, EditorState, StateEffect, StateField, type StateEffectType, type Transaction } from '@codemirror/state';
+import { closeHoverTooltips, Decoration, gutter, GutterMarker, hoverTooltip, keymap, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
+import { Compartment, EditorState, Prec, RangeSet, StateEffect, StateField, type StateEffectType, type Transaction } from '@codemirror/state';
+import { indentWithTab } from '@codemirror/commands';
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { HighlightStyle, StreamLanguage, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { highlightCode, tags } from '@lezer/highlight';
@@ -21,10 +25,10 @@ import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../..
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
 import { Identifier } from '../../src/dataflow/environments/identifier';
-import { DefaultDependencyCategoryNames } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { SliceDirection } from '../../src/util/slice-direction';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
+import { escapeRegex, compareByCodeUnit  } from '../../src/util/text/strings';
 import { computeCompletions, replProcessAnswer } from '../../src/cli/repl/core';
 import { getCommand } from '../../src/cli/repl/commands/repl-commands';
 import { splitAtEscapeSensitive } from '../../src/util/text/args';
@@ -32,18 +36,28 @@ import type { ReplOutput } from '../../src/cli/repl/commands/repl-main';
 import { packForUrl, toBase64, unpackFromUrl } from '../../src/util/text/url-encoding';
 import type { PlaygroundMark as Mark } from '../../src/util/text/playground-link';
 import { Playground, PlaygroundBox } from '../../src/util/text/playground-link';
-import { baseRPackages } from '../../src/util/r-base-packages';
+import type { ProjectQueryResult } from '../../src/queries/catalog/project-query/project-query-format';
+import { rAuthorInfoToReadable } from '../../src/util/r-author';
+import { stringifyRLicense } from '../../src/util/r-license';
+import { baseRPackages, isBaseRPackage } from '../../src/util/r-base-packages';
 import { DataflowMermaid } from '../../src/util/mermaid/dfg';
 import { cfgToMermaid } from '../../src/util/mermaid/cfg';
 import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
 import treeSitterWasm from '../../node_modules/web-tree-sitter/tree-sitter.wasm';
 import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
-import { blank, el } from '../page-lib/dom';
+import { blank, button, el } from '../page-lib/dom';
 import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
 import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
-import { languageOf, notebookAsScript, notebookCells } from './notebook';
-import { arraySum } from '../../src/util/collections/arrays';
+import { cellTitles, languageOf, NotebookRun, notebookAsScript, notebookCells, rewriteCells, writesR } from './notebook';
+import { fileBanner, reconstructToCode } from '../../src/reconstruct/reconstruct';
+import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
+import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
+import { cranPageUrl } from '../../src/util/r-package-urls';
+import type { DataflowGraph } from '../../src/dataflow/graph/graph';
+import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
+import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -51,17 +65,71 @@ const Sample = (document.getElementById('sample')?.textContent ?? '').trim();
 
 const panel = document.getElementById('panel') as HTMLElement;
 
-/** how long the last analysis took, next to what it found */
-function showTook(text: string): void {
-	const at = document.getElementById('took');
+const textInto = (id: string) => (text: string): void => {
+	const at = document.getElementById(id);
 	if(at !== null) {
 		at.textContent = text;
 	}
+};
+/** how long the last analysis took, next to what it found */
+const showTook = textInto('took');
+/** what the tools bar says about the link, next to the button that copies it */
+const showShared = textInto('sharenote');
+
+const setJumpable = StateEffect.define<{ readonly from: number, readonly to: number } | undefined>();
+const jumpableMark = marksFrom(setJumpable, at => at === undefined ? Decoration.none : Decoration.set([Decoration.mark({ class: 'cm-jumpable' }).range(at.from, at.to)]));
+let jumpShown = false, jumpAsked = 0;
+function showJumpable(at: { readonly from: number, readonly to: number } | undefined): void {
+	if(at !== undefined || jumpShown) {
+		jumpShown = at !== undefined;
+		editor.dispatch({ effects: setJumpable.of(at) });
+	}
 }
+const jumpHover = EditorView.domEventHandlers({
+	mousemove(event, view) {
+		const asked = ++jumpAsked;
+		const pos = event.ctrlKey || event.metaKey ? view.posAtCoords({ x: event.clientX, y: event.clientY }) : null;
+		if(pos === null) {
+			showJumpable(undefined);
+			return;
+		}
+		void jumpTarget(pos).then(target => asked === jumpAsked && showJumpable(target));
+	},
+	mouseleave: () => showJumpable(undefined)
+});
+window.addEventListener('keyup', event => (event.key === 'Control' || event.key === 'Meta') && (jumpAsked++, showJumpable(undefined)));
+
+/* outside the R code of a notebook the cursor keeps its last slice */
+let held: { readonly criterion?: string, readonly name?: string } = {};
+const holdCursor = EditorView.updateListener.of(update => update.selectionSet && cursorTarget());
 
 /* what the linter found, and which lines a slice keeps: both replaced after every analysis */
-const setLints = StateEffect.define<readonly { from: number, to: number, message: string }[]>();
+const setLints = StateEffect.define<readonly { from: number, to: number, message: string, rule?: string }[]>();
 const setSlice = StateEffect.define<readonly number[] | undefined>();
+/* pins live as ranges in the state of their file, so they move with every edit */
+const togglePin = StateEffect.define<{ readonly from: number, readonly to: number }>();
+const clearPins = StateEffect.define<null>();
+const pinMark = Decoration.mark({ class: 'cm-pinned' });
+const pins = StateField.define<DecorationSet>({
+	create: () => Decoration.none,
+	update(set, tr) {
+		set = set.map(tr.changes);
+		for(const effect of tr.effects) {
+			if(effect.is(clearPins)) {
+				set = Decoration.none;
+			} else if(effect.is(togglePin)) {
+				const { from, to } = effect.value;
+				let held = false;
+				set.between(from, to, (start, end) => {
+					held ||= start <= from && end >= to;
+				});
+				set = held ? set.update({ filter: (start, end) => !(start <= from && end >= to) }) : set.update({ add: [pinMark.range(from, to)] });
+			}
+		}
+		return set;
+	},
+	provide: field => EditorView.decorations.from(field)
+});
 const setLinked = StateEffect.define<readonly number[] | undefined>();
 /* what the link points at: whole lines and spans, resolved before they are handed over */
 const setShown = StateEffect.define<{ ranges: readonly ShownRange[], fresh: boolean }>();
@@ -94,31 +162,18 @@ const linkMarks = marksFrom(setLinked, (value, tr) => {
 });
 
 /** lights up the lines a panel row stands for, and the row itself, while the pointer rests on it */
-function linkRow(cells: readonly HTMLElement[], lines: readonly (number | undefined)[]): readonly HTMLElement[] {
+function linkRow(row: HTMLElement, lines: readonly (number | undefined)[]): HTMLElement {
 	const at = lines.filter((l): l is number => l !== undefined);
-	if(at.length === 0) {
-		return cells;
+	if(at.length > 0) {
+		row.classList.add('linked');
+		row.addEventListener('mouseenter', () => (row.classList.add('hot'), editor.dispatch({ effects: setLinked.of(at) })));
+		row.addEventListener('mouseleave', () => (row.classList.remove('hot'), editor.dispatch({ effects: setLinked.of(undefined) })));
 	}
-	for(const cell of cells) {
-		cell.classList.add('linked');
-		cell.addEventListener('mouseenter', () => {
-			for(const other of cells) {
-				other.classList.add('hot');
-			}
-			editor.dispatch({ effects: setLinked.of(at) });
-		});
-		cell.addEventListener('mouseleave', () => {
-			for(const other of cells) {
-				other.classList.remove('hot');
-			}
-			editor.dispatch({ effects: setLinked.of(undefined) });
-		});
-	}
-	return cells;
+	return row;
 }
 
 const lintMarks = marksFrom(setLints, value =>
-	Decoration.set(value.map(l => Decoration.mark({ class: 'cm-lint' }).range(l.from, l.to)), true));
+	Decoration.set(value.map(l => Decoration.mark({ class: 'cm-lint', attributes: { 'data-category': l.rule === undefined ? 'bug' : category(l.rule) } }).range(l.from, l.to)), true));
 
 /** what a link points at, kept apart from every mark an analysis produces so nothing overwrites it */
 const shownMarks = marksFrom(setShown, value => {
@@ -134,6 +189,56 @@ const sliceMarks = marksFrom(setSlice, (kept, tr) => kept === undefined ? Decora
 		.filter(line => !kept.includes(line) && tr.state.doc.line(line).text.trim().length > 0)
 		.map(line => Decoration.line({ class: 'cm-outside' }).range(tr.state.doc.line(line).from)),
 	true));
+
+const setFlash = StateEffect.define<{ from: number, to: number, color: string } | undefined>();
+const flashMarks = marksFrom(setFlash, value => value === undefined || value.to <= value.from ? Decoration.none
+	: Decoration.set([Decoration.mark({ class: 'cm-dep-flash', attributes: { style: `--cat: ${value.color}` } }).range(value.from, value.to)]));
+
+class CategoryBar extends GutterMarker {
+	constructor(readonly kind: string, readonly joins: string) {
+		super();
+	}
+	eq(other: CategoryBar): boolean {
+		return other.kind === this.kind && other.joins === this.joins;
+	}
+	toDOM(): Node {
+		const bar = el('div', `cm-dep-bar${this.joins}`);
+		bar.style.setProperty('--cat', categoryInfo(this.kind).color);
+		return bar;
+	}
+}
+const setCategories = StateEffect.define<readonly { line: number, kind: string, joins: string }[]>();
+const categoryBars = StateField.define<RangeSet<GutterMarker>>({
+	create: () => RangeSet.empty,
+	update(bars, tr) {
+		bars = bars.map(tr.changes);
+		for(const change of tr.effects) {
+			if(change.is(setCategories)) {
+				bars = RangeSet.of(change.value.filter(v => v.line <= tr.state.doc.lines)
+					.map(v => new CategoryBar(v.kind, v.joins).range(tr.state.doc.line(v.line).from)), true);
+			}
+		}
+		return bars;
+	}
+});
+const barTip = el('div', 'cm-tooltip cm-valuetip bartip');
+function showBarTip(view: EditorView, line: { from: number, to: number }, event: Event): boolean {
+	const said = depsOver(line.from, line.to);
+	const bar = (event.target as HTMLElement).closest('.cm-dep-bar');
+	barTip.hidden = said.length === 0 || bar === null;
+	if(!barTip.hidden && bar !== null) {
+		const at = bar.getBoundingClientRect();
+		barTip.replaceChildren(...said);
+		Object.assign(barTip.style, { left: `${at.right + 6}px`, top: `${at.top}px` });
+		document.body.append(barTip);
+	}
+	return false;
+}
+const categoryGutter = [categoryBars, Prec.high(gutter({
+	class:            'cm-dep-gutter',
+	markers:          view => view.state.field(categoryBars),
+	domEventHandlers: { mouseover: showBarTip, mouseleave: () => (barTip.hidden = true, false) }
+}))];
 
 /* CodeMirror ships a light theme of its own; these are the page's own colours, so both modes match */
 const look = EditorView.theme({
@@ -160,7 +265,7 @@ const highlight = HighlightStyle.define([
 	{ tag: tags.strong, fontWeight: '700' },
 	{ tag: tags.emphasis, fontStyle: 'italic' },
 	{ tag: tags.link, color: 'var(--accent)', textDecoration: 'underline' },
-	{ tag: tags.monospace, color: '#0f766e', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
+	{ tag: tags.monospace, color: '#0f766e', fontFamily: 'var(--mono)' },
 	{ tag: tags.meta, color: 'var(--muted)' }
 ]);
 
@@ -294,40 +399,38 @@ function spelledOut(state: EditorState, pos: number): boolean {
  * What flowR can say about the name under the pointer: its value, its shape, or where it comes from.
  */
 const valueTips = hoverTooltip(async(view, pos) => {
-	const line = view.state.doc.lineAt(pos);
-	const found = targetAt(line.text, line.number, pos - line.from);
-	if(found === undefined) {
+	/* an open menu is what the pointer is on, whatever lies under it */
+	if(!menu.hidden) {
 		return null;
 	}
+	const line = view.state.doc.lineAt(pos);
+	const found = targetAt(line.text, line.number, pos - line.from);
+	/* a finding shows wherever its squiggle is, in a string as much as on a name */
+	const lintOnly = () => {
+		const over = shownLints.filter(l => l.from <= pos && pos <= l.to);
+		return over.length === 0 ? null : { pos: Math.min(...over.map(l => l.from)), end: Math.max(...over.map(l => l.to)), above: false, create: () => ({ dom: tip(undefined, undefined, over) }) };
+	};
+	if(found === undefined) {
+		return lintOnly();
+	}
+	const [from, to] = [line.from + found.from, line.from + found.to];
+	/* what the call does as a dependency heads the card, whatever else flowR knows about the name */
+	const card = (dom: HTMLElement) => ({ pos: from, end: to, above: false, create: () => (dom.prepend(...depsOver(from, to)), { dom }) });
 	/* a package name stands for no value flowR could resolve, so what it knows about it is the package */
 	if(namesPackage(line.text, found)) {
 		const info = packageInfo(found.name);
-		showPointed(found.name, packageFacts(info).join(' · '));
-		showPackage(info);
-		return {
-			pos:    line.from + found.from,
-			end:    line.from + found.to,
-			above:  false,
-			create: () => ({ dom: packageTip(info, lintsOver(line.from + found.from, line.from + found.to)) })
-		};
+		return card(packageTip(info, lintsOver(from, to)));
 	}
 	/* a name is asked about only where it is one: `read.csv` in `"read.csv"` or behind a `#` is text. The
 	   package branch above runs first, as `library("dplyr")` writes the package it loads as a string */
 	if(spelledOut(view.state, pos)) {
-		return null;
+		return lintOnly();
 	}
 	const about = await describe(scoped(found.criterion));
 	const said = about.said;
 	const known = about.local ? undefined : signatureOf(found.name, ownerOf(found.name, about.pkg));
-	const complaints = lintsOver(line.from + found.from, line.from + found.to);
-	showPointed(found.name, said, known);
-	showSignature(found.name, known);
-	return said === undefined && known === undefined && complaints.length === 0 ? null : {
-		pos:    line.from + found.from,
-		end:    line.from + found.to,
-		above:  false,
-		create: () => ({ dom: tip(known, said, complaints) })
-	};
+	const complaints = lintsOver(from, to);
+	return said === undefined && known === undefined && complaints.length === 0 && depsOver(from, to).length === 0 ? null : card(tip(known, said, complaints));
 });
 
 /**
@@ -351,7 +454,7 @@ const stated = statedSignatures();
 function builtinSignature(name: string, pkg?: string): Signature | undefined {
 	const own = statedSignatureOf(stated, name, pkg);
 	return own === undefined ? undefined
-		: { call: `${own.pkg}::${name}${own.params === undefined ? '' : `(${own.params})`}`, props: own.props.join(' '), where: '' };
+		: { call: `${own.pkg}::${name}${own.params === undefined ? '' : `(${own.params})`}`, props: own.props.map(p => p.replace(/ /g, '-')).join(' '), where: '' };
 }
 
 /** the packages the script attaches, which is what decides who owns a name */
@@ -375,7 +478,7 @@ function ownerOf(name: string, resolved: string | undefined): string | undefined
  * it, and where it is defined. Parsed from the block the build put into the page, on first use.
  */
 let signatures: Map<string, string[]> | undefined;
-interface Signature { call: string, props: string, where: string, source?: string, docs?: string }
+interface Signature { call: string, props: string, where: string, source?: string, docs?: string, name?: string }
 function signatureOf(name: string, pkg?: string): Signature | undefined {
 	if(signatures === undefined) {
 		signatures = new Map();
@@ -410,35 +513,6 @@ function link(text: string, href: string, cls: string): HTMLElement {
 	const at = blank(el('a', cls, text));
 	at.href = href;
 	return at;
-}
-
-/** what flowR's signature database says about the name, kept below the findings */
-function showSignature(name: string, known: ReturnType<typeof signatureOf>): void {
-	const at = document.getElementById('signature');
-	if(at === null) {
-		return;
-	}
-	at.replaceChildren();
-	at.hidden = known === undefined;
-	if(known === undefined) {
-		return;
-	}
-	const head = el('h3', undefined, 'Signature');
-	const call = el('div', 'scall', known.call);
-	const about = el('div', 'sabout');
-	for(const prop of known.props.split(' ').filter(p => p.length > 0)) {
-		about.append(tag(prop.replace(/-/g, ' '), 'prop'));
-	}
-	if(known.where.length > 0) {
-		about.append(known.source === undefined ? tag(known.where, 'at') : link(known.where, known.source, 'at'));
-	}
-	if(known.docs !== undefined) {
-		about.append(link('documentation', known.docs, 'at'));
-	}
-	if(known.props.length === 0 && known.where.length === 0) {
-		about.append(link('look it up in the signature database', `../sigdb/?q=${encodeURIComponent(name)}`, 'at'));
-	}
-	at.append(head, call, about);
 }
 
 /** what the page knows about a package: what the build baked in, and what this script does with it */
@@ -494,49 +568,16 @@ function packageFacts(info: PackageInfo): string[] {
 	].filter((fact): fact is string => fact !== undefined);
 }
 
-/** the name at the version it was read at, which heads both the card and the hover */
-function packageHead(info: PackageInfo): string {
-	return info.version === undefined ? info.name : `${info.name} ${info.version}`;
-}
-
 /** the hover card of a package: its version, what came with it, and what the linter said here */
 function packageTip(info: PackageInfo, complaints: readonly { rule: string, message: string }[]): HTMLElement {
-	const dom = el('div', 'cm-valuetip');
-	const head = el('div', 'tcall', packageHead(info));
-	dom.append(head);
-	const about = el('div', 'tabout', packageFacts(info).join(' · '));
-	dom.append(about);
-	for(const found of complaints) {
-		dom.append(complaint(found, 'tlint'));
-	}
-	return dom;
-}
-
-/** the package under the pointer, in the box a function shows its signature in */
-function showPackage(info: PackageInfo): void {
-	const at = document.getElementById('signature');
-	if(at === null) {
-		return;
-	}
-	at.replaceChildren();
-	at.hidden = false;
-	const head = el('h3', undefined, 'Package');
-	const call = el('div', 'scall', packageHead(info));
-	const about = el('div', 'sabout');
-	for(const fact of packageFacts(info)) {
-		about.append(tag(fact, 'prop'));
-	}
-	about.append(link('look it up in the signature database', `../sigdb/?q=${encodeURIComponent(info.name)}`, 'at'));
-	at.append(head, call, about);
+	const head = info.version === undefined ? info.name : `${info.name} ${info.version}`;
+	return tip({ call: head, props: '', where: packageFacts(info).join(' · '), name: info.name }, undefined, complaints);
 }
 
 /** the hover card: what the database knows about the name, then what flowR made of this script */
-function tip(known: ReturnType<typeof signatureOf>, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
+function tip(known: Signature | undefined, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
 	const dom = el('div', 'cm-valuetip');
-	const line = (text: string, cls: string): void => {
-		const at = el('div', cls, text);
-		dom.append(at);
-	};
+	const line = (text: string, cls: string): void => dom.append(el('div', cls, text));
 	if(known !== undefined) {
 		line(known.call, 'tcall');
 		const about = [known.props.split(' ').filter(p => p.length > 0).map(p => p.replace(/-/g, ' ')).join(' · '), known.where]
@@ -551,39 +592,23 @@ function tip(known: ReturnType<typeof signatureOf>, said: string | undefined, co
 	for(const found of complaints) {
 		dom.append(complaint(found, 'tlint'));
 	}
+	if(known !== undefined) {
+		const row = el('div', 'tlinks');
+		for(const [text, href] of [
+			['source', known.source], ['documentation', known.docs],
+			['in the signature database', `../sigdb/?q=${encodeURIComponent(known.name ?? known.call.split('(')[0].split('::').pop() ?? known.call)}`]
+		] as const) {
+			if(href !== undefined) {
+				row.append(link(text, href, 'tlink'));
+			}
+		}
+		dom.append(row);
+	}
 	return dom;
 }
 
-/** whether this is a page one points at, or one one taps */
-const pointing = !matchMedia('(hover: none)').matches;
-if(!pointing) {
-	const at = document.querySelector('#pinfo .pvalue');
-	if(at !== null) {
-		at.textContent = 'tap a name for what flowR knows about it';
-	}
-}
-
-/** what the pointer is on, kept in the panel next to everything else */
-function showPointed(name: string, said: string | undefined, known?: ReturnType<typeof signatureOf>): void {
-	const at = document.getElementById('pinfo');
-	if(at === null) {
-		return;
-	}
-	at.replaceChildren();
-	const label = blank(el('a', 'pname', name));
-	label.href = `../sigdb/?q=${encodeURIComponent(name.split('$').pop() ?? name)}`;
-	label.title = 'look this name up in the signature database';
-	const value = el('span', 'pvalue');
-	/* a name flowR cannot put a value on is still a name it knows something about: what it calls, and
-	   from where. Only when there is neither is there nothing to say. */
-	value.textContent = said ?? (known === undefined ? 'nothing known about it'
-		: [known.call, known.props.split(' ').filter(p => p.length > 0).map(p => p.replace(/-/g, ' ')).join(' · '), known.where]
-			.filter(text => text.length > 0).join(' · '));
-	at.append(label, value);
-}
-
 /** the names flowR knows without any package, offered alongside whatever the script defines */
-const builtInNames = [...new Set(DefaultBuiltinConfig.flatMap(d => d.names.map(id => String(Identifier.getName(id)))))]
+const builtInNames = uniqueArray(DefaultBuiltinConfig.flatMap(d => d.names.map(id => String(Identifier.getName(id)))))
 	.filter(n => /^[A-Za-z.][\w._]*$/.test(n));
 
 /** the exports of every package this page carries, `package -> names`, written in by the build */
@@ -596,11 +621,23 @@ const bakedPackages: Readonly<Record<string, readonly string[]>> = (() => {
 	}
 })();
 
+function showStats(steps: Readonly<Record<string, number>>, graph: DataflowGraph): void {
+	const vertices = [...graph.vertices(true)];
+	const edges = arraySum(vertices.map(([id]) => graph.edgesFrom(id).size));
+	const plugins = (settings ?? FlowrConfig.default()).defaultPlugins.length;
+	const at = document.getElementById('stats');
+	if(at !== null) {
+		at.textContent = [...Object.entries(steps).map(([step, ms]) => `${step} ${Math.round(ms)} ms`),
+			`${plugins} plugins`, `${vertices.length} vertices, ${edges} edges`].join(' · ');
+		at.title = 'how long parsing, normalizing, the dataflow analysis, and the linter took, how many plugins the analysis runs, and how big the dataflow graph is';
+	}
+}
+
 /** what a package carries in the baked table, past the version and release date it starts with */
 const exportsFrom = (entry: readonly string[] = []): readonly string[] => entry.slice(2);
 
 /** the packages whose names a `library()` call may ask for */
-const packageNames = Object.keys(bakedPackages).sort((a, b) => a.localeCompare(b));
+const packageNames = Object.keys(bakedPackages).sort(compareByCodeUnit);
 
 /** a package's exports as a set, so telling `print.foo` from `print` costs nothing per keystroke */
 const exportSets = new Map<string, ReadonlySet<string>>();
@@ -660,6 +697,9 @@ function ranked(options: readonly (Completion & { boost: number })[]): Completio
 }
 
 function complete(context: CompletionContext): CompletionResult | null {
+	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)) {
+		return null;
+	}
 	const qualified = Qualified.exec(context.matchBefore(/[A-Za-z.][\w.]*:{2,3}[\w._]*/)?.text ?? '');
 	if(qualified !== null) {
 		const [, pkg, colons, written] = qualified;
@@ -684,7 +724,7 @@ function complete(context: CompletionContext): CompletionResult | null {
 	/* only what R would find at this position: what the script binds, what it attached, and the rest of
 	   the search path. A package name is not bound to anything, so it belongs in `library()` alone */
 	const needle = word.text;
-	const defined = [...new Set([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]))];
+	const defined = uniqueArray([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
 	return {
 		from:    word.from,
 		options: ranked([
@@ -757,12 +797,7 @@ const configTips = hoverTooltip((view, pos) => {
 		above:  true,
 		create: () => {
 			const dom = el('div', 'cm-valuetip');
-			const head = el('div', 'tcall', `${key.path.join('.')}${info.t === undefined ? '' : `: ${info.t}`}`);
-			dom.append(head);
-			if(said.length > 0) {
-				const rest = el('div', 'tabout', said);
-				dom.append(rest);
-			}
+			dom.append(el('div', 'tcall', `${key.path.join('.')}${info.t === undefined ? '' : `: ${info.t}`}`), ...said.length > 0 ? [el('div', 'tabout', said)] : []);
 			return { dom };
 		}
 	};
@@ -792,6 +827,7 @@ const shared = (() => {
 	/* everything about the view is one field, `<code width>,<repl height>,<flags>`, because four of them
 	   would be four `&`-separated names for what is really one thing: how the page was left looking */
 	const [split = '', repl = '', flags = ''] = (params.get('v') ?? '').split(',');
+	const view = Playground.readView(flags);
 	/* the unit is the same every time, so a link carries the bare number and gets it back here; links
 	   written before that spelled the unit out and still read as they did */
 	const sized = (value: string, unit: string) => value.length === 0 ? undefined : /^[\d.]+$/.test(value) ? value + unit : value;
@@ -809,22 +845,28 @@ const shared = (() => {
 		others,
 		position:   /^\d+$/.test(params.get('p') ?? '') ? Math.min(Number(params.get('p')), others.length) : others.length,
 		cut,
+		/* the release of flowR a link insists on, see {@link copyLink} */
+		release:    params.get('r') ?? undefined,
 		config:     changed.length === 0 ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
 		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
-		direction:  flags.includes('>') ? SliceDirection.Forward : undefined,
+		direction:  view.forward ? SliceDirection.Forward : view.removal ? 'removal' as const : undefined,
 		split:      sized(split, '%'),
 		repl:       sized(repl, 'px'),
 		/* what the link points at, as `12`, `12-15`, `12@sum`, `12:5`, `lint:<rule>[@<line>]`, or a box */
 		marks:      Playground.Mark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
-		/* the rest of the script steps back for whoever opens the link, just as it did for whoever sent it */
-		dim:        flags.includes('d'),
+		/* a page opened without a link steps back what the slice leaves out; a link keeps the view it was sent with */
+		dim:        params.size === 0 || view.dim,
 		/* the repl and the whole of a slice are as much a part of how the page was left as the panes are */
-		replOpen:   flags.includes('r'),
-		wholeSlice: flags.includes('a'),
+		replOpen:   view.replOpen,
+		wholeSlice: view.wholeSlice,
+		/* a slice across files keeps them apart, unless asked to splice what `source()` pulls in at the call */
+		inline:     view.inline,
+		pins:       (params.get('P') ?? '').split(',').map(pin => /^(\d+):(\d+)-(\d+)$/.exec(pin)).filter(m => m !== null)
+			.map(([, file, from, to]) => ({ file: Number(file), from: Number(from), to: Number(to) })),
 		/* what was asked of the repl, so a link opens on the answer it was sent for */
-		said:       (read('q') ?? '').split('\n').filter(line => line.trim().startsWith(':')).slice(0, 8),
+		said:   (read('q') ?? '').split('\n').filter(line => line.trim().startsWith(':')).slice(0, 8),
 		/* an example opens on what it is about, with the boxes it is not about folded away */
-		folded:     (params.get('f') ?? '').split(',')
+		folded: (params.get('f') ?? '').split(',')
 			.filter((box): box is PlaygroundBox => (Object.values(PlaygroundBox) as string[]).includes(box)),
 		/* the line the cursor sat on rides along, so a link opens on the criterion it was shared for */
 		cursor: (() => {
@@ -846,14 +888,11 @@ const marks: Mark[] = shared.marks;
 
 /** what the last analysis found, kept so a `lint:` or `dep:` mark can say which code it stands for */
 let shownLints: readonly { rule: string, message: string, line?: number, from: number, to: number }[] = [];
-let shownDeps: readonly { kind: string, line?: number, from: number, to: number }[] = [];
+interface ShownDep { readonly kind: string, readonly line?: number, readonly from: number, readonly to: number, readonly said?: { readonly name: string, readonly why: string } }
+let shownDeps: readonly ShownDep[] = [];
 
-/** what the tools bar says about the link, next to the button that copies it */
-function showShared(text: string): void {
-	const at = document.getElementById('sharenote');
-	if(at !== null) {
-		at.textContent = text;
-	}
+function depsOver(from: number, to: number): Node[] {
+	return shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to).map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
 }
 
 let shareTimer = 0;
@@ -886,11 +925,23 @@ function shareFields(): [string, string][] {
 	if(changed.length > 0) {
 		fields.push(['k', Playground.packConfig(changed)]);
 	}
+	const pinnedAt = files.flatMap((file, at) => {
+		const found: string[] = [];
+		stateOf(at).field(pins, false)?.between(0, Number.MAX_SAFE_INTEGER, (from, to) => void found.push(`${at}:${from}-${to}`));
+		return found;
+	});
+	if(pinnedAt.length > 0) {
+		fields.push(['P', pinnedAt.join(',')]);
+	}
 	const dragged = (property: string, unit: string) => document.documentElement.style.getPropertyValue(property).replace(unit, '');
-	const flags = (direction === SliceDirection.Forward ? '>' : '')
-		+ (dimOutside ? 'd' : '')
-		+ ((document.getElementById('repl') as HTMLDetailsElement | null)?.open ? 'r' : '')
-		+ (wholeSlice ? 'a' : '');
+	const flags = Playground.viewFlags({
+		forward:  direction === SliceDirection.Forward,
+		removal:  direction === 'removal',
+		dim:      dimOutside,
+		replOpen: (document.getElementById('repl') as HTMLDetailsElement | null)?.open,
+		wholeSlice,
+		inline:   inlineFiles
+	});
 	const view = [dragged('--split', '%'), dragged('--repl-height', 'px'), flags];
 	/* a trailing empty field says nothing and would leave the link ending in a comma, which is where a
 	   chat client stops reading it */
@@ -910,6 +961,9 @@ function shareFields(): [string, string][] {
 	}
 	if(replSaid.length > 0) {
 		fields.push(['q', packForUrl(replSaid.join('\n'))]);
+	}
+	if(shared.release !== undefined) {
+		fields.push(['r', shared.release]);
 	}
 	return fields;
 }
@@ -988,14 +1042,11 @@ function showConfigState(text: string, problems: readonly ConfigProblem[]): void
 		? `${problems.length === 1 ? 'one problem' : `${problems.length} problems`}, flowR keeps analyzing with the last valid configuration`
 		: text === Defaults ? 'flowR\'s defaults, with the lax parser' : 'edited, flowR analyzes with this';
 	configIssues.replaceChildren(...problems.map(problem => {
-		const row = el('button', undefined, ` ${problem.message}`);
-		row.type = 'button';
-		row.title = 'jump to it';
-		row.prepend(el('span', 'where', `line ${config.state.doc.lineAt(problem.from).number}`));
-		row.addEventListener('click', () => {
+		const row = button(undefined, ` ${problem.message}`, 'jump to it', () => {
 			config.dispatch({ selection: { anchor: problem.from, head: problem.to }, scrollIntoView: true });
 			config.focus();
 		});
+		row.prepend(el('span', 'where', `line ${config.state.doc.lineAt(problem.from).number}`));
 		return row;
 	}));
 	configIssues.hidden = problems.length === 0;
@@ -1045,8 +1096,13 @@ configReset.addEventListener('click', () => {
 
 const configTab = document.getElementById('configtab') as HTMLElement;
 let onConfig = false;
+const configClose = el('span', 'x', 'x');
+configClose.title = 'close the configuration';
+configClose.addEventListener('click', event => (event.stopPropagation(), configTab.hidden = true, showTab(false)));
+configTab.append(configClose);
 function showTab(config: boolean): void {
 	onConfig = config;
+	configTab.hidden &&= !config;
 	configTab.setAttribute('aria-selected', String(config));
 	for(const id of ['editor', 'config', 'configbar']) {
 		document.getElementById(id)?.toggleAttribute('hidden', config === (id === 'editor'));
@@ -1055,9 +1111,85 @@ function showTab(config: boolean): void {
 }
 configTab.addEventListener('click', () => showTab(true));
 
+/** which way the playground slices; `removal` is what can go together with the criteria */
+type Way = SliceDirection | 'removal';
+let direction: Way = shared.direction ?? SliceDirection.Backward;
+let intersect = false, negative = false, showWide = false;
+
+function pinnedCriteria(): string[] {
+	return files.flatMap((file, at) => {
+		const state = stateOf(at);
+		const found: string[] = [];
+		state.field(pins, false)?.between(0, state.doc.length, from => {
+			const line = state.doc.lineAt(from);
+			const target = targetAt(line.text, line.number, from - line.from);
+			if(target !== undefined) {
+				found.push(scoped(target.criterion, file.name));
+			}
+		});
+		return found;
+	});
+}
+
+function unpinAll(): void {
+	files.forEach((file, at) => at === active || (file.state = file.state.update({ effects: clearPins.of(null) }).state));
+	editor.dispatch({ effects: clearPins.of(null) });
+}
+
+/** the editor steps back what is not in the slice, or the slice itself for a negative one */
+function dim(): void {
+	const lines = editor.state.doc.lines;
+	const bright = negative ? Array.from({ length: lines }, (_, i) => i + 1).filter(l => !lastKept.includes(l)) : lastKept;
+	editor.dispatch({ effects: setSlice.of(dimOutside && lastKept.length > 0 ? bright : undefined) });
+}
+
+/** a slice asked for explicitly: it dims, and shows the slice whole */
+function askSlice(way: Way): void {
+	direction = way;
+	dimOutside = showWide = true;
+	remember();
+}
+
+function pinCursor(): void {
+	const head = editor.state.selection.main.head;
+	const line = editor.state.doc.lineAt(head);
+	const target = targetAt(line.text, line.number, head - line.from);
+	if(target !== undefined) {
+		editor.dispatch({ effects: togglePin.of({ from: line.from + target.from, to: line.from + target.to }) });
+		/* a pin marks where it is, the panel keeps the slice */
+		remember();
+		void run();
+	}
+}
+
+const SliceActions: readonly { readonly label: string, readonly key: string, readonly run: () => void }[] = [
+	{ label: 'Slice: what this is built from', key: 'Alt-s', run: () => (askSlice(SliceDirection.Backward), void run()) },
+	{ label: 'Slice: what this influences', key: 'Alt-f', run: () => (askSlice(SliceDirection.Forward), void run()) },
+	{ label: 'Removal slice: what can go with this', key: 'Alt-r', run: () => (askSlice('removal'), void run()) },
+	{ label: 'Pin or unpin this position', key: 'Alt-p', run: pinCursor },
+	{ label: 'Clear the slice', key:   'Alt-c', run:   () => {
+		unpinAll();
+		negative = dimOutside = false;
+		remember();
+		void run();
+	} }
+];
+const sliceKeys = Prec.high(keymap.of(SliceActions.map(action => ({ key: action.key, run: () => (action.run(), true) }))));
+function sliceMenu(): MenuEntry[] {
+	const toggle = (flip: () => void) => () => (flip(), remember(), void run());
+	return [
+		'flowR', ...SliceActions.map(a => ({ label: `${a.label}  (${a.key.replace('Alt-', 'alt+')})`, run: a.run })), '',
+		{ label: 'Intersect the pinned positions', checked: intersect, run: toggle(() => intersect = !intersect) },
+		{ label: 'Negative slice: step back the slice', checked: negative, run: toggle(() => negative = !negative) }
+	];
+}
+
 const editorExtensions = [
 	basicSetup, look, syntaxHighlighting(highlight), callMarks,
-	lintMarks, sliceMarks, linkMarks, shownMarks, valueTips, autocompletion({ override: [complete] }),
+	lintMarks, sliceMarks, linkMarks, shownMarks, flashMarks, categoryGutter, valueTips, sliceKeys, autocompletion({ override: [complete] }),
+	keymap.of([indentWithTab]), holdCursor, pins,
+	/* ctrl+click jumps to a definition, as in vscode-flowR, rather than adding another cursor */
+	EditorView.clickAddsSelectionRange.of(() => false), jumpableMark, jumpHover,
 	EditorView.updateListener.of(update => {
 		if(update.docChanged) {
 			schedule();
@@ -1069,20 +1201,42 @@ const editorExtensions = [
 ];
 
 const fileKind = new Compartment();
-const kindOf = (name: string) => [languageOf(name), notebookCells(name, (code, title) => runCell(code, title))];
+const kindOf = (name: string) => [languageOf(name), notebookCells(name, runCell, openMenu)];
 const fileState = (name: string, text: string) => EditorState.create({ doc: text, extensions: [editorExtensions, fileKind.of(kindOf(name))] });
 /** one editor state per file, the editor holds the live one at {@link active} */
 const files = [...shared.others.slice(0, shared.position), [shared.name, shared.code ?? Sample], ...shared.others.slice(shared.position)].map(([name, text]) => ({ name, state: fileState(name, text) }));
 let active = shared.position;
+for(const { file, from, to } of shared.pins) {
+	const state = files[file]?.state;
+	if(state !== undefined && to <= state.doc.length && from < to) {
+		files[file].state = state.update({ effects: togglePin.of({ from, to }) }).state;
+	}
+}
 const editor = new EditorView({ state: files[active].state, parent: document.getElementById('editor') as HTMLElement });
-const textOf = (at: number): string => (at === active ? editor.state : files[at].state).doc.toString();
+const menuPoint = el('span', 'menupoint');
+document.body.append(menuPoint);
+editor.contentDOM.addEventListener('contextmenu', event => {
+	event.preventDefault();
+	const at = editor.posAtCoords({ x: event.clientX, y: event.clientY });
+	editor.dispatch({ effects: closeHoverTooltips, ...at === null ? {} : { selection: { anchor: at } } });
+	Object.assign(menuPoint.style, { left: `${event.clientX}px`, top: `${event.clientY}px` });
+	openMenu(menuPoint, sliceMenu());
+});
+editor.contentDOM.addEventListener('mousedown', () => focusedKey === undefined || void focusRelated(undefined));
+const stateOf = (at: number): EditorState => at === active ? editor.state : files[at].state;
+const textOf = (at: number): string => stateOf(at).doc.toString();
 const projectFiles = () => files.map((f, at) => [f.name, textOf(at)] as const);
 
+/** how far down each file was scrolled when it was left, so going back to it does not start at its top */
+const scrolledTo = new Map<string, number>();
 function openFile(at: number | string, change?: () => void): void {
 	files[active].state = editor.state;
+	scrolledTo.set(files[active].name, editor.scrollDOM.scrollTop);
 	change?.();
 	active = Math.min(Math.max(0, typeof at === 'string' ? files.findIndex(f => f.name === at) : at), files.length - 1);
 	editor.setState(files[active].state);
+	editor.scrollDOM.scrollTop = scrolledTo.get(files[active].name) ?? 0;
+	held = {};
 	showFiles();
 	remember();
 	schedule(0);
@@ -1093,8 +1247,8 @@ function putFile(name: string, text: string): void {
 	files.splice(known < 0 ? files.length : known, 1, { name, state: fileState(name, text) });
 }
 
-function scoped(criterion: string): string {
-	return files.length < 2 ? criterion : `${criterion}(^${files[active].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$)`;
+function scoped(criterion: string, name = files[active].name): string {
+	return files.length < 2 ? criterion : `${criterion}(^${escapeRegex(name)}$)`;
 }
 
 marks.splice(0, marks.length, ...marks.map(mark => /^\d/.test(mark) ? scoped(mark) as Mark : mark));
@@ -1105,7 +1259,7 @@ function elsewhere(node: { info: { file?: string } } | undefined): string | unde
 }
 
 const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb)$/i;
-const Wanted = (name: string) => (Analyzed.test(name) || /\.zip$|(^|\/)DESCRIPTION$/i.test(name)) && !/(^|\/)(__MACOSX|\.)/.test(name);
+const Wanted = (name: string) => (Analyzed.test(name) || /\.zip$|(^|\/)(DESCRIPTION|LICEN[CS]E(\.md|\.txt)?)$/i.test(name)) && !/(^|\/)(__MACOSX|\.)/.test(name);
 
 async function entryFiles(entry: FileSystemEntry): Promise<[string, Blob][]> {
 	if(entry.isFile) {
@@ -1206,13 +1360,6 @@ function nameAccepted(name: string, except?: number): boolean {
 	return problem === undefined;
 }
 
-function roleButton(className: string | undefined, text: string, role: string): HTMLButtonElement {
-	const button = el('button', className, text);
-	button.type = 'button';
-	button.setAttribute('role', role);
-	return button;
-}
-
 function picker(folder: boolean): HTMLInputElement {
 	const input = Object.assign(document.createElement('input'), { type: 'file', multiple: true, webkitdirectory: folder, accept: '.R,.r,.Rmd,.Rmarkdown,.qmd,.ipynb,.zip' });
 	input.addEventListener('change', () => {
@@ -1224,38 +1371,111 @@ function picker(folder: boolean): HTMLInputElement {
 const pickers = [picker(false), picker(true)];
 
 const fileBar = document.getElementById('files') as HTMLElement;
+const tree = document.getElementById('tree') as HTMLElement;
+const treeHead = tree.firstElementChild as HTMLElement;
+const treeToggle = document.getElementById('treetoggle') as HTMLElement;
+treeToggle.addEventListener('click', () => (treeToggle.setAttribute('aria-expanded', String(tree.toggleAttribute('hidden') === false)), showFiles()));
+/** the files open as tabs, which the tree opens and a tab's x closes again, without removing the file */
+let openTabs: string[] = [];
 function showFiles(): void {
-	fileBar.replaceChildren(...files.map((file, at) => {
+	openTabs = uniqueArray([...openTabs.filter(name => files.some(f => f.name === name)), files[active].name]);
+	fileBar.replaceChildren(...openTabs.map(name => {
+		const at = files.findIndex(f => f.name === name);
 		const open = !onConfig && at === active;
-		const button = roleButton('tab file', file.name, 'tab');
-		button.setAttribute('aria-selected', String(open));
-		button.title = open ? `rename or remove this file${at === 0 ? ', or open an example in place of all files' : ''}` : `open ${file.name}`;
-		if(open) {
-			button.setAttribute('aria-haspopup', 'menu');
-			button.append(el('span', 'caret'));
-		}
-		button.addEventListener('click', () => {
-			if(open) {
-				openMenu(button, fileMenu(at));
-				return;
-			}
-			if(at !== active) {
-				openFile(at);
-			}
-			showTab(false);
-		});
-		if(files.length > 1) {
+		const tab = button('tab file', name.split('/').at(-1) ?? name, open ? `${name}, right-click for more` : `open ${name}`, () => open || (openFile(at), showTab(false)));
+		tab.setAttribute('role', 'tab');
+		tab.setAttribute('aria-selected', String(open));
+		tab.addEventListener('contextmenu', event => (event.preventDefault(), openMenu(tab, fileMenu(at))));
+		/* renaming is what one does to an open file, so it waits on the tab under the pointer */
+		const pen = el('span', 'pen', '\u270E');
+		pen.title = `rename ${name}`;
+		pen.addEventListener('click', event => (event.stopPropagation(), renameFile(at)));
+		tab.append(pen);
+		if(openTabs.length > 1) {
 			const x = el('span', 'x', 'x');
-			x.title = `remove ${file.name}`;
+			x.title = `close ${name}, the file stays in the project`;
 			x.addEventListener('click', event => {
 				event.stopPropagation();
-				removeFile(at);
+				const was = openTabs.indexOf(name);
+				openTabs = openTabs.filter(n => n !== name);
+				if(at === active) {
+					openFile(openTabs[Math.min(was, openTabs.length - 1)]);
+				} else {
+					showFiles();
+				}
 			});
-			button.append(x);
+			tab.append(x);
 		}
-		return button;
+		return tab;
 	}));
 	fileBar.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	treeToggle.title = `${tree.hidden ? 'show' : 'hide'} the ${files.length === 1 ? 'file' : `${files.length} files`} of the project`;
+	const shown = new Set<string>();
+	const rows = files.map((file, at) => ({ file, at, folders: file.name.split('/') }))
+		.sort((a, b) => a.file.name.localeCompare(b.file.name))
+		.flatMap(({ file, at, folders }) => {
+			const name = folders.pop() ?? file.name;
+			const heads = folders.map((folder, depth) => [folders.slice(0, depth + 1).join('/'), folder, depth] as const)
+				.filter(([path]) => !shown.has(path) && shown.add(path))
+				.filter(([path]) => !foldedFolders.has(path.split('/').slice(0, -1).join('/')))
+				.map(([path, folder, depth]) => {
+					const row = treeRow('folder', folder, depth, false, [['+', `a new file in ${path}/`, () => newFile(`${path}/`)]]);
+					row.classList.toggle('folded', foldedFolders.has(path));
+					row.addEventListener('click', () => (foldedFolders.has(path) ? foldedFolders.delete(path) : foldedFolders.add(path), showFiles()));
+					return row;
+				});
+			if(folders.some((_, depth) => foldedFolders.has(folders.slice(0, depth + 1).join('/')))) {
+				return heads;
+			}
+			const row = treeRow('file', name, folders.length, !onConfig && at === active, [
+				['\u270E', `rename ${file.name}`, () => renameFile(at)],
+				...files.length > 1 ? [['\u00D7', `remove ${file.name} from the project`, () => removeFile(at)] as const] : []
+			]);
+			row.title = file.name;
+			row.addEventListener('click', () => (openFile(at), showTab(false)));
+			row.addEventListener('contextmenu', event => (event.preventDefault(), openMenu(row, fileMenu(at))));
+			return [...heads, row];
+		});
+	const settingsRow = treeRow('file settings', 'flowR configuration', 0, onConfig);
+	settingsRow.addEventListener('click', () => showTab(true));
+	const examples = Examples.map(example => {
+		const row = treeRow('file example', example.label, 0);
+		row.title = `${example.title}, in place of all files`;
+		row.addEventListener('click', () => {
+			const project = example.files.map(([name, text]) => asProjectFile(name, text));
+			if(pristineExample() || confirm(`replace all files with the ${example.label} example?`)) {
+				showExample(project, `the ${example.label} example is open`);
+				tree.hidden = true;
+				treeToggle.setAttribute('aria-expanded', 'false');
+				showFiles();
+			}
+		});
+		return row;
+	});
+	tree.replaceChildren(treeHead, ...rows, settingsRow, el('div', 'treehead examples', 'Examples'), ...examples);
+}
+
+const foldedFolders = new Set<string>();
+
+/** whether the files are one of the examples as it opened, which nobody minds losing */
+function pristineExample(): boolean {
+	return Examples.some(example => example.files.length === files.length
+		&& example.files.map(([name, text]) => asProjectFile(name, text)).every(([name, text]) => files.some((f, at) => f.name === name && textOf(at) === text)))
+		|| (files.length === 1 && textOf(0) === Sample);
+}
+
+function treeRow(kind: string, text: string, depth: number, open = false, actions: readonly (readonly [string, string, () => void])[] = []): HTMLElement {
+	const row = el('div', kind);
+	row.setAttribute('role', 'button');
+	row.tabIndex = 0;
+	row.style.paddingLeft = `${.6 + depth * .8}rem`;
+	row.toggleAttribute('aria-current', open);
+	row.addEventListener('keydown', event => event.key === 'Enter' && row.click());
+	row.append(el('span', 'tname', text));
+	for(const [label, title, act] of actions) {
+		row.append(button('tact', label, title, event => (event.stopPropagation(), act())));
+	}
+	return row;
 }
 
 function removeFile(at: number): void {
@@ -1275,12 +1495,12 @@ function renameFile(at: number): void {
 	});
 }
 
-function newFile(): void {
+function newFile(folder = ''): void {
 	let at = files.length + 1;
-	while(files.some(f => f.name === `script${at}.R`)) {
+	while(files.some(f => f.name === `${folder}script${at}.R`)) {
 		at++;
 	}
-	const name = prompt('name of the new file', `script${at}.R`)?.trim().replace(Leading, '');
+	const name = prompt('name of the new file, folders separated by /', `${folder}script${at}.R`)?.trim().replace(Leading, '');
 	const known = files.findIndex(f => f.name === name);
 	if(name === undefined || !nameAccepted(name, known) || (known >= 0 && !confirm(`replace ${name} with an empty file?`))) {
 		return;
@@ -1293,9 +1513,10 @@ const Examples = JSON.parse(document.getElementById('examples')?.textContent ?? 
 
 function fileMenu(at: number): readonly MenuEntry[] {
 	return [
+		files[at].name,
 		{ label: 'Rename...', run: () => renameFile(at) },
 		...files.length > 1 ? [{ label: 'Remove', run: () => removeFile(at) }] : [],
-		...at > 0 ? [] : ['', 'Examples, in place of all files', ...Examples.map(example => ({ label: example.label, title: example.title, run: () => showExample(example.files.map(([name, text]) => asProjectFile(name, text)), `the ${example.label} example is open`) }))]
+		'', { label: 'New file next to it...', run: () => newFile(files[at].name.replace(/[^/]*$/, '')) }
 	];
 }
 
@@ -1318,15 +1539,11 @@ function openMenu(anchor: HTMLElement, entries: readonly MenuEntry[]): void {
 		if(typeof entry === 'string') {
 			return entry === '' ? document.createElement('hr') : el('div', 'heading', entry);
 		}
-		const item = roleButton(undefined, entry.label, entry.checked === undefined ? 'menuitem' : 'menuitemradio');
-		item.title = entry.title ?? '';
+		const item = button(undefined, entry.label, entry.title ?? '', () => (closeMenu(), entry.run()));
+		item.setAttribute('role', entry.checked === undefined ? 'menuitem' : 'menuitemradio');
 		if(entry.checked !== undefined) {
 			item.setAttribute('aria-checked', String(entry.checked));
 		}
-		item.addEventListener('click', () => {
-			closeMenu();
-			entry.run();
-		});
 		return item;
 	}));
 	menuAnchor = anchor;
@@ -1357,17 +1574,10 @@ menu.addEventListener('keydown', event => {
 	}
 });
 window.addEventListener('resize', closeMenu);
-fileBar.addEventListener('scroll', closeMenu);
-fileBar.addEventListener('wheel', event => {
-	if(event.deltaX === 0 && fileBar.scrollWidth > fileBar.clientWidth) {
-		event.preventDefault();
-		fileBar.scrollLeft += event.deltaY;
-	}
-}, { passive: false });
 
 const addButton = document.getElementById('addfile') as HTMLElement;
 addButton.addEventListener('click', () => openMenu(addButton, [
-	{ label: 'New file...', run: newFile },
+	{ label: 'New file...', title: 'folders separated by /, as in R/clean.R', run: () => newFile() },
 	{ label: 'Upload files...', title: 'R scripts, R Markdown, Quarto, Jupyter notebooks, or a zip of them', run: () => pickers[0].click() },
 	{ label: 'Upload folder...', title: 'every R script and notebook below a folder', run: () => pickers[1].click() }
 ]));
@@ -1396,7 +1606,7 @@ pane.addEventListener('drop', event => {
 async function packagesOf(code?: string): Promise<readonly string[]> {
 	const answer = await (await analyzer(code)).query([{ type: 'dependencies' }] as never) as unknown as { dependencies?: { library?: readonly Dependency[] } };
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
-	return [...new Set(found)].filter(p => !BaseRPackages.has(p));
+	return uniqueArray(found).filter(p => !BaseRPackages.has(p));
 }
 async function toRun(): Promise<RunInput> {
 	const name = files[active].name;
@@ -1431,10 +1641,10 @@ runMode.addEventListener('click', () => openMenu(runMode, [
 	{ label: 'in a fresh session', title: 'like Rscript: no variables, attached packages, or options from earlier runs, cells, or the repl', checked: runFresh, run: () => setRunFresh(true) },
 	{ label: 'in the same session', title: 'what earlier runs, cells, and the repl left behind stays', checked: !runFresh, run: () => setRunFresh(false) }
 ]));
-const runner = setupRunR(toRun, packagesOf);
+const runner = setupRunR(toRun, packagesOf, () => editor.state.facet(NotebookRun)[0]?.(editor, runFresh));
 /** cells share one R session, next to the project files as they are now */
-function runCell(code: string, title: string): void {
-	runner(() => Promise.resolve({ code, files: projectFiles(), fresh: false }), title);
+function runCell(code: string, title: string, into?: HTMLElement, fresh = false): Promise<number | undefined> {
+	return runner(() => Promise.resolve({ code, files: projectFiles(), fresh }), title, into);
 }
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
@@ -1508,6 +1718,7 @@ let fadeTimer = 0;
 /** puts every mark the link carries back on the code, and on the rows and boxes that stand for one */
 function showMarks(): void {
 	const ranges = mergedRanges(marks.flatMap(markRanges));
+	const clear = document.getElementById('clearmarks');
 	let marked = ranges.length > 0;
 	const fresh = unseenMarks;
 	editor.dispatch({ effects: setShown.of({ ranges, fresh }) });
@@ -1516,8 +1727,8 @@ function showMarks(): void {
 		/* `lint:<rule>` stands for every finding of that rule, so it lights the rows of each of them */
 		const wanted = marks.some(m => m === mark || mark.startsWith(`${m}@`));
 		/* a highlight one cannot see is no highlight, so what it points at is unfolded first */
-		if(wanted && row.hidden && row.dataset.kindGroup !== undefined) {
-			toggleKind(row.dataset.kindGroup, true);
+		if(wanted) {
+			revealRow(row);
 		}
 		row.classList.toggle('shown', wanted);
 		row.classList.toggle('fresh', wanted && fresh);
@@ -1531,10 +1742,7 @@ function showMarks(): void {
 		fadeTimer = window.setTimeout(() => {
 			editor.dom.classList.add('faded');
 			panel.classList.add('faded');
-			const clear = document.getElementById('clearmarks');
-			if(clear !== null) {
-				clear.hidden = true;
-			}
+			clear?.toggleAttribute('hidden', true);
 			/* once it has faded there is nothing left to point at, so the link stops saying that there is */
 			window.setTimeout(clearMarks, FadeTakes);
 		}, MarksLinger);
@@ -1549,12 +1757,9 @@ function showMarks(): void {
 	if(drawer !== null && marks.includes(PlaygroundBox.Repl)) {
 		drawer.open = true;
 	}
-	const clear = document.getElementById('clearmarks');
-	if(clear !== null) {
-		/* what it clears is what is lit, not what the link asks for: a mark the page cannot place (its code was
-		   edited away, its row is not in the current answer) lights nothing, and nothing is what it clears */
-		clear.hidden = !marked;
-	}
+	/* what it clears is what is lit, not what the link asks for: a mark the page cannot place (its code was
+	   edited away, its row is not in the current answer) lights nothing, and nothing is what it clears */
+	clear?.toggleAttribute('hidden', !marked);
 }
 
 /** takes every highlight out of the page and out of the link */
@@ -1596,36 +1801,29 @@ function markUnderPointer(event: MouseEvent): string | undefined {
 }
 
 /** the name under the cursor, as the criterion flowR slices for; the first name on the line otherwise */
-function cursorCriterion(): string | undefined {
+function cursorTarget(): { readonly criterion?: string, readonly name?: string } {
 	const at = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(at);
-	const found = targetAt(line.text, line.number, at - line.from);
-	if(found !== undefined) {
-		return scoped(found.criterion);
+	if(!writesR(editor.state, files[active].name, line.number)) {
+		return held;
 	}
+	const found = targetAt(line.text, line.number, at - line.from);
 	const first = /[A-Za-z.][\w._]*/.exec(line.text);
-	return first ? scoped(`${line.number}@${first[0]}`) : undefined;
+	return held = {
+		criterion: found !== undefined ? scoped(found.criterion) : first ? scoped(`${line.number}@${first[0]}`) : undefined,
+		name:      found === undefined ? undefined : `${line.number}@${found.name}`
+	};
 }
+const cursorCriterion = () => cursorTarget().criterion;
+const cursorName = () => cursorTarget().name;
 
-/** what the cursor is on, as a reader would write it: `clean$scaled` rather than `13:11` */
-function cursorName(): string | undefined {
-	const at = editor.state.selection.main.head;
-	const line = editor.state.doc.lineAt(at);
-	const found = targetAt(line.text, line.number, at - line.from);
-	return found === undefined ? undefined : `${line.number}@${found.name}`;
-}
-
-function section(title: string, box: PlaygroundBox, aside?: string, end?: Node): HTMLElement {
-	const head = document.createElement('h3');
+function section(title: string, box: PlaygroundBox, aside?: string, ...end: Node[]): HTMLElement {
+	const head = el('h3', undefined, title);
 	foldable(head, box);
-	head.append(title);
 	if(aside !== undefined) {
-		const said = el('span', 'aside', aside);
-		head.append(said);
+		head.append(el('span', 'aside', aside));
 	}
-	if(end !== undefined) {
-		head.append(end);
-	}
+	head.append(...end);
 	const body = el('div', 'sbody');
 	body.dataset.foldBody = box;
 	panel.append(head, body);
@@ -1701,49 +1899,232 @@ function suggestRule(): HTMLElement {
 	return link;
 }
 
-function row(...cells: (string | Node)[]): HTMLElement {
-	const line = el('div', 'row');
-	line.append(...cells);
-	return line;
-}
-
 function tag(text: string, cls = 'kind'): HTMLElement {
 	return el('span', cls, text);
 }
 
-/** how many dependencies of one category the panel shows before the rest are folded away */
-const DepsPerKind = 3;
-/** the categories unfolded by hand, kept so a re-analysis does not fold them up again */
-const expandedKinds = new Set<string>();
+/** how many entries a category may hold for the view to unfold it on its own, as vscode-flowR's auto reveal does */
+const AutoReveal = 5;
+/** the entries unfolded or folded by hand, kept so a re-analysis does not undo it */
+const unfoldedDeps = new Map<string, boolean>();
+/** the entries the view shows, and the one last clicked, whose unrelated entries step back */
+let shownTree: readonly DepNode[] = [];
+let focusedKey: string | undefined;
+let related: { readonly code: string, readonly key: string, readonly ids: ReadonlySet<string> } | undefined;
+let focusRequest = 0;
+let flashTimer = 0;
 
-/** the row that stands for the dependencies of a category the panel folded away */
-function expander(kind: string, rest: number, open: boolean): HTMLElement {
-	const more = el('button', 'more', open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`);
-	more.type = 'button';
-	more.dataset.expand = kind;
-	more.addEventListener('click', () => toggleKind(kind));
-	return more;
+function isOpen(node: DepNode): boolean {
+	return unfoldedDeps.get(node.key) ?? ((node.root && node.key !== 'no-findings' && node.children.length <= AutoReveal) || node.children.length === 1);
 }
 
-/** unfolds (or folds up again) what a category holds beyond the first {@link DepsPerKind} rows */
-function toggleKind(kind: string, open = !expandedKinds.has(kind)): void {
-	if(open) {
-		expandedKinds.add(kind);
-	} else {
-		expandedKinds.delete(kind);
-	}
-	for(const row of document.querySelectorAll<HTMLElement>(`.deps .rest[data-kind-group="${kind}"]`)) {
-		row.hidden = !open;
-	}
-	const more = document.querySelector<HTMLElement>(`.deps .more[data-expand="${kind}"]`);
-	if(more !== null) {
-		const rest = document.querySelectorAll(`.deps .rest[data-kind-group="${kind}"]`).length;
-		more.textContent = open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`;
+function setOpen(holder: HTMLElement, open: boolean, remember = true): void {
+	holder.classList.toggle('open', open);
+	holder.querySelector(':scope > .drow')?.setAttribute('aria-expanded', String(open));
+	if(remember && holder.dataset.key !== undefined) {
+		unfoldedDeps.set(holder.dataset.key, open);
 	}
 }
 
-function nothing(text: string): HTMLElement {
-	return el('p', 'empty', text);
+/** a highlight one cannot see is no highlight, so the entries around a marked row unfold */
+function revealRow(row: HTMLElement): void {
+	for(let at = row.parentElement?.closest<HTMLElement>('.dnode'); at; at = at.parentElement?.closest<HTMLElement>('.dnode')) {
+		if(at.querySelector(':scope > .drow') !== row && !at.classList.contains('open')) {
+			setOpen(at, true);
+		}
+	}
+}
+
+function linesOf(node: DepNode): number[] {
+	return allNodes([node]).flatMap(n => n.target && n.target.file === undefined && n.id !== undefined ? [n.target.span[0]] : []);
+}
+
+function revealDependency(node: DepNode): void {
+	const target = node.target;
+	if(target === undefined) {
+		return;
+	}
+	if(target.file !== undefined) {
+		openFile(target.file);
+	}
+	const { from, to } = spanRange(target.span) ?? {};
+	if(from === undefined || to === undefined) {
+		return;
+	}
+	/* the head goes to the start, so the slice is for the call rather than for its closing parenthesis */
+	editor.dispatch({ selection: { anchor: to, head: from }, scrollIntoView: true, effects: setFlash.of({ from, to, color: categoryInfo(node.kind).color }) });
+	clearTimeout(flashTimer);
+	flashTimer = window.setTimeout(() => editor.dispatch({ effects: setFlash.of(undefined) }), 2000);
+	void run();
+}
+
+/** a `[startLine, startCol, endLine, endCol]` span as offsets into the open file, none when it lies outside */
+function spanRange([startLine, startCol, endLine, endCol]: readonly number[]): { readonly from: number, readonly to: number } | undefined {
+	const doc = editor.state.doc;
+	if(startLine < 1 || startLine > doc.lines) {
+		return undefined;
+	}
+	const from = doc.line(startLine).from + startCol - 1;
+	const last = doc.line(Math.min(Math.max(endLine, startLine), doc.lines));
+	return { from, to: Math.max(from, Math.min(last.to, last.from + endCol)) };
+}
+
+function familyOf(key: string, roots: readonly DepNode[]): DepNode[] | undefined {
+	for(const root of roots) {
+		if(root.key === key) {
+			return allNodes([root]);
+		}
+		const below = familyOf(key, root.children);
+		if(below !== undefined) {
+			return [root, ...below];
+		}
+	}
+	return undefined;
+}
+
+const DepsAside = '(click to go there)';
+function paintRelated(): void {
+	const family = focusedKey === undefined ? undefined : familyOf(focusedKey, shownTree);
+	const keep = new Set(family?.map(n => n.key));
+	const ids = related?.key === focusedKey ? related?.ids : undefined;
+	const byKey = new Map(allNodes(shownTree).map(n => [n.key, n]));
+	const aside = panel.querySelector<HTMLElement>(`[data-fold="${PlaygroundBox.Deps}"] .aside`);
+	const focused = ids === undefined || focusedKey === undefined ? undefined : byKey.get(focusedKey)?.label;
+	if(aside !== null) {
+		aside.textContent = focused === undefined ? DepsAside : `(filtered for ${focused})`;
+		aside.title = focused === undefined ? '' : 'the rest does not take part in it; click it again or into the code to show all';
+		aside.classList.toggle('focusing', focused !== undefined);
+	}
+	for(const holder of panel.querySelectorAll<HTMLElement>('.deps .dnode')) {
+		const node = byKey.get(holder.dataset.key ?? '');
+		const row = holder.querySelector<HTMLElement>(':scope > .drow');
+		if(node === undefined || row === null) {
+			continue;
+		}
+		row.classList.toggle('selected', node.key === focusedKey);
+		const own = nodeIds(node);
+		const unrelated = ids !== undefined && own.length > 0 && !keep.has(node.key) && !own.some(id => ids.has(String(id)));
+		row.classList.toggle('unrelated', unrelated);
+		if(unrelated && node.children.length > 0 && holder.classList.contains('open')) {
+			setOpen(holder, false, false);
+			focusFolded.add(holder);
+		} else if(!unrelated && focusFolded.delete(holder)) {
+			setOpen(holder, true, false);
+		}
+	}
+}
+const focusFolded = new Set<HTMLElement>();
+
+async function focusRelated(node: DepNode | undefined): Promise<void> {
+	const request = ++focusRequest;
+	focusedKey = node?.key;
+	const code = JSON.stringify(projectFiles());
+	if(node === undefined || (related?.key === node.key && related.code === code)) {
+		paintRelated();
+		return;
+	}
+	related = undefined;
+	paintRelated();
+	const ids = nodeIds(node);
+	if(ids.length === 0) {
+		return;
+	}
+	try {
+		const built = await analyzer();
+		const answer = await built.query([SliceDirection.Backward, SliceDirection.Forward].map(direction => ({
+			type: 'static-slice', criteria: ids.map(id => `$${String(id)}`), direction, noReconstruction: true
+		})) as never) as unknown as { 'static-slice'?: { results?: Record<string, { slice?: { result?: Iterable<NodeId> } }> } };
+		if(request !== focusRequest) {
+			return;
+		}
+		const sliced = Object.values(answer['static-slice']?.results ?? {}).flatMap(r => [...r.slice?.result ?? []]);
+		related = { code, key: node.key, ids: new Set([...ids, ...sliced].map(String)) };
+	} catch{ /* what cannot be sliced grays nothing out */ }
+	paintRelated();
+}
+
+function depMessage(kind: string, said: { readonly name: string, readonly why: string }): Node {
+	const at = el('span', 'cm-dep-says');
+	const square = el('span', 'cm-dep-square', '\u25A0');
+	square.style.color = categoryInfo(kind).color;
+	at.append(square, ' ', el('strong', undefined, said.name), ' (flowR): ', said.why);
+	return at;
+}
+
+function depEntry(node: DepNode, depth: number): HTMLElement {
+	const holder = el('div', 'dnode');
+	holder.dataset.key = node.key;
+	const line = el('div', 'drow');
+	line.setAttribute('role', 'treeitem');
+	line.setAttribute('aria-level', String(depth + 1));
+	line.tabIndex = 0;
+	line.style.setProperty('--depth', String(depth));
+	if(node.colored) {
+		line.style.setProperty('--cat', categoryInfo(node.kind).color);
+	}
+	line.classList.toggle('grayed', node.root && (node.children.length === 0 || node.key === 'no-findings'));
+	const twistie = node.children.length > 0 ? icon('chevron', 'twistie') : el('span', 'twistie');
+	const label = el('span', node.implicit ? 'dlabel echo' : 'dlabel', node.label);
+	if(node.implicit) {
+		label.title = 'auto-printed: this result reaches stdout on its own';
+	}
+	line.append(twistie);
+	if(node.icon !== undefined) {
+		line.append(icon(node.icon, node.colored ? 'dicon colored' : 'dicon'));
+	}
+	line.append(label, el('span', 'ddesc', node.description ?? ''));
+	if(node.target !== undefined && node.id !== undefined) {
+		const actions = el('span', 'dactions');
+		for(const [way, name, hint] of [
+			[SliceDirection.Backward, 'arrow-up', 'show relevant code for the dependency (backward slice)'],
+			[SliceDirection.Forward, 'arrow-down', 'show the influence of the dependency (forward slice)'],
+			['removal', 'trash', 'show the code that can go with the dependency (removal slice)']
+		] as const) {
+			const action = button('daction', '', hint, event => (event.stopPropagation(), askSlice(way), revealDependency(node)));
+			action.setAttribute('aria-label', hint);
+			action.append(icon(name));
+			actions.append(action);
+		}
+		line.append(actions);
+	}
+	line.title = node.tooltip ?? node.label;
+	const at = node.target?.file === undefined && node.id !== undefined ? node.target?.span[0] : undefined;
+	if(node.kind !== '') {
+		line.dataset.mark = node.root ? `dep:${node.kind}` : at === undefined ? `dep:${node.kind}` : `dep:${node.kind}@${at}`;
+	}
+	linkRow(line, linesOf(node));
+	const toggle = () => setOpen(holder, !holder.classList.contains('open'));
+	twistie.addEventListener('click', event => {
+		event.stopPropagation();
+		toggle();
+	});
+	const activate = () => {
+		if(node.target !== undefined) {
+			revealDependency(node);
+		} else if(node.children.length > 0) {
+			toggle();
+		}
+		void focusRelated(focusedKey === node.key && node.target === undefined ? undefined : node);
+	};
+	line.addEventListener('click', activate);
+	line.addEventListener('keydown', event => {
+		if(event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			activate();
+		} else if((event.key === 'ArrowRight' || event.key === 'ArrowLeft') && node.children.length > 0) {
+			event.preventDefault();
+			setOpen(holder, event.key === 'ArrowRight');
+		}
+	});
+	holder.append(line);
+	if(node.children.length > 0) {
+		setOpen(holder, isOpen(node), false);
+		const below = el('div', 'dchildren');
+		below.setAttribute('role', 'group');
+		below.append(...node.children.map(child => depEntry(child, depth + 1)));
+		holder.append(below);
+	}
+	return holder;
 }
 
 /**
@@ -1797,21 +2178,14 @@ function versionRange(entry: Dependency): string | undefined {
 		.map(range => typeof range?.format === 'function' ? range.format() : undefined)
 		.find((said): said is string => said !== undefined && said.length > 0);
 }
-/** one dependency as the panel shows it, with whatever else was drawn onto it hanging below */
-interface DepRow {
-	kind:      string,
-	/** R echoes this one at the top level, nothing in the code asks it to */
-	implicit?: boolean,
-	call?:     string,
-	value?:    string,
-	line?:     number,
-	file?:     string,
-	from?:     readonly number[],
-	id?:       string | number,
-	onto:      readonly (string | number)[],
-	parts:     DepRow[]
-}
-interface Finding { loc?: number[], quickFix?: LintQuickFix[], involvedId?: string | number | (string | number)[] }
+interface Finding { loc?: SourceLocation, quickFix?: LintQuickFix[], involvedId?: string | number | (string | number)[] }
+
+/* the finding whose details are open, which a new analysis opens again */
+let openedLint: string | undefined;
+
+/** the categories whose findings are errors, those of any other one warnings */
+const ErrorCategories: ReadonlySet<string> = new Set(['bug', 'security']);
+const isError = (rule: string): boolean => ErrorCategories.has(category(rule));
 
 /** the first tag of a rule that says what kind of problem it is, which is what colours the chip */
 function category(rule: string): string {
@@ -1835,18 +2209,42 @@ function applyFixes(fixes: readonly LintQuickFix[]): void {
 	}
 }
 
-/** the button on the lint heading, which carries out every fix the findings below offer */
+function ruleDetails(rule: string, fixes: readonly LintQuickFix[]): HTMLElement {
+	const more = el('div', 'lintmore');
+	const about = (LintingRules as unknown as Record<string, { info?: { description?: string } }>)[rule]?.info?.description;
+	more.append(el('p', 'about', about ?? 'flowR has no description of this rule'));
+	if(fixes.length === 0) {
+		return more;
+	}
+	const code = editor.state.doc.toString();
+	const before = code.split('\n'), after = LintQuickFixes.apply(code, fixes).split('\n');
+	let head = 0;
+	while(head < before.length && head < after.length && before[head] === after[head]) {
+		head++;
+	}
+	let tail = 0;
+	while(tail < before.length - head && tail < after.length - head && before[before.length - 1 - tail] === after[after.length - 1 - tail]) {
+		tail++;
+	}
+	const diff = el('pre', 'diff');
+	const show = (lines: readonly string[], sign: string) => {
+		for(const text of lines.slice(0, 6)) {
+			const row = el('span', sign === '-' ? 'del' : 'ins', `${sign} ${text}`);
+			diff.append(row, '\n');
+		}
+		if(lines.length > 6) {
+			diff.append(el('span', 'more', `  … ${lines.length - 6} more`), '\n');
+		}
+	};
+	show(before.slice(head, before.length - tail), '-');
+	show(after.slice(head, after.length - tail), '+');
+	more.append(diff, fixButton(fixes, uniqueArray(fixes.map(fix => fix.description)).join('; ') || 'apply the fix', `line ${head + 1}: carry the fix out (ctrl+z takes it back)`));
+	return more;
+}
+
+/** carries fixes out; the row itself links to the finding, so the click must not travel up to it */
 function fixButton(fixes: readonly LintQuickFix[], label: string, title: string): HTMLElement {
-	const button = el('button', 'fix');
-	button.type = 'button';
-	button.textContent = label;
-	button.title = title;
-	/* the row itself links to the finding, so the click must not travel up to it */
-	button.addEventListener('click', event => {
-		event.stopPropagation();
-		applyFixes(fixes);
-	});
-	return button;
+	return button('fix', label, title, event => (event.stopPropagation(), applyFixes(fixes)));
 }
 
 /** a data frame shape as a sentence: `6 rows, 2 columns (id, value)` beats the raw intervals */
@@ -1902,11 +2300,12 @@ async function describe(criterion: string): Promise<Known> {
 			: undefined;
 		/* a value is the most useful answer, but every name has an origin, so that is the fallback */
 		const origins = answers.origin?.results?.[criterion] ?? [];
-		const from = [...new Set((await originLines(origins)).map(o => o.file === undefined ? String(o.line) : `${o.file}:${o.line}`))];
+		/* a call is its own origin, which says nothing the line does not */
+		const from = uniqueArray((await originLines(origins)).filter(o => o.file !== undefined || o.line !== Number.parseInt(criterion)).map(o => o.file === undefined ? String(o.line) : `${o.file}:${o.line}`));
 		/* `filter` is dplyr's once dplyr is attached, and flowR says so: `built-in:dplyr:filter` */
 		const attached = origins.map(o => /^built-in:([^:]+):/.exec(o.proc ?? '')?.[1]).find(p => p !== undefined);
 		answer = {
-			said: [shape, resolved.length > 0 ? resolved.join(', ') : undefined, from.length > 0 ? `(line ${from.join(', ')})` : undefined]
+			said: [shape, resolved.length > 0 ? `value ${resolved.join(' or ')}` : undefined, from.length > 0 ? `defined in line ${from.join(', ')}` : undefined]
 				.filter(Boolean).join(' · ') || undefined,
 			pkg:   attached,
 			local: origins.length > 0 && origins.every(o => o.proc === undefined)
@@ -1923,33 +2322,68 @@ async function originLines(origins: { id: string | number }[] | undefined): Prom
 	const map = (await (await analyzer()).normalize()).idMap;
 	return origins.flatMap(o => {
 		const node = map.get(o.id as never);
-		const line = node?.location?.[0];
+		const line = SourceRange.getStartLine(node?.location);
 		return line === undefined ? [] : [{ line, file: elsewhere(node) }];
 	});
 }
 
-/** jumps to where the name under the cursor was defined */
-async function jumpToDefinition(): Promise<void> {
-	const criterion = cursorCriterion();
-	if(criterion === undefined) {
-		return;
+function reveal(file: string | undefined, line: number | undefined): void {
+	if(file !== undefined && files.some(f => f.name === file)) {
+		openFile(file);
 	}
-	const built = await analyzer();
-	const answers = await built.query([{ type: 'origin', criterion }] as never) as unknown as
-		{ origin?: { results?: Record<string, { id: string | number }[] | undefined> } };
-	const lines = await originLines(answers.origin?.results?.[criterion]);
-	const target = lines.find(l => l.file !== undefined || l.line !== Number(/^\d+/.exec(criterion)?.[0]));
-	if(target === undefined) {
-		showTook(`no definition found for ${criterion}`);
-		return;
+	if(line !== undefined && (file === undefined || files[active].name === file)) {
+		editor.dispatch({ selection: { anchor: editor.state.doc.line(Math.min(line, editor.state.doc.lines)).from }, scrollIntoView: true });
+		editor.focus();
 	}
-	if(target.file !== undefined) {
-		openFile(target.file);
-	}
-	const line = editor.state.doc.line(Math.min(target.line, editor.state.doc.lines));
-	editor.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
-	editor.focus();
 }
+
+function fileAt(pos: number): { readonly name: string, readonly from: number, readonly to: number } | undefined {
+	const line = editor.state.doc.lineAt(pos);
+	const literal = [...line.text.matchAll(/(["'])([^"'\n]+)\1/g)].find(m => (m.index ?? 0) <= pos - line.from && pos - line.from <= (m.index ?? 0) + m[0].length);
+	const name = literal === undefined ? undefined : files.find(f => f.name === literal[2] || f.name.endsWith(`/${literal[2]}`))?.name;
+	return name === undefined || literal === undefined ? undefined : { name, from: line.from + (literal.index ?? 0), to: line.from + (literal.index ?? 0) + literal[0].length };
+}
+
+/** where what a criterion names is defined, other than where it stands itself; asked once per analysis */
+const definitions = new Map<string, Promise<{ readonly line: number, readonly file?: string } | undefined>>();
+function definitionOf(criterion: string): Promise<{ readonly line: number, readonly file?: string } | undefined> {
+	let found = definitions.get(criterion);
+	if(found === undefined) {
+		definitions.set(criterion, found = (async() => {
+			const answers = await (await analyzer()).query([{ type: 'origin', criterion }] as never) as unknown as
+				{ origin?: { results?: Record<string, { id: string | number }[] | undefined> } };
+			const lines = await originLines(answers.origin?.results?.[criterion]);
+			return lines.find(l => l.file !== undefined || l.line !== Number(/^\d+/.exec(criterion)?.[0]));
+		})().catch(() => undefined));
+	}
+	return found;
+}
+
+async function jumpTarget(pos: number): Promise<{ readonly from: number, readonly to: number, go(): void } | undefined> {
+	const file = fileAt(pos);
+	if(file !== undefined) {
+		return { ...file, go: () => openFile(file.name) };
+	}
+	const line = editor.state.doc.lineAt(pos);
+	const found = targetAt(line.text, line.number, pos - line.from);
+	if(found === undefined) {
+		return undefined;
+	}
+	const at = { from: line.from + found.from, to: line.from + found.to };
+	const away = (url: string | undefined) => url === undefined ? undefined : { ...at, go: () => void window.open(url, '_blank', 'noopener') };
+	/* the order vscode-flowR goes in: a package opens its CRAN page, a project name its definition, else its implementation */
+	if(namesPackage(line.text, found)) {
+		return isBaseRPackage(found.name) ? undefined : away(cranPageUrl(found.name));
+	}
+	const target = await definitionOf(scoped(found.criterion));
+	if(target !== undefined) {
+		return { ...at, go: () => reveal(target.file, target.line) };
+	}
+	const about = await describe(scoped(found.criterion));
+	const known = about.local ? undefined : signatureOf(found.name, ownerOf(found.name, about.pkg));
+	return away(known?.source ?? known?.docs);
+}
+
 
 /**
  * The graphs flowR builds on the way to its answers, handed to mermaid.live rather than drawn here:
@@ -1975,25 +2409,249 @@ function liveUrl(code: string): string {
 	return `https://mermaid.live/edit#base64:${toBase64(new TextEncoder().encode(state))}`;
 }
 
-for(const button of document.querySelectorAll<HTMLElement>('[data-view]')) {
-	button.addEventListener('click', () => {
-		const which = button.dataset.view ?? '';
-		/* the tab has to open on the click itself, or the browser takes it for a popup */
-		const tab = window.open('', '_blank');
-		showTook(`building the ${button.textContent ?? which}…`);
-		void Views[which]?.().then(code => {
-			const url = liveUrl(code);
-			if(tab === null) {
-				location.href = url;
-			} else {
-				tab.location.href = url;
-			}
-			showTook(`opened the ${button.textContent ?? which} in mermaid.live`);
-		}, error => {
-			tab?.close();
-			showTook(`that did not work: ${String(error)}`);
-		});
+/** opens a graph flowR builds in mermaid.live; the tab opens on the click, else the browser takes it for a popup */
+function openView(which: keyof typeof Views, label: string): void {
+	const tab = window.open('', '_blank');
+	showTook(`building the ${label}…`);
+	void Views[which]().then(code => {
+		if(tab === null) {
+			location.href = liveUrl(code);
+		} else {
+			tab.location.href = liveUrl(code);
+		}
+		showTook(`opened the ${label} in mermaid.live`);
+	}, error => {
+		tab?.close();
+		showTook(`that did not work: ${String(error)}`);
 	});
+}
+const graphEntries = (): MenuEntry[] => ['Open in mermaid.live', ...([
+	['dataflow', 'dataflow graph'], ['cfg', 'control flow graph'], ['call', 'call graph'], ['ast', 'normalized AST']
+] as const).map(([which, label]) => ({ label, run: () => openView(which, label) }))];
+const graphsButton = document.getElementById('graphs') as HTMLElement;
+graphsButton.addEventListener('click', () => openMenu(graphsButton, graphEntries()));
+const moreButton = document.getElementById('more') as HTMLElement;
+moreButton.addEventListener('click', () => openMenu(moreButton, [
+	{ label: 'Reset example', run: () => document.querySelector<HTMLElement>('[data-sample]')?.click() },
+	{ label: 'Copy link', run: () => copyLink() }, '', ...graphEntries()
+]));
+
+/** what flowR rebuilds of a slice: one text, or one per file of the project */
+type Rebuilt = string | readonly { readonly path: string, readonly code: string }[];
+const rebuiltText = (code: Rebuilt): string => typeof code === 'string' ? code : code.map(f => `${fileBanner(f.path)}\n${f.code}`).join('\n\n');
+
+/** The bar over a slice and the lines under it, shared by the panel and the wide window. */
+function sliceParts(kept: readonly number[], asked: string | undefined, wide: boolean, code?: Rebuilt): HTMLElement[] {
+	let lines = code === undefined ? sliceLines(kept, wholeSlice) : el('div', 'slines rebuilt');
+	for(const part of code === undefined ? [] : typeof code === 'string' ? [{ path: undefined, code }] : code) {
+		const text = el('pre', 'scode');
+		paint(part.code, text);
+		lines.append(...part.path === undefined ? [] : [el('div', 'scell', part.path)], text);
+	}
+	const view = ways('how to show the slice', code === undefined
+		? ([[false, 'slice', 'only the lines the slice keeps'], [true, 'in context', 'the whole script, with the rest stepped back']] as const).map(([inContext, label, hint]) => [label, hint, () => {
+			if(wholeSlice !== inContext) {
+				wholeSlice = inContext;
+				remember();
+				const next = sliceLines(kept, wholeSlice);
+				lines.replaceWith(next);
+				lines = next;
+				view.querySelectorAll('.way').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === label)));
+			}
+		}, inContext === wholeSlice] as const)
+		: wide ? [] : [['inline source()', 'splice the files source() pulls in at the call, or keep each file apart', () => (inlineFiles = !inlineFiles, remember(), schedule(0)), inlineFiles] as const]);
+	const bar = el('div', 'sbar');
+	const copy = iconButton('swiden', 'copy the lines of the slice', 'M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3', () => {
+		void navigator.clipboard?.writeText(code === undefined ? kept.map(n => editor.state.doc.line(n).text).join('\n') : rebuiltText(code)).then(() => showTook('copied the slice'));
+	});
+	const widen = wide
+		? iconButton('swiden', 'back to the panel (esc)', 'M4 4l8 8M12 4l-8 8', () => widen.closest('dialog')?.close())
+		: iconButton('swiden', 'read the slice in a wide window', 'M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9', () => showWideSlice(kept, asked, code));
+	const adopt = button('sadopt', 'use as program', 'rewrite the program to what the slice keeps of it (ctrl+z takes it back)',
+		() => (widen.closest('dialog')?.close(), void adoptSlice(typeof code === 'string' ? code : undefined)));
+	bar.append(tag(code === undefined ? `${kept.length} of ${codeLines.length} lines of code` : `across ${files.filter(f => Analyzed.test(f.name)).length} files`, 'kept'), view, adopt, copy, widen);
+	/* the panel folds a long slice to the lines the room holds, at least a few, the wide window shows all */
+	const length = code === undefined ? kept.length : rebuiltText(code).split('\n').length;
+	if(!wide && length > FoldedSliceLines) {
+		lines.classList.add('folded');
+		const unfold = () => (lines.classList.remove('folded'), lines.style.removeProperty('max-height'), more.remove());
+		const more = button('sunfold', `show all ${length} lines`, '', unfold);
+		requestAnimationFrame(() => {
+			const line = parseFloat(getComputedStyle(lines).lineHeight) || 20;
+			const room = panel.getBoundingClientRect().bottom - lines.getBoundingClientRect().top - more.getBoundingClientRect().height - line;
+			const fits = Math.max(FoldedSliceLines, Math.floor(room / line));
+			if(lines.scrollHeight <= fits * line) {
+				unfold();
+			} else {
+				lines.style.maxHeight = `${fits * line}px`;
+			}
+		});
+		return [bar, lines, more];
+	}
+	return [bar, lines];
+}
+
+function sliceTitle(asked: string | undefined): string {
+	const pinned = pinnedCriteria().length;
+	return `${direction === 'removal' ? 'Removal slice' : 'Program slice'}${pinned > 0 ? ` · ${pinned} pinned` : asked === undefined ? '' : ` · ${asked}`}`;
+}
+
+function iconButton(cls: string, title: string, path: string, onClick: () => void): HTMLButtonElement {
+	const icon = button(cls, '', title, onClick);
+	icon.setAttribute('aria-label', title);
+	icon.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${path}"/></svg>`;
+	return icon;
+}
+
+/** a row of buttons of which the pressed one is the current choice */
+function ways(label: string, options: readonly (readonly [string, string, () => void, boolean])[]): HTMLElement {
+	const group = el('span', 'ways');
+	group.setAttribute('role', 'group');
+	group.setAttribute('aria-label', label);
+	for(const [text, hint, pick, pressed] of options) {
+		const way = button('way', text, hint, pick);
+		way.setAttribute('aria-pressed', String(pressed));
+		group.append(way);
+	}
+	return group;
+}
+
+/** the fewest lines of a slice the panel shows when it folds the rest away */
+const FoldedSliceLines = 3;
+
+function showWideSlice(kept: readonly number[], asked: string | undefined, code?: Rebuilt): void {
+	let dialog = document.getElementById('slicewide') as HTMLDialogElement | null;
+	if(dialog === null) {
+		dialog = Object.assign(document.createElement('dialog'), { id: 'slicewide' });
+		dialog.addEventListener('click', event => {
+			if(event.target === dialog) {
+				dialog?.close();
+			}
+		});
+		document.body.append(dialog);
+	}
+	const card = el('div', 'card slice-view slice-wide');
+	card.append(...sliceParts(kept, asked, true, code));
+	dialog.replaceChildren(el('h3', undefined, sliceTitle(asked)), card);
+	dialog.showModal();
+}
+
+const CellStart = /^# %%/;
+
+/** The slice as the lines it keeps under their original numbers, what it leaves out folded into a gap or stepped back. */
+function sliceLines(kept: readonly number[], inContext: boolean): HTMLElement {
+	const doc = editor.state.doc;
+	const keep = new Set(kept);
+	const list = el('div', inContext ? 'slines context' : 'slines');
+	const cellOf = cellTitles(editor.state, files[active].name);
+	let cellShown: string | undefined;
+	let skipped = 0;
+	const gap = () => {
+		if(skipped > 0 && list.childElementCount > 0) {
+			list.append(el('div', 'sgap', `${skipped} line${skipped === 1 ? '' : 's'} not in the slice`));
+		}
+		skipped = 0;
+	};
+	for(let n = 1; n <= doc.lines; n++) {
+		const text = doc.line(n).text;
+		if(CellStart.test(text)) {
+			continue;
+		}
+		if(!inContext && !keep.has(n)) {
+			skipped++;
+			continue;
+		}
+		gap();
+		const cell = cellOf(n);
+		if(cell !== undefined && cell !== cellShown) {
+			cellShown = cell;
+			list.append(el('div', 'scell', cell));
+		}
+		const row = el('div', keep.has(n) ? 'sline' : 'sline out');
+		const number = button('sno', String(n), `go to line ${n}`, () => (list.closest('dialog')?.close(), reveal(undefined, n)));
+		const line = el('code', 'stext');
+		paint(text, line);
+		row.append(number, line);
+		list.append(row);
+	}
+	return list;
+}
+
+function showProject(project: ProjectQueryResult): void {
+	const needs = project.dependencies;
+	const facts = [
+		['package', project.name && `${project.name}${project.version ? ` ${project.version}` : ''}`],
+		['kind', project.kind],
+		['authors', project.authors?.map(rAuthorInfoToReadable).join(', ')],
+		['license', project.licenses?.map(stringifyRLicense).join(', ')],
+		['R', needs?.rVersion ?? project.rVersion],
+		['needs', needs && needs.runtime + needs.suggests > 0 ? `packages: ${needs.imports} imported, ${needs.depends} attached, ${needs.suggests} suggested` : undefined]
+	] as const;
+	const list = el('div', 'facts');
+	for(const [name, value] of facts) {
+		if(value) {
+			list.append(el('span', 'fname', name), el('span', 'fvalue', value));
+		}
+	}
+	section('Project', PlaygroundBox.Project, 'from the DESCRIPTION').append(list);
+}
+
+/** what the last slice was taken for, which is what replacing the program with it slices again */
+let lastCriteria: readonly string[] = [];
+
+const sameFile = (path: string | undefined, name: string): boolean => path === name || path?.endsWith(`/${name}`) === true;
+
+/** What the slice keeps of each file, unless `inlined` splices in the files `source()` pulls in. Each code cell gets the reconstruction within it. */
+async function slicedFiles(inlined: string | undefined): Promise<ReadonlyMap<string, string>> {
+	if(inlined !== undefined && inlineFiles) {
+		return new Map([[files[active].name, inlined]]);
+	}
+	const built = await analyzer();
+	const ast = await built.normalize();
+	const answer = await built.query([{
+		type: 'static-slice', criteria: lastCriteria, includeCallees: true, noReconstruction: true,
+		...direction === 'removal' ? { removal: true } : { direction }
+	}] as never) as unknown as { 'static-slice'?: { results?: Record<string, { slice?: { result?: Iterable<NodeId> } }> } };
+	const result = new Set(Object.values(answer['static-slice']?.results ?? {})[0]?.slice?.result ?? []);
+	const kept = direction === 'removal' ? keptAfterRemoval(ast, result) : result;
+	return new Map(files.filter(file => Analyzed.test(file.name)).map(file => {
+		const index = ast.ast.files.findIndex(f => sameFile(f.filePath, file.name));
+		return [file.name, rewriteCells(stateOf(files.indexOf(file)), file.name, (from, to) => {
+			const nodes = new Set([...kept].filter(id => {
+				const node = ast.idMap.get(id);
+				const line = SourceRange.getStartLine(node?.location);
+				return sameFile(node?.info.file, file.name) && line !== undefined && line >= from && line <= to;
+			}));
+			return nodes.size === 0 || index < 0 ? '' : String(reconstructToCode(ast, { nodes, reconstructFiles: [index] }).code);
+		})];
+	}));
+}
+
+/** Replaces the program with the slice, keeping files like DESCRIPTION; the editor's history can take it back. */
+async function adoptSlice(inlined?: string): Promise<void> {
+	const sliced = await slicedFiles(inlined);
+	for(const [at, file] of files.entries()) {
+		const code = Analyzed.test(file.name) ? sliced.get(file.name) ?? '' : undefined;
+		if(code === undefined) {
+			continue;
+		}
+		if(at === active) {
+			editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: code } });
+		} else {
+			file.state = file.state.update({ changes: { from: 0, to: file.state.doc.length, insert: code } }).state;
+		}
+	}
+	showTook('the program is now the slice');
+	schedule();
+	remember();
+}
+
+function slicesFor(criteria: readonly string[]): object[] {
+	const query = (of: readonly string[]) => ({
+		type: 'static-slice', criteria: of, includeCallees: true, inlineSources: files.length > 1 && inlineFiles && 'banner', perFile: files.length > 1 && !inlineFiles,
+		...direction === 'removal' ? { removal: true } : { direction }
+	});
+	return criteria.length === 0 ? [] : intersect && criteria.length > 1 ? criteria.map(c => query([c])) : [query(criteria)];
 }
 
 /** everything the panel shows, from one analysis of the current text */
@@ -2002,134 +2660,97 @@ async function analyze(): Promise<number> {
 	const criterion = cursorCriterion();
 	const asked = cursorName();
 	const built = await analyzer();
-	const normalized = await built.normalize();
+	const step = async<T>(run: () => Promise<T>): Promise<[T, number]> => {
+		const at = performance.now();
+		return [await run(), performance.now() - at];
+	};
+	const [, parsed] = await step(() => built.parse());
+	const [normalized, normalizing] = await step(() => built.normalize());
+	const [info, dataflow] = await step(() => built.dataflow());
 	const idMap = normalized.idMap;
 	const answers = await built.query([
 		{ type: 'dependencies' },
 		{ type: 'linter' },
-		...(criterion ? [{ type: 'static-slice', criteria: [criterion], includeCallees: true, direction, inlineFull: files.length > 1 && 'banner' }] : [])
+		...files.some(f => /(^|\/)DESCRIPTION$/.test(f.name)) ? [{ type: 'project' }] : [],
+		...slicesFor(lastCriteria = pinnedCriteria().length > 0 ? pinnedCriteria() : criterion === undefined ? [] : [criterion])
 	] as never) as unknown as {
 		dependencies?:   Record<string, readonly Dependency[]>,
-		linter?:         { results?: Record<string, { results?: Finding[], '.meta'?: object }> },
-		'static-slice'?: { results?: Record<string, { reconstruct?: { code?: string }, slice?: { result?: Iterable<string | number> } }> }
+		project?:        ProjectQueryResult,
+		linter?:         { results?: Record<string, { results?: Finding[], '.meta'?: object }>, '.meta'?: { timing?: number } },
+		'static-slice'?: { results?: Record<string, { reconstruct?: { code?: string | readonly string[], files?: readonly { path?: string, code: string }[] }, slice?: { result?: Iterable<string | number> } }> }
 	};
 	const took = performance.now() - started;
+	showStats({ parse: parsed, normalize: normalizing, dataflow, lint: answers.linter?.['.meta']?.timing ?? 0 }, info.graph);
 
 	panel.replaceChildren();
-
-	const sliced = Object.values(answers['static-slice']?.results ?? {})[0];
-	const code = sliced?.reconstruct?.code;
-	const keptLines = [...new Set([...(sliced?.slice?.result ?? [])]
-		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => node?.location?.[0])
-		.filter((l): l is number => typeof l === 'number'))];
-	lastKept = keptLines;
-	editor.dispatch({ effects: setSlice.of(dimOutside && keptLines.length > 0 ? keptLines : undefined) });
-
-	const head = el('h3', undefined, asked === undefined ? 'Program slice' : `Program slice · ${asked}`);
-	/* the same pair the landing page offers: what this value is built from, or what depends on it */
-	const ways = el('span', 'ways');
-	ways.setAttribute('role', 'group');
-	ways.setAttribute('aria-label', 'which way to slice');
-	for(const [value, label, hint] of [
-		[SliceDirection.Backward, 'origin', 'what this value is built from'],
-		[SliceDirection.Forward, 'impact', 'what depends on this value']
-	] as const) {
-		const button = el('button', 'way', label);
-		button.type = 'button';
-		button.title = hint;
-		button.setAttribute('aria-pressed', String(value === direction));
-		button.addEventListener('click', () => {
-			if(direction !== value) {
-				direction = value;
-				remember();
-				void run();
-			}
-		});
-		ways.append(button);
+	panel.classList.add('fresh');
+	requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.remove('fresh')));
+	if(answers.project !== undefined) {
+		showProject(answers.project);
 	}
-	head.append(ways);
-	const dimmer = el('label', 'toggle');
+
+	const sliced = Object.values(answers['static-slice']?.results ?? {});
+	const parts = sliced[0]?.reconstruct?.files?.filter(f => f.code.trim() !== '').map(f => ({ path: f.path ?? 'unknown', code: f.code }));
+	const reconstructed = sliced[0]?.reconstruct?.code;
+	const code: Rebuilt | undefined = parts ?? (typeof reconstructed === 'object' ? reconstructed.join('\n') : reconstructed);
+	const linesOf = (result: Iterable<string | number> = []) => uniqueArray([...result]
+		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => SourceRange.getStartLine(node?.location))
+		.filter((l): l is number => typeof l === 'number'));
+	const sliceLinesOf = sliced.map(r => linesOf(r.slice?.result)).reduce<number[] | undefined>((a, b) => a?.filter(l => b.includes(l)) ?? b, undefined) ?? [];
+	/* a removal slice keeps what is left once its lines are gone, which is the program one goes on with */
+	const doc = editor.state.doc;
+	/* the lines that hold code, which a slice keeps a share of: not the prose, fences, and blank lines of a notebook */
+	codeLines = linesOf([...idMap?.entries() ?? []].filter(([, node]) => node.info.parent !== undefined).map(([id]) => id));
+	const keptLines = direction !== 'removal' || sliced.length === 0 ? sliceLinesOf : codeLines.filter(l => !sliceLinesOf.includes(l));
+	lastKept = keptLines;
+	dim();
+
+	const dimmer = el('label', 'toggle switch');
 	const box = document.createElement('input');
 	box.type = 'checkbox';
 	box.checked = dimOutside;
 	box.addEventListener('change', () => {
 		dimOutside = box.checked;
-		editor.dispatch({ effects: setSlice.of(dimOutside && lastKept.length > 0 ? lastKept : undefined) });
+		dim();
 		remember();
 	});
 	dimmer.append(box, document.createTextNode('dim'), tag(' the rest', 'wide'));
-	head.append(dimmer);
-	foldable(head, PlaygroundBox.Slice);
-	/* the slice is built here, where the answer is, and put in below what the panel says about the script */
-	const sliceBlock = document.createDocumentFragment();
-	const sliceBody = el('div', 'sbody');
-	sliceBody.dataset.foldBody = PlaygroundBox.Slice;
-	sliceBlock.append(head, sliceBody);
-	if(code !== undefined) {
-		const copy = el('button', 'copy', 'copy');
-		copy.type = 'button';
-		copy.addEventListener('click', () => {
-			void navigator.clipboard?.writeText(code).then(() => {
-				copy.textContent = 'copied';
-				setTimeout(() => copy.textContent = 'copy', 1200);
-			});
-		});
-		head.append(copy);
-	}
-	const slice = el('div', 'card');
-	const shown = document.createElement('pre');
-	if(code === undefined) {
-		shown.textContent = 'put the cursor on a name to slice for it';
-	} else {
-		paint(code, shown);
-	}
+	/* the same pair the landing page offers: what this value is built from, or what depends on it */
+	const sliceBody = section(sliceTitle(asked), PlaygroundBox.Slice, undefined, ways('which way to slice', ([
+		[SliceDirection.Backward, 'origin', 'what this value is built from'],
+		[SliceDirection.Forward, 'impact', 'what depends on this value'],
+		['removal', 'removal', 'what can go together with this value, the rest keeps working']
+	] as const).map(([value, label, hint]) => [label, hint, () => direction === value || (direction = value, remember(), void run()), value === direction] as const)), dimmer);
+	/* the slice is built here, where the answer is, and moved below what the panel says about the script */
+	const sliceBlock = [sliceBody.previousElementSibling as HTMLElement, sliceBody];
+	const slice = el('div', 'card slice-view');
 	slice.dataset.mark = PlaygroundBox.Slice;
-	slice.append(shown);
-	/* the panel is not where someone reads a whole script: what is left of the window decides how much of
-	   one it shows, and the rest waits behind the button */
-	const length = code?.split('\n').length ?? 0;
-	const more = el('button', 'unfold', `show all ${length} lines`);
-	more.type = 'button';
-	more.hidden = true;
-	more.addEventListener('click', () => {
-		wholeSlice = true;
-		slice.classList.remove('folded');
-		more.hidden = true;
-		remember();
-	});
-	slice.append(more);
-	requestAnimationFrame(() => {
-		const room = panel.getBoundingClientRect().bottom - slice.getBoundingClientRect().top - 2.5 * 16;
-		const perLine = shown.getBoundingClientRect().height / Math.max(1, length);
-		const fits = Math.max(FoldedSliceLines, Math.floor(room / Math.max(perLine, 12)));
-		slice.style.setProperty('--fold-lines', String(fits));
-		slice.classList.toggle('folded', length > fits && !wholeSlice);
-		more.hidden = length <= fits || wholeSlice;
-	});
+	if(code === undefined || (direction === 'removal' && sliceLinesOf.length === 0)) {
+		slice.append(el('p', 'hint', code === undefined ? 'put the cursor on a name to slice for it' : 'nothing can go with it: the rest of the script needs all of it'));
+	} else {
+		const rebuilt = keptLines.length === 0 || files.length > 1 ? code : undefined;
+		slice.append(...sliceParts(keptLines, asked, false, rebuilt));
+		if(showWide) {
+			showWideSlice(keptLines, asked, rebuilt);
+		}
+	}
+	showWide = false;
 	sliceBody.append(slice);
 
 	/* whatever the dependencies query answers with, so a new category shows up here without a second list */
-	const kinds = [...DefaultDependencyCategoryNames];
-	const deps: DepRow[] = kinds.flatMap(kind => (answers.dependencies?.[kind] ?? []).map(entry => {
+	const answered = Object.entries(answers.dependencies ?? {}).filter((e): e is [string, readonly Dependency[]] => Array.isArray(e[1]));
+	const flat = answered.flatMap(([kind, list]) => list.map(entry => {
 		const node = idMap?.get(entry.nodeId as never);
-		const at = node?.location, file = elsewhere(node);
-		const call = entry.functionName === undefined ? undefined : String(Identifier.getName(entry.functionName));
 		const value = entry.value === undefined || entry.value === 'unknown' ? undefined : entry.value;
-		return { kind, call, value, implicit: entry.implicit, line: file === undefined ? at?.[0] : undefined, file, from: at, id: entry.nodeId, onto: entry.linkedIds ?? [], parts: [] };
+		const call = entry.functionName === undefined ? undefined : String(Identifier.getName(entry.functionName));
+		const file = elsewhere(node);
+		return { kind, entry, node, value, call, file, line: file === undefined ? SourceRange.getStartLine(node?.location) : undefined };
 	}));
-	/* `points()` draws onto the `plot()` above it, and the query says so: such an entry belongs to that
-	   plot rather than next to it */
-	const byId = new Map(deps.map(d => [String(d.id), d]));
-	const top = deps.filter(d => {
-		const onto = d.onto.map(id => byId.get(String(id))).find(other => other !== undefined && other !== d);
-		onto?.parts.push(d);
-		return onto === undefined;
-	});
-	attached = new Set(deps.filter(d => d.kind === 'library' && d.value !== undefined).map(d => d.value as string));
+	attached = new Set(flat.filter(d => d.kind === 'library' && d.value !== undefined).map(d => d.value as string));
 	/* where each package is asked for, so hovering its name says what this script does with it */
 	attachedLines.clear();
 	qualifiedLines.clear();
-	for(const d of deps) {
+	for(const d of flat) {
 		if(d.kind !== 'library' || d.value === undefined || d.line === undefined) {
 			continue;
 		}
@@ -2147,97 +2768,49 @@ async function analyze(): Promise<number> {
 			versionAsked.set(entry.value as string, asked);
 		}
 	}
-	shownDeps = deps.flatMap(d => {
-		const [startLine, startCol, endLine, endCol] = d.from ?? [];
-		if(d.file !== undefined || startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined
-			|| startLine < 1 || startLine > editor.state.doc.lines) {
-			return [];
-		}
-		const at = editor.state.doc.line(startLine);
-		return [{ kind: d.kind, line: startLine, from: at.from + startCol - 1, to: Math.min(at.to, at.from + endCol) }];
+	shownDeps = flat.flatMap((d): ShownDep[] => {
+		const span = RNode.span(d.node) ?? d.node?.location;
+		const at = d.file === undefined && span !== undefined ? spanRange(span) : undefined;
+		return at === undefined || span === undefined ? [] : [{ kind: d.kind, line: span[0], ...at, said: describeDependency(d.kind, d.entry as never) }];
 	});
-	const depBody = section(`Dependencies: ${deps.length}`, PlaygroundBox.Deps, '(click to slice)');
-	const shownDep = (d: DepRow, part: boolean, repeat = false): HTMLElement => {
-		const what = el('span', 'what');
-		if(d.value !== undefined) {
-			/* an implicit echo says the same `stdout` as a `print()` call, and it is worth telling the two apart */
-			if(d.implicit) {
-				const echo = el('span', 'echo');
-				echo.title = 'auto-printed: this result reaches stdout on its own';
-				echo.append(d.value);
-				what.append(echo);
-			} else {
-				what.append(d.value);
-			}
+	const kinds = new Map(uniqueArray(shownDeps.map(d => d.line as number)).map(line => [line, primaryCategory(shownDeps.filter(d => d.line === line).map(d => d.kind))] as const));
+	editor.dispatch({ effects: setCategories.of([...kinds].map(([line, kind]) => ({ line, kind, joins: `${kinds.get(line - 1) === kind ? ' up' : ''}${kinds.get(line + 1) === kind ? ' down' : ''}` }))) });
+
+	const tree = dependencyTree((answers.dependencies ?? {}) as never, {
+		ast:       normalized,
+		fileOf:    elsewhere,
+		versionOf: pkg => bakedPackages[pkg]?.[0] || undefined,
+		textAt:    span => {
+			const at = spanRange(span);
+			return at && doc.sliceString(at.from, at.to);
 		}
-		if(d.call !== undefined) {
-			what.append(tag(`${d.call}()`, d.value === undefined ? 'call only' : 'call'));
-		}
-		/* a category says its name once: every further row of it lines up under that one word */
-		const kind = part ? tag('draws onto', 'kind part') : repeat ? tag('', 'kind ditto') : tag(d.kind, 'kind');
-		const line = row(kind, what, tag(d.line ? `L${d.line}` : d.file ?? '', 'at'));
-		/* alt-click highlights this one dependency, the way it does a finding */
-		line.dataset.mark = d.line === undefined ? `dep:${d.kind}` : `dep:${d.kind}@${d.line}`;
-		if(part) {
-			line.classList.add('part');
-		}
-		linkRow([line], [d.line, ...(part ? [] : d.parts.map(p => p.line))]);
-		if(d.from !== undefined) {
-			line.title = 'slice for this';
-			line.addEventListener('click', () => {
-				if(d.file !== undefined) {
-					openFile(d.file);
-				}
-				const at = d.from?.[0] ?? 0;
-				if(at < 1 || at > editor.state.doc.lines) {
-					return;   // a dependency of another file in the project
-				}
-				const doc = editor.state.doc.line(at);
-				editor.dispatch({ selection: { anchor: doc.from + ((d.from?.[1] as number) - 1) }, scrollIntoView: true });
-				void run();
-			});
-		}
-		return line;
-	};
-	if(deps.length > 0) {
-		const rows = el('div', 'deps');
-		rows.dataset.mark = PlaygroundBox.Deps;
-		/* the query answers by category, so the rows are already in that order: this only cuts each of them
-		   down to what one can take in at a glance, and keeps the rest a click away */
-		for(const kind of new Set(top.map(d => d.kind))) {
-			const ofKind = top.filter(d => d.kind === kind);
-			const open = expandedKinds.has(kind);
-			ofKind.forEach((d, at) => {
-				const line = shownDep(d, false, at > 0);
-				line.dataset.kindGroup = kind;
-				if(at >= DepsPerKind) {
-					line.classList.add('rest');
-					line.hidden = !open;
-				}
-				rows.append(line, ...d.parts.map(p => shownDep(p, true)));
-			});
-			if(ofKind.length > DepsPerKind) {
-				rows.append(expander(kind, ofKind.length - DepsPerKind, open));
-			}
-		}
-		depBody.append(rows);
-	} else {
-		depBody.append(nothing('nothing outside this script'));
+	});
+	shownTree = [...tree.roots, ...tree.empty.length > 0 ? [noFindingsGroup(tree.empty)] : []];
+	const depBody = section('Overview', PlaygroundBox.Deps, DepsAside);
+	const rows = el('div', 'deps');
+	rows.setAttribute('role', 'tree');
+	rows.dataset.mark = PlaygroundBox.Deps;
+	rows.append(...shownTree.map(node => depEntry(node, 0)));
+	depBody.append(rows);
+	if(focusedKey !== undefined) {
+		void focusRelated(allNodes(shownTree).find(node => node.key === focusedKey));
 	}
 
 	const found = Object.entries(answers.linter?.results ?? {}).flatMap(([rule, per]) =>
 		(per?.results ?? []).map(f => {
-			const file = elsewhere(idMap?.get([f.involvedId ?? []].flat()[0] as never));
-			const loc = file === undefined ? f.loc : undefined;
-			return { rule, file, line: loc?.[0], loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta']) };
-		}));
+			/* the linter names the file of a finding, which may be another one of the project than the one shown */
+			const named = f.loc?.[4];
+			const file = named === undefined ? elsewhere(idMap?.get([f.involvedId ?? []].flat()[0] as never)) : named === files[active].name ? undefined : named;
+			/* a finding about the project as a whole points at no line, which the linter writes as a negative one */
+			const at = (f.loc?.[0] ?? 0) > 0 ? f.loc?.[0] : undefined;
+			const loc = file === undefined && at !== undefined ? f.loc : undefined;
+			return { rule, file, at, line: loc?.[0], loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta']) };
+		})).sort((a, b) => Number(isError(b.rule)) - Number(isError(a.rule)));
 	const marked = found.flatMap(f => {
 		const [startLine, startCol, endLine, endCol] = f.loc ?? [];
-		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined) {
+		/* a rule may point outside this file, e.g. at the project around it */
+		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined || startLine < 1 || startLine > editor.state.doc.lines) {
 			return [];
-		}
-		if(startLine < 1 || startLine > editor.state.doc.lines) {
-			return [];   // a rule that points outside this file, e.g. at the project around it
 		}
 		const line = editor.state.doc.line(startLine);
 		return [{
@@ -2250,19 +2823,10 @@ async function analyze(): Promise<number> {
 	shownLints = marked;
 	const fixable = found.flatMap(f => f.quickFix);
 	const acts = el('span', 'acts');
-	if(fixable.length > 0) {
-		acts.append(fixButton(fixable, `fix ${fixable.length}`,
-			[...new Set(fixable.map(fix => fix.description))].join('\n')));
-	}
-	acts.append(suggestRule());
-	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints, undefined, acts);
-	if(found.length === 0) {
-		lintBody.append(nothing('no findings'));
-		panel.append(sliceBlock);
-		showFolds();
-		showMarks();
-		return took;
-	}
+	acts.append(...fixable.length > 0 ? [fixButton(fixable, `fix ${fixable.length}`, uniqueArray(fixable.map(fix => fix.description)).join('\n'))] : [], suggestRule());
+	const errors = found.filter(f => isError(f.rule)).length;
+	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints,
+		found.length === 0 ? undefined : [errors > 0 ? `${errors} error${errors === 1 ? '' : 's'}` : '', found.length > errors ? `${found.length - errors} warning${found.length - errors === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), acts);
 	const lints = el('div', 'lints');
 	lints.dataset.mark = PlaygroundBox.Lints;
 	for(const f of found) {
@@ -2270,45 +2834,52 @@ async function analyze(): Promise<number> {
 		const chip = el('span', 'rule');
 		chip.dataset.category = category(f.rule);
 		chip.append(tag(f.rule, 'rulename'));
-		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
-		chip.title = f.rule;
 		if(f.quickFix.length > 0) {
-			/* the name gives way to the offer under the pointer, which is where the fix is carried out */
 			chip.classList.add('fixable');
-			/* the fix says what it will do to the script, which is what one wants to know before clicking */
-			chip.title = `${f.rule}: ${f.quickFix.map(fix => fix.description).join('; ')}`;
 			chip.append(tag('fix', 'offer'));
-			chip.addEventListener('click', event => {
-				/* the row itself links to the finding, so the click must not travel up to it */
-				event.stopPropagation();
-				applyFixes(f.quickFix);
-			});
+		}
+		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
+		chip.title = f.quickFix.length > 0 ? `${f.rule}: ${uniqueArray(f.quickFix.map(fix => fix.description)).join('; ')}` : f.rule;
+		if(f.quickFix.length > 0) {
+			chip.addEventListener('click', event => (event.stopPropagation(), applyFixes(f.quickFix)));
 		}
 		/* one element per finding, so the hover lights the whole row; the columns still line up
 		   because the row borrows the surrounding grid */
 		const line = el('div', 'lint');
+		line.dataset.category = chip.dataset.category;
 		/* alt-click makes a link out of this one finding, which is how a new rule gets shown off */
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
-		line.title = 'alt-click to highlight this finding in the link';
-		line.append(chip, said, tag(f.line ? `L${f.line}` : f.file ?? '', 'at'));
-		lints.append(...linkRow([line], [f.line]));
+		line.title = 'a click goes there, alt-click highlights this finding in the link';
+		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
+		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}`;
+		line.addEventListener('click', event => {
+			if(event.altKey || (event.target as HTMLElement).closest('.lintmore') !== null) {
+				return;
+			}
+			openedLint = openedLint === lintKey ? undefined : lintKey;
+			lints.querySelectorAll('.lintmore').forEach(more => more.remove());
+			if(openedLint === lintKey) {
+				line.append(ruleDetails(f.rule, f.quickFix));
+			}
+			reveal(f.file, f.at);
+		});
+		if(openedLint === lintKey) {
+			line.append(ruleDetails(f.rule, f.quickFix));
+		}
+		lints.append(linkRow(line, [f.line]));
 	}
-	lintBody.append(lints);
-	panel.append(sliceBlock);
+	lintBody.append(found.length === 0 ? el('p', 'empty', 'no findings') : lints);
+	panel.append(...sliceBlock);
 	showFolds();
 	showMarks();
 	return took;
 }
 
-/** how much of a slice the panel shows before it is folded away */
-const FoldedSliceLines = 3;
-
-/** whether the panel shows the whole slice, rather than as much of it as the window has room for */
 let wholeSlice = shared.wholeSlice;
+let inlineFiles = shared.inline;
 
 /* whether the lines outside the slice step back in the editor, what the last slice kept, and which way it runs */
-let dimOutside = shared.dim, lastKept: readonly number[] = [];
-let direction: SliceDirection = shared.direction ?? SliceDirection.Backward;
+let dimOutside = shared.dim, lastKept: readonly number[] = [], codeLines: readonly number[] = [];
 let working = false, again = false;
 async function run(): Promise<void> {
 	if(working) {
@@ -2317,6 +2888,7 @@ async function run(): Promise<void> {
 	}
 	working = true;
 	described.clear();
+	definitions.clear();
 	showTook('analyzing…');
 	try {
 		const took = await analyze();
@@ -2339,15 +2911,11 @@ function schedule(delay = 700): void {
 	timer = window.setTimeout(() => void run(), delay);
 }
 
-document.getElementById('clearmarks')?.addEventListener('click', () => {
-	marks.length = 0;
-	showMarks();
-	remember();
-	showShared('the highlights are cleared');
-});
+document.getElementById('clearmarks')?.addEventListener('click', () => (clearMarks(), showShared('the highlights are cleared')));
 
 function showExample(project: readonly [string, string][], note: string): void {
-	openFile(Playground.MainFile, () => files.splice(0, files.length, ...project.map(([name, text]) => ({ name, state: fileState(name, text) }))));
+	openTabs = project.map(([name]) => name).filter(name => Analyzed.test(name));
+	openFile(Playground.MainFile, () => (scrolledTo.clear(), files.splice(0, files.length, ...project.map(([name, text]) => ({ name, state: fileState(name, text) })))));
 	showTab(false);
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
 	/* an example is the script together with everything a link says about it, so what was folded away,
@@ -2355,6 +2923,11 @@ function showExample(project: readonly [string, string][], note: string): void {
 	   are: those are how one works, not what one is looking at */
 	marks.length = 0;
 	folded = [];
+	/* what earlier runs left in R and printed belongs to the code they ran, not to this one */
+	for(const id of ['runrclear', 'runrclose']) {
+		document.getElementById(id)?.click();
+	}
+	negative = false;
 	direction = SliceDirection.Backward;
 	dimOutside = false;
 	wholeSlice = false;
@@ -2364,6 +2937,32 @@ function showExample(project: readonly [string, string][], note: string): void {
 	remember();
 	showShared(note);
 }
+/* the site keeps the playgrounds of the last releases (see `keep-playground-versions.ts`), which open with the same script */
+const siteRoot = location.pathname.replace(/v\/[^/]+\/?$/, '');
+const versionTag = document.getElementById('version');
+const release = versionTag?.dataset.release?.replace(/^v/, '');
+void fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<string[]> : [], () => []).then((versions: readonly string[]) => {
+	const go = (to: string) => () => location.assign(`${to}${location.search}${location.hash}`);
+	/* a link that insists on a release opens it, or the kept one of the same minor release */
+	const asked = shared.release;
+	if(asked !== undefined && asked !== release) {
+		const minor = (v: string) => v.split('.').slice(0, 2).join('.');
+		const kept = versions.includes(asked) ? asked : versions.find(v => minor(v) === minor(asked));
+		if(kept === undefined || kept === release) {
+			showShared(`the link asks for flowR ${asked}, which this site no longer keeps`);
+		} else {
+			go(`${siteRoot}v/${kept}/`)();
+		}
+	}
+	const pick = iconButton('versions', 'open the playground of an earlier release', 'M4 6l4 4 4-4', () => openMenu(pick, [
+		'Playground of', { label: 'the current release', run: go(siteRoot) },
+		...versions.length === 0 ? ['no earlier release kept on this site'] : versions.map(v => ({ label: `flowR ${v}`, run: go(`${siteRoot}v/${v}/`) })),
+		...release === undefined ? [] : ['', { label: `Copy a link to flowR ${release}`, title: 'the link opens this release of flowR, also once newer ones are out', run: () => copyLink(release) }]
+	]));
+	pick.setAttribute('aria-haspopup', 'menu');
+	versionTag?.after(pick);
+});
+
 document.querySelector('[data-sample]')?.addEventListener('click', () => showExample([[Playground.MainFile, Sample]], 'the example is back'));
 /* a reset turns its arrow once around; the class goes again so the next click turns it again */
 for(const button of document.querySelectorAll<HTMLElement>('.spins')) {
@@ -2379,15 +2978,16 @@ for(const button of document.querySelectorAll<HTMLElement>('.spins')) {
  * Copies the link that brings this playground back, which the button and `ctrl+s` both ask for.
  * The cursor is written here rather than in {@link remember}, so the address bar does not churn on every click.
  */
-function copyLink(): void {
-	const fields = shareFields();
+function copyLink(pinned?: string): void {
+	const fields = [...shareFields().filter(([key]) => key !== 'r'), ...pinned === undefined ? [] : [['r', pinned] as [string, string]]];
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
 	if(line.number > 1 || head > line.from) {
 		fields.push(['p', `${line.number}:${head - line.from + 1}`]);
 	}
 	const hash = Playground.hash(fields);
-	const link = location.href.replace(/#.*$/, '') + (hash.length > 0 ? `#${hash}` : '');
+	/* the link of a release goes to the site's playground, which sends it on to wherever that release is kept */
+	const link = (pinned === undefined ? location.href.replace(/#.*$/, '') : location.origin + siteRoot) + (hash.length > 0 ? `#${hash}` : '');
 	void navigator.clipboard?.writeText(link).then(
 		() => showShared('link copied'),
 		() => {
@@ -2401,7 +3001,7 @@ function copyLink(): void {
 	);
 }
 
-document.getElementById('share')?.addEventListener('click', copyLink);
+document.getElementById('share')?.addEventListener('click', () => copyLink());
 
 /* there is nothing to save here, so `ctrl+s` keeps the script the only way this page can: as a link */
 document.addEventListener('keydown', event => {
@@ -2412,7 +3012,7 @@ document.addEventListener('keydown', event => {
 });
 editor.dom.addEventListener('click', event => {
 	if(event.ctrlKey || event.metaKey) {
-		void jumpToDefinition();
+		void jumpTarget(editor.state.selection.main.head).then(target => target === undefined ? showTook('no definition found here') : target.go());
 	} else if(event.altKey) {
 		event.preventDefault();
 		toggleMark(markUnderPointer(event), event.shiftKey);
@@ -2510,7 +3110,7 @@ let replSaid: string[] = shared.said;
  * decides, so the page offers exactly what the terminal repl does, and says what each command is for.
  */
 const replHints = document.getElementById('replhints');
-let hints: { insert: string, label: string, says: string }[] = [];
+let hints: { insert: string, label: string, says: string, docs?: string }[] = [];
 let hintsFrom = '';
 /** the hint the arrow keys moved to, none until they move */
 let hinted = -1;
@@ -2529,6 +3129,10 @@ function showHints(): void {
 		const labelled = stripAnsi(labels?.get(insert) ?? '').slice(shown.length).trim();
 		const command = commandOf(insert);
 		const aliases = command?.aliases.map(alias => `:${alias}`).join(', ');
+		const query = (SupportedQueries as Record<string, { title: string, syntax?: string } | undefined>)[shown.replace(/^@/, '')];
+		if(query !== undefined) {
+			return { insert, label: shown, says: [query.title, query.syntax].filter(Boolean).join(': '), docs: `${FlowrWikiBaseRef}/${encodeURIComponent(queryWikiPage(query.title).replaceAll(' ', '-'))}` };
+		}
 		return { insert, label: shown, says: labelled || [command?.description, aliases && `(${aliases})`].filter(Boolean).join(' ') };
 	});
 	hinted = Math.min(hinted, hints.length - 1);
@@ -2539,6 +3143,11 @@ function showHints(): void {
 		item.append(el('b', undefined, hint.label));
 		if(hint.says) {
 			item.append(el('span', undefined, hint.says));
+		}
+		if(hint.docs !== undefined) {
+			const docs = link('docs', hint.docs, 'hintdocs');
+			docs.addEventListener('mousedown', event => event.stopPropagation());
+			item.append(docs);
 		}
 		item.addEventListener('mousedown', event => {
 			event.preventDefault();
@@ -2641,7 +3250,7 @@ function runRepl(line: string): void {
 		.catch((e: unknown) => say(String(e), 'bad'));
 }
 say('flowR\'s repl, over whatever the editor holds. :help lists what it knows, tab completes.');
-say('Plain R runs in your browser with webR, in the session Run uses, so after a run its variables are here.', 'note');
+say('Plain R runs in your browser with webR, in the active session, so after a run its variables are here.', 'note');
 /* a link that carried commands opens on their answers, which is what it was sent for */
 if(replSaid.length > 0) {
 	(document.getElementById('repl') as HTMLDetailsElement | null)?.setAttribute('open', '');
@@ -2721,6 +3330,9 @@ document.getElementById('divider')?.addEventListener('click', () => {
 		remember();
 	}
 });
+
+draggable(document.getElementById('treegrip'), '--tree-width', () => tree.getBoundingClientRect().width,
+	(at, from, begun) => `${Math.round(between(7 * rem(), begun + at.clientX - from.clientX, 30 * rem()))}px`);
 
 /* the repl folds the same way: dragged down past half its least height, it closes and keeps the height it had */
 draggable(document.getElementById('replgrip'), '--repl-height', replBody, (at, from, begun) => {

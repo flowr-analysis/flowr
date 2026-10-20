@@ -118,7 +118,7 @@ export interface FileAnalysisResponseMessageCompact extends IdMessageBase {
 const compactSchema = Joi.object({
 	type:    Joi.string().valid('response-file-analysis').required().description('The type of the message.'),
 	id:      Joi.string().optional().description('The id of the message, if you passed one in the request.'),
-	format:  Joi.string().valid('bson').required().description('The format of the results in bson format.'),
+	format:  Joi.string().valid('compact').required().description('The format of the results in compact format.'),
 	results: Joi.string().required().description('The results of the analysis (one field per step).'),
 	cfg:     Joi.string().optional().description('The control flow information of the file, only present if requested.')
 });

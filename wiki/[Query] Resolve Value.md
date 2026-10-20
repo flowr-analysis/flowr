@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Resolve Value Query">Resolve Value Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides access to flowR's value tracking (which is configurable)\
@@ -29,9 +29,9 @@ print(y)` (with newlines), the following query returns all values of `x` in the 
 
 _Results (prettified and summarized):_
 
-Query: **resolve-value** (7 ms)\
+Query: **resolve-value** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ Values for {3@x, 4@y}\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [1L, 1L], [2L, 2L]\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [1L, 1L], [2L, 2L]
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

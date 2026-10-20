@@ -1,4 +1,4 @@
-import { removeRQuotes } from '../../../../retriever';
+import { RString } from '../../model/nodes/r-string';
 import { guard } from '../../../../../util/assert';
 import { RawRType } from '../../model/type';
 
@@ -149,7 +149,7 @@ export function prepareParsedData(data: string): CsvEntry[] {
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`);
 
 	const ret = new Map<number, CsvEntry>((json as ParsedDataRow[]).map(([line1, col1, line2, col2, id, parent, token, terminal, text]) => {
-		return [id, { line1, col1, line2, col2, id, parent, token: removeRQuotes(token), terminal, text }] satisfies [number, CsvEntry];
+		return [id, { line1, col1, line2, col2, id, parent, token: RString.unquote(token), terminal, text }] satisfies [number, CsvEntry];
 	}));
 
 	const roots: CsvEntry[] = [];

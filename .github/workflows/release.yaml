@@ -89,6 +89,11 @@ jobs:
           missing <- setdiff(wanted, rownames(installed.packages()))
           if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
 
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
@@ -171,6 +176,12 @@ jobs:
 
       - name: "🔁 Fetch latest main before release"
         run: git fetch origin main && git reset --hard origin/main
+
+      # release-it runs `test:full` again, which needs the database just like the test jobs
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🌟 Release"
         id: release

@@ -180,6 +180,25 @@ describe('flowR linter', withTreeSitter(parser => {
 				undefined, { checkSubscripts: true });
 		});
 
+		describe('declared globals (as R CMD check honors them)', () => {
+			const utilsDb = controlledSigDb({ utils: ['globalVariables'], base: ['cat', 'NextMethod', 'c'] });
+			const undefinedVar = (name: string, loc: [number, number, number, number]) => ({ certainty: LintingResultCertainty.Uncertain, name, kind: 'variable' as const, loc });
+			assertLinter('utils::globalVariables declares a name', parser, 'utils::globalVariables(c("mpg", "cyl"))\nf <- function() mpg + cyl',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+			assertLinter('bare globalVariables declares a name', parser, 'globalVariables("mpg")\nf <- function() mpg',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+			assertLinter('globalVariables with a vector in a variable', parser, 'vars <- c("mpg", "cyl")\nutils::globalVariables(vars)\nf <- function() mpg',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+			assertLinter('only the declared names are suppressed', parser, 'utils::globalVariables("mpg")\nf <- function() mpg + hp',
+				'undefined-symbol', [undefinedVar('hp', [2, 23, 2, 24])], undefined, { sigDb: utilsDb });
+			assertLinter('another package\'s globalVariables does not count', parser, 'other::globalVariables("mpg")\nf <- function() mpg',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'globalVariables', kind: 'function', loc: [1, 1, 1, 29] }, undefinedVar('mpg', [2, 17, 2, 19])], undefined, { sigDb: utilsDb });
+			assertLinter('the declaration itself is known without a signature database', parser, 'utils::globalVariables("mpg")\nf <- function() mpg',
+				'undefined-symbol', [], undefined, { noSigDb: true });
+			assertLinter('variables of the dispatch are bound in a method', parser, 'print.foo <- function(x, ...) { cat(.Generic); NextMethod() }',
+				'undefined-symbol', [], undefined, { sigDb: utilsDb });
+		});
+
 		describe('inst/ resource files are treated separately', () => {
 			assertLinter('undefined call in an inst/ file is not flagged', parser, 'notARealFunction()',
 				'undefined-symbol', [], undefined, { useAsFilePath: 'inst/REFERENCES.R' });

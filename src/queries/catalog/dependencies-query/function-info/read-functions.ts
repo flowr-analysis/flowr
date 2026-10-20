@@ -40,7 +40,7 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'rpolars', name: 'pl_scan_ndjson', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'pl_scan_parquet', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'compiler', name: 'loadcmp', argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'compiler', name: 'cmpfile', argIdx: 0, argName: 'infile', resolveValue: true },
+	{ package: 'compiler', name: 'cmpfile', argIdx: 0, argName: 'infile', resolveValue: true, invisible: true },
 	{ package: 'yaml',     name: 'read_yaml', argIdx: 0, argName: 'file',     resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
 	{ package: 'shinyjs', name: 'extendShinyjs', argIdx: 0, argName: 'script', resolveValue: true, ignoreIf: 'arg-missing' }
 ] as const;

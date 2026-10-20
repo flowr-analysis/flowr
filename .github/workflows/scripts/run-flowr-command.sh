@@ -152,6 +152,16 @@ if [ "$ACTION" == "doc" ]; then
    fi
    end_group
 
+   group "Keep the playgrounds of the last releases"
+   # the site keeps the playground of each of the last releases next to the current one, taken from what it served so far
+   PREVIOUS_SITE=$(mktemp -d)
+   if git fetch --depth=1 origin gh-pages && git archive FETCH_HEAD wiki/playground | tar -x -C "$PREVIOUS_SITE"; then
+     npx ts-node --transpile-only scripts/keep-playground-versions.ts "$PREVIOUS_SITE/wiki/playground"
+   else
+     echo "::warning::the site served no playground so far, so there are no earlier ones to keep"
+   fi
+   end_group
+
    group "Create documentation commit"
    git config --local user.email "action@github.com"
    git config --local user.name "GitHub Action"

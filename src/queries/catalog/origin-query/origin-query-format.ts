@@ -1,8 +1,7 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeOriginQuery } from './origin-query-executor';
 import type { Origin } from '../../../dataflow/origin/dfg-get-origin';
@@ -26,9 +25,7 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	const criterion = sliceCriterionParser(line[0]);
 
 	if(!criterion) {
-		output.stderr(output.formatter.format('Invalid origin query format, slicing criterion must be given in parentheses, e.g. (2@var), (1:5) or ($10)',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, 'Invalid origin query format, slicing criterion must be given in parentheses, e.g. (2@var), (1:5) or ($10)');
 	}
 
 	return {
@@ -46,7 +43,7 @@ export const OriginQueryDefinition = {
 	executor:        executeOriginQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'origin'>['origin'];
-		result.push(`Query: ${bold('origin', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('origin', formatter, out['.meta'].timing));
 		for(const [criteria, obj] of Object.entries(out.results)) {
 			result.push(`   ╰ Origins for {${criteria}}`);
 			result.push(`     ╰ ${obj?.map(o => JSON.stringify(o)).join(', ')}`);

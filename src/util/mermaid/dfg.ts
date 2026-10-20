@@ -245,14 +245,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
 		return;
 	}
-	// eslint-disable-next-line prefer-const
-	for(let [target, edge] of edges) {
-		if(includeOnlyIds && !includeOnlyIds.has(target)) {
+	for(const [originalTarget, edge] of edges) {
+		if(includeOnlyIds && !includeOnlyIds.has(originalTarget)) {
 			continue;
 		}
 
-		const originalTarget = target;
-		target = Mermaid.escapeId(target);
+		const target = Mermaid.escapeId(originalTarget);
 		const edgeTypes = typeof edge.types == 'number' ? new Set(DfEdge.splitTypes(edge)) : edge.types;
 		const carriesControlFlow = edgeTypes.has(EdgeType.FlowEdge) || edgeTypes.has(EdgeType.ControlEdge);
 		/* an edge that carries dataflow as well stays a dataflow edge, it just says the control flow goes there too */

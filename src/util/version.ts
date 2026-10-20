@@ -6,11 +6,12 @@ import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
+import { compareByCodeUnit } from './text/strings';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.16.2';
+const version = '2.16.4';
 // this is automatically replaced with the release date by release-it (scripts/bump-version.ts)
-const versionDate = '2026-10-16T18:03:09Z';
+const versionDate = '2026-10-19T19:06:26Z';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.
@@ -111,7 +112,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		const hint = trace ? ' (faint = did not activate)' : ' (set +repl.showPlugins=true to track activation)';
 		pluginLines.push(`${bold(output.formatter.hyperlink(header, wiki, true), output.formatter)}:${dim(hint)}`);
 		for(const [prefix, suffixes] of [...byPrefix].sort((a, b) => a[0].localeCompare(b[0]))) {
-			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort((a, b) => a.localeCompare(b)).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
+			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort(compareByCodeUnit).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
 		}
 		if(!osc8) {
 			pluginLines.push(`  ${dim('docs: ' + wiki)}`);

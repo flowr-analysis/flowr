@@ -5,7 +5,7 @@ import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import { type DataflowGraph, FunctionArgument, type OutgoingEdges } from '../../dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument, type ReadonlyOutgoingEdges } from '../../dataflow/graph/graph';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -17,15 +17,14 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DfgVertex } from '../../dataflow/graph/vertex';
-import { edgeSources, edgeTargets, hasEdgeOfType } from '../../dataflow/fn/frame-reflection';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
 const linkedByGraph = new WeakMap<DataflowGraph, Map<string, ReadonlySet<DataflowGraphVertexInfo>>>();
 
-function linkedDefinitions(defs: readonly NodeId[], graph: DataflowGraph): ReadonlySet<DataflowGraphVertexInfo> {
+function linkedFunctionsOf(defs: readonly NodeId[], graph: DataflowGraph): ReadonlySet<DataflowGraphVertexInfo> {
 	let known = linkedByGraph.get(graph);
 	if(known === undefined) {
 		linkedByGraph.set(graph, known = new Map<string, ReadonlySet<DataflowGraphVertexInfo>>());
@@ -46,8 +45,8 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 	// bind with call-local environments during slicing
 	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
 	const resolved = (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
-	const functionCallDefs = [...resolved.map(d => d.nodeId), ...edgeTargets(dataflowGraph, callerInfo.id, EdgeType.Calls)];
-	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets : linkedDefinitions(functionCallDefs, dataflowGraph);
+	const functionCallDefs = [...resolved.map(d => d.nodeId), ...Dataflow.targetsOf(dataflowGraph, callerInfo.id, EdgeType.Calls)];
+	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets : linkedFunctionsOf(functionCallDefs, dataflowGraph);
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -92,19 +91,10 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	}
 	for(const arg of callerInfo.args) {
 		const reference = FunctionArgument.getReference(arg);
-		if(reference && !hasEdgeOfType(graph, callerInfo.id, reference, EdgeType.Returns)) {
-			linkCallTargets(false, linkedDefinitions([reference], graph), activeEnvironment, activeEnvironmentFingerprint, queue);
+		if(reference && !Dataflow.hasEdge(graph, callerInfo.id, reference, EdgeType.Returns)) {
+			linkCallTargets(false, linkedFunctionsOf([reference], graph), activeEnvironment, activeEnvironmentFingerprint, queue);
 		}
 	}
-}
-
-/**
- * Finds the nearest enclosing function-definition node for the given id by walking up the AST parent chain.
- * Used by `includeCallees` to detect the function-definition boundary a node sits inside, as backward slicing
- * does not otherwise visit the function-definition vertex itself (nothing within the body links to it).
- */
-export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
-	return RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
 }
 
 /**
@@ -130,7 +120,7 @@ export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGr
 		if(!queue.hasId(bodyId)) {
 			continue;
 		}
-		const captures = edgeTargets(graph, bodyId, EdgeType.DefinedByOnCall);
+		const captures = Dataflow.targetsOf(graph, bodyId, EdgeType.DefinedByOnCall);
 		if(captures.some(target => !NodeId.isBuiltIn(target) && !bodyIds.has(target))) {
 			return true;
 		}
@@ -161,7 +151,7 @@ const CalleeBoundaryEdges = EdgeType.DefinedBy | EdgeType.Calls;
  * @returns the enqueued ids
  */
 export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: Fingerprint): NodeId[] {
-	const added = edgeSources(graph, fnDefId, CalleeBoundaryEdges);
+	const added = Dataflow.sourcesOf(graph, fnDefId, CalleeBoundaryEdges);
 	for(const source of added) {
 		queue.add(source, baseEnvironment, baseEnvFingerprint, false);
 	}
@@ -170,7 +160,7 @@ export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph
 
 const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument;
 /** Returns true if we found at least one return edge */
-export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
+export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: ReadonlyOutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
 	if(![...currentEdges.values()].some(edge => DfEdge.includesType(edge, EdgeType.Returns))) {
 		return false;
 	}

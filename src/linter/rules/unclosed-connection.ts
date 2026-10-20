@@ -14,7 +14,6 @@ import { ArgProp, SemanticCallTag, type FnSig } from '../../dataflow/environment
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import { edgeSources } from '../../dataflow/fn/frame-reflection';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation, SourceRange } from '../../util/range';
@@ -79,7 +78,7 @@ function openCallsReaching(graph: DataflowGraph, start: NodeId, opens: ReadonlyS
 
 /** The variable definition the opened connection is bound to, if it is bound to one. */
 function bindingOf(graph: DataflowGraph, open: NodeId): NodeId | undefined {
-	return edgeSources(graph, open, EdgeType.DefinedBy).find(source => DfgVertex.isVariableDefinition(graph.getVertex(source)));
+	return Dataflow.sourcesOf(graph, open, EdgeType.DefinedBy).find(source => DfgVertex.isVariableDefinition(graph.getVertex(source)));
 }
 
 /** The statement `id` belongs to, i.e. the ancestor that is an element of an expression list. */
@@ -109,7 +108,7 @@ function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefine
 	if(idMap === undefined || definition === undefined || name === undefined) {
 		return undefined;
 	}
-	const reads = edgeSources(graph, definition, EdgeType.Reads);
+	const reads = Dataflow.sourcesOf(graph, definition, EdgeType.Reads);
 	const statements = [definition, ...reads]
 		.map(id => SourceLocation.fromNode(enclosingStatement(idMap, liftedOutOfLoops(idMap, id, definition))))
 		.filter(isNotUndefined);
@@ -238,10 +237,10 @@ export const UNCLOSED_CONNECTION = {
 	},
 	info: {
 		name:          'Unclosed Connection',
-		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Smell],
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		/* a connection handed to code flowR cannot resolve, as in `lapply(cons, close)`, is reported although it is closed */
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Flags connections that are opened but not closed on every path opening them.',
+		description:   'Finds connections that are opened but not closed on every path opening them.',
 		defaultConfig: () => ({
 			openFns:  [],
 			closeFns: []

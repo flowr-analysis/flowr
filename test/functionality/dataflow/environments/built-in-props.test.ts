@@ -14,6 +14,12 @@ import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-
 import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
 import { uniqueArray } from '../../../../src/util/collections/arrays';
+import { withTreeSitter } from '../../_helper/shell';
+import { controlledSigDb } from '../../_helper/linter';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
+import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 
 /** a handful of definitions to query, so the assertions do not depend on the default configuration */
 const TestDefinitions = [
@@ -177,6 +183,26 @@ describe('Built-in properties', () => {
 			assert.isUndefined(queryFnProps('known', { signatures: TestSignatures }));
 		});
 	});
+
+	describe('A package export a signature database binds', withTreeSitter(parser => {
+		test(label('keeps what the configuration states about it', ['name-normal', 'unnamed-arguments'], ['other']), async() => {
+			const stated = new FlowrAnalyzerContext(FlowrConfig.default()).env.builtIns.packageMemory;
+			const pkgs = Object.fromEntries(stated.entries().map(([pkg, memory]) => [pkg, [...memory.keys()].map(Identifier.getName)]));
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).unregisterPlugins(SigDbPluginName)
+				.registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(controlledSigDb(pkgs))).build();
+			analyzer.addRequest(Object.keys(pkgs).map(pkg => `library(${pkg})`).join('\n'));
+			const { environment } = await analyzer.dataflow();
+			const env = analyzer.inspectContext().env;
+			const clean = env.makeCleanEnv();
+			for(const [pkg, fns] of Object.entries(pkgs)) {
+				for(const fn of fns) {
+					const name = Identifier.make(fn, pkg);
+					assert.deepStrictEqual(queryFnProps(name, { environment }), queryFnProps(name, { environment: clean }), `${pkg}::${fn}`);
+					assert.isTrue(env.builtInDefinitionsOf(name).every(d => d.name !== undefined && Identifier.getNamespace(d.name) === pkg), `${pkg}::${fn} is answered by another package`);
+				}
+			}
+		});
+	}));
 
 	describe('What the configuration states', () => {
 		const builtIns = getDefaultBuiltInDefinitions();

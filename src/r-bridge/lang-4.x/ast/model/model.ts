@@ -90,8 +90,7 @@ export interface WithChildren<Info, Children extends RAstNodeBase<Info, string |
  * as it is equivalent to the {@link RAstNodeBase} interface.
  * It is intended to help humans understand the code.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface Leaf<Info = NoInfo, LexemeType = string> extends RAstNodeBase<Info, LexemeType> {}
+export type Leaf<Info = NoInfo, LexemeType = string> = RAstNodeBase<Info, LexemeType>;
 
 /**
  * Indicates, that the respective {@link RAstNodeBase} node has known source code
@@ -119,6 +118,7 @@ export type NamespaceIdentifier = string;
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>;
 /**
  * Helper object to provide helper functions for {@link RConstant|RConstants}.
+ * @helper ast
  * @see {@link RNode} - for more general helper functions for all nodes
  */
 export const RConstant = {
@@ -142,6 +142,7 @@ export const RConstant = {
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
 /**
  * Represents a leaf node in the normalized AST, i.e. a node that does not have any children. This includes comment, symbol, constant, break, next, and line directive nodes.
+ * @helper ast
  */
 export const RSingleNode = {
 	name: 'RSingleNode',
@@ -161,6 +162,10 @@ export const RSingleNode = {
  * This subtype of {@link RNode} represents all looping constructs in the normalized AST.
  */
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>;
+/**
+ * Helper for working with {@link RLoopConstructs} AST nodes.
+ * @helper ast
+ */
 export const RLoopConstructs = {
 	name: 'RLoopConstructs',
 	/**
@@ -180,6 +185,10 @@ export const RLoopConstructs = {
  * the {@link RIfThenElse} construct as well.
  */
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>;
+/**
+ * Helper for working with {@link RConstructs} AST nodes.
+ * @helper ast
+ */
 export const RConstructs = {
 	name: 'RConstructs',
 	/**
@@ -199,6 +208,10 @@ export const RConstructs = {
  * (calls and definitions) in the normalized AST.
  */
 export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>;
+/**
+ * Helper for working with {@link RFunctions} AST nodes.
+ * @helper ast
+ */
 export const RFunctions = {
 	name: 'RFunctions',
 	/**
@@ -218,6 +231,10 @@ export const RFunctions = {
  * nodes in the normalized AST. At the moment these are the comment-like nodes.
  */
 export type ROther<Info>          = RComment<Info> | RLineDirective<Info>;
+/**
+ * Helper for working with {@link ROther} AST nodes.
+ * @helper ast
+ */
 export const ROther = {
 	name: 'ROther',
 	/**
@@ -436,11 +453,20 @@ export const RNode = {
 		return ids;
 	},
 	/**
-	 * A helper function to retrieve the lexeme of a given node, if available.
+	 * The code a given node spans, if available.
 	 * If the `fullLexeme` is available, it will be returned, otherwise the `lexeme` will be returned.
+	 * @see {@link RNode.ownLexeme} - for the token the node is made of
 	 */
 	lexeme<R extends RNode<ParentInformation>>(this: void, node: R | undefined): R extends { lexeme: string } ? string : string | undefined {
 		return node?.info.fullLexeme ?? node?.lexeme as string;
+	},
+	/**
+	 * The lexeme of the token the node is made of, e.g., the name of a call rather than the call as a whole.
+	 * Only if the node has none of its own, the `fullLexeme` is used.
+	 * @see {@link RNode.lexeme} - for the code the node spans
+	 */
+	ownLexeme(this: void, node: RNode<ParentInformation> | undefined): string | undefined {
+		return node?.lexeme ?? node?.info.fullLexeme;
 	},
 	/**
 	 * Return the (roxygen) documentation associated with the given node, if available.

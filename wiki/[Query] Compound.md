@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Compound Query">Compound Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Combines multiple queries of the same type into one, specifying common arguments.\
@@ -37,9 +37,9 @@ assigned to the kind `visualize` and the subkind `text` (using the example code 
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (4 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (4 hits): _`mean(data$x)`_ (L.9), _`print(m)`_ (L.10), _`mean(data2$k)`_ (L.19), _`print(mean(data2$k))`_ (L.19)\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (4 hits): _`mean(data$x)`_ (L.9), _`print(m)`_ (L.10), _`mean(data2$k)`_ (L.19), _`print(mean(data2$k))`_ (L.19)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -76,7 +76,7 @@ _Results (prettified and summarized):_
 
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (4 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (4 hits): _`mean(data$x)`_ (L.9), _`print(m)`_ (L.10), _`mean(data2$k)`_ (L.19), _`print(mean(data2$k))`_ (L.19)\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (4 hits): _`mean(data$x)`_ (L.9), _`print(m)`_ (L.10), _`mean(data2$k)`_ (L.19), _`print(mean(data2$k))`_ (L.19)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -128,7 +128,7 @@ _Results (prettified and summarized):_
 
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (2 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (2 hits): _`mean(data$x)`_ (L.9) with 1 call (UNKNOWN: built-in (info: undefined)), _`mean(data2$k)`_ (L.19) with 1 call (UNKNOWN: built-in (info: undefined))\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (2 hits): _`mean(data$x)`_ (L.9) with 1 call (UNKNOWN: built-in (info: undefined)), _`mean(data2$k)`_ (L.19) with 1 call (UNKNOWN: built-in (info: undefined))
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

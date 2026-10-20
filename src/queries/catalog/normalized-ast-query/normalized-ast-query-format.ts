@@ -1,8 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { queryHeader } from '../../query-print';
 import { executeNormalizedAstQuery } from './normalized-ast-query-executor';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
@@ -23,7 +22,7 @@ export const NormalizedAstQueryDefinition = {
 	executor:        executeNormalizedAstQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
-		result.push(`Query: ${bold('normalized-ast', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('normalized-ast', formatter, out['.meta'].timing));
 		result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
 		return true;
 	},

@@ -2,9 +2,9 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { Q } from '../../search/flowr-search-builder';
-import type { MergeableRecord } from '../../util/objects';
-import { SourceLocation } from '../../util/range';
-import { type LintingResult, type LintingRule, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { compactRecord, type MergeableRecord } from '../../util/objects';
+import { SourceLocation, SourceRange } from '../../util/range';
+import { type LintingResult, type LintingRule, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { FnProp, FnPropNames } from '../../project/sigdb/schema';
 
@@ -18,6 +18,8 @@ export interface NamespaceAccessResult extends LintingResult {
 	readonly name: string
 	readonly kind: NamespaceAccessKind
 }
+
+const SyntacticName = /^(?:[A-Za-z]|\.(?![0-9]))[A-Za-z0-9._]*$/;
 
 export type NamespaceAccessConfig = MergeableRecord;
 
@@ -58,7 +60,14 @@ export const NAMESPACE_ACCESS = {
 				: (raw.exported ? undefined : 'not-exported');
 			const loc = SourceLocation.fromNode(node);
 			if(kind !== undefined && loc !== undefined) {
-				results.push({ certainty: LintingResultCertainty.Certain, involvedId: node.info.id, loc, pkg, name, kind });
+				/* a name that needs backticks is left alone, the replacement spells it plainly */
+				const operator = kind === 'unnecessary-internal' ? '::' : ':::';
+				/* the access runs from the package to the end of the name, a call around it reaches further */
+				const [startLine, startColumn] = SourceLocation.getRange(loc);
+				const own = SourceRange.ownFromNode(node);
+				const access = own === undefined ? undefined : SourceLocation.from([startLine, startColumn, own[2], own[3]], node.info.file);
+				const quickFix: LintQuickFixReplacement[] | undefined = SyntacticName.test(name) && access !== undefined ? [{ type: 'replace', loc: access, description: `Use \`${pkg}${operator}${name}\``, replacement: `${pkg}${operator}${name}` }] : undefined;
+				results.push(compactRecord({ certainty: LintingResultCertainty.Certain, involvedId: node.info.id, loc, pkg, name, kind, quickFix }));
 			}
 		}
 		return { results, '.meta': { unresolved } };
@@ -76,8 +85,8 @@ export const NAMESPACE_ACCESS = {
 	info: {
 		name:          'Namespace Access Validity',
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Flags `pkg:::name` where `name` is actually exported by `pkg` (so `::` would do), and `pkg::name` where the signature database knows `name` is not exported (which fails at runtime in R). Stays silent whenever the database has no definite answer for the name.',
-		tags:          [LintingRuleTag.Bug],
+		description:   'Finds `pkg:::name` where `name` is actually exported by `pkg` (so `::` would do), and `pkg::name` where the signature database knows `name` is not exported (which fails at runtime in R). Stays silent whenever the database has no definite answer for the name.',
+		tags:          [LintingRuleTag.Bug, LintingRuleTag.QuickFix],
 		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<NamespaceAccessResult, NamespaceAccessMetadata, NamespaceAccessConfig>;

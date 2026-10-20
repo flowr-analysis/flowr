@@ -187,6 +187,21 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 		expect(qualifiedName(uncalled, 'cranfn')).toBeUndefined();
 	});
 
+	test(label('a call only has the side effects of the packages its body attaches', ['library-loading', 'search-path', 'side-effects-in-function-call'], ['dataflow']), async() => {
+		const effectsOn = async(code: string, callName = 'f') => {
+			const { df } = await analyze(ts, code, buildDb());
+			const call = df.graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName);
+			return [...df.graph.edgesTo(call?.[0] as NodeId)].filter(([, e]) => DfEdge.includesType(e, EdgeType.SideEffectOnCall)).map(([from]) => String(from));
+		};
+		const cranfn = String(NodeId.fromPkgFn('cranpkg', 'cranfn'));
+		/* the caller sees the package as well, so calling `f` does not redefine its exports */
+		expect(await effectsOn('library(cranpkg)\nf <- function() 1\nf()\ncranfn()')).not.toContain(cranfn);
+		expect(await effectsOn('f <- function() library(cranpkg)\nf()\ncranfn()')).toContain(cranfn);
+		/* the same for a package the database does not know, whose load is all there is to link */
+		expect(await effectsOn('library(nodbpkg)\nf <- function() 1\nf()')).toHaveLength(0);
+		expect(await effectsOn('f <- function() library(nodbpkg)\ng <- function() f()\ng()', 'g')).toHaveLength(1);
+	});
+
 	test(label('a library call that cannot run attaches nothing', ['library-loading', 'search-path'], ['dataflow']), async() => {
 		const res = await analyze(ts, 'if (FALSE) library(cranpkg)\ncranfn()', buildDb());
 		expect(qualifiedName(res, 'cranfn')).toBeUndefined();

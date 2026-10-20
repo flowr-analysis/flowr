@@ -22,19 +22,25 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import { Resolve } from '../../environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { appliedArguments } from '../../graph/applied-arguments';
 
-/** The index of the argument of `vertex` that binds the formal `argumentName`, R's matching when the formals are known and the `argumentIndex`-th unnamed argument otherwise. */
-export function boundArgumentIndex<Idx extends number | 'unnamed' | undefined>(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argumentIndex: Idx, argumentName: string, ctx: ReadOnlyFlowrAnalyzerContext): Idx | number {
-	const call = graph.idMap?.get(vertex.id);
-	const formals = RFunctionCall.is(call) ? MatchArgs.formalsOf(call, graph, ctx) : undefined;
+/**
+ * The index of the argument of `vertex` that binds the formal `argumentName`, R's matching when the formals are known and the `argumentIndex`-th unnamed argument otherwise.
+ * Pass the `formals` of the call when they are known already, which saves looking them up again.
+ */
+export function boundArgumentIndex<Idx extends number | 'unnamed' | undefined>(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argumentIndex: Idx, argumentName: string, ctx: ReadOnlyFlowrAnalyzerContext, formals?: readonly string[]): Idx | number {
+	/* an exact name binds its formal whatever else the call does, so this needs no formals */
+	const exact = vertex.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
+	if(exact >= 0) {
+		return exact;
+	}
+	const call = formals === undefined ? graph.idMap?.get(vertex.id) : undefined;
+	formals ??= RFunctionCall.is(call) ? MatchArgs.formalsOf(call, graph, ctx) : undefined;
 	if(formals?.includes(argumentName)) {
 		const bound = MatchArgs.toSpec(vertex.args, Object.fromEntries(formals.map(f => [f, f]))).get(argumentName)?.[0];
 		return bound === undefined ? vertex.args.length : vertex.args.findIndex(a => a !== EmptyArgument && a.nodeId === bound);
 	}
-	const arg = vertex.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
-	if(arg >= 0) {
-		return arg;
-	} else if(typeof argumentIndex === 'number') {
+	if(typeof argumentIndex === 'number') {
 		/* a named argument takes no position, so the parameter binds the matching unnamed one */
 		const unnamed = vertex.args.flatMap((a, i) => a === EmptyArgument || !a.name ? [i] : []);
 		return unnamed[argumentIndex] ?? vertex.args.length;
@@ -44,6 +50,7 @@ export function boundArgumentIndex<Idx extends number | 'unnamed' | undefined>(g
 
 /**
  * Get the values of all arguments matching the criteria, keyed by the id of the argument.
+ * Pass the `formals` of the call when they are known already, see {@link boundArgumentIndex}.
  */
 export function getArgumentStringValue(
 	variableResolve: VariableResolve,
@@ -52,10 +59,12 @@ export function getArgumentStringValue(
 	argumentIndex: number | 'unnamed' | undefined,
 	argumentName: string | undefined,
 	resolveValue: boolean | 'library' | undefined,
-	ctx: ReadOnlyFlowrAnalyzerContext
+	ctx: ReadOnlyFlowrAnalyzerContext,
+	formals?: readonly string[]
 ): Map<NodeId, Set<string | undefined>> | undefined {
+	vertex = appliedArguments(graph, vertex);
 	if(argumentName && argumentIndex !== 'unnamed') {
-		argumentIndex = boundArgumentIndex(graph, vertex, argumentIndex, argumentName, ctx);
+		argumentIndex = boundArgumentIndex(graph, vertex, argumentIndex, argumentName, ctx, formals);
 	}
 	if(argumentIndex === undefined) {
 		return undefined;

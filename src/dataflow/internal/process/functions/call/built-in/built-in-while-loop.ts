@@ -10,7 +10,6 @@ import {
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isUndefined } from '../../../../../../util/assert';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type {
 	PotentiallyEmptyRArgument
@@ -28,10 +27,10 @@ import {
 	applyCdToReferences
 } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
-import { appendEnvironment } from '../../../../../environments/append';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
+import { REnvironment } from '../../../../../environments/environment';
 
 /** Process a while loop like `while(cond) { ... }`. */
 export function processWhileLoop<OtherInfo>(
@@ -44,7 +43,7 @@ export function processWhileLoop<OtherInfo>(
 		dataflowLogger.warn(`While-Loop ${Identifier.toString(name.content)} does not have 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const unpackedArgs = args.map(e => unpackNonameArg(e));
+	const unpackedArgs = args.map(e => RArgument.unnamedValueOf(e));
 	if(unpackedArgs.some(isUndefined)) {
 		dataflowLogger.warn(`While-Loop ${Identifier.toString(name.content)} has empty arguments in ${JSON.stringify(args)}, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -119,8 +118,8 @@ export function processWhileLoop<OtherInfo>(
 	ControlFlow.jumpsTo(graph, body, ExitPointType.Break, rootId);
 	/* the body's environment carries its side effects (e.g. a `library()` call), the original one stays unless the body surely runs */
 	const conditionIsAlwaysTrue = conditionIsAlways(true);
-	const bodyEnvironment = appendEnvironment(information.environment, body.environment);
-	const loopEnvironment = conditionIsAlwaysTrue ? bodyEnvironment : appendEnvironment(origEnv, bodyEnvironment);
+	const bodyEnvironment = REnvironment.append(information.environment, body.environment);
+	const loopEnvironment = conditionIsAlwaysTrue ? bodyEnvironment : REnvironment.append(origEnv, bodyEnvironment);
 	/* unless the loop always runs, a body removal only happens maybe; apply it as the merge cannot represent it */
 	const loopKill = body.kill?.length ? (conditionIsAlwaysTrue ? body.kill : makeKillsMaybe(body.kill, cdTrue)) : undefined;
 	return {

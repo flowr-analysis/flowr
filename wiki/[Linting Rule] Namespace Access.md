@@ -1,12 +1,18 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-20, 14:35:49 UTC (v2.16.4), do not edit directly._
 <h2 id="namespace-access">Namespace Access Validity&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
-<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span>
+<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span>
+
+This rule ports the following steps of `R CMD check` (see the [conformance table](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance) for the legend):
+
+| # | Step | Coverage | Note |
+|---|------|:--------:|------|
+| [28](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-28) | [dependencies in R code](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L2169) ([book](https://r-pkgs.org/R-CMD-check.html#description)) | 🟩⭐ | ⭐ also resolves package names through variables and knows the loaders of other packages |
 
 This rule is a `best-effort` rule.
  
-Flags `pkg:::name` where `name` is actually exported by `pkg` (so `::` would do), and `pkg::name` where the signature database knows `name` is not exported (which fails at runtime in R). Stays silent whenever the database has no definite answer for the name.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/namespace-access.ts#L36">src/linter/rules/namespace-access.ts</a>._
+Finds `pkg:::name` where `name` is actually exported by `pkg` (so `::` would do), and `pkg::name` where the signature database knows `name` is not exported (which fails at runtime in R). Stays silent whenever the database has no definite answer for the name.\
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/namespace-access.ts#L38">src/linter/rules/namespace-access.ts</a>._
 
 ### Configuration
 
@@ -27,10 +33,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (3 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ `dplyr:::filter` at 1.1-25\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ `dplyr:::filter` at 1.1-25 (1 quick fix(es) available)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -43,7 +49,20 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "linter": {
     "results": {
-      "namespace-access": {"results":[{"certainty":"certain","involvedId":0,"loc":[1,1,1,25],"pkg":"dplyr","name":"filter","kind":"unnecessary-internal"}],".meta":{"unresolved":0}}
+      "namespace-access": {
+        "results": [
+          {
+            "certainty": "certain",
+            "involvedId": 0,
+            "loc": [1,1,1,25],
+            "pkg": "dplyr",
+            "name": "filter",
+            "kind": "unnecessary-internal",
+            "quickFix": [{"type":"replace","loc":[1,1,1,14],"description":"Use `dplyr::filter`","replacement":"dplyr::filter"}]
+          }
+        ],
+        ".meta": {"unresolved":0}
+      }
     },
     ".meta": {}
   },
@@ -72,9 +91,9 @@ And using the following [configuration](#configuration):
 
 We expect the linter to report the following:
 
-* certain at 1.1-1.14: pkg = `'stats'`, name = `'median'`, kind = `'unnecessary-internal'`
+* certain at 1.1-1.14: pkg = `'stats'`, name = `'median'`, kind = `'unnecessary-internal'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L41) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L15) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_::_96__32_on_32_a_32_name_32_that_32_is_32_not_32_exported">Test Case: `::` on a name that is not exported</h4>
 
@@ -91,9 +110,9 @@ And using the following [configuration](#configuration):
 
 We expect the linter to report the following:
 
-* certain at 1.1-1.12: pkg = `'stats'`, name = `'C_cor'`, kind = `'not-exported'`
+* certain at 1.1-1.12: pkg = `'stats'`, name = `'C_cor'`, kind = `'not-exported'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L45) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L19) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_unnecessary_32__96_:::_96__32_in_32_a_32_call">Test Case: unnecessary `:::` in a call</h4>
 
@@ -110,9 +129,9 @@ And using the following [configuration](#configuration):
 
 We expect the linter to report the following:
 
-* certain at 1.1-1.19: pkg = `'stats'`, name = `'median'`, kind = `'unnecessary-internal'`
+* certain at 1.1-1.19: pkg = `'stats'`, name = `'median'`, kind = `'unnecessary-internal'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L49) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L23) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_::_96__32_on_32_a_32_non-exported_32_name_32_in_32_a_32_call">Test Case: `::` on a non-exported name in a call</h4>
 
@@ -129,9 +148,9 @@ And using the following [configuration](#configuration):
 
 We expect the linter to report the following:
 
-* certain at 1.1-1.17: pkg = `'stats'`, name = `'C_cor'`, kind = `'not-exported'`
+* certain at 1.1-1.17: pkg = `'stats'`, name = `'C_cor'`, kind = `'not-exported'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L53) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L27) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_::_96__32_on_32_an_32_exported_32_name_32_is_32_fine">Test Case: `::` on an exported name is fine</h4>
 
@@ -150,7 +169,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L59) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L33) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_:::_96__32_on_32_a_32_registered_32_S3_32_method_32_is_32_necessary">Test Case: `:::` on a registered S3 method is necessary</h4>
 
@@ -169,7 +188,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L63) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L37) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_:::_96__32_on_32_an_32_exported_32_function_32_that_32_is_32_no_32_S3_32_method_32_is_32_still_32_reported">Test Case: `:::` on an exported function that is no S3 method is still reported</h4>
 
@@ -187,9 +206,9 @@ And using the following [configuration](#configuration):
 
 We expect the linter to report the following:
 
-* certain at 2.1-2.14: pkg = `'stats'`, name = `'median'`, kind = `'unnecessary-internal'`
+* certain at 2.1-2.14: pkg = `'stats'`, name = `'median'`, kind = `'unnecessary-internal'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L70) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L44) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_:::_96__32_on_32_a_32_genuinely_32_internal_32_name_32_is_32_fine">Test Case: `:::` on a genuinely internal name is fine</h4>
 
@@ -208,7 +227,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L76) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L50) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_unknown_32_package_32_is_32_not_32_flagged">Test Case: unknown package is not flagged</h4>
 
@@ -227,7 +246,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L81) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L55) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_name_32_absent_32_from_32_the_32_database_32_is_32_not_32_flagged">Test Case: name absent from the database is not flagged</h4>
 
@@ -246,7 +265,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L84) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L58) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32__96_::_96__32_on_32_a_32_name_32_absent_32_from_32_the_32_database_32_is_32_not_32_flagged_32_either">Test Case: `::` on a name absent from the database is not flagged either</h4>
 
@@ -265,7 +284,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L87) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L61) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_no_32_signature_32_database_32_mounted">Test Case: no signature database mounted</h4>
 
@@ -284,4 +303,4 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L90) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-namespace-access.test.ts#L64) for the test-case implementation.

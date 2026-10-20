@@ -7,6 +7,7 @@ import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-prop
 import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrConfig } from '../../../src/config';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
 
 /**
  * Programs that put the control flow under pressure: jumps out of nested constructs, arms that never complete,
@@ -146,7 +147,7 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		const cfg = extractCfg(result.dataflow);
 		const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
 		const follows = [...result.dataflow.graph.verticesOfType(VertexType.FunctionCall)]
-			.find(([, v]) => v.name === 'print')?.[0];
+			.find(([, v]) => Identifier.getName(v.name) === 'print')?.[0];
 
 		assert.isDefined(follows);
 		assert.strictEqual(reached.has(follows), alive);

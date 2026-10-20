@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { queryHeader } from '../../query-print';
 import type { SupportedQuery } from '../../query';
 import { bold, faint, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
@@ -12,6 +12,7 @@ import { RemoteFunctions, remoteTarget } from './function-info/remote-functions'
 import { computeReadFunctions } from './function-info/read-functions';
 import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
+import { transformFunctions } from './function-info/transform-functions';
 import { statisticsFunctions } from './function-info/statistics-functions';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
@@ -27,6 +28,7 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { collectImplicitEchoes } from './implicit-echo';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
+import { uniqueArrayMerge } from '../../../util/collections/arrays';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
@@ -53,7 +55,7 @@ export interface DependencyCategorySettings {
 }
 
 /** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
-export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'test', 'statistics'] as const;
+export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
 
 /**
@@ -124,17 +126,19 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 				return;
 			}
 			const [ast, dataflow] = await Promise.all([data.analyzer.normalize(), data.analyzer.dataflow()]);
-			/* a call another category reports belongs to that category, except for a statistical test: what it
-			   is asked for is the statistic it prints, so a top-level one is an output like any other */
-			const accountedFor = new Set(Object.entries(queryResults?.kinds ?? {})
-				.filter(([kind]) => kind !== 'statistics')
-				.flatMap(([, k]) => Object.values(k.subkinds).flat()).map(r => r.id));
-			collectImplicitEchoes(ast, dataflow, accountedFor, result);
+			/* a call reported as an output already is not repeated, any other still prints a visible result */
+			const accountedFor = new Set(Object.values(queryResults?.kinds['write']?.subkinds ?? {}).flat().map(r => r.id));
+			const invisible = Object.values(defaultDependencyCategories(data.analyzer.inspectContext())).flatMap(c => c.functions.filter(f => f.invisible));
+			collectImplicitEchoes(ast, dataflow, accountedFor, invisible, result);
 		}
 	},
 	'visualize': {
 		queryDisplayName: 'Visualizations',
 		functions:        VisualizeFunctions
+	},
+	'transform': {
+		queryDisplayName: 'Data Transformations',
+		functions:        transformFunctions(env.builtInIndex)
 	},
 	'test': {
 		queryDisplayName: 'Tests',
@@ -172,6 +176,11 @@ export interface DependencyInfo extends Record<string, unknown> {
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
 	/**
+	 * Set on a call of a function of the program that does what this entry reports, transitively: the call of
+	 * `report()` writes what the `cat()` in its body writes. It names the entry within the called function.
+	 */
+	via?:                NodeId
+	/**
 	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
 	 * file, the device opener and closer around it. Answers *which statements produce this output* without
 	 * rebuilding it from {@link linkedIds}.
@@ -186,6 +195,22 @@ export interface DependencyInfo extends Record<string, unknown> {
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
+	/**
+	 * The variables the result of the call is computed from, resolved through the dataflow graph: `df` for
+	 * `df |> filter(x > 1)` (where `x` names a column) and `a`, `b` for `left_join(a, b)`; an addon to a plot draws its
+	 * data. Reported for the `write`, `visualize` and `transform` categories.
+	 */
+	inputVariables?:     readonly string[]
+	/**
+	 * The variable the result of the call is assigned to, following every call that hands it on (a pipe into a call,
+	 * `( )`, a `+` adding to a plot) up to `<-`, `=` or `->`.
+	 * Reported for the `read`, `visualize` and `transform` categories.
+	 */
+	assignedTo?:         string
+	/** for a plot, the title its `ggtitle`, `labs(title = )` or `main =` states */
+	title?:              string
+	/** for a plot, the file it is written to by `ggsave` or by a graphics device open when it is drawn */
+	savedTo?:            string
 	/** the output is not written by a call asking for it: R echoes the top-level statement on its own */
 	implicit?:           boolean
 	versionConstraints?: readonly Range[],
@@ -243,8 +268,7 @@ export function getAllCategories(queries: readonly DependenciesQuery[], ctx: Rea
 
 /** every category a set of queries reports on, which is what the results are keyed by; no built-in has to be read for that */
 export function getAllCategoryNames(queries: readonly DependenciesQuery[]): DependencyCategoryName[] {
-	return [...new Set<DependencyCategoryName>([...DefaultDependencyCategoryNames,
-		...queries.flatMap(query => Object.keys(query.additionalCategories ?? {}))])];
+	return uniqueArrayMerge(DefaultDependencyCategoryNames, queries.flatMap(query => Object.keys(query.additionalCategories ?? {})));
 }
 
 const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
@@ -259,7 +283,7 @@ export const DependenciesQueryDefinition = {
 	executor:        executeDependenciesQuery,
 	asciiSummarizer: (formatter, analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
-		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('dependencies', formatter, out['.meta'].timing));
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[], analyzer.inspectContext()))) {
 			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
 		}

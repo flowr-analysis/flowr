@@ -16,7 +16,6 @@ import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processi
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { AmbientStateName } from './built-in/built-in-ambient-state';
-import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { processFunctionArgument } from '../process-argument';
 import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
@@ -24,7 +23,7 @@ import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { DfgVertex } from '../../../../graph/vertex';
-import { appendEnvironment } from '../../../../environments/append';
+import { REnvironment } from '../../../../environments/environment';
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	/** which of the arguments the call evaluates, as {@link FunctionSemantics.call.signature.forced} answers it for the signature */
@@ -42,6 +41,8 @@ export interface ProcessAllArgumentInput<OtherInfo> {
 	readonly nonFunction?:      ReadonlySet<NodeId>
 	/** the arguments from this index on are alternatives of which at most one runs (the arms of `switch`) */
 	readonly alternativesFrom?: number
+	/** keep the graph of each processed argument its own, for a caller marking what lies within an argument */
+	readonly keepGraphs?:       boolean
 }
 
 export interface ProcessAllArgumentResult {
@@ -109,7 +110,7 @@ export function isPipedArgument<OtherInfo>(arg: unknown, functionRootId: NodeId,
 
 /** Processes all arguments for a function call, updating the given final graph and environment. */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom, keepGraphs }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	const callArgs: FunctionArgument[] = [];
@@ -144,12 +145,12 @@ export function processAllArguments<OtherInfo>(
 		}
 		processedArguments.push(processed);
 
-		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
+		finalEnv = REnvironment.overwrite(finalEnv, processed.environment);
 		if(beforeAlternatives !== undefined) {
-			afterAlternatives = appendEnvironment(afterAlternatives ?? beforeAlternatives, finalEnv);
+			afterAlternatives = REnvironment.append(afterAlternatives ?? beforeAlternatives, finalEnv);
 		}
-		/* nothing reads the argument's own graph past this point, only its entry point and references */
-		finalGraph.mergeWith(processed.graph, true, precomputed === undefined);
+		/* unless asked to keep it, nothing reads the argument's own graph past this point, only its entry point and references */
+		finalGraph.mergeWith(processed.graph, true, precomputed === undefined && !keepGraphs);
 
 		/* resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies */
 		for(const original of [...processed.in, ...processed.unknownReferences]) {

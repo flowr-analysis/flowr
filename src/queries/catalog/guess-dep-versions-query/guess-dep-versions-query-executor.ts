@@ -37,6 +37,7 @@ import {
 } from '../../../project/dependency-version-space';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { SourceRange } from '../../../util/range';
 
 /** flowR's curated builtin-library function to package map (e.g. `ggplot` to `ggplot2`), disambiguating an orphan call several packages re-export */
 const BuiltinLibraryByFunction: ReadonlyMap<string, string> = new Map(
@@ -57,7 +58,7 @@ type Locator = (id: NodeId | undefined) => string | undefined;
 function locatorOf(idMap: AstIdMap): Locator {
 	return id => {
 		const node = id === undefined ? undefined : idMap.get(id);
-		const at = node?.location ?? node?.info.fullRange;
+		const at = SourceRange.ownFromNode(node);
 		return at === undefined ? undefined : `${node?.info.file ? node.info.file + ':' : ''}${at[0]}:${at[1]}`;
 	};
 }

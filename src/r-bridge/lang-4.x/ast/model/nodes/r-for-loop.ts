@@ -21,6 +21,7 @@ export interface RForLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 
 /**
  * Helper for working with {@link RForLoop} AST nodes.
+ * @helper ast
  */
 export const RForLoop = {
 	...RNode,

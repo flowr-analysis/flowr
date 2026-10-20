@@ -21,6 +21,7 @@ import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import type { GeneralDocContext } from '../wiki-mk/doc-context';
 import type { KnownParser } from '../../r-bridge/parser';
+import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
 
 const QueryDocFile = 'src/documentation/wiki-query.ts';
 
@@ -30,7 +31,7 @@ export interface ShowQueryOptions {
 	readonly collapseQuery?:  boolean;
 	readonly shorthand?:      string;
 	readonly ctx?:            GeneralDocContext;
-	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls */
+	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls; a `code` of `file://<name>` analyzes one of them */
 	readonly files?:          readonly { readonly name: string, readonly content: string }[];
 	/** hook to configure the analyzer, e.g. to pin a version so the generated output does not follow the generating machine */
 	readonly prepare?:        (builder: FlowrAnalyzerBuilder) => void;
@@ -54,7 +55,8 @@ export async function showQuery<
 	for(const file of files ?? []) {
 		analyzer.addFile(new FlowrInlineTextFile(file.name, file.content));
 	}
-	analyzer.addRequest(code);
+	/* code naming one of the files above analyzes that file, as a package's code is analyzed */
+	analyzer.addRequest(files?.some(f => `${fileProtocol}${f.name}` === code) ? requestFromInput(code) : code);
 	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
 

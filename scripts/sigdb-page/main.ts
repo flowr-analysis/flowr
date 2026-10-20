@@ -1,6 +1,6 @@
 import { rankName } from '../../src/util/text/name-rank';
 import type { SigIndex } from '../sigdb-index';
-import { blank, el } from '../page-lib/dom';
+import { blank, button, el } from '../page-lib/dom';
 import type { RRepository } from '../../src/util/r-package-urls';
 import { baseManualIndexUrl, baseManualTopicUrl, cranMirrorSourceUrl, rdrrPackageUrl, rdrrTopicUrl, RRepositories, rSourceUrl } from '../../src/util/r-package-urls';
 
@@ -97,22 +97,15 @@ const picks = [...document.querySelectorAll<HTMLButtonElement>('.pick')];
 let how = 'all';
 const buttons = new Map<string, HTMLButtonElement>();
 for(const [what, key, label, about] of Filters) {
-	const button = el('button', undefined, label);
-	button.type = 'button';
-	button.title = about + '. Click to filter by it, click again to drop it';
-	button.setAttribute('aria-pressed', 'false');
-	button.addEventListener('click', () => {
-		const id = what + ':' + key;
-		if(active.has(id)) {
-			active.delete(id);
-		} else {
-			active.add(id);
-		}
-		button.setAttribute('aria-pressed', String(active.has(id)));
+	const id = what + ':' + key;
+	const filter = button(undefined, label, about + '. Click to filter by it, click again to drop it', () => {
+		void (active.delete(id) || active.add(id));
+		filter.setAttribute('aria-pressed', String(active.has(id)));
 		void search();
 	});
-	buttons.set(what + ':' + key, button);
-	filters.append(button);
+	filter.setAttribute('aria-pressed', 'false');
+	buttons.set(id, filter);
+	filters.append(filter);
 }
 for(const pick of picks) {
 	pick.addEventListener('click', () => {
@@ -854,13 +847,10 @@ function report(total: number, what: string, where: string, inPackages: number |
 	status.textContent = `${total.toLocaleString('en-US')} ${what}${total === 1 ? '' : 's'}${where}${from}`
 		+ (shown < total ? ` · showing ${shown.toLocaleString('en-US')}` : '');
 	if(shown < total) {
-		const more = el('button', 'more-hits', `show ${Math.min(Step, total - shown)} more`);
-		more.type = 'button';
-		more.addEventListener('click', () => {
+		hits.append(button('more-hits', `show ${Math.min(Step, total - shown)} more`, '', () => {
 			limit += Step;
 			void search();
-		});
-		hits.append(more);
+		}));
 	}
 }
 

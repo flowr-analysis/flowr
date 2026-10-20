@@ -312,7 +312,7 @@ export const SYNTACTICALLY_VALID = {
 	},
 	info: {
 		name:            'Syntactically Valid',
-		description:     'Checks whether the code is free of syntax errors, using the configured (error-tolerant) parser, and offers extensible quick-fixes to repair them.',
+		description:     'Finds syntax errors with the configured (error-tolerant) parser. Offers extensible quick fixes to repair them.',
 		tags:            [LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		// tree-sitter reports real syntax errors precisely, but a strict parse may collapse a region into fewer findings
 		certainty:       LintingRuleCertainty.BestEffort,

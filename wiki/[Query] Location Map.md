@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Location Map Query">Location Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simple mapping of ids to their location in the source file\
@@ -28,7 +28,7 @@ _Results (prettified and summarized):_
 Query: **location-map** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
-&nbsp;&nbsp;&nbsp;╰ Id List: {<span title="['0','1','2','3','4','5','2-arg','5-arg','0-arg','1-arg','3-arg','4-arg']">0, 1, 2, 3, 4, 5, 2-arg, ... (see JSON)</span>}\
+&nbsp;&nbsp;&nbsp;╰ Id List: {<span title="['0','1','2','3','4','5','2-arg','5-arg','0-arg','1-arg','3-arg','4-arg']">0, 1, 2, 3, 4, 5, 2-arg, ... (see JSON)</span>}
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -75,10 +75,10 @@ The query also accepts a list of slice criteria to filter the results to only in
 
 _Results (prettified and summarized):_
 
-Query: **location-map** (1 ms)\
+Query: **location-map** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
-&nbsp;&nbsp;&nbsp;╰ Id List: {0, 3}\
+&nbsp;&nbsp;&nbsp;╰ Id List: {0, 3}
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

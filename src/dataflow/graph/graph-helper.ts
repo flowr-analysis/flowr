@@ -134,9 +134,18 @@ export const GraphHelper = {
 
 		return resultGraph as G;
 	},
+	/**
+	 * The ids of the parameters of a function definition, in order (empty if it has none).
+	 * @see {@link Dataflow.argumentsBoundTo} - for the arguments a parameter is bound to
+	 */
 	parametersOf(this: void, definition: DataflowGraphVertexFunctionDefinition): NodeId[] {
 		return Object.keys(definition.params ?? {}).map(NodeId.normalize);
 	},
+	/**
+	 * The function definition vertices the call with the given id is linked to by a {@link EdgeType.Calls} edge (none if it is unresolved or built-in).
+	 * @see {@link Dataflow.calleeIdsOf} - for their ids only
+	 * @see {@link Dataflow.callTargetsOf} - which also follows aliases and includes built-ins
+	 */
 	*calleesOf(this: void, graph: DataflowGraph, id: NodeId): Generator<DataflowGraphVertexFunctionDefinition> {
 		for(const [target, edge] of graph.edgesFrom(id)) {
 			const callee = DfEdge.includesType(edge, EdgeType.Calls) ? graph.getVertex(target) : undefined;
@@ -145,6 +154,10 @@ export const GraphHelper = {
 			}
 		}
 	},
+	/**
+	 * The ids of the arguments a parameter of a function definition is bound to on calls ({@link EdgeType.DefinedByOnCall}), empty if there are none.
+	 * @see {@link Dataflow.parametersOf}
+	 */
 	*argumentsBoundTo(this: void, graph: DataflowGraph, parameter: NodeId): Generator<NodeId> {
 		for(const [argument, edge] of graph.edgesFrom(parameter)) {
 			if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall)) {
@@ -152,6 +165,11 @@ export const GraphHelper = {
 			}
 		}
 	},
+	/**
+	 * The ids reachable from `seed` (itself included) by following outgoing edges in the graph.
+	 * @see {@link ReachOptions} - for restricting the edge types, the visited ids, and the stopping points
+	 * @see {@link Dataflow.reaches} - if you only need to know whether one id reaches another
+	 */
 	reachable<G extends DataflowGraph>(this: void, graph: G, seed: NodeId | Iterable<NodeId>, { follow, consider, cds, stopAt }: ReachOptions = {}): Set<NodeId> {
 		const pending: NodeId[] = typeof seed === 'object' ? [...seed] : [seed];
 		const visited = new Set<NodeId>();

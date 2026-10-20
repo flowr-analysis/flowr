@@ -21,7 +21,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ArgProps } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
 import type { BuiltInLookup } from './frame-reflection';
-import { calledDefinitions, edgeSources, edgeTargets, reflectiveRolesOf } from './frame-reflection';
+import { reflectiveRolesOf } from './frame-reflection';
 import { builtInLookup } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -31,6 +31,7 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { isNotUndefined } from '../../util/assert';
 import { memoize } from '../../util/collections/defaultmap';
+import { Dataflow } from '../graph/df-helper';
 
 /**
  * How a function treats its parameters: R hands arguments over as promises, so a parameter is strict when
@@ -73,7 +74,7 @@ function isDispatch(vertex: DataflowGraphVertexFunctionCall): boolean {
 
 /** Whether the call belongs to one of the given processors. */
 function hasProcessor(vertex: DataflowGraphVertexFunctionCall, of: readonly BuiltInProcName[]): boolean {
-	return vertex.origin !== 'unnamed' && of.some(p => vertex.origin.includes(p));
+	return vertex.origin !== 'unnamed' && of.some(p => DfgVertex.hasOrigin(vertex, p));
 }
 
 /** What a dispatching body does with the arguments it never mentions itself. */
@@ -139,7 +140,7 @@ function dispatchingDefinitions(graph: DataflowGraph): Map<NodeId, DispatchInfor
 		dispatch.set(within, {
 			named:   (RFunctionCall.is(node) && node.arguments.length > 1) || (known?.named ?? false),
 			certain: conditionsBeyond(vertex.cds, graph.getVertex(within)?.cds).length === 0 || (known?.certain ?? false),
-			next:    [...known?.next ?? [], ...calledDefinitions(graph, id).filter(t => t !== within)]
+			next:    [...known?.next ?? [], ...Dataflow.calleeIdsOf(graph, id).filter(t => t !== within)]
 		});
 	}
 	return dispatch;
@@ -160,7 +161,7 @@ function branchOutcomes(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext 
 	});
 }
 
-function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): StrictnessState {
+function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): StrictnessState {
 	const owner = new Map<NodeId, NodeId>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		for(const param of Object.keys(vertex.params)) {
@@ -208,8 +209,8 @@ function conditionsBeyond(cds: readonly ControlDependency[] | undefined, definit
  */
 function isBuiltInCall(vertex: DataflowGraphVertexFunctionCall): boolean {
 	return vertex.origin !== 'unnamed'
-		&& !vertex.origin.includes(BuiltInProcName.Function)
-		&& !vertex.origin.includes(BuiltInProcName.Unnamed);
+		&& !DfgVertex.hasOrigin(vertex, BuiltInProcName.Function)
+		&& !DfgVertex.hasOrigin(vertex, BuiltInProcName.Unnamed);
 }
 
 /** The node whose value an argument stands for, carrying the link to the parameter it binds to. */
@@ -274,8 +275,8 @@ function parameterAt(definition: NodeId, index: number, idMap: AstIdMap, graph: 
 /** The parameters an argument of `call` binds to, by position in each definition an unlinked call may reach, `undefined` if unknown. */
 function boundParameters(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, graph: DataflowGraph, origins?: Map<NodeId, readonly NodeId[]>): NodeId[] | undefined {
 	const sources = new Set([argument, argumentValue(argument, idMap)]);
-	const linked = [...sources].flatMap(from => edgeTargets(graph, from, EdgeType.DefinesOnCall));
-	if(linked.length > 0 || calledDefinitions(graph, call.id).length > 0) {
+	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall));
+	if(linked.length > 0 || Dataflow.calleeIdsOf(graph, call.id).length > 0) {
 		return linked;
 	}
 	const index = argumentIndex(call, argument, idMap);
@@ -361,7 +362,7 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFunctionDefinition, state: StrictnessState): Ternary {
 	const reads: Ternary[] = [];
 	const branches: ControlDependency[] = [];
-	for(const read of edgeSources(state.graph, param, EdgeType.Reads)) {
+	for(const read of Dataflow.sourcesOf(state.graph, param, EdgeType.Reads)) {
 		/* a `NextMethod` hands the parameter on unforced, the methods it reaches decide below */
 		if(!DfgVertex.hasOrigin(state.graph.getVertex(read), BuiltInProcName.S3DispatchNext)) {
 			const { value, onlyUnder = [] } = forces(read, definition, state);
@@ -375,7 +376,7 @@ function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFun
 	const dispatch = state.dispatch.get(definition.id);
 	if(dispatch !== undefined) {
 		const surely = (values: readonly Ternary[]) => dispatch.certain ? agree(values) : weaken(agree(values));
-		const methods = edgeTargets(state.graph, param, EdgeType.DefinesOnCall).map(target => handedTo(target, state));
+		const methods = Dataflow.targetsOf(state.graph, param, EdgeType.DefinesOnCall).map(target => handedTo(target, state));
 		reads.push(surely(methods));
 		if(dispatch.next.length > 0) {
 			const at = parameterIds(definition.id, state.idMap).indexOf(param);
@@ -500,7 +501,7 @@ function computeStrictness(id: NodeId, vertex: DataflowGraphVertexFunctionDefini
  * @useInstead {@link FunctionSemantics.strictness}
  */
 export function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
-	const state = makeState(graph, ctx);
+	const state = strictnessStateOf(graph, ctx);
 	const result: Record<NodeId, FunctionStrictness> = {};
 	for(const id of ids) {
 		result[id] = strictnessOf(id, state);
@@ -523,15 +524,15 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 		}
 		seen.add(param);
 		const owner = idMap.get(idMap.get(param)?.info.parent ?? -1)?.info.parent;
-		for(const read of edgeSources(graph, param, EdgeType.Reads)) {
+		for(const read of Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
 			found.push(read);
 			let closure = RNode.findEnclosing(read, idMap, RFunctionDefinition.is);
 			while(closure !== undefined && closure !== owner) {
-				found.push(...edgeSources(graph, closure, EdgeType.Calls));
+				found.push(...Dataflow.sourcesOf(graph, closure, EdgeType.Calls));
 				closure = RNode.strictlyEnclosingFunction(closure, idMap);
 			}
 			/* a read that is an argument hands the promise on */
-			for(const holder of edgeSources(graph, read, EdgeType.Argument)) {
+			for(const holder of Dataflow.sourcesOf(graph, read, EdgeType.Argument)) {
 				const call = graph.getVertex(holder);
 				if(DfgVertex.isFunctionCall(call) && !isBuiltInCall(call)) {
 					const bound = boundParameters(call, read, idMap, graph) ?? [];
@@ -580,7 +581,7 @@ export function promiseForcing(this: void, graph: DataflowGraph, { ctx }: Functi
 		if(idMap === undefined) {
 			return Ternary.Maybe;
 		}
-		state ??= makeState(graph, ctx);
+		state ??= strictnessStateOf(graph, ctx);
 		if(state.owner.has(holder)) {
 			return handedTo(holder, state);
 		}

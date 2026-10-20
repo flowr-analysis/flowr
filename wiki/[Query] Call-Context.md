@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-16, 17:37:29 UTC (v2.16.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Call-Context Query">Call-Context Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds all calls in a set of files that matches specified criteria.\
@@ -58,12 +58,12 @@ all calls that start with `read_` to the kind `input` but only if they are not l
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (3 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (2 hits): _`mean(data$x)`_ (L.9), _`mean(data2$k)`_ (L.19)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **plot** (1 hit): _`points(data2$x, data2$y)`_ (L.17) with 1 link (_`plot(data2$x, data2$y)`_ (L.16))\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **plot** (1 hit): _`points(data2$x, data2$y)`_ (L.17) with 1 link (_`plot(data2$x, data2$y)`_ (L.16))
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -118,7 +118,7 @@ _Results (prettified and summarized):_
 
 Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **.** (2 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (2 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1))\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (2 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1))
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -139,6 +139,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Call-Context Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/call-context-query-executor.ts#L273"><code><span title="Multi-stage call context query resolve. 1. Resolve all calls in the DF graph that match the respective DefaultCallContextQueryFormat#callName regex. 2. If there is an alias attached, consider all call traces. 3. Identify their respective call targets, if DefaultCallContextQueryFormat#callTargets is set to be non-any. This happens during the main resolution! 4. Attach linkTo calls to the respective...">executeCallContextQueries</span></code></a>.
+The Call-Context Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/call-context-query-executor.ts#L266"><code><span title="Multi-stage call context query resolve. 1. Resolve all calls in the DF graph that match the respective DefaultCallContextQueryFormat#callName regex. 2. If there is an alias attached, consider all call traces. 3. Identify their respective call targets, if DefaultCallContextQueryFormat#callTargets is set to be non-any. This happens during the main resolution! 4. Attach linkTo calls to the respective...">executeCallContextQueries</span></code></a>.
 
 </details>

@@ -35,17 +35,14 @@ export const InspectExceptionQueryDefinition = {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];
 		result.push(`Query: ${bold('inspect-exception', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		const n = await processed.normalize();
-		function getLoc(r: NodeId): SourceLocation | undefined {
+		function locationOf(r: NodeId): SourceLocation | undefined {
 			const node = n.idMap.get(NodeId.normalize(r));
-			return node ? SourceLocation.fromNode(node) : undefined;
-		}
-		function getLexeme(r: NodeId): string {
-			return NodeId.recoverName(NodeId.normalize(r), n.idMap) ?? String(r);
+			return SourceLocation.fromNode(node);
 		}
 		for(const [r, v] of Object.entries(out.exceptions)) {
-			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(getLoc(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
+			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(locationOf(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
 			for(const { id: ex, cds } of v) {
-				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${getLexeme(ex)}" (${SourceLocation.format(getLoc(ex))}, cds: ${cds?.map(c => c.when + ':' + SourceLocation.format(getLoc(c.id))).join(', ') ?? 'none'})`);
+				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${NodeId.recoverName(NodeId.normalize(ex), n.idMap) ?? String(ex)}" (${SourceLocation.format(locationOf(ex))}, cds: ${cds?.map(c => c.when + ':' + SourceLocation.format(locationOf(c.id))).join(', ') ?? 'none'})`);
 			}
 		}
 		return true;

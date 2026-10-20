@@ -1,48 +1,11 @@
 import { describe } from 'vitest';
 import { SupportedQueries } from '../../../../../src/queries/query';
-import { assertReplParser } from '../../../_helper/repl';
+import { assertCriteriaReplParser, assertReplParser } from '../../../_helper/repl';
 import { SliceDirection } from '../../../../../src/util/slice-direction';
 
 describe('Static Slice Query REPL Parser', () => {
 	const parser = SupportedQueries['static-slice'].fromLine;
-	assertReplParser({ parser,
-		label:         'empty line',
-		line:          [''],
-		expectedParse: {
-			query: [],
-		},
-	});
-	assertReplParser({ parser,
-		label:         'invalid line',
-		line:          ['(partial'],
-		expectedParse: {
-			query: [],
-		},
-	});
-	assertReplParser({ parser,
-		label:         'single criterion',
-		line:          ['(1@var)'],
-		expectedParse: {
-			query: [{
-				type:      'static-slice',
-				criteria:  ['1@var'],
-				direction: SliceDirection.Backward
-			}],
-			rCode: undefined
-		},
-	});
-	assertReplParser({ parser,
-		label:         'multiple criteria',
-		line:          ['(1@var;$5;2@var;1:3)'],
-		expectedParse: {
-			query: [{
-				type:      'static-slice',
-				criteria:  ['1@var', '$5', '2@var', '1:3'],
-				direction: SliceDirection.Backward
-			}],
-			rCode: undefined
-		},
-	});
+	assertCriteriaReplParser(parser, criteria => [{ type: 'static-slice', criteria: [...criteria], direction: SliceDirection.Backward }]);
 	assertReplParser({ parser,
 		label:         'with direction',
 		line:          ['(1@var;1:5)f'],
@@ -56,7 +19,7 @@ describe('Static Slice Query REPL Parser', () => {
 		},
 	});
 	assertReplParser({ parser,
-		label:         'with code',
+		label:         'with direction and code',
 		line:          ['(1@var)f', 'someCode'],
 		expectedParse: {
 			query: [{

@@ -4,7 +4,6 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { Unquote } from '../nse';
 import { guard } from '../../../../../../util/assert';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
@@ -79,7 +78,7 @@ export function processPipe<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe }).information;
 	}
 
-	const [lhs, rhs] = args.map(e => unpackNonameArg(e));
+	const [lhs, rhs] = args.map(e => RArgument.unnamedValueOf(e));
 
 	guard(lhs !== undefined && rhs !== undefined, () => `lhs and rhs must be present, but ${JSON.stringify(lhs)} and ${JSON.stringify(rhs)} were found instead.`);
 

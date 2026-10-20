@@ -1,8 +1,8 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
 import { executeResolveValueQuery } from './resolve-value-query-executor';
 import { stringifyValue } from '../../../dataflow/eval/values/r-value';
@@ -25,9 +25,7 @@ export interface ResolveValueQueryResult extends BaseQueryResult {
 function resolveValueLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'resolve-value'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	if(!criteria || criteria.length == 0) {
-		output.stderr(output.formatter.format('Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, 'Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"');
 	}
 
 	return {
@@ -51,7 +49,7 @@ export const ResolveValueQueryDefinition = {
 			);
 			return true;
 		}
-		result.push(`Query: ${bold('resolve-value', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('resolve-value', formatter, out['.meta'].timing));
 		for(const [fingerprint, obj] of Object.entries(out.results)) {
 			const { criteria } = JSON.parse(fingerprint) as ResolveValueQuery;
 			result.push(`   ╰ Values for {${criteria.join(', ')}}`);

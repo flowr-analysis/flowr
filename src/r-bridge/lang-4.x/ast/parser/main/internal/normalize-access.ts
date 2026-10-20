@@ -3,7 +3,7 @@ import { tryToNormalizeArgument } from './functions/normalize-argument';
 import { parseLog } from '../../json/parser';
 import { splitArrayOn } from '../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../util/assert';
-import { retrieveMetaStructure } from '../normalize-meta';
+import { retrieveMetaStructure, currentSourceInfo } from '../normalize-meta';
 import { RawRType, RType } from '../../../model/type';
 import { normalizeSingleNode } from './structure/normalize-single-node';
 import type { RNode } from '../../../model/model';
@@ -108,10 +108,6 @@ export function tryNormalizeAccess(data: NormalizerData, mappedWithName: NamedJs
 		accessed: parsedAccessed[0],
 		operator,
 		access:   parsedAccess,
-		info:     {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:     currentSourceInfo(data)
 	} as RAccess;
 }

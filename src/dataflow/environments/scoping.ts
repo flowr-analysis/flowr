@@ -3,6 +3,7 @@ import { guard } from '../../util/assert';
 
 /**
  * Add a new local environment scope to the stack, returns the modified variant (shares the original stack, no deep-clone).
+ * @useInstead {@link REnvironment.pushLocal}
  * @see {@link popLocalEnvironment} - to remove the local scope again
  */
 export function pushLocalEnvironment({ level, current }: REnvironmentInformation): REnvironmentInformation {
@@ -14,6 +15,7 @@ export function pushLocalEnvironment({ level, current }: REnvironmentInformation
 
 /**
  * Remove the top local environment scope from the stack, returns the modified variant (shares the original stack, no deep-clone).
+ * @useInstead {@link REnvironment.popLocal}
  * @see {@link pushLocalEnvironment} - to add a local scope
  */
 export function popLocalEnvironment({ current, level }: REnvironmentInformation): REnvironmentInformation {
@@ -40,6 +42,7 @@ export function padToCommonScope(base: REnvironmentInformation, next: REnvironme
 /**
  * The environment's search path with an empty global frame: attached packages stay visible, the global frame's
  * binds do not. Prefer this over `makeCleanEnv` wherever an environment is at hand; the chain below is shared.
+ * @useInstead {@link REnvironment.cleanOf}
  */
 export function cleanEnvOf({ current }: REnvironmentInformation): REnvironmentInformation {
 	const inner = REnvironment.findGlobal(current);

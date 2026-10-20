@@ -29,7 +29,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),
 		await resolveSearches(analyzer, ctx.config.inputSources ?? {})
 	);
-	const packages = attachedPackages(analyzer, df.environment);
+	const packages = unqualifiedPackages(analyzer, df.environment);
 
 	for(const query of queries) {
 		const criteria: readonly SlicingCriterion[] = Array.isArray(query.criterion)
@@ -66,7 +66,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
  * The packages whose exports are usable without a namespace: those R has on its search path at the end of the
  * program, the ones the project declares, and the base packages R attaches on startup.
  */
-function attachedPackages(analyzer: ReadonlyFlowrAnalysisProvider, environment: REnvironmentInformation): ReadonlySet<string> {
+function unqualifiedPackages(analyzer: ReadonlyFlowrAnalysisProvider, environment: REnvironmentInformation): ReadonlySet<string> {
 	return new Set([
 		...REnvironment.attachedPackages(environment.current),
 		...analyzer.inspectContext().deps.getDependencies().map(d => d.name),

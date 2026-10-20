@@ -1,13 +1,12 @@
 import { describe } from 'vitest';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledSigDb } from '../_helper/linter';
+import { assertLinterFields, assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
-import type { DecodedFunction } from '../../../src/project/sigdb/decode';
-import { FnProp, type LibraryExports, type SigFunctionInfo } from '../../../src/project/sigdb/schema';
+import { FnProp, type SigFunctionInfo } from '../../../src/project/sigdb/schema';
 import { RRange } from '../../../src/util/r-version';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
-import { sigTmpDir, writeAndOpen } from '../_helper/sigdb';
+import { singlePackageSigDb, sigTmpDir, writeAndOpen } from '../_helper/sigdb';
 import { Identifier, PkgName } from '../../../src/dataflow/environments/identifier';
 import { DeprecationState } from '../../../src/dataflow/environments/deprecation-info';
 
@@ -17,32 +16,9 @@ const fn = (name: string, opts: Partial<SigFunctionInfo> = {}): SigFunctionInfo 
 	name, props: FnProp.Exported, params: [], callees: [], line: 1, ...opts
 });
 
-/** a minimal in-memory signature source exposing a single, richly-decoded (and deprecated) function of `pkg` */
+/** a signature source with the single, deprecated function `fnName` of `pkg` */
 function sigDbWithDeprecatedFn(pkg: string, fnName: string): PackageSignatureSource {
-	const fn: DecodedFunction = { name: fnName, line: 1, exported: true, props: ['deprecated'], signature: [], callees: [] };
-	const view: LibraryExports = { version: '1.0.0', exported: [fnName], internal: [], deprecated: [fnName], s3Classes: [], s4Classes: [], cran: true };
-	return {
-		has:               p => p === pkg,
-		hasVersion:        (p, version) => p === pkg && version === '1.0.0',
-		isCranVersion:     () => true,
-		sourceOf:          () => undefined,
-		lookup:            p => p === pkg ? view : undefined,
-		classOwner:        () => undefined,
-		packagesExporting: name => name === fnName ? [pkg] : [],
-		functions:         p => p === pkg ? [fn] : undefined,
-		functionByName:    (p, name) => p === pkg && name === fnName ? fn : undefined,
-		transitiveCallees: () => undefined,
-		classes:           () => undefined,
-		dependencies:      () => undefined,
-		packageNames:      () => [pkg],
-		isBaseR:           () => false,
-		downloads:         () => 0,
-		coreVersions:      () => undefined,
-		releaseDate:       () => undefined,
-		releaseDates:      () => [],
-		latestVersion:     () => undefined,
-		close:             () => { /* nothing to release */ }
-	};
+	return singlePackageSigDb(pkg, [{ name: fnName, line: 1, exported: true, props: ['deprecated'], signature: [], callees: [] }]);
 }
 
 describe('flowR linter', withTreeSitter(parser => {
@@ -107,6 +83,13 @@ second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)`, 'deprecated-functions',
 		[{ certainty: LintingResultCertainty.Certain, function: Identifier.from(['all_equal', PkgName.Dplyr, false]), loc: [4, 1, 4, 31], type: 'deprecated-function' }],
 		{ builtin: 1, sigdb: 0 });
+
+		describe('defunct and platform-specific base functions', () => {
+			assertLinterFields(parser, 'as.real(1)\nis.real(2)', 'deprecated-functions', [{ function: 'as.real' }, { function: 'is.real' }]);
+			assertLinterFields(parser, 'x11()\nquartz()\nwindows()', 'deprecated-functions', [{ type: 'deprecated-function' }, { type: 'deprecated-function' }, { type: 'deprecated-function' }]);
+			assertLinterFields(parser, 'dev.new()\npdf("a.pdf")', 'deprecated-functions', []);
+			assertLinterFields(parser, 'as.real <- function(x) x\nas.real(1)', 'deprecated-functions', []);
+		});
 
 		describe('a deprecated function resolved via a loaded package is still flagged', () => {
 			// regression: the loaded-package export must still count as a built-in call target

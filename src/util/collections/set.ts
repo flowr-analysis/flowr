@@ -2,7 +2,7 @@
  * Given both sets, this checks if they contain the same elements.
  */
 export function setEquals<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
-	return a.symmetricDifference(b).size === 0;
+	return a.size === b.size && a.isSubsetOf(b);
 }
 
 /**

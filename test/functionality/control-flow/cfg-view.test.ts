@@ -1,3 +1,4 @@
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
@@ -8,7 +9,6 @@ import { FlowrConfig } from '../../../src/config';
 import { jsonReplacer } from '../../../src/util/json';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 const programs = [
 	'x <- 1\nprint(x)',
@@ -54,10 +54,10 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 			const dataflow = await analyze(parser, 'if(u) 1 else 2');
 			const cfg = extractCfg(dataflow);
 			const graph = cfg.graph;
-			const [ifId] = [...graph.vertices(true).keys()].filter(id => dataflow.graph.idMap?.get(id)?.lexeme?.startsWith('if'));
+			const [ifId] = [...graph.vertices(true).keys()].filter(id => NodeId.recoverName(id, dataflow.graph.idMap)?.startsWith('if'));
 
 			assert.equal(graph.exitOf(ifId), ifId, 'a construct is over on its own vertex');
-			assert.equal(dataflow.graph.idMap?.get(graph.entryOf(ifId) as never)?.lexeme, 'u', 'an if starts at its condition');
+			assert.equal(NodeId.recoverName(graph.entryOf(ifId) as never, dataflow.graph.idMap), 'u', 'an if starts at its condition');
 			const branches = [...graph.successors(graph.entryOf(ifId) as never)];
 			assert.lengthOf(branches, 2, 'the condition leads to one branch or the other');
 			for(const branch of branches) {
@@ -69,7 +69,7 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 			const dataflow = await analyze(parser, 'if(u) 3 else 2\nwhile(v) b');
 			const cfg = extractCfg(dataflow);
 			const graph = cfg.graph;
-			const lexemeOf = (id: NodeId) => dataflow.graph.idMap?.get(id)?.lexeme;
+			const lexemeOf = (id: NodeId) => NodeId.recoverName(id, dataflow.graph.idMap);
 			const idOf = (lexeme: string) => [...graph.vertices(true).keys()].find(id => lexemeOf(id) === lexeme) as NodeId;
 
 			assert.deepStrictEqual(graph.decides(idOf('u')).map(lexemeOf), ['if'], 'standing on the condition names the if');
@@ -81,10 +81,10 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		test('an expression ends on its operator', async() => {
 			const dataflow = await analyze(parser, '2 * 3');
 			const graph = extractCfg(dataflow).graph;
-			const [mulId] = [...graph.vertices(true).keys()].filter(id => dataflow.graph.idMap?.get(id)?.lexeme === '*');
+			const [mulId] = [...graph.vertices(true).keys()].filter(id => NodeId.recoverName(id, dataflow.graph.idMap) === '*');
 
 			assert.equal(graph.exitOf(mulId), mulId);
-			assert.equal(dataflow.graph.idMap?.get(graph.entryOf(mulId) as never)?.lexeme, '2', 'it starts at the left operand');
+			assert.equal(NodeId.recoverName(graph.entryOf(mulId) as never, dataflow.graph.idMap), '2', 'it starts at the left operand');
 		});
 	});
 

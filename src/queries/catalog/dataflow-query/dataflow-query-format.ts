@@ -1,8 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { queryHeader } from '../../query-print';
 import { executeDataflowQuery } from './dataflow-query-executor';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -30,7 +29,7 @@ export const DataflowQueryDefinition = {
 	executor:        executeDataflowQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-		result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('dataflow', formatter, out['.meta'].timing));
 		const url = Dataflow.visualize.mermaid.url(out.graph);
 		if(url.length <= MaxMermaidUrlLength) {
 			result.push(`   ╰ [Dataflow Graph](${url})`);

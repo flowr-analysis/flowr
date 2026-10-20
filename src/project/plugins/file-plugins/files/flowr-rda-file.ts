@@ -314,20 +314,19 @@ export function bunzip(bzip2: Bzip2, content: Buffer, limit = Infinity): Buffer 
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c | R source: saveload.c}
  */
 export class RDAParser {
-	private readonly file:                 FlowrFileProvider;
-	private readonly shortcut:             boolean;
-	private buffer!:                       Buffer;
-	private currentDepth:                  number = 0;
-	private static readonly INITIAL_DEPTH: number = 1;
+	private readonly file:     FlowrFileProvider;
+	private readonly shortcut: boolean;
+	private buffer!:           Buffer;
+	private currentDepth:      number = 0;
 	private offset = 0;
 	private static readonly R_CODE_SET_MAX = 2 ** 6 - 1;
-	private RWeakRefs:                     null | RObjectData = null;
+	private RWeakRefs:         null | RObjectData = null;
 	private static readonly SIZE_OF_DOUBLE = 2 ** 3;
 	private static readonly WORD_SIZE = 2 ** 7;
 	private static readonly MAX_VECTOR_LENGTH = 2 ** 16;
-	private format!:                       SerializationFormat;
-	private readonly refTable:             RObject[] = [];
-	private Registry:                      RObjectData | null = null;
+	private format!:           SerializationFormat;
+	private readonly refTable: RObject[] = [];
+	private Registry:          RObjectData | null = null;
 
 	constructor(file: FlowrFileProvider, shortcut: boolean = true) {
 		this.file = file;
@@ -378,23 +377,21 @@ export class RDAParser {
 
 		switch(compressionType) {
 			case CompressionType.CompGz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const zlib = require('zlib');
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, so bundles without gzip files do not pull in zlib
+				const zlib = require('zlib') as typeof import('zlib');
 				try {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 					buffer = zlib.gunzipSync(fileContent, { maxOutputLength: limit });
 				} catch(e) {
 					if((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') {
 						throw e;
 					}
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 					buffer = zlib.inflateSync(fileContent, { maxOutputLength: limit });
 				}
 				break;
 			}
 
 			case CompressionType.CompBz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- the untyped `bzip2` package has no module declaration, and is loaded on demand
 				const bzip2 = require('bzip2') as Bzip2;
 				buffer = bunzip(bzip2, fileContent, limit);
 				break;
@@ -1633,12 +1630,9 @@ export class RDAParser {
 					this.skipInteger();
 					type = this.assertInteger(this.inInteger());
 				}
-				/* eslint-disable no-useless-assignment -- mirrors the read path */
-				switch(type) {
-					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
-					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
+				if(type === SexpType.AltLangSxp || type === SexpType.AttrListSxp) {
+					hasAttr = true;
 				}
-				/* eslint-enable no-useless-assignment */
 
 				this.currentDepth++;
 				if(hasAttr) {

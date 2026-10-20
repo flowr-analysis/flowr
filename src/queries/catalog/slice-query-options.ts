@@ -9,10 +9,12 @@ import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { CriteriaParseError, SlicingCriterion } from '../../slicing/criterion/parse';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { type InlineFull, type ReconstructionResult, reconstructToCode } from '../../reconstruct/reconstruct';
+import { type InlineFull, type InlineSources, type ReconstructionResult, reconstructToCode } from '../../reconstruct/reconstruct';
 import { buildSourceInlineMap } from '../../reconstruct/inline/source-inline-map';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../reconstruct/auto-select/magic-comments';
+import type { OutputFormatter } from '../../util/text/ansi';
+import { summarizeIdsIfTooLong, queryHeader } from '../query-print';
 
 /** The options every slicing query understands, independent of how it picks the nodes to keep. */
 export interface SliceQueryOptions {
@@ -29,7 +31,7 @@ export interface SliceQueryOptions {
 	 * Inline resolvable `source()` calls into the reconstruction so the result is a single self-contained R text.
 	 * Cyclic and unresolvable `source()` calls are kept verbatim and reported via `reconstruct.inlineWarnings`.
 	 */
-	readonly inlineSources?:    boolean
+	readonly inlineSources?:    InlineSources
 	/**
 	 * Inline _every_ file into the reconstruction, in flowR's loading order (which respects implicit sources),
 	 * independent of whether it is sourced explicitly; `'banner'` additionally precedes each file with a banner
@@ -56,7 +58,7 @@ export const SliceQueryOptionsSchema = {
 	name:             Joi.string().min(1).optional().description('What to call this slice: the results are keyed by it instead of by the serialized query.'),
 	noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 	noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
-	inlineSources:    Joi.boolean().optional().description('Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text.'),
+	inlineSources:    Joi.alternatives(Joi.boolean(), Joi.string().valid('banner')).optional().description('Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text; "banner" marks where each spliced file begins and ends with a banner comment naming it.'),
 	inlineFull:       Joi.alternatives(Joi.boolean(), Joi.string().valid('banner')).optional().description('Inline all files into the reconstruction, in flowR\'s loading order and independent of whether they are sourced explicitly; "banner" precedes every file with a banner comment naming it.'),
 	includeCallees:   Joi.boolean().optional().description('If set (and slicing backward), continue the slice past a function-definition boundary, also including the definition\'s binding and call sites.'),
 	perFile:          Joi.boolean().optional().description('Reconstruct the slice as the project\'s files, reported in `reconstruct.files` in loading order with their paths, instead of only the entry file.'),
@@ -143,4 +145,41 @@ export function timedSliceEntry<Slice extends object>(
 	const start = Date.now();
 	const result = reconstruct();
 	return { slice: timedSlice, reconstruct: { ...result, '.meta': { timing: Date.now() - start } } };
+}
+
+interface SliceSummaryInput {
+	readonly results: Readonly<Record<string, {
+		readonly slice:        { readonly result: ReadonlySet<NodeId> },
+		readonly reconstruct?: { readonly code: string | readonly string[] }
+	}>>
+	readonly '.meta': { readonly timing: number }
+}
+
+/** The ascii summary shared by the slicing queries; `describe` names what a result key slices, given its options if serialized. */
+export function summarizeSliceResults<Q extends SliceQueryOptions>(
+	formatter: OutputFormatter, name: string, out: SliceSummaryInput, result: string[],
+	describe: (key: string, query: Q | undefined) => string
+): boolean {
+	const entries = Object.entries(out.results);
+	if(entries.length === 1) {
+		const code = entries[0][1].reconstruct?.code;
+		if(typeof code === 'string' || code?.length === 1) {
+			result.push(typeof code === 'string' ? code : code[0]);
+			return true;
+		}
+	}
+	result.push(queryHeader(name, formatter, out['.meta'].timing));
+	for(const [key, obj] of entries) {
+		/* a named slice is keyed by its name, so there is nothing to parse */
+		const query = isSerializedQuery(key) ? JSON.parse(key) as Q : undefined;
+		const addons = [query?.noReconstruction && 'no reconstruction', query?.noMagicComments && 'no magic comments'].filter(Boolean);
+		result.push(`   ╰ ${describe(key, query)} ${addons.join(', ')}`);
+		if(obj.reconstruct) {
+			const code = typeof obj.reconstruct.code === 'string' ? [obj.reconstruct.code] : obj.reconstruct.code;
+			result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + code.flatMap(c => c.split('\n')).join('\\n') + '</code>');
+		} else {
+			result.push(`     ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...obj.slice.result])}}`);
+		}
+	}
+	return true;
 }

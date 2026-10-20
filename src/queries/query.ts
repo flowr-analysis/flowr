@@ -62,7 +62,7 @@ import {
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
-import fs from 'fs';
+import { missingRootsWithoutRequests } from './query-print';
 import type { CommandCompletions } from '../cli/repl/core';
 import type { FilesQuery } from './catalog/files-query/files-query-format';
 import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
@@ -398,9 +398,8 @@ export async function genericWrapReplFailIfNoRequest<T>(
 	try {
 		return await fn();
 	} catch(e) {
-		const files = analyzer.inspectContext().files;
-		if(files.loadingOrder.getUnorderedRequests().length === 0) {
-			const missing = files.getRequestedRoots().filter(p => !fs.existsSync(p));
+		const missing = missingRootsWithoutRequests(analyzer);
+		if(missing !== undefined) {
 			if(missing.length > 0) {
 				output.stderr(output.formatter.format(`Path does not exist: ${missing.map(p => `'${p}'`).join(', ')}`, { color: Colors.Red, style: FontStyles.Bold, effect: ColorEffect.Foreground }));
 				return;

@@ -28,33 +28,27 @@ export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, righ
 
 
 function diffDataflowGraphs(ctx: GraphDiffContext<ControlFlowGraph>): void {
-	diffRootVertices(ctx);
-	diffVertices(ctx);
-	GraphHelper.diff.outgoingEdges(ctx, diffEdges);
+	diffCfgRootVertices(ctx);
+	diffCfgVertices(ctx);
+	GraphHelper.diff.outgoingEdges(ctx, diffCfgEdges);
 }
 
-function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
+function diffCfgRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), {
 		...ctx,
 		position: `${ctx.position}Root vertices differ in graphs. `
 	});
 }
 
-function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
+function diffCfgVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 	const lVert = [...ctx.left.vertices(false).entries()];
 	const rVert = [...ctx.right.vertices(false).entries()];
-	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
-        || lVert.length > rVert.length && !ctx.config.rightIsSubgraph
-	) {
-		ctx.report.addComment(`Detected different number of vertices! ${ctx.leftname} has ${lVert.length}, ${ctx.rightname} has ${rVert.length}`);
-	}
+	GraphHelper.diff.vertexCount(ctx, lVert.length, rVert.length);
 
 	for(const [id, lInfo] of lVert) {
 		const rInfo = ctx.right.getVertex(id, false);
 		if(rInfo === undefined) {
-			if(!ctx.config.rightIsSubgraph) {
-				ctx.report.addComment(`Vertex ${id} is not present in ${ctx.rightname}`, { tag: 'vertex', id });
-			}
+			GraphHelper.diff.missingVertex(ctx, id);
 			continue;
 		}
 		const lType = CfgVertex.getType(lInfo);
@@ -93,14 +87,6 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 				);
 			}
 		}
-		const lTargets = CfgVertex.getCallTargets(lInfo);
-		const rTargets = CfgVertex.getCallTargets(rInfo);
-		if(lTargets !== undefined || rTargets !== undefined) {
-			setDifference(lTargets ?? new Set(), rTargets ?? new Set(), {
-				...ctx,
-				position: `${ctx.position}Vertex ${id} differs in call targets. `
-			});
-		}
 
 		setDifference(new Set(CfgVertex.getChildren(lInfo)), new Set(CfgVertex.getChildren(rInfo)), {
 			...ctx,
@@ -109,7 +95,7 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 	}
 }
 
-function diffEdge(edge: CfgEdge, otherEdge: CfgEdge, ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, target: NodeId) {
+function diffCfgEdge(edge: CfgEdge, otherEdge: CfgEdge, ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, target: NodeId) {
 	const el = CfgEdge.getType(edge);
 	const ol = CfgEdge.getType(otherEdge);
 	if(el !== ol) {
@@ -136,6 +122,6 @@ function diffEdge(edge: CfgEdge, otherEdge: CfgEdge, ctx: GraphDiffContext<Contr
 	}
 }
 
-function diffEdges(ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, lEdges: ReadonlyMap<NodeId, CfgEdge> | undefined, rEdges: ReadonlyMap<NodeId, CfgEdge> | undefined): void {
-	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffEdge);
+function diffCfgEdges(ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, lEdges: ReadonlyMap<NodeId, CfgEdge> | undefined, rEdges: ReadonlyMap<NodeId, CfgEdge> | undefined): void {
+	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffCfgEdge);
 }

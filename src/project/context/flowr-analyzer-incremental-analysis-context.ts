@@ -35,18 +35,12 @@ type ShouldReparseTest = (filePath: FilePath, ctx: FlowrAnalyzerContext) => bool
 export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-incremental-analysis-context';
 
-	private readonly context:           FlowrAnalyzerContext;
 	/**
 	 * The files that have been changed since the last analysis mapping to their old content.
 	 */
 	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
 	private readonly lastKnownMtime:    Map<FilePath, number> = new Map();
-
-
-	constructor(context: FlowrAnalyzerContext) {
-		this.context = context;
-	}
 
 	public reset(): void {
 		this.changedFilesWithOldContent = new Map();

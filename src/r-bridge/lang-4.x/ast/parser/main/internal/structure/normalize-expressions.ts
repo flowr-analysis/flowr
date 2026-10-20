@@ -110,17 +110,10 @@ function handleExpressionList(raw: readonly NamedJsonEntry[]): HandledExpression
 	}
 	const { comments, others: tokens } = splitComments(raw);
 	const first = tokens[0]?.name;
-	if(first === RawRType.BraceLeft) {
+	const close = first === RawRType.BraceLeft ? RawRType.BraceRight : first === RawRType.ParenLeft ? RawRType.ParenRight : undefined;
+	if(close !== undefined) {
 		const endType = tokens[tokens.length - 1].name;
-		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`);
-		return {
-			segments: [tokens.slice(1, tokens.length - 1)],
-			comments,
-			braces:   [tokens[0], tokens[tokens.length - 1]]
-		};
-	} else if(first === RawRType.ParenLeft) {
-		const endType = tokens[tokens.length - 1].name;
-		guard(endType === RawRType.ParenRight, () => `expected a parenthesis at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`);
+		guard(endType === close, () => `expected a ${first === RawRType.BraceLeft ? 'brace' : 'parenthesis'} at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`);
 		return {
 			segments: [tokens.slice(1, tokens.length - 1)],
 			comments,

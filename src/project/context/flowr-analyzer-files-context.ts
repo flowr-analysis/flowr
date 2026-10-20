@@ -18,7 +18,7 @@ import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-d
 import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
-import { commonDirectory, relativeTo } from '../../util/files';
+import { commonDirectory, relativeTo, RPath } from '../../util/files';
 import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
@@ -187,6 +187,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @returns The number of files currently held by this context.
 	 */
 	getFileCount(): number;
+	/**
+	 * Whether there is any code to analyze, i.e. whether the analysis was handed at least one request. Without one
+	 * (e.g. for a package holding data only, or a folder with no R files), the analysis cannot run.
+	 */
+	hasRequests(): boolean;
 }
 
 /**
@@ -433,9 +438,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
 		} else {
-			const exist = this.files.get(f.path());
+			const exist = this.files.get(RPath.of(f.path()));
 			guard(exist === undefined || exist === f, `File ${f.path()} already added to the context.`);
-			this.files.set(f.path(), f);
+			this.files.set(RPath.of(f.path()), f);
 			this.caseIndex = undefined;
 		}
 
@@ -450,7 +455,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public hasCached(path: string): boolean {
-		return this.files.has(path);
+		return this.files.has(RPath.of(path));
 	}
 
 	public hasFile(path: string): boolean {
@@ -460,14 +465,15 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private fileIndex(): ReadonlyMap<string, ReadonlyMap<string, FilePath>> {
 		if(this.caseIndex === undefined) {
 			const index = new Map<string, Map<string, FilePath>>();
-			for(const f of this.files.keys()) {
-				const dir = path.dirname(f).toLowerCase();
+			for(const file of this.files.values()) {
+				const f = file.path();
+				const dir = RPath.dirname(f).toLowerCase();
 				let entries = index.get(dir);
 				if(entries === undefined) {
 					entries = new Map<string, FilePath>();
 					index.set(dir, entries);
 				}
-				const base = path.basename(f).toLowerCase();
+				const base = RPath.basename(f).toLowerCase();
 				if(!entries.has(base)) {
 					entries.set(base, f);
 				}
@@ -502,14 +508,14 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(this.hasFile(p)) {
 				return p;
 			}
-			const dir = path.dirname(p);
-			const file = path.basename(p).toLowerCase();
+			const file = RPath.basename(p).toLowerCase();
 			// try to find in local known files first
-			const known = this.fileIndex().get(dir.toLowerCase())?.get(file);
+			const known = this.fileIndex().get(RPath.dirname(p).toLowerCase())?.get(file);
 			if(known !== undefined) {
 				return known;
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
+				const dir = path.dirname(p);
 				let realDir = dir;
 				let files = this.readdir(dir);
 				if(files === undefined) {
@@ -554,7 +560,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	/** Resolve the file at `path`, loading it from disk through the {@link FlowrAnalyzerFilePlugin}s if unknown. */
 	public resolveFile(path: string): FlowrFileProvider | undefined {
-		const file = this.files.get(path);
+		const file = this.files.get(RPath.of(path));
 		if(file !== undefined && file !== null) {
 			return file;
 		}
@@ -628,10 +634,14 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public getFileByPath(path: string): FlowrFileProvider | undefined {
-		return this.files.get(path) ?? this.inlineFiles.find(f => f.path() === path);
+		return this.files.get(RPath.of(path)) ?? this.inlineFiles.find(f => f.path() === path);
 	}
 
 	public getFileCount(): number {
 		return this.files.size + this.inlineFiles.length;
+	}
+
+	public hasRequests(): boolean {
+		return this.loadingOrder.getUnorderedRequests().length > 0;
 	}
 }

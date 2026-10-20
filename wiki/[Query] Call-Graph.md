@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Call-Graph Query">Call-Graph Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the call graph of the given code.\
@@ -16,8 +16,8 @@ Using the example code `x + 1`, the following query returns the dataflow graph o
 
 _Results (prettified and summarized):_
 
-Query: **call-graph** (3 ms)\
-&nbsp;&nbsp;&nbsp;╰ [Call Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MzsqKlxuICAgICAgKjEuMS01KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpkW1wiYEJ1aWx0LUluOlxuZGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpkIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMiAtLi0+fFwiY2FsbHNcInwgYnVpbHQtaW46ZFxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)\
+Query: **call-graph** (6 ms)\
+&nbsp;&nbsp;&nbsp;╰ [Call Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MzsqKlxuICAgICAgKjEuMS01KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpkW1wiYEJ1aWx0LUluOlxuZGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpkIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMiAtLi0+fFwiY2FsbHNcInwgYnVpbHQtaW46ZFxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

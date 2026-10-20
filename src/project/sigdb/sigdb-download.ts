@@ -430,38 +430,31 @@ export function sigDbRemoteRelease(): { repo: string, tag: string, url: string }
 	}
 }
 
-/** Fast presence check (existence + byte size only, no hashing) for the shards the committed pointer selects for this runtime; `false` when no pointer is committed or any selected shard is missing/wrong-size. */
-export function sigDbCacheComplete(): boolean {
+function withSelectedShards(f: (remote: SigDbRemote, dir: string, names: readonly string[]) => boolean): boolean {
 	const pointerPath = findRemotePointer();
 	if(!pointerPath) {
 		return false;
 	}
 	try {
 		const remote = readPointer(pointerPath);
-		const dir = path.join(sigDbCacheDir(undefined, false), 'bundles', remote.tag);
-		return selectDownloadVariants(Object.keys(remote.shards)).every(name => {
-			try {
-				return fs.statSync(path.join(dir, name)).size === remote.shards[name].bytes;
-			} catch{
-				return false;
-			}
-		});
+		return f(remote, path.join(sigDbCacheDir(undefined, false), 'bundles', remote.tag), selectDownloadVariants(Object.keys(remote.shards)));
 	} catch{
 		return false;
 	}
 }
 
+/** Fast presence check (existence + byte size only, no hashing) for the shards the committed pointer selects for this runtime; `false` when no pointer is committed or any selected shard is missing/wrong-size. */
+export function sigDbCacheComplete(): boolean {
+	return withSelectedShards((remote, dir, names) => names.every(name => {
+		try {
+			return fs.statSync(path.join(dir, name)).size === remote.shards[name].bytes;
+		} catch{
+			return false;
+		}
+	}));
+}
+
 /** Startup check: `true` when a committed link file lists shards whose cached copies are missing or mismatched */
 export function sigDbNeedsSync(): boolean {
-	const pointerPath = findRemotePointer();
-	if(!pointerPath) {
-		return false;
-	}
-	try {
-		const remote = readPointer(pointerPath);
-		const dir = path.join(sigDbCacheDir(undefined, false), 'bundles', remote.tag);
-		return selectDownloadVariants(Object.keys(remote.shards)).some(name => !isCached(path.join(dir, name), { name, url: '', expected: remote.shards[name] }));
-	} catch{
-		return false;
-	}
+	return withSelectedShards((remote, dir, names) => names.some(name => !isCached(path.join(dir, name), { name, url: '', expected: remote.shards[name] })));
 }

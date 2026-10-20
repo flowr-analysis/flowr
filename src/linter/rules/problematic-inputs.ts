@@ -15,13 +15,14 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { escapeRegex } from '../../util/text/strings';
 import { type BuiltInIndex, quotedForWorker } from '../../dataflow/environments/query-fn-props';
 import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
 
 /** what runs a command, and what evaluates code beyond looking up a name (`get`) or calling a function it is handed (`do.call`) */
 function defaultConsider(index: BuiltInIndex): readonly string[] {
 	const evaluates = index.with(SemanticCallTag.Eval).filter(n => ((index.propsOf(n) ?? 0) & CallProp.Pure) === 0 && !index.get(n)?.sig?.some(([, p]) => (p & ArgProp.Callee) !== 0));
-	return [...index.with(SemanticCallTag.Process), ...evaluates].map(n => `^${Identifier.quote(Identifier.getName(n))}$`).concat('^fread$');
+	return [...index.with(SemanticCallTag.Process), ...evaluates].map(n => `^${escapeRegex(Identifier.getName(n))}$`).concat('^fread$');
 }
 
 export interface PipeCommandFunctionSpec {
@@ -163,8 +164,8 @@ export const PROBLEMATIC_INPUTS = {
 		}
 	},
 	info: {
-		name:          'Problematic inputs',
-		description:   'Detects uses of dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
+		name:          'Problematic Inputs',
+		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: ctx => ({

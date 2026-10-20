@@ -1,3 +1,4 @@
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
@@ -27,7 +28,7 @@ describe('is-strict-function', withTreeSitter(ts => {
 				assert.strictEqual(strictness.strict, expected);
 				for(const [param, want] of Object.entries(params)) {
 					const found = Object.entries(strictness.parameters)
-						.find(([p]) => idMap.get(Number(p))?.lexeme === param);
+						.find(([p]) => NodeId.recoverName(Number(p), idMap) === param);
 					assert.isDefined(found, `no parameter ${param}`);
 					assert.strictEqual(found[1], want, `parameter ${param}`);
 				}
@@ -128,7 +129,7 @@ describe('is-strict-function', withTreeSitter(ts => {
 			const { idMap } = await analyzer.normalize();
 			const id = SlicingCriterion.parse(fn, idMap);
 			const strictness = FunctionSemantics.strictness([id], (await analyzer.dataflow()).graph, { ctx: analyzer.inspectContext() })[id];
-			const byName = (p: string) => Object.entries(strictness.parameters).find(([k]) => idMap.get(Number(k))?.lexeme === p)?.[1];
+			const byName = (p: string) => Object.entries(strictness.parameters).find(([k]) => NodeId.recoverName(Number(k), idMap) === p)?.[1];
 			return { a: byName('a'), b: byName('b') };
 		};
 		test(sec('domains:promise a branch on a constant forces only one argument'), async() => {

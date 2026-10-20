@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Inspect Higher-Order Functions Query">Inspect Higher-Order Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are higher-order functions\
@@ -19,9 +19,9 @@ Using the example code `f <- function() function(x) x; f()` the following query 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (7ms)\
+Query: **inspect-higher-order**\
 &nbsp;&nbsp;- Function **5** (1.17-29) is not a higher-order function\
-&nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
+&nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -127,8 +127,8 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-higher-order** (14ms)\
-&nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function\
+Query: **inspect-higher-order**\
+&nbsp;&nbsp;- Function **7** (1.6-29) is a higher-order function
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

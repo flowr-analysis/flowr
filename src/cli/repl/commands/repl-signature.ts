@@ -12,7 +12,7 @@ import { signatureQueryCompleter } from '../../../queries/catalog/signature-quer
 import type { CommandCompletions } from '../core';
 
 /** treat the whole line as arguments, no R code to separate */
-function parseArgs(line: string) {
+function parseSignatureArgs(line: string) {
 	return { rCode: undefined, remaining: splitAtEscapeSensitive(line) };
 }
 
@@ -21,7 +21,7 @@ function joinArgs(args: readonly string[]): string {
 	return args.filter(a => a.length > 0).join(' ').trim();
 }
 
-function printHelp(output: ReplOutput): void {
+function printSignatureHelp(output: ReplOutput): void {
 	const f = output.formatter;
 	output.stdout(bold('Signature Database', f) + italic('  (inspect and extend the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
@@ -120,7 +120,7 @@ const signatureSubcommands = {
 	info:     runInfo,
 	add:      runAdd,
 	download: runDownload,
-	help:     output => printHelp(output),
+	help:     output => printSignatureHelp(output),
 } satisfies Record<string, SignatureSubHandler>;
 
 /** the `:signature` subcommand names, offered as completions for its first argument */
@@ -150,7 +150,7 @@ export const signatureCommand: ReplCodeCommand = {
 	script:        false,
 	// `add` mounts arbitrary local files and `download` fetches from the network and persists into the global config
 	localOnly:     true,
-	argsParser:    parseArgs,
+	argsParser:    parseSignatureArgs,
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const [sub = 'help', ...rest] = remainingArgs.filter(a => a.length > 0);
 		const handler = signatureSubcommands[sub as keyof typeof signatureSubcommands];

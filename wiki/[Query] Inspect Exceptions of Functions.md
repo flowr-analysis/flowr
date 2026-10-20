@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
@@ -32,11 +32,11 @@ the following query returns the information for all identified function definiti
 
 _Results (prettified and summarized):_
 
-Query: **inspect-exception** (19ms)\
+Query: **inspect-exception**\
 &nbsp;&nbsp;- Function **20** (1.12-4.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
 &nbsp;&nbsp;- Function **40** (8.13-30) does not throw exceptions.\
-&nbsp;&nbsp;- Function **44** (5.13-10.1) does not throw exceptions.\
+&nbsp;&nbsp;- Function **44** (5.13-10.1) does not throw exceptions.
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

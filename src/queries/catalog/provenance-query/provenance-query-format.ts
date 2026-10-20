@@ -1,8 +1,7 @@
 import { singleCriterionLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
@@ -38,7 +37,7 @@ export const ProvenanceQueryDefinition = {
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'provenance'>['provenance'];
 		const df = await analyzer.dataflow();
-		result.push(`Query: ${bold('provenance', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('provenance', formatter, out['.meta'].timing));
 		for(const [key, obj] of Object.entries(out.results)) {
 			result.push(`   ╰ Provenance for ${key}`);
 			const dfg = Dataflow.reduceGraph(df.graph, new Set(obj));

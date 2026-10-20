@@ -59,7 +59,7 @@ function isChainNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | und
 function chainLhsRaw<OtherInfo>(node: ChainNode<OtherInfo>): RNode<OtherInfo & ParentInformation> | undefined {
 	if(RFunctionCall.is(node)) {
 		const arg = node.arguments[0];
-		return RArgument.isEmpty(arg) ? undefined : arg.value;
+		return RArgument.valueOf(arg);
 	}
 	return RArgument.is(node.lhs) ? node.lhs.value : node.lhs;
 }

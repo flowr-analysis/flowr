@@ -14,6 +14,9 @@ import { memoize } from '../../util/collections/defaultmap';
 import { type LintingResult, type LintingRule, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { collectScopeDefinedNames, isDefinedInEnclosingScope, isInstalledResourceFile, isInSubscript, isNonStandardEvaluated, useResolvesToDefinitionOrBuiltin } from './undefined-symbol-util';
+import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
@@ -59,6 +62,8 @@ export interface SuppressionCounts {
 	subscript:         number
 	/** a bare name a `library()` flowR could not resolve may export */
 	unresolvedLibrary: number
+	/** declared by `utils::globalVariables()` or set by R's method dispatch (`.Generic`, `.Method`, `.Class`) */
+	declaredGlobal:    number
 }
 
 export interface UndefinedSymbolMetadata extends MergeableRecord {
@@ -66,6 +71,30 @@ export interface UndefinedSymbolMetadata extends MergeableRecord {
 	totalVariableUses:  number
 	/** breakdown of unresolved candidates that were suppressed rather than reported */
 	suppressed:         SuppressionCounts
+}
+
+/** the variables R's S3 dispatch binds in the frame of a method */
+const DispatchVariables = ['.Generic', '.Method', '.Class'] as const;
+
+/**
+ * The names declared by the `utils::globalVariables(names)` calls of the code (resolved by flowR), which is how a
+ * package tells `R CMD check` about names it uses through non-standard evaluation, and the variables of R's dispatch.
+ */
+function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<string> {
+	const names = new Set<string>(DispatchVariables);
+	for(const [, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const [name, ns] = Identifier.toArray(vertex.name);
+		if(name !== 'globalVariables' || (ns !== undefined && ns !== 'utils')) {
+			continue;
+		}
+		const values = getArgumentStringValue(ctx.config.solver.variables, graph, vertex, 0, 'names', true, ctx);
+		for(const str of values?.values().flatMap(v => [...v]) ?? []) {
+			if(str !== undefined) {
+				names.add(str);
+			}
+		}
+	}
+	return names;
 }
 
 /** calls that load a package; an unresolved one means we cannot enumerate all exports in scope */
@@ -102,7 +131,7 @@ export const UNDEFINED_SYMBOL = {
 		const meta: UndefinedSymbolMetadata = {
 			totalFunctionCalls: 0,
 			totalVariableUses:  0,
-			suppressed:         { installed: 0, loadedPackage: 0, enclosingScope: 0, nonStandardEval: 0, subscript: 0, unresolvedLibrary: 0 }
+			suppressed:         { installed: 0, loadedPackage: 0, enclosingScope: 0, nonStandardEval: 0, subscript: 0, unresolvedLibrary: 0, declaredGlobal: 0 }
 		};
 		const suppress = (reason: keyof SuppressionCounts): undefined => {
 			meta.suppressed[reason]++;
@@ -126,6 +155,9 @@ export const UNDEFINED_SYMBOL = {
 		const unknownIds = new Set([...graph.unknownSideEffects].map(e => UnknownSideEffect.id(e)));
 		const unresolvedLibraryInScope = unknownIds.size > 0 && [...graph.verticesOfType(VertexType.FunctionCall)]
 			.some(([id, v]) => unknownIds.has(id) && LibraryLoadFunctions.has(Identifier.getName(v.name)));
+
+		// names a package declares global (`utils::globalVariables`) are no undefined symbols to R CMD check either
+		const declaredGlobals = declaredGlobalVariables(graph, ctx);
 
 		// scope-defined names, a fallback for closure variables flowR's dataflow did not statically link
 		const scopeDefined = collectScopeDefinedNames(graph);
@@ -161,8 +193,9 @@ export const UNDEFINED_SYMBOL = {
 			if(kind === 'function' && namespace === undefined && ctx.env.builtInEnvironment.memory.has(name)) {
 				return undefined;
 			}
-			// a bare name from a default-attached base package (or a primitive) is defined without a library() call
-			if(namespace === undefined && isAttachedBaseName(name)) {
+			// a bare name from a default-attached base package (or a primitive) is defined without a library() call,
+			// and `base::name` (or any other base package) is known to flowR without a signature database
+			if(namespace === undefined ? isAttachedBaseName(name) : baseRExportOwner(name) === namespace) {
 				return undefined;
 			}
 			// a bare name a test framework exports, used in a test file where that framework's namespace is attached
@@ -177,6 +210,10 @@ export const UNDEFINED_SYMBOL = {
 				: nsPackage !== undefined && (kind === 'variable' || nsPackage.has(name));
 			if(exported) {
 				return suppress('loadedPackage');
+			}
+			// declared global (as R CMD check honors it) or bound by R's method dispatch
+			if(namespace === undefined && declaredGlobals.has(name)) {
+				return suppress('declaredGlobal');
 			}
 			// forward-referenced closure binding flowR's dataflow did not link (unconditional bindings only)
 			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name)) {
@@ -249,7 +286,7 @@ export const UNDEFINED_SYMBOL = {
 	info: {
 		name:          'Undefined Symbol',
 		certainty:     LintingRuleCertainty.OverApproximative,
-		description:   'Flags functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.',
+		description:   'Finds functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Experimental],
 		defaultConfig: () => ({
 			checkFunctions:  true,

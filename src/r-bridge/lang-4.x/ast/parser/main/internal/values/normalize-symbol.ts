@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { guard } from '../../../../../../../util/assert';
-import { retrieveMetaStructure } from '../../normalize-meta';
+import { retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { isSymbol, RType } from '../../../../model/type';
 import type { NamedJsonEntry } from '../../../json/format';
@@ -40,10 +40,6 @@ export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJso
 		// remove backticks from symbol
 		content,
 		lexeme: meta.content,
-		info:   {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:   currentSourceInfo(data)
 	} satisfies RSymbol;
 }

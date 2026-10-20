@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeConfigQuery } from './config-query-executor';
+import { queryHeader } from '../../query-print';
 import { bold, italic, voidFormatter, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { FlowrConfig } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
@@ -11,7 +11,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
 import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, descriptionPaths, firstUnknownSchemaSegment } from '../../../util/schema';
 import type { ProjectKind } from '../../../project/context/project-kind';
-import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
+import { escapeRegex, matchByPrefixOrSubsequence } from '../../../util/text/strings';
 
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
@@ -113,7 +113,7 @@ function configGlobMatcher(pattern: string): (path: readonly string[]) => boolea
 		if(segments[i] === '**') {
 			regex += last ? '[^.]+(?:\\.[^.]+)*' : '(?:[^.]+\\.)*';
 		} else {
-			regex += segments[i].split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^.]*') + (last ? '' : '\\.');
+			regex += segments[i].split('*').map(part => escapeRegex(part)).join('[^.]*') + (last ? '' : '\\.');
 		}
 	}
 	const matches = new RegExp(regex + '$');
@@ -323,7 +323,7 @@ export const ConfigQueryDefinition = {
 	executor:        executeConfigQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;
-		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('config', formatter, out['.meta'].timing));
 		const configQueries = queries.filter(q => q.type === 'config');
 		const inspects = configQueries.filter(q => q.inspect).map(q => q.inspect as readonly string[]);
 		if(configQueries.some(q => q.reset)) {

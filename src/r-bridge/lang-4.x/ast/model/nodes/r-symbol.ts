@@ -17,6 +17,7 @@ export interface RSymbol<Info = NoInfo, T extends Identifier = Identifier> exten
 
 /**
  * Helper for working with {@link RSymbol} AST nodes.
+ * @helper ast
  */
 export const RSymbol = {
 	...RNode,

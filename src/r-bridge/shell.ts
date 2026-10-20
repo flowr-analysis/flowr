@@ -310,11 +310,7 @@ export class RShell implements AsyncParser<string> {
 				this._sendCommand(`cat("${marker}${this.options.eol}")`);
 			}
 		});
-		if(config.automaticallyTrimOutput) {
-			return output.map(line => line.trim());
-		} else {
-			return output;
-		}
+		return config.automaticallyTrimOutput ? output.map(line => line.trim()) : output;
 	}
 
 	/**
@@ -538,7 +534,7 @@ class RShellSession {
 		this.bareSession.stdin.on('error', callback);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the listener signature is dictated by node's EventEmitter
 	private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both';
 		if(both || from === 'stdout') {
@@ -549,7 +545,7 @@ class RShellSession {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the listener signature is dictated by node's EventEmitter
 	private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both';
 		if(both || from === 'stdout') {

@@ -1,5 +1,6 @@
 import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
-import type { LintingResults, LintingRule } from './linter-format';
+import type { LintingResult, LintingResults, LintingRule } from './linter-format';
+import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
 import { deepMergeObject } from '../util/objects';
@@ -25,6 +26,12 @@ function withoutUntrustedRegexes<Name extends LintingRuleNames>(ruleName: Name, 
 	return Object.fromEntries(Object.entries(config).filter(([k]) => !keys.includes(k))) as DeepPartial<LintingRuleConfig<Name>>;
 }
 
+/** the finding with the file it is in, which a rule pointing at a node of the program leaves to that node */
+function locatedIn<Result extends LintingResult>(found: Result, idMap: AstIdMap): Result {
+	const file = found.loc[4] ?? idMap.get([found.involvedId ?? []].flat()[0])?.info.file;
+	return file === found.loc[4] ? found : { ...found, loc: [found.loc[0], found.loc[1], found.loc[2], found.loc[3], file] };
+}
+
 /**
  * Executes a specific linting rule on the given analysis provider input.
  */
@@ -43,8 +50,10 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		const result = await rule.processSearchResult(searchResult, fullConfig, input);
 		const processTime = Date.now() - processStart;
 
+		const { idMap } = await input.normalize();
 		return {
 			...result,
+			results: result.results.map(found => locatedIn(found, idMap)),
 			'.meta': {
 				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
 				searchTimeMs:  searchTime,
@@ -52,6 +61,10 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 			}
 		};
 	} catch(e) {
+		/* a project without any code (e.g. a package of data only) has nothing to lint, which is no error of the rule */
+		if(!input.inspectContext().files.hasRequests()) {
+			return { results: [], '.meta': { searchTimeMs: 0, processTimeMs: 0 } } as unknown as LintingResults<Name>;
+		}
 		return {
 			error: e
 		};

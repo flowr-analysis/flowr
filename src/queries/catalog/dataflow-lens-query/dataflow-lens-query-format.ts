@@ -1,8 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { queryHeader } from '../../query-print';
 import { executeDataflowLensQuery } from './dataflow-lens-query-executor';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -24,7 +23,7 @@ export const DataflowLensQueryDefinition = {
 	executor:        executeDataflowLensQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-lens'>['dataflow-lens'];
-		result.push(`Query: ${bold('dataflow-lens', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('dataflow-lens', formatter, out['.meta'].timing));
 		result.push(`   ╰ [Simplified Graph](${Dataflow.visualize.mermaid.url(out.simplifiedGraph, false, undefined, true)})`);
 		return true;
 	},

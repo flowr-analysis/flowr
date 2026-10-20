@@ -1,7 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -15,9 +14,10 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import { linkFieldReads } from '../../../../linker';
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { define } from '../../../../../environments/define';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Processes a call listing what an environment holds (`ls`, `objects`), which reads every binding in it: the
@@ -37,12 +37,7 @@ export function processEnvContents<OtherInfo>(
 		return result;
 	}
 	for(const defs of resolution.envDef.envState.current.memory.values()) {
-		for(const def of defs as readonly InGraphIdentifierDefinition[]) {
-			result.graph.addEdge(rootId, def.nodeId, EdgeType.Reads);
-			if(def.definedAt !== undefined && def.definedAt !== def.nodeId) {
-				result.graph.addEdge(rootId, def.definedAt, EdgeType.Reads);
-			}
-		}
+		linkFieldReads(result.graph, rootId, defs, false);
 	}
 	return result;
 }
@@ -87,7 +82,7 @@ export function processListToEnv<OtherInfo>(
 		return result;
 	}
 
-	const first = args.length >= 1 && args[0] !== EmptyArgument ? unpackArg(args[0]) : undefined;
+	const first = args.length >= 1 && args[0] !== EmptyArgument ? RArgument.valueOf(args[0]) : undefined;
 	const literal = listLiteralOf(first, data);
 	if(literal === undefined) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
@@ -117,7 +112,7 @@ export function processListToEnv<OtherInfo>(
 
 	let environment = result.environment;
 	for(const definition of written) {
-		environment = define(definition, false, environment);
+		environment = REnvironment.define(definition, false, environment);
 	}
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 

@@ -42,6 +42,12 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		return this.rmd.blocks.filter(b => isExecutableCell(b, defaults));
 	}
 
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
+	}
+
 	/**
 	 * Loads and parses the content of the wrapped file.
 	 * @returns RmdInfo
@@ -301,15 +307,16 @@ export function parseCodeBlockOptions(header: string, content: string): CodeBloc
 		? ''
 		: header.slice(3, -1).trim();
 
-	const cellLines: string[] = [];
-	for(const line of content.split('\n')) {
-		if(!line.trim().startsWith('#|')) {
-			break;
-		}
-		// keep the indentation, yaml block scalars rely on it
-		cellLines.push(line.trim().slice(2).replace(/^ /, ''));
-	}
+	// keep the indentation, yaml block scalars rely on it
+	const cellLines = cellOptionLines(content).map(line => line.trim().slice(2).replace(/^ /, ''));
 	return new Map([...parseOptionString(headerOpts), ...parseCellOptions(cellLines)]);
+}
+
+/** The `#|` lines that open a code block, which state its options rather than code */
+export function cellOptionLines(content: string): string[] {
+	const lines = content.split('\n');
+	const code = lines.findIndex(line => !line.trim().startsWith('#|'));
+	return lines.slice(0, code < 0 ? lines.length : code);
 }
 
 /** Parses knitr's `key=value` option syntax as used in the chunk header */

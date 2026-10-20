@@ -1,3 +1,4 @@
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RShell } from '../r-bridge/shell';
 import { linkToQueryOfName } from './doc-util/doc-query';
 import { FlowrGithubBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
@@ -6,7 +7,7 @@ import { printServerMessages } from './doc-util/doc-server-message';
 import { documentAllServerMessages } from './data/server/doc-data-server-messages';
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
-import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
+import { fileProtocol } from '../r-bridge/retriever';
 import { watchProtocol } from '../cli/repl/path-input';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
@@ -71,7 +72,7 @@ ${codeBlock('shell', 'nc 127.0.0.1 1042')}
 
 Within the started session, type the following message (as a single line) and press enter to see the response:
 
-${codeBlock('json', removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
+${codeBlock('json', RString.unquote(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
 
 </details>
 </li>
@@ -89,7 +90,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect(('127.0.0.1', 1042))
     print(s.recv(4096))  # for the hello message
 
-    s.send(b'${removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage))}\\n')
+    s.send(b'${RString.unquote(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage))}\\n')
 
     print(s.recv(65536))  # for the response (please use a more sophisticated mechanism)
 `)}

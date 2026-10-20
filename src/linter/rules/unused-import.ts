@@ -208,7 +208,7 @@ export const UNUSED_IMPORT = {
 		name:          'Unused Import',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Highlights packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.',
+		description:   'Finds packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.',
 		defaultConfig: () => ({
 			whitelist: []
 		})

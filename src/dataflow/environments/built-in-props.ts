@@ -1,6 +1,7 @@
 import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
 import { Ternary } from '../../util/logic';
+import { uniqueArrayMerge } from '../../util/collections/arrays';
 
 /**
  * What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault}
@@ -150,6 +151,8 @@ export enum SemanticCallTag {
 	Edits       = 'edits-string',
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
 	Statistics  = 'statistics',
+	/** reshapes, filters, joins or aggregates the data it is given (`dplyr::mutate`, `merge`, `tidyr::pivot_longer`) */
+	Transforms  = 'transforms-data',
 	/** marked for removal, with a better alternative available, like `dplyr::funs` */
 	Deprecated  = 'deprecated',
 	/** dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` */
@@ -325,7 +328,7 @@ export const CallProps = {
 	join(this: void, props1: StatedProps | undefined, props2: StatedProps | undefined): StatedProps {
 		const props = props1?.props === undefined ? props2?.props : (props2?.props === undefined ? props1.props : props1.props | props2.props);
 		const tags = props1?.tags === undefined ? props2?.tags :
-			(props2?.tags === undefined ? props1.tags : [...new Set([...props1.tags, ...props2.tags])]);
+			(props2?.tags === undefined ? props1.tags : uniqueArrayMerge(props1.tags, props2.tags));
 		return { props, tags };
 	},
 	/** Keep only the properties in the stated properties that are in the property selector. */
@@ -395,6 +398,8 @@ export const FnSig = {
 	layout:  sigLayout,
 	/** The roles of the argument at a position; see {@link argProp}. */
 	propAt:  argProp,
+	/** The parameter each argument fills, honoring names; see {@link argumentSlots}. */
+	slots:   argumentSlots,
 	/** The positions carrying any of the given roles; see {@link argsWith}. */
 	posWith: argsWith,
 	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
@@ -540,6 +545,26 @@ function sigLayout(this: void, sig: FnSig): SigLayout {
 /** The {@link ArgProp} bits of the argument at `index`, with `...` covering every position from where it appears. */
 function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProps {
 	return (rest >= 0 && index >= rest ? props[rest] : props[index]) ?? 0;
+}
+
+/**
+ * The parameter each argument fills, matched as R does: an argument naming a parameter exactly fills it, the unnamed
+ * ones fill the parameters left in order up to `...`, which takes everything else. `-1` marks an argument no
+ * parameter takes. `argNames` holds the name of each argument, `undefined` for an unnamed one.
+ */
+function argumentSlots(this: void, { names, rest }: SigLayout, argNames: readonly (string | undefined)[]): number[] {
+	const named = argNames.map(n => n === undefined ? -1 : names.indexOf(n));
+	const taken = new Set(named.filter(at => at >= 0 && at !== rest));
+	let next = 0;
+	return argNames.map((n, i) => {
+		if(n !== undefined) {
+			return named[i] >= 0 && named[i] !== rest ? named[i] : rest;
+		}
+		while(next < names.length && next !== rest && taken.has(next)) {
+			next++;
+		}
+		return next < names.length && next !== rest ? next++ : rest;
+	});
 }
 
 /**

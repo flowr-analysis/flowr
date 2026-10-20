@@ -337,7 +337,10 @@ export function loadNodesForNamespace(env: REnvironmentInformation, pack: string
 	if(env.current.builtInEnv) {
 		return nodes;   // resolving straight in the built-in environment (`get(x, envir = baseenv())`): no search path above it
 	}
-	for(let e: Environment = REnvironment.findGlobal(env.current).parent; e.t !== undefined && !e.builtInEnv; e = e.parent) {
+	for(const e of REnvironment.searchPath(env.current)) {
+		if(e.t === undefined) {
+			break;
+		}
 		if(e.n !== pack) {
 			continue;
 		}
@@ -392,7 +395,8 @@ function selectExports(callables: readonly string[], spec: AttachSpec): Attached
  */
 function lazyExports(pack: string, exports: readonly AttachedExport[], ctx: FlowrAnalyzerContext, definedAt: NodeId | undefined): LazyBindings {
 	const byName = new Map(exports.map(exp => [Identifier.getName(Identifier.make(exp.as, pack)), exp] as const));
-	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt)]);
+	const aliases = exports.filter(exp => exp.as !== exp.exported).map(exp => `${exp.as}=${exp.exported}`);
+	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt)], `${pack}|${String(definedAt)}|${aliases.join(',')}`);
 }
 
 /**
@@ -487,7 +491,7 @@ function startupAttachPosition(pack: string, env: Environment): number | undefin
 		return undefined;
 	}
 	let pos = DefaultAttachPosition;
-	for(let e: Environment = REnvironment.findGlobal(env).parent; !e.builtInEnv; e = e.parent) {
+	for(const e of REnvironment.searchPath(env)) {
 		if(e.t === EnvType.Imports) {
 			continue; // internal layer, not a search-path entry
 		}
@@ -502,7 +506,10 @@ function startupAttachPosition(pack: string, env: Environment): number | undefin
 
 /** Whether package `pack` is already attached below the global env in a way that makes this (re-)attach a no-op. */
 function isAttached(env: Environment, pack: string, namespaceOnly?: boolean): boolean {
-	for(let e: Environment = REnvironment.findGlobal(env).parent; e.t !== undefined && !e.builtInEnv; e = e.parent) {
+	for(const e of REnvironment.searchPath(env)) {
+		if(e.t === undefined) {
+			break;
+		}
 		if(e.n === pack && blocksAttach(e, namespaceOnly)) {
 			return true;
 		}

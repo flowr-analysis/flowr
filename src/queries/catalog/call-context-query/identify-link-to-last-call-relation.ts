@@ -3,7 +3,7 @@ import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/gr
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../dataflow/graph/vertex';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
+import { EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
 import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -16,6 +16,7 @@ import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph'
 import { CfgVertex } from '../../../control-flow/control-flow-graph';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 type KnownCalls = Map<NodeId, Required<DataflowGraphVertexFunctionCall>>;
 
@@ -40,11 +41,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 	if(outgoing === undefined) {
 		return 'no';
 	}
-	const callTargets = outgoing.entries()
-		.filter(([, e]) => DfEdge.includesType(e, EdgeType.Calls))
-		.map(([t]) => t)
-		.toArray()
-    ;
+	const callTargets = Dataflow.targetsOf(graph, info.id, EdgeType.Calls);
 
 	let builtIn = false;
 

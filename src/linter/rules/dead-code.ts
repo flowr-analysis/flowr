@@ -7,6 +7,8 @@ import {
 } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
@@ -47,7 +49,8 @@ export const DEAD_CODE = {
 			}
 		}
 	))),
-	processSearchResult: (elements, _config, _data) => {
+	processSearchResult: async(elements, _config, data) => {
+		const { idMap } = await data.normalize();
 		return {
 			results: combineResults(
 				elements.getElements()
@@ -57,7 +60,7 @@ export const DEAD_CODE = {
 						loc:        SourceLocation.fromNode(element.node)
 					}))
 					.filter(element => isNotUndefined(element.loc)) as Writable<DeadCodeResult>[]
-			)
+			).map(result => isStatement(result, idMap) ? { ...result, quickFix: [{ type: 'remove', loc: result.loc, description: 'Remove the unreachable code' }] } : result)
 		};
 	},
 	prettyPrint: {
@@ -66,13 +69,27 @@ export const DEAD_CODE = {
 	},
 	info: {
 		name:          'Dead Code',
-		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility, LintingRuleTag.QuickFix],
 		// our limited dead code analysis causes complex cases of dead code not to be included in the linting result, but deadness is properly investigated for returned results
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Marks areas of code that are never reached during execution.',
+		description:   'Finds code that is never reached during execution.',
 		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
+
+/** whether the result is a whole statement of a block or the file, which can go without breaking the code around it */
+function isStatement(result: DeadCodeResult, idMap: AstIdMap): boolean {
+	const ids = Array.isArray(result.involvedId) ? result.involvedId : [result.involvedId];
+	return ids.some(id => {
+		const node = id === undefined ? undefined : idMap.get(id);
+		const parent = node?.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+		/* the branch of an `if` without braces is a list of its own, which is no block */
+		const own = SourceLocation.fromNode(node);
+		return node?.info.role === RoleInParent.ExpressionListChild && RExpressionList.is(parent)
+			&& (parent.grouping !== undefined || parent.info.parent === undefined)
+			&& own !== undefined && SourceLocation.isSubsetOf(result.loc, own) && SourceLocation.isSubsetOf(own, result.loc);
+	});
+}
 
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {
 	for(let i = results.length - 1; i >= 0; i--) {

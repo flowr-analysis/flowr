@@ -14,6 +14,7 @@ import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { assertUnreachable, guard } from '../util/assert';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { uniqueArray } from '../util/collections/arrays';
 
 /**
  * The type of a {@link CfgVertex} in the {@link ControlFlowGraph}.
@@ -88,11 +89,8 @@ export const CfgVertex = {
 	 * @param callTargets - if the vertex calls a function, this links all targets of this call
 	 * @see {@link CfgVertex#isExpression|isExpression()} - for a way to check whether a vertex is an expression vertex
 	 */
-	makeExpression(this: void, id: NodeId, { children, callTargets }: { children?: NodeId[], callTargets?: Set<NodeId> } = {}): CfgExpressionVertex {
-		if(children === undefined && callTargets === undefined) {
-			return [CfgVertexType.Expression, id];
-		}
-		return [CfgVertexType.Expression, id, children, callTargets];
+	makeExpression(this: void, id: NodeId, info: { children?: NodeId[], callTargets?: Set<NodeId> } = {}): CfgExpressionVertex {
+		return CfgVertex.makeExprOrStm(id, CfgVertexType.Expression, info) as CfgExpressionVertex;
 	},
 	/**
 	 * Create a new statement vertex with the given id, children, and call targets.
@@ -101,11 +99,8 @@ export const CfgVertex = {
 	 * @param callTargets - if the vertex calls a function, this links all targets of this call
 	 * @see {@link CfgVertex#isStatement|isStatement()} - for a way to check whether a vertex is a statement vertex
 	 */
-	makeStatement(this: void, id: NodeId, { children, callTargets }: { children?: NodeId[], callTargets?: Set<NodeId> } = {}): CfgStatementVertex {
-		if(children === undefined && callTargets === undefined) {
-			return [CfgVertexType.Statement, id];
-		}
-		return [CfgVertexType.Statement, id, children, callTargets];
+	makeStatement(this: void, id: NodeId, info: { children?: NodeId[], callTargets?: Set<NodeId> } = {}): CfgStatementVertex {
+		return CfgVertex.makeExprOrStm(id, CfgVertexType.Statement, info) as CfgStatementVertex;
 	},
 	/**
 	 * A convenience function to create a new vertex which is either a statement or an expression.
@@ -628,7 +623,6 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	/**
 	 * Add a new edge to the control flow graph, in flow order: `to` is evaluated after `from`.
 	 * @see {@link ControlFlowGraph#addVertex|addVertex()} - to add vertices
-	 * @see {@link ControlFlowGraph#addEdges|addEdges()} - to add multiple edges at once
 	 */
 	addEdge(from: NodeId, to: NodeId, edge: CfgEdge): this {
 		this.materialize();
@@ -649,17 +643,6 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 			}
 		}
 		return this.revEdgeInfos;
-	}
-
-	/**
-	 * Add multiple edges from a given source vertex to the control flow graph.
-	 */
-	addEdges(from: NodeId, to: Map<NodeId, CfgEdge>): this {
-		this.materialize();
-		for(const [toNode, edge] of to) {
-			this.addEdge(from, toNode, edge);
-		}
-		return this;
 	}
 
 	outgoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
@@ -755,16 +738,8 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		if(res || !includeBlocks) {
 			return res;
 		}
-		const block = this.bbChildren.get(id);
-		if(block === undefined) {
-			return undefined;
-		}
-		const blockVertex = this.vtxInfos.get(block);
-		if(blockVertex === undefined || !CfgVertex.isBlock(blockVertex)) {
-			return undefined;
-		}
-		const elems = CfgVertex.getBasicBlockElements(blockVertex);
-		return elems.find(e => CfgVertex.getId(e) === id);
+		const block = this.getBasicBlock(id);
+		return block && CfgVertex.getBasicBlockElements(block).find(e => CfgVertex.getId(e) === id);
 	}
 
 	hasVertex(id: NodeId, includeBlocks = true): boolean {
@@ -930,42 +905,6 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		// reroute all edge from b to a
 		for(const [to, edge] of bOutgoing ?? []) {
 			this.addEdge(a, to, edge);
-		}
-		return this;
-	}
-
-	/**
-	 * **This Operation is in-place and modifies the current graph.**
-	 * Merge another control flow graph into this one.
-	 * @param other       - the other control flow graph to merge into this one
-	 * @param forceNested - should the other graph be assumed to be fully nested (e.g., within a function definition).
-	 *
-	 *                    This is the pendant of {@link DataflowGraph#mergeWith|mergeWith()} on a {@link DataflowGraph}.
-	 */
-	mergeWith(other: ControlFlowGraph<Vertex>, forceNested = false): this {
-		this.materialize();
-		/* the other graph may be a projection that has not been asked for anything yet */
-		other.materialize();
-		this._mayBB ||= other._mayBB;
-
-		const roots = other.roots;
-		if(this._mayBB) {
-			for(const [id, node] of other.vtxInfos) {
-				this.addVertex(node, !forceNested && roots.has(id));
-			}
-		} else {
-			for(const [id, node] of other.vtxInfos) {
-				this.vtxInfos.set(id, node);
-			}
-			if(!forceNested) {
-				for(const root of roots) {
-					this.roots.add(root);
-				}
-			}
-		}
-
-		for(const [from, edges] of other.edgeInfos) {
-			this.addEdges(from, edges);
 		}
 		return this;
 	}
@@ -1147,7 +1086,7 @@ export function extractCfg(dataflow: DataflowInformation): ControlFlowInformatio
 		graph,
 		/* a program without a single statement (only comments, say) has nothing to enter or leave */
 		entryPoints: graph.hasVertex(entry) ? [entry] : [],
-		exitPoints:  [...new Set(exitPoints)].filter(e => graph.hasVertex(e)),
+		exitPoints:  uniqueArray(exitPoints).filter(e => graph.hasVertex(e)),
 		returns,
 		breaks,
 		nexts

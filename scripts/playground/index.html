@@ -18,6 +18,7 @@
 -->
 <!--THEME-CSS:own-->
 * { box-sizing: border-box; }
+:root { --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; interpolate-size: allow-keywords; }
 /* every list here gives its rows a `display` of their own, and that beats what `hidden` states: said once
    for the page, so nothing has to remember it again */
 [hidden] { display: none !important; }
@@ -33,7 +34,7 @@ a {
 }
 a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { a { transition: none; } }
-code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code, pre { font-family: var(--mono); }
 
 <!--BAR-CSS-->
 /* the bar spans the whole window here, not a centred column, so it brings its own margin and backdrop */
@@ -50,27 +51,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
 }
 .tools svg, #runrclear svg { width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+#more { display: none; }
+@container pane (max-width: 52rem) {
+	.tools > :not(#more) { display: none; }
+	.tools #more { display: inline-flex; }
+}
 @container pane (max-width: 36rem) {
-	.tools .label, .tools .sharenote { display: none; }
-	.tools button { padding: .2rem .4rem; }
 	/* the file tabs keep their names: what does not fit beside them moves to a row above, so the tabs stay on the line */
 	.tabs { flex-wrap: wrap-reverse; padding-inline: .5rem; }
 	.tabs .tab { padding-inline: .5rem; }
 }
 .tools button:hover { border-color: var(--accent); color: var(--accent); }
-.tools .sharenote { color: var(--muted); font-size: .74rem; }
-/* the graphs flowR builds are handed to mermaid.live rather than drawn in here */
-#views {
-	flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
-	padding: .5rem 1rem; border-top: 1px solid var(--border); background: var(--panel);
-}
-#views .label { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; width: 100%; }
-#views button {
-	font: inherit; font-size: .76rem; padding: .15rem .6rem; cursor: pointer; color: var(--muted);
-	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk);
-}
-#views button:hover { color: var(--accent); border-color: var(--accent); }
-
+.tools .sharenote { color: var(--muted); font-size: .74rem; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 .split { flex: 1; display: grid; grid-template-columns: minmax(0, var(--split, 1.15fr)) .35rem minmax(14rem, 1fr); min-height: 0; }
 /* the bar between the panes, dragged to give one of them more room */
 .divider { cursor: ew-resize; background: var(--border); touch-action: none; transition: background .15s; }
@@ -89,17 +81,47 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 /* the code and the configuration flowR reads it with, one at a time */
 .tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem 1rem 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .tablist { display: flex; align-items: flex-end; align-self: flex-end; gap: .2rem; min-width: 0; flex: 0 1 auto; margin-bottom: -1px; }
-/* the files scroll sideways rather than wrap once there are many */
-#files { display: flex; align-items: flex-end; gap: .2rem; min-width: 0; flex: 0 1 auto; overflow: auto hidden; scrollbar-width: none; }
+#files { display: flex; min-width: 0; }
+#files .tab { overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+#treetoggle { display: inline-flex; align-items: center; padding-inline: .45rem; color: var(--muted); }
+#treetoggle:hover, #treetoggle[aria-expanded="true"] { color: var(--fg); }
+#treetoggle svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linejoin: round; }
+#treetoggle .pane { fill: currentColor; stroke: none; opacity: 0; transition: opacity .15s; }
+#treetoggle[aria-expanded="true"] .pane { opacity: .55; }
+.work { display: flex; flex: 1; min-height: 0; }
+.work > .code { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+#tree { flex: none; width: var(--tree-width, 11rem); max-width: 50%; overflow: auto; display: flex; flex-direction: column; padding: .2rem 0 .4rem; background: var(--sunk); font-size: .8rem; }
+#tree[hidden] + .treegrip { display: none; }
+@keyframes tree-in { from { margin-left: calc(-1 * var(--tree-width, 11rem)); } }
+@media (prefers-reduced-motion: no-preference) { #tree:not([hidden]) { animation: tree-in 10ms ease-out; } }
+.treegrip { flex: none; width: 5px; margin-left: -3px; cursor: col-resize; border-right: 1px solid var(--border); touch-action: none; position: relative; z-index: 1; }
+.treegrip:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+#tree .treehead { display: flex; align-items: center; justify-content: space-between; padding: .15rem .3rem .2rem .7rem; font-size: .72rem; color: var(--muted); }
+#tree .treehead.examples { margin-top: .6rem; padding-top: .45rem; border-top: 1px solid var(--border); }
+#tree .add svg { display: block; width: .9rem; height: .9rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+#tree .add { font: inherit; font-size: .95rem; line-height: 1; padding: .2rem .3rem; border: 0; border-radius: .25rem; background: none; color: var(--muted); cursor: pointer; }
+#tree .add:hover, #tree .add[aria-expanded="true"] { color: var(--accent); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+#tree :is(.file, .folder) { display: flex; align-items: center; gap: .2rem; padding-block: .18rem; padding-right: .3rem; color: var(--fg); cursor: pointer; box-shadow: inset 2px 0 0 transparent; }
+#tree .tname { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tree .folder { color: var(--muted); }
+#tree .folder .tname::before { content: "\25BE"; display: inline-block; width: 1em; font-size: .7rem; }
+#tree .folder.folded .tname::before { content: "\25B8"; }
+#tree :is(.file, .folder):hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
+#tree .file[aria-current] { background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+#tree .tact { visibility: hidden; flex: none; font: inherit; line-height: 1; padding: .05rem .25rem; border: 0; border-radius: .2rem; background: none; color: var(--muted); cursor: pointer; }
+#tree :is(.file, .folder):is(:hover, :focus-within) .tact { visibility: visible; }
+#tree .tact:hover { color: var(--accent); background: color-mix(in srgb, var(--fg) 8%, transparent); }
+#tree .settings { margin-top: .4rem; padding-top: .35rem; border-top: 1px dashed var(--border); color: var(--muted); }
+#tree .example { color: var(--muted); }
 .tabs .tab {
 	font: inherit; font-size: .8rem; padding: .3rem .7rem; cursor: pointer; color: var(--muted); flex: none;
 	border: 1px solid transparent; border-bottom: 0; border-radius: .4rem .4rem 0 0; background: none;
 }
-.tabs .caret::before { content: "▾"; margin-left: .35rem; color: var(--muted); font-size: .7rem; }
+.tabs .tab .pen { margin-left: .35rem; padding: 0 .15rem; border-radius: .2rem; color: var(--muted); visibility: hidden; }
+.tabs .tab:hover .pen { visibility: visible; }
+.tabs .tab .pen:hover { color: var(--accent); background: var(--sunk); }
 .tabs .tab .x { margin-left: .45rem; padding: 0 .15rem; border-radius: .2rem; color: var(--muted); }
 .tabs .tab .x:hover { color: #d55e00; background: var(--sunk); }
-.tabs .add { padding: .3rem .6rem; font-weight: 600; }
-.tabs .add[aria-expanded="true"] { color: var(--accent); }
 .tabs > :not(.tablist) { flex: none; }
 /* below what opened it, kept on screen: the script sets where that is */
 .menu {
@@ -107,7 +129,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	top: var(--top); left: max(.5rem, var(--left)); margin-top: .15rem; max-height: calc(100dvh - var(--top) - 1rem); overflow-y: auto;
 	background: var(--panel); border: 1px solid var(--border); border-radius: .4rem; box-shadow: 0 .4rem 1.2rem rgb(0 0 0 / .25);
 }
-.menu[hidden] { display: none; }
 .menu .heading { padding: .4rem .6rem .15rem; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .menu hr { width: 100%; margin: .25rem 0; border: 0; border-top: 1px solid var(--border); }
 .menu button {
@@ -130,7 +151,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #configproblems { display: flex; flex-direction: column; max-height: 7.5rem; overflow: auto; padding: 0 1rem .4rem; }
 #configproblems button {
 	display: flex; align-items: baseline; gap: .6rem; padding: .2rem .5rem; text-align: left; cursor: pointer;
-	font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--fg);
+	font: inherit; font-family: var(--mono); color: var(--fg);
 	border: 0; border-left: 3px solid #d55e00; border-radius: 0 .3rem .3rem 0; background: color-mix(in srgb, #d55e00 9%, var(--panel));
 }
 #configproblems button + button { margin-top: .2rem; }
@@ -157,23 +178,23 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .drawer > summary .what code { font-size: .95em; }
 .drawer .body { display: flex; flex-direction: column; height: var(--repl-height, 14rem); border-top: 1px solid var(--border); }
-/* the bar one drags to give the repl more or less room */
-.drawer .grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); }
-.drawer .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
+/* the bars one drags to give the repl or the R output more or less room */
+.grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); }
+.grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
 #repl .out {
 	flex: 1; min-height: 0; overflow: auto; margin: 0; padding: .6rem .8rem; white-space: pre-wrap;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+	font-family: var(--mono); font-size: .8rem;
 }
 #repl .said { color: var(--accent); }
 #repl .out a { color: var(--accent); }
-#repl .bad { color: #d55e00; }
-#repl .note { color: var(--muted); }
-#repl .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+:is(#repl, #runr .out) .bad { color: #d55e00; }
+:is(#repl, #runr .out) .note { color: var(--muted); }
+:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
-#repl .ask > span { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#repl .ask > span { color: var(--accent); font-family: var(--mono); }
 #repl input {
 	flex: 1; font: inherit; font-size: .82rem; padding: .2rem .4rem; color: var(--fg);
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-family: var(--mono);
 	border: 1px solid var(--border); border-radius: .3rem; background: var(--bg);
 }
 #repl input:focus { outline: none; border-color: var(--accent); }
@@ -182,28 +203,33 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	position: absolute; left: 2.4rem; right: .8rem; bottom: calc(100% - .2rem); z-index: 5; margin: 0; padding: .25rem; list-style: none;
 	max-height: min(14rem, 60vh); overflow-y: auto; border: 1px solid var(--border); border-radius: .4rem;
 	background: var(--panel); box-shadow: 0 .4rem 1.2rem rgb(0 0 0 / .2);
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+	font-family: var(--mono); font-size: .8rem;
 }
 #replhints li { display: flex; align-items: baseline; gap: .8rem; padding: .15rem .5rem; border-radius: .25rem; cursor: pointer; white-space: nowrap; }
 #replhints li b { font-weight: 600; color: var(--fg); }
 #replhints li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-family: system-ui, sans-serif; font-size: .92em; }
 #replhints li:hover, #replhints li[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 #replhints li[aria-selected="true"] b { color: var(--accent); }
+#replhints .hintdocs { margin-left: auto; padding-left: .6rem; font-size: .74rem; color: var(--accent); }
 /* running the script is the one primary action of the editor, so it gets the one filled button */
 .runbtn {
-	display: inline-flex; align-items: center; gap: .35rem; margin: 0 0 .3rem .5rem; padding: .25rem .8rem;
-	font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; white-space: nowrap;
-	border: 1px solid var(--accent); border-radius: 1rem; background: var(--accent); color: var(--accent-fg);
+	display: inline-flex; align-items: center; gap: .4rem; margin: 0 0 .3rem .5rem; padding: .18rem .85rem;
+	font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+	border: 0; border-radius: 1rem; color: var(--accent-fg); background: var(--accent);
 }
-.runbtn:hover { filter: brightness(1.1); }
+.runbtn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, var(--fg)); }
 .runbtn:disabled { opacity: .6; cursor: progress; }
 .runbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* the run button and the choice of whether a run starts R fresh, as one */
 .runsplit { display: inline-flex; flex: none; margin: 0 0 .3rem .5rem; }
 .runsplit .runbtn { margin: 0; }
 #runrgo { border-radius: 1rem 0 0 1rem; }
-#runmode { padding: .25rem .5rem .25rem .3rem; border-radius: 0 1rem 1rem 0; border-left-color: color-mix(in srgb, var(--accent-fg) 40%, var(--accent)); }
-#runmode::before { content: "\25BE"; font-size: .7rem; }
+#runmode { padding: .18rem .5rem .18rem .4rem; border-radius: 0 1rem 1rem 0; border-left: 1px solid color-mix(in srgb, var(--accent-fg) 30%, var(--accent)); }
+/* a chevron drawn rather than typed, so it sits on the same baseline in every font */
+#runmode::before {
+	content: ""; width: .5rem; height: .5rem; background: currentColor;
+	clip-path: polygon(10% 30%, 50% 72%, 90% 30%, 100% 42%, 50% 92%, 0% 42%);
+}
 /* the run icon, on this button and on every notebook cell: a play triangle and, for a run that keeps the
    R session, a turning arrow; the ring around that is the button's own colour, cutting it out of the triangle */
 .runicon { width: .8rem; height: .8rem; flex: none; overflow: visible; fill: currentColor; }
@@ -220,14 +246,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	flex: none; display: flex; flex-direction: column; height: var(--runr-height, auto); max-height: var(--runr-height, 45%);
 	background: var(--panel); border-bottom: 1px solid var(--border);
 }
-#runr[hidden] { display: none; }
 #runr .head {
-	display: flex; align-items: center; gap: .5rem; padding: .5rem 1.2rem .3rem;
+	display: flex; align-items: center; gap: .5rem; padding: .5rem 1.2rem .3rem; white-space: nowrap;
 	font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
 }
 #runrstate, #runrbytes, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
 /* one line however narrow the card: the words give way, the bar keeps its width */
-#runr .head { white-space: nowrap; }
 #runrstate, #runr .via { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #runrbytes { font-variant-numeric: tabular-nums; }
 #runrprogress { flex: none; width: 5rem; height: .4rem; accent-color: var(--accent); }
@@ -254,19 +278,16 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #runr .head button:not([hidden]) ~ button { margin-left: 0; }
 #runrclear { display: inline-flex; align-items: center; gap: .25rem; }
 #runr .out {
-	min-height: 0; overflow: auto; padding: 0 1.2rem .8rem; white-space: pre-wrap; overflow-wrap: anywhere;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+	flex: 1; min-height: 0; overflow: auto; padding: 0 1.2rem .8rem; white-space: pre-wrap; overflow-wrap: anywhere;
+	font-family: var(--mono); font-size: .8rem;
 }
-#runr .out { flex: 1; }
-#runr .grip { flex: none; height: .4rem; cursor: ns-resize; touch-action: none; background: var(--sunk); border-top: 1px solid var(--border); }
-#runr .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
-#runr .out .note { color: var(--muted); }
-#runr .out .bad { color: #d55e00; }
-#runr .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+#runr .grip { border-top: 1px solid var(--border); }
 /* a call by name, which the R mode leaves plain: weight rather than colour */
 .cm-call { color: var(--fg); font-weight: 600; }
 /* what the linter marks, and what flowR can say about a name */
-.cm-lint { text-decoration: underline wavy #d55e00; text-underline-offset: .22em; }
+.cm-pinned { outline: 1.5px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
+.cm-jumpable { text-decoration: underline; text-underline-offset: .2em; cursor: pointer; }
+.cm-lint { --hue: #d55e00; text-decoration: underline wavy var(--hue); text-underline-offset: .22em; }
 /* what the current slice leaves out, still readable but clearly not part of the answer */
 .cm-outside { opacity: .4; }
 /* the lines the panel row under the pointer stands for */
@@ -298,62 +319,38 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 /* the completion list, in the page's own colours rather than CodeMirror's */
 .cm-tooltip-autocomplete > ul > li { padding: .1rem .5rem; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: var(--accent-fg); }
-.cm-completionLabel { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cm-completionLabel { font-family: var(--mono); }
 .cm-completionDetail { color: var(--muted); font-style: normal; font-size: .78rem; margin-left: .6rem; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail { color: var(--accent-fg); opacity: .85; }
 .cm-completionMatchedText { text-decoration: none; font-weight: 700; color: var(--accent); }
 .cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText { color: var(--accent-fg); }
 :root[data-theme="dark"] .cm-lint { text-decoration-color: #e69f00; }
 .cm-tooltip { border: 1px solid var(--border); border-radius: .4rem; background: var(--panel); }
-.cm-valuetip { padding: .35rem .55rem; color: var(--fg); font-size: .8rem; max-width: 34rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cm-valuetip { padding: .35rem .55rem; color: var(--fg); font-size: .8rem; max-width: 34rem; font-family: var(--mono); }
 .cm-valuetip .tcall { font-weight: 600; }
 .cm-valuetip .tabout, .cm-valuetip .tsaid { color: var(--muted); font-size: .76rem; margin-top: .15rem; }
+.cm-valuetip .tlinks { display: flex; flex-wrap: wrap; gap: .25rem .8rem; margin-top: .35rem; padding-top: .3rem; border-top: 1px solid var(--border); font-family: system-ui, sans-serif; font-size: .74rem; }
+.cm-valuetip .tlink { color: var(--accent); text-decoration: none; }
+.cm-valuetip .tlink:hover { text-decoration: underline; }
 .cm-valuetip .tlint {
 	display: flex; align-items: baseline; gap: .35rem; min-width: 0;
 	color: var(--muted); font-size: .76rem; margin-top: .25rem;
 }
-.cm-valuetip .tlint .rule {
-	--hue: var(--muted); flex: none; padding: 0 .4rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-	color: color-mix(in srgb, var(--hue) 78%, var(--muted));
-	border: 1px solid color-mix(in srgb, var(--hue) 22%, var(--border));
-	background: color-mix(in srgb, var(--hue) 6%, transparent);
-}
-.cm-valuetip .tlint .rule[data-category="security"] { --hue: #cc0000; }
-.cm-valuetip .tlint .rule[data-category="bug"] { --hue: #b45309; }
-.cm-valuetip .tlint .rule[data-category="reproducibility"] { --hue: #7b3294; }
-.cm-valuetip .tlint .rule[data-category="robustness"] { --hue: #0072b2; }
-.cm-valuetip .tlint .rule[data-category="deprecated"] { --hue: #8a6a1f; }
+.cm-valuetip .tlint .rule { flex: none; font-size: .68rem; }
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
-.right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); }
-.right { overflow: hidden; }
+.right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); overflow: hidden; }
 .right.folded > #runr:not([hidden]) ~ #panel { display: none; }
 #pointed {
-	display: flex; align-items: baseline; gap: .6rem; flex: none;
-	padding: .5rem 1rem; border-top: 1px solid var(--border); background: var(--panel); min-height: 2.2rem;
+	display: flex; align-items: baseline; gap: .6rem; flex: none; padding: .15rem .8rem;
+	border-top: 1px solid var(--border); background: var(--panel); font-size: .7rem; color: var(--muted);
 }
-#pinfo { display: flex; align-items: baseline; gap: .6rem; min-width: 0; overflow: hidden; }
-#pinfo .pvalue { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#took { margin-left: auto; flex: none; color: var(--muted); font-size: .78rem; }
-.pname { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; font-size: .85rem; color: var(--fg); text-decoration: none; }
-.pname:hover { color: var(--accent); text-decoration: underline; }
-.pvalue { color: var(--muted); font-size: .82rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#pointed a { color: inherit; text-decoration: none; }
+#pointed a:hover { color: var(--accent); }
+#stats { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#took { margin-left: auto; flex: none; }
 #panel { min-height: 0; flex: 1; overflow: auto; padding: 1rem 1.2rem; container: panel / inline-size; }
 /* what the signature database says about the name under the pointer, under everything else */
-#signature { flex: none; padding: .7rem 1rem .9rem; border-top: 1px solid var(--border); background: var(--panel); }
-#signature h3 { margin-top: 0; }
-#signature h3 {
-	margin: 0 0 .35rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em;
-	text-transform: uppercase; color: var(--muted);
-}
-.scall { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem; overflow-wrap: anywhere; }
-.sabout { display: flex; flex-wrap: wrap; gap: .3rem; align-items: baseline; margin-top: .4rem; }
-.sabout .prop {
-	padding: 0 .45rem; border-radius: 1rem; font-size: .7rem; color: var(--muted);
-	border: 1px solid var(--border); background: var(--sunk);
-}
-.sabout .at { color: var(--muted); font-size: .76rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 #panel h3[data-fold] { cursor: pointer; }
 #panel h3[data-fold]::before {
 	content: "\25BE"; color: var(--muted); font-weight: 400; font-size: .9em;
@@ -361,34 +358,35 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 /* a folded heading says what it stands for and nothing more */
 #panel h3[data-fold].folded .aside { display: none; }
+#panel h3 .aside.focusing { color: var(--accent); opacity: 1; text-transform: none; letter-spacing: 0; }
 #panel h3[data-fold]:focus-visible { outline: 2px solid var(--accent); outline-offset: .15rem; border-radius: .2rem; }
 #panel h3[data-fold].folded::before { transform: rotate(-90deg); }
+#panel h3[data-fold].folded { margin-bottom: 0; }
+#panel h3[data-fold].folded + .sbody + h3 { margin-top: .55rem; }
 #panel h3[data-fold]:hover { color: var(--accent); }
-#panel .sbody[hidden] { display: none; }
 #panel h3 {
 	display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem;
 	margin: 1.2rem 0 .4rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em;
 	text-transform: uppercase; color: var(--muted);
 }
 /* which way the slice runs, the pair the landing page offers */
-#panel .ways { margin-left: auto; display: inline-flex; border: 1px solid var(--border); border-radius: 1rem; overflow: hidden; }
-#panel .way {
+:is(#panel, #slicewide) .ways { margin-left: auto; display: inline-flex; border: 1px solid var(--border); border-radius: 1rem; overflow: hidden; }
+:is(#panel, #slicewide) .way {
 	font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0; cursor: pointer;
 	padding: .1rem .6rem; border: 0; background: var(--panel); color: var(--muted);
 }
-#panel .way + .way { border-left: 1px solid var(--border); }
-#panel .way:hover { color: var(--fg); }
-#panel .way[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+:is(#panel, #slicewide) .way + .way { border-left: 1px solid var(--border); }
+:is(#panel, #slicewide) .way:hover { color: var(--fg); }
+:is(#panel, #slicewide) .way[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
 /* the way to ask for a new linting rule, at the end of the lint heading */
 #panel h3 .suggest {
-	margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0;
+	font-weight: 400; text-transform: none; letter-spacing: 0;
 	padding: .1rem .6rem; border: 1px solid var(--border); border-radius: 1rem;
 	color: var(--muted); text-decoration: none;
 }
 #panel h3 .suggest:hover { color: var(--fg); }
 /* the actions at the end of the lint heading, which the suggest link used to hold on its own */
 #panel h3 .acts { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; }
-#panel h3 .acts .suggest { margin-left: 0; }
 /* carrying out every quick fix at once, at the end of the lint heading */
 #panel .fix {
 	font: inherit; font-size: .72rem; font-weight: 600; text-transform: none; letter-spacing: 0;
@@ -420,51 +418,134 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .toggle { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
 #panel .toggle input { accent-color: var(--accent); margin: 0; }
 #panel h3:first-child { margin-top: 0; }
-#panel .card { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: .5rem; background: color-mix(in srgb, var(--panel) 62%, var(--sunk)); }
-#panel .card.folded pre { max-height: calc(var(--fold-lines, 3) * 1.3rem); overflow: hidden; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
-#panel .unfold {
-	margin-top: .4rem; font: inherit; font-size: .78rem; cursor: pointer; padding: .15rem .6rem;
-	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk); color: var(--muted);
+:is(#panel, #slicewide) .card { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: .5rem; background: color-mix(in srgb, var(--panel) 62%, var(--sunk)); }
+:is(#panel, #slicewide) .slice-view { padding: 0; overflow: hidden; }
+:is(#panel, #slicewide) .slice-view > pre, :is(#panel, #slicewide) .slice-view > .hint { margin: 0; padding: .6rem .8rem; }
+:is(#panel, #slicewide) .slice-view .hint { color: var(--muted); }
+:is(#panel, #slicewide) .sbar { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; padding: .35rem .6rem; border-bottom: 1px solid var(--border); background: var(--sunk); font-size: .78rem; }
+:is(#panel, #slicewide) .sbar > * { flex: none; white-space: nowrap; }
+:is(#panel, #slicewide) .sbar .kept { color: var(--muted); font-variant-numeric: tabular-nums; }
+:is(#panel, #slicewide) .sbar .ways { margin-left: auto; }
+:is(#panel, #slicewide) .slines { font-family: var(--mono); font-size: .8rem; line-height: 1.6; padding: .3rem 0; max-height: 75vh; overflow: auto; }
+:is(#panel, #slicewide) .swiden {
+	display: inline-flex; padding: .2rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--panel);
+	color: var(--muted); cursor: pointer;
 }
-#panel .unfold:hover { color: var(--accent); border-color: var(--accent); }
+:is(#panel, #slicewide) .swiden:hover { color: var(--fg); border-color: var(--accent); }
+:is(#panel, #slicewide) .swiden svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+#panel .slines.folded { max-height: calc(3 * 1.6em + .6rem); overflow: hidden; mask-image: linear-gradient(to bottom, #000 75%, transparent); }
+#panel .sunfold {
+	display: block; width: 100%; padding: .25rem; border: none; border-top: 1px solid var(--border); background: var(--sunk);
+	font: inherit; font-size: .74rem; color: var(--muted); cursor: pointer;
+}
+#panel .sunfold:hover { color: var(--accent); }
+.menupoint { position: fixed; width: 0; height: 0; }
+.versions { display: inline-flex; margin-left: .15rem; padding: .1rem; border: none; border-radius: .3rem; background: none; color: var(--muted); cursor: pointer; vertical-align: middle; }
+.versions:hover { color: var(--fg); background: var(--sunk); }
+.versions svg { width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+:is(#panel, #slicewide) .sadopt {
+	font: inherit; font-size: .74rem; padding: .15rem .6rem; border-radius: 1rem; cursor: pointer;
+	border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+}
+:is(#panel, #slicewide) .sadopt:hover { border-color: var(--accent); color: var(--accent); }
+:is(#panel, #slicewide) :is(.ways, .sadopt, .swiden, .fix, .suggest) { box-sizing: border-box; height: 1.5rem; }
+:is(#panel, #slicewide) :is(.sadopt, .fix, .suggest) { display: inline-flex; align-items: center; gap: .25em; padding-block: 0; }
+:is(#panel, #slicewide) .swiden { width: 1.5rem; padding: 0; align-items: center; justify-content: center; }
+:is(#panel, #slicewide) .way { padding-block: 0; }
+:is(#panel, #slicewide) .slines.rebuilt .scode { margin: 0; padding: 0 .8rem; white-space: pre; font: inherit; }
+#slicewide {
+	width: min(72rem, 92vw); max-height: 90vh; padding: 1rem 1.2rem 1.2rem; border: 1px solid var(--border); border-radius: .7rem;
+	background: var(--bg); color: var(--fg); box-shadow: 0 20px 60px rgb(0 0 0 / .4);
+}
+#slicewide::backdrop { background: rgb(0 0 0 / .45); backdrop-filter: blur(2px); }
+#slicewide h3 { margin: 0 0 .7rem; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+#slicewide .slines { font-size: .95rem; max-height: calc(90vh - 7rem); }
+#slicewide .slines .sline { grid-template-columns: 4rem 1fr; }
+/* a switch rather than a checkbox: dimming is a mode the editor is in, not an item to tick off */
+#panel .switch input {
+	appearance: none; position: relative; flex: none; width: 1.8rem; height: 1rem; border-radius: 1rem; cursor: pointer;
+	background: var(--border); transition: background-color .15s;
+}
+#panel .switch input::before {
+	content: ""; position: absolute; top: 2px; left: 2px; width: calc(1rem - 4px); height: calc(1rem - 4px); border-radius: 50%;
+	background: var(--panel); box-shadow: 0 1px 2px rgb(0 0 0 / .3); transition: transform .15s;
+}
+#panel .switch input:checked { background: var(--accent); }
+#panel .switch input:checked::before { transform: translateX(.8rem); }
+#panel .switch input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:is(#panel, #slicewide) .sline { display: grid; grid-template-columns: 3.2rem 1fr; align-items: baseline; }
+:is(#panel, #slicewide) .sline:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+:is(#panel, #slicewide) .sline.out .stext { opacity: .38; }
+:is(#panel, #slicewide) .slines.context .sline:not(.out) { background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 2px 0 var(--accent); }
+:is(#panel, #slicewide) .sno {
+	font: inherit; font-size: .75rem; text-align: right; padding: 0 .7rem 0 0; border: none; background: none;
+	color: var(--muted); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+:is(#panel, #slicewide) .sno:hover { color: var(--accent); text-decoration: underline; }
+:is(#panel, #slicewide) .stext { white-space: pre-wrap; overflow-wrap: anywhere; padding-right: .8rem; }
+:is(#panel, #slicewide) .sgap { margin: .15rem 0 .15rem 3.2rem; font-family: system-ui, sans-serif; font-size: .72rem; color: var(--muted); font-style: italic; border-top: 1px dashed var(--border); padding-top: .1rem; width: fit-content; }
+:is(#panel, #slicewide) .scell {
+	margin: .45rem .6rem .15rem; font-family: system-ui, sans-serif; font-size: .68rem; font-weight: 600; letter-spacing: .06em;
+	text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: .1rem;
+}
+:is(#panel, #slicewide) .slines > .scell:first-child { margin-top: .15rem; }
 #panel .copy {
 	font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0; cursor: pointer;
 	padding: .05rem .5rem; border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
 }
 #panel .copy:hover { color: var(--accent); border-color: var(--accent); }
 #panel pre { margin: 0; overflow-x: auto; font-size: .82rem; }
-/* one grid for all dependency rows, so the chip, the name and the line number line up across them */
-/* one grid for all dependency rows, so the chip, the name and the line number line up across them */
-#panel .deps { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; }
-/* a script with a great many dependencies keeps its own scrollbar, so the findings under it stay where they
-   are; sideways there is nothing to reach, as every cell already cuts what does not fit */
-#panel .deps { max-height: min(28rem, 50vh); overflow: hidden auto; overscroll-behavior: contain; }
-/* the word of a category is written once, and the rows under it line up with that one */
-#panel .kind.ditto { border-color: transparent; background: none; }
-/* the same dotted line the code carries: this output is printed without anything asking for it */
-#panel .echo { border-bottom: 1px dotted color-mix(in srgb, var(--accent) 60%, transparent); }
-#panel .deps .more {
-	/* it belongs to the rows above it, so it starts where they say what they are, not at the edge */
-	grid-column: 2 / -1; justify-self: start; margin: .1rem 0 .2rem; padding: 0; border: 0; background: none;
-	font: inherit; font-size: .72rem; color: var(--muted); cursor: pointer; text-decoration: underline dotted;
+#panel .deps { max-height: min(28rem, 50vh); overflow: hidden auto; overscroll-behavior: contain; font-size: .86rem; }
+#panel .drow {
+	--cat: var(--fg);
+	display: flex; align-items: center; gap: .3rem; min-width: 0; white-space: nowrap;
+	padding: .12rem .45rem .12rem calc(.45rem + var(--depth, 0) * .5rem + var(--depth, 0) * 8px); margin: 0 -.45rem;
+	border-radius: .3rem; cursor: pointer; line-height: 1.45;
 }
-#panel .deps .more:hover { color: var(--accent); }
-#panel .row {
-	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
-	padding: .28rem .45rem; margin: 0 -.45rem; font-size: .86rem;
+#panel .drow:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); }
+#panel .drow:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+#panel .drow.selected { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+#panel .drow .twistie { flex: none; width: 16px; height: 16px; color: var(--muted); display: inline-flex; transition: transform .12s; }
+#panel .dnode.open > .drow .twistie { transform: rotate(90deg); }
+#panel .dnode:not(.open) > .dchildren { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+	#panel .dchildren, #panel [data-fold-body], #panel .lintmore { overflow: clip; transition: height .3s ease-in-out, display .3s allow-discrete; }
+	#panel .dnode:not(.open) > .dchildren, #panel [data-fold-body][hidden] { height: 0; }
+	.drawer::details-content { height: 0; overflow: clip; transition: height .3s ease-in-out, content-visibility .3s allow-discrete; }
+	.drawer[open]::details-content { height: auto; }
+	@starting-style {
+		/* a panel built anew after an analysis shows at once, only what one opens grows */
+		#panel:not(.fresh) .dnode.open > .dchildren, #panel:not(.fresh) [data-fold-body]:not([hidden]), #panel:not(.fresh) .lintmore { height: 0; }
+	}
 }
-#panel .row.part { padding-left: 1.65rem; }
-#panel .kind {
-	justify-self: start; white-space: nowrap; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
-	color: var(--muted); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+#panel .drow .dicon { flex: none; width: 16px; height: 16px; display: inline-flex; color: var(--fg); }
+#panel .drow .dicon.colored { color: var(--cat); }
+#panel .dlabel { flex: 0 1 auto; min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#panel .dactions { flex: none; display: none; gap: .1rem; margin-left: auto; }
+#panel .drow:hover .dactions, #panel .drow:focus-within .dactions, #panel .drow.selected .dactions { display: inline-flex; }
+#panel .daction { display: inline-flex; padding: 1px; border: none; border-radius: 3px; background: none; color: var(--muted); cursor: pointer; }
+#panel .daction:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 12%, transparent); }
+#panel .ddesc { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: .9em; margin-left: .2rem; }
+#panel .drow.grayed, #panel .drow.grayed .dicon, #panel .drow.unrelated, #panel .drow.unrelated .dicon.colored { color: var(--muted); }
+#panel .drow.grayed, #panel .drow.unrelated { opacity: .6; }
+#panel .drow.unrelated .ddesc { opacity: .8; }
+#panel .echo { font-style: italic; }
+.cm-dep-gutter { min-width: 6px; }
+.cm-dep-gutter .cm-gutterElement { padding: 0 1px; }
+.cm-dep-bar { width: 3px; height: calc(100% - 4px); margin: 2px auto; background: var(--cat); border-radius: 2px; cursor: help; }
+.cm-dep-bar.up { margin-top: 0; height: calc(100% - 2px); border-top-left-radius: 0; border-top-right-radius: 0; }
+.cm-dep-bar.down { margin-bottom: 0; height: calc(100% - 2px); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.cm-dep-bar.up.down { height: 100%; }
+.bartip { position: fixed; z-index: 50; pointer-events: none; font-family: system-ui, sans-serif; }
+.bartip > * { display: block; }
+.cm-dep-flash {
+	background: color-mix(in srgb, var(--mark) 25%, transparent);
+	box-shadow: 0 0 0 1px var(--cat); border-radius: 2px;
 }
-#panel .at { color: var(--muted); font-size: .78rem; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: left; }
+.cm-dep-square { font-size: .9em; }
+.cm-valuetip .cm-dep-says { display: block; font-family: system-ui, sans-serif; margin-bottom: .25rem; }
+#panel .at { color: var(--muted); font-size: .78rem; white-space: nowrap; font-family: var(--mono); text-align: left; }
 #panel .empty { color: var(--muted); font-size: .86rem; }
-#panel .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; min-width: 0; overflow-wrap: anywhere; }
-#panel .call {
-	color: var(--muted); border: 0; padding: 0; font-size: .74rem;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
 /* a row that stands for a place in the code lights that place up while the pointer is on it */
 #panel .linked { cursor: pointer; border-radius: .3rem; }
 #panel .linked.hot { background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -516,48 +597,59 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 @media (prefers-reduced-motion: reduce) { .shown.fresh, .cm-shown.fresh { animation: none; } }
 #clearmarks { border-color: color-mix(in srgb, var(--mark) 55%, var(--border)); color: color-mix(in srgb, var(--mark) 70%, var(--fg)); }
 #clearmarks:hover { border-color: var(--mark); color: var(--mark); }
-/* what a plot is drawn onto belongs to that plot, so it sits under it */
-
-#panel .kind.part { color: var(--muted); border-style: dashed; opacity: .8; }
 /* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
-#panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; }
+#panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; row-gap: .3rem; }
+#panel .lintmore { grid-column: 1 / -1; margin-top: .4rem; padding-top: .4rem; border-top: 1px solid color-mix(in srgb, var(--hue) 18%, var(--border)); font-size: .8rem; cursor: auto; }
+#panel .lintmore .about { margin: 0; color: var(--muted); }
+#panel .lintmore .diff { margin: .4rem 0; padding: .3rem .5rem; border-radius: .3rem; background: var(--panel); font-size: .76rem; overflow-x: auto; white-space: pre; }
+#panel .lintmore .del { color: #b42318; background: color-mix(in srgb, #b42318 9%, transparent); }
+#panel .lintmore .ins { color: #0f766e; background: color-mix(in srgb, #0f766e 9%, transparent); }
+#panel .lintmore .more { color: var(--muted); }
 #panel .lints .lint {
-	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
-	align-items: baseline; padding: .28rem .45rem; margin: 0 -.45rem;
+	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
+	padding: .4rem .6rem; border-radius: .4rem; cursor: pointer;
+	border: 1px solid color-mix(in srgb, var(--hue) 18%, var(--border)); border-left: 3px solid color-mix(in srgb, var(--hue) 75%, transparent);
+	background: color-mix(in srgb, var(--hue) 4%, var(--panel));
+	transition: background-color .12s, border-color .12s;
+}
+#panel .lints .lint:hover { background: color-mix(in srgb, var(--hue) 10%, var(--panel)); border-color: color-mix(in srgb, var(--hue) 40%, var(--border)); }
+#panel .lints .lint .says { line-height: 1.4; }
+#panel .lints .lint .at {
+	justify-self: end; padding: 0 .4rem; border-radius: 1rem; font-size: .72rem;
+	background: var(--sunk); border: 1px solid var(--border);
 }
 
 #panel .says { font-size: .84rem; }
-#panel .rule {
+#panel .facts { display: grid; grid-template-columns: auto 1fr; gap: .2rem .9rem; font-size: .84rem; }
+#panel .facts .fname { color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; align-self: baseline; }
+:is(#panel, .cm-valuetip) .rule {
 	--hue: #d55e00;
 	position: relative;
 	padding: 0 .45rem; border-radius: 1rem; font-size: .72rem; font-weight: 600; white-space: nowrap;
 	justify-self: start; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-family: var(--mono);
 	color: color-mix(in srgb, var(--hue) 78%, var(--muted));
 	border: 1px solid color-mix(in srgb, var(--hue) 22%, var(--border));
 	background: color-mix(in srgb, var(--hue) 6%, transparent);
 }
-#panel .rule[data-category="security"] { --hue: #cc0000; }
-#panel .rule[data-category="bug"] { --hue: #b45309; }
-#panel .rule[data-category="reproducibility"] { --hue: #7b3294; }
-#panel .rule[data-category="robustness"] { --hue: #0072b2; }
-#panel .rule[data-category="deprecated"] { --hue: #8a6a1f; }
-#panel .rule[data-category="performance"] { --hue: #0072b2; }
-#panel .rule[data-category="style"], #panel .rule[data-category="smell"],
-#panel .rule[data-category="readability"], #panel .rule[data-category="usability"],
-#panel .rule[data-category="documentation"] { --hue: #0f766e; }
-#panel .rule[data-category="other"] { --hue: var(--muted); }
+:is(#panel, .cm-valuetip, .cm-editor) [data-category="security"] { --hue: #cc0000; }
+:is(#panel, .cm-valuetip, .cm-editor) [data-category="bug"] { --hue: #b45309; }
+:is(#panel, .cm-valuetip, .cm-editor) [data-category="reproducibility"] { --hue: #7b3294; }
+:is(#panel, .cm-valuetip, .cm-editor) [data-category="robustness"] { --hue: #0072b2; }
+:is(#panel, .cm-valuetip, .cm-editor) [data-category="deprecated"] { --hue: #8a6a1f; }
+:is(#panel, .cm-valuetip, .cm-editor) [data-category="performance"] { --hue: #0072b2; }
+:is(#panel, .cm-valuetip, .cm-editor) :is([data-category="style"], [data-category="smell"], [data-category="readability"], [data-category="usability"], [data-category="documentation"]) { --hue: #0f766e; }
+:is(#panel, .cm-valuetip, .cm-editor) [data-category="other"] { --hue: var(--muted); }
 
 /* a narrow panel has no room for the chip, the text and the line number side by side, so the text
    moves under the two of them instead of being squeezed into a word per line */
 @container panel (max-width: 22rem) {
-	#panel .deps, #panel .lints { grid-template-columns: minmax(0, 1fr) auto; }
-	#panel .row, #panel .lints .lint { grid-template-rows: auto auto; row-gap: .1rem; }
-	/* two columns here, and the first is where the rows begin */
-	#panel .deps .more { grid-column: 1 / -1; }
-	#panel .kind, #panel .rule { grid-column: 1; grid-row: 1; }
+	#panel .lints { grid-template-columns: minmax(0, 1fr) auto; }
+	#panel .lints .lint { grid-template-rows: auto auto; row-gap: .1rem; }
+	#panel .rule { grid-column: 1; grid-row: 1; }
 	#panel .at { grid-column: 2; grid-row: 1; }
-	#panel .what, #panel .says { grid-column: 1 / -1; grid-row: 2; }
+	#panel .says { grid-column: 1 / -1; grid-row: 2; }
+	#panel .ddesc { display: none; }
 	/* the headings keep their controls, but only the words they need for them */
 	#panel .wide, #panel h3 .aside { display: none; }
 	#panel .way, #panel h3 .suggest { padding: .1rem .4rem; }
@@ -614,27 +706,34 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	<div class="pane">
 		<div class="tabs">
 			<div class="tablist" role="tablist">
+				<button type="button" class="tab" id="treetoggle" aria-expanded="false" aria-controls="tree" aria-label="files of the project"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path class="pane" d="M2.3 3.3h3.4v9.4H2.3z"/><path d="M6 2.5v11"/></svg></button>
 				<span id="files"></span>
-				<button type="button" class="tab add" id="addfile" aria-haspopup="menu" aria-expanded="false" title="a new file, or files and folders from your computer; you can also drop them on the code">+</button>
-				<button type="button" class="tab" id="configtab" role="tab" aria-selected="false">Configuration</button>
+				<button type="button" class="tab" id="configtab" role="tab" aria-selected="false" hidden>Configuration</button>
 			</div>
 			<span class="actions">
 			<span class="tools">
 				<span class="sharenote" id="sharenote"></span>
 				<button type="button" id="clearmarks" hidden title="alt-click highlights what a link points at; this clears every highlight">Clear highlights</button>
 				<button type="button" data-sample="survey" class="spins" title="the example script, configuration, and view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg><span class="label">Reset example</span></button>
+				<button type="button" id="graphs" aria-haspopup="menu" aria-expanded="false" title="the graphs flowR builds for the script, opened in mermaid.live"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="4" r="1.8"/><circle cx="12.5" cy="4" r="1.8"/><circle cx="8" cy="12" r="1.8"/><path d="M5.3 4h5.4M4.4 5.6l2.7 4.8M11.6 5.6l-2.7 4.8"/></svg><span class="label">Graphs</span></button>
+				<button type="button" id="more" aria-haspopup="menu" aria-expanded="false" title="reset the example, open a graph in mermaid.live, or copy the link">More</button>
 				<button type="button" id="share" title="The address bar already holds this script; this copies it (ctrl+s)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8"/></svg><span class="label">Copy link</span></button>
 			</span>
 			<span class="runsplit"><button type="button" class="runbtn" id="runrgo" title="Run the script in your browser with webR (ctrl+enter). The first run downloads R, about 30 MB, and packages the script loads."><svg class="runicon" viewBox="0 0 10 10" aria-hidden="true"><path class="play" d="M1 0.5v9l8-4.5z"/><g class="badge"><circle cx="8" cy="8" r="3.8"/><g class="turn"><path d="M10.2 8a2.2 2.2 0 1 1-.79-1.69"/><path class="tip" d="M10.18 6.96 8.9 6.93l1.03-1.23z"/></g></g></svg>Run</button><button type="button" class="runbtn" id="runmode" aria-haspopup="menu" aria-expanded="false" aria-label="what a run does with the R session"></button></span>
 			</span>
 		</div>
 		<div class="menu" id="menu" role="menu" hidden></div>
+		<div class="work">
+		<nav id="tree" aria-label="project files" hidden><div class="treehead">Project<button type="button" class="add" id="addfile" aria-haspopup="menu" aria-expanded="false" title="a new file, or files and folders from your computer; you can also drop them on the code" aria-label="file menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h10"/></svg></button></div></nav><div class="treegrip" id="treegrip" role="separator" aria-label="Drag to resize the files" title="drag to resize"></div>
+		<div class="code">
 		<div id="editor"></div>
 		<div id="configbar" hidden>
 			<div class="state"><span id="confignote"></span><a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" target="_blank" rel="noopener">what these options do</a><button type="button" id="configreset" hidden title="replace the configuration with flowR's defaults">Reset to defaults</button></div>
 			<div id="configproblems" hidden></div>
 		</div>
 		<div id="config" hidden></div>
+		</div>
+		</div>
 		<details class="drawer" id="repl">
 	<summary data-mark="repl"><span class="label">flowR repl</span><span class="what" title="flowR commands start with a colon, :help lists them; plain R runs in your browser with webR">flowR commands (<code>:help</code>) over the script above, plain R runs with webR</span></summary>
 	<div class="body">
@@ -652,16 +751,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>
 		<div id="panel"></div>
-		<div id="pointed"><span id="pinfo"><span class="pvalue">hover a name for what flowR knows about it, ctrl-click it to jump to its definition</span></span><span id="took"></span></div>
-		<div id="signature" hidden></div>
+		<div id="pointed"><span id="stats"></span><span id="took"></span></div>
 
-<div id="views">
-			<span class="label">Open in mermaid.live</span>
-			<button type="button" data-view="dataflow">dataflow</button>
-			<button type="button" data-view="cfg">controlflow</button>
-			<button type="button" data-view="call">calls</button>
-			<button type="button" data-view="ast">AST</button>
-		</div>
+
 	</div>
 </div>
 

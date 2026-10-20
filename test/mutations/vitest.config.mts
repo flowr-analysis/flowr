@@ -1,5 +1,6 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 import { readFileSync } from 'fs';
+import '../test-tmp.mjs';
 
 /* read rather than imported: a JSON import needs an import attribute the project's TypeScript setup does not allow */
 const TestSuites = JSON.parse(readFileSync('test/functionality/test-suites.json', 'utf8')) as Record<'functionality' | 'mutations', { folder: string, details: string }>;

@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
+import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
@@ -18,7 +18,8 @@ import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RFunctionCall, type RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall, type RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../dataflow/environments/identifier';
 
@@ -35,6 +36,22 @@ function isConditionObject(signaled: RNamedFunctionCall<ParentInformation>, grap
 }
 
 export type StopWithCallResult = LintingResult;
+
+/** `call. = FALSE` added before the closing parenthesis, or a literal `call. = TRUE` turned into it */
+function callFalseFix(call: RFunctionCall<ParentInformation>): LintQuickFixReplacement[] | undefined {
+	const args = call.arguments.filter(a => a !== EmptyArgument);
+	const given = args.find(a => a.name !== undefined && Identifier.getName(a.name.content) === 'call.');
+	if(given !== undefined) {
+		const loc = SourceLocation.fromNode(given.value);
+		return loc !== undefined && RLogical.is(given.value) ? [{ type: 'replace', loc, description: 'Set `call.` to `FALSE`', replacement: 'FALSE' }] : undefined;
+	}
+	const loc = SourceLocation.fromNode(call);
+	if(loc === undefined) {
+		return undefined;
+	}
+	const [, , endLine, endColumn] = SourceLocation.getRange(loc);
+	return [{ type: 'replace', loc: SourceLocation.from([endLine, endColumn, endLine, endColumn - 1], SourceLocation.getFile(loc)), description: 'Add `call. = FALSE`', replacement: args.length === 0 ? 'call. = FALSE' : ', call. = FALSE' }];
+}
 
 export type StopWithCallConfig = MergeableRecord;
 
@@ -85,7 +102,8 @@ export const STOP_WITH_CALL_ARG = {
 					.map(element => ({
 						certainty:  LintingResultCertainty.Uncertain,
 						involvedId: element.node.info.id,
-						loc:        SourceLocation.fromNode(element.node)
+						loc:        SourceLocation.fromNode(element.node),
+						quickFix:   callFalseFix(element.node as RFunctionCall<ParentInformation>)
 					}))
 					.filter(element => isNotUndefined(element.loc)) as Writable<StopWithCallResult>[],
 			'.meta': meta
@@ -96,10 +114,10 @@ export const STOP_WITH_CALL_ARG = {
 		[LintingPrettyPrintContext.Full]:  result => `\`stop()\` at ${SourceLocation.format(result.loc)} is called without \`call. = FALSE\`; the originating call is then appended to the error message, which is usually not intended - pass \`call. = FALSE\` to suppress it`,
 	},
 	info: {
-		name:          'Stop without call.=False argument',
-		tags:          [LintingRuleTag.Smell],
+		name:          'Stop Without Call',
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Checks whether stop calls without call. argument set to FALSE are used.',
+		description:   'Finds `stop()` calls that do not set `call.` to `FALSE`.',
 		defaultConfig: () => ({})
 	}
 } as const satisfies LintingRule<StopWithCallResult, StopWithCallMetadata, StopWithCallConfig>;

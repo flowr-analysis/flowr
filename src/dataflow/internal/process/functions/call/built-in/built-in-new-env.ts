@@ -6,13 +6,12 @@ import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../..
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { pushLocalEnvironment } from '../../../../../environments/scoping';
 import { Environment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { unpackArg } from '../argument/unpack-argument';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { REnvironment } from '../../../../../environments/environment';
 
 const EmptyParentEnvFunctions = new Set(['emptyenv', 'baseenv']);
 
@@ -63,7 +62,7 @@ function resolveNewEnvParentArg<OtherInfo>(
 		if(RArgument.isEmpty(arg) || arg.name?.content !== 'parent') {
 			continue;
 		}
-		const node = unpackArg(arg);
+		const node = RArgument.valueOf(arg);
 		if(!node) {
 			return undefined;
 		}
@@ -111,5 +110,5 @@ export function createFreshEnvState(
 			};
 		}
 	}
-	return pushLocalEnvironment(data.environment);
+	return REnvironment.pushLocal(data.environment);
 }

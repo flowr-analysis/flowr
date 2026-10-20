@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Inspect Recursive Functions Query">Inspect Recursive Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are recursive\
@@ -18,8 +18,8 @@ Using the example code `fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-recursion** (13ms)\
-&nbsp;&nbsp;- Function **21** (1.9-57) is recursive\
+Query: **inspect-recursion**\
+&nbsp;&nbsp;- Function **21** (1.9-57) is recursive
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -202,8 +202,8 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-recursion** (12ms)\
-&nbsp;&nbsp;- Function **21** (1.9-57) is recursive\
+Query: **inspect-recursion**\
+&nbsp;&nbsp;- Function **21** (1.9-57) is recursive
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 

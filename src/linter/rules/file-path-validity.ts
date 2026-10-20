@@ -34,6 +34,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import { BaseDatasets } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SecureMode } from '../../util/secure-mode';
+import { RPath } from '../../util/files';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string
@@ -194,7 +195,7 @@ export const FILE_PATH_VALIDITY = {
 	},
 	info: {
 		name:          'File Path Validity',
-		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
+		description:   'Finds file paths used in read and write operations that are invalid or do not point to existing files.',
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
@@ -252,7 +253,7 @@ function samePath(a: string, b: string, ignoreCapitalization: boolean | undefine
 }
 
 /** the string-literal path argument of a call whose resolved value is `value`, for anchoring a quick fix */
-function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RString | undefined {
+export function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RString | undefined {
 	const call = idMap.get(callId);
 	if(!RFunctionCall.is(call)) {
 		return undefined;
@@ -268,10 +269,12 @@ function buildDidYouMeanFix(idMap: AstIdMap, callId: NodeId, value: string, foun
 		/* a fix that names no place or changes nothing cannot be carried out, so none is offered */
 		return undefined;
 	}
+	/* R reads a backslash in a string as an escape, so a windows path is written with forward slashes */
+	const fixed = RPath.of(found);
 	return [{
 		type:        'replace',
 		loc,
-		description: `Replace with existing path \`${found}\``,
-		replacement: str.content.quotes + found + str.content.quotes
+		description: `Replace with existing path \`${fixed}\``,
+		replacement: str.content.quotes + fixed + str.content.quotes
 	}];
 }

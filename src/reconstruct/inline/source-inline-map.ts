@@ -7,16 +7,17 @@
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { VertexType } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /** the string-literal path argument of a `source()`-like call node, if it has one (else `undefined`) */
-function sourceArg(ast: NormalizedAst, callId: NodeId): string | undefined {
-	const node = ast.idMap.get(callId);
-	const arg = RFunctionCall.is(node) ? node.arguments[0] : undefined;
-	return arg !== undefined && arg !== EmptyArgument && RString.is(arg.value) ? arg.value.content.str : undefined;
+export function sourcePathOf(node: RNode | undefined): string | undefined {
+	const path = RFunctionCall.is(node) ? RArgument.valueOf(node.arguments[0]) : undefined;
+	return RString.is(path) ? path.content.str : undefined;
 }
 
 /**
@@ -38,7 +39,7 @@ export interface InlineWarning {
 }
 
 /**
- * Connect each `source()` call node to the index of the file it sources in `ast.ast.files` (index 0 is main).
+ * Connect each `source()` call node to the index of the file it sources in `ast.ast.files`, whichever file flowR loaded first.
  *
  * A `source()` call lives in its parent file, so we reach its sourced block via the control dependency the
  * dataflow analysis adds (see {@link sourceRequest}): a vertex whose innermost cd (`cds[0]`) is a source call
@@ -60,7 +61,7 @@ export function buildSourceInlineMap(ast: NormalizedAst, graph: DataflowGraph): 
 
 	// resolved file path -> its index (paths are unique per stored file)
 	const pathToIndex = new Map<string, number>();
-	for(let i = 1; i < files.length; i++) {
+	for(let i = 0; i < files.length; i++) {
 		const path = files[i].root.info.file;
 		if(path !== undefined) {
 			pathToIndex.set(path, i);
@@ -71,9 +72,9 @@ export function buildSourceInlineMap(ast: NormalizedAst, graph: DataflowGraph): 
 	// dependency, the first vertex under it (its directly sourced block).
 	const sourceArgs = new Map<NodeId, string | undefined>();
 	const firstVertexByCd = new Map<NodeId, NodeId>();
-	for(const [id, vertex] of graph.vertices(true)) {
-		if(DfgVertex.isFunctionCall(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
-			sourceArgs.set(id, sourceArg(ast, id));
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
+			sourceArgs.set(id, sourcePathOf(ast.idMap.get(id)));
 		}
 		const cds = vertex.cds;
 		if(cds && cds.length > 0 && !firstVertexByCd.has(cds[0].id)) {
@@ -104,9 +105,11 @@ export function buildSourceInlineMap(ast: NormalizedAst, graph: DataflowGraph): 
 			argToIndex.set(arg, idx);
 		}
 	}
+	/* a file the project analyzes on its own as well has no block under the call, its path still names it */
+	const byPath = (arg: string) => [...pathToIndex].find(([path]) => path === arg || path.endsWith(`/${arg}`))?.[1];
 	for(const [callId, arg] of sourceArgs) {
 		if(arg !== undefined && !map.has(callId)) {
-			const idx = argToIndex.get(arg);
+			const idx = argToIndex.get(arg) ?? byPath(arg);
 			if(idx !== undefined) {
 				map.set(callId, idx);
 			}

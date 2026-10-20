@@ -1,10 +1,10 @@
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import { edgeTargets } from '../../dataflow/fn/frame-reflection';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
@@ -17,7 +17,7 @@ import { FileRole } from '../../project/context/flowr-file';
 import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import { removeRQuotes } from '../../r-bridge/retriever';
+import { RS3Generics } from '../../data/r-s3-generics.generated';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -30,6 +30,7 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -52,21 +53,15 @@ export interface UnusedDefinitionConfig extends MergeableRecord {
  */
 const DotsParameter = '...';
 
-/** the standard-library S3 generics flowR models no built-in for, so the store cannot state them */
-const OtherKnownS3Generics: ReadonlySet<string> = new Set([
-	'summary', 'coef', 'vcov', 'residuals', 'fitted', 'predict', 'as.vector', 'str', 'toString', 'all.equal',
-	'aggregate', 'update', 'anova', 'confint', 'logLik', 'AIC', 'BIC', 'deviance', 'df.residual',
-	'model.matrix', 'terms', 'weights', 'merge', 'split', 'window'
-]);
 
 /**
  * The generics a definition named `name.class` may be an S3 method for: the built-ins flowR labels
- * {@link CallProp.Generic} plus {@link OtherKnownS3Generics}. Such a method is dispatched indirectly
+ * {@link CallProp.Generic} plus the S3 generics R itself has (see {@link RS3Generics}). Such a method is dispatched indirectly
  * (`print(x)` on an object of that class), so it is used without a textual call. Kept per configuration,
  * as a process-wide memo would let the first analyzer's built-ins answer for every later one.
  */
 function knownS3Generics(index: BuiltInIndex): ReadonlySet<string> {
-	return new Set([...OtherKnownS3Generics, ...Object.keys(RGroupGenerics),
+	return new Set([...Object.keys(RS3Generics.genericFormals), ...Object.keys(RGroupGenerics),
 		...index.with(CallProp.Generic).map(g => Identifier.getName(g))]);
 }
 
@@ -143,8 +138,7 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 		return false;
 	}
 	/* non-syntactic definition names (e.g. S3 methods like `"[.irts"`) carry their R quotes or backticks in the lexeme */
-	const unquoted = removeRQuotes(lexeme);
-	const name = unquoted.length > 1 && unquoted.startsWith('`') && unquoted.endsWith('`') ? unquoted.slice(1, -1) : unquoted;
+	const name = RString.unquote(lexeme);
 	/* the dots are a special parameter, and package lifecycle hooks are called by R's package machinery */
 	if(name === DotsParameter || PackageHookFunctions.has(name)) {
 		return true;
@@ -253,7 +247,7 @@ function hasImportantArgs(definedBys: readonly NodeId[], df: Pick<DataflowInform
 		|| dfg.edgesFrom(d).entries().some(([target, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target)));
 }
 
-function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
+function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
 	const dfg = df.graph;
 	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
 	// otherwise we can automatically remove the full definition!
@@ -261,7 +255,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 		// this is an access or a for variable, we can not remove it currently
 		return undefined;
 	}
-	const definedBys = edgeTargets(dfg, variable.info.id, EdgeType.DefinedBy);
+	const definedBys = Dataflow.targetsOf(dfg, variable.info.id, EdgeType.DefinedBy);
 	if(hasImportantArgs(definedBys, df, variable.info.parent)) {
 		return undefined;
 	}
@@ -269,7 +263,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	const totalRangeToRemove = SourceLocation.merge([
 		...definedBys.map(d => SourceLocation.fromNode(ast.idMap.get(d))),
 		SourceLocation.fromNode(assignment?.value),
-		variable.info.fullRange ?? variable.location
+		SourceLocation.fromNode(variable)
 	]);
 	if(totalRangeToRemove === undefined) {
 		/* a fix that names no place cannot be carried out, so none is offered */
@@ -362,7 +356,7 @@ export const UNUSED_DEFINITION = {
 					variableName: node.lexeme,
 					involvedId:   node.info.id,
 					loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-					quickFix:     buildQuickFix(node, dataflow, normalize)
+					quickFix:     quickFixForUnused(node, dataflow, normalize)
 				}] satisfies UnusedDefinitionResult[];
 			})),
 			'.meta': metadata
@@ -374,7 +368,7 @@ export const UNUSED_DEFINITION = {
 	},
 	info: {
 		name:          'Unused Definitions',
-		description:   'Checks for unused definitions.',
+		description:   'Finds definitions that are never used.',
 		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// our limited analysis causes unused definitions involving complex reflection etc. not to be included in our result, but unused definitions are correctly validated
 		certainty:     LintingRuleCertainty.BestEffort,

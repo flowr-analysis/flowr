@@ -2,9 +2,9 @@ import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter, assertCallTargets } from '../../../_helper/shell';
 import { label, decorateLabelContext } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
-import { pushLocalEnvironment } from '../../../../../src/dataflow/environments/scoping';
 import { defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { REnvironment } from '../../../../../src/dataflow/environments/environment';
 
 describe('S3 Function Calls', withTreeSitter(ts => {
 	assertDataflow(label('Simple S3 dispatch', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
@@ -21,7 +21,7 @@ f <- function(x) {
 				in:                [],
 				entryPoint:        '2@{',
 				graph:             new Set([]),
-				environment:       pushLocalEnvironment(defaultEnv()),
+				environment:       REnvironment.pushLocal(defaultEnv()),
 				out:               [],
 				hooks:             [],
 				unknownReferences: []

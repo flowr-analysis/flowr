@@ -1,12 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-11, 19:26:41 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
 <h2 id="dead-code">Dead Code&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
-<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
+<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
 
 This rule is a `best-effort` rule.
  
-Marks areas of code that are never reached during execution.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dead-code.ts#L29">src/linter/rules/dead-code.ts</a>._
+Finds code that is never reached during execution.\
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dead-code.ts#L31">src/linter/rules/dead-code.ts</a>._
 
 ### Configuration
 
@@ -16,6 +16,11 @@ The `dead-code` rule accepts the following configuration options:
 ### Examples
 
 ```r
+
+f <- function(x) {
+	return(x)
+	print("never reached")
+}
 if(TRUE) 1 else 2
 ```
 
@@ -27,10 +32,11 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (3 ms)\
+Query: **linter** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Code at 1.17\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Code at 4.2-23 (1 quick fix(es) available)\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Code at 6.17
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -40,7 +46,26 @@ In general, the JSON contains the Ids of the nodes in question as they are prese
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
 
 ```json
-{"linter":{"results":{"dead-code":{"results":[{"certainty":"certain","involvedId":[3,4],"loc":[1,17,1,17]}],".meta":{}}},".meta":{}},".meta":{}}
+{
+  "linter": {
+    "results": {
+      "dead-code": {
+        "results": [
+          {
+            "certainty": "certain",
+            "involvedId": [9,12,11,10],
+            "loc": [4,2,4,23],
+            "quickFix": [{"type":"remove","loc":[4,2,4,23],"description":"Remove the unreachable code"}]
+          },
+          {"certainty":"certain","involvedId":[19,20],"loc":[6,17,6,17]}
+        ],
+        ".meta": {}
+      }
+    },
+    ".meta": {}
+  },
+  ".meta": {}
+}
 ```
 
 </details>
@@ -138,7 +163,7 @@ if(TRUE) 1; stopifnot(FALSE); 2
 
 We expect the linter to report the following:
 
-* certain at 1.31-1.31
+* certain at 1.31-1.31: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L29) for the test-case implementation.
 		
@@ -147,7 +172,7 @@ See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/
 Given the following input:
 
 ```r
-`
+
 x <- 2
 
 if(u) {
@@ -156,12 +181,11 @@ if(u) {
 }
 
 print(2)
-`
 ```
 
 We expect the linter to report the following:
 
-* certain at 6.3-6.8
+* certain at 6.3-6.8: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L32) for the test-case implementation.
 		
@@ -176,7 +200,7 @@ return(); 2}
 
 We expect the linter to report the following:
 
-* certain at 2.11-2.11
+* certain at 2.11-2.11: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L44) for the test-case implementation.
 		
@@ -204,7 +228,7 @@ f <- function() { try(stop(1)); 2 }; f(); stop(1); 2
 
 We expect the linter to report the following:
 
-* certain at 1.52-1.52
+* certain at 1.52-1.52: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L48) for the test-case implementation.
 		
@@ -368,7 +392,7 @@ f <- function() {
 
 We expect the linter to report the following:
 
-* certain at 2.22-2.22
+* certain at 2.22-2.22: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L85) for the test-case implementation.
 		
@@ -386,7 +410,7 @@ f <- function() {
 
 We expect the linter to report the following:
 
-* certain at 4.3-4.3
+* certain at 4.3-4.3: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L88) for the test-case implementation.
 		
@@ -457,7 +481,7 @@ f <- function(k) {
 
 We expect the linter to report the following:
 
-* certain at 2.30-2.35
+* certain at 2.30-2.35: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L101) for the test-case implementation.
 		
@@ -529,8 +553,8 @@ f <- function() {
 
 We expect the linter to report the following:
 
-* certain at 3.3-3.12
-* certain at 4.3-4.7
+* certain at 3.3-3.12: 1 quick fix
+* certain at 4.3-4.7: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L107) for the test-case implementation.
 		
@@ -699,7 +723,7 @@ f <- function(x) {
 
 We expect the linter to report the following:
 
-* certain at 5.3-5.15
+* certain at 5.3-5.15: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L142) for the test-case implementation.
 		
@@ -718,7 +742,7 @@ classify <- function(type, value) {
 
 We expect the linter to report the following:
 
-* certain at 5.3-5.24
+* certain at 5.3-5.24: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L145) for the test-case implementation.
 		
@@ -778,7 +802,7 @@ repeat{ foo }; 2
 
 We expect the linter to report the following:
 
-* certain at 1.16-1.16
+* certain at 1.16-1.16: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L157) for the test-case implementation.
 		
@@ -812,6 +836,6 @@ while(TRUE){ foo }; 2
 
 We expect the linter to report the following:
 
-* certain at 1.21-1.21
+* certain at 1.21-1.21: 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-dead-code.test.ts#L161) for the test-case implementation.

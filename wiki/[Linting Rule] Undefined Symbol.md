@@ -1,27 +1,36 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-13, 23:21:10 UTC (v2.15.10), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
 <h2 id="undefined-symbol">Undefined Symbol&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
-<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
+<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#experimental'>![experimental](https://img.shields.io/badge/experimental-lightgrey) </a></span>
+
+This rule ports the following steps of `R CMD check` (see the [conformance table](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance) for the legend):
+
+| # | Step | Coverage | Note |
+|---|------|:--------:|------|
+| [37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37) | [R code for possible problems](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L2302) ([book](https://r-pkgs.org/R-CMD-check.html#r-code)) | 🟩⭐ | ⭐ also quick fixes, deprecated arguments, environments resolved through variables, hooks followed into callees |
 
 This rule is a `over-approximative` rule.
  
-Flags functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L96">src/linter/rules/undefined-symbol.ts</a>._
+Finds functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.\
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L125">src/linter/rules/undefined-symbol.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `undefined-symbol` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L34"><code><span title="flag names used in a function-call position that cannot be resolved (default true)">checkFunctions</span></code></a>\
-flag names used in a function-call position that cannot be resolved (default `true`)
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L45"><code><span title="flag unresolved symbols used as [/[[ subscripts (default false). Off by default to mute data.table's DT[i, j, by] column masking, which flowR cannot distinguish from ordinary indexing.">checkSubscripts</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L37"><code><span title="flag names used in a function-call position that cannot be resolved (default true)">checkFunctions</span></code></a>\
+flag names used in a function-call position that cannot be resolved (default `true`)\
+_R CMD check [#37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37 "checking R code for possible problems")_
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L48"><code><span title="flag unresolved symbols used as [/[[ subscripts (default false). Off by default to mute data.table's DT[i, j, by] column masking, which flowR cannot distinguish from ordinary indexing.">checkSubscripts</span></code></a>\
 flag unresolved symbols used as `[`/`[[` subscripts (default `false`). Off by default to mute
-`data.table`'s `DT[i, j, by]` column masking, which flowR cannot distinguish from ordinary indexing.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L40"><code><span title="flag names used as a variable read that cannot be resolved (default true). Formulas and data-masking (dplyr/tidyr/ggplot, subset/with) are recognised via flowR's dataflow, so this is precise; residual false positives are possible in dynamic eval/attach.">checkVariables</span></code></a>\
+`data.table`'s `DT[i, j, by]` column masking, which flowR cannot distinguish from ordinary indexing.\
+_R CMD check [#37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37 "checking R code for possible problems")_
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L43"><code><span title="flag names used as a variable read that cannot be resolved (default true). Formulas and data-masking (dplyr/tidyr/ggplot, subset/with) are recognised via flowR's dataflow, so this is precise; residual false positives are possible in dynamic eval/attach.">checkVariables</span></code></a>\
 flag names used as a variable read that cannot be resolved (default `true`). Formulas and data-masking
 (dplyr/tidyr/ggplot, `subset`/`with`) are recognised via flowR's dataflow, so this is precise; residual
-false positives are possible in dynamic `eval`/`attach`.
+false positives are possible in dynamic `eval`/`attach`.\
+_R CMD check [#37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37 "checking R code for possible problems")_
 
 ### Examples
 
@@ -37,10 +46,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (20 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Undefined function `undefined_helper` at 1.1-20\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Undefined function `undefined_helper` at 1.1-20
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -58,7 +67,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalFunctionCalls": 1,
           "totalVariableUses": 0,
-          "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0}
+          "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}
         }
       }
     },
@@ -460,13 +469,13 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L91) for the test-case implementation.
 		
-<h4 id="Test_32_Case:_32__96__36__123_load_125__32_defines_32_the_32_data_32_set_96_">Test Case: `${load} defines the data set`</h4>
+<h4 id="Test_32_Case:_32__36__123_load_125__32_defines_32_the_32_data_32_set">Test Case: ${load} defines the data set</h4>
 
 Given the following input:
 
 ```r
-`${load}
-print(rat)`
+${load}
+print(rat)
 ```
 
 We expect the linter to report the following:
@@ -475,13 +484,13 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L98) for the test-case implementation.
 		
-<h4 id="Test_32_Case:_32__96__36__123_load_125__32_defines_32_no_32_other_32_data_32_set_96_">Test Case: `${load} defines no other data set`</h4>
+<h4 id="Test_32_Case:_32__36__123_load_125__32_defines_32_no_32_other_32_data_32_set">Test Case: ${load} defines no other data set</h4>
 
 Given the following input:
 
 ```r
-`${load}
-print(mouse)`
+${load}
+print(mouse)
 ```
 
 We expect the linter to report the following:
@@ -874,6 +883,150 @@ We expect the linter to report the following:
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L178) for the test-case implementation.
 		
+<h4 id="Test_32_Case:_32_utils::globalVariables_32_declares_32_a_32_name">Test Case: utils::globalVariables declares a name</h4>
+
+Given the following input:
+
+```r
+utils::globalVariables(c("mpg", "cyl"))
+f <- function() mpg + cyl
+```
+
+And using the following [configuration](#configuration): 
+```ts
+{sigDb: utilsDb}
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L186) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_bare_32_globalVariables_32_declares_32_a_32_name">Test Case: bare globalVariables declares a name</h4>
+
+Given the following input:
+
+```r
+globalVariables("mpg")
+f <- function() mpg
+```
+
+And using the following [configuration](#configuration): 
+```ts
+{sigDb: utilsDb}
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L188) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_globalVariables_32_with_32_a_32_vector_32_in_32_a_32_variable">Test Case: globalVariables with a vector in a variable</h4>
+
+Given the following input:
+
+```r
+vars <- c("mpg", "cyl")
+utils::globalVariables(vars)
+f <- function() mpg
+```
+
+And using the following [configuration](#configuration): 
+```ts
+{sigDb: utilsDb}
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L190) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_only_32_the_32_declared_32_names_32_are_32_suppressed">Test Case: only the declared names are suppressed</h4>
+
+Given the following input:
+
+```r
+utils::globalVariables("mpg")
+f <- function() mpg + hp
+```
+
+And using the following [configuration](#configuration): 
+```ts
+{sigDb: utilsDb}
+```
+
+We expect the linter to report the following:
+
+```ts
+[undefinedVar('hp', [2, 23, 2, 24])]
+```
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L192) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_another_32_package_92__39_s_32_globalVariables_32_does_32_not_32_count">Test Case: another package\'s globalVariables does not count</h4>
+
+Given the following input:
+
+```r
+other::globalVariables("mpg")
+f <- function() mpg
+```
+
+And using the following [configuration](#configuration): 
+```ts
+{sigDb: utilsDb}
+```
+
+We expect the linter to report the following:
+
+```ts
+[{certainty: LintingResultCertainty.Uncertain, name: 'globalVariables', kind: 'function', loc: [1, 1, 1, 29]}, undefinedVar('mpg', [2, 17, 2, 19])]
+```
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L194) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_the_32_declaration_32_itself_32_is_32_known_32_without_32_a_32_signature_32_database">Test Case: the declaration itself is known without a signature database</h4>
+
+Given the following input:
+
+```r
+utils::globalVariables("mpg")
+f <- function() mpg
+```
+
+And using the following [configuration](#configuration): 
+```ts
+{noSigDb: true}
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L196) for the test-case implementation.
+		
+<h4 id="Test_32_Case:_32_variables_32_of_32_the_32_dispatch_32_are_32_bound_32_in_32_a_32_method">Test Case: variables of the dispatch are bound in a method</h4>
+
+Given the following input:
+
+```r
+print.foo <- function(x, ...) { cat(.Generic); NextMethod() }
+```
+
+And using the following [configuration](#configuration): 
+```ts
+{sigDb: utilsDb}
+```
+
+We expect the linter to report the following:
+
+* no lints
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L198) for the test-case implementation.
+		
 <h4 id="Test_32_Case:_32_undefined_32_call_32_in_32_an_32_inst/_32_file_32_is_32_not_32_flagged">Test Case: undefined call in an inst/ file is not flagged</h4>
 
 Given the following input:
@@ -891,7 +1044,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L184) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L203) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_the_32_same_32_call_32_in_32_an_32_R/_32_file_32_is_32_flagged">Test Case: the same call in an R/ file is flagged</h4>
 
@@ -910,7 +1063,7 @@ We expect the linter to report the following:
 
 * uncertain: name = `'notARealFunction'`, kind = `'function'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L187) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L206) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_parser">Test Case: parser</h4>
 
@@ -928,7 +1081,7 @@ We expect the linter to report the following:
 ['data/rat.R']
 ```
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L194) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L213) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_parser">Test Case: parser</h4>
 
@@ -944,4 +1097,4 @@ We expect the linter to report the following:
 ['data/rat.R']
 ```
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L195) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L214) for the test-case implementation.

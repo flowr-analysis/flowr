@@ -16,12 +16,9 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { happensInEveryBranch } from '../info';
 import { strictnessOfEach } from './strict-function';
 import { argumentRolesOfFunctions, type ArgumentRolesOptions, type FunctionArgumentRoles, type LookupState } from './argument-roles';
-import { calledDefinitions, callsIn, edgeTargets, propagateToFixpoint } from './frame-reflection';
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
-
-/** @see {@link propagateToFixpoint}, re-exported from where it lives so nothing importing it from here needs to change. */
-export { propagateToFixpoint };
+import { Dataflow } from '../graph/df-helper';
 
 /** What flowR infers about a set of definitions, see {@link inferFunctions}. */
 export interface InferredFunctions {
@@ -48,7 +45,7 @@ export function inferFunctions(this: void, definitions: readonly NodeId[], graph
 	const strict = strictnessOfEach(definitions, graph, { ctx });
 	return {
 		props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
-		roles: only === 'function' ? {} : argumentProps(definitions, graph, strict, options)
+		roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
 	};
 }
 
@@ -69,7 +66,7 @@ function callProps(definitions: readonly NodeId[], state: LookupState, strict: R
 		callees.set(id, own.callees);
 		toVisit.push(...own.callees);
 	}
-	propagateToFixpoint(callees.keys(), callees, id => {
+	Dataflow.propagateToFixpoint(callees.keys(), callees, id => {
 		const before = props.get(id);
 		let grown = before ?? {};
 		for(const callee of callees.get(id) ?? []) {
@@ -86,7 +83,7 @@ function callProps(definitions: readonly NodeId[], state: LookupState, strict: R
 }
 
 /** The {@link ArgProp} mask of each formal, `Forced`/`Lazy` included. */
-function argumentProps(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, options: ArgumentRolesOptions): Record<NodeId, FunctionArgumentRoles> {
+function rolesOfDefinitions(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, options: ArgumentRolesOptions): Record<NodeId, FunctionArgumentRoles> {
 	const all: Record<NodeId, FunctionArgumentRoles> = { ...argumentRolesOfFunctions(definitions, graph, options) };
 	for(const [id, { parameters }] of Object.entries(strict)) {
 		const roles: FunctionArgumentRoles = { ...all[id] };
@@ -118,7 +115,7 @@ function propsOf(id: NodeId, state: LookupState): OwnProps {
 	}
 	let stated: StatedProps = {};
 	const callees: NodeId[] = [];
-	for(const [node, vertex] of callsIn(definition, state.graph)) {
+	for(const [node, vertex] of Dataflow.callsIn(definition, state.graph)) {
 		const info = state.info(vertex.name);
 		const carried = filter(info, PropagatedProps);
 		stated = join(stated, {
@@ -128,9 +125,9 @@ function propsOf(id: NodeId, state: LookupState): OwnProps {
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
 			stated = join(stated, { props: CallProp.Generic });
 		}
-		callees.push(...calledDefinitions(state.graph, node));
+		callees.push(...Dataflow.calleeIdsOf(state.graph, node));
 	}
-	if(returnsInvisibly(definition, state)) {
+	if(exitsInvisibly(definition, state)) {
 		stated = join(stated, { props: CallProp.Invisible });
 	}
 	return { stated, callees };
@@ -154,7 +151,7 @@ function bindsOutside(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnIn
 }
 
 /** Whether every unconditional exit ends in a call returning invisibly; a bare value result (`function() 1`) never does. */
-function returnsInvisibly(definition: DataflowGraphVertexFunctionDefinition, state: LookupState): boolean {
+function exitsInvisibly(definition: DataflowGraphVertexFunctionDefinition, state: LookupState): boolean {
 	const unconditional = definition.exitPoints.filter(e => happensInEveryBranch(e.cds)).map(e => e.nodeId);
 	return unconditional.length > 0 && unconditional.every(node => yieldsInvisibly(node, state));
 }
@@ -171,6 +168,6 @@ function yieldsInvisibly(node: NodeId, state: LookupState, depth = 0): boolean {
 		return false;
 	}
 	/* a block hands back its last expression and `return(x)` what it was given, so what they yield decides */
-	const returns = edgeTargets(state.graph, node, EdgeType.Returns);
+	const returns = Dataflow.targetsOf(state.graph, node, EdgeType.Returns);
 	return returns.length > 0 && returns.every(target => yieldsInvisibly(target, state, depth + 1));
 }

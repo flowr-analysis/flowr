@@ -12,9 +12,10 @@ import { executeStaticSliceQuery } from './static-slice-query-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { StaticSliceFlags, criteriaQueryCompleter, describeSliceFlags, queryLineCode, sliceCriteriaParser, sliceDirectionParser, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
+import { StaticSliceFlags, criteriaQueryCompleter, describeSliceFlags, queryLineCode, sliceCriteriaParser, sliceDirectionParser, sliceQueryOptionsParser, sliceRemovalParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
 import { summarizeSliceResults, type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
 import { SliceDirection } from '../../../util/slice-direction';
+import type { staticRemovalSlice } from '../../../slicing/static/removal-slice';
 
 /** Calculates and returns the static backward or forward slice from the given criteria */
 export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
@@ -23,6 +24,12 @@ export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
 	readonly criteria:   SlicingCriteria,
 	/** The direction to slice in. Defaults to backward slicing if unset. */
 	readonly direction?: SliceDirection
+	/**
+	 * Compute the removal slice instead (see {@link staticRemovalSlice}): the code that only exists for the criteria,
+	 * which can go while the rest keeps working. The result holds the removed statements, and the reconstruction is the
+	 * program without them. Ignores the {@link StaticSliceQuery#direction|direction}.
+	 */
+	readonly removal?:   boolean
 }
 
 export interface StaticSliceQueryResult extends BaseQueryResult {
@@ -69,7 +76,8 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 			type:      'static-slice',
 			criteria:  criteria,
 			direction: direction,
-			...options
+			...options,
+			...sliceRemovalParser(line[0]) ? { removal: true } : {}
 		}], rCode: queryLineCode(line) };
 }
 
@@ -82,11 +90,12 @@ export const StaticSliceQueryDefinition = {
 	),
 	fromLine:  sliceQueryLineParser,
 	completer: criteriaQueryCompleter,
-	syntax:    '@static-slice (<crit>;...)[fiIcB] <code | file://path>',
+	syntax:    '@static-slice (<crit>;...)[friIcB] <code | file://path>',
 	schema:    Joi.object({
 		type:      Joi.string().valid('static-slice').required().description('The type of the query.'),
 		criteria:  Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		direction: Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.'),
+		removal:   Joi.boolean().optional().description('Compute the removal slice instead: the code that only exists for the criteria, which can go while the rest keeps working. The result holds the removed statements, the reconstruction the program without them.'),
 		...SliceQueryOptionsSchema
 	}).description('Slice query used to slice the dataflow graph'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {

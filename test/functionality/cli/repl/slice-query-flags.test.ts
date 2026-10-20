@@ -4,6 +4,7 @@ import {
 	StaticSliceFlags,
 	criteriaQueryCompleter,
 	sliceDirectionParser,
+	sliceRemovalParser,
 	sliceQueryOptionsParser,
 	warnAboutSliceFlags
 } from '../../../../src/cli/repl/parser/slice-query-parser';
@@ -50,9 +51,16 @@ describe('Slice query flags', () => {
 	});
 
 	test('the flags are offered once the criteria are closed, never twice', () => {
-		assert.deepStrictEqual(offered('(2@x)'), ['f', 'i', 'c', 'I', ' '], 'B needs I first');
+		assert.deepStrictEqual(offered('(2@x)'), ['f', 'r', 'i', 'c', 'I', ' '], 'B needs I first');
 		assert.deepStrictEqual(offered('(2@x)f'), ['i', 'c', 'I', ' ']);
 		assert.deepStrictEqual(offered('(2@x)fc'), ['i', 'I', ' ']);
+	});
+
+	test('slicing forward and the removal slice exclude each other', () => {
+		assert.notInclude(offered('(2@x)f'), 'r');
+		assert.notInclude(offered('(2@x)r'), 'f');
+		assert.isTrue(sliceRemovalParser('(2@x)rc'));
+		assert.isFalse(sliceRemovalParser('(2@x)fc'));
 	});
 
 	test('a space is offered to move on to the code', () => {
@@ -61,8 +69,8 @@ describe('Slice query flags', () => {
 	});
 
 	test('the banner flag is only offered together with I', () => {
-		assert.deepStrictEqual(offered('(2@x)I'), ['f', 'c', 'B', ' ']);
-		assert.deepStrictEqual(offered('(2@x)IB'), ['f', 'c', ' ']);
+		assert.deepStrictEqual(offered('(2@x)I'), ['f', 'r', 'c', 'B', ' ']);
+		assert.deepStrictEqual(offered('(2@x)IB'), ['f', 'r', 'c', ' ']);
 	});
 
 	test('inlining sources and inlining all files are never offered together', () => {

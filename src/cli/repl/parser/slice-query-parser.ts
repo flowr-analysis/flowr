@@ -51,13 +51,18 @@ export const SharedSliceFlags = [
 ] as const satisfies readonly SliceFlag[];
 
 /** the flags of the `static-slice` query: a dice fixes both directions, so only it can be told to slice forward */
-export const StaticSliceFlags = [{ flag: 'f', describe: 'slice forward' }, ...SharedSliceFlags] as const satisfies readonly SliceFlag[];
+export const StaticSliceFlags = [{ flag: 'f', describe: 'slice forward', conflicts: ['r'] }, { flag: 'r', describe: 'removal slice', conflicts: ['f'] }, ...SharedSliceFlags] as const satisfies readonly SliceFlag[];
 
 /**
  * Checks whether the given argument represents a slicing direction with an `f` suffix (in any flag order).
  */
 export function sliceDirectionParser(argument: string): SliceDirection {
 	return sliceFlagSuffix(argument).includes('f') ? SliceDirection.Forward : SliceDirection.Backward;
+}
+
+/** Whether the flag suffix of `argument` asks for the removal slice (`r`) rather than the slice. */
+export function sliceRemovalParser(argument: string): boolean {
+	return sliceFlagSuffix(argument).includes('r');
 }
 
 /**

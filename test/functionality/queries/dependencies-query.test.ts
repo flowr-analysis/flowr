@@ -1,8 +1,8 @@
-import { assertQuery } from '../../_helper/query';
-import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { label } from '../../_helper/label';
-import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { assertQuery } from '../_helper/query';
+import type { FlowrCapabilityId } from '../../../src/r-bridge/data/get';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { label } from '../_helper/label';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
@@ -11,28 +11,28 @@ import {
 	Attached,
 	Constant,
 	Unknown
-} from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+} from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';
-import { assumeLoadedPackages, skipTestBecauseConfigNotMet, withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, skipTestBecauseConfigNotMet, withTreeSitter } from '../_helper/shell';
 import { execFileSync } from 'child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
-import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
-import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo } from '../../../../src/dataflow/environments/built-in-props';
-import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
-import { readFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
-import { writeFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
-import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
-import { RFunctionCall } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { FlowrConfig } from '../../../../src/config';
-import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
-import { controlledSigDb } from '../../_helper/linter';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { DefaultBuiltinConfig } from '../../../src/dataflow/environments/default-builtin-config';
+import { builtInNames, BuiltInIndex } from '../../../src/dataflow/environments/query-fn-props';
+import type { BuiltInFnInfo } from '../../../src/dataflow/environments/built-in-props';
+import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { readFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { writeFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { OtherPathFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
+import { RFunctionCall } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../src/config';
+import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
+import { controlledSigDb } from '../_helper/linter';
 
 assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', 'plotly', 'remotes', 'rlang', 'tinyplot');
 
@@ -125,12 +125,25 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
 		});
 		testQuery('a default parameter names the file', 'ld <- function(p = "def.csv") read.csv(p)\nld()', {
-			read:  [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'def.csv' }],
+			/* the call reads what the function it calls reads */
+			read:  [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'def.csv' }, { nodeId: '2@ld', functionName: 'ld', value: 'def.csv', via: 7 }],
 			write: [{ nodeId: '2@ld', functionName: 'ld', value: 'stdout', implicit: true }]
 		});
-		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
-			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv', inputVariables: ['d'] }]
+		testQuery('a call does what the functions it calls do, transitively', 'f <- function() cat("x")\ng <- function() f()\ng()', {
+			write: [
+				{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' },
+				{ nodeId: '2@f', functionName: 'f', value: 'stdout', via: 4 },
+				{ nodeId: '3@g', functionName: 'g', value: 'stdout', via: 10 }
+			]
 		});
+		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
+			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv', inputVariables: ['d'] }, { nodeId: '2@save_it', functionName: 'save_it', value: 'r.csv', via: 8 }]
+		});
+		/* the function of the program decides, not the built-in it shadows: an assignment hands its value back invisibly */
+		testQuery('a function ending in an assignment echoes nothing, even shadowing a built-in', 'points <- function() { x <- 2 }\npoints()', { write: [] });
+		testQuery('a function ending in a value echoes it', 'twice <- function(x) x * 2\ntwice(2)', { write: [{ nodeId: '2@twice', functionName: 'twice', value: 'stdout', implicit: true }] });
+		testQuery('a function returning what another hides echoes nothing', 'hide <- function(v) invisible(v)\nouter <- function(v) hide(v)\nouter(1)', { write: [] });
+		testQuery('a recursive function is as visible as where its recursion ends', 'f <- function(n) if(n > 0) f(n - 1) else n\nf(3)', { write: [{ nodeId: '2@f', functionName: 'f', value: 'stdout', implicit: true }] });
 	});
 
 	describe('Libraries', () => {
@@ -812,7 +825,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", {
 			read:  [],
 			write: [
-				{ value: 'stdout', functionName: 'print', nodeId: '1@print', inputVariables: ['a'] }
+				{ value: 'stdout', functionName: 'print', nodeId: '1@print', inputVariables: ['a'] },
+				{ value: 'stdout', functionName: 'read.csv', nodeId: 13, via: 6 }
 			]
 		});
 	});

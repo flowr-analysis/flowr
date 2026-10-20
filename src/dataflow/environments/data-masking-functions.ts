@@ -41,4 +41,5 @@ export const DataMaskingFunctions: readonly (readonly [string, PkgName])[] = [
 export const DataMaskingFunctionIdentifiers = DataMaskingFunctions.map(([name, pkg]) => Identifier.from([name, pkg]));
 
 /** Names to treat as data-masking in the pipe: the {@link DataMaskingFunctions} plus `with`/`within` (own processor). */
-export const DataMaskingFunctionNames: ReadonlySet<string> = new Set([...DataMaskingFunctions.map(([name]) => name), 'with', 'within']);
+/* a formula (`~`) finds a name no data supplies where it was made, so `lm(y ~ x)` reads `x` */
+export const DataMaskingFunctionNames: ReadonlySet<string> = new Set([...DataMaskingFunctions.map(([name]) => name), 'with', 'within', '~']);

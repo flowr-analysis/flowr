@@ -179,7 +179,6 @@ export function processApply<OtherInfo>(
 			ClosureRefs.resolveOpenIngoing(information.graph, functionId, called, data.environment);
 		}
 	} else {
-		information = applyAmbientStateOfCallee(information, functionId, functionName, data);
 		/* a callee binding names (`do.call("assign", ...)`) does so with arguments we cannot see here; loading a package is handled on its own */
 		if(Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)?.some(t => t.type === ReferenceType.BuiltInFunction
 			&& CallProps.hasAny(t.config, CallProp.Scope) && !CallProps.hasAny(t.config, SemanticCallTag.LoadsPackage))) {
@@ -195,6 +194,14 @@ export function processApply<OtherInfo>(
 			cds:         data.cds,
 			origin:      [BuiltInProcName.Function]
 		});
+		/* once the call has its arguments, which may name the files it accesses */
+		information = applyAmbientStateOfCallee(information, functionId, functionName, data);
+		/* `do.call(new.env, list())` creates an environment just like `new.env()` does */
+		const call = information.graph.getVertex(rootId);
+		if(DfgVertex.isFunctionCall(call) && Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)
+			?.some(t => t.type === ReferenceType.BuiltInFunction && t.processorName === BuiltInProcName.NewEnv)) {
+			call.origin = [...Array.isArray(call.origin) ? call.origin : [], BuiltInProcName.NewEnv];
+		}
 	}
 
 	for(const [i, arg] of processedArguments.entries()) {

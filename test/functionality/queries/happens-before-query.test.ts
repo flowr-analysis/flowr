@@ -1,10 +1,10 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
-import { ansiFormatter } from '../../../../src/util/text/ansi';
-import { HappensBeforeKey } from '../../../../src/queries/catalog/happens-before-query/happens-before-query-format';
-import { withTreeSitter } from '../../_helper/shell';
-import { label } from '../../_helper/label';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
+import { ansiFormatter } from '../../../src/util/text/ansi';
+import { HappensBeforeKey } from '../../../src/queries/catalog/happens-before-query/happens-before-query-format';
+import { withTreeSitter } from '../_helper/shell';
+import { label } from '../_helper/label';
 
 describe('Happens-Before Query', withTreeSitter(parser => {
 	const query = [{ type: 'happens-before', a: '1@x', b: '2@y' }] as const;

@@ -1,7 +1,7 @@
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
 import { describe } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
+import { withTreeSitter } from '../_helper/shell';
 
 describe('Compound Query', withTreeSitter(parser => {
 	assertQuery(label('Compound Virtual Query'),

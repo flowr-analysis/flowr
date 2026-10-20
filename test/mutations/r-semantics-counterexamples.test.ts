@@ -6,11 +6,13 @@ import { decorateLabelContext, label } from '../functionality/_helper/label';
 import type { RShell } from '../../src/r-bridge/shell';
 import type { FlowrCapabilityId } from '../../src/r-bridge/data/get';
 import type { MutationTarget } from '../functionality/_helper/r-mutations';
-import { MutationPasses, mutate, observeQueries, passIsAvailable, slice } from '../functionality/_helper/r-mutations';
+import { MutationPasses, mutate, observeQueries, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
 
 interface Counterexample extends MutationTarget {
 	readonly name:         string;
 	readonly capabilities: readonly FlowrCapabilityId[];
+	/** code the slice must leave out wherever the (mutated) program still contains it, so a mutant also keeps the slice precise */
+	readonly lacks?:       readonly string[];
 }
 
 const generatedMutants = new Set<string>();
@@ -32,11 +34,13 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 	}
 	async function run(what: string): Promise<string> {
 		const guarded = `tryCatch(eval(parse(text = ${JSON.stringify(what)})), error = function(e) cat("R error:", conditionMessage(e), "\n"))`;
+		await shell.sendCommandWithOutput('flowr_wd <- getwd(); flowr_op <- options()');
 		const lines = await shell.sendCommandWithOutput(guarded, { automaticallyTrimOutput: true });
-		await shell.sendCommandWithOutput('rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
+		/* a program may change the working directory, which the next one must not see */
+		await shell.sendCommandWithOutput('setwd(flowr_wd); options(flowr_op); graphics.off(); rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
 		return lines.join('\n');
 	}
-	async function check(target: MutationTarget): Promise<void> {
+	async function check(target: Counterexample): Promise<void> {
 		const what = `the program sliced for ${target.criterion} is:\n${target.code}`;
 		const sliced = await slice(shell, target);
 		assert.strictEqual(await run(target.code), target.expected, `the input does not print what this test claims it does, ${what}`);
@@ -44,6 +48,14 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		const slicedIs = `${what}\nand its slice is:\n${sliced}`;
 		assert.notMatch(sliced, /\bmut_[abc]\b/, `the slice keeps a binding nothing reads, ${slicedIs}`);
 		assert.strictEqual(output, target.expected, `the slice does not print what the input does, ${slicedIs}`);
+		/* removing what only the criterion needs leaves a program that still runs */
+		const left = await removalSlice(shell, target);
+		assert.notMatch(await run(left), /R error:/, `what the removal slice leaves fails, ${slicedIs}\nand what is left without it is:\n${left}`);
+		for(const lacked of target.lacks ?? []) {
+			if(target.code.includes(lacked)) {
+				assert.notInclude(sliced, lacked, `the slice keeps what it does not need, ${slicedIs}`);
+			}
+		}
 	}
 	describe(group, () => {
 		for(const counterexample of cases) {
@@ -63,7 +75,7 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 						}
 						generatedMutants.add(id);
 						usedPasses.add(pass.name);
-						await check(mutant);
+						await check(mutant as Counterexample);
 						assert.deepStrictEqual(await observeQueries(shell, mutant.code), await observeQueries(shell, counterexample.code),
 							`the mutation changes what the queries report about the program, it is:\n${mutant.code}`);
 					});
@@ -167,6 +179,55 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 		{ name: 'cat writes what readLines reads back', capabilities: ['i-o'], code: 'f <- tempfile()\ncat("hi\\n", file = f)\nr <- readLines(f)\nprint(r)', criterion: '4@r', expected: '[1] "hi"' },
 		{ name: 'what is read back was written before', capabilities: ['i-o'], code: 'f <- tempfile()\nwriteLines("hi", f)\nr <- readLines(f)\nprint(r)', criterion: '4@r', expected: '[1] "hi"' },
 		{ name: 'readRDS depends on the matching saveRDS', capabilities: ['i-o', 'handling-binary-riles'], code: 'f <- tempfile()\nsaveRDS(11, f)\nr <- readRDS(f)\nprint(r)', criterion: '4@r', expected: '[1] 11' },
+	]);
+
+	counterexamples(shell, 'Files named in the working directory', [
+		{ name: 'a read of one file does not keep a plot written to another', capabilities: ['i-o', 'graphics-state', 'working-directory'], code: 'setwd(tempdir())\nwriteLines("1", "b.txt")\npdf("a.pdf")\nplot(1)\ninvisible(dev.off())\nr <- readLines("b.txt")\nprint(r)', criterion: '7@r', expected: '[1] "1"', lacks: ['pdf(', 'plot(', 'dev.off('] },
+		{ name: 'the file a device writes keeps the device', capabilities: ['i-o', 'graphics-state', 'working-directory'], code: 'setwd(tempdir())\nunlink("p.pdf")\npdf("p.pdf")\nplot(1)\ninvisible(dev.off())\nr <- file.exists("p.pdf")\nprint(r)', criterion: '7@r', expected: '[1] TRUE' },
+		{ name: 'a device closed in a function writes its file', capabilities: ['i-o', 'graphics-state', 'normal-definition'], code: 'setwd(tempdir())\nunlink("c.pdf")\nclose_dev <- function() invisible(dev.off())\npdf("c.pdf")\nplot(1:3)\nclose_dev()\nr <- file.exists("c.pdf")\nprint(r)', criterion: '8@r', expected: '[1] TRUE' },
+		{ name: 'a percent sign in a file name is no pattern', capabilities: ['i-o', 'strings'], code: 'setwd(tempdir())\nwriteLines("x", "o.txt")\nwriteLines("7", "a_%_b.txt")\nr <- readLines("a_%_b.txt")\nprint(r)', criterion: '5@r', expected: '[1] "7"', lacks: ['"o.txt"'] },
+		{ name: 'a write to another file is not kept', capabilities: ['i-o'], code: 'setwd(tempdir())\nwriteLines("1", "m.txt")\nwriteLines("2", "n.txt")\nr <- readLines("m.txt")\nprint(r)', criterion: '5@r', expected: '[1] "1"', lacks: ['"n.txt"'] },
+		{ name: 'a write after the read is not kept', capabilities: ['i-o'], code: 'setwd(tempdir())\nwriteLines("1", "q.txt")\nr <- readLines("q.txt")\nwriteLines("2", "q.txt")\nprint(r)', criterion: '5@r', expected: '[1] "1"', lacks: ['"2"'] },
+		{ name: 'an overwrite hides the earlier write', capabilities: ['i-o'], code: 'setwd(tempdir())\nwriteLines("1", "ow.txt")\nwriteLines("2", "ow.txt")\nr <- readLines("ow.txt")\nprint(r)', criterion: '5@r', expected: '[1] "2"' },
+		{ name: 'an append keeps the earlier write', capabilities: ['i-o', 'named-arguments'], code: 'setwd(tempdir())\ncat("a\\n", file = "ap.txt")\ncat("b\\n", file = "ap.txt", append = TRUE)\nr <- length(readLines("ap.txt"))\nprint(r)', criterion: '5@r', expected: '[1] 2' },
+		{ name: 'a file name held in a variable', capabilities: ['i-o', 'named-arguments'], code: 'setwd(tempdir())\nnm <- "z.csv"\nwrite.csv(data.frame(a = 4), nm, row.names = FALSE)\nr <- read.csv(nm)$a\nprint(r)', criterion: '5@r', expected: '[1] 4' },
+		{ name: 'file names computed in a loop', capabilities: ['i-o', 'for-loop', 'string-templates'], code: 'setwd(tempdir())\nfor(i in 1:2) writeLines(as.character(i), paste0("o", i, ".txt"))\nr <- readLines("o2.txt")\nprint(r)', criterion: '4@r', expected: '[1] "2"' },
+		{ name: 'saveRDS to another file is not kept', capabilities: ['i-o', 'handling-binary-riles'], code: 'setwd(tempdir())\nsaveRDS(1, "s1.rds")\nsaveRDS(2, "s2.rds")\nr <- readRDS("s2.rds")\nprint(r)', criterion: '5@r', expected: '[1] 2', lacks: ['"s1.rds"'] },
+		{ name: 'a write in a called function reaches the read', capabilities: ['i-o', 'normal-definition'], code: 'setwd(tempdir())\nf <- function(p) writeLines("9", p)\nf("w.txt")\nr <- readLines("w.txt")\nprint(r)', criterion: '5@r', expected: '[1] "9"' },
+		{ name: 'unlink removes the file file.exists asks about', capabilities: ['i-o'], code: 'setwd(tempdir())\nwriteLines("1", "u.txt")\nunlink("u.txt")\nr <- file.exists("u.txt")\nprint(r)', criterion: '5@r', expected: '[1] FALSE' },
+		{ name: 'file.copy reads what was written to its source', capabilities: ['i-o', 'named-arguments'], code: 'setwd(tempdir())\nwriteLines("c", "src.txt")\ninvisible(file.copy("src.txt", "dst.txt", overwrite = TRUE))\nr <- readLines("dst.txt")\nprint(r)', criterion: '5@r', expected: '[1] "c"' },
+		{ name: 'what a sink captures is read back', capabilities: ['i-o'], code: 'setwd(tempdir())\nsink("sk.txt")\nprint(3)\nsink()\nr <- readLines("sk.txt")\nprint(r)', criterion: '6@r', expected: '[1] "[1] 3"' },
+		{ name: 'a path below the working directory', capabilities: ['i-o', 'working-directory'], code: 'setwd(tempdir())\ndir.create("pd", showWarnings = FALSE)\nwriteLines("8", "pd/x.txt")\nwriteLines("9", "pd/y.txt")\nr <- readLines("pd/x.txt")\nprint(r)', criterion: '6@r', expected: '[1] "8"', lacks: ['"9"'] },
+		{ name: 'the same name in two directories', capabilities: ['i-o', 'working-directory'], code: 'd <- file.path(tempdir(), "sub")\ndir.create(d, showWarnings = FALSE)\nsetwd(tempdir())\nwriteLines("top", "v.txt")\nwriteLines("sub", file.path(d, "v.txt"))\nsetwd(d)\nr <- readLines("v.txt")\nprint(r)', criterion: '8@r', expected: '[1] "sub"' }
+	]);
+
+	counterexamples(shell, 'The working directory', [
+		{ name: 'a relative read depends on the directory set before', capabilities: ['working-directory', 'i-o'], code: 'd <- file.path(tempdir(), "wd1")\ndir.create(d, showWarnings = FALSE)\nwriteLines("5", file.path(d, "v.txt"))\nsetwd(d)\nr <- readLines("v.txt")\nprint(r)', criterion: '6@r', expected: '[1] "5"' },
+		{ name: 'a value does not depend on the directory', capabilities: ['working-directory'], code: 'setwd(tempdir())\nx <- 3\nsetwd(tempdir())\nprint(x)', criterion: '4@x', expected: '[1] 3', lacks: ['setwd('] },
+		{ name: 'getwd reads what setwd set', capabilities: ['working-directory'], code: 'setwd(tempdir())\nr <- basename(getwd()) == basename(tempdir())\nprint(r)', criterion: '3@r', expected: '[1] TRUE' },
+		{ name: 'setwd returns the directory before', capabilities: ['working-directory'], code: 'setwd(tempdir())\nold <- setwd(dirname(tempdir()))\nr <- basename(old) == basename(tempdir())\nprint(r)', criterion: '4@r', expected: '[1] TRUE' },
+		{ name: 'a directory changed in a function', capabilities: ['working-directory', 'normal-definition', 'i-o'], code: 'd <- file.path(tempdir(), "wd2")\ndir.create(d, showWarnings = FALSE)\nwriteLines("6", file.path(d, "v.txt"))\ngo <- function() setwd(d)\ngo()\nr <- readLines("v.txt")\nprint(r)', criterion: '7@r', expected: '[1] "6"' }
+	]);
+
+	counterexamples(shell, 'Values beside ambient state', [
+		{ name: 'a value does not depend on files, devices or the generator', capabilities: ['i-o', 'graphics-state'], code: 'setwd(tempdir())\nwriteLines("1", "k.txt")\nset.seed(1)\nu <- runif(1)\npdf("k.pdf")\nplot(u)\ninvisible(dev.off())\nv <- rep(c("a", "b"), 2)\nprint(v)', criterion: '9@v', expected: '[1] "a" "b" "a" "b"', lacks: ['writeLines', 'set.seed', 'runif', 'pdf(', 'plot(', 'dev.off', 'setwd('] },
+		{ name: 'a package loaded before does not make rep opaque', capabilities: ['library-loading'], code: 'library(dplyr, warn.conflicts = FALSE)\nset.seed(2)\nu <- runif(1)\nv <- rep(1, 3)\nprint(v)', criterion: '5@v', expected: '[1] 1 1 1', lacks: ['set.seed', 'runif'] },
+		{ name: 'a draw depends on the seed set before', capabilities: ['functions-with-global-side-effects'], code: 'set.seed(1)\na <- runif(1)\nb <- round(runif(1), 4)\nprint(b)', criterion: '4@b', expected: '[1] 0.3721' },
+		{ name: 'printing reads the digits option', capabilities: ['built-in-options'], code: 'options(digits = 3)\nx <- pi\nprint(x)', criterion: '3@print', expected: '[1] 3.14' },
+		{ name: 'an option restored is not set anymore', capabilities: ['built-in-options'], code: 'op <- options(digits = 3)\noptions(op)\nx <- pi\nprint(x)', criterion: '4@print', expected: '[1] 3.141593' },
+		{ name: 'an environment variable set is read back', capabilities: ['functions-with-global-side-effects'], code: 'Sys.setenv(MUT_X = "7")\nr <- Sys.getenv("MUT_X")\nprint(r)', criterion: '3@r', expected: '[1] "7"' },
+		{ name: 'par set before is what par reports', capabilities: ['graphics-state'], code: 'pdf(NULL)\npar(mfrow = c(1, 2))\nr <- par("mfrow")\ninvisible(dev.off())\nprint(r)', criterion: '5@r', expected: '[1] 1 2' }
+	]);
+
+	counterexamples(shell, 'Model formulae', [
+		{ name: 'a formula reads the names it binds', capabilities: ['model-formula'], code: 'y <- c(1, 2, 4)\nx <- c(1, 2, 3)\nm <- coef(lm(y ~ x))[[2]]\nprint(m)', criterion: '4@m', expected: '[1] 1.5' },
+		{ name: 'a formula over the columns of data', capabilities: ['model-formula', 'named-arguments'], code: 'x <- 100\nd <- data.frame(x = 1:3, y = c(2, 4, 6))\nm <- coef(lm(y ~ x, data = d))[[2]]\nprint(m)', criterion: '4@m', expected: '[1] 2' },
+		{ name: 'a boxplot over a formula keeps its names', capabilities: ['model-formula', 'graphics-state'], code: 'p <- c(1, 5, 3, 4)\ns <- factor(c("a", "a", "b", "b"))\nb <- boxplot(p ~ s, plot = FALSE)$n\nprint(b)', criterion: '4@b', expected: '[1] 2 2' }
+	]);
+
+	counterexamples(shell, 'Plots saved by ggplot2', [
+		{ name: 'ggsave saves the last plot', capabilities: ['library-loading', 'graphics-state', 'i-o'], code: 'library(ggplot2)\nsetwd(tempdir())\nunlink("g.pdf")\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("g.pdf", width = 2, height = 2)\nr <- file.exists("g.pdf")\nprint(r)', criterion: '7@r', expected: '[1] TRUE' },
+		{ name: 'ggsave to another file is not kept', capabilities: ['library-loading', 'graphics-state', 'i-o'], code: 'library(ggplot2)\nsetwd(tempdir())\nwriteLines("1", "h.txt")\np <- ggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("g2.pdf", p, width = 2, height = 2)\nr <- readLines("h.txt")\nprint(r)', criterion: '7@r', expected: '[1] "1"', lacks: ['ggsave', 'ggplot('] }
 	]);
 
 	describe('bookkeeping', () => {

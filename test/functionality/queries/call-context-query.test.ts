@@ -2,17 +2,17 @@ import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
 	CallContextQuerySubKindResult
-} from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
-import { executeQueries, type QueryResultsWithoutMeta } from '../../../../src/queries/query';
-import { CallTargets } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
+} from '../../../src/queries/catalog/call-context-query/call-context-query-format';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
+import { executeQueries, type QueryResultsWithoutMeta } from '../../../src/queries/query';
+import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { afterAll, describe, expect, test } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
-import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
-import { cleanupSigTmpDirs, expFn, sigTmpDir, sigdbAnalyzer, ver, writeAndOpen } from '../../_helper/sigdb';
-import { SigDbBuilder } from '../../../../src/project/sigdb/build';
+import { withTreeSitter } from '../_helper/shell';
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { cleanupSigTmpDirs, expFn, sigTmpDir, sigdbAnalyzer, ver, writeAndOpen } from '../_helper/sigdb';
+import { SigDbBuilder } from '../../../src/project/sigdb/build';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {

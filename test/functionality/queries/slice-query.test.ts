@@ -1,20 +1,20 @@
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
-import { withShell } from '../../_helper/shell';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
+import { withShell } from '../_helper/shell';
 import type {
 	StaticSliceQuery,
 	StaticSliceQueryResult
-} from '../../../../src/queries/catalog/static-slice-query/static-slice-query-format';
-import { fingerPrintOfQuery } from '../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
+} from '../../../src/queries/catalog/static-slice-query/static-slice-query-format';
+import { fingerPrintOfQuery } from '../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
+import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import {
 	DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE,
 	DEFAULT_SLICING_PIPELINE
-} from '../../../../src/core/steps/pipeline/default-pipelines';
-import { doNotAutoSelect } from '../../../../src/reconstruct/auto-select/auto-select-defaults';
-import { makeMagicCommentHandler } from '../../../../src/reconstruct/auto-select/magic-comments';
+} from '../../../src/core/steps/pipeline/default-pipelines';
+import { doNotAutoSelect } from '../../../src/reconstruct/auto-select/auto-select-defaults';
+import { makeMagicCommentHandler } from '../../../src/reconstruct/auto-select/magic-comments';
 import { describe } from 'vitest';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 
 

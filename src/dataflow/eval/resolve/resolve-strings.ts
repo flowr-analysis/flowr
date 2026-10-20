@@ -52,6 +52,21 @@ export interface StringFn {
 	fold(...args: unknown[]): string | number | undefined;
 }
 
+/** `sprintf` with only `%s`, `%d` (or `%i`) and `%%` in its format and one argument for each, `undefined` for anything else (a width, a precision, another conversion) */
+function format(fmt: string, parts: readonly string[]): string | undefined {
+	let next = 0;
+	let failed = false;
+	const formatted = fmt.replace(/%(.)/g, (_, conversion: string) => {
+		if(conversion === '%') {
+			return '%';
+		}
+		const part = parts[next++];
+		failed ||= part === undefined || (conversion !== 's' && !(/[di]/.test(conversion) && /^-?\d+$/.test(part)));
+		return part ?? '';
+	});
+	return failed || next !== parts.length || fmt.replaceAll('%%', '').endsWith('%') ? undefined : formatted;
+}
+
 /**
  * Every string built-in the value solver folds, the joining ones included: `paste` is an entry like `toupper`
  * is, and both are reached through {@link resolveAsStringFn}. Teaching flowR one more is a line here plus the
@@ -65,6 +80,7 @@ export const StringFns = {
 	paste:       { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: ' ' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
 	paste0:      { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: '' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
 	'file.path': { pkg: PkgName.Base, params: ['...', 'fsep'], defaults: { fsep: '/' }, fold: (parts: string[], fsep: string) => parts.join(fsep) },
+	sprintf:     { pkg: PkgName.Base, params: ['fmt', '...'], fold: (fmt: string, parts: string[] = []) => format(fmt, parts) },
 	/* the project root stays implicit, so the fold yields the path below it */
 	here:        { pkg: PkgName.Here, params: ['...'], fold: (parts: string[]) => parts.length > 0 ? parts.join('/') : '.' },
 	/* the path splits, which only ever treat `/` as a separator, so a Windows path keeps its non-`\` parts */

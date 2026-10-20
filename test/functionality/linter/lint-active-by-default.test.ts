@@ -28,6 +28,20 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 	});
 
+	describe('the file of a finding', () => {
+		test('every finding names its file, a sourced one included', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addFile(new FlowrInlineTextFile('helpers.R', 'f <- function() read.csv("/home/me/data.csv")'));
+			analyzer.addFile(new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(f())'));
+			analyzer.addRequest({ request: 'file', content: 'main.R' });
+			const { results } = await executeLinterQuery({ analyzer }, [{ type: 'linter', rules: ['absolute-file-paths'] }]);
+			const found = (results['absolute-file-paths'] as { results: { loc: readonly unknown[] }[] }).results;
+			const files = found.map(f => f.loc[4]);
+			assert.include(files, 'helpers.R', 'the path written in the sourced file is found there');
+			assert.notInclude(files, undefined, 'every finding names its file');
+		});
+	});
+
 	describe('project-kind specialization', () => {
 		async function defaultRuleKeys(description?: string): Promise<string[]> {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();

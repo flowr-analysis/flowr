@@ -5,6 +5,7 @@
  */
 import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
+import { el } from '../page-lib/dom';
 
 
 /**
@@ -231,7 +232,7 @@ interface PlotSize {
 
 /** a canvas as wide as the card has room for, at the screen's resolution so text stays legible on a phone */
 function plotSize(into: HTMLElement): PlotSize {
-	const css = Math.max(280, Math.min(576, into.clientWidth - 32));
+	const css = Math.max(240, Math.min(480, into.clientWidth - 32));
 	const scale = window.devicePixelRatio || 1;
 	return { width: Math.round(css * scale), height: Math.round(css * .7 * scale), pointsize: Math.round(12 * scale) };
 }
@@ -256,17 +257,19 @@ interface Sink {
 	readonly status: (text: string) => void
 }
 
-function canvasOf(image: ImageBitmap): HTMLCanvasElement {
+function canvasOf(image: ImageBitmap, plot: PlotSize): HTMLCanvasElement {
 	const canvas = document.createElement('canvas');
 	canvas.width = image.width;
 	canvas.height = image.height;
-	canvas.style.width = `${image.width / (window.devicePixelRatio || 1)}px`;
+	canvas.style.width = `${plot.width / (window.devicePixelRatio || 1)}px`;
+	canvas.style.maxWidth = '100%';
+	canvas.style.height = 'auto';
 	canvas.getContext('2d')?.drawImage(image, 0, 0);
 	return canvas;
 }
 
-/** runs `code` in the page's R session, silently giving up once `current` fails; whether R printed or drew anything */
-async function evaluate(code: string, wanted: () => Promise<readonly string[]>, sink: Sink, plot: PlotSize, current: () => boolean, project?: RunInput): Promise<boolean> {
+/** runs `code` in the page's R session, giving up silently once `current` fails */
+async function evaluate(code: string, wanted: () => Promise<readonly string[]>, sink: Sink, plot: PlotSize, current: () => boolean, project?: RunInput): Promise<{ readonly said: boolean, readonly took: number }> {
 	if(session === undefined) {
 		sink.status('downloading R, only once...');
 		beginStep({ counts: url => url.startsWith(WebRBase) && !url.startsWith(`${WebRBase}vfs/`), total: startBytes, then: 'starting R...' });
@@ -276,7 +279,7 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 		sink.line(`${p} is not available for webR, so loading it fails`, 'note');
 	}
 	if(!current()) {
-		return false;
+		return { said: false, took: 0 };
 	}
 	sink.status('running...');
 	const shelter = await new s.r.Shelter();
@@ -287,17 +290,19 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 		if(project !== undefined) {
 			await provideFiles(s, project);
 		}
+		const started = performance.now();
 		const result = await shelter.captureR(code, { withAutoprint: true, throwJsException: false, captureGraphics: plot });
+		const took = performance.now() - started;
 		if(!current()) {
-			return false;
+			return { said: false, took };
 		}
 		for(const entry of result.output) {
 			sink.line(await textOf(entry), classOf(entry.type));
 		}
 		for(const image of result.images) {
-			sink.plot(canvasOf(image));
+			sink.plot(canvasOf(image, plot));
 		}
-		return result.output.length > 0 || result.images.length > 0;
+		return { said: result.output.length > 0 || result.images.length > 0, took };
 	} finally {
 		await shelter.purge();
 	}
@@ -349,11 +354,11 @@ export async function evalInR(code: string, packagesOf: PackageFinder, line: (te
 	}
 }
 
-/** runs what `prepare` returns, saying in the output card what ran under `title` */
-export type Runner = (prepare: () => Promise<RunInput>, title: string) => void;
+/** runs what `prepare` returns under `title`, into the card or `into` */
+export type Runner = (prepare: () => Promise<RunInput>, title: string, into?: HTMLElement) => Promise<number | undefined>;
 
 /** wires the run button and the output card, returning a runner for notebook cells */
-export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageFinder): Runner {
+export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageFinder, instead?: () => Promise<void> | undefined): Runner {
 	const go = document.getElementById('runrgo') as HTMLButtonElement | null;
 	const stop = document.getElementById('runrstop') as HTMLButtonElement | null;
 	const close = document.getElementById('runrclose') as HTMLButtonElement | null;
@@ -362,18 +367,12 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 	const state = document.getElementById('runrstate');
 	const out = document.getElementById('runrout');
 	if(go === null || stop === null || close === null || clear === null || card === null || state === null || out === null) {
-		return () => undefined;
+		return () => Promise.resolve(undefined);
 	}
 	let running = 0;
 
-	const line = (text: string, cls?: string): void => {
-		const at = document.createElement('div');
-		if(cls) {
-			at.className = cls;
-		}
-		at.textContent = text;
-		out.append(at);
-	};
+	const lineIn = (target: HTMLElement) => (text: string, cls?: string): void => target.append(el('div', cls, text));
+	const line = lineIn(out);
 
 	const done = (text: string): void => {
 		state.textContent = text;
@@ -407,54 +406,63 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 	});
 
 	const title = document.getElementById('runrtitle');
-	const runScript = async(what: () => Promise<RunInput>, named: string): Promise<void> => {
+	const runScript = async(what: () => Promise<RunInput>, named: string, into?: HTMLElement): Promise<number | undefined> => {
 		const run = ++running;
-		if(title !== null) {
+		const target = into ?? out;
+		/* a cell keeps its old output until the new is complete, or the page shrinks under the pointer */
+		const sink = into === undefined ? out : el('div');
+		const line = lineIn(sink);
+		if(title !== null && into === undefined) {
 			title.textContent = named;
 		}
 		go.disabled = true;
 		stop.hidden = false;
 		clear.hidden = true;
-		card.hidden = false;
+		card.hidden &&= into !== undefined;
 		card.classList.add('busy');
-		out.replaceChildren();
+		if(into === undefined) {
+			out.replaceChildren();
+		}
 		/* stacked on a phone, the card is far below the editor */
-		if(matchMedia('(max-width: 52rem)').matches) {
+		if(into === undefined && matchMedia('(max-width: 52rem)').matches) {
 			card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		}
 		const begin = performance.now();
 		try {
 			const input = await what();
-			const said = await evaluate(input.code, () => packagesOf(), {
+			const { said, took } = await evaluate(input.code, () => packagesOf(), {
 				line,
-				plot:   canvas => out.append(canvas),
+				plot:   canvas => sink.append(canvas),
 				status: text => {
 					state.textContent = text;
 				}
-			}, plotSize(out), () => run === running, input);
+			}, plotSize(target), () => run === running, input);
 			if(run === running) {
 				if(!said) {
-					line('no output', 'note');
+					line('no output', 'note meta');
 				}
 				done(`took ${(Math.round(performance.now() - begin) / 1000).toFixed(1)} s`);
+				return took;
 			}
 		} catch(e) {
 			if(run === running) {
 				line(e instanceof Error ? e.message : String(e), 'bad');
 				done('');
 			}
+		} finally {
+			if(into !== undefined && run === running) {
+				into.replaceChildren(...sink.childNodes);
+			}
 		}
+		return undefined;
 	};
-	const runner: Runner = (what, named) => {
-		if(!go.disabled) {
-			void runScript(what, named);
-		}
-	};
-	go.addEventListener('click', () => runner(prepare, 'R output'));
+	const runner: Runner = (what, named, into) => go.disabled ? Promise.resolve(undefined) : runScript(what, named, into);
+	const runAll = () => void (instead?.() ?? runner(prepare, 'R output'));
+	go.addEventListener('click', runAll);
 	document.addEventListener('keydown', event => {
 		if((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !go.disabled) {
 			event.preventDefault();
-			runner(prepare, 'R output');
+			runAll();
 		}
 	});
 	return runner;

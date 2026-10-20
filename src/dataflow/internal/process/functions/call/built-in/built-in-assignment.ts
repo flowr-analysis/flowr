@@ -639,17 +639,20 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			/* only a copied environment needs an identity, its holders are rebound on every field write */
 			envId = copied === undefined ? undefined : copied.envId ?? copied.nodeId;
 		} else {
-			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
+			/* `(list(...))` and `{ mk() }` hand on the value of what they hold */
+			const entry = valueEntry ?? sourceArg.entryPoint;
+			const value = data.completeAst.idMap.get(entry) ?? source;
+			const entryVertex = sourceArg.graph.getVertex(entry);
 			if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
-				envState = resolveListToEnvState(source, data);
+				envState = resolveListToEnvState(value, data);
 			} else if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
-				returnsEnvState = resolveClassMethodsToEnvState(source, data);
+				returnsEnvState = resolveClassMethodsToEnvState(value, data);
 			} else if(DfgVertex.isFunctionDefinition(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
 			} else if(DfgVertex.isFunctionCall(entryVertex) && entryVertex.name) {
 				envState = findReturnsEnvState(Resolve.byNameAndType(entryVertex.name, data.environment, ReferenceType.Function));
 			}
-			envState ??= resolveConstructorInstanceEnvState(source, data);
+			envState ??= resolveConstructorInstanceEnvState(value, data);
 		}
 	}
 

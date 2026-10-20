@@ -11,7 +11,9 @@ export enum PlaygroundBox {
 	/** what the dependency query found */
 	Deps  = 'deps',
 	/** what the linter found */
-	Lints = 'lints'
+	Lints = 'lints',
+	/** what the DESCRIPTION of the project says */
+	Project = 'project'
 }
 
 /**
@@ -128,6 +130,14 @@ export interface PlaygroundLinkParts {
 }
 
 /**
+ * The letter each setting of the view takes in the view field of a link, in the order a link writes them. Links in
+ * papers and mails have to open as they were sent: a letter is never reused for something else, only new ones are added.
+ */
+const ViewFlags = { forward: '>', removal: '-', dim: 'd', replOpen: 'r', wholeSlice: 'a', inline: 'i' } as const;
+/** how the view of the page was left, as the view field of a link carries it */
+export type PlaygroundView = { readonly [Setting in keyof typeof ViewFlags]?: boolean };
+
+/**
  * Everything about flowR's playground that is not the page itself: what a link to it carries, and how
  * one is written. The page reads back exactly what {@link Playground.link} writes.
  * @helper location
@@ -146,6 +156,14 @@ export const Playground = {
 	Mark,
 	/** the boxes of the page a mark can point at */
 	Box:      PlaygroundBox,
+	/** the view field's letters for the settings of `view` that are on */
+	viewFlags(this: void, view: PlaygroundView): string {
+		return Object.entries(ViewFlags).filter(([setting]) => view[setting as keyof PlaygroundView]).map(([, letter]) => letter).join('');
+	},
+	/** which settings of the view the letters of a view field turn on */
+	readView(this: void, flags: string): Required<PlaygroundView> {
+		return Object.fromEntries(Object.entries(ViewFlags).map(([setting, letter]) => [setting, flags.includes(letter)])) as Required<PlaygroundView>;
+	},
 	/**
 	 * The link that opens the playground on exactly this: a script, what it points at, where its cursor
 	 * sits, and how the page is laid out.
@@ -157,7 +175,7 @@ export const Playground = {
 		const view = [
 			split === undefined ? '' : String(split),
 			repl === undefined ? '' : String(repl),
-			`${forward ? '>' : ''}${dim ? 'd' : ''}${replOpen ? 'r' : ''}${wholeSlice ? 'a' : ''}`
+			Playground.viewFlags({ forward, dim, replOpen, wholeSlice })
 		];
 		while(view.length > 0 && view[view.length - 1].length === 0) {
 			view.pop();

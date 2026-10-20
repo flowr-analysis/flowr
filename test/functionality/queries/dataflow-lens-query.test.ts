@@ -1,8 +1,8 @@
 import { assert, describe, test } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { executeQueries } from '../../../../src/queries/query';
-import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
+import { withTreeSitter } from '../_helper/shell';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { executeQueries } from '../../../src/queries/query';
+import { DfgVertex } from '../../../src/dataflow/graph/vertex';
 
 describe('Dataflow Lens Query', withTreeSitter(parser => {
 	test('hides operators and keywords without dropping names that merely contain one', async() => {

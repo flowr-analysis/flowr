@@ -95,12 +95,14 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 ) => DataflowInformation;
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
-	type:         ReferenceType.BuiltInFunction
-	definedAt:    BuiltIn
-	processor:    BuiltInIdentifierProcessor
-	config?:      ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & BuiltInFnInfo & { libFn?: boolean }
+	type:           ReferenceType.BuiltInFunction
+	definedAt:      BuiltIn
+	processor:      BuiltInIdentifierProcessor
+	config?:        ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & BuiltInFnInfo & { libFn?: boolean }
 	/** folds a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
-	evalHandler?: BuiltInEvalHandler
+	evalHandler?:   BuiltInEvalHandler
+	/** the processor's name, for a call made on our behalf (`do.call(new.env, list())`) that does not run it */
+	processorName?: BuiltInProcName
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
@@ -310,12 +312,19 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	return ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, ambient);
 }
 
-/** A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk} as well. */
+/**
+ * A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk} as well.
+ * Closing a device writes the file its opening already wrote, and only a device's file name may number its pages (`plot%03d.png`).
+ */
 function withFileAccess<Config>(config: Config): Config {
 	const { tags, ambient, sig } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess | readonly AmbientStateAccess[], sig?: FnSig };
 	const type = !tags?.includes(SemanticCallTag.File) ? undefined : tags.includes(SemanticCallTag.Writes) ? AmbientStateAccessType.WriteFiles : tags.includes(SemanticCallTag.Reads) ? AmbientStateAccessType.ReadFiles : undefined;
 	const stated = [ambient ?? []].flat();
-	return type === undefined || stated.some(a => a.type === type) ? config : { ...config, ambient: [...stated, { type, sig: tags?.includes(SemanticCallTag.Glob) ? undefined : sig }] };
+	if(type === undefined || stated.some(a => a.type === type || a.type === AmbientStateAccessType.CloseDevice)) {
+		return config;
+	}
+	const numbered = stated.some(a => a.type === AmbientStateAccessType.OpenDevice);
+	return { ...config, ambient: [...stated, { type, sig: tags?.includes(SemanticCallTag.Glob) ? undefined : sig, numbered }] };
 }
 
 export const BuiltInProcessorMapper = {
@@ -428,14 +437,15 @@ export class BuiltIns {
 			const n = Identifier.getName(name);
 			const id = NodeId.toBuiltIn(n);
 			const d: IdentifierDefinition[] = [{
-				type:        ReferenceType.BuiltInFunction,
-				definedAt:   id,
-				cds:         undefined,
-				processor:   (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never),
+				type:          ReferenceType.BuiltInFunction,
+				definedAt:     id,
+				cds:           undefined,
+				processor:     (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never),
 				config,
-				evalHandler: mappedEval,
+				evalHandler:   mappedEval,
+				processorName: processor,
 				name,
-				nodeId:      id
+				nodeId:        id
 			}];
 			this.set(n, d, assumePrimitive, Identifier.getNamespace(name));
 		}

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-19, 04:36:32 UTC (v2.16.2, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-20, 14:35:49 UTC (v2.16.4, R v4.6.1), do not edit directly._
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
@@ -204,7 +204,7 @@ checkup`, where `npm run checkup -- mutations` runs just this job.
 
 The suite has three pieces:
 
-- the passes, in [test/functionality/_helper/r-mutations.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/r-mutations.ts) (`MutationPasses`), 22 of them at the moment.
+- the passes, in [test/functionality/_helper/r-mutations.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/r-mutations.ts) (`MutationPasses`), 28 of them at the moment.
 - the corpus of programs and the invariant checks run against their mutants, in [test/mutations/r-semantics-counterexamples.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/r-semantics-counterexamples.test.ts).
 - pass-level unit tests, in [test/mutations/r-mutations.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/r-mutations.test.ts), checking each pass on its own rather than against the corpus.
 

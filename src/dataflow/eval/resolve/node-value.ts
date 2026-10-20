@@ -73,6 +73,6 @@ export const NodeValue = {
 	sole: soleValue,
 	/** The one value the node resolves to, `undefined` unless it is exactly one, optionally of the given kind. */
 	soleOf<OtherInfo, T extends Value['type']>(this: void, id: Target, against: Against<OtherInfo>, type?: T, overrides?: Partial<ResolveInfo>): Extract<Value, { type: T }> | undefined {
-		return soleValue(valueSetGuard(Resolve.toValue(id, infoOf(against, overrides))), type as T);
+		return NodeValue.sole(valueSetGuard(Resolve.toValue(id, infoOf(against, overrides))), type as T);
 	},
 } as const;

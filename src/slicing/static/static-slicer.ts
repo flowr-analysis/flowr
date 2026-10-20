@@ -89,7 +89,9 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const basePrint = ctx.env.getCleanEnvFingerprint();
 	const queue = new VisitingQueue(options.threshold ?? 75, cache, graph, ctx.gas.scope(options.gas), [emptyEnv, basePrint]);
 	const enclosingHandled = new Set<NodeId | undefined>();
-	const missesSeeds = sliceGraph === undefined ? outsideSeedRun(ids, idMap, direction, graph) : undefined;
+	/* the unknown side effects every slice keeps are seeds as well, so what they reach is not cut off as running too late */
+	const effects = [...graph.unknownSideEffects].filter((id): id is NodeId => typeof id !== 'object');
+	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph) : undefined;
 	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
 		if(!queue.hasId(id)) {
 			queue.add(id, env, print, true);
@@ -106,10 +108,13 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		openBodiesAround(startId);
 	}
 	/* include all the implicit side effects that we have to consider as we are unable to narrow them down */
-	for(const id of graph.unknownSideEffects) {
-		/* a linked side effect is no vertex of its own, its target is just missing */
-		if(typeof id !== 'object') {
-			queue.add(id, emptyEnv, basePrint, true);
+	/* a linked side effect is no vertex of its own, its target is just missing; the effect is the whole call, so what its parts read
+	   is kept as well (the `<-` of `environment(g)$y <- 10` has no edges of its own to `g`) */
+	for(const id of effects) {
+		for(const part of RNode.collectAllIds(idMap.get(id))) {
+			if(part === id || graph.hasVertex(part)) {
+				queue.add(part, emptyEnv, basePrint, true);
+			}
 		}
 	}
 	/* a call asked about does what the functions it runs do, which includes what they print */

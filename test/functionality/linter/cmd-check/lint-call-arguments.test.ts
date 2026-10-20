@@ -1,35 +1,13 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { assertLinterPackage } from '../../_helper/linter';
+import { singlePackageSigDb } from '../../_helper/sigdb';
 import { LintingResultCertainty } from '../../../../src/linter/linter-format';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
-import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 
 /** a signature source knowing one exported function of one package, with the given formals */
 function sigDbWithFunction(pkg: string, fn: string, formals: readonly string[]): PackageSignatureSource {
-	const decoded: DecodedFunction = { name: fn, line: 1, exported: true, props: [], signature: formals.map(name => ({ name, props: 0 })), callees: [] };
-	return {
-		has:               p => p === pkg,
-		hasVersion:        (p, version) => p === pkg && version === '1.0.0',
-		isCranVersion:     () => true,
-		sourceOf:          () => undefined,
-		lookup:            p => p === pkg ? { version: '1.0.0', exported: [fn], internal: [], deprecated: [], s3Classes: [], s4Classes: [], cran: true } : undefined,
-		classOwner:        () => undefined,
-		packagesExporting: name => name === fn ? [pkg] : [],
-		functions:         p => p === pkg ? [decoded] : undefined,
-		functionByName:    (p, name) => p === pkg && name === fn ? decoded : undefined,
-		transitiveCallees: () => undefined,
-		classes:           () => undefined,
-		dependencies:      () => undefined,
-		packageNames:      () => [pkg],
-		isBaseR:           () => false,
-		downloads:         () => 0,
-		coreVersions:      () => undefined,
-		releaseDate:       () => undefined,
-		releaseDates:      () => [],
-		latestVersion:     () => undefined,
-		close:             () => { /* nothing to release */ }
-	};
+	return singlePackageSigDb(pkg, [{ name: fn, line: 1, exported: true, props: [], signature: formals.map(name => ({ name, props: 0 })), callees: [] }]);
 }
 
 describe('flowR linter', withTreeSitter(parser => {

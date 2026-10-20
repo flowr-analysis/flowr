@@ -1,9 +1,9 @@
-import { assertQuery } from '../../_helper/query';
-import { label } from '../../_helper/label';
-import { findAllClusters } from '../../../../src/dataflow/cluster';
-import type { DataflowClusterQuery } from '../../../../src/queries/catalog/cluster-query/cluster-query-format';
+import { assertQuery } from '../_helper/query';
+import { label } from '../_helper/label';
+import { findAllClusters } from '../../../src/dataflow/cluster';
+import type { DataflowClusterQuery } from '../../../src/queries/catalog/cluster-query/cluster-query-format';
 import { describe } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
+import { withTreeSitter } from '../_helper/shell';
 
 describe('Dataflow Cluster Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly DataflowClusterQuery[]) {

@@ -1,21 +1,21 @@
-import { assertQuery } from '../../_helper/query';
-import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { label } from '../../_helper/label';
+import { assertQuery } from '../_helper/query';
+import type { FlowrCapabilityId } from '../../../src/r-bridge/data/get';
+import { label } from '../_helper/label';
 import { assert, describe } from 'vitest';
 import type {
 	ResolveValueQuery,
 	ResolveValueQueryResult
-} from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-format';
-import { fingerPrintOfQuery } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-executor';
-import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
-import { stringFrom } from '../../../../src/dataflow/eval/values/string/string-constants';
-import { Top } from '../../../../src/dataflow/eval/values/r-value';
-import type { ResolveResult } from '../../../../src/dataflow/eval/resolve/alias-tracking';
-import { withTreeSitter } from '../../_helper/shell';
-import { intervalFrom, intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
-import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
-import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
+} from '../../../src/queries/catalog/resolve-value-query/resolve-value-query-format';
+import { fingerPrintOfQuery } from '../../../src/queries/catalog/resolve-value-query/resolve-value-query-executor';
+import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import { setFrom } from '../../../src/dataflow/eval/values/sets/set-constants';
+import { stringFrom } from '../../../src/dataflow/eval/values/string/string-constants';
+import { Top } from '../../../src/dataflow/eval/values/r-value';
+import type { ResolveResult } from '../../../src/dataflow/eval/resolve/alias-tracking';
+import { withTreeSitter } from '../_helper/shell';
+import { intervalFrom, intervalFromValues } from '../../../src/dataflow/eval/values/intervals/interval-constants';
+import { getScalarFromInteger } from '../../../src/dataflow/eval/values/scalar/scalar-constants';
+import { vectorFrom } from '../../../src/dataflow/eval/values/vectors/vector-constants';
 
 describe('Resolve Value Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, criteria: SlicingCriteria, expected: ResolveResult[][], caps: readonly FlowrCapabilityId[] = []) {

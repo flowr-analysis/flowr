@@ -2,7 +2,7 @@ import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { SliceResult } from '../../../../slicing/static/slicer-types';
-import { reconstructToCode, type InlineFull } from '../../../../reconstruct/reconstruct';
+import { reconstructToCode, type InlineFull, type InlineSources } from '../../../../reconstruct/reconstruct';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { AutoSelectPredicate } from '../../../../reconstruct/auto-select/auto-select-defaults';
 import type { DataflowInformation } from '../../../../dataflow/info';
@@ -22,7 +22,7 @@ export interface ReconstructRequiredInput {
 	 * Inline resolvable `source()` calls into the reconstruction so the result is a single self-contained R text.
 	 * Cyclic and unresolvable `source()` calls are kept verbatim and reported via `reconstruct.inlineWarnings`.
 	 */
-	inlineSources?:    boolean
+	inlineSources?:    InlineSources
 	/**
 	 * Inline *every* file into the reconstruction, in flowR's loading order (which respects implicit sources).
 	 * Overrides {@link inlineSources} and {@link reconstructFiles}.

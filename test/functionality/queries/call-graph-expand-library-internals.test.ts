@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
-import { fakeSigDb, sigdbAnalyzer } from '../../_helper/sigdb';
-import type { SigDatabase } from '../../../../src/project/sigdb/reader';
-import { FnProp } from '../../../../src/project/sigdb/schema';
-import { executeQueries } from '../../../../src/queries/query';
-import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { withTreeSitter } from '../_helper/shell';
+import { fakeSigDb, sigdbAnalyzer } from '../_helper/sigdb';
+import type { SigDatabase } from '../../../src/project/sigdb/reader';
+import { FnProp } from '../../../src/project/sigdb/schema';
+import { executeQueries } from '../../../src/queries/query';
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** a CRAN package `mypkg` whose exported `foo` internally calls the (non-exported) `bar` */
 function buildDb(): SigDatabase {

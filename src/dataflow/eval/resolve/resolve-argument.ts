@@ -22,6 +22,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import { Resolve } from '../../environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { appliedArguments } from '../../graph/applied-arguments';
 
 /**
  * The index of the argument of `vertex` that binds the formal `argumentName`, R's matching when the formals are known and the `argumentIndex`-th unnamed argument otherwise.
@@ -61,6 +62,7 @@ export function getArgumentStringValue(
 	ctx: ReadOnlyFlowrAnalyzerContext,
 	formals?: readonly string[]
 ): Map<NodeId, Set<string | undefined>> | undefined {
+	vertex = appliedArguments(graph, vertex);
 	if(argumentName && argumentIndex !== 'unnamed') {
 		argumentIndex = boundArgumentIndex(graph, vertex, argumentIndex, argumentName, ctx, formals);
 	}

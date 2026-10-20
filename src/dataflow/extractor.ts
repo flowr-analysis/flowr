@@ -1,4 +1,5 @@
 import type { DataflowInformation } from './info';
+import { appliedArguments } from './graph/applied-arguments';
 import { FunctionSemantics } from './fn/function-semantics';
 import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
@@ -314,7 +315,7 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 		if(!reads && !writes) {
 			continue;
 		}
-		const resource = argsWithProp(vertex, info, ArgProp.Resource)[0];
+		const resource = argsWithProp(appliedArguments(graph, vertex), info, ArgProp.Resource)[0];
 		/* writing to the console names no file, and neither does a reader we cannot pin down */
 		if(resource !== undefined) {
 			(reads ? readers : writers).push({ id, resource });
@@ -330,9 +331,12 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 		if(a === b || !reachedBy(b).isDisjointFrom(reachedBy(a))) {
 			return true;
 		}
+		/* a path we cannot resolve may name the other one */
 		const path = pathOf(a);
-		return path !== undefined && path === pathOf(b);
+		const other = pathOf(b);
+		return path === undefined || other === undefined || path === other;
 	};
+	const prints = (id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]);
 	let cfg: ControlFlowGraph | undefined;
 	for(const reader of readers) {
 		let before: ReadonlySet<NodeId> | undefined;
@@ -343,8 +347,8 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 			before ??= reachableTo(cfg ??= new ControlFlowGraph(graph), [reader.id]);
 			if(before.has(writer.id)) {
 				graph.addEdge(reader.id, writer.id, EdgeType.Reads);
-				/* whatever is linked to a diverting writer (`print` after `sink(file)`) writes to the resource as well */
-				for(const id of Dataflow.sourcesOf(graph, writer.id, EdgeType.Reads)) {
+				/* whatever prints into a diverting writer (`print` after `sink(file)`) writes to the resource as well */
+				for(const id of Dataflow.sourcesOf(graph, writer.id, EdgeType.Reads).filter(prints)) {
 					graph.addEdge(reader.id, id, EdgeType.Reads);
 				}
 			}

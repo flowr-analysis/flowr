@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 18:04:52 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-20, 14:35:49 UTC (v2.16.4), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -18,7 +18,7 @@ For a script reading `library(x)`, the following query returns the loaded librar
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (80 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_
 
@@ -78,7 +78,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (6 ms)\
+Query: **dependencies** (10 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -155,7 +155,7 @@ In the meantime we offer several properties to overwrite the default behavior (e
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_
 
@@ -210,7 +210,7 @@ Set `assumedPackages` to have those reported as well, as `library` entries marke
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (0 ms)\
+Query: **dependencies** (1 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**base** _always attached by R, used at 8_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stats** _attached by R at startup, used at 10_
@@ -328,7 +328,7 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (4 ms)\
+Query: **dependencies** (5 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\
@@ -1101,6 +1101,7 @@ ggsave`"]
     54 -->|"reads"| 7
     54 -.->|"reads, calls"| built-in:ggsave
     linkStyle 93 stroke:gray;
+    54 -->|"reads"| 45
 ```
 
 </details>
@@ -1111,6 +1112,6 @@ ggsave`"]
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Dependencies Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts#L36"><code><span title="Executes a dependencies query.">executeDependenciesQuery</span></code></a>.
+The Dependencies Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts#L37"><code><span title="Executes a dependencies query.">executeDependenciesQuery</span></code></a>.
 
 </details>

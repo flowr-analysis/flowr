@@ -341,7 +341,7 @@ export const Dataflow = {
 	 * @see {@link Dataflow.provenanceGraph} - for a convenience wrapper to directly obtain the graph of the provenance.
 	 */
 	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall): Set<NodeId> {
-		return GraphHelper.reachable(graph, id, { follow: followEdges, consider, cds: true });
+		return Dataflow.reachable(graph, id, { follow: followEdges, consider, cds: true });
 	},
 	/**
 	 * A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only
@@ -388,7 +388,7 @@ export const Dataflow = {
 
 /** both qualifications of a call from a single origin resolution, as the base-R step only adds to what the origins gave */
 const resolveQualification: CallQualifier = (graph, id, vertex) => {
-	const origins = getOriginInDfg(graph, id);
+	const origins = Dataflow.origin(graph, id);
 	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
 	const bare = Identifier.toQualified(origins, name, false);
 	return [bare, bare ?? Identifier.toQualified(origins, name, true)];

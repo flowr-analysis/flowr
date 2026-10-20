@@ -701,7 +701,7 @@ function linkLiftedReads(
 }
 
 function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number | undefined {
-	if(!RFunctionCall.isNamed(node) || Identifier.getName(node.functionName.content) !== 'sys.frame' || node.arguments.length !== 1) {
+	if(!RFunctionCall.isNamed(node, 'sys.frame') || node.arguments.length !== 1) {
 		return undefined;
 	}
 	return RNumber.literalValueOf(RArgument.valueOf(node.arguments[0]));

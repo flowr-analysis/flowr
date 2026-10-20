@@ -195,7 +195,7 @@ function isMaskedNamePair<OtherInfo>(
 	}
 	for(const node of RNode.iterateParents(data.completeAst.idMap.get(rootId), data.completeAst.idMap)) {
 		if(!RArgument.is(node)) {
-			return RFunctionCall.isNamed(node) && DataMaskingFunctionNames.has(Identifier.getName(node.functionName.content));
+			return RFunctionCall.isNamed(node, DataMaskingFunctionNames);
 		}
 	}
 	return false;

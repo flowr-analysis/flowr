@@ -23,7 +23,7 @@ export enum Unquote {
 /** `!!x` parses as `!(!x)`, so peel the run of `!` to reach the operand. */
 function unquotedOperandOf<Info>(node: RNode<Info>, style: Unquote): RNode<Info> | undefined {
 	if(style === Unquote.Bquote) {
-		if(!RFunctionCall.isNamed(node) || Identifier.getName(node.functionName.content) !== '.' || node.arguments.length !== 1) {
+		if(!RFunctionCall.isNamed(node, '.') || node.arguments.length !== 1) {
 			return undefined;
 		}
 		const arg = node.arguments[0];

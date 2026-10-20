@@ -111,7 +111,7 @@ const GenericDispatchers = new Set<string>(['UseMethod', 'standardGeneric']);
 /** Whether a function body is a single call to a generic dispatcher. */
 function isGenericDispatcherOnlyBody(node: RNode<ParentInformation>): boolean {
 	const isDispatcherCall = (n: RNode<ParentInformation> | undefined) =>
-		RFunctionCall.isNamed(n) && GenericDispatchers.has(Identifier.getName(n.functionName.content));
+		RFunctionCall.isNamed(n, GenericDispatchers);
 	return isDispatcherCall(node) || (RExpressionList.is(node) && node.children.length === 1 && isDispatcherCall(node.children[0]));
 }
 
@@ -280,7 +280,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	if(isStandaloneStatement(statement, ast)) {
 		return yieldsFunctionValue(statement, ast, dfg) ? undefined : [{ type: 'remove', loc: totalRangeToRemove, description }];
 	}
-	const replacement = assignment?.value.info.fullLexeme ?? assignment?.value.lexeme;
+	const replacement = RNode.lexeme(assignment?.value);
 	return replacement === undefined ? undefined : [{ type: 'replace', loc: totalRangeToRemove, replacement, description }];
 }
 
@@ -303,7 +303,7 @@ function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boole
 	let child = node;
 	for(const parent of RNode.iterateParents(node, idMap)) {
 		if((RParameter.is(parent) && parent.defaultValue?.info.id === child.info.id)
-			|| (RFunctionCall.isNamed(parent) && Identifier.getName(parent.functionName.content) === 'delayedAssign')) {
+			|| (RFunctionCall.isNamed(parent, 'delayedAssign'))) {
 			return true;
 		}
 		child = parent;

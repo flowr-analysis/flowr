@@ -4,10 +4,18 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server with a single
 clients analyze R code with [flowR](https://github.com/flowr-analysis/flowr): slicing, linting, dependencies,
 version guessing, signature database search, and every other query of the
 [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API). No R installation is needed. On its first
-start, it downloads flowR's signature database (about 66 MB, into `~/.cache/flowr`), which version guessing and
-signature search need; everything else also works offline.
+start, it downloads flowR's signature database (about 66 MB, hash-checked, from the
+[flowR releases](https://github.com/flowr-analysis/flowr/releases) into `~/.cache/flowr`), which version guessing
+and signature search need; everything else also works offline. It never runs the analyzed code and contacts no
+other server, unless a query explicitly asks the linter to check the URLs in the code (`checkUrls`, never over HTTP).
 
-Local clients start it over stdio:
+In Claude Code, one plugin installs both this server and the flowR skill:
+
+```text
+/plugin install flowr --marketplace flowr-analysis/flowr
+```
+
+Other local clients start it over stdio:
 
 ```shell
 claude mcp add flowr -- npx -y @eagleoutice/flowr-mcp      # Claude Code

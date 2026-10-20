@@ -40,7 +40,7 @@ export const InspectExceptionQueryDefinition = {
 			return node ? SourceLocation.fromNode(node) : undefined;
 		}
 		function getLexeme(r: NodeId): string {
-			return n.idMap.get(NodeId.normalize(r))?.lexeme ?? String(r);
+			return NodeId.recoverName(NodeId.normalize(r), n.idMap) ?? String(r);
 		}
 		for(const [r, v] of Object.entries(out.exceptions)) {
 			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(getLoc(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);

@@ -228,7 +228,7 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 	type Node = RNode<ParentInformation>;
 	const raises = (node: Node): boolean => {
 		const vertex = graph.getVertex(node.info.id);
-		const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : RFunctionCall.is(node) ? node.named ? node.functionName.content : undefined : RAccess.is(node) ? node.operator : node.lexeme;
+		const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : RFunctionCall.is(node) ? RFunctionCall.calledName(node) : RAccess.is(node) ? node.operator : node.lexeme;
 		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || (rootId !== undefined && hasEdgeOfType(graph, node.info.id, rootId, EdgeType.Reads))) {
 			return true;
 		} else if(DfgVertex.isFunctionCall(vertex)) {

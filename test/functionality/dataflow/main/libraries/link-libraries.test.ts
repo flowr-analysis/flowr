@@ -292,7 +292,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		const all = new Set(ast.idMap.keys());
 		expect([...Dataflow.packagesOf(all, df.graph)]).toEqual(['ggplot2']);
 		// the call is what makes the package needed, so a selection without it needs nothing
-		const withoutCall = new Set([...all].filter(id => ast.idMap.get(id)?.lexeme !== 'ggplot'));
+		const withoutCall = new Set([...all].filter(id => NodeId.recoverName(id, ast.idMap) !== 'ggplot'));
 		expect([...Dataflow.packagesOf(withoutCall, df.graph)]).toEqual([]);
 	});
 

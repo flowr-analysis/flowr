@@ -1018,7 +1018,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 
 		test('get() synthesizes a symbol id distinct from the string literal it reads', async() => {
 			const { normalize } = await createDataflowPipeline(shell, { context: contextFromInput('get("a")') }).allRemainingSteps();
-			const stringId = [...normalize.idMap.keys()].find(id => normalize.idMap.get(id)?.lexeme === '"a"');
+			const stringId = [...normalize.idMap.keys()].find(id => NodeId.recoverName(id, normalize.idMap) === '"a"');
 			assert.isDefined(stringId, 'the "a" string literal has to be part of the ast');
 			const synthId = `${SlicingCriterion.parse('1@get', normalize.idMap)}-get-name`;
 			const synth = normalize.idMap.get(synthId);

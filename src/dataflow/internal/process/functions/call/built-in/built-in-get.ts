@@ -32,7 +32,7 @@ function namesDenotedBy<OtherInfo>(
 	if(folded !== undefined) {
 		return [folded];
 	}
-	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'c'
+	if(RFunctionCall.isNamed(node, 'c')
 		&& Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function)) {
 		const parts = node.arguments.map(arg => {
 			const value = RArgument.valueOf(arg);

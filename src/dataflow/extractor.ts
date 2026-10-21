@@ -336,7 +336,8 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 		const other = pathOf(b);
 		return path === undefined || other === undefined || path === other;
 	};
-	const prints = (id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]);
+	/* every added edge drops the graph's qualifications, which resolving a call needs, and none of those edges changes what a call is */
+	const prints = memoize((id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]));
 	let cfg: ControlFlowGraph | undefined;
 	for(const reader of readers) {
 		let before: ReadonlySet<NodeId> | undefined;

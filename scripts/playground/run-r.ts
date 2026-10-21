@@ -6,6 +6,7 @@
 import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
 import { el } from '../page-lib/dom';
+import { compressToEncodedURIComponent } from 'lz-string';
 
 
 /**
@@ -172,6 +173,32 @@ export interface RunInput {
 	readonly code:  string
 	readonly files: readonly (readonly [string, string])[]
 	readonly fresh: boolean
+}
+
+/**
+ * A Shiny app needs a web server, which Shinylive runs in the browser, so the app opens there instead.
+ * The project moves to a folder of its own, from which a generated `app.R` starts the script, so a project
+ * may have an `app.R` of its own and its relative paths still work. The files travel in the fragment, which no server sees.
+ */
+function shinyApp({ code, files }: RunInput): HTMLIFrameElement | undefined {
+	if(!/\bshinyApp\s*\(/.test(code)) {
+		return undefined;
+	}
+	/* code no file holds (a cell) gets a name no file has */
+	const named = files.find(([, text]) => text === code)?.[0];
+	let script = named ?? 'run.R';
+	for(let i = 1; named === undefined && files.some(([name]) => name === script); i++) {
+		script = `run-${i}.R`;
+	}
+	const project = named === undefined ? [...files, [script, code] as const] : files;
+	const app = [
+		{ name: 'app.R', content: `shiny::shinyAppFile(${JSON.stringify(`project/${script}`)})` },
+		...project.map(([name, content]) => ({ name: `project/${name}`, content }))
+	];
+	const frame = el('iframe', 'shiny');
+	frame.title = 'Shiny app';
+	frame.src = `https://shinylive.io/r/app/#h=0&code=${compressToEncodedURIComponent(JSON.stringify(app))}`;
+	return frame;
 }
 
 async function provideFiles(s: Session, { files, fresh }: RunInput): Promise<void> {
@@ -430,6 +457,13 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		const begin = performance.now();
 		try {
 			const input = await what();
+			const app = shinyApp(input);
+			if(app !== undefined) {
+				sink.append(app);
+				line('a Shiny app runs on shinylive.io, whose webR is not checked against the pinned release', 'note meta');
+				done('');
+				return undefined;
+			}
 			const { said, took } = await evaluate(input.code, () => packagesOf(), {
 				line,
 				plot:   canvas => sink.append(canvas),

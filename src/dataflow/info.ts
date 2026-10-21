@@ -67,7 +67,14 @@ export const ControlDependency = {
 
 /** Appends the given control dependencies to `target`, skipping the ones that are already in there. */
 export function appendCds(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void {
-	for(const add of toAdd ?? []) {
+	const adds = toAdd ?? [];
+	/* the lists often share a run copied from one growing list (e.g., the exits of every stopifnot in a script), so skip it */
+	const start = target.indexOf(adds[0]);
+	let i = 0;
+	while(start >= 0 && i < adds.length && target[start + i] === adds[i]) {
+		i++;
+	}
+	for(const add of adds.slice(i)) {
 		if(!target.some(have => sameControlDependency(have, add))) {
 			target.push(add);
 		}

@@ -87,6 +87,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 		licenses:     ctx.meta.getLicenses(),
 		roleCounts:   roleCounts,
 		kind:         ctx.projectKind(),
-		dependencies: hasDeclarations ? collectDependencyStats(declared, ctx.deps, basePackages) : undefined
+		dependencies: hasDeclarations ? collectDependencyStats(declared, ctx.deps, basePackages) : undefined,
+		dfaPerformed: analyzer.peekDataflow() !== undefined
 	};
 }

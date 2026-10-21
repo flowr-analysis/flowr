@@ -70,6 +70,7 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		const project = results.project;
 		expect(project.name).toBe('mypkg');
 		expect(project.kind).toBe('package');
+		expect(project.dfaPerformed).toBe(false);
 		const deps = project.dependencies;
 		expect(deps).toBeDefined();
 		expect(deps?.imports).toBe(3);
@@ -151,4 +152,13 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 
 		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('package');
 	});
+
+	test(label('checks whether dataflow has been performed when the query is run with "withDf": true', [], ['other']), async() => {
+		const dir = writePackage(tmp, 'dfapkg', 'Version: 1.0.0\n', 'x <- 1\n');
+		const analyzer = await analyzeProject(parser, db, dir);
+
+		expect((await executeQueries({analyzer}, [{type: 'project', withDf: false }])).project.dfaPerformed).toBe(false);
+		expect((await executeQueries({analyzer}, [{type: 'project', withDf: true }])).project.dfaPerformed).toBe(true);
+	});
+
 }));

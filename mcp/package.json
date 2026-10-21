@@ -1,12 +1,12 @@
 {
   "name": "@eagleoutice/flowr-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Model Context Protocol server for flowR: static dataflow analysis, slicing, and linting of R code for LLM clients",
   "mcpName": "io.github.flowr-analysis/flowr",
   "bin": {
     "flowr-mcp": "index.js"
   },
-  "files": ["index.js", "SKILL.md"],
+  "files": ["index.js", "SKILL.md", "npm-shrinkwrap.json"],
   "engines": {
     "node": ">=22"
   },

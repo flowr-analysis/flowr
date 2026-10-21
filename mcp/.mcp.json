@@ -2,7 +2,7 @@
   "mcpServers": {
     "flowr": {
       "command": "npx",
-      "args": ["-y", "@eagleoutice/flowr-mcp@0.1.1"]
+      "args": ["-y", "--omit=optional", "--ignore-scripts", "@eagleoutice/flowr-mcp@0.1.2"]
     }
   }
 }

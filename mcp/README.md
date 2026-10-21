@@ -18,18 +18,21 @@ In Claude Code, one plugin installs both this server and the flowR skill:
 Other local clients start it over stdio:
 
 ```shell
-claude mcp add flowr -- npx -y @eagleoutice/flowr-mcp      # Claude Code
-codex mcp add flowr -- npx -y @eagleoutice/flowr-mcp       # OpenAI Codex
-gemini mcp add flowr npx -y @eagleoutice/flowr-mcp         # Gemini CLI
+claude mcp add flowr -- npx -y --omit=optional --ignore-scripts @eagleoutice/flowr-mcp      # Claude Code
+codex mcp add flowr -- npx -y --omit=optional --ignore-scripts @eagleoutice/flowr-mcp       # OpenAI Codex
+gemini mcp add flowr npx -y --omit=optional --ignore-scripts @eagleoutice/flowr-mcp         # Gemini CLI
 ```
 
 or, configured by JSON (Claude Desktop, Cursor, VS Code, ...):
 
 ```json
-{ "mcpServers": { "flowr": { "command": "npx", "args": ["-y", "@eagleoutice/flowr-mcp"] } } }
+{ "mcpServers": { "flowr": { "command": "npx", "args": ["-y", "--omit=optional", "--ignore-scripts", "@eagleoutice/flowr-mcp"] } } }
 ```
 
-Remote clients (ChatGPT, claude.ai, ...) need `npx -y @eagleoutice/flowr-mcp --http [port]` (default `$PORT`
+The flags keep the install small: they skip the optional dependencies flowR does not need here and run no install
+scripts, while the package's `npm-shrinkwrap.json` pins every dependency.
+
+Remote clients (ChatGPT, claude.ai, ...) need `npx -y --omit=optional --ignore-scripts @eagleoutice/flowr-mcp --http [port]` (default `$PORT`
 or 1042) behind HTTPS, e.g., `cloudflared tunnel --url http://localhost:1042`, and `https://<host>/mcp` added as
 a connector (in ChatGPT: developer mode). It listens on `127.0.0.1` unless `HOST` says otherwise (e.g.,
 `HOST=0.0.0.0` in a container), and `FLOWR_MCP_PATH=/mcp/<random>` replaces `/mcp` with a secret path, the one

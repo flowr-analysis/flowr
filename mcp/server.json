@@ -8,12 +8,12 @@
     "source": "github",
     "subfolder": "mcp"
   },
-  "version": "0.1.0",
+  "version": "0.1.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@eagleoutice/flowr-mcp",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "transport": { "type": "stdio" }
     }
   ]

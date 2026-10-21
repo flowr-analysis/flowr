@@ -1,0 +1,70 @@
+name: "MCP Server"
+
+'on':
+  push:
+    branches:
+      - main
+    paths:
+      - 'mcp/**'
+  pull_request:
+    paths:
+      - 'mcp/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp:
+    name: "🤖 Test and Publish the MCP Server"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+
+      - name: "🌍 Load Versions to Use"
+        working-directory: .
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: "🧪 Smoke Test"
+        run: |
+          # the plugin's version and its pinned server have to follow the package's, users only get an update when they change
+          test "$(jq -r .version package.json)" = "$(jq -r .version .claude-plugin/plugin.json)"
+          # the directory requires launchers to run an exact version, which has to be the released one
+          test "@eagleoutice/flowr-mcp@$(jq -r .version package.json)" = "$(jq -r '.mcpServers.flowr.args[-1]' .mcp.json)"
+          npm install --no-audit --no-fund
+          # also covers the signature database download that version guessing needs
+          echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query","arguments":{"code":"library(dplyr)\nx <- reframe(df)\nx","queries":[{"type":"static-slice","criteria":["3@x"]},{"type":"guess-dep-versions"}]}}}' \
+            | node index.js | tee out.json
+          grep -q 'x <- reframe(df)' out.json
+          grep -q 'dplyr  >=1.1.0' out.json
+
+      - name: "🚀 Publish (only new versions on main)"
+        if: github.ref == 'refs/heads/main'
+        # npm uses trusted publishing (OIDC), the registry verifies the package's `mcpName` and the namespace via OIDC
+        run: |
+          VERSION="$(jq -r .version package.json)"
+          if npm view "@eagleoutice/flowr-mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "Version $VERSION is already published"
+            exit 0
+          fi
+          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
+          npm publish --access public
+          curl -sSLo publisher.tar.gz "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz"
+          echo "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  publisher.tar.gz" | sha256sum -c
+          tar xzf publisher.tar.gz mcp-publisher
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

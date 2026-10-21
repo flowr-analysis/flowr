@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "flowr": {
+      "command": "npx",
+      "args": ["-y", "@eagleoutice/flowr-mcp@0.1.1"]
+    }
+  }
+}

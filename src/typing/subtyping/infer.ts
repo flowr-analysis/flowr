@@ -66,7 +66,11 @@ type UnresolvedTypeInfo = {
 };
 
 function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAst<Info>): NormalizedAst<Info & UnresolvedTypeInfo> {
-	return mapNormalizedAstInfo(ast, node => ({ ...node.info, typeVariable: new UnresolvedRTypeVariable() }));
+	return mapNormalizedAstInfo(ast, node => {
+		const typeVariable = new UnresolvedRTypeVariable();
+		if (node.info.fullLexeme) typeVariable.lexeme = node.info.fullLexeme;
+		return { ...node.info, typeVariable }
+	});
 }
 
 function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
@@ -204,7 +208,16 @@ class TypeInferringCfgGuidedVisitor<
 		const valueNode = this.getNormalizedAst(data.source);
 		guard(valueNode !== undefined, 'Expected AST node to be defined');
 
+		// INFO: it would make sense to only increase the lower bound
+		// of the binding, and not limits its upper bound,
+		// as we only need to be able to assign `typeVariable` to `target`,
+		// but we may still want to assign something else to `target` aswell.
+		// INFO: even without this change, the type inference system infers many
+		// types properly, even with typeR1's changed `subsumes`, so we leave it unchanged.
+		// this.constrainNodeType(data.target, { lowerBound: valueNode.info.typeVariable });
+		// INFO: typeR0
 		this.constrainNodeType(data.target, valueNode.info.typeVariable);
+		// i don't know what this does
 		this.constrainNodeType(data.call.id, valueNode.info.typeVariable);
 	}
 

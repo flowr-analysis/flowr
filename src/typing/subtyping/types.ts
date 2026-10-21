@@ -1,3 +1,4 @@
+import { inspect } from 'util';
 import { guard } from '../../util/assert';
 import type { SimpleType, DataType } from '../types';
 import { DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
@@ -112,6 +113,7 @@ export class UnresolvedRTypeVariable {
 	// readonly id = idCounter++;
 	readonly lowerBound: UnresolvedRTypeUnion;
 	readonly upperBound: UnresolvedRTypeIntersection;
+	public lexeme?: string;
 
 	constructor(lowerBounds: UnresolvedDataType[] = [], upperBounds: UnresolvedDataType[] = []) {
 		this.lowerBound = new UnresolvedRTypeUnion(...lowerBounds);
@@ -129,7 +131,9 @@ export class UnresolvedRTypeVariable {
  */
 export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable> = new Set()): boolean {
 	// console.debug('Constraining');
-	// console.debug('Constraining', inspect(subtype, { depth: null, colors: true }), 'to subsume', supertype instanceof UnresolvedRTypeVariable ? supertype.id : inspect(supertype, { depth: null, colors: true }));
+	// if ((subtype instanceof UnresolvedRTypeVariable && subtype.lexeme == "x") || (supertype instanceof UnresolvedRTypeVariable && supertype.lexeme == "x")) {
+	// 	console.debug('Constraining', inspect(subtype, { depth: null, colors: true }), 'to subsume', inspect(supertype, { depth: null, colors: true }));
+	// }
 
 	if(subtype === supertype) {
 		return false; // No need to constrain if both types are the same
@@ -199,6 +203,9 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
  * @param constraintCache - The recorded constraints.
  */
 export function prune(variable: UnresolvedRTypeVariable, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable>): boolean {
+	return false;
+}
+function pruneOg(variable: UnresolvedRTypeVariable, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable>): boolean {
 	// console.debug('Pruning');
 	// console.debug('Pruning variable', variable.id);
 
@@ -386,9 +393,16 @@ export function combine(lowerBound: DataType, upperBound: DataType): DataType {
 	} else if(lowerBound instanceof RAtomicVectorType && upperBound instanceof RAtomicVectorType) {
 		const elementType = combine(lowerBound.elementType, upperBound.elementType);
 		return new RAtomicVectorType(elementType);
+	// // more relaxed lowerBound return check
+	// } else if(subsumes(lowerBound, upperBound)) {
+	// 	// return lowerBound (union of possible values) *iff* upperBound (intersection of allowed values based on usage)
+	// 	// is a supertype of lowerBound, meaning all possible values are valid for all possible usages.
+	// 	return lowerBound;
+	// INFO: typeR0
 	} else if(subsumes(lowerBound, upperBound) && subsumes(upperBound, lowerBound)) {
 		return lowerBound; // If both types are the same, we return the upper bound
 	} else {
+		// with typeR1, this should never happen since it would require that lowerBound is not a subtype of upperBound (-> probable type error)
 		return new RTypeVariable(lowerBound, upperBound); // If the types are not compatible, we create a new variable type that combines both bounds
 	}
 }
@@ -421,7 +435,16 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 	if(subtype.tag === DataTypeTag.Error || supertype.tag === DataTypeTag.Error) {
 		result = false; // Error types do not subsume and are not subsumed by any other type
 	} else if(subtype.tag === DataTypeTag.Variable) {
-		result = subsumes(subtype.lowerBound, supertype, cache);
+		// NOTE: changed lower to upper bound in the `tag === DataTypeTag.Variable` case.
+		// this means that `var(A, B)` behaves like `B` in this method,
+		// if `var(A, B)` is passed as `subtype` or `supertype`.
+		// this may or may not be acceptable.
+		// the typeR0 state treated `var(A, B)` as `A` if it was `subtype`
+		// and as `B` if it was `supertype`, which made `var(none, any)`
+		// a subtype *and* supertype of (-> equal to) every type `T`.
+		result = subsumes(subtype.upperBound, supertype, cache);
+		// INFO: typeR0
+		// result = subsumes(subtype.lowerBound, supertype, cache);
 	} else if(supertype.tag === DataTypeTag.Variable) {
 		result = subsumes(subtype, supertype.upperBound, cache);
 	} else if(subtype.tag === DataTypeTag.Union) {

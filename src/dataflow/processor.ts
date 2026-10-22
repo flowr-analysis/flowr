@@ -67,6 +67,8 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * positional argument; the pipe processed it already, so {@link processAllArguments} skips it.
 	 */
 	readonly pipedArgument?:       { readonly rootId: NodeId, readonly argument: RArgument<OtherInfo & ParentInformation> }
+	/** Where the top-level statements of every file start and end running, see {@link DataflowGraph#statementOrder} */
+	readonly statementOrder?:      Map<NodeId, [start: number, end: number]>
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;

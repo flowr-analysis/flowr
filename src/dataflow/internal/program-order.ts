@@ -46,5 +46,11 @@ function statementsAfter(id: NodeId, statement: RNode<ParentInformation> | undef
 		return 0;
 	}
 	const other = RNode.topLevelStatement(node, idMap);
-	return other.info.parent === statement.info.parent ? other.info.index - statement.info.index : 0;
+	if(other.info.parent === statement.info.parent) {
+		return other.info.index - statement.info.index;
+	}
+	/* in another file, a statement is after one only if it starts once that one is done, and before only if it is done before that one starts */
+	const [start, end] = graph.statementOrder?.get(other.info.id) ?? [];
+	const [from, to] = graph.statementOrder?.get(statement.info.id) ?? [];
+	return start === undefined || end === undefined || from === undefined || to === undefined ? 0 : start >= to ? 1 : end <= from ? -1 : 0;
 }

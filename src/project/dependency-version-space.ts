@@ -427,11 +427,6 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 			continue;
 		}
 		const name = Identifier.getName(vertex.name);
-		// a call bound to a real definition (local, parameter, closure, or import) *is* that definition, not a package
-		// export; only an unresolved or builtin-modeled call can be an orphan (flowR models e.g. `ggplot` as a builtin)
-		if(Dataflow.origin(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
-			continue;
-		}
 		// a bare name from a default-attached base package (or a base primitive) is defined without a library() call
 		const baseOwner = baseRExportOwner(name);
 		if(baseOwner !== undefined && AttachedBasePackages.includes(baseOwner)) {
@@ -453,7 +448,10 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		const pkg = builtin ? mapped
 			: known.length === 1 ? known[0]
 				: known.length === 0 && providers.length > 0 && providers.length <= MaxOrphanProviders ? providers[0] : undefined;
-		if(pkg === undefined) {
+		// a call bound to a real definition (local, parameter, closure, or import) *is* that definition, not a package
+		// export; only an unresolved or builtin-modeled call can be an orphan (flowR models e.g. `ggplot` as a builtin).
+		// Resolving the call is what costs, so the cheaper checks above go first
+		if(pkg === undefined || Dataflow.origin(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
 			continue;
 		}
 		recordCallUsage(atKey(usage, pkg, (): PackageUsage => new Map()), name, vertex.args, id);

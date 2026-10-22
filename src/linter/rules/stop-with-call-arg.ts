@@ -111,7 +111,7 @@ export const STOP_WITH_CALL_ARG = {
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `\`stop()\` without \`call. = FALSE\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `\`stop()\` at ${SourceLocation.format(result.loc)} is called without \`call. = FALSE\`; the originating call is then appended to the error message, which is usually not intended - pass \`call. = FALSE\` to suppress it`,
+		[LintingPrettyPrintContext.Full]:  result => `\`stop()\` at ${SourceLocation.format(result.loc)} is called without \`call. = FALSE\`, so the error message names the call it was raised in, which is usually not intended. Pass \`call. = FALSE\` to leave it out.`,
 	},
 	info: {
 		name:          'Stop Without Call',

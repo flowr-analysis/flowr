@@ -152,8 +152,8 @@ export const PROBLEMATIC_INPUTS = {
 			if(result.pipeCommand !== undefined) {
 				return `Pipe command injection via '${result.pipeCommand}' in call to ${result.name} at ${SourceLocation.format(result.loc)}`;
 			}
-			const src = formatInputSources(result.sources ?? [], true).join('; ');
-			return 'Use of configured dynamic call at ' + SourceLocation.format(result.loc) + (src ? '; inputs: ' + src : '');
+			const src = formatInputSources(result.sources ?? [], true).join(', ');
+			return 'Use of configured dynamic call at ' + SourceLocation.format(result.loc) + (src ? ' with inputs ' + src : '');
 		},
 		[LintingPrettyPrintContext.Full]: result => {
 			const lines = formatInputSources(result.sources ?? [], false);

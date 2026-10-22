@@ -31,6 +31,9 @@ describe('flowR linter', withTreeSitter(parser => {
 				'f <- function() {\n function() { 42 } }\nprint(f()())',
 				'x <- list()\nx$a <- 2\nprint(x)',
 				'x <- new.env()\nx$a <- 2\nprint(x)',
+				/* a parameter may be an environment (a Shiny `output`), which a write changes for the caller as well */
+				'server <- function(input, output) { output$plot <- input$x }\nshiny::shinyApp(NULL, server)',
+				'e <- new.env()\nf <- function(x) { x$a <- 1 }\nf(e)',
 				/* the first `x <- 42` is *not* unused as it serves as an anchor for the global redefinition within the nested function! */
 				`f <- function() {
    x <- 42
@@ -91,6 +94,8 @@ print(x)`,
 				['function() { 42 }', '1@function', SourceRange.from(1, 1, 1, 17)],
 				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', undefined],
 				['f <- function(i) { tmp <- i * 2 }\nprint(f(2))', '1@tmp', undefined],
+				/* every call hands over a number, which is no environment, so the write is lost */
+				['f <- function(x) { x$a <- 1 }\nf(3)', '1:20', undefined],
 				['f <- function(v) { x <<- v * 2; 1 }\nf(2)', '1@x', SourceRange.from(1, 20, 1, 30)],
 				['f <- function(i) { tmp <- i * 2; 1 }\nprint(f(2))', '1@tmp', SourceRange.from(1, 20, 1, 31)],
 				['res <- tryCatch(log(-1), warning = function(w) { z <- 1; NA })\nprint(res)', '1@z', SourceRange.from(1, 50, 1, 55)],

@@ -10,8 +10,13 @@ import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
-import { describe } from 'vitest';
+import { Identifier, ReferenceType } from '../../../../../src/dataflow/environments/identifier';
+import { describe, expect, test } from 'vitest';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
+import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ExitPointType } from '../../../../../src/dataflow/info';
 
@@ -521,4 +526,31 @@ testFuncCorrect(1:5, sum)
 		emptyGraph().reads('2:32', '1@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['2:32', '2:15']] }
 	);
+	/* `f(2)` returns its own argument, so only `f(g)` hands back `g` */
+	assertDataflow(label('a parameter returned holds what its own call passes', ['name-normal', 'call-normal', 'formals-named', 'implicit-return']), ts,
+		'f <- function(x) x\ng <- function() 1\nh <- f(g)\nk <- f(2)\nh()\nk()',
+		emptyGraph().calls('5@h', '2@function'),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['6@k', '2@function']] }
+	);
+	/* a file runs only after the one before it is done, so what it defines is not there yet for that one */
+	test('a top-level call does not reach a method defined in a later file', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addFile(new FlowrInlineTextFile('a.R', 'x <- structure(list(2), class = "foo")\nx[[1]]\n'));
+		analyzer.addFile(new FlowrInlineTextFile('b.R', '"[[.foo" <- function(x, i) x\nx[[1]]\n'));
+		analyzer.addRequest({ request: 'file', content: 'a.R' }, { request: 'file', content: 'b.R' });
+		const graph = (await analyzer.dataflow()).graph;
+		const method = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionDefinition(v))?.[0];
+		const callsInFile = (file: string) => graph.vertices(true).filter(([id, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === '[['
+			&& graph.idMap?.get(id)?.info.file?.endsWith(file)).map(([id]) => Dataflow.hasEdge(graph, id, method ?? '', EdgeType.Calls)).toArray();
+		expect(callsInFile('a.R')).toEqual([false]);
+		expect(callsInFile('b.R')).toEqual([true]);
+	});
+	/* a call reads what `options()` wrote, but no function comes from there */
+	test('an unknown call does not call what it reads the options of', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addRequest('options(f = function() 1)\nunknownFn()');
+		const graph = (await analyzer.dataflow()).graph;
+		const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === 'unknownFn');
+		expect(call && Dataflow.callTargetsOf(call[0], graph)).toEqual([]);
+	});
 }));

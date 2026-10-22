@@ -37,6 +37,10 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		}
 
+		assertLinter('a file name built from the numbers of a loop is local', parser, 'for(i in 2000:2002) x <- read.csv(paste0(i, ".csv"))', 'network-functions', []);
+		assertLinter('a file name built from the strings of a loop is local', parser, 'for(i in c("a", "b")) x <- read.csv(paste0(i, ".csv"))', 'network-functions', []);
+		assertLinter('an address built from the strings of a loop is found', parser, 'for(h in c("a", "b")) x <- read.csv(paste0("https://", h, ".org"))', 'network-functions',
+			[{ certainty: LintingResultCertainty.Certain, function: 'utils::read.csv', loc: [1, 28, 1, 66] }]);
 		assertLinter('a local data source of an attached package', parser, 'library(rgdal)\nx <- readOGR("coastpolygon", "coastpolygon")', 'network-functions', []);
 		assertLinter('rvest selectors work on a parsed document', parser, 'library(rvest)\nhtml_text(html_nodes(doc, "a"))', 'network-functions', []);
 		assertLinter('rvest still fetches a constant URL it is handed to parse', parser, 'library(rvest)\nhtml_text(html_nodes(read_html("https://x.org"), "a"))', 'network-functions',

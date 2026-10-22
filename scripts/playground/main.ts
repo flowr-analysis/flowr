@@ -696,8 +696,75 @@ function ranked(options: readonly (Completion & { boost: number })[]): Completio
 	return unique.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
 }
 
-function complete(context: CompletionContext): CompletionResult | null {
-	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)) {
+/** `frame$col` and `frame[["col"`, with what is written of the column so far */
+const ColumnAccess = /([A-Za-z.][\w.]*)(\$|\[\[\s*["'])([\w. ]*)$/;
+
+/** the columns flowR knows the data frame named at `line`:`col` of the open file to have, the file analyzed as `code` */
+let columnsAsked: { code: string, at: string, columns: Promise<string[]> } | undefined;
+function columnsAt(code: string, line: number, col: number): Promise<string[]> {
+	const at = `${line}:${col}`;
+	if(columnsAsked?.code !== code || columnsAsked.at !== at) {
+		const columns = (async() => {
+			const answers = await (await analyzer(undefined, code)).query([{ type: 'absint', inference: 'df-shape', criteria: [at] }] as never) as unknown as { absint?: { result?: Map<string, unknown> } };
+			const shapes = answers.absint?.result instanceof Map ? [...answers.absint.result.values()] : [];
+			return uniqueArray(shapes.flatMap(shape => {
+				const names = (shape as { colnames?: { must?: Set<string>, may?: Set<string> } }).colnames;
+				return [...names?.must ?? [], ...names?.may ?? []];
+			}));
+		})().catch(() => []);
+		columnsAsked = { code, at, columns };
+	}
+	return columnsAsked.columns;
+}
+
+/** the columns to offer after `frame$` or `frame[["`, which the analysis of the script without the access knows */
+async function completeColumn(context: CompletionContext, access: { from: number, text: string }): Promise<CompletionResult | null> {
+	const [, frame, how, written] = ColumnAccess.exec(access.text) ?? [];
+	const nameEnd = access.from + frame.length;
+	const doc = context.state.doc;
+	const line = doc.lineAt(access.from);
+	const columns = await columnsAt(doc.sliceString(0, nameEnd) + doc.sliceString(context.pos), line.number, access.from - line.from + 1);
+	const quoted = how !== '$';
+	return columns.length === 0 ? null : {
+		from:    context.pos - written.length,
+		options: columns.map(name => ({
+			label:  name,
+			apply:  quoted || /^[A-Za-z.][\w.]*$/.test(name) ? name : `\`${name}\``,
+			type:   'property',
+			detail: `column of ${frame}`
+		}))
+	};
+}
+
+/** the call whose parentheses hold `pos`, by its name, if any */
+function callAround(text: string, pos: number): string | undefined {
+	let depth = 0;
+	for(let at = pos - 1; at >= Math.max(0, pos - 2000); at--) {
+		const char = text[at];
+		if(char === ')' || char === ']' || char === '}') {
+			depth++;
+		} else if(char === '(' || char === '[' || char === '{') {
+			if(depth === 0) {
+				return char === '(' ? /([A-Za-z.][\w.]*(?::{2,3}[A-Za-z.][\w.]*)?)\s*$/.exec(text.slice(Math.max(0, at - 200), at))?.[1] : undefined;
+			}
+			depth--;
+		}
+	}
+	return undefined;
+}
+
+/** the parameters of the function `called`, as far as the page knows its signature */
+function parametersOf(called: string): string[] {
+	const [pkg, name] = called.includes('::') ? called.split(/:{2,3}/) : [undefined, called];
+	const call = signatureOf(name, ownerOf(name, pkg))?.call ?? '';
+	const params = call.slice(call.indexOf('(') + 1, call.lastIndexOf(')'));
+	return call.includes('(') ? [...params.matchAll(/(?:^|,\s*)([A-Za-z.][\w.]*)(?=\s*(?:=|,|$))/g)].map(m => m[1]).filter(p => p !== '...') : [];
+}
+
+function complete(context: CompletionContext): CompletionResult | null | Promise<CompletionResult | null> {
+	/* a comment is prose, so nothing there completes */
+	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)
+		|| /comment/i.test(syntaxTree(context.state).resolveInner(context.pos, -1).name)) {
 		return null;
 	}
 	const qualified = Qualified.exec(context.matchBefore(/[A-Za-z.][\w.]*:{2,3}[\w._]*/)?.text ?? '');
@@ -708,6 +775,10 @@ function complete(context: CompletionContext): CompletionResult | null {
 			from:    context.pos - written.length,
 			options: ranked(exported.map(label => offer(label, written, { pkg, type: 'function', detail: `${pkg}${colons}`, siblings: exportsOf(pkg) })))
 		};
+	}
+	const access = context.matchBefore(ColumnAccess);
+	if(access !== null) {
+		return completeColumn(context, access);
 	}
 	const loading = Loading.exec(context.matchBefore(Loading)?.text ?? '');
 	if(loading !== null) {
@@ -724,15 +795,19 @@ function complete(context: CompletionContext): CompletionResult | null {
 	/* only what R would find at this position: what the script binds, what it attached, and the rest of
 	   the search path. A package name is not bound to anything, so it belongs in `library()` alone */
 	const needle = word.text;
-	const defined = uniqueArray([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
+	const text = context.state.doc.toString();
+	const defined = uniqueArray([...text.matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
+	/* right after `(` or `,` of a call, the parameters of what it calls come first */
+	const called = /[(,]\s*$/.test(text.slice(Math.max(0, word.from - 200), word.from)) ? callAround(text, word.from) : undefined;
+	const named = called === undefined ? [] : parametersOf(called).filter(p => p.startsWith(needle)).map(p => ({ label: p, apply: `${p} = `, type: 'property', detail: `argument of ${called}`, boost: 99 }));
 	return {
 		from:    word.from,
-		options: ranked([
+		options: [...named, ...ranked([
 			...defined.map(label => offer(label, needle, { type: 'variable', detail: 'in this script' })),
 			/* what the script attached is nearer than what flowR knows without it */
 			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
 			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
-		])
+		])]
 	};
 }
 
@@ -1411,10 +1486,12 @@ function showFiles(): void {
 	fileBar.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 	treeToggle.title = `${tree.hidden ? 'show' : 'hide'} the ${files.length === 1 ? 'file' : `${files.length} files`} of the project`;
 	const shown = new Set<string>();
-	const rows = files.map((file, at) => ({ file, at, folders: file.name.split('/') }))
-		.sort((a, b) => a.file.name.localeCompare(b.file.name))
+	/* a folder made with nothing in it yet shows as well, sorted in where a file of it would be */
+	const entries = [...files.map((file, at) => ({ path: file.name, file, at })), ...[...emptyFolders].map(path => ({ path: `${path}/`, file: undefined, at: -1 }))];
+	const rows = entries.map(entry => ({ ...entry, folders: entry.path.split('/') }))
+		.sort((a, b) => a.path.localeCompare(b.path))
 		.flatMap(({ file, at, folders }) => {
-			const name = folders.pop() ?? file.name;
+			const name = folders.pop() ?? '';
 			const heads = folders.map((folder, depth) => [folders.slice(0, depth + 1).join('/'), folder, depth] as const)
 				.filter(([path]) => !shown.has(path) && shown.add(path))
 				.filter(([path]) => !foldedFolders.has(path.split('/').slice(0, -1).join('/')))
@@ -1422,9 +1499,10 @@ function showFiles(): void {
 					const row = treeRow('folder', folder, depth, false, [['+', `a new file in ${path}/`, () => newFile(`${path}/`)]]);
 					row.classList.toggle('folded', foldedFolders.has(path));
 					row.addEventListener('click', () => (foldedFolders.has(path) ? foldedFolders.delete(path) : foldedFolders.add(path), showFiles()));
+					takesFiles(row, path);
 					return row;
 				});
-			if(folders.some((_, depth) => foldedFolders.has(folders.slice(0, depth + 1).join('/')))) {
+			if(file === undefined || folders.some((_, depth) => foldedFolders.has(folders.slice(0, depth + 1).join('/')))) {
 				return heads;
 			}
 			const row = treeRow('file', name, folders.length, !onConfig && at === active, [
@@ -1432,6 +1510,8 @@ function showFiles(): void {
 				...files.length > 1 ? [['\u00D7', `remove ${file.name} from the project`, () => removeFile(at)] as const] : []
 			]);
 			row.title = file.name;
+			row.draggable = true;
+			row.addEventListener('dragstart', event => event.dataTransfer?.setData(MovedFile, String(at)));
 			row.addEventListener('click', () => (openFile(at), showTab(false)));
 			row.addEventListener('contextmenu', event => (event.preventDefault(), openMenu(row, fileMenu(at))));
 			return [...heads, row];
@@ -1456,6 +1536,48 @@ function showFiles(): void {
 }
 
 const foldedFolders = new Set<string>();
+/** folders made in the tree that hold no file yet, which only exist on this page until one is put in */
+const emptyFolders = new Set<string>();
+
+/** the drag of a file of the tree, which a folder (or the top of the tree) takes in */
+const MovedFile = 'application/x-flowr-file';
+function takesFiles(row: HTMLElement, folder: string): void {
+	row.addEventListener('dragover', event => {
+		if(event.dataTransfer?.types.includes(MovedFile)) {
+			event.preventDefault();
+			row.classList.add('droptarget');
+		}
+	});
+	row.addEventListener('dragleave', () => row.classList.remove('droptarget'));
+	row.addEventListener('drop', event => {
+		const at = Number(event.dataTransfer?.getData(MovedFile));
+		row.classList.remove('droptarget');
+		if(event.dataTransfer?.types.includes(MovedFile) && files[at] !== undefined) {
+			event.preventDefault();
+			event.stopPropagation();
+			moveFile(at, folder);
+		}
+	});
+}
+
+/** puts the file into `folder`, `''` being the top of the project */
+function moveFile(at: number, folder: string): void {
+	const name = `${folder === '' ? '' : `${folder}/`}${files[at].name.split('/').pop() ?? files[at].name}`;
+	if(name !== files[at].name && nameAccepted(name, at)) {
+		rename(at, name);
+		emptyFolders.delete(folder);
+	}
+}
+
+function newFolder(): void {
+	const name = prompt('name of the new folder, nested ones separated by /', 'R')?.trim().replace(Leading, '').replace(/\/+$/, '');
+	if(name === undefined || name === '' || name.split('/').some(part => part === '' || part === '..')) {
+		return;
+	}
+	emptyFolders.add(name);
+	foldedFolders.delete(name);
+	showFiles();
+}
 
 /** whether the files are one of the examples as it opened, which nobody minds losing */
 function pristineExample(): boolean {
@@ -1489,6 +1611,10 @@ function renameFile(at: number): void {
 	if(name === undefined || name === files[at].name || !nameAccepted(name, at)) {
 		return;
 	}
+	rename(at, name);
+}
+
+function rename(at: number, name: string): void {
 	openFile(active, () => {
 		files[at].name = name;
 		files[at].state = files[at].state.update({ effects: fileKind.reconfigure(kindOf(name)) }).state;
@@ -1515,6 +1641,12 @@ function fileMenu(at: number): readonly MenuEntry[] {
 	return [
 		files[at].name,
 		{ label: 'Rename...', run: () => renameFile(at) },
+		{ label: 'Move to folder...', title: 'empty for the top of the project', run:   () => {
+			const folder = prompt('move to the folder, empty for the top of the project', files[at].name.split('/').slice(0, -1).join('/'))?.trim().replace(Leading, '').replace(/\/+$/, '');
+			if(folder !== undefined) {
+				moveFile(at, folder);
+			}
+		} },
 		...files.length > 1 ? [{ label: 'Remove', run: () => removeFile(at) }] : [],
 		'', { label: 'New file next to it...', run: () => newFile(files[at].name.replace(/[^/]*$/, '')) }
 	];
@@ -1578,9 +1710,11 @@ window.addEventListener('resize', closeMenu);
 const addButton = document.getElementById('addfile') as HTMLElement;
 addButton.addEventListener('click', () => openMenu(addButton, [
 	{ label: 'New file...', title: 'folders separated by /, as in R/clean.R', run: () => newFile() },
+	{ label: 'New folder...', title: 'drag files onto a folder to move them there', run: () => newFolder() },
 	{ label: 'Upload files...', title: 'R scripts, R Markdown, Quarto, Jupyter notebooks, or a zip of them', run: () => pickers[0].click() },
 	{ label: 'Upload folder...', title: 'every R script and notebook below a folder', run: () => pickers[1].click() }
 ]));
+takesFiles(treeHead, '');
 showFiles();
 
 const pane = fileBar.closest('.pane') as HTMLElement;
@@ -2140,7 +2274,7 @@ function packageSource(): FlowrAnalyzerPackageVersionsSigDbPlugin | undefined {
 const packages = packageSource();
 
 let ready: Promise<void> | undefined;
-async function analyzer(code?: string) {
+async function analyzer(code?: string, open?: string) {
 	ready ??= TreeSitterExecutor.initTreeSitter(undefined, rWasm, treeSitterWasm);
 	await ready;
 	const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
@@ -2155,7 +2289,8 @@ async function analyzer(code?: string) {
 	if(code !== undefined) {
 		built.addRequest({ request: 'text', content: code });
 	} else {
-		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, text)));
+		/* `open` stands in for the open file, as it is about to be rather than as it is */
+		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, open !== undefined && name === files[active].name ? open : text)));
 		built.addRequest(...files.filter(f => Analyzed.test(f.name)).map(f => ({ request: 'file' as const, content: f.name })));
 	}
 	return built;
@@ -2851,7 +2986,8 @@ async function analyze(): Promise<number> {
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'a click goes there, alt-click highlights this finding in the link';
 		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
-		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}`;
+		/* one rule may report several findings on a line (two undefined names in one call), so the column and message tell them apart */
+		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}:${f.loc?.[1] ?? ''}:${f.message}`;
 		line.addEventListener('click', event => {
 			if(event.altKey || (event.target as HTMLElement).closest('.lintmore') !== null) {
 				return;

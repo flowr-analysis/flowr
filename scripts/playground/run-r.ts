@@ -6,6 +6,7 @@
 import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
 import { el } from '../page-lib/dom';
+import { compressToEncodedURIComponent } from 'lz-string';
 
 
 /**
@@ -172,6 +173,30 @@ export interface RunInput {
 	readonly code:  string
 	readonly files: readonly (readonly [string, string])[]
 	readonly fresh: boolean
+}
+
+/**
+ * Shiny needs a web server, which Shinylive runs in the browser, in a tab of its own: its service worker, which a
+ * browser may refuse a frame of another site, always runs there. The project goes into a folder of its own, started
+ * from a generated `app.R`, so its own `app.R` and relative paths keep working. The files travel in the URL fragment,
+ * which no server sees.
+ */
+function shinyApp({ code, files }: RunInput): string | undefined {
+	if(!/\bshinyApp\s*\(/.test(code)) {
+		return undefined;
+	}
+	/* code no file holds, like a notebook cell, gets a free file name */
+	const named = files.find(([, text]) => text === code)?.[0];
+	let script = named ?? 'run.R';
+	for(let i = 1; named === undefined && files.some(([name]) => name === script); i++) {
+		script = `run-${i}.R`;
+	}
+	const project = named === undefined ? [...files, [script, code] as const] : files;
+	const app = [
+		{ name: 'app.R', content: `shiny::shinyAppFile(${JSON.stringify(`project/${script}`)})` },
+		...project.map(([name, content]) => ({ name: `project/${name}`, content }))
+	];
+	return `https://shinylive.io/r/app/#h=0&code=${compressToEncodedURIComponent(JSON.stringify(app))}`;
 }
 
 async function provideFiles(s: Session, { files, fresh }: RunInput): Promise<void> {
@@ -430,6 +455,27 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		const begin = performance.now();
 		try {
 			const input = await what();
+			const app = shinyApp(input);
+			card.classList.toggle('shiny', app !== undefined);
+			if(app !== undefined) {
+				if(title !== null && into === undefined) {
+					title.textContent = 'Shiny app';
+				}
+				const opened = window.open(app, '_blank');
+				if(opened !== null) {
+					opened.opener = null;
+				}
+				const tab = el('a', undefined, opened === null ? 'Open the app in a new tab' : 'open it again');
+				tab.href = app;
+				tab.target = '_blank';
+				tab.rel = 'noopener';
+				const note = el('div', 'note meta');
+				note.append(...opened === null ? [tab, '.'] : ['The app opened in a new tab (', tab, ').'],
+					' Shinylive first downloads R and the packages, which takes 10 to 30 seconds. The playground does not check these downloads.');
+				sink.append(note);
+				done('');
+				return undefined;
+			}
 			const { said, took } = await evaluate(input.code, () => packagesOf(), {
 				line,
 				plot:   canvas => sink.append(canvas),

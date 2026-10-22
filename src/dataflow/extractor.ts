@@ -336,7 +336,8 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 		const other = pathOf(b);
 		return path === undefined || other === undefined || path === other;
 	};
-	const prints = (id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]);
+	/* each added edge clears the graph's cached call names, but none of these edges changes what a call targets */
+	const prints = memoize((id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]));
 	let cfg: ControlFlowGraph | undefined;
 	for(const reader of readers) {
 		let before: ReadonlySet<NodeId> | undefined;
@@ -470,6 +471,7 @@ function extractDataFlowGraph<OtherInfo>(
 		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		cds:            undefined,
 		referenceChain: [files[0].filePath],
+		statementOrder: new Map(),
 		ctx
 	};
 	let df = guardNesting('Dataflow analysis', files[0].filePath, () => processDataflowFor<OtherInfo>(files[0].root, dfData));
@@ -482,6 +484,7 @@ function extractDataFlowGraph<OtherInfo>(
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
 	callActiveBindings(df.graph);
 	readFramesThroughEnvironment(df.graph);
+	df.graph.statementOrder = dfData.statementOrder;
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
 	/* carried across the rounds, so a definition already folded in does not read as growth again */

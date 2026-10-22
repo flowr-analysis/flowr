@@ -605,7 +605,8 @@ const analyzers = new WeakMap<KnownParser, Map<string, Promise<FlowrAnalyzer>>>(
 function analyzerFor(parser: KnownParser, code: string): Promise<FlowrAnalyzer> {
 	const known = analyzers.get(parser) ?? new Map<string, Promise<FlowrAnalyzer>>();
 	analyzers.set(parser, known);
-	const analyzer = known.get(code) ?? new FlowrAnalyzerBuilder().setParser(parser).build().then(a => (a.addRequest(code), a));
+	const analyzer = known.get(code) ?? new FlowrAnalyzerBuilder()
+		.setParser(parser).build().then(a => (a.addRequest(code), a));
 	known.set(code, analyzer);
 	return analyzer;
 }

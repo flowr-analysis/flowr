@@ -97,6 +97,30 @@ function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyze
 	return names;
 }
 
+/** the calls binding the name they are handed as a string, which flowR does not link to the reads of that name */
+const NameBindingFunctions = new Set(['assign', 'delayedAssign']);
+
+/**
+ * The names bound by the `assign(name, value)` calls of the code, as far as flowR resolves `name`:
+ * `assign(paste0("year", i), ...)` in a loop over `2000:2025` binds `year2000` to `year2025`.
+ */
+function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<string> {
+	const names = new Set<string>();
+	for(const [, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const [name, ns] = Identifier.toArray(vertex.name);
+		if(!NameBindingFunctions.has(name) || (ns !== undefined && ns !== 'base')) {
+			continue;
+		}
+		const values = getArgumentStringValue(ctx.config.solver.variables, graph, vertex, 0, 'x', true, ctx);
+		for(const str of values?.values().flatMap(v => [...v]) ?? []) {
+			if(str !== undefined) {
+				names.add(str);
+			}
+		}
+	}
+	return names;
+}
+
 /** calls that load a package; an unresolved one means we cannot enumerate all exports in scope */
 const LibraryLoadFunctions = new Set(['library', 'require', 'requireNamespace', 'loadNamespace', 'attachNamespace', 'load_all', 'use', 'p_load']);
 
@@ -158,6 +182,7 @@ export const UNDEFINED_SYMBOL = {
 
 		// names a package declares global (`utils::globalVariables`) are no undefined symbols to R CMD check either
 		const declaredGlobals = declaredGlobalVariables(graph, ctx);
+		const boundByAssign = assignedNames(graph, ctx);
 
 		// scope-defined names, a fallback for closure variables flowR's dataflow did not statically link
 		const scopeDefined = collectScopeDefinedNames(graph);
@@ -216,7 +241,7 @@ export const UNDEFINED_SYMBOL = {
 				return suppress('declaredGlobal');
 			}
 			// forward-referenced closure binding flowR's dataflow did not link (unconditional bindings only)
-			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name)) {
+			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name) || (kind === 'variable' && namespace === undefined && boundByAssign.has(name))) {
 				return suppress('enclosingScope');
 			}
 			// consumed by non-standard evaluation (quoting), hence not an ordinary read
@@ -275,8 +300,8 @@ export const UNDEFINED_SYMBOL = {
 			const where = SourceLocation.format(result.loc);
 			if(result.availableInPackages && result.availableInPackages.length > 0) {
 				const pkgs = result.availableInPackages.map(p => `\`${p}\``).join(', ');
-				const hint = result.availableInPackages.length === 1 ? `\`library(${result.availableInPackages[0]})\`` : `one of ${pkgs}`;
-				return `\`${result.name}\` at ${where} is used but not defined; it is exported by ${pkgs} - did you forget to load it (e.g. ${hint})?`;
+				const hint = result.availableInPackages.length === 1 ? `with \`library(${result.availableInPackages[0]})\`` : 'from one of them';
+				return `\`${result.name}\` at ${where} is used but not defined. It is exported by ${pkgs}, so it may only need loading, for example ${hint}.`;
 			}
 			return result.kind === 'function'
 				? `\`${result.name}\` at ${where} is called but is neither defined locally, a base R builtin, nor exported by a loaded package`

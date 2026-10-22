@@ -31,6 +31,10 @@ describe('flowR linter', withTreeSitter(parser => {
 
 			// an unresolved library could export any bare name, so nothing is guessed
 			assertLinter('not flagged when an unknown library is loaded', parser, 'library(somePkg)\nfoo()', 'undefined-symbol', []);
+			assertLinter('a name bound by assign in a loop is defined', parser, 'for(i in 2000:2002) assign(paste0("year", i), 1)\nprint(year2001)',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a name outside what assign binds is flagged', parser, 'for(i in 2000:2002) assign(paste0("year", i), 1)\nprint(year2005)',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'year2005', kind: 'variable', loc: [2, 7, 2, 14] }], undefined, { sigDb: baseSigDb, checkVariables: true });
 			assertLinter('a data set of datasets is defined', parser, 'summary(iris)\nhead(mtcars)', 'undefined-symbol', []);
 			assertLinter('a namespaced name is still checked', parser, 'library(somePkg)\nfoo()\nbase::fooo()', 'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'fooo', kind: 'function', loc: [3, 1, 3, 12] }]);
 		});

@@ -198,7 +198,98 @@ function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 export type CellRunner = (code: string, title: string, into?: HTMLElement, fresh?: boolean) => Promise<number | undefined>;
 type CellRuns = (view: EditorView, picked: readonly Cell[], cells: readonly Cell[], fresh?: boolean) => Promise<void>;
 /** opens the page's menu under `anchor`; a string is a heading */
-export type CellMenu = (anchor: HTMLElement, entries: readonly (string | { readonly label: string, readonly checked: boolean, readonly run: () => void })[]) => void;
+export type CellMenu = (anchor: HTMLElement, entries: readonly (string | { readonly label: string, readonly checked?: boolean, readonly run: () => void })[]) => void;
+
+/** adds a cell of `kind` at the line end `at` */
+function insertCell(view: EditorView, markdown: boolean, at: number, kind: 'code' | 'text'): void {
+	const [text, cursor] = newCell(markdown, kind);
+	view.dispatch({ changes: { from: at, insert: text }, selection: { anchor: at + cursor } });
+	view.focus();
+}
+
+/** removes the cell whose head is the line `head`, with its marker or fences */
+function removeCell(view: EditorView, markdown: boolean, head: number | undefined): void {
+	const cell = cellsOf(view.state, markdown).find(c => c.head === head);
+	if(cell === undefined) {
+		return;
+	}
+	const doc = view.state.doc;
+	const first = doc.line(cell.head ?? cell.from), last = doc.line(Math.min(doc.lines, cell.tail ?? cell.to));
+	/* the line break before the cell goes with it, or the one after it for the first cell */
+	view.dispatch({ changes: first.number > 1 ? { from: first.from - 1, to: last.to } : { from: first.from, to: Math.min(doc.length, last.to + 1) } });
+	view.focus();
+}
+
+/** what a cell shows under the pointer: a button removing it */
+function cellEdits(view: EditorView, markdown: boolean, head: number | undefined): HTMLElement {
+	const edits = el('span', 'cm-cell-edit');
+	const remove = button('cm-cell-remove', 'remove', 'remove this cell (ctrl+z brings it back)', () => removeCell(view, markdown, head));
+	remove.addEventListener('mousedown', event => event.preventDefault());
+	edits.append(remove);
+	return edits;
+}
+
+/** a thin row between cells and at the end, which offers to add a cell there under the pointer */
+class Inserter extends WidgetType {
+	constructor(readonly at: number, readonly markdown: boolean) {
+		super();
+	}
+	eq(other: Inserter): boolean {
+		return other.at === this.at;
+	}
+	toDOM(view: EditorView): HTMLElement {
+		const row = el('div', 'cm-cell-insert');
+		const hit = el('div', 'cm-cell-insert-hit');
+		for(const kind of ['code', 'text'] as const) {
+			const add = button('cm-cell-add', `+ ${kind}`, `add a ${kind} cell here`, () => insertCell(view, this.markdown, this.at, kind));
+			add.addEventListener('mousedown', event => event.preventDefault());
+			hit.append(add);
+		}
+		row.append(hit);
+		return row;
+	}
+	ignoreEvent(): boolean {
+		return true;
+	}
+}
+
+/** the inserters after every cell and at the end of the document */
+function inserters(markdown: boolean): Extension {
+	const build = (state: EditorState) => {
+		const doc = state.doc;
+		const ends = new Set([...cellsOf(state, markdown).map(c => doc.line(Math.min(doc.lines, c.tail ?? c.to)).to), doc.length]);
+		return Decoration.set([...ends].map(at => Decoration.widget({ widget: new Inserter(at, markdown), block: true, side: 1 }).range(at)), true);
+	};
+	return StateField.define<DecorationSet>({
+		create:  build,
+		update:  (found, tr) => tr.docChanged ? build(tr.state) : found,
+		provide: field => EditorView.decorations.from(field)
+	});
+}
+
+/** the edit tools of a cell without a run button, a text cell of a notebook */
+class EditTools extends WidgetType {
+	constructor(readonly head: number, readonly markdown: boolean) {
+		super();
+	}
+	eq(other: EditTools): boolean {
+		return other.head === this.head;
+	}
+	toDOM(view: EditorView): HTMLElement {
+		const tools = el('span', 'cm-cell-tools');
+		tools.append(cellEdits(view, this.markdown, this.head));
+		return tools;
+	}
+	ignoreEvent(): boolean {
+		return true;
+	}
+}
+
+/** the text a new cell below another one starts with, and where the cursor goes in it */
+function newCell(markdown: boolean, kind: 'code' | 'text'): [text: string, cursor: number] {
+	const text = markdown ? kind === 'code' ? '\n\n```{r}\n\n```' : '\n\n' : kind === 'code' ? '\n# %%\n' : '\n# %% [markdown]\n# ';
+	return [text, markdown && kind === 'code' ? text.length - 4 : text.length];
+}
 
 /** runs the whole notebook cell by cell, `undefined` for a file without code cells */
 export const NotebookRun = Facet.define<(view: EditorView, fresh: boolean) => Promise<void> | undefined>();
@@ -336,7 +427,7 @@ class CellLabel extends WidgetType {
 }
 
 class RunButton extends WidgetType {
-	constructor(readonly cell: Cell, readonly note: string, readonly markdown: boolean, readonly runs: CellRuns, readonly menu: CellMenu, readonly took?: number) {
+	constructor(readonly cell: Cell, readonly note: string, readonly markdown: boolean, readonly editable: boolean, readonly runs: CellRuns, readonly menu: CellMenu, readonly took?: number) {
 		super();
 	}
 	eq(other: RunButton): boolean {
@@ -344,6 +435,9 @@ class RunButton extends WidgetType {
 	}
 	toDOM(view: EditorView): HTMLElement {
 		const tools = el('span', 'cm-cell-tools');
+		if(this.editable) {
+			tools.append(cellEdits(view, this.markdown, this.cell.head));
+		}
 		if(this.note !== '') {
 			tools.append(el('span', 'cm-cell-note', this.note));
 		}
@@ -392,7 +486,7 @@ class RunButton extends WidgetType {
 	}
 }
 
-function decorate(view: EditorView, markdown: boolean, runs: CellRuns, menu: CellMenu, took: ReadonlyMap<number, number>): DecorationSet {
+function decorate(view: EditorView, markdown: boolean, editable: boolean, runs: CellRuns, menu: CellMenu, took: ReadonlyMap<number, number>): DecorationSet {
 	const doc = view.state.doc;
 	const cells = cellsOf(view.state, markdown);
 	const found: Range<Decoration>[] = [];
@@ -414,7 +508,9 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, menu: Cel
 			inCell.add(cell.head);
 			if(cell.kind === 'code' && cell.head <= doc.lines) {
 				const note = markdown ? titleOf(cell, cells) : cell.label;
-				found.push(Decoration.widget({ widget: new RunButton(cell, note, markdown, runs, menu, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.head).to));
+				found.push(Decoration.widget({ widget: new RunButton(cell, note, markdown, editable, runs, menu, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.head).to));
+			} else if(editable && cell.kind === 'text' && cell.head <= doc.lines) {
+				found.push(Decoration.widget({ widget: new EditTools(cell.head, markdown), side: 1 }).range(doc.line(cell.head).to));
 			}
 		}
 		for(let line = cell.from; line <= cell.to; line++) {
@@ -443,9 +539,12 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, menu: Cel
 /** the cell decorations of a notebook, each code cell runnable with `run` */
 export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Extension {
 	const markdown = isMarkdownDocument(name);
+	/* cells are added and removed in a notebook, a script keeps its `# %%` marks as the author wrote them */
+	const editable = markdown || /\.ipynb\.r$/i.test(name);
 	const { runs, shown, took } = cellRunning(markdown, run);
 	return [
 		shown,
+		editable ? inserters(markdown) : [],
 		NotebookRun.of((view, fresh) => {
 			const cells = cellsOf(view.state, markdown);
 			return cells.some(c => c.kind === 'code') ? runs(view, cells, cells, fresh) : undefined;
@@ -453,11 +552,11 @@ export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Ex
 		ViewPlugin.fromClass(class {
 			decorations: DecorationSet;
 			constructor(view: EditorView) {
-				this.decorations = decorate(view, markdown, runs, menu, took);
+				this.decorations = decorate(view, markdown, editable, runs, menu, took);
 			}
 			update(update: ViewUpdate) {
 				if(update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(outputsChanged)))) {
-					this.decorations = decorate(update.view, markdown, runs, menu, took);
+					this.decorations = decorate(update.view, markdown, editable, runs, menu, took);
 				}
 			}
 		}, { decorations: plugin => plugin.decorations }),
@@ -492,16 +591,36 @@ const cellLook = EditorView.theme({
 		/* indented, not padded: the selection would draw every line with the padding of one */
 		textIndent:      '.5rem'
 	},
-	'.cm-cell-text.cm-cell-head': { fontFamily: 'inherit', opacity: '.55', lineHeight: '1.4' },
-	'.cm-cell-text.cm-cell-end':  { paddingBottom: '.35rem' },
-	'.cm-cell-meta':              { backgroundColor: 'color-mix(in srgb, var(--sunk) 85%, transparent)', boxShadow: 'inset 3px 0 0 var(--border)' },
-	'.cm-cell-off':               { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 var(--border)', opacity: '.6' },
-	'.cm-cell-head':              { borderTop: '1px solid var(--border)', fontSize: '.85em' },
-	'.cm-cell-tail':              { fontSize: '.85em' },
-	'.cm-cell-end':               { borderBottom: '1px solid var(--border)' },
-	'.cm-cell-tools':             { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem', position: 'relative', top: '.35rem' },
-	'.cm-cell-took':              { fontFamily: 'system-ui, sans-serif', fontSize: '.68rem', color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' },
-	'.cm-cell-skipped':           {
+	'.cm-cell-text.cm-cell-head':                                    { fontFamily: 'inherit', opacity: '.55', lineHeight: '1.4' },
+	'.cm-cell-text.cm-cell-end':                                     { paddingBottom: '.35rem' },
+	'.cm-cell-meta':                                                 { backgroundColor: 'color-mix(in srgb, var(--sunk) 85%, transparent)', boxShadow: 'inset 3px 0 0 var(--border)' },
+	'.cm-cell-off':                                                  { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 var(--border)', opacity: '.6' },
+	'.cm-cell-head':                                                 { borderTop: '1px solid var(--border)', fontSize: '.85em' },
+	'.cm-cell-tail':                                                 { fontSize: '.85em' },
+	'.cm-cell-end':                                                  { borderBottom: '1px solid var(--border)' },
+	'.cm-cell-tools':                                                { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem', position: 'relative', top: '.35rem' },
+	/* the edit tools only show under the pointer, or while one of them has the focus */
+	'.cm-cell-edit':                                                 { display: 'inline-flex', gap: '.25rem', visibility: 'hidden' },
+	'.cm-cell-head:hover .cm-cell-edit, .cm-cell-edit:focus-within': { visibility: 'visible' },
+	/* the row takes no room, so the text never moves: a thin band across the boundary offers to add a cell, fading in as in VS Code */
+	'.cm-cell-insert':                                               { position: 'relative', height: '0', zIndex: '1' },
+	'.cm-cell-insert-hit':                                           { position: 'absolute', left: '0', right: '0', top: '-.3rem', height: '.6rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '.4rem' },
+	'.cm-cell-insert-hit::before':                                   {
+		content:    '""', position:   'absolute', left:       '0', right:      '0', top:        '50%', borderTop:  '1px solid var(--accent)',
+		opacity:    '0', transition: 'opacity .18s ease-out'
+	},
+	'.cm-cell-insert-hit .cm-cell-add':                                                      { position: 'relative', opacity: '0', transform: 'scale(.6)', transition: 'opacity .18s ease-out, transform .18s cubic-bezier(.2, .8, .3, 1.2)' },
+	'.cm-cell-insert-hit:hover::before, .cm-cell-insert-hit:focus-within::before':           { opacity: '.5' },
+	'.cm-cell-insert-hit:hover .cm-cell-add, .cm-cell-insert-hit:focus-within .cm-cell-add': { opacity: '1', transform: 'scale(1)' },
+	'@media (prefers-reduced-motion: reduce)':                                               { '.cm-cell-insert-hit .cm-cell-add, .cm-cell-insert-hit::before': { transition: 'none' } },
+	'.cm-cell-add, .cm-cell-remove':                                                         {
+		fontFamily:   'system-ui, sans-serif', fontSize:     '.68rem', lineHeight:   '1.5', cursor:       'pointer', color:        'var(--muted)',
+		background:   'var(--panel)', border:       '1px solid var(--border)', borderRadius: '1rem', padding:      '0 .45rem'
+	},
+	'.cm-cell-add:hover':    { color: 'var(--accent)', borderColor: 'var(--accent)' },
+	'.cm-cell-remove:hover': { color: '#d55e00', borderColor: '#d55e00' },
+	'.cm-cell-took':         { fontFamily: 'system-ui, sans-serif', fontSize: '.68rem', color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' },
+	'.cm-cell-skipped':      {
 		fontFamily:   'system-ui, sans-serif', fontSize:     '.68rem', fontStyle:    'italic', color:        'var(--muted)',
 		padding:      '0 .4rem', border:       '1px dashed var(--border)', borderRadius: '1rem'
 	},

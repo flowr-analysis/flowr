@@ -52,7 +52,8 @@ function analyzeInWorker() {
 			try {
 				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).configure('ignoreSourceCalls', overHttp).build();
 				analyzer.addRequest(...(overHttp ? [] : files).map((/** @type {string} */ f) => `file://${path.resolve(f)}`), ...(code ? [{ request: /** @type {const} */ ('text'), content: code }] : []));
-				parentPort?.postMessage(answer(await asciiSummaryOfQueryResult(voidFormatter, 0, await analyzer.query(queries), analyzer, queries)));
+				const summary = await asciiSummaryOfQueryResult(voidFormatter, 0, await analyzer.query(queries), analyzer, queries);
+					parentPort?.postMessage(answer(summary, /^Query: \S+ failed:/m.test(summary)));
 			} catch(e) {
 				parentPort?.postMessage(answer(`Analysis failed: ${e instanceof Error ? e.message : String(e)}`, true));
 			}

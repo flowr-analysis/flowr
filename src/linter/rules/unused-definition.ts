@@ -31,6 +31,8 @@ import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
+import { isTop } from '../../dataflow/eval/values/r-value';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -305,6 +307,24 @@ function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boole
 	return false;
 }
 
+/**
+ * Whether `node` writes into a parameter (`output$plot <- ...` in a Shiny server) that may hold an environment, so the
+ * caller sees the write. It may unless every call in the code passes a value flowR resolves, which is never an environment.
+ */
+function mayWriteIntoCallerObject(node: RNode<ParentInformation>, graph: DataflowGraph, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	if(node.info.role !== RoleInParent.Accessed) {
+		return false;
+	}
+	const environment = ctx.env.makeCleanEnv();
+	return Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads).some(param => {
+		if(idMap.get(param)?.info.role !== RoleInParent.ParameterName) {
+			return false;
+		}
+		const handed = Dataflow.targetsOf(graph, param, EdgeType.DefinedByOnCall);
+		return handed.length === 0 || handed.some(arg => isTop(Resolve.toValue(arg, { graph, idMap, environment, ctx })));
+	});
+}
+
 export const UNUSED_DEFINITION = {
 	createSearch: config => Q.all().filter(
 		config.includeFunctionDefinitions ? F.or(VertexType.VariableDefinition, VertexType.FunctionDefinition) : VertexType.VariableDefinition),
@@ -327,7 +347,7 @@ export const UNUSED_DEFINITION = {
 			if(!vertex || (!DfgVertex.isVariableDefinition(vertex) && DfgVertex.isFunctionDefinition(vertex) && !config.includeFunctionDefinitions)) {
 				return false;
 			}
-			if(s3GenericParams.has(node.info.id)) {
+			if(s3GenericParams.has(node.info.id) || mayWriteIntoCallerObject(node, graph, normalize.idMap, ctx)) {
 				return false;
 			}
 			// an anonymous dispatcher passed to setGeneric()/new_generic() runs on every dispatch, so it is used

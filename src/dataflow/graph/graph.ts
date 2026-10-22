@@ -187,7 +187,12 @@ export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
 	Edge   extends DfEdge       = DfEdge
 > {
-	private _idMap: AstIdMap | undefined;
+	private _idMap:        AstIdMap | undefined;
+	/**
+	 * Where the top-level statements of every file start and end running, counted in the order they first do, as a
+	 * statement sourcing a file runs that file's statements in between. Set once the whole program is analyzed.
+	 */
+	public statementOrder: ReadonlyMap<NodeId, readonly [start: number, end: number]> | undefined;
 
 	/*
 	 * Set of vertices which have sideEffects that we do not know anything about.
@@ -237,6 +242,7 @@ export class DataflowGraph<
 
 	/* the qualified call names, built on demand and dropped on every change, as vertices and edges both decide them */
 	private qualifiedNames?: QualificationCache;
+
 
 	toJSON(): DataflowGraphJson {
 		return {

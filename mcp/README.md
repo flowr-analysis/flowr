@@ -3,11 +3,13 @@
 A [Model Context Protocol](https://modelcontextprotocol.io) server with a single `query` tool that lets LLM
 clients analyze R code with [flowR](https://github.com/flowr-analysis/flowr): slicing, linting, dependencies,
 version guessing, signature database search, and every other query of the
-[Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API). No R installation is needed. On its first
-start, it downloads flowR's signature database (about 66 MB, hash-checked, from the
-[flowR releases](https://github.com/flowr-analysis/flowr/releases) into `~/.cache/flowr`), which version guessing
-and signature search need; everything else also works offline. It never runs the analyzed code and contacts no
-other server, unless a query explicitly asks the linter to check the URLs in the code (`checkUrls`, never over HTTP).
+[Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API). No R installation is needed.
+
+On its first start, the server downloads flowR's signature database (about 66 MB) from the
+[flowR releases](https://github.com/flowr-analysis/flowr/releases) into `~/.cache/flowr` and checks its hash.
+Version guessing and signature search need this database. Everything else also works offline. The server never
+runs the analyzed code. It contacts no other server, unless a query asks the linter to check the URLs in the code
+(`checkUrls`, which is never allowed over HTTP).
 
 In Claude Code, one plugin installs both this server and the flowR skill:
 
@@ -29,20 +31,31 @@ or, configured by JSON (Claude Desktop, Cursor, VS Code, ...):
 { "mcpServers": { "flowr": { "command": "npx", "args": ["-y", "--omit=optional", "--ignore-scripts", "@eagleoutice/flowr-mcp"] } } }
 ```
 
-The flags keep the install small: they skip the optional dependencies flowR does not need here and run no install
-scripts, while the package's `npm-shrinkwrap.json` pins every dependency.
+The flags keep the install small. They skip the optional dependencies flowR does not need here, and they run no
+install scripts. The package's `npm-shrinkwrap.json` pins every dependency.
 
-Remote clients (ChatGPT, claude.ai, ...) need `npx -y --omit=optional --ignore-scripts @eagleoutice/flowr-mcp --http [port]` (default `$PORT`
-or 1042) behind HTTPS, e.g., `cloudflared tunnel --url http://localhost:1042`, and `https://<host>/mcp` added as
-a connector (in ChatGPT: developer mode). It listens on `127.0.0.1` unless `HOST` says otherwise (e.g.,
-`HOST=0.0.0.0` in a container), and `FLOWR_MCP_PATH=/mcp/<random>` replaces `/mcp` with a secret path, the one
-access control every remote client supports.
+Remote clients (ChatGPT, claude.ai, ...) need the server running over HTTP behind HTTPS:
 
-Over HTTP, the code is untrusted: the server never reads its own files (no `files`, `source()` is ignored, no
-`config` query), runs in flowR's secure mode (no network access, processes, or R), keeps stack traces to itself,
-and refuses browser pages and requests over 1 MB. Analyses run one at a time with at most 16 waiting, each
-stopped after 30 seconds or 2 GB of memory. Answers are cut at 50000 characters. Put a rate limit in front of a
-public instance.
+```shell
+npx -y --omit=optional --ignore-scripts @eagleoutice/flowr-mcp --http 1042
+cloudflared tunnel --url http://localhost:1042
+```
 
-[`SKILL.md`](SKILL.md) is an agent skill (Claude, Codex, Gemini CLI, ...) for when and how to use flowR, with
-or without this server; copy it to, e.g., `~/.claude/skills/flowr/SKILL.md`.
+Then add `https://<host>/mcp` as a connector (in ChatGPT, this needs developer mode). Without a port, the server
+uses `$PORT` or 1042. It listens on `127.0.0.1` unless `HOST` says otherwise, for example `HOST=0.0.0.0` in a
+container. Setting `FLOWR_MCP_PATH=/mcp/<random>` replaces `/mcp` with a secret path. A secret path is the only
+access control that every remote client supports.
+
+Over HTTP, the server treats the code as untrusted:
+
+- It never reads its own files: there is no `files` argument, `source()` is ignored, and the `config` query is refused.
+- It runs in flowR's secure mode, without network access, processes, or R.
+- It keeps stack traces to itself.
+- It refuses requests from browser pages and requests over 1 MB.
+- It runs one analysis at a time, with at most 16 waiting, and stops each after 30 seconds or 2 GB of memory.
+- It cuts answers at 50000 characters.
+
+Put a rate limit in front of a public instance.
+
+[`SKILL.md`](SKILL.md) is an agent skill (Claude, Codex, Gemini CLI, ...) that says when and how to use flowR,
+with or without this server. To use it, copy it to, for example, `~/.claude/skills/flowr/SKILL.md`.

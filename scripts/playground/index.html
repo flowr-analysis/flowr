@@ -81,8 +81,9 @@ code, pre { font-family: var(--mono); }
 /* the code and the configuration flowR reads it with, one at a time */
 .tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem 1rem 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .tablist { display: flex; align-items: flex-end; align-self: flex-end; gap: .2rem; min-width: 0; flex: 0 1 auto; margin-bottom: -1px; }
-#files { display: flex; min-width: 0; }
-#files .tab { overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+/* the file tabs give way before the bar overflows: they shrink to a short name, and what still does not fit is cut, never drawn over the tabs beside them */
+#files { display: flex; min-width: 0; overflow: hidden; }
+#files .tab { overflow: hidden; text-overflow: ellipsis; max-width: 16rem; flex: 0 1 auto; min-width: 4.5rem; }
 #treetoggle { display: inline-flex; align-items: center; padding-inline: .45rem; color: var(--muted); }
 #treetoggle:hover, #treetoggle[aria-expanded="true"] { color: var(--fg); }
 #treetoggle svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linejoin: round; }
@@ -190,6 +191,7 @@ code, pre { font-family: var(--mono); }
 :is(#repl, #runr .out) .bad { color: #d55e00; }
 :is(#repl, #runr .out) .note { color: var(--muted); }
 :is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+#runr:not(.shiny) .via .shinylive, #runr.shiny .via .webr, #runr.shiny #runrtrust { display: none; }
 #runr .out iframe.shiny { display: block; width: 100%; height: 36rem; border: 0; margin: .4rem 0; border-radius: .3rem; background: #fff; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
 #repl .ask > span { color: var(--accent); font-family: var(--mono); }
@@ -747,7 +749,7 @@ code, pre { font-family: var(--mono); }
 	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
 		<section id="runr" hidden aria-live="polite" data-webr-start-bytes="<!--WEBR-START-BYTES-->">
-			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" hidden></progress><span id="runrbytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclear" class="spins" hidden title="forget what earlier runs, cells, and the repl left in R: variables, attached packages, and options"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg>clear</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
+			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a class="webr" href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a><a class="shinylive" href="https://shinylive.io/r/examples/" target="_blank" rel="noopener" title="Shiny on webR, running in your browser">Shinylive</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" hidden></progress><span id="runrbytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclear" class="spins" hidden title="forget what earlier runs, cells, and the repl left in R: variables, attached packages, and options"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg>clear</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
 			<div class="out" id="runrout"></div>
 			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>

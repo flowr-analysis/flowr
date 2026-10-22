@@ -198,7 +198,13 @@ function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 export type CellRunner = (code: string, title: string, into?: HTMLElement, fresh?: boolean) => Promise<number | undefined>;
 type CellRuns = (view: EditorView, picked: readonly Cell[], cells: readonly Cell[], fresh?: boolean) => Promise<void>;
 /** opens the page's menu under `anchor`; a string is a heading */
-export type CellMenu = (anchor: HTMLElement, entries: readonly (string | { readonly label: string, readonly checked: boolean, readonly run: () => void })[]) => void;
+export type CellMenu = (anchor: HTMLElement, entries: readonly (string | { readonly label: string, readonly checked?: boolean, readonly run: () => void })[]) => void;
+
+/** the text a new cell below another one starts with, and where the cursor goes in it */
+function newCell(markdown: boolean, kind: 'code' | 'text'): [text: string, cursor: number] {
+	const text = markdown ? kind === 'code' ? '\n\n```{r}\n\n```' : '\n\n' : kind === 'code' ? '\n# %%\n' : '\n# %% [markdown]\n# ';
+	return [text, markdown && kind === 'code' ? text.length - 4 : text.length];
+}
 
 /** runs the whole notebook cell by cell, `undefined` for a file without code cells */
 export const NotebookRun = Facet.define<(view: EditorView, fresh: boolean) => Promise<void> | undefined>();
@@ -368,14 +374,21 @@ class RunButton extends WidgetType {
 		/* the Run button's own icon, badge and all: a cell always runs in the session that runs keep */
 		const icon = document.querySelector('#runrgo .runicon')?.cloneNode(true);
 		run.append(...icon ? [icon] : [], el('span', 'label', RunChoices[runChoice][1]));
-		const more = button('cm-cell-more', '', 'choose what the button runs', () => this.menu(more, ['Run with this button', ...RunChoices.map(([text, short], at) => ({
+		const add = (kind: 'code' | 'text') => {
+			const { cells, at } = current();
+			const end = view.state.doc.line(Math.min(view.state.doc.lines, cells[at].tail ?? cells[at].to)).to;
+			const [text, cursor] = newCell(this.markdown, kind);
+			view.dispatch({ changes: { from: end, insert: text }, selection: { anchor: end + cursor } });
+			view.focus();
+		};
+		const more = button('cm-cell-more', '', 'choose what the button runs, or add a cell', () => this.menu(more, ['Run with this button', ...RunChoices.map(([text, short], at) => ({
 			label:   text,
 			checked: at === runChoice,
 			run:     () => {
 				runChoice = at;
 				view.dom.querySelectorAll('.cm-cell-run .label').forEach(l => l.textContent = short);
 			}
-		}))]));
+		})), '', 'Add below', { label: 'a code cell', run: () => add('code') }, { label: 'a text cell', run: () => add('text') }]));
 		more.setAttribute('aria-haspopup', 'menu');
 		more.setAttribute('aria-expanded', 'false');
 		more.setAttribute('aria-label', more.title);

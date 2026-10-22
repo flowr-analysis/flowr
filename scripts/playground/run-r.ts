@@ -176,15 +176,14 @@ export interface RunInput {
 }
 
 /**
- * A Shiny app needs a web server, which Shinylive runs in the browser, so the app opens there instead.
- * The project moves to a folder of its own, from which a generated `app.R` starts the script, so a project
- * may have an `app.R` of its own and its relative paths still work. The files travel in the fragment, which no server sees.
+ * Shiny needs a web server, which Shinylive runs in the browser. The project goes into a folder of its own, started from a
+ * generated `app.R`, so its own `app.R` and relative paths keep working. The files travel in the URL fragment, which no server sees.
  */
 function shinyApp({ code, files }: RunInput): HTMLIFrameElement | undefined {
 	if(!/\bshinyApp\s*\(/.test(code)) {
 		return undefined;
 	}
-	/* code no file holds (a cell) gets a name no file has */
+	/* code no file holds, like a notebook cell, gets a free file name */
 	const named = files.find(([, text]) => text === code)?.[0];
 	let script = named ?? 'run.R';
 	for(let i = 1; named === undefined && files.some(([name]) => name === script); i++) {
@@ -458,9 +457,18 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		try {
 			const input = await what();
 			const app = shinyApp(input);
+			card.classList.toggle('shiny', app !== undefined);
 			if(app !== undefined) {
-				sink.append(app);
-				line('a Shiny app runs on shinylive.io, whose webR is not checked against the pinned release', 'note meta');
+				if(title !== null && into === undefined) {
+					title.textContent = 'Shiny app';
+				}
+				const note = el('div', 'note meta', 'Shinylive first downloads R and the packages, which takes 10 to 30 seconds. The playground does not check these downloads. If the app stays blank, ');
+				const tab = el('a', undefined, 'open it in a new tab');
+				tab.href = app.src;
+				tab.target = '_blank';
+				tab.rel = 'noopener';
+				note.append(tab, '.');
+				sink.append(note, app);
 				done('');
 				return undefined;
 			}

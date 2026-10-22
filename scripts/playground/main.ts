@@ -696,8 +696,75 @@ function ranked(options: readonly (Completion & { boost: number })[]): Completio
 	return unique.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
 }
 
-function complete(context: CompletionContext): CompletionResult | null {
-	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)) {
+/** `frame$col` and `frame[["col"`, with what is written of the column so far */
+const ColumnAccess = /([A-Za-z.][\w.]*)(\$|\[\[\s*["'])([\w. ]*)$/;
+
+/** the columns flowR knows the data frame named at `line`:`col` of the open file to have, the file analyzed as `code` */
+let columnsAsked: { code: string, at: string, columns: Promise<string[]> } | undefined;
+function columnsAt(code: string, line: number, col: number): Promise<string[]> {
+	const at = `${line}:${col}`;
+	if(columnsAsked?.code !== code || columnsAsked.at !== at) {
+		const columns = (async() => {
+			const answers = await (await analyzer(undefined, code)).query([{ type: 'absint', inference: 'df-shape', criteria: [at] }] as never) as unknown as { absint?: { result?: Map<string, unknown> } };
+			const shapes = answers.absint?.result instanceof Map ? [...answers.absint.result.values()] : [];
+			return uniqueArray(shapes.flatMap(shape => {
+				const names = (shape as { colnames?: { must?: Set<string>, may?: Set<string> } }).colnames;
+				return [...names?.must ?? [], ...names?.may ?? []];
+			}));
+		})().catch(() => []);
+		columnsAsked = { code, at, columns };
+	}
+	return columnsAsked.columns;
+}
+
+/** the columns to offer after `frame$` or `frame[["`, which the analysis of the script without the access knows */
+async function completeColumn(context: CompletionContext, access: { from: number, text: string }): Promise<CompletionResult | null> {
+	const [, frame, how, written] = ColumnAccess.exec(access.text) ?? [];
+	const nameEnd = access.from + frame.length;
+	const doc = context.state.doc;
+	const line = doc.lineAt(access.from);
+	const columns = await columnsAt(doc.sliceString(0, nameEnd) + doc.sliceString(context.pos), line.number, access.from - line.from + 1);
+	const quoted = how !== '$';
+	return columns.length === 0 ? null : {
+		from:    context.pos - written.length,
+		options: columns.map(name => ({
+			label:  name,
+			apply:  quoted || /^[A-Za-z.][\w.]*$/.test(name) ? name : `\`${name}\``,
+			type:   'property',
+			detail: `column of ${frame}`
+		}))
+	};
+}
+
+/** the call whose parentheses hold `pos`, by its name, if any */
+function callAround(text: string, pos: number): string | undefined {
+	let depth = 0;
+	for(let at = pos - 1; at >= Math.max(0, pos - 2000); at--) {
+		const char = text[at];
+		if(char === ')' || char === ']' || char === '}') {
+			depth++;
+		} else if(char === '(' || char === '[' || char === '{') {
+			if(depth === 0) {
+				return char === '(' ? /([A-Za-z.][\w.]*(?::{2,3}[A-Za-z.][\w.]*)?)\s*$/.exec(text.slice(Math.max(0, at - 200), at))?.[1] : undefined;
+			}
+			depth--;
+		}
+	}
+	return undefined;
+}
+
+/** the parameters of the function `called`, as far as the page knows its signature */
+function parametersOf(called: string): string[] {
+	const [pkg, name] = called.includes('::') ? called.split(/:{2,3}/) : [undefined, called];
+	const call = signatureOf(name, ownerOf(name, pkg))?.call ?? '';
+	const params = call.slice(call.indexOf('(') + 1, call.lastIndexOf(')'));
+	return call.includes('(') ? [...params.matchAll(/(?:^|,\s*)([A-Za-z.][\w.]*)(?=\s*(?:=|,|$))/g)].map(m => m[1]).filter(p => p !== '...') : [];
+}
+
+function complete(context: CompletionContext): CompletionResult | null | Promise<CompletionResult | null> {
+	/* a comment is prose, so nothing there completes */
+	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)
+		|| /comment/i.test(syntaxTree(context.state).resolveInner(context.pos, -1).name)) {
 		return null;
 	}
 	const qualified = Qualified.exec(context.matchBefore(/[A-Za-z.][\w.]*:{2,3}[\w._]*/)?.text ?? '');
@@ -708,6 +775,10 @@ function complete(context: CompletionContext): CompletionResult | null {
 			from:    context.pos - written.length,
 			options: ranked(exported.map(label => offer(label, written, { pkg, type: 'function', detail: `${pkg}${colons}`, siblings: exportsOf(pkg) })))
 		};
+	}
+	const access = context.matchBefore(ColumnAccess);
+	if(access !== null) {
+		return completeColumn(context, access);
 	}
 	const loading = Loading.exec(context.matchBefore(Loading)?.text ?? '');
 	if(loading !== null) {
@@ -724,15 +795,19 @@ function complete(context: CompletionContext): CompletionResult | null {
 	/* only what R would find at this position: what the script binds, what it attached, and the rest of
 	   the search path. A package name is not bound to anything, so it belongs in `library()` alone */
 	const needle = word.text;
-	const defined = uniqueArray([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
+	const text = context.state.doc.toString();
+	const defined = uniqueArray([...text.matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
+	/* right after `(` or `,` of a call, the parameters of what it calls come first */
+	const called = /[(,]\s*$/.test(text.slice(Math.max(0, word.from - 200), word.from)) ? callAround(text, word.from) : undefined;
+	const named = called === undefined ? [] : parametersOf(called).filter(p => p.startsWith(needle)).map(p => ({ label: p, apply: `${p} = `, type: 'property', detail: `argument of ${called}`, boost: 99 }));
 	return {
 		from:    word.from,
-		options: ranked([
+		options: [...named, ...ranked([
 			...defined.map(label => offer(label, needle, { type: 'variable', detail: 'in this script' })),
 			/* what the script attached is nearer than what flowR knows without it */
 			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
 			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
-		])
+		])]
 	};
 }
 
@@ -2140,7 +2215,7 @@ function packageSource(): FlowrAnalyzerPackageVersionsSigDbPlugin | undefined {
 const packages = packageSource();
 
 let ready: Promise<void> | undefined;
-async function analyzer(code?: string) {
+async function analyzer(code?: string, open?: string) {
 	ready ??= TreeSitterExecutor.initTreeSitter(undefined, rWasm, treeSitterWasm);
 	await ready;
 	const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
@@ -2155,7 +2230,8 @@ async function analyzer(code?: string) {
 	if(code !== undefined) {
 		built.addRequest({ request: 'text', content: code });
 	} else {
-		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, text)));
+		/* `open` stands in for the open file, as it is about to be rather than as it is */
+		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, open !== undefined && name === files[active].name ? open : text)));
 		built.addRequest(...files.filter(f => Analyzed.test(f.name)).map(f => ({ request: 'file' as const, content: f.name })));
 	}
 	return built;
@@ -2851,7 +2927,8 @@ async function analyze(): Promise<number> {
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'a click goes there, alt-click highlights this finding in the link';
 		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
-		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}`;
+		/* one rule may report several findings on a line (two undefined names in one call), so the column and message tell them apart */
+		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}:${f.loc?.[1] ?? ''}:${f.message}`;
 		line.addEventListener('click', event => {
 			if(event.altKey || (event.target as HTMLElement).closest('.lintmore') !== null) {
 				return;

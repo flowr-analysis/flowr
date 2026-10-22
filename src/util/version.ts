@@ -9,9 +9,9 @@ import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
 import { compareByCodeUnit } from './text/strings';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.16.5';
+const version = '2.16.6';
 // this is automatically replaced with the release date by release-it (scripts/bump-version.ts)
-const versionDate = '2026-10-22T17:19:41Z';
+const versionDate = '2026-10-22T19:05:13Z';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.

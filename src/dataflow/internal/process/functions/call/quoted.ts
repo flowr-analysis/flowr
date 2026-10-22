@@ -120,7 +120,7 @@ export const Quoted = {
 		const reachOf = (sites: readonly NodeId[]): Reach => reaches.get(sites.join('\0'));
 		let enclosing: ReadonlyMap<NodeId, readonly NodeId[]> | undefined;
 		/* every call of a function lists the arguments of all its calls, so each is linked once per forces it meets */
-		const linkedWith = new Map<NodeId, ForceSites>();
+		const linkedWith = new DefaultMap<NodeId, Set<ForceSites>>(() => new Set());
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
 			if(masks !== undefined) {
@@ -171,8 +171,8 @@ export const Quoted = {
 					for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
 						const index = namesOnce();
 						const forces = forcesOf(graph, parameter, flow, forcing, reachOf);
-						if(forces !== undefined && linkedWith.get(argument) !== forces) {
-							linkedWith.set(argument, forces);
+						if(forces !== undefined && !linkedWith.get(argument).has(forces)) {
+							linkedWith.get(argument).add(forces);
 							Deferred.link(graph, argument, index, idMap, forces);
 						}
 					}

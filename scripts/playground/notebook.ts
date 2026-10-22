@@ -239,11 +239,13 @@ class Inserter extends WidgetType {
 	}
 	toDOM(view: EditorView): HTMLElement {
 		const row = el('div', 'cm-cell-insert');
+		const hit = el('div', 'cm-cell-insert-hit');
 		for(const kind of ['code', 'text'] as const) {
 			const add = button('cm-cell-add', `+ ${kind}`, `add a ${kind} cell here`, () => insertCell(view, this.markdown, this.at, kind));
 			add.addEventListener('mousedown', event => event.preventDefault());
-			row.append(add);
+			hit.append(add);
 		}
+		row.append(hit);
 		return row;
 	}
 	ignoreEvent(): boolean {
@@ -600,17 +602,18 @@ const cellLook = EditorView.theme({
 	/* the edit tools only show under the pointer, or while one of them has the focus */
 	'.cm-cell-edit':                                                 { display: 'inline-flex', gap: '.25rem', visibility: 'hidden' },
 	'.cm-cell-head:hover .cm-cell-edit, .cm-cell-edit:focus-within': { visibility: 'visible' },
-	/* a gap of fixed height, so the text never moves: what it offers grows in and fades out as in VS Code */
-	'.cm-cell-insert':                                               { position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '.4rem', height: '.6rem', zIndex: '1' },
-	'.cm-cell-insert::before':                                       {
+	/* the row takes no room, so the text never moves: a thin band across the boundary offers to add a cell, fading in as in VS Code */
+	'.cm-cell-insert':                                               { position: 'relative', height: '0', zIndex: '1' },
+	'.cm-cell-insert-hit':                                           { position: 'absolute', left: '0', right: '0', top: '-.3rem', height: '.6rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '.4rem' },
+	'.cm-cell-insert-hit::before':                                   {
 		content:    '""', position:   'absolute', left:       '0', right:      '0', top:        '50%', borderTop:  '1px solid var(--accent)',
-		opacity:    '0', transform:  'scaleX(.4)', transition: 'opacity .18s ease-out, transform .18s ease-out'
+		opacity:    '0', transition: 'opacity .18s ease-out'
 	},
-	'.cm-cell-insert .cm-cell-add':                                                  { position: 'relative', opacity: '0', transform: 'scale(.6)', transition: 'opacity .18s ease-out, transform .18s cubic-bezier(.2, .8, .3, 1.2)' },
-	'.cm-cell-insert:hover::before, .cm-cell-insert:focus-within::before':           { opacity: '.5', transform: 'scaleX(1)' },
-	'.cm-cell-insert:hover .cm-cell-add, .cm-cell-insert:focus-within .cm-cell-add': { opacity: '1', transform: 'scale(1)' },
-	'@media (prefers-reduced-motion: reduce)':                                       { '.cm-cell-insert .cm-cell-add, .cm-cell-insert::before': { transition: 'none' } },
-	'.cm-cell-add, .cm-cell-remove':                                                 {
+	'.cm-cell-insert-hit .cm-cell-add':                                                      { position: 'relative', opacity: '0', transform: 'scale(.6)', transition: 'opacity .18s ease-out, transform .18s cubic-bezier(.2, .8, .3, 1.2)' },
+	'.cm-cell-insert-hit:hover::before, .cm-cell-insert-hit:focus-within::before':           { opacity: '.5' },
+	'.cm-cell-insert-hit:hover .cm-cell-add, .cm-cell-insert-hit:focus-within .cm-cell-add': { opacity: '1', transform: 'scale(1)' },
+	'@media (prefers-reduced-motion: reduce)':                                               { '.cm-cell-insert-hit .cm-cell-add, .cm-cell-insert-hit::before': { transition: 'none' } },
+	'.cm-cell-add, .cm-cell-remove':                                                         {
 		fontFamily:   'system-ui, sans-serif', fontSize:     '.68rem', lineHeight:   '1.5', cursor:       'pointer', color:        'var(--muted)',
 		background:   'var(--panel)', border:       '1px solid var(--border)', borderRadius: '1rem', padding:      '0 .45rem'
 	},

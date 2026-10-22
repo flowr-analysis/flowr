@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4), do not edit directly._
 <h2 id="unused-definitions">Unused Definitions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -6,17 +6,17 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Finds definitions that are never used.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L308">src/linter/rules/unused-definition.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L328">src/linter/rules/unused-definition.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `unused-definitions` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L48"><code><span title="Whether to suppress definitions that the analyzed project exports via its NAMESPACE (the package's public API). flowR cannot observe external callers, so exported names would otherwise be reported as (uncertain) false positives.">excludeExportedDefinitions</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L50"><code><span title="Whether to suppress definitions that the analyzed project exports via its NAMESPACE (the package's public API). flowR cannot observe external callers, so exported names would otherwise be reported as (uncertain) false positives.">excludeExportedDefinitions</span></code></a>\
 Whether to suppress definitions that the analyzed project exports via its `NAMESPACE` (the package's public API).
 flowR cannot observe external callers, so exported names would otherwise be reported as (uncertain) false positives.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L43"><code><span title="Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).">includeFunctionDefinitions</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L45"><code><span title="Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).">includeFunctionDefinitions</span></code></a>\
 Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).
 
 ### Examples
@@ -36,7 +36,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Definition of `y` at 3.1 (1 quick fix(es) available)
@@ -96,7 +96,7 @@ We expect the linter to report the following:
 
 * no lints
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L68) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L71) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_call_32_with_32_a_32_super-assignment_32_offers_32_no_32_fix">Test Case: call with a super-assignment offers no fix</h4>
 
@@ -113,7 +113,7 @@ We expect the linter to report the following:
 
 * uncertain at 3.1-3.1: variableName = `'r'`
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L128) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L133) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_assignment_32_nested_32_in_32_a_32_call_32_argument_32_keeps_32_its_32_value">Test Case: assignment nested in a call argument keeps its value</h4>
 
@@ -129,7 +129,7 @@ We expect the linter to report the following:
 
 * uncertain at 3.7-3.7: variableName = `'x'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L136) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L141) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_assignment_32_as_32_a_32_function_32_argument_32_keeps_32_its_32_value">Test Case: assignment as a function argument keeps its value</h4>
 
@@ -143,7 +143,7 @@ We expect the linter to report the following:
 
 * uncertain at 1.5-1.5: variableName = `'x'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L146) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L151) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_assignment_32_in_32_an_32_if-condition_32_keeps_32_its_32_value">Test Case: assignment in an if-condition keeps its value</h4>
 
@@ -157,7 +157,7 @@ We expect the linter to report the following:
 
 * uncertain at 1.5-1.5: variableName = `'x'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L156) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L161) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_assignment_32_on_32_the_32_right_32_of_32_another_32_assignment_32_keeps_32_its_32_value">Test Case: assignment on the right of another assignment keeps its value</h4>
 
@@ -172,7 +172,7 @@ We expect the linter to report the following:
 
 * uncertain at 1.7-1.7: variableName = `'x'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L166) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L171) for the test-case implementation.
 		
 <h4 id="Test_32_Case:_32_assignment_32_as_32_the_32_sole_32_statement_32_of_32_a_32_block_32_is_32_still_32_fully_32_removed">Test Case: assignment as the sole statement of a block is still fully removed</h4>
 
@@ -188,4 +188,4 @@ We expect the linter to report the following:
 
 * uncertain at 2.2-2.2: variableName = `'x'`, 1 quick fix
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L176) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L181) for the test-case implementation.

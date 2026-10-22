@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4, R v4.5.0), do not edit directly._
 
 _flowR_ produces three main perspectives of the program: 1)&nbsp;a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), 
 2)&nbsp;a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), and 3)&nbsp;a control flow graph&nbsp;(CFG).
@@ -304,7 +304,7 @@ f()
 
 You can produce your very own control flow graph with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L1054"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a>.
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L506"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). Edges are in flow order: an edge from a to b means that b is evaluated after a. Reading them backwards (what leads into a vertex) goes through a reverse index built on the first such read. There are two very simple visitors to ...">ControlFlowGraph</span></code></a> class describes everything required to model the control flow graph, with its edge types described by
- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L241"><code><span title="An edge in the ControlFlowGraph .">CfgEdge</span></code></a> and its vertices by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L77"><code><span title="A vertex in the ControlFlowGraph . Please use the helper object (e.g. getType() ) to work with vertices instead of directly accessing the properties.">CfgVertex</span></code></a>.
+ <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L247"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and its vertices by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L83"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a>.
 However, you should be aware of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L917"><code><span title="Summarizes the control information of a program">ControlFlowInformation</span></code></a> interface which adds some additional information the CFG
 (and is used during the construction of the CFG as well):
 
@@ -360,7 +360,7 @@ In mermaid visualizations, we use rectangles for statements and rounded rectangl
 Blocks are visualized as boxes around the contained vertices.
 
 > [!NOTE]
-> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L15"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
+> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 > 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 > 	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
 
@@ -661,7 +661,7 @@ f <- function() b; f()
 
 </details>
 
-A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L15"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a> of the function definitions that
+A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> of the function definitions that
 are called from this vertex, taken from the `calls` edges the dataflow analysis resolved.
 
 For built-in functions that are provided by flowR's built-in configuration (see the [interface wiki page](https://github.com/flowr-analysis/flowr/wiki/Interface)) the CFG does not contain

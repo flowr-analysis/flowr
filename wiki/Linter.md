@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 09:18:14 UTC (v2.16.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4, R v4.5.0), do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
@@ -6,7 +6,7 @@ For example:
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.3, R grammar v14 (tree-sitter engine)
+flowR repl v2.16.4, R grammar v14 (tree-sitter engine)
 R> :query @linter "read.csv(\"/root/x.txt\")"
 ```
 
@@ -14,7 +14,7 @@ R> :query @linter "read.csv(\"/root/x.txt\")"
 <summary style='color:gray'>Output</summary>
 
 ```text
-Query: linter (31 ms)
+Query: linter (24 ms)
    ╰ Deprecated Functions (deprecated-functions): no findings
    ╰ File Path Validity (file-path-validity): no findings
    ╰ Seeded Randomness (seeded-randomness): no findings
@@ -46,7 +46,7 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (787 ms)\
+Query: **linter** (28 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -196,9 +196,9 @@ Badges link to the [tags](#tags), steps of `R CMD check` to the [conformance pag
 	
 <h2 id="quick-fixes">Quick Fixes</h2>
 
-Rules tagged <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> attach a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L102"><code>LintQuickFix</code></a> to their results,
+Rules tagged <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> attach a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L108"><code><span title="Helper for working with quick fixes .">LintQuickFix</span></code></a> to their results,
 describing the edit that resolves the finding. flowR does not only report them, it carries them out:
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L55"><code><span title="Every quick fix a lint run offers, grouped by the file it changes. Fixes flowR cannot place are left out.">byFile</span></code></a> collects the fixes of a lint run per file and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L87"><code><span title="The content of one file with the given fixes carried out, as LintQuickFixes.byFile groups them. Of two overlapping fixes only the one coming first in the file is kept, since the second would be applied to a range that no longer says what it did. What survives is then carried out back to front, so the offsets of the edits still to come stay valid. Fixes naming a file must all name the same one, as ...">apply</span></code></a>
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L56"><code>byFile</code></a> collects the fixes of a lint run per file and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/resolve-numbers.ts#L164"><code><span title="apply fold to the operands, mapping over the one vector among them (R recycles, we only fold equal lengths)">apply</span></code></a>
 returns that file's content with them applied. Of two overlapping fixes only the one coming first in the file is kept,
 and a removal that leaves nothing but whitespace behind takes its line with it.
 

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-17, 21:45:25 UTC (v2.16.2, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4, R v4.5.0), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -9,7 +9,7 @@ offering the following benefits:
 
 In general, the mapping should be rather intuitive and focused primarily on the
 syntactic structure of the program. As with other types in flowR, you get corresponding helper objects.
-So if you want to work with an `RBinaryOp` node, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10"><code><span title="Operators like +, ==, &&, etc.">RBinaryOp</span></code></a> object to check whether a node is an `RBinaryOp` and to access its fields
+So if you want to work with an `RBinaryOp` node, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L21"><code><span title="Helper for working with RBinaryOp AST nodes.">RBinaryOp</span></code></a> object to check whether a node is an `RBinaryOp` and to access its fields
 (e.g., with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L28"><code><span title="Type guard for RBinaryOp nodes.">RBinaryOp::<b>is</b></span></code></a>).
 Consider the following example which shows the normalized AST of the code
 
@@ -56,7 +56,7 @@ x"])
 > command in the REPL (see the [Interface wiki page](https://github.com/flowr-analysis/flowr/wiki/Interface) for more information).
 
 Indicative of the normalization is the root <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node, which is present in every normalized AST
-and provides the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L10"><code><span title="Holds a list of expressions (and hence may be the root of an AST, summarizing all expressions in a file). The grouping property holds information on if the expression list is structural or created by a wrapper like {} or ().">RExpressionList</span></code></a> nodes for each file in the project.
+and provides the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L20"><code><span title="Helper for working with RExpressionList AST nodes.">RExpressionList</span></code></a> nodes for each file in the project.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -1546,7 +1546,7 @@ source"])
 ## Traversing the Normalized AST
 
 We provide a visitor to traverse the normalized AST.
-Please note, that it usually operates on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L10"><code><span title="Holds a list of expressions (and hence may be the root of an AST, summarizing all expressions in a file). The grouping property holds information on if the expression list is structural or created by a wrapper like {} or ().">RExpressionList</span></code></a> level, and it is up to
+Please note, that it usually operates on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L20"><code><span title="Helper for working with RExpressionList AST nodes.">RExpressionList</span></code></a> level, and it is up to
 you to decide how you want to traverse multiple files with a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> in the AST (you can, for example, simplify flat-map over the files).
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a>.
 

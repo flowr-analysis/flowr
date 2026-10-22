@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-10-20, 14:35:49 UTC (v2.16.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4, R v4.5.0), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -16,7 +16,7 @@ In summary, we discuss the following topics in this wiki page:
 - [Working with the Dataflow Graph](#dfg-working)
 	- [Matching Arguments to Parameters](#dfg-matching-arguments)
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L223"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a>) returned by _flowR_ 
+Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L269"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a>) returned by _flowR_ 
 contains things besides the graph, like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
 
@@ -27,7 +27,7 @@ Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-
 > There is also a simplified version available with <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the simplified dataflow graph (aliases: :ds*, :dfs*)">`:dataflowsimple*`</span> that does not show everything but is easier to read.
 > For small graphs, you can also use <span title="Description (Repl Command): Returns an ASCII representation of the dataflow graph (aliases: :df!)">`:dataflowascii`</span> to print the graph as ASCII art.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L755"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L761"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
 >
 > Also, check out the [flowr-analysis/sample-analyzer-df-diff](https://github.com/flowr-analysis/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -2977,7 +2977,7 @@ The subflow is defined like this:
    
     <details><summary>View more (Omit, DataflowInformation, 'graph' | 'exitPoints')</summary>
 
-   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L223)**   
+   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L230)**   
      The dataflow information is one of the fundamental structures we have in the dataflow analysis.
      It is continuously updated during the dataflow analysis
      and holds its current state for the respective subtree processed.
@@ -2986,7 +2986,7 @@ The subflow is defined like this:
      You may initialize a new dataflow information with
      <code>DataflowInformation.initialize</code>
      .
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L223">src/dataflow/info.ts#L223</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L230">src/dataflow/info.ts#L230</a></summary>
      
      ```ts
      /**
@@ -3039,9 +3039,9 @@ The subflow is defined like this:
      
       <details><summary>View more (DataflowCfgInformation)</summary>
 
-     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L186)**   
+     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L193)**   
        The control flow information for the current DataflowInformation.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L186">src/dataflow/info.ts#L186</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L193">src/dataflow/info.ts#L193</a></summary>
        
        ```ts
        /** The control flow information for the current DataflowInformation. */
@@ -3079,10 +3079,10 @@ The subflow is defined like this:
 
     </details>
 And if you are interested in the exit points, they are defined like this:
- * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L127)**   
+ * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L134)**   
    An exit point describes the position which ends the current control flow structure.
    This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L127">src/dataflow/info.ts#L127</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L134">src/dataflow/info.ts#L134</a></summary>
    
    ```ts
    /**
@@ -5402,14 +5402,14 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":2293,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":1765,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
 ```
 
 </details>
 
 You may be interested in its implementation:
 
- * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L223)**   
+ * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L230)**   
    The dataflow information is one of the fundamental structures we have in the dataflow analysis.
    It is continuously updated during the dataflow analysis
    and holds its current state for the respective subtree processed.
@@ -5418,7 +5418,7 @@ You may be interested in its implementation:
    You may initialize a new dataflow information with
    <code>DataflowInformation.initialize</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L223">src/dataflow/info.ts#L223</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L230">src/dataflow/info.ts#L230</a></summary>
    
    ```ts
    /**
@@ -5471,9 +5471,9 @@ You may be interested in its implementation:
    
     <details><summary>View more (DataflowCfgInformation)</summary>
 
-   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L186)**   
+   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L193)**   
      The control flow information for the current DataflowInformation.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L186">src/dataflow/info.ts#L186</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L193">src/dataflow/info.ts#L193</a></summary>
      
      ```ts
      /** The control flow information for the current DataflowInformation. */
@@ -5548,7 +5548,7 @@ Attaching inside a function propagates to the caller (R attaches globally), and 
 Last but not least, the information contains the single **entry point** (2) and a set of **exit points** ([5]). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 
-Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L177"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
+Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L184"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
 It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L201"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
 A definition that such a removal undid is dropped from the outgoing references, so `x <- 1; rm(x)` has an empty **out** set (a conditional removal keeps the now maybe-defined `x`).
 
@@ -5699,7 +5699,7 @@ call graph will no longer contain information on variables, for example.
 
 <h3 id="perspectives-cg">Call Graphs</h3>
 
-These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L27"><code><span title="A call graph is a dataflow graph where all vertices are function calls. You can create a call graph from a dataflow graph using CallGraph.compute . If you want to extract a sub call graph, use CallGraph.computeSubCallGraph .">CallGraph</span></code></a> type.
+These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L265"><code><span title="Helper object for call-graphs, you can compute new call graphs based on CallGraph.compute .">CallGraph</span></code></a> type.
 It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L366"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
 These graphs only contain function definitions and function calls as vertices, and [`calls`](#calls) edges.
 Consider the following example:
@@ -5857,9 +5857,9 @@ alias()
 
 <h2 id="dfg-working">Working with the Dataflow Graph</h2>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L223"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L269"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
-Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/gas.ts#L30"><code><span title="Gas key for dataflow extraction. Unlike the keys above it is *armed* once per run (see ReadOnlyFlowrAnalyzerGasContext.budget ) and counted as the fold goes.">Dataflow</span></code></a> helper object!
+Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L41"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> helper object!
 
 * The **[Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **[Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
@@ -5867,7 +5867,7 @@ Generally, we recommend you check out the <a href="https://github.com/flowr-anal
 
 Everything else lives on a helper object named after the thing it works on:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/gas.ts#L30"><code><span title="Gas key for dataflow extraction. Unlike the keys above it is *armed* once per run (see ReadOnlyFlowrAnalyzerGasContext.budget ) and counted as the fold goes.">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L58"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L41"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L58"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L110"><code><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></code></a> for edges, e.g. `DfEdge.includesType(edge, EdgeType.Reads)` (see [below](#dfg-resolving-values))
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L277"><code><span title="Helper object to provide helper functions for RNodes . For the individual type checks, please consult the individual vertices, e.g. RPipe.is . Some vertices also have a RPipe.availableFromRVersion property that indicates from which R version they are available, so you can check for that as well if needed.">RNode</span></code></a> for the nodes behind the vertices, e.g. `RNode.lexeme(graph.idMap?.get(id))` for what a vertex is written as
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> for identifiers, e.g. `Identifier.toString(vertex.name)`
@@ -5907,10 +5907,10 @@ left over goes to `...`. <a href="https://github.com/flowr-analysis/flowr/tree/m
 |----------|--------|
 | AST arguments and the formal names | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L62"><code><span title="Binds a call's AST args to the formal paramNames. An empty argument (f(1, ,3)) takes its formal but never appears here. Arguments falling to ... share that key, so only the last survives; use MatchArgs.toSpec to keep them all.">MatchArgs::<b>toNames</b></span></code></a> |
 | graph arguments and the formals (a spec, or a database signature) | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L73"><code><span title="Binds a call's graph args against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. Name '...' in a specification unless the function really has none, as that is what collects arguments finding no formal of their own.">MatchArgs::<b>toSpec</b></span></code></a> |
-| graph arguments and the callee's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L10"><code><span title="Represents a parameter of a function definition in R.">RParameter</span></code></a>s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L108"><code><span title="Binds a call's graph args to the params of the definition it calls **and mutates graph**, adding an EdgeType.DefinesOnCall and a EdgeType.DefinedByOnCall edge per bound pair. It is the only member here that writes anything.">MatchArgs::<b>onCallAndLink</b></span></code></a> |
+| graph arguments and the callee's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L23"><code><span title="Helper for working with RParameter AST nodes.">RParameter</span></code></a>s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L108"><code><span title="Binds a call's graph args to the params of the definition it calls **and mutates graph**, adding an EdgeType.DefinesOnCall and a EdgeType.DefinedByOnCall edge per bound pair. It is the only member here that writes anything.">MatchArgs::<b>onCallAndLink</b></span></code></a> |
 | only the call, the formals are looked up for you | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L144"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> |
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L144"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> takes the formals from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L16"><code><span title="  function(<parameters>) <body>   or:   \\(<parameters>) <body>  ">RFunctionDefinition</span></code></a> the call
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L144"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> takes the formals from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L27"><code><span title="Helper for working with RFunctionDefinition AST nodes.">RFunctionDefinition</span></code></a> the call
 resolves to in user code, and from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) otherwise.
 
 <h3 id="dfg-assess-edge">Assessing Edges</h3>
@@ -6063,11 +6063,11 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
 
 Their respective uses are documented alongside their implementation:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14"><code>BuiltInFunctionOrigin</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L61"><code><span title="This is similar to a FunctionCallOrigin , but used for built-in functions that have no direct correspondence in the dataflow graph.">BuiltInFunctionOrigin</span></code></a>\
 This is similar to a
 <code>FunctionCallOrigin</code>
 , but used for built-in functions that have no direct correspondence in the dataflow graph.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13"><code>FunctionCallOrigin</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L53"><code><span title="Determines the (transitive) origin of a function call (i.e., all anonymous function definitions within the program that can be called).">FunctionCallOrigin</span></code></a>\
 Determines the (transitive) origin of a function call (i.e., all anonymous function definitions within the program that
 can be called).
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31"><code><span title="An origin that indicates that the definition is read, written, or simply a constant. These origins only reference the 'direct' dependencies. There is no transitivity.">SimpleOrigin</span></code></a>\

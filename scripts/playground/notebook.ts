@@ -425,7 +425,7 @@ class CellLabel extends WidgetType {
 }
 
 class RunButton extends WidgetType {
-	constructor(readonly cell: Cell, readonly note: string, readonly markdown: boolean, readonly runs: CellRuns, readonly menu: CellMenu, readonly took?: number) {
+	constructor(readonly cell: Cell, readonly note: string, readonly markdown: boolean, readonly editable: boolean, readonly runs: CellRuns, readonly menu: CellMenu, readonly took?: number) {
 		super();
 	}
 	eq(other: RunButton): boolean {
@@ -433,7 +433,9 @@ class RunButton extends WidgetType {
 	}
 	toDOM(view: EditorView): HTMLElement {
 		const tools = el('span', 'cm-cell-tools');
-		tools.append(cellEdits(view, this.markdown, this.cell.head));
+		if(this.editable) {
+			tools.append(cellEdits(view, this.markdown, this.cell.head));
+		}
 		if(this.note !== '') {
 			tools.append(el('span', 'cm-cell-note', this.note));
 		}
@@ -482,7 +484,7 @@ class RunButton extends WidgetType {
 	}
 }
 
-function decorate(view: EditorView, markdown: boolean, runs: CellRuns, menu: CellMenu, took: ReadonlyMap<number, number>): DecorationSet {
+function decorate(view: EditorView, markdown: boolean, editable: boolean, runs: CellRuns, menu: CellMenu, took: ReadonlyMap<number, number>): DecorationSet {
 	const doc = view.state.doc;
 	const cells = cellsOf(view.state, markdown);
 	const found: Range<Decoration>[] = [];
@@ -504,8 +506,8 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, menu: Cel
 			inCell.add(cell.head);
 			if(cell.kind === 'code' && cell.head <= doc.lines) {
 				const note = markdown ? titleOf(cell, cells) : cell.label;
-				found.push(Decoration.widget({ widget: new RunButton(cell, note, markdown, runs, menu, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.head).to));
-			} else if(cell.kind === 'text' && cell.head <= doc.lines) {
+				found.push(Decoration.widget({ widget: new RunButton(cell, note, markdown, editable, runs, menu, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.head).to));
+			} else if(editable && cell.kind === 'text' && cell.head <= doc.lines) {
 				found.push(Decoration.widget({ widget: new EditTools(cell.head, markdown), side: 1 }).range(doc.line(cell.head).to));
 			}
 		}
@@ -535,10 +537,12 @@ function decorate(view: EditorView, markdown: boolean, runs: CellRuns, menu: Cel
 /** the cell decorations of a notebook, each code cell runnable with `run` */
 export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Extension {
 	const markdown = isMarkdownDocument(name);
+	/* cells are added and removed in a notebook, a script keeps its `# %%` marks as the author wrote them */
+	const editable = markdown || /\.ipynb\.r$/i.test(name);
 	const { runs, shown, took } = cellRunning(markdown, run);
 	return [
 		shown,
-		inserters(markdown),
+		editable ? inserters(markdown) : [],
 		NotebookRun.of((view, fresh) => {
 			const cells = cellsOf(view.state, markdown);
 			return cells.some(c => c.kind === 'code') ? runs(view, cells, cells, fresh) : undefined;
@@ -546,11 +550,11 @@ export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Ex
 		ViewPlugin.fromClass(class {
 			decorations: DecorationSet;
 			constructor(view: EditorView) {
-				this.decorations = decorate(view, markdown, runs, menu, took);
+				this.decorations = decorate(view, markdown, editable, runs, menu, took);
 			}
 			update(update: ViewUpdate) {
 				if(update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(outputsChanged)))) {
-					this.decorations = decorate(update.view, markdown, runs, menu, took);
+					this.decorations = decorate(update.view, markdown, editable, runs, menu, took);
 				}
 			}
 		}, { decorations: plugin => plugin.decorations }),
@@ -596,9 +600,17 @@ const cellLook = EditorView.theme({
 	/* the edit tools only show under the pointer, or while one of them has the focus */
 	'.cm-cell-edit':                                                 { display: 'inline-flex', gap: '.25rem', visibility: 'hidden' },
 	'.cm-cell-head:hover .cm-cell-edit, .cm-cell-edit:focus-within': { visibility: 'visible' },
-	'.cm-cell-insert':                                               { display: 'flex', justifyContent: 'center', gap: '.4rem', padding: '.15rem 0', opacity: '.15' },
-	'.cm-cell-insert:hover, .cm-cell-insert:focus-within':           { opacity: '1' },
-	'.cm-cell-add, .cm-cell-remove':                                 {
+	/* a gap of fixed height, so the text never moves: what it offers grows in and fades out as in VS Code */
+	'.cm-cell-insert':                                               { position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '.4rem', height: '.6rem', zIndex: '1' },
+	'.cm-cell-insert::before':                                       {
+		content:    '""', position:   'absolute', left:       '0', right:      '0', top:        '50%', borderTop:  '1px solid var(--accent)',
+		opacity:    '0', transform:  'scaleX(.4)', transition: 'opacity .18s ease-out, transform .18s ease-out'
+	},
+	'.cm-cell-insert .cm-cell-add':                                                  { position: 'relative', opacity: '0', transform: 'scale(.6)', transition: 'opacity .18s ease-out, transform .18s cubic-bezier(.2, .8, .3, 1.2)' },
+	'.cm-cell-insert:hover::before, .cm-cell-insert:focus-within::before':           { opacity: '.5', transform: 'scaleX(1)' },
+	'.cm-cell-insert:hover .cm-cell-add, .cm-cell-insert:focus-within .cm-cell-add': { opacity: '1', transform: 'scale(1)' },
+	'@media (prefers-reduced-motion: reduce)':                                       { '.cm-cell-insert .cm-cell-add, .cm-cell-insert::before': { transition: 'none' } },
+	'.cm-cell-add, .cm-cell-remove':                                                 {
 		fontFamily:   'system-ui, sans-serif', fontSize:     '.68rem', lineHeight:   '1.5', cursor:       'pointer', color:        'var(--muted)',
 		background:   'var(--panel)', border:       '1px solid var(--border)', borderRadius: '1rem', padding:      '0 .45rem'
 	},

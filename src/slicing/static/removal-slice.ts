@@ -104,10 +104,13 @@ function deviceWindows(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNode
 	return [...found];
 }
 
+const PackageBuiltIn = /^built-in:[^:]+:/;
+
 /** a definition the code that is left still reads, `undefined` if there is none */
 function danglingRead(info: DataflowInformation, removed: ReadonlySet<NodeId>): NodeId | undefined {
 	for(const [id] of info.graph.vertices(true)) {
-		if(!removed.has(id)) {
+		/* the built-ins a loaded package provides (`built-in:pkg:fn`) are no code that is left, they read its library() call */
+		if(!removed.has(id) && !(typeof id === 'string' && PackageBuiltIn.test(id))) {
 			const target = Dataflow.targetsOf(info.graph, id, EdgeType.Reads).find(t => removed.has(t));
 			if(target !== undefined) {
 				return target;
@@ -159,7 +162,7 @@ export function staticRemovalSlice(
 	const inSeeds = (id: NodeId) => seeds.has(id) || seeds.has(statementId(id) ?? -1);
 	for(const linked of [
 		...dependencies.filter(d => d.nodeId !== undefined && inSeeds(d.nodeId)).flatMap(d => d.linkedIds ?? []),
-		...dependencies.filter(d => d.parts?.some(inSeeds)).map(d => d.nodeId)
+		...dependencies.filter(d => d.parts?.some(inSeeds) || d.linkedIds?.some(inSeeds)).map(d => d.nodeId)
 	]) {
 		if(linked !== undefined && !inSeeds(linked)) {
 			seeds.add(linked);

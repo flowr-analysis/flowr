@@ -176,10 +176,12 @@ export interface RunInput {
 }
 
 /**
- * Shiny needs a web server, which Shinylive runs in the browser. The project goes into a folder of its own, started from a
- * generated `app.R`, so its own `app.R` and relative paths keep working. The files travel in the URL fragment, which no server sees.
+ * Shiny needs a web server, which Shinylive runs in the browser, in a tab of its own: its service worker, which a
+ * browser may refuse a frame of another site, always runs there. The project goes into a folder of its own, started
+ * from a generated `app.R`, so its own `app.R` and relative paths keep working. The files travel in the URL fragment,
+ * which no server sees.
  */
-function shinyApp({ code, files }: RunInput): HTMLIFrameElement | undefined {
+function shinyApp({ code, files }: RunInput): string | undefined {
 	if(!/\bshinyApp\s*\(/.test(code)) {
 		return undefined;
 	}
@@ -194,10 +196,7 @@ function shinyApp({ code, files }: RunInput): HTMLIFrameElement | undefined {
 		{ name: 'app.R', content: `shiny::shinyAppFile(${JSON.stringify(`project/${script}`)})` },
 		...project.map(([name, content]) => ({ name: `project/${name}`, content }))
 	];
-	const frame = el('iframe', 'shiny');
-	frame.title = 'Shiny app';
-	frame.src = `https://shinylive.io/r/app/#h=0&code=${compressToEncodedURIComponent(JSON.stringify(app))}`;
-	return frame;
+	return `https://shinylive.io/r/app/#h=0&code=${compressToEncodedURIComponent(JSON.stringify(app))}`;
 }
 
 async function provideFiles(s: Session, { files, fresh }: RunInput): Promise<void> {
@@ -462,13 +461,18 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 				if(title !== null && into === undefined) {
 					title.textContent = 'Shiny app';
 				}
-				const note = el('div', 'note meta', 'Shinylive first downloads R and the packages, which takes 10 to 30 seconds. The playground does not check these downloads. If the app stays blank, ');
-				const tab = el('a', undefined, 'open it in a new tab');
-				tab.href = app.src;
+				const opened = window.open(app, '_blank');
+				if(opened !== null) {
+					opened.opener = null;
+				}
+				const tab = el('a', undefined, opened === null ? 'Open the app in a new tab' : 'open it again');
+				tab.href = app;
 				tab.target = '_blank';
 				tab.rel = 'noopener';
-				note.append(tab, '.');
-				sink.append(note, app);
+				const note = el('div', 'note meta');
+				note.append(...opened === null ? [tab, '.'] : ['The app opened in a new tab (', tab, ').'],
+					' Shinylive first downloads R and the packages, which takes 10 to 30 seconds. The playground does not check these downloads.');
+				sink.append(note);
 				done('');
 				return undefined;
 			}

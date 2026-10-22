@@ -53,10 +53,10 @@ jobs:
           test "$VERSION" = "$(jq -r .version npm-shrinkwrap.json)"
           # the directory requires launchers to run an exact version, which has to be the released one
           test "@eagleoutice/flowr-mcp@$VERSION" = "$(jq -r '.mcpServers.flowr.args[-1]' .mcp.json)"
-          # as the launcher installs it: without the optional dependencies flowR does not need here, and without install scripts
+          # as the launcher installs it, pinned by the shrinkwrap
           # npm 12 only reads package-lock.json, older ones prefer the published npm-shrinkwrap.json
           cp npm-shrinkwrap.json package-lock.json
-          npm ci --omit=optional --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
           # also covers the signature database download that version guessing needs
           echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query","arguments":{"code":"library(dplyr)\nx <- reframe(df)\nx","queries":[{"type":"static-slice","criteria":["3@x"]},{"type":"guess-dep-versions"}]}}}' \
             | node index.js | tee out.json

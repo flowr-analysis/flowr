@@ -50,7 +50,7 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	/** The count of files by their role in the project. */
 	readonly roleCounts:    Record<FileRole, number>;
 	/** The lists of files by their role in the project. */
-	readonly roleFiles?:   Record<FileRole, readonly string[]>;
+	readonly roleFiles?:    Record<FileRole, readonly string[]>;
 	/** The licenses of the project. */
 	readonly licenses?:     RLicenseElementInfo[];
 	/** The encoding of the project files. */
@@ -64,7 +64,7 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	/** Statistics on the project's declared dependencies, if a `DESCRIPTION` file is available. */
 	readonly dependencies?: ProjectDependencyStats;
 	/** Determines whether the Data Flow Analysis already happened  */
-	readonly dfaPerformed: boolean;
+	readonly dfaPerformed:  boolean;
 }
 
 function addSuffix(count: number, singular = '', plural = 's'): string {
@@ -110,7 +110,7 @@ export const ProjectQueryDefinition = {
 				for(const [role, files] of entries) {
 					const limit = 2;
 					const displayedFiles = files.slice(0, limit).join(', ');
-					let fileList = '[' + displayedFiles + (files.length > limit ? ', ...' : '') + ']';
+					const fileList = '[' + displayedFiles + (files.length > limit ? ', ...' : '') + ']';
 
 					result.push(`      ╰ ${(role + ':').padEnd(longestRole + 1, ' ')} ${formatter.format(String(files.length).padStart(longestCount, ' '), {
 						effect: ColorEffect.Foreground,

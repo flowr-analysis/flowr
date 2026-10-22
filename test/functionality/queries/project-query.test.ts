@@ -158,16 +158,16 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		const dir = writePackage(tmp, 'dfapkg', 'Version: 1.0.0\n', 'x <- 1\n');
 		const analyzer = await analyzeProject(parser, db, dir);
 
-		expect((await executeQueries({analyzer}, [{type: 'project', withDf: false }])).project.dfaPerformed).toBe(false);
-		expect((await executeQueries({analyzer}, [{type: 'project', withDf: true }])).project.dfaPerformed).toBe(true);
+		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: false }])).project.dfaPerformed).toBe(false);
+		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.dfaPerformed).toBe(true);
 	});
 
 	test(label('reports the files considered part of the project, and their roles', [], ['other']), async() => {
-		const dir = writePackage(tmp, 'rolepkg', 'Version: 1.0.0\n', 'x <-1\n')
+		const dir = writePackage(tmp, 'rolepkg', 'Version: 1.0.0\n', 'x <-1\n');
 		fs.writeFileSync(path.join(dir, 'rv.lock'), 'x <- 1\n');
 		fs.writeFileSync(path.join(dir, '.Rprofile'), 'z <- 1\n');
 		const analyzer = await analyzeProject(parser, db, dir);
-		const results = await executeQueries({ analyzer }, [{ type: 'project'}]);
+		const results = await executeQueries({ analyzer }, [{ type: 'project' }]);
 
 		const project = results.project;
 		expect(project.roleFiles?.[FileRole.VirtualEnv]).toEqual(['rv.lock']);

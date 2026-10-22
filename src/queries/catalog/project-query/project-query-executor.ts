@@ -95,4 +95,3 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 		dfaPerformed: analyzer.peekDataflow() !== undefined
 	};
 }
- 

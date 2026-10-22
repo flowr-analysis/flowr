@@ -107,6 +107,7 @@ code, pre { font-family: var(--mono); }
 #tree .folder { color: var(--muted); }
 #tree .folder .tname::before { content: "\25BE"; display: inline-block; width: 1em; font-size: .7rem; }
 #tree .folder.folded .tname::before { content: "\25B8"; }
+#tree .droptarget { background: color-mix(in srgb, var(--accent) 12%, transparent); outline: 1px dashed var(--accent); outline-offset: -1px; }
 #tree :is(.file, .folder):hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
 #tree .file[aria-current] { background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
 #tree .tact { visibility: hidden; flex: none; font: inherit; line-height: 1; padding: .05rem .25rem; border: 0; border-radius: .2rem; background: none; color: var(--muted); cursor: pointer; }

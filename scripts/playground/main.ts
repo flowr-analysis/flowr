@@ -1486,10 +1486,12 @@ function showFiles(): void {
 	fileBar.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 	treeToggle.title = `${tree.hidden ? 'show' : 'hide'} the ${files.length === 1 ? 'file' : `${files.length} files`} of the project`;
 	const shown = new Set<string>();
-	const rows = files.map((file, at) => ({ file, at, folders: file.name.split('/') }))
-		.sort((a, b) => a.file.name.localeCompare(b.file.name))
+	/* a folder made with nothing in it yet shows as well, sorted in where a file of it would be */
+	const entries = [...files.map((file, at) => ({ path: file.name, file, at })), ...[...emptyFolders].map(path => ({ path: `${path}/`, file: undefined, at: -1 }))];
+	const rows = entries.map(entry => ({ ...entry, folders: entry.path.split('/') }))
+		.sort((a, b) => a.path.localeCompare(b.path))
 		.flatMap(({ file, at, folders }) => {
-			const name = folders.pop() ?? file.name;
+			const name = folders.pop() ?? '';
 			const heads = folders.map((folder, depth) => [folders.slice(0, depth + 1).join('/'), folder, depth] as const)
 				.filter(([path]) => !shown.has(path) && shown.add(path))
 				.filter(([path]) => !foldedFolders.has(path.split('/').slice(0, -1).join('/')))
@@ -1497,9 +1499,10 @@ function showFiles(): void {
 					const row = treeRow('folder', folder, depth, false, [['+', `a new file in ${path}/`, () => newFile(`${path}/`)]]);
 					row.classList.toggle('folded', foldedFolders.has(path));
 					row.addEventListener('click', () => (foldedFolders.has(path) ? foldedFolders.delete(path) : foldedFolders.add(path), showFiles()));
+					takesFiles(row, path);
 					return row;
 				});
-			if(folders.some((_, depth) => foldedFolders.has(folders.slice(0, depth + 1).join('/')))) {
+			if(file === undefined || folders.some((_, depth) => foldedFolders.has(folders.slice(0, depth + 1).join('/')))) {
 				return heads;
 			}
 			const row = treeRow('file', name, folders.length, !onConfig && at === active, [
@@ -1507,6 +1510,8 @@ function showFiles(): void {
 				...files.length > 1 ? [['\u00D7', `remove ${file.name} from the project`, () => removeFile(at)] as const] : []
 			]);
 			row.title = file.name;
+			row.draggable = true;
+			row.addEventListener('dragstart', event => event.dataTransfer?.setData(MovedFile, String(at)));
 			row.addEventListener('click', () => (openFile(at), showTab(false)));
 			row.addEventListener('contextmenu', event => (event.preventDefault(), openMenu(row, fileMenu(at))));
 			return [...heads, row];
@@ -1531,6 +1536,48 @@ function showFiles(): void {
 }
 
 const foldedFolders = new Set<string>();
+/** folders made in the tree that hold no file yet, which only exist on this page until one is put in */
+const emptyFolders = new Set<string>();
+
+/** the drag of a file of the tree, which a folder (or the top of the tree) takes in */
+const MovedFile = 'application/x-flowr-file';
+function takesFiles(row: HTMLElement, folder: string): void {
+	row.addEventListener('dragover', event => {
+		if(event.dataTransfer?.types.includes(MovedFile)) {
+			event.preventDefault();
+			row.classList.add('droptarget');
+		}
+	});
+	row.addEventListener('dragleave', () => row.classList.remove('droptarget'));
+	row.addEventListener('drop', event => {
+		const at = Number(event.dataTransfer?.getData(MovedFile));
+		row.classList.remove('droptarget');
+		if(event.dataTransfer?.types.includes(MovedFile) && files[at] !== undefined) {
+			event.preventDefault();
+			event.stopPropagation();
+			moveFile(at, folder);
+		}
+	});
+}
+
+/** puts the file into `folder`, `''` being the top of the project */
+function moveFile(at: number, folder: string): void {
+	const name = `${folder === '' ? '' : `${folder}/`}${files[at].name.split('/').pop() ?? files[at].name}`;
+	if(name !== files[at].name && nameAccepted(name, at)) {
+		rename(at, name);
+		emptyFolders.delete(folder);
+	}
+}
+
+function newFolder(): void {
+	const name = prompt('name of the new folder, nested ones separated by /', 'R')?.trim().replace(Leading, '').replace(/\/+$/, '');
+	if(name === undefined || name === '' || name.split('/').some(part => part === '' || part === '..')) {
+		return;
+	}
+	emptyFolders.add(name);
+	foldedFolders.delete(name);
+	showFiles();
+}
 
 /** whether the files are one of the examples as it opened, which nobody minds losing */
 function pristineExample(): boolean {
@@ -1564,6 +1611,10 @@ function renameFile(at: number): void {
 	if(name === undefined || name === files[at].name || !nameAccepted(name, at)) {
 		return;
 	}
+	rename(at, name);
+}
+
+function rename(at: number, name: string): void {
 	openFile(active, () => {
 		files[at].name = name;
 		files[at].state = files[at].state.update({ effects: fileKind.reconfigure(kindOf(name)) }).state;
@@ -1590,6 +1641,12 @@ function fileMenu(at: number): readonly MenuEntry[] {
 	return [
 		files[at].name,
 		{ label: 'Rename...', run: () => renameFile(at) },
+		{ label: 'Move to folder...', title: 'empty for the top of the project', run:   () => {
+			const folder = prompt('move to the folder, empty for the top of the project', files[at].name.split('/').slice(0, -1).join('/'))?.trim().replace(Leading, '').replace(/\/+$/, '');
+			if(folder !== undefined) {
+				moveFile(at, folder);
+			}
+		} },
 		...files.length > 1 ? [{ label: 'Remove', run: () => removeFile(at) }] : [],
 		'', { label: 'New file next to it...', run: () => newFile(files[at].name.replace(/[^/]*$/, '')) }
 	];
@@ -1653,9 +1710,11 @@ window.addEventListener('resize', closeMenu);
 const addButton = document.getElementById('addfile') as HTMLElement;
 addButton.addEventListener('click', () => openMenu(addButton, [
 	{ label: 'New file...', title: 'folders separated by /, as in R/clean.R', run: () => newFile() },
+	{ label: 'New folder...', title: 'drag files onto a folder to move them there', run: () => newFolder() },
 	{ label: 'Upload files...', title: 'R scripts, R Markdown, Quarto, Jupyter notebooks, or a zip of them', run: () => pickers[0].click() },
 	{ label: 'Upload folder...', title: 'every R script and notebook below a folder', run: () => pickers[1].click() }
 ]));
+takesFiles(treeHead, '');
 showFiles();
 
 const pane = fileBar.closest('.pane') as HTMLElement;

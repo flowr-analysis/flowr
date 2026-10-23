@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-23, 16:00:51 UTC (v2.16.6), do not edit directly._
 <h2 id="undefined-symbol">Undefined Symbol&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#experimental'>![experimental](https://img.shields.io/badge/experimental-lightgrey) </a></span>
@@ -9,7 +9,7 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 |---|------|:--------:|------|
 | [37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37) | [R code for possible problems](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L2302) ([book](https://r-pkgs.org/R-CMD-check.html#r-code)) | 🟩⭐ | ⭐ also quick fixes, deprecated arguments, environments resolved through variables, hooks followed into callees |
 
-This rule is a `over-approximative` rule.
+This rule is a <code>over-approximative</code> rule.
  
 Finds functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L149">src/linter/rules/undefined-symbol.ts</a>._

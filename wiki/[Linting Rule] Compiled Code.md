@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-23, 16:00:51 UTC (v2.16.6), do not edit directly._
 <h2 id="compiled-code">Compiled Code&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 20, 65–78](https://img.shields.io/badge/cmd--check-20%2C%2065%E2%80%9378-blueviolet) </a>
@@ -23,7 +23,7 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 | [77](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-77) | [whether package can be installed](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L5961) ([book](https://r-pkgs.org/R-CMD-check.html#r-code)) | 🔷⭐ | ⭐ also compiled code never loaded for lack of useDynLib<br>useDynLib and src/ in agreement, headers from LinkingTo, undefined exports |
 | [78](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-78) | [compilation flags used](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L3934) ([book](https://r-pkgs.org/R-CMD-check.html#compiled-code)) | 🔷 | the flags the Makevars state, not the ones the toolchain was called with |
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds problems in `src/` and the build files: non-portable Makevars flags, BLAS/LAPACK and OpenMP flag use, GNU make extensions, pragmas, line endings, Fortran KIND, the C++ standard, calls to non-API or non-portable entry points, and `useDynLib` against `src/`.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L354">src/linter/rules/cmd-check/compiled-code.ts</a>._

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-23, 16:00:51 UTC (v2.16.6), do not edit directly._
 <h2 id="package-data">Package Data&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 34, 48, 60–64](https://img.shields.io/badge/cmd--check-34%2C%2048%2C%2060%E2%80%9364-blueviolet) </a>
@@ -15,7 +15,7 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 | [63](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-63) | [serialization versions](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L988) ([book](https://r-pkgs.org/R-CMD-check.html#data)) | 🟩 | .rds files and xz compressed saves are not read |
 | [64](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-64) | [data for non-ASCII characters](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L3002) ([book](https://r-pkgs.org/R-CMD-check.html#data)) | 🔶 | the encodings of saved strings are not read |
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds problems in `data/` and `R/sysdata.rda`: allowed file types, LazyData, compression, the serialization version R needs, and undocumented data sets.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-data.ts#L99">src/linter/rules/cmd-check/package-data.ts</a>._

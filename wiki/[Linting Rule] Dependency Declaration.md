@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-23, 16:00:51 UTC (v2.16.6), do not edit directly._
 <h2 id="dependency-declaration">Dependency Declaration&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 27–33, 53, 77, 83, 85, 88](https://img.shields.io/badge/cmd--check-27%E2%80%9333%2C%2053%2C%2077%2C%2083%2C%2085%2C%2088-blueviolet) </a> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span>
@@ -20,7 +20,7 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 | [85](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-85) | [running R code from vignettes](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L5255) ([book](https://r-pkgs.org/R-CMD-check.html#vignettes)) | 🔷 | vignette code that does not parse |
 | [88](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-88) | [examples with --run-donttest](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L4738) ([book](https://r-pkgs.org/R-CMD-check.html#documentation)) | 🔷⭐ | ⭐ also T and F in the examples<br>the \donttest code is checked like all examples |
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds packages the code, tests, examples, or vignettes use without the DESCRIPTION declaring them, Imports nothing imports from, `library()` calls in package code, own `:::` calls, and undeclared VignetteBuilder or RdMacros packages. Package names are resolved through variables.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/dependency-declaration.ts#L178">src/linter/rules/cmd-check/dependency-declaration.ts</a>._
@@ -79,7 +79,7 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (10 ms)\
+Query: **linter** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Dependency Declaration** (dependency-declaration):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ undeclared-attach of dplyr at [/pkg/R/code.R:2.2-15](file:///pkg/R/code.R:2:2)\

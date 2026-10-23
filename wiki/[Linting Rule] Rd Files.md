@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-23, 16:00:51 UTC (v2.16.6), do not edit directly._
 <h2 id="rd-files">Rd Files&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 45–47, 50–55, 88–92](https://img.shields.io/badge/cmd--check-45%E2%80%9347%2C%2050%E2%80%9355%2C%2088%E2%80%9392-blueviolet) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -22,7 +22,7 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 | [91](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-91) | [for new files in some other directories](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L8173) ([book](https://r-pkgs.org/R-CMD-check.html#package-structure)) | 🔶 | only the files written by name |
 | [92](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-92) | [HTML version of manual](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L5641) ([book](https://r-pkgs.org/R-CMD-check.html#documentation)) | 🔷 | the Rd files that would not render |
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds problems in the Rd files: syntax, unknown macros, required and duplicated sections, metadata, cross-references, line widths, contents, and the example code.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/rd-files.ts#L661">src/linter/rules/cmd-check/rd-files.ts</a>._

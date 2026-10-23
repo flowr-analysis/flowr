@@ -9,6 +9,9 @@ import { InputTraceType, InputType } from '../../../src/queries/catalog/input-so
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Problematic Eval', () => {
 		assertLinter('const-eval', parser, 'eval(parse(text="x"))', 'problematic-inputs', []);
+		assertLinter('const source', parser, 'source("a.R")', 'problematic-inputs', []);
+		assertLinter('known source', parser, 'f <- "h.R"; source(f)', 'problematic-inputs', []);
+		assertLinter('derived source', parser, 'source(paste0("b", ".R"))', 'problematic-inputs', []);
 		assertLinter('network eval', parser, 'x <- read.csv("https://example.com/data.csv"); eval(parse(text=x))', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Certain,
 			name:      'eval',

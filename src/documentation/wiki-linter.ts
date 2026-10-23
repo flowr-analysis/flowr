@@ -507,7 +507,7 @@ function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[]
 		const tags = sortedTags(rule.info.tags).map(t => t === LintingRuleTag.CmdCheck ? cmdCheckBadge(name, types) : makeTagBadge(t, types)).join(' ');
 
 		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', { fuzzy: true }).replaceAll('\n', ' ');
-		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
+		const certaintyText = textWithTooltip(`<code>${rule.info.certainty}</code>`, certaintyDoc);
 		ruleExplanations.set(name, async() => `
 
 ${autoGenHeader({ filename: module.filename, purpose: 'linter' })}

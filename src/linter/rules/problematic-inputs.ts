@@ -21,9 +21,15 @@ import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument
 /** what runs a command, and what evaluates code beyond looking up a name (`get`) or calling a function it is handed (`do.call`) */
 function defaultConsider(index: BuiltInIndex): readonly ConsiderSpec[] {
 	const evaluates = index.with(SemanticCallTag.Eval).filter(n => ((index.propsOf(n) ?? 0) & CallProp.Pure) === 0 && !index.get(n)?.sig?.some(([, p]) => (p & ArgProp.Callee) !== 0));
-	return [...index.with(SemanticCallTag.Process), ...evaluates].map(n => ({ pattern: `^${escapeRegex(Identifier.getName(n))}$` }))
-		.map(s => s.pattern === '^eval$' ? { ...s, allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true } : s)
-		.concat({ pattern: '^fread$' });
+	const constants = [InputType.Constant, InputType.DerivedConstant];
+	return [
+		...index.with(SemanticCallTag.Process).map(n => ({ pattern: `^${escapeRegex(Identifier.getName(n))}$` })),
+		/* evaluating a known value (`source("a.R")`) is harmless, only `eval` additionally has its code argument inspected */
+		...evaluates.map(n => {
+			const name = Identifier.getName(n);
+			return { pattern: `^${escapeRegex(name)}$`, allowedInputTypes: constants, ...name === 'eval' ? { resolveSourceArgs: true } : {} };
+		})
+	].concat({ pattern: '^fread$' });
 }
 
 const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [

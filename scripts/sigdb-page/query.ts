@@ -91,8 +91,23 @@ export function regexOf(text: string): RegExp | undefined {
 	return slashed === null ? undefined : asPattern(slashed[1]);
 }
 
+/** `functions starting with G that [pure]`: how a name is asked for in words, with the constraints left as they are */
+const Worded = /^(?:functions?\s+)?((?:starting|starts|beginning|begins|ending|ends)\s+with|containing|contains)\s+([\w.]+)\s*(?:(?:that|which|with|having|and)\s+)?(.*)$/i;
+
+/** the query with a worded name turned into the glob it means (`starting with G` is `G*`), any other query as it was */
+export function unworded(typed: string): string {
+	const worded = Worded.exec(typed.trim());
+	if(worded === null) {
+		return typed;
+	}
+	const how = worded[1].toLowerCase();
+	const name = how.startsWith('end') ? `*${worded[2]}` : how.startsWith('con') ? `*${worded[2]}*` : `${worded[2]}*`;
+	return name + worded[3].trim();
+}
+
 /** Splits `name(arg, [role], name[role], *)[prop]` into the name and the constraints on the arguments and the function. */
-export function parseSpec(typed: string): Spec {
+export function parseSpec(input: string): Spec {
+	const typed = unworded(input);
 	/* a pattern may hold anything, brackets and commas included, so it is set aside while the rest is read */
 	const patterns: RegExp[] = [];
 	const shielded = typed.replace(Slashed, (whole, before: string, source: string) => {

@@ -55,8 +55,10 @@ import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
 import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
 import { cranPageUrl } from '../../src/util/r-package-urls';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
+import { RString } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { VertexType } from '../../src/dataflow/graph/vertex';
 import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
@@ -679,7 +681,7 @@ const Loading = /\b(?:library|require|loadNamespace|requireNamespace|attachNames
 const BaseRPackages = new Set(baseRPackages());
 
 /** one name to offer, weighed by the {@link rankName} the signature browser ranks its hits with */
-function offer(label: string, needle: string, where: { pkg?: string, type: string, detail: string, siblings?: ReadonlySet<string> }): Completion & { boost: number } {
+function offer(label: string, needle: string, where: { pkg?: string, type: string, detail: string, siblings?: ReadonlySet<string>, local?: boolean }): Completion & { boost: number } {
 	const dot = label.indexOf('.');
 	/* `print.foo` is a method of `print` when the generic is a name of its own, as the database decides it */
 	const generic = dot > 0 ? label.slice(0, dot) : undefined;
@@ -690,7 +692,8 @@ function offer(label: string, needle: string, where: { pkg?: string, type: strin
 		baseR:    where.pkg !== undefined && BaseRPackages.has(where.pkg),
 		base:     where.pkg === 'base',
 		s3:       generic !== undefined && (knownNames.has(generic) || (where.siblings?.has(generic) ?? false)),
-		variable: where.type === 'variable'
+		variable: where.type === 'variable',
+		local:    where.local
 	});
 	return { label, type: where.type, detail: where.detail, boost: points };
 }
@@ -782,6 +785,9 @@ function parametersOf(called: string): string[] {
 	return call.includes('(') ? [...params.matchAll(/(?:^|,\s*)([A-Za-z.][\w.]*)(?=\s*(?:=|,|$))/g)].map(m => m[1]).filter(p => p !== '...') : [];
 }
 
+/** the names the last analysis saw defined, which reaches those the text alone does not show (`assign("x", 1)`) */
+let flowrDefined: readonly string[] = [];
+
 function complete(context: CompletionContext): CompletionResult | null | Promise<CompletionResult | null> {
 	/* a comment is prose, so nothing there completes */
 	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)
@@ -824,7 +830,7 @@ function complete(context: CompletionContext): CompletionResult | null | Promise
 	return {
 		from:    word.from,
 		options: [...named, ...ranked([
-			...defined.map(label => offer(label, needle, { type: 'variable', detail: 'in this script' })),
+			...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
 			/* what the script attached is nearer than what flowR knows without it */
 			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
 			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
@@ -2845,6 +2851,9 @@ async function analyze(): Promise<number> {
 	};
 	const took = performance.now() - started;
 	showStats({ parse: parsed, normalize: normalizing, dataflow, lint: answers.linter?.['.meta']?.timing ?? 0 }, info.graph);
+	flowrDefined = uniqueArray([...info.graph.verticesOfType(VertexType.VariableDefinition)]
+		.map(([id]) => RString.unquote(NodeId.recoverName(id, idMap) ?? ''))
+		.filter((name): name is string => name !== undefined && /^[A-Za-z.][\w.]*$/.test(name)));
 
 	panel.replaceChildren();
 	panel.classList.add('fresh');

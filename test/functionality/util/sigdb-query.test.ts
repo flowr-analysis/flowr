@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { argsOf, closed, completeAt, problemsOf, explainAt, isIncomplete, globOf, highlight, matchArgs, parseSpec } from '../../../scripts/sigdb-page/query';
+import { argsOf, closed, completeAt, problemsOf, explainAt, isIncomplete, globOf, highlight, matchArgs, parseSpec, unworded } from '../../../scripts/sigdb-page/query';
 
 describe('sigdb page query', () => {
 	describe('plain names stay names', () => {
@@ -262,5 +262,20 @@ describe('sigdb page problems', () => {
 		for(const text of ['*([alias],*) [pure]', '[pure] *', '*(x?)', 'read*', '/^a[b]/', '[[<-', '(', '((', '%*%', '', '*', '[']) {
 			expect(problemsOf(text), text).toEqual([]);
 		}
+	});
+
+	describe('worded names', () => {
+		test('turn into globs', () => {
+			expect(unworded('functions starting with G')).toBe('G*');
+			expect(unworded('ending with csv')).toBe('*csv');
+			expect(unworded('containing read')).toBe('*read*');
+			expect(unworded('read.csv')).toBe('read.csv');
+		});
+		test('keep what is asked of them', () => {
+			const spec = parseSpec('function starting with G that [pure]');
+			expect(spec.rest).toBe('G*');
+			expect(spec.props).toEqual(['pure']);
+			expect(parseSpec('starting with g which (x)').args?.[0].name).toBe('x');
+		});
 	});
 });

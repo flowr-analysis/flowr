@@ -320,6 +320,7 @@ code, pre { font-family: var(--mono); }
 	background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: none;
 }
 /* the completion list, in the page's own colours rather than CodeMirror's */
+.cm-tooltip-autocomplete > ul { border-radius: calc(.4rem - 1px); }
 .cm-tooltip-autocomplete > ul > li { padding: .1rem .5rem; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: var(--accent-fg); }
 .cm-completionLabel { font-family: var(--mono); }

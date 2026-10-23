@@ -1,5 +1,5 @@
 import type { FlowrSearchLike } from '../search/flowr-search-builder';
-import type { FlowrSearchElement, FlowrSearchElements } from '../search/flowr-search';
+import type { FlowrSearchElements } from '../search/flowr-search';
 import type { MergeableRecord } from '../util/objects';
 import type { GeneratorNames } from '../search/search-executor/search-generators';
 import type { TransformerNames } from '../search/search-executor/search-transformer';
@@ -48,19 +48,19 @@ export interface LinterRuleInformation<Config extends MergeableRecord = never> {
  * The base interface for a linting rule, which contains all of its relevant settings.
  * The registry of valid linting rules is stored in {@link LintingRules}.
  */
-export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord = never, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
+export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord = never, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElements<Info> | never = FlowrSearchElements<Info>> {
 	/**
 	 * Creates a flowR search that will then be executed and whose results will be passed to {@link processSearchResult}.
 	 * The analyzer the rule runs on is handed in as well, so a search built from flowR's built-ins can read the ones
 	 * its {@link FlowrConfig} registered rather than the defaults.
 	 * In the future, additional optimizations and transformations may be applied to the search between this function and {@link processSearchResult}.
 	 */
-	readonly createSearch:        (config: Config, data: ReadonlyFlowrAnalysisProvider) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
+	readonly createSearch:        (config: Config, data: ReadonlyFlowrAnalysisProvider) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], Elements>
 	/**
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: ReadonlyFlowrAnalysisProvider) => AsyncOrSync<{
+	readonly processSearchResult: (elements: Elements, config: Config, data: ReadonlyFlowrAnalysisProvider) => AsyncOrSync<{
 		results:  Result[],
 		'.meta'?: Metadata
 	}>
@@ -149,7 +149,7 @@ export interface LintingResult {
 	/**
 	 * The source location where this linting result occurs
 	 */
-	readonly loc:        SourceLocation;
+	readonly loc:        SourceLocation | undefined;
 }
 
 

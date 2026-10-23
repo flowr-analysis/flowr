@@ -454,6 +454,10 @@ function(x) {
 	'package-runtime': {
 		configType: 'PackageRuntimeConfig', ruleType:   'PACKAGE_RUNTIME', testfile:   'cmd-check/lint-package-runtime',
 		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\nexport(g)\n' } }
+	},
+	'autoload-files': {
+		configType: 'AutoloadConfig', ruleType:   'AUTOLOAD_FILES', testfile:   'cmd-check/lint-autoload-files',
+		example:    { code: 'f <- function() 1', files: { '.RProfile': 'system("rm -rf /")' } }
 	}
 };
 

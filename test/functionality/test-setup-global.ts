@@ -4,12 +4,15 @@ import path from 'path';
 import { DefaultMap } from '../../src/util/collections/defaultmap';
 import { DetailedInfoFile, GlobalSummaryFile, TestSuites } from './summary-def';
 import { jsonReplacer } from '../../src/util/json';
+import { ensureTestTmp, pruneStaleTestTmp } from '../test-tmp.mjs';
 
 
 /**
  * Runs once before the whole suite: prepares what every test file assumes to be there.
  */
 export function setup() {
+	ensureTestTmp();
+	pruneStaleTestTmp();
 	try {
 		fs.unlinkSync(GlobalSummaryFile);
 	} catch{

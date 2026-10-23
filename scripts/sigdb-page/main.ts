@@ -2,7 +2,7 @@ import { rankName } from '../../src/util/text/name-rank';
 import type { SigIndex } from '../sigdb-index';
 import { blank, button, el } from '../page-lib/dom';
 import type { Spec } from './query';
-import { Words, argsOf, WordInfo, completeAt, explainAt, globOf, highlight, matchArgs, norm, parseSpec, wordsOf } from './query';
+import { Words, argsOf, PropWords, RoleWords, WordInfo, closed, completeAt, explainAt, problemsOf, globOf, isIncomplete, highlight, matchArgs, norm, parseSpec, wordsOf } from './query';
 import type { RRepository } from '../../src/util/r-package-urls';
 import { baseManualIndexUrl, baseManualTopicUrl, cranMirrorSourceUrl, rdrrPackageUrl, rdrrTopicUrl, RRepositories, rSourceUrl } from '../../src/util/r-package-urls';
 
@@ -756,21 +756,39 @@ function show(name: string, needle: string, at: number, owners: readonly string[
 const Chunk = 40000;
 const Countable = 50000;
 
+function fitsEntry([, props, args]: EncodedStatedSignature, spec: Spec): boolean {
+	const have = wordsOf(props).map(norm);
+	return spec.props.every(prop => have.includes(prop)) && (spec.args === undefined || matchArgs(spec.args, argsOf(args)));
+}
+
 function fits(name: string, spec: Spec, glob: RegExp | undefined): boolean {
 	if(glob?.test(name) === false) {
 		return false;
 	}
-	if(spec.args === undefined && spec.props.length === 0) {
-		return true;
+	return (spec.args === undefined && spec.props.length === 0) || (stated.get(name) ?? []).some(entry => fitsEntry(entry, spec));
+}
+
+/** whether any name flowR states a signature for would match the query, which is all that argument and property words can ask about */
+function anyMatch(text: string): boolean {
+	const spec = parseSpec(closed(text).trim().replace(/^\?/, '').trim());
+	const named = (/^([\w.]+):::?(.*)$/.exec(spec.rest)?.[2] ?? spec.rest).trim();
+	const glob = spec.nameRegex ?? globOf(named);
+	const needle = glob === undefined ? named.toLowerCase() : '';
+	for(const name of stated.keys()) {
+		if((needle === '' || name.toLowerCase().includes(needle)) && fits(name, spec, glob)) {
+			return true;
+		}
 	}
-	return (stated.get(name) ?? []).some(([, props, args]) => {
-		const have = wordsOf(props).map(norm);
-		return spec.props.every(prop => have.includes(prop)) && (spec.args === undefined || matchArgs(spec.args, argsOf(args)));
-	});
+	return false;
 }
 
 let pending = 0;
+let answered = false;
 async function search(): Promise<void> {
+	/* a query that is still being typed asks for nothing yet, so the last answer and its filters stay */
+	if(answered && isIncomplete(q.value)) {
+		return;
+	}
 	const spec = parseSpec(q.value.trim().replace(/^\?/, '').trim());
 	const typed = spec.rest;
 	asked = { roles: new Set(spec.args?.flatMap(arg => arg.roles)), props: new Set(spec.props) };
@@ -778,7 +796,7 @@ async function search(): Promise<void> {
 	const inPackage = qualified?.[1];
 	scoped = inPackage;
 	const named = (qualified?.[2] ?? typed).trim();
-	const glob = globOf(named);
+	const glob = spec.nameRegex ?? globOf(named);
 	const needle = glob === undefined ? named : '';
 	const constrained = glob !== undefined || spec.args !== undefined || spec.props.length > 0;
 	const run = ++pending;
@@ -876,12 +894,17 @@ async function search(): Promise<void> {
 	if(found > 0 && found <= Countable) {
 		const seen = new Set<string>();
 		for(const match of kept) {
+			if(spec.args !== undefined || spec.props.length > 0) {
+				/* a signature is stated per package, so only the packages whose own signature fits count */
+				(stated.get(match.name) ?? []).filter(entry => entry[0] !== '' && fitsEntry(entry, spec)).forEach(entry => seen.add(entry[0]));
+				continue;
+			}
 			for(const entry of match.owners.split(',')) {
 				const colon = entry.indexOf(':');
 				seen.add(colon < 0 ? entry : entry.slice(0, colon));
 			}
 		}
-		inPackages = seen.size;
+		inPackages = seen.size === 0 ? undefined : seen.size;
 	}
 	for(const match of kept.slice(0, limit)) {
 		show(match.name, needle, match.at, withStatedOwner(match.name, match.owners.split(',')));
@@ -889,6 +912,7 @@ async function search(): Promise<void> {
 	const where = inPackage === undefined ? ''
 		: wanted === undefined ? ` (flowR knows no package called ${inPackage})` : ` in ${inPackage}`;
 	report(onlyPackages ? allPackages.length : found, onlyPackages ? 'package' : 'name', where, inPackages);
+	answered = true;
 }
 
 function report(total: number, what: string, where: string, inPackages: number | undefined): void {
@@ -994,6 +1018,9 @@ function offer(): void {
 	const typed = q.value.slice(found.from, found.to);
 	for(const word of found.options) {
 		const row = el('li', undefined);
+		const next = q.value.slice(0, found.from) + word + q.value.slice(found.to);
+		/* a word that would leave nothing to find is shown grayed, and can still be chosen */
+		row.classList.toggle('none', !anyMatch(next));
 		row.setAttribute('role', 'option');
 		const label = el('span', 'label');
 		label.append(el('b', undefined, word.slice(0, typed.length)), word.slice(typed.length));
@@ -1016,6 +1043,12 @@ function offer(): void {
 	chosen = -1;
 }
 q.addEventListener('keydown', event => {
+	/* a search field clears itself on escape, which would throw the query away; it only closes the list */
+	if(event.key === 'Escape') {
+		event.preventDefault();
+		suggest.hidden = true;
+		return;
+	}
 	if(suggest.hidden) {
 		return;
 	}
@@ -1025,8 +1058,6 @@ q.addEventListener('keydown', event => {
 	} else if(event.key === 'Tab' || (event.key === 'Enter' && chosen >= 0)) {
 		event.preventDefault();
 		take(suggest.children[Math.max(chosen, 0)]);
-	} else if(event.key === 'Escape') {
-		suggest.hidden = true;
 	}
 });
 for(const type of ['input', 'click']) {
@@ -1041,7 +1072,11 @@ q.addEventListener('blur', () => window.setTimeout(() => void (suggest.hidden = 
 
 const hl = byId('hl');
 const QueryHint = q.title;
+const problem = byId('problem');
 function paint(): void {
+	const found = problemsOf(q.value);
+	problem.hidden = found.length === 0;
+	problem.textContent = found.length === 0 ? '' : found.join(' · ') + (answered ? ' (showing the last answer)' : '');
 	const pieces = highlight(q.value);
 	const colored = pieces.some(([, kind]) => kind !== 'plain');
 	q.parentElement?.classList.toggle('colored', colored);
@@ -1075,3 +1110,17 @@ q.addEventListener('mousemove', event => {
 	}
 	q.title = (x >= 0 ? explainAt(q.value, at) : undefined) ?? QueryHint;
 });
+
+for(const [id, words, kind] of [['helproles', RoleWords, 'role'], ['helpprops', PropWords, 'prop']] as const) {
+	byId(id).append(...words.flatMap(word => [el('dt', kind, word), el('dd', undefined, WordInfo[word] ?? '')]));
+}
+for(const example of document.querySelectorAll<HTMLButtonElement>('.try')) {
+	example.addEventListener('click', () => {
+		q.value = example.dataset.q ?? '';
+		helpDialog.close();
+		paint();
+		persist();
+		limit = Step;
+		void search();
+	});
+}

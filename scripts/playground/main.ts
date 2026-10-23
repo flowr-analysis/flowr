@@ -10,7 +10,7 @@ import { closeHoverTooltips, Decoration, gutter, GutterMarker, hoverTooltip, key
 import { Compartment, EditorState, Prec, RangeSet, StateEffect, StateField, type StateEffectType, type Transaction } from '@codemirror/state';
 import { indentWithTab } from '@codemirror/commands';
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
-import { HighlightStyle, StreamLanguage, syntaxHighlighting, syntaxTree } from '@codemirror/language';
+import { HighlightStyle, StreamLanguage, matchBrackets, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { highlightCode, tags } from '@lezer/highlight';
 import { r } from '@codemirror/legacy-modes/mode/r';
 import { json } from '@codemirror/legacy-modes/mode/javascript';
@@ -388,6 +388,27 @@ function complaint(found: { rule: string, message: string }, cls: string): HTMLE
 	chip.dataset.category = category(found.rule);
 	at.append(chip, document.createTextNode(found.message.replace(`${found.rule}: `, '')));
 	return at;
+}
+
+/**
+ * The given lines plus the ones holding the closing bracket of every bracket they open, which carry no code of their
+ * own (`}` alone on a line) and so are in no slice, though a slice without them is no longer a program.
+ */
+function withClosers(lines: readonly number[]): number[] {
+	const state = editor.state;
+	const all = new Set(lines);
+	for(const n of lines) {
+		const line = state.doc.line(n);
+		for(let at = 0; at < line.length; at++) {
+			if('{(['.includes(line.text[at]) && !spelledOut(state, line.from + at)) {
+				const match = matchBrackets(state, line.from + at, 1);
+				if(match?.matched && match.end !== undefined) {
+					all.add(state.doc.lineAt(match.end.from).number);
+				}
+			}
+		}
+	}
+	return [...all].sort((a, b) => a - b);
 }
 
 /** whether the offset sits in a string or a comment, where a name is text and not the function it spells */
@@ -929,8 +950,8 @@ const shared = (() => {
 		repl:       sized(repl, 'px'),
 		/* what the link points at, as `12`, `12-15`, `12@sum`, `12:5`, `lint:<rule>[@<line>]`, or a box */
 		marks:      Playground.Mark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
-		/* a page opened without a link steps back what the slice leaves out; a link keeps the view it was sent with */
-		dim:        params.size === 0 || view.dim,
+		/* stepping back what a slice leaves out is something to turn on, so only a link that says so does */
+		dim:        view.dim,
 		/* the repl and the whole of a slice are as much a part of how the page was left as the panes are */
 		replOpen:   view.replOpen,
 		wholeSlice: view.wholeSlice,
@@ -2318,6 +2339,8 @@ interface Finding { loc?: SourceLocation, quickFix?: LintQuickFix[], involvedId?
 /* the finding whose details are open, which a new analysis opens again */
 let openedLint: string | undefined;
 
+/** the rule that reports code which does not parse */
+const SyntaxRule = 'syntactically-valid';
 /** the categories whose findings are errors, those of any other one warnings */
 const ErrorCategories: ReadonlySet<string> = new Set(['bug', 'security']);
 const isError = (rule: string): boolean => ErrorCategories.has(category(rule));
@@ -2344,10 +2367,13 @@ function applyFixes(fixes: readonly LintQuickFix[]): void {
 	}
 }
 
-function ruleDetails(rule: string, fixes: readonly LintQuickFix[]): HTMLElement {
+function ruleDetails(rule: string, fixes: readonly LintQuickFix[], note?: string): HTMLElement {
 	const more = el('div', 'lintmore');
 	const about = (LintingRules as unknown as Record<string, { info?: { description?: string } }>)[rule]?.info?.description;
 	more.append(el('p', 'about', about ?? 'flowR has no description of this rule'));
+	if(note !== undefined) {
+		more.append(el('p', 'note', note));
+	}
 	if(fixes.length === 0) {
 		return more;
 	}
@@ -2362,13 +2388,15 @@ function ruleDetails(rule: string, fixes: readonly LintQuickFix[]): HTMLElement 
 		tail++;
 	}
 	const diff = el('pre', 'diff');
+	/* the numbers are those of the script before the fix on the removed lines and after it on the added ones, as in a patch */
+	const width = String(Math.max(before.length, after.length)).length;
 	const show = (lines: readonly string[], sign: string) => {
-		for(const text of lines.slice(0, 6)) {
-			const row = el('span', sign === '-' ? 'del' : 'ins', `${sign} ${text}`);
+		for(const [at, text] of lines.slice(0, 6).entries()) {
+			const row = el('span', sign === '-' ? 'del' : 'ins', `${String(head + at + 1).padStart(width)} ${sign} ${text}`);
 			diff.append(row, '\n');
 		}
 		if(lines.length > 6) {
-			diff.append(el('span', 'more', `  … ${lines.length - 6} more`), '\n');
+			diff.append(el('span', 'more', `${' '.repeat(width)}   … ${lines.length - 6} more`), '\n');
 		}
 	};
 	show(before.slice(head, before.length - tail), '-');
@@ -2805,7 +2833,8 @@ async function analyze(): Promise<number> {
 	const idMap = normalized.idMap;
 	const answers = await built.query([
 		{ type: 'dependencies' },
-		{ type: 'linter' },
+		/* off by default as a rule, but a script that does not parse is the first thing to say */
+		{ type: 'linter' }, { type: 'linter', rules: ['syntactically-valid'] },
 		...files.some(f => /(^|\/)DESCRIPTION$/.test(f.name)) ? [{ type: 'project' }] : [],
 		...slicesFor(lastCriteria = pinnedCriteria().length > 0 ? pinnedCriteria() : criterion === undefined ? [] : [criterion])
 	] as never) as unknown as {
@@ -2835,8 +2864,9 @@ async function analyze(): Promise<number> {
 	/* a removal slice keeps what is left once its lines are gone, which is the program one goes on with */
 	const doc = editor.state.doc;
 	/* the lines that hold code, which a slice keeps a share of: not the prose, fences, and blank lines of a notebook */
-	codeLines = linesOf([...idMap?.entries() ?? []].filter(([, node]) => node.info.parent !== undefined).map(([id]) => id));
-	const keptLines = direction !== 'removal' || sliced.length === 0 ? sliceLinesOf : codeLines.filter(l => !sliceLinesOf.includes(l));
+	codeLines = withClosers(linesOf([...idMap?.entries() ?? []].filter(([, node]) => node.info.parent !== undefined).map(([id]) => id)));
+	const sliceWithClosers = withClosers(sliceLinesOf);
+	const keptLines = direction !== 'removal' || sliced.length === 0 ? sliceWithClosers : codeLines.filter(l => !sliceWithClosers.includes(l));
 	lastKept = keptLines;
 	dim();
 
@@ -2940,14 +2970,19 @@ async function analyze(): Promise<number> {
 			const at = (f.loc?.[0] ?? 0) > 0 ? f.loc?.[0] : undefined;
 			const loc = file === undefined && at !== undefined ? f.loc : undefined;
 			return { rule, file, at, line: loc?.[0], loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta']) };
-		})).sort((a, b) => Number(isError(b.rule)) - Number(isError(a.rule)));
+		})).sort((a, b) => Number(b.rule === SyntaxRule) - Number(a.rule === SyntaxRule) || Number(isError(b.rule)) - Number(isError(a.rule)));
+	/* flowR skips what it cannot parse, so whatever follows the first such spot may only look unused, dead or empty */
+	const brokenAt = found.filter(f => f.rule === SyntaxRule && f.file === undefined).map(f => f.line).filter((l): l is number => l !== undefined).sort((a, b) => a - b)[0];
+	const followUp = (f: { rule: string, file?: string, line?: number }): string | undefined => brokenAt !== undefined && f.rule !== SyntaxRule && f.file === undefined && f.line !== undefined && f.line >= brokenAt
+		? `The syntax error in line ${brokenAt} may be the cause: flowR leaves out the code it cannot parse, so what follows can look unused, dead or empty. Fix that first.` : undefined;
 	const marked = found.flatMap(f => {
-		const [startLine, startCol, endLine, endCol] = f.loc ?? [];
-		/* a rule may point outside this file, e.g. at the project around it */
-		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined || startLine < 1 || startLine > editor.state.doc.lines) {
+		const [startLine, startCol, endLine, rawEnd] = f.loc ?? [];
+		/* a rule may point outside this file, e.g. at the project around it; a syntax error may span lines, so its first one is marked */
+		if(startLine === undefined || startCol === undefined || rawEnd === undefined || (startLine !== endLine && f.rule !== SyntaxRule) || startLine < 1 || startLine > editor.state.doc.lines) {
 			return [];
 		}
 		const line = editor.state.doc.line(startLine);
+		const endCol = startLine === endLine ? rawEnd : line.length;
 		return [{
 			rule:    f.rule, line:    startLine,
 			from:    line.from + startCol - 1, to:      Math.min(line.to, line.from + endCol),
@@ -2969,6 +3004,9 @@ async function analyze(): Promise<number> {
 		const chip = el('span', 'rule');
 		chip.dataset.category = category(f.rule);
 		chip.append(tag(f.rule, 'rulename'));
+		if(followUp(f) !== undefined) {
+			chip.append(tag('follow-up?', 'followup'));
+		}
 		if(f.quickFix.length > 0) {
 			chip.classList.add('fixable');
 			chip.append(tag('fix', 'offer'));
@@ -2995,12 +3033,12 @@ async function analyze(): Promise<number> {
 			openedLint = openedLint === lintKey ? undefined : lintKey;
 			lints.querySelectorAll('.lintmore').forEach(more => more.remove());
 			if(openedLint === lintKey) {
-				line.append(ruleDetails(f.rule, f.quickFix));
+				line.append(ruleDetails(f.rule, f.quickFix, followUp(f)));
 			}
 			reveal(f.file, f.at);
 		});
 		if(openedLint === lintKey) {
-			line.append(ruleDetails(f.rule, f.quickFix));
+			line.append(ruleDetails(f.rule, f.quickFix, followUp(f)));
 		}
 		lints.append(linkRow(line, [f.line]));
 	}

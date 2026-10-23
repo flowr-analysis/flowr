@@ -603,6 +603,8 @@ code, pre { font-family: var(--mono); }
 /* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
 #panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; row-gap: .3rem; }
 #panel .lintmore { grid-column: 1 / -1; margin-top: .4rem; padding-top: .4rem; border-top: 1px solid color-mix(in srgb, var(--hue) 18%, var(--border)); font-size: .8rem; cursor: auto; }
+#panel .lintmore .note { margin: .35rem 0 0; color: var(--fg); }
+#panel .rule .followup { opacity: .7; font-weight: 400; margin-left: .4rem; }
 #panel .lintmore .about { margin: 0; color: var(--muted); }
 #panel .lintmore .diff { margin: .4rem 0; padding: .3rem .5rem; border-radius: .3rem; background: var(--panel); font-size: .76rem; overflow-x: auto; white-space: pre; }
 #panel .lintmore .del { color: #b42318; background: color-mix(in srgb, #b42318 9%, transparent); }

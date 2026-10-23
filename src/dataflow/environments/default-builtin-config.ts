@@ -1036,6 +1036,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [...Identifier.fromAll(PkgName.Base, ['message', 'warning']), Identifier.from(['warn', PkgName.Rlang]), Identifier.from(['info', PkgName.Msgr])], processor: BuiltInProcName.Default, config: { keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible, tags: [SemanticCallTag.Prints], sig: [['...', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['invisible', PkgName.Base])], processor: BuiltInProcName.Default, config: { keepArgumentOut: true, props: CallProp.Pure | CallProp.Invisible, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: true },
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['force', 'identity']), processor: BuiltInProcName.Default, config: { keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['I', PkgName.Base])], processor: BuiltInProcName.Default, config: { keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['suppressWarnings', 'suppressMessages', 'suppressPackageStartupMessages']), processor: BuiltInProcName.Default, config: { keepArgumentOut: true, sig: [['expr', ArgProp.Alias | ArgProp.Forced], ['classes', ArgProp.Value]] }, assumePrimitive: false },
 	// graphics base
 	{ type: 'function', names: namespacePlotFunctions(GraphicsPlotCreate.concat(TinyPlotCrate).filter(f => !VisiblePlotCreate.has(f))), processor: BuiltInProcName.Default, config: { ...PlotCreateConfig, props: CallProp.Invisible, ambient: ReadGraphicsState }, assumePrimitive: true },
 	{ type: 'function', names: namespacePlotFunctions([...VisiblePlotCreate]), processor: BuiltInProcName.Default, config: { ...PlotCreateConfig, ambient: ReadGraphicsState }, assumePrimitive: true },
@@ -1115,7 +1117,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['stopifnot', PkgName.Base]), Identifier.from(['assert_that', PkgName.AssertThat])], processor: BuiltInProcName.StopIfNot, config: { props: CallProp.Invisible | CallProp.Throws, sig: [['...', 0], ['exprs', ArgProp.NoDefault], ['exprObject', ArgProp.NoDefault], ['local', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: ['break'], processor: BuiltInProcName.Default, config: { useAsProcessor: BuiltInProcName.Break, cfg: ExitPointType.Break }, assumePrimitive: false },
 	{ type: 'function', names: ['next'], processor: BuiltInProcName.Default, config: { cfg: ExitPointType.Next }, assumePrimitive: false },
-	{ type: 'function', names: ['{'], processor: BuiltInProcName.ExpressionList, config: { props: CallProp.Pure, sig: [['...', 0]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.Group },
+	{ type: 'function', names: ['{'], processor: BuiltInProcName.ExpressionList, config: { props: CallProp.Pure, sig: [['...', ArgProp.Alias]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.Group },
 	{ type:            'function', names:           [Identifier.from(['source', PkgName.Base])],
 		/* it hands back what it evaluated invisibly, so a top-level `source()` prints nothing of its own */
 		processor:       BuiltInProcName.Source,

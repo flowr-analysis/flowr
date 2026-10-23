@@ -13,7 +13,10 @@ export enum ArgProp {
 	Forced    = 1 << 0,
 	/** declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it */
 	NoDefault = 1 << 1,
-	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
+	/**
+	 * the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge.
+	 * On `...` it is the last argument that is handed back, like in `{`.
+	 */
 	Alias     = 1 << 2,
 	/** the result is computed from the argument's value, like `x` in `sum(x)` */
 	Value     = 1 << 3,

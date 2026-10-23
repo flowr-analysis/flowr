@@ -224,7 +224,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(keepArgumentOut) {
 		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
-	const alias = layout !== undefined && layout.alias >= 0 ? processedArguments[layout.alias] : undefined;
+	const alias = layout !== undefined && layout.alias >= 0 ? processedArguments[layout.alias === layout.rest ? processedArguments.length - 1 : layout.alias] : undefined;
 	if(alias !== undefined) {
 		res.graph.addEdge(rootId, alias.entryPoint, EdgeType.Returns);
 	}
